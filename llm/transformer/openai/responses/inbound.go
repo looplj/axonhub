@@ -178,6 +178,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
 		PromptCacheKey:      req.PromptCacheKey,
+		PreviousResponseID:  req.PreviousResponseID,
 		TransformerMetadata: map[string]any{},
 		TransformOptions:    llm.TransformOptions{},
 	}
@@ -759,12 +760,13 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 // convertToResponsesAPIResponse converts llm.Response to Responses API Response.
 func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 	resp := &Response{
-		Object:    "response",
-		ID:        chatResp.ID,
-		Model:     chatResp.Model,
-		CreatedAt: chatResp.Created,
-		Output:    make([]Item, 0),
-		Status:    lo.ToPtr("completed"),
+		Object:             "response",
+		ID:                 chatResp.ID,
+		Model:              chatResp.Model,
+		CreatedAt:          chatResp.Created,
+		Output:             make([]Item, 0),
+		Status:             lo.ToPtr("completed"),
+		PreviousResponseID: chatResp.PreviousResponseID,
 	}
 
 	// Convert usage

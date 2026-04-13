@@ -2,6 +2,7 @@ package codex
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -22,7 +23,15 @@ import (
 const (
 	codexBaseURL = "https://chatgpt.com/backend-api/codex#"
 	codexAPIURL  = "https://chatgpt.com/backend-api/codex/responses"
+	codexTurnMetadataHeader = "X-Codex-Turn-Metadata"
 )
+
+var codexPassthroughHeaders = []string{
+	codexTurnMetadataHeader,
+	"X-Codex-Window-Id",
+	"X-Client-Request-Id",
+	"X-Codex-Beta-Features",
+}
 
 // OutboundTransformer implements transformer.Outbound for Codex proxy.
 // It always talks to the Codex Responses upstream (SSE only) and adapts requests accordingly.
@@ -90,11 +99,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	rawSessionID := ""
 	rawOriginator := ""
 	rawUserAgent := ""
+	rawTurnMetadata := ""
+	var rawHeaders http.Header
 
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		rawHeaders = llmReq.RawRequest.Headers
 		rawSessionID = llmReq.RawRequest.Headers.Get("Session_id")
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
+		rawTurnMetadata = llmReq.RawRequest.Headers.Get(codexTurnMetadataHeader)
 	}
 
 	creds, err := t.tokens.Get(ctx)
@@ -163,8 +176,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.Headers.Set("User-Agent", rawUserAgent)
 	}
 
+	for _, header := range codexPassthroughHeaders {
+		if value := rawHeaders.Get(header); value != "" {
+			hreq.Headers.Set(header, value)
+		}
+	}
+
 	if rawSessionID != "" {
 		hreq.Headers.Set("Session_id", rawSessionID)
+	} else if sessionID := extractSessionIDFromTurnMetadata(rawTurnMetadata); sessionID != "" {
+		hreq.Headers.Set("Session_id", sessionID)
 	} else if hreq.Headers.Get("Session_id") == "" {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
 			hreq.Headers.Set("Session_id", sessionID)
@@ -178,6 +199,22 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return hreq, nil
+}
+
+func extractSessionIDFromTurnMetadata(raw string) string {
+	if raw == "" {
+		return ""
+	}
+
+	var payload struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return ""
+	}
+
+	return payload.SessionID
 }
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	// Codex upstream returns Responses API response.

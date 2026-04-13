@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -188,12 +189,34 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 }
 
 const codexTraceHeader = "Session_id"
+const codexTurnMetadataHeader = "X-Codex-Turn-Metadata"
+
+type codexTurnMetadata struct {
+	SessionID string `json:"session_id"`
+}
 
 // tryExtractTraceIDFromCodexRequest extracts the trace ID from the Codex session header.
 func tryExtractTraceIDFromCodexRequest(c *gin.Context) string {
 	traceID := strings.TrimSpace(c.GetHeader(codexTraceHeader))
 	if traceID == "" {
-		return ""
+		turnMetadataRaw := strings.TrimSpace(c.GetHeader(codexTurnMetadataHeader))
+		if turnMetadataRaw == "" {
+			return ""
+		}
+
+		var turnMetadata codexTurnMetadata
+		if err := json.Unmarshal([]byte(turnMetadataRaw), &turnMetadata); err != nil {
+			return ""
+		}
+
+		traceID = strings.TrimSpace(turnMetadata.SessionID)
+		if traceID == "" {
+			return ""
+		}
+
+		log.Debug(c.Request.Context(), "Extracted trace ID from codex turn metadata", log.String("trace_id", traceID))
+
+		return traceID
 	}
 
 	log.Debug(c.Request.Context(), "Extracted trace ID from codex header", log.String("trace_id", traceID))

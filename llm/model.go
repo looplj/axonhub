@@ -106,6 +106,9 @@ type Request struct {
 	// [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
 	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 
+	// The unique ID of the previous response for multi-turn Responses API requests.
+	PreviousResponseID *string `json:"previous_response_id,omitempty"`
+
 	// A stable identifier used to help detect users of your application that may be
 	// violating OpenAI's usage policies. The IDs should be a string that uniquely
 	// identifies each user. We recommend hashing their username or email address, in
@@ -545,6 +548,9 @@ type Response struct {
 
 	// Model is the model used to generate the response.
 	Model string `json:"model"`
+
+	// The unique ID of the previous response for multi-turn Responses API responses.
+	PreviousResponseID *string `json:"previous_response_id,omitempty"`
 
 	// Usage is the unified token usage field for all request types (chat, embedding, rerank, image, video).
 	// For streaming chat requests, it will only be present in the last chunk when stream_options: {"include_usage": true} is set.
