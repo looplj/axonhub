@@ -159,7 +159,7 @@ func (h *RequestPreviewHandlers) writeStaticPreview(c *gin.Context, req *ent.Req
 }
 
 type requestPreviewStream struct {
-	ctx         context.Context
+	done        <-chan struct{}
 	buffer      *biz.ChunkBuffer
 	notifyCh    <-chan struct{}
 	unsubscribe func()
@@ -174,7 +174,7 @@ var _ streams.Stream[*httpclient.StreamEvent] = (*requestPreviewStream)(nil)
 func newRequestPreviewStream(ctx context.Context, buffer *biz.ChunkBuffer) *requestPreviewStream {
 	notifyCh, unsubscribe := buffer.Subscribe()
 	return &requestPreviewStream{
-		ctx:         ctx,
+		done:        ctx.Done(),
 		buffer:      buffer,
 		notifyCh:    notifyCh,
 		unsubscribe: unsubscribe,
@@ -193,14 +193,14 @@ func (s *requestPreviewStream) Next() bool {
 
 		idleTimer := time.NewTimer(previewIdleTimeout)
 		select {
-		case <-s.ctx.Done():
+		case <-s.done:
 			idleTimer.Stop()
 			s.current = nil
 			return false
 		case <-s.notifyCh:
 			idleTimer.Stop()
 		case <-idleTimer.C:
-			log.Warn(s.ctx, "request preview stream idle timeout", log.Duration("timeout", previewIdleTimeout))
+			log.Warn(context.Background(), "request preview stream idle timeout", log.Duration("timeout", previewIdleTimeout))
 			s.current = nil
 			return false
 		}
