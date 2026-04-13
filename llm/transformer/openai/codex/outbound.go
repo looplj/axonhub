@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -214,8 +215,9 @@ func extractSessionIDFromTurnMetadata(raw string) string {
 		return ""
 	}
 
-	return payload.SessionID
+	return strings.TrimSpace(payload.SessionID)
 }
+
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	// Codex upstream returns Responses API response.
 	return t.responsesOutbound.TransformResponse(ctx, httpResp)
