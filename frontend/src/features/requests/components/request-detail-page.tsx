@@ -149,6 +149,7 @@ export default function RequestDetailPage() {
   const [isPreviewStreaming, setIsPreviewStreaming] = useState(false);
   const [previewFallbackActive, setPreviewFallbackActive] = useState(false);
   const previewCompletedRef = useRef(false);
+  const previewChunkCountRef = useRef(0);
 
   const { data: settings } = useGeneralSettings();
   const {
@@ -184,6 +185,7 @@ export default function RequestDetailPage() {
       setIsPreviewStreaming(false);
       setPreviewFallbackActive(false);
       previewCompletedRef.current = false;
+      previewChunkCountRef.current = 0;
     }
   }, [requestData]);
 
@@ -212,6 +214,8 @@ export default function RequestDetailPage() {
 
     const controller = new AbortController();
     let isDisposed = false;
+    let reconnectTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let reconnectAttempt = 0;
 
     previewCompletedRef.current = false;
     setIsPreviewStreaming(true);
@@ -220,8 +224,38 @@ export default function RequestDetailPage() {
       ...requestData,
       responseChunks: [],
     });
+    previewChunkCountRef.current = 0;
 
-    const connectPreview = async () => {
+    const clearReconnectTimer = () => {
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (isDisposed || controller.signal.aborted) {
+        return;
+      }
+      if (requestData.status !== 'processing' || !requestData.stream || previewCompletedRef.current) {
+        return;
+      }
+      if (reconnectTimer !== null) {
+        return;
+      }
+
+      reconnectAttempt += 1;
+      const delay = Math.min(5000, 500 * reconnectAttempt);
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null;
+        if (!isDisposed && !controller.signal.aborted) {
+          setIsPreviewStreaming(true);
+          void connectPreview();
+        }
+      }, delay);
+    };
+
+    async function connectPreview() {
       try {
         const response = await fetch(`/admin/requests/${encodeURIComponent(requestIdNumber)}/preview`, {
           headers: {
@@ -255,6 +289,8 @@ export default function RequestDetailPage() {
           return;
         }
 
+        let replayChunksToSkip = previewChunkCountRef.current;
+
         await readPreviewStream(response, {
           onEvent: async ({ event, data }) => {
             if (isDisposed) {
@@ -262,7 +298,13 @@ export default function RequestDetailPage() {
             }
 
             if (event === 'preview.replay' || event === 'preview.chunk') {
+              if (event === 'preview.replay' && replayChunksToSkip > 0) {
+                replayChunksToSkip -= 1;
+                return;
+              }
+
               const nextChunk = parsePreviewChunk(data);
+              previewChunkCountRef.current += 1;
               setPreviewRequest((currentRequest) => currentRequest
                 ? {
                   ...currentRequest,
@@ -283,20 +325,38 @@ export default function RequestDetailPage() {
             }
           },
         });
+
+        if (!isDisposed && !controller.signal.aborted) {
+          if (previewCompletedRef.current) {
+            setIsPreviewStreaming(false);
+            clearReconnectTimer();
+            return;
+          }
+
+          scheduleReconnect();
+        }
       } catch (error) {
-        if (!controller.signal.aborted && !isDisposed) {
+        if (controller.signal.aborted || isDisposed) {
+          return;
+        }
+
+        if (requestData.status === 'processing' && requestData.stream) {
+          setIsPreviewStreaming(false);
+          scheduleReconnect();
+        } else {
           setPreviewRequest(null);
           setIsPreviewStreaming(false);
           setPreviewFallbackActive(true);
         }
       }
-    };
+    }
 
     void connectPreview();
 
     return () => {
       isDisposed = true;
       setIsPreviewStreaming(false);
+      clearReconnectTimer();
       controller.abort();
     };
   }, [previewFallbackActive, requestData, refetchRequest, selectedProjectId]);
