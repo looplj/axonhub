@@ -536,15 +536,11 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			if err != nil {
 				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, fsKey)
 			}
-		}
-
-		if ds.Type != datastorage.TypeFs {
+		} else if isS3PathStyle(ds) {
 			// For S3 with PathStyle enabled, remove leading slash from key
 			// to avoid InvalidArgument error from S3 compatible storage services
-			if isS3PathStyle(ds) {
-				returnKey = strings.TrimPrefix(returnKey, "/")
-				fsKey = strings.TrimPrefix(fsKey, "/")
-			}
+			returnKey = strings.TrimPrefix(returnKey, "/")
+			fsKey = strings.TrimPrefix(fsKey, "/")
 		}
 
 		// Write data to file

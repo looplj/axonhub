@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -372,7 +373,7 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 			// Add model mappings if requested
 			if input.IncludeMapping && ch.Settings != nil {
 				for _, mapping := range ch.Settings.ModelMappings {
-					if mapping.From != "" && mapping.To != "" {
+					if strings.TrimSpace(mapping.From) != "" && strings.TrimSpace(mapping.To) != "" {
 						setModelStatus(modelMap, mapping.From, ch.Status)
 					}
 				}

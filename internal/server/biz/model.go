@@ -652,10 +652,19 @@ func (svc *ModelService) queryConfiguredModelFacades(
 		return nil, fmt.Errorf("failed to list configured models: %w", err)
 	}
 
+	channelEntries := make(map[string]struct{})
+	if allowFallback {
+		for _, ch := range channels {
+			for modelID := range ch.GetModelEntries() {
+				channelEntries[modelID] = struct{}{}
+			}
+		}
+	}
+
 	models := make([]ModelFacade, 0, len(enabledModels))
 
 	for _, configuredModel := range enabledModels {
-		if !svc.isConfiguredModelRoutable(configuredModel, channels, allowFallback) {
+		if !svc.isConfiguredModelRoutable(configuredModel, channels, allowFallback, channelEntries) {
 			continue
 		}
 
@@ -671,7 +680,12 @@ func (svc *ModelService) queryConfiguredModelFacades(
 	return models, nil
 }
 
-func (svc *ModelService) isConfiguredModelRoutable(configuredModel *ent.Model, channels []*Channel, allowFallback bool) bool {
+func (svc *ModelService) isConfiguredModelRoutable(
+	configuredModel *ent.Model,
+	channels []*Channel,
+	allowFallback bool,
+	channelEntries map[string]struct{},
+) bool {
 	if configuredModel == nil {
 		return false
 	}
@@ -687,14 +701,8 @@ func (svc *ModelService) isConfiguredModelRoutable(configuredModel *ent.Model, c
 		return false
 	}
 
-	for _, ch := range channels {
-		entries := ch.GetModelEntries()
-		if _, ok := entries[configuredModel.ModelID]; ok {
-			return true
-		}
-	}
-
-	return false
+	_, ok := channelEntries[configuredModel.ModelID]
+	return ok
 }
 
 // CountAssociatedChannels counts the number of unique channels associated with the given model associations.
