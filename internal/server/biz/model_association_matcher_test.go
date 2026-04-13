@@ -69,7 +69,7 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 		require.Len(t, result, 1, "should only have one connection")
 		require.Equal(t, 1, result[0].Channel.ID)
 		require.Len(t, result[0].Models, 1)
@@ -88,7 +88,7 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 		require.Len(t, result, 2, "should have two connections for two channels")
 
 		// Verify each channel has gpt-4 only once
@@ -118,7 +118,7 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		require.Len(t, result, 1, "should have one connection")
 		require.Equal(t, 1, result[0].Channel.ID)
@@ -153,7 +153,7 @@ func TestMatchAssociations_Deduplication(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Verify no duplicates within each channel
 		for _, conn := range result {
@@ -198,7 +198,7 @@ func TestMatchAssociations_EmptyConnectionFiltering(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 		require.Len(t, result, 1, "should have one connection")
 		require.Len(t, result[0].Models, 1, "should have one model")
 		require.Equal(t, "gpt-4", result[0].Models[0].RequestModel)
@@ -216,7 +216,7 @@ func TestMatchAssociations_EmptyConnectionFiltering(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 		require.Len(t, result, 0, "should have no connections")
 	})
 }
@@ -282,7 +282,7 @@ func TestMatchAssociations_ComplexScenario(t *testing.T) {
 		},
 	}
 
-	result := MatchAssociations(associations, channels)
+	result := MatchConnections(associations, channels)
 
 	// Verify no duplicates within each connection
 	for _, conn := range result {
@@ -378,7 +378,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should only match openai-primary, not openai-backup
 		require.Len(t, result, 1)
@@ -402,7 +402,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should only match channel 1, not channel 2
 		require.Len(t, result, 1)
@@ -425,7 +425,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should only match openai-primary
 		require.Len(t, result, 1)
@@ -449,7 +449,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should exclude both openai channels, no results
 		require.Len(t, result, 0)
@@ -472,7 +472,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should only match openai-primary (channel 1)
 		// Excludes: openai-backup (by pattern), anthropic-primary (by ID)
@@ -499,7 +499,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should exclude all channels: 1 by pattern, 2 by ID
 		require.Len(t, result, 0)
@@ -517,7 +517,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match both openai channels
 		require.Len(t, result, 2)
@@ -535,7 +535,7 @@ func TestMatchAssociations_ExcludeChannels(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match both openai channels
 		require.Len(t, result, 2)
@@ -598,7 +598,7 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should exclude openai-backup (tag: backup), match others
 		require.Len(t, result, 2)
@@ -629,7 +629,7 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should exclude channels with backup or development tags
 		require.Len(t, result, 2)
@@ -661,7 +661,7 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should exclude channels with production tag (1 and 3), match backup and development
 		require.Len(t, result, 2)
@@ -695,7 +695,7 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should exclude:
 		// - Channel 1 and 3 by pattern (.*primary)
@@ -724,7 +724,7 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should exclude channels with production or development tags (1, 3, 4)
 		// Only channel 2 (backup) should remain
@@ -749,7 +749,7 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match all channels with gpt models since no channel has the non-existent tag
 		require.Len(t, result, 3) // channels 1, 2, 4 have gpt models
@@ -782,7 +782,7 @@ func TestMatchAssociations_ExcludeChannelsByTags(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channelsWithNoTags)
+		result := MatchConnections(associations, channelsWithNoTags)
 
 		// Should exclude production channels (1), but include others including no-tags channel
 		require.Len(t, result, 3) // channels 2, 4, 5
@@ -851,7 +851,7 @@ func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match channels with production tag that have gpt-4
 		require.Len(t, result, 1)
@@ -873,7 +873,7 @@ func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match channels with backup OR development tag that have gpt-4
 		require.Len(t, result, 2)
@@ -901,7 +901,7 @@ func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should have no matches since model doesn't exist
 		require.Len(t, result, 0)
@@ -919,7 +919,7 @@ func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should have no matches since tag doesn't exist
 		require.Len(t, result, 0)
@@ -945,7 +945,7 @@ func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should only have one connection for channel 1 with gpt-4
 		require.Len(t, result, 1)
@@ -967,7 +967,7 @@ func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should have no matches when tags are empty
 		require.Len(t, result, 0)
@@ -995,7 +995,7 @@ func TestMatchAssociations_ChannelTagsModel(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channelsWithNoTags)
+		result := MatchConnections(associations, channelsWithNoTags)
 
 		// Should only match channel 1, not the no-tags channel
 		require.Len(t, result, 1)
@@ -1055,7 +1055,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match channel 1 (production tag) with gpt models
 		require.Len(t, result, 1)
@@ -1085,7 +1085,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match channels 2 and 4 (backup OR development tag) with gpt-4
 		require.Len(t, result, 2)
@@ -1113,7 +1113,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match channel 3 with all claude models
 		require.Len(t, result, 1)
@@ -1133,7 +1133,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should have no matches since pattern doesn't match any model
 		require.Len(t, result, 0)
@@ -1151,7 +1151,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should have no matches since tag doesn't exist
 		require.Len(t, result, 0)
@@ -1177,7 +1177,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should have one connection: channel 1 (matched by both associations)
 		// Channel 3 has production tag but no gpt-4 model, so it won't match
@@ -1209,7 +1209,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should have no matches when tags are empty
 		require.Len(t, result, 0)
@@ -1237,7 +1237,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channelsWithNoTags)
+		result := MatchConnections(associations, channelsWithNoTags)
 
 		// Should only match channel 1, not the no-tags channel
 		require.Len(t, result, 1)
@@ -1256,7 +1256,7 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 			},
 		}
 
-		result := MatchAssociations(associations, channels)
+		result := MatchConnections(associations, channels)
 
 		// Should match channels with openai OR anthropic tag that have models matching .*-4.*
 		// Channel 1 (openai tag): gpt-4, gpt-4-turbo

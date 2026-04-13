@@ -74,6 +74,225 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("valid when condition", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "prompt_tokens",
+									Operator: "gt",
+									Value:    int64(99999),
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid when condition accepts graphql any integer forms", func(t *testing.T) {
+		testCases := []any{
+			float64(1024),
+			int64(1024),
+		}
+
+		for _, value := range testCases {
+			settings := &objects.ModelSettings{
+				Associations: []*objects.ModelAssociation{
+					{
+						Type: "model",
+						When: &objects.ModelAssociationWhen{
+							Enabled: true,
+							Condition: &objects.Condition{
+								Type:  objects.ConditionTypeGroup,
+								Logic: "and",
+								Conditions: []objects.Condition{
+									{
+										Type:     objects.ConditionTypeCondition,
+										Field:    "prompt_tokens",
+										Operator: "gt",
+										Value:    value,
+									},
+								},
+							},
+						},
+						ModelID: &objects.ModelIDAssociation{
+							ModelID: "test-model",
+						},
+					},
+				},
+			}
+
+			err := svc.validateModelSettings(settings)
+			require.NoError(t, err)
+		}
+	})
+
+	t.Run("invalid when condition rejects numeric string", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "prompt_tokens",
+									Operator: "gt",
+									Value:    "1024",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "condition value for prompt_tokens must be an integer")
+	})
+
+	t.Run("invalid when without conditions", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type: objects.ConditionTypeGroup,
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "condition requires at least one condition or group")
+	})
+
+	t.Run("invalid when with unsupported field", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "unknown",
+									Operator: "gt",
+									Value:    int64(1),
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `unsupported condition field "unknown"`)
+	})
+
+	t.Run("valid nested when condition", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:  objects.ConditionTypeGroup,
+									Logic: "or",
+									Conditions: []objects.Condition{
+										{
+											Type:     objects.ConditionTypeCondition,
+											Field:    "prompt_tokens",
+											Operator: "gt",
+											Value:    int64(100),
+										},
+										{
+											Type:     objects.ConditionTypeCondition,
+											Field:    "prompt_tokens",
+											Operator: "eq",
+											Value:    int64(200),
+										},
+									},
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `unsupported condition operator "eq"`)
+	})
+
+	t.Run("disabled when allows empty condition", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: false,
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.NoError(t, err)
+	})
+
 	t.Run("invalid regex pattern in channel_regex", func(t *testing.T) {
 		settings := &objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{

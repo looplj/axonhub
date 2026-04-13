@@ -451,6 +451,8 @@ function ProfileCard({
   // Watch all profiles to check for duplicates
   const allProfiles = form.watch('profiles') || [];
   const profileName = form.watch(`profiles.${profileIndex}.name`);
+  const channelTagsMatchMode = form.watch(`profiles.${profileIndex}.channelTagsMatchMode`);
+  const isExcludeMode = channelTagsMatchMode === 'none';
   const quotaUsage = profileName ? quotaUsageByProfileName.get(profileName) : undefined;
   const currentQuota = form.watch(`profiles.${profileIndex}.quota`);
   const quotaUsagePeriod = (currentQuota?.period ?? quotaUsage?.quota?.period) as ApiKeyQuotaPeriod | null | undefined;
@@ -939,8 +941,12 @@ function ProfileCard({
           <div className='border-t pt-6'>
             <div className='mb-3 flex items-start justify-between gap-3'>
               <div>
-                <h4 className='text-sm font-medium'>{t('apikeys.profiles.allowedChannelTags')}</h4>
-                <p className='text-muted-foreground mt-1 text-xs'>{t('apikeys.profiles.allowedChannelTagsDescription')}</p>
+                <h4 className='text-sm font-medium'>
+                  {t(isExcludeMode ? 'apikeys.profiles.excludedChannelTags' : 'apikeys.profiles.allowedChannelTags')}
+                </h4>
+                <p className='text-muted-foreground mt-1 text-xs'>
+                  {t(isExcludeMode ? 'apikeys.profiles.excludedChannelTagsDescription' : 'apikeys.profiles.allowedChannelTagsDescription')}
+                </p>
               </div>
               <FormField
                 control={form.control}
@@ -956,6 +962,7 @@ function ProfileCard({
                         <SelectContent>
                           <SelectItem value='any'>{t('apikeys.profiles.allowedChannelTagsMatchModeAny')}</SelectItem>
                           <SelectItem value='all'>{t('apikeys.profiles.allowedChannelTagsMatchModeAll')}</SelectItem>
+                          <SelectItem value='none'>{t('apikeys.profiles.allowedChannelTagsMatchModeNone')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -973,7 +980,7 @@ function ProfileCard({
                     <TagsAutocompleteInput
                       value={field.value || []}
                       onChange={field.onChange}
-                      placeholder={t('apikeys.profiles.allowedChannelTags')}
+                      placeholder={t(isExcludeMode ? 'apikeys.profiles.excludedChannelTags' : 'apikeys.profiles.allowedChannelTags')}
                       suggestions={allTags}
                       className='h-auto min-h-9 py-1'
                     />

@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -52,6 +53,10 @@ func (svc *ModelService) validateModelSettings(settings *objects.ModelSettings) 
 	}
 
 	for _, assoc := range settings.Associations {
+		if err := validateModelAssociationWhen(assoc.When); err != nil {
+			return fmt.Errorf("invalid when condition: %w", err)
+		}
+
 		// Validate ChannelRegex pattern
 		if assoc.ChannelRegex != nil && assoc.ChannelRegex.Pattern != "" {
 			if err := xregexp.ValidateRegex(assoc.ChannelRegex.Pattern); err != nil {
@@ -96,6 +101,136 @@ func (svc *ModelService) validateModelSettings(settings *objects.ModelSettings) 
 	}
 
 	return nil
+}
+
+func validateModelAssociationWhen(when *objects.ModelAssociationWhen) error {
+	if when == nil {
+		return nil
+	}
+
+	if !when.Enabled {
+		return nil
+	}
+
+	if when.Condition == nil {
+		return fmt.Errorf("at least one supported when condition is required")
+	}
+
+	return validateFilterConditionNode(when.Condition, filterValidationOptions{
+		AllowNestedGroups: true,
+		MaxNestedLevels:   3,
+	})
+}
+
+type filterValidationOptions struct {
+	AllowNestedGroups bool
+	MaxNestedLevels   int
+}
+
+func validateFilterConditionNode(condition *objects.Condition, opts filterValidationOptions) error {
+	return validateFilterConditionNodeAtDepth(condition, opts, 1, true)
+}
+
+func validateFilterConditionNodeAtDepth(condition *objects.Condition, opts filterValidationOptions, depth int, requireGroup bool) error {
+	if condition == nil {
+		return nil
+	}
+
+	nodeType := condition.Type
+	if nodeType == "" {
+		nodeType = objects.ConditionTypeGroup
+	}
+
+	if requireGroup && nodeType != objects.ConditionTypeGroup {
+		return fmt.Errorf("root when condition must be a group")
+	}
+
+	switch nodeType {
+	case objects.ConditionTypeGroup:
+		if len(condition.Conditions) == 0 {
+			return fmt.Errorf("condition requires at least one condition or group")
+		}
+
+		if opts.MaxNestedLevels > 0 && depth > opts.MaxNestedLevels {
+			return fmt.Errorf("condition nesting depth must not exceed %d", opts.MaxNestedLevels)
+		}
+
+		for _, child := range condition.Conditions {
+			if child.Type == objects.ConditionTypeGroup {
+				if !opts.AllowNestedGroups {
+					return fmt.Errorf("nested condition groups are not allowed")
+				}
+			}
+
+			if err := validateFilterConditionNodeAtDepth(&child, opts, depth+1, false); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	case "", objects.ConditionTypeCondition:
+		return validateFilterLeaf(*condition)
+	default:
+		return fmt.Errorf("unsupported condition type %q", condition.Type)
+	}
+}
+
+func validateFilterLeaf(condition objects.Condition) error {
+	if condition.Field == "" {
+		return fmt.Errorf("condition field is required")
+	}
+
+	if condition.Field != "prompt_tokens" {
+		return fmt.Errorf("unsupported condition field %q", condition.Field)
+	}
+
+	switch condition.Operator {
+	case "lt", "lte", "gt", "gte", "<", "<=", ">", ">=":
+	default:
+		return fmt.Errorf("unsupported condition operator %q", condition.Operator)
+	}
+
+	value, ok, err := filterConditionValueToInt64(condition)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return fmt.Errorf("condition value for %s must be an integer", condition.Field)
+	}
+
+	if value < 0 {
+		return fmt.Errorf("%s must be greater than or equal to 0", condition.Field)
+	}
+
+	return nil
+}
+
+func filterValueToInt64(value any) (int64, bool) {
+	switch v := value.(type) {
+	case int:
+		return int64(v), true
+	case int8:
+		return int64(v), true
+	case int16:
+		return int64(v), true
+	case int32:
+		return int64(v), true
+	case int64:
+		return v, true
+	case json.Number:
+		vv, err := v.Int64()
+		return vv, err == nil
+	case float64:
+		return int64(v), float64(int64(v)) == v
+	default:
+		return 0, false
+	}
+}
+
+func filterConditionValueToInt64(condition objects.Condition) (int64, bool, error) {
+	value, ok := filterValueToInt64(condition.Value)
+	return value, ok, nil
 }
 
 // CreateModel creates a new model with the provided input.
@@ -344,7 +479,7 @@ func (svc *ModelService) QueryModelChannelConnections(ctx context.Context, assoc
 	}
 
 	// Use the shared MatchAssociations function
-	return MatchAssociations(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
+	return MatchConnections(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
 		return &Channel{Channel: ch}
 	})), nil
 }
@@ -514,7 +649,7 @@ func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowe
 			continue
 		}
 
-		associations := MatchAssociations(m.Settings.Associations, channels)
+		associations := MatchConnections(m.Settings.Associations, channels)
 		if len(associations) > 0 {
 			models = append(models, ModelFacade{
 				ID:          m.ModelID,
@@ -548,7 +683,7 @@ func (svc *ModelService) CountAssociatedChannels(ctx context.Context, associatio
 	}
 
 	// Use the shared MatchAssociations function
-	connections := MatchAssociations(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
+	connections := MatchConnections(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
 		return &Channel{Channel: ch}
 	}))
 
@@ -602,7 +737,7 @@ func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.M
 	}
 
 	// Use MatchAssociations to get all associated models
-	connections := MatchAssociations(associations, channelWrappers)
+	connections := MatchConnections(associations, channelWrappers)
 
 	// Build a map of associated (channelID, modelID) combinations
 	associatedMap := make(map[ChannelModelKey]bool)

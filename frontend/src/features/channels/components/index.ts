@@ -7,6 +7,7 @@ export * from './channels-delete-dialog';
 export * from './channels-settings-dialog';
 export * from './channels-archive-dialog';
 export * from './channels-test-dialog';
+export * from './channels-test-history-drawer';
 export * from './channels-bulk-import-dialog';
 export * from './data-table-view-options';
 export * from './data-table-pagination';

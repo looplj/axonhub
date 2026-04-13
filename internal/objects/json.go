@@ -45,18 +45,19 @@ func (m *JSONRawMessage) UnmarshalGQL(v any) error {
 	}
 
 	switch v := v.(type) {
-	case *JSONRawMessage:
-		*m = append((*m)[0:0], *v...)
+	case JSONRawMessage:
+		*m = append((*m)[0:0], v...)
 		return nil
-	case *string:
-		*v = string(*m)
+	case []byte:
+		*m = append((*m)[0:0], v...)
 		return nil
-	case *[]byte:
-		*v = append((*v)[0:0], *m...)
-		return nil
-	case *map[string]any:
-		return json.Unmarshal(*m, v)
 	}
 
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	*m = append((*m)[0:0], data...)
 	return nil
 }

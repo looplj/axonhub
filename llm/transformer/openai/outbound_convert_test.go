@@ -75,6 +75,32 @@ func TestRequestFromLLM(t *testing.T) {
 	}
 }
 
+func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
+	req := RequestFromLLM(&llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
+		Tools: []llm.Tool{
+			{
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomTool: &llm.ResponseCustomTool{
+					Name: "apply_patch",
+				},
+			},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:       "get_weather",
+					Parameters: []byte(`{"type":"object"}`),
+				},
+			},
+		},
+	})
+
+	require.NotNil(t, req)
+	require.Len(t, req.Tools, 1)
+	require.Equal(t, llm.ToolTypeFunction, req.Tools[0].Type)
+}
+
 func TestMessageContentPartAudioRoundTrip(t *testing.T) {
 	part := llm.MessageContentPart{
 		Type: "input_audio",

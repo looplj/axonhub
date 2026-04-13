@@ -23,10 +23,6 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
-func (t *InboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatOpenAIChatCompletion
-}
-
 // TransformRequest transforms HTTP request to ChatCompletionRequest.
 func (t *InboundTransformer) TransformRequest(
 	ctx context.Context,

@@ -174,8 +174,8 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		return &TestChannelResult{
 			Latency: time.Since(startTime).Seconds(),
 			Success: false,
-			Message: lo.ToPtr(""),
-			Error:   lo.ToPtr(message),
+			Message: new(""),
+			Error:   new(message),
 		}, nil
 	}
 
@@ -192,8 +192,8 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		return &TestChannelResult{
 			Latency: latency,
 			Success: false,
-			Message: lo.ToPtr(""),
-			Error:   lo.ToPtr(err.Error()),
+			Message: new(""),
+			Error:   new(err.Error()),
 		}, nil
 	}
 
@@ -201,8 +201,8 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		return &TestChannelResult{
 			Latency: latency,
 			Success: false,
-			Message: lo.ToPtr(""),
-			Error:   lo.ToPtr("No message in response"),
+			Message: new(""),
+			Error:   new("No message in response"),
 		}, nil
 	}
 

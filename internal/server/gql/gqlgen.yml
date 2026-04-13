@@ -8,6 +8,7 @@ schema:
   - scopes.graphql
   - me.graphql
   - system.graphql
+  - filter.graphql
   - model.graphql
   - backup.graphql
   - channel_probe.graphql
@@ -86,6 +87,9 @@ models:
   JSONRawMessageInput:
     model:
       - github.com/looplj/axonhub/internal/objects.JSONRawMessage
+  Any:
+    model:
+      - github.com/99designs/gqlgen/graphql.Any
   Decimal:
     model:
       - github.com/looplj/axonhub/internal/objects.Decimal
@@ -446,6 +450,21 @@ models:
   ModelAssociationInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelAssociation
+  ModelAssociationWhen:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelAssociationWhen
+  ModelAssociationWhenInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelAssociationWhen
+  FilterConditionType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ConditionType
+  FilterCondition:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Condition
+  FilterConditionInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Condition
   ChannelModelAssociation:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelModelAssociation

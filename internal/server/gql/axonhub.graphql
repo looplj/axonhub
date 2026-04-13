@@ -336,6 +336,7 @@ type APIKeyProfile {
 enum ChannelTagsMatchMode {
   any
   all
+  none
 }
 
 input APIKeyQuotaInput {

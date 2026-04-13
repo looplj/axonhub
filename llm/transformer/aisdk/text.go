@@ -23,10 +23,6 @@ func NewTextTransformer() *TextTransformer {
 	return &TextTransformer{}
 }
 
-func (t *TextTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatAiSDKText
-}
-
 // TransformRequest transforms AI SDK request to LLM request.
 func (t *TextTransformer) TransformRequest(
 	ctx context.Context,
@@ -39,7 +35,7 @@ func (t *TextTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: failed to parse AI SDK request: %w", transformer.ErrInvalidRequest, err)
 	}
 
-	return convertToLLMRequest(&aiSDKReq)
+	return convertToLLMRequestWithAPIFormat(&aiSDKReq, nil, llm.APIFormatAiSDKText)
 }
 
 // TransformResponse transforms LLM response to AI SDK response.

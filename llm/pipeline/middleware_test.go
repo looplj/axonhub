@@ -15,10 +15,6 @@ import (
 // testInbound implements transformer.Inbound interface for testing.
 type testInbound struct{}
 
-func (t *testInbound) APIFormat() llm.APIFormat {
-	return "test/inbound"
-}
-
 func (t *testInbound) TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error) {
 	return &llm.Request{}, nil
 }

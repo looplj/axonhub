@@ -10,7 +10,7 @@ export type ApiKeyType = z.infer<typeof apiKeyTypeSchema>;
 export const apiKeyStatusSchema = z.enum(['enabled', 'disabled', 'archived']);
 export type ApiKeyStatus = z.infer<typeof apiKeyStatusSchema>;
 
-export const channelTagsMatchModeSchema = z.enum(['any', 'all']);
+export const channelTagsMatchModeSchema = z.enum(['any', 'all', 'none']);
 export type ChannelTagsMatchMode = z.infer<typeof channelTagsMatchModeSchema>;
 
 const channelTagsMatchModeFieldSchema = z.preprocess((value) => {

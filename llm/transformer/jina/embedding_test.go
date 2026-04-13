@@ -538,9 +538,6 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 }
 
 func TestEmbeddingTransformers_APIFormat(t *testing.T) {
-	inbound := NewEmbeddingInboundTransformer()
-	require.Equal(t, llm.APIFormatJinaEmbedding, inbound.APIFormat())
-
 	config := &Config{
 		BaseURL:        "https://api.jina.ai/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
