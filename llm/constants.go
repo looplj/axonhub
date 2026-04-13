@@ -31,6 +31,8 @@ const (
 	APIFormatAiSDKText             APIFormat = "aisdk/text"
 	APIFormatAiSDKDataStream       APIFormat = "aisdk/datastream"
 
+	APIFormatGeminiEmbedding APIFormat = "gemini/embeddings"
+
 	APIFormatJinaRerank    APIFormat = "jina/rerank"
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
 
