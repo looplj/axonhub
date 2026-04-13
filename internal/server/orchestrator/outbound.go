@@ -32,13 +32,13 @@ type OutboundPersistentStream struct {
 	request     *ent.Request
 	requestExec *ent.RequestExecution
 
-	transformer transformer.Outbound
-	perf        *biz.PerformanceRecord
-	chunkBuffer *biz.ChunkBuffer // single source of truth for chunks
-	storeChunks bool
-	closed      bool
-	state       *PersistenceState
-	previewKey  string // registry key for live preview, empty if preview disabled
+	transformer    transformer.Outbound
+	perf           *biz.PerformanceRecord
+	responseChunks []*httpclient.StreamEvent
+	chunkBuffer    *biz.ChunkBuffer
+	previewKey     string
+	closed         bool
+	state          *PersistenceState
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -63,18 +63,17 @@ func NewOutboundPersistentStream(
 		UsageLogService: usageLogService,
 		transformer:     outboundTransformer,
 		perf:            perf,
+		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		closed:          false,
 		state:           state,
-		storeChunks:     state.StoreChunks,
 	}
 
-	if s.storeChunks || state.LivePreview {
-		s.chunkBuffer = biz.NewChunkBuffer(nil)
-	}
-
-	// Register with preview registry for live chunk access
-	if state.LivePreview && requestExec != nil && s.chunkBuffer != nil {
+	if state.LivePreview && requestExec != nil {
 		s.previewKey = biz.ExecutionKey(requestExec.ID)
+		s.chunkBuffer = biz.DefaultStreamPreviewRegistry.GetBuffer(s.previewKey)
+		if s.chunkBuffer == nil {
+			s.chunkBuffer = biz.NewChunkBuffer(nil)
+		}
 		notifyFn := biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
 		s.chunkBuffer.SetNotify(notifyFn)
 	}
@@ -89,6 +88,7 @@ func (ts *OutboundPersistentStream) Next() bool {
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
+		ts.responseChunks = append(ts.responseChunks, event)
 		if ts.chunkBuffer != nil {
 			ts.chunkBuffer.Append(event)
 		}
@@ -114,19 +114,14 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	ts.closed = true
 	ctx := ts.ctx
-
-	// Unregister from preview registry on all exit paths
 	if ts.previewKey != "" {
 		defer biz.DefaultStreamPreviewRegistry.Unregister(ts.previewKey)
 	}
-
-	var chunks []*httpclient.StreamEvent
 	if ts.chunkBuffer != nil {
-		// Close the buffer to prevent further appends
-		ts.chunkBuffer.Close()
-		chunks = ts.chunkBuffer.Slice()
+		defer ts.chunkBuffer.Close()
 	}
-	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(chunks)), log.Bool("received_done", ts.state.StreamCompleted))
+
+	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
 
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
@@ -135,12 +130,10 @@ func (ts *OutboundPersistentStream) Close() error {
 	// even if there's a context cancellation error. This handles the case where
 	// the client disconnects immediately after receiving the last chunk.
 	if ts.state.StreamCompleted {
-		ts.logFinalizationDecision(ctx, "terminal_event_completed", streamErr, ctxErr, true, nil, len(chunks))
+		ts.logFinalizationDecision(ctx, "terminal_event_completed", streamErr, ctxErr, true, nil)
 		// Stream completed successfully - perform final persistence
 		log.Debug(ctx, "Stream completed successfully (received [DONE]), performing final persistence")
-		if ts.storeChunks {
-			ts.persistResponseChunks(ctx)
-		}
+		ts.persistResponseChunks(ctx)
 
 		return ts.stream.Close()
 	}
@@ -149,7 +142,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	// regardless of what chunks we have. Stream errors indicate the upstream response
 	// was incomplete or corrupted.
 	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
-		ts.logFinalizationDecision(ctx, "explicit_stream_error", streamErr, ctxErr, false, nil, len(chunks))
+		ts.logFinalizationDecision(ctx, "explicit_stream_error", streamErr, ctxErr, false, nil)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
@@ -167,21 +160,21 @@ func (ts *OutboundPersistentStream) Close() error {
 	var aggErr error
 	aggregatedCompleted := false
 
-	if ts.storeChunks && len(chunks) > 0 {
-		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), chunks)
+	if len(ts.responseChunks) > 0 {
+		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
 		aggregatedCompleted = aggErr == nil && isCompletedAggregatedOutboundResponse(meta)
-		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr, len(chunks))
+		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
 		}
 	} else {
-		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil, 0)
+		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
 	}
 
 	// ended without a terminal event / complete aggregated response.
 	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
-		ts.logFinalizationDecision(ctx, "incomplete_stream_with_error", streamErr, ctxErr, aggregatedCompleted, aggErr, len(chunks))
+		ts.logFinalizationDecision(ctx, "incomplete_stream_with_error", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
@@ -203,7 +196,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	}
 
 	if !ts.state.StreamCompleted {
-		ts.logFinalizationDecision(ctx, "incomplete_stream_without_terminal_event", streamErr, ctxErr, aggregatedCompleted, aggErr, len(chunks))
+		ts.logFinalizationDecision(ctx, "incomplete_stream_without_terminal_event", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
@@ -223,22 +216,22 @@ func (ts *OutboundPersistentStream) Close() error {
 	if len(responseBody) == 0 {
 		decision = "completed_via_chunk_persistence"
 	}
-	ts.logFinalizationDecision(ctx, decision, streamErr, ctxErr, aggregatedCompleted, aggErr, len(chunks))
+	ts.logFinalizationDecision(ctx, decision, streamErr, ctxErr, aggregatedCompleted, aggErr)
 
-	if ts.storeChunks && len(responseBody) > 0 {
+	if len(responseBody) > 0 {
 		ts.persistAggregatedResponse(context.WithoutCancel(ctx), responseBody, meta)
-	} else if ts.storeChunks {
+	} else {
 		ts.persistResponseChunks(ctx)
 	}
 
 	return ts.stream.Close()
 }
 
-func (ts *OutboundPersistentStream) logFinalizationDecision(ctx context.Context, decision string, streamErr error, ctxErr error, aggregatedCompleted bool, aggregatedErr error, chunkCount int) {
+func (ts *OutboundPersistentStream) logFinalizationDecision(ctx context.Context, decision string, streamErr error, ctxErr error, aggregatedCompleted bool, aggregatedErr error) {
 	fields := []log.Field{
 		log.String("decision", decision),
 		log.Bool("terminal_event_seen", ts.state.StreamCompleted),
-		log.Int("chunk_count", chunkCount),
+		log.Int("chunk_count", len(ts.responseChunks)),
 		log.String("api_format", string(ts.transformer.APIFormat())),
 		log.Bool("aggregated_completed", aggregatedCompleted),
 	}
@@ -269,8 +262,7 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		chunks := ts.chunkBuffer.Slice()
-		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, chunks)
+		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks using transformer", log.Cause(err))
 			return
@@ -323,8 +315,7 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 	}
 
 	// Save all response chunks at once
-	chunks := ts.chunkBuffer.Slice()
-	if err := ts.RequestService.SaveRequestExecutionChunks(ctx, ts.requestExec.ID, chunks); err != nil {
+	if err := ts.RequestService.SaveRequestExecutionChunks(ctx, ts.requestExec.ID, ts.responseChunks); err != nil {
 		log.Warn(ctx, "Failed to save request execution chunks", log.Cause(err))
 	}
 }
