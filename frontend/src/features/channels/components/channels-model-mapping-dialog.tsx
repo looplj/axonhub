@@ -27,7 +27,7 @@ interface Props {
 }
 
 // 扩展 schema 以包含模型映射的校验规则
-const createModelMappingFormSchema = (supportedModels: string[]) =>
+const createModelMappingFormSchema = () =>
   z.object({
     extraModelPrefix: z.string().optional(),
     modelMappings: z
@@ -45,15 +45,6 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
         },
         {
           message: 'Each original model can only be mapped once',
-        }
-      )
-      .refine(
-        (mappings) => {
-          // 检查所有目标模型是否在支持的模型列表中
-          return mappings.every((m) => supportedModels.includes(m.to));
-        },
-        {
-          message: 'Target model must be in supported models',
         }
       ),
     autoTrimedModelPrefixes: z.array(z.string()).optional(),
@@ -100,7 +91,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
   const prefixSuggestions = useMemo(() => extractAllPrefixes(currentRow.supportedModels), [currentRow.supportedModels]);
 
-  const modelMappingFormSchema = createModelMappingFormSchema(currentRow.supportedModels);
+  const modelMappingFormSchema = createModelMappingFormSchema();
 
   const form = useForm<z.infer<typeof modelMappingFormSchema>>({
     resolver: zodResolver(modelMappingFormSchema),
@@ -181,11 +172,6 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     if (!normalized.from || !normalized.to) {
       return t('channels.dialogs.settings.modelMapping.validationRequired', {
         defaultValue: 'Both alias and target model are required',
-      });
-    }
-    if (!currentRow.supportedModels.includes(normalized.to)) {
-      return t('channels.dialogs.settings.modelMapping.targetInvalid', {
-        defaultValue: 'Target model must be in supported models',
       });
     }
     const isDuplicateFrom = modelMappings.some((mapping, idx) => idx !== skipIndex && mapping.from === normalized.from);

@@ -293,7 +293,7 @@ func TestChannel_GetModelEntries_HideMappedModels(t *testing.T) {
 			shouldNotContain: []string{"gpt-4"},
 		},
 		{
-			name: "HideMappedModels=true with mapping to unsupported model does not hide original",
+			name: "HideMappedModels=true with mapping to unsupported model still exposes alias",
 			channel: &Channel{
 				Channel: &ent.Channel{
 					Name:            "Test Channel",
@@ -313,8 +313,13 @@ func TestChannel_GetModelEntries_HideMappedModels(t *testing.T) {
 					ActualModel:  "gpt-4",
 					Source:       "mapping",
 				},
+				"invalid-alias": {
+					RequestModel: "invalid-alias",
+					ActualModel:  "claude-3",
+					Source:       "mapping",
+				},
 			},
-			shouldNotContain: []string{"gpt-4", "invalid-alias", "claude-3"},
+			shouldNotContain: []string{"gpt-4", "claude-3"},
 		},
 		{
 			name: "HideMappedModels=true with no mappings shows all original models",

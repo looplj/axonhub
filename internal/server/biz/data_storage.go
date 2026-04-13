@@ -518,19 +518,23 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			return "", fmt.Errorf("failed to get file system: %w", err)
 		}
 
+		returnKey := key
+		fsKey := key
+
 		if ds.Type == datastorage.TypeFs {
-			key = filepath.FromSlash(key)
-			err = fs.MkdirAll(filepath.Dir(key), 0o777)
+			fsKey = filepath.FromSlash(key)
+			err = fs.MkdirAll(filepath.Dir(fsKey), 0o777)
 			if err != nil {
-				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, fsKey)
 			}
 		} else if ds.Type == datastorage.TypeWebdav {
 			// For WebDAV, remove leading slash to avoid 405 error on some servers (e.g., Synology)
-			key = strings.TrimPrefix(key, "/")
+			returnKey = strings.TrimPrefix(returnKey, "/")
+			fsKey = strings.TrimPrefix(fsKey, "/")
 
-			err = s.mkdirAll(fs, filepath.Dir(key))
+			err = s.mkdirAll(fs, filepath.Dir(fsKey))
 			if err != nil {
-				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, fsKey)
 			}
 		}
 
@@ -538,23 +542,17 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			// For S3 with PathStyle enabled, remove leading slash from key
 			// to avoid InvalidArgument error from S3 compatible storage services
 			if isS3PathStyle(ds) {
-				key = strings.TrimPrefix(key, "/")
+				returnKey = strings.TrimPrefix(returnKey, "/")
+				fsKey = strings.TrimPrefix(fsKey, "/")
 			}
-
-			f, err := fs.Create(key)
-			if err != nil {
-				return "", fmt.Errorf("failed to create file: %w, key: %s", err, key)
-			}
-
-			_ = f.Close()
 		}
 
 		// Write data to file
-		if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
-			return "", fmt.Errorf("failed to write file: %w, key: %s", err, key)
+		if err := afero.WriteFile(fs, fsKey, data, 0o777); err != nil {
+			return "", fmt.Errorf("failed to write file: %w, key: %s", err, fsKey)
 		}
 
-		return key, nil
+		return returnKey, nil
 	default:
 		return "", fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
@@ -573,33 +571,38 @@ func (s *DataStorageService) SaveDataFromReader(ctx context.Context, ds *ent.Dat
 			return "", 0, fmt.Errorf("failed to get file system: %w", err)
 		}
 
+		returnKey := key
+		fsKey := key
+
 		if ds.Type == datastorage.TypeFs {
-			key = filepath.FromSlash(key)
-			if err := fs.MkdirAll(filepath.Dir(key), 0o777); err != nil {
-				return "", 0, fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+			fsKey = filepath.FromSlash(key)
+			if err := fs.MkdirAll(filepath.Dir(fsKey), 0o777); err != nil {
+				return "", 0, fmt.Errorf("failed to create directory: %w, key: %s", err, fsKey)
 			}
 		} else if ds.Type == datastorage.TypeWebdav {
 			// For WebDAV, remove leading slash to avoid 405 error on some servers (e.g., Synology)
-			key = strings.TrimPrefix(key, "/")
-			if err := s.mkdirAll(fs, filepath.Dir(key)); err != nil {
-				return "", 0, fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+			returnKey = strings.TrimPrefix(returnKey, "/")
+			fsKey = strings.TrimPrefix(fsKey, "/")
+			if err := s.mkdirAll(fs, filepath.Dir(fsKey)); err != nil {
+				return "", 0, fmt.Errorf("failed to create directory: %w, key: %s", err, fsKey)
 			}
 		} else if isS3PathStyle(ds) {
-			key = strings.TrimPrefix(key, "/")
+			returnKey = strings.TrimPrefix(returnKey, "/")
+			fsKey = strings.TrimPrefix(fsKey, "/")
 		}
 
-		f, err := fs.Create(key)
+		f, err := fs.Create(fsKey)
 		if err != nil {
-			return "", 0, fmt.Errorf("failed to create file: %w, key: %s", err, key)
+			return "", 0, fmt.Errorf("failed to create file: %w, key: %s", err, fsKey)
 		}
 		defer f.Close()
 
 		n, err := io.Copy(f, r)
 		if err != nil {
-			return "", 0, fmt.Errorf("failed to write file: %w, key: %s", err, key)
+			return "", 0, fmt.Errorf("failed to write file: %w, key: %s", err, fsKey)
 		}
 
-		return key, n, nil
+		return returnKey, n, nil
 	default:
 		return "", 0, fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}

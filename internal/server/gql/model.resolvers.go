@@ -123,6 +123,15 @@ func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsIn
 // When QueryAllChannelModels is true, returns all models from channels.
 // When false, returns only configured models (models with explicit Model entity configuration).
 func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error) {
+	// Convert channel status to model status
+	var modelStatusIn []model.Status
+
+	if len(input.StatusIn) > 0 {
+		for _, status := range input.StatusIn {
+			modelStatusIn = append(modelStatusIn, model.Status(status.String()))
+		}
+	}
+
 	// Check the QueryAllChannelModels setting
 	settings := r.systemService.ModelSettingsOrDefault(ctx)
 
@@ -135,25 +144,37 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 			IncludeAllChannelModels: lo.FromPtrOr(input.IncludeAllChannelModels, false),
 		}
 
-		// Return all models from channels
-		models, err := r.channelService.ListModels(ctx, bizInput)
+		channelModels, err := r.channelService.ListModels(ctx, bizInput)
 		if err != nil {
 			return nil, err
 		}
 
-		return models, nil
+		configuredModels, err := r.modelService.ListModels(ctx, modelStatusIn)
+		if err != nil {
+			return nil, err
+		}
+
+		merged := make([]*biz.ModelIdentityWithStatus, 0, len(channelModels)+len(configuredModels))
+		seen := make(map[string]struct{}, len(channelModels)+len(configuredModels))
+
+		for _, item := range configuredModels {
+			merged = append(merged, item)
+			seen[item.ID] = struct{}{}
+		}
+
+		for _, item := range channelModels {
+			if _, ok := seen[item.ID]; ok {
+				continue
+			}
+
+			merged = append(merged, item)
+			seen[item.ID] = struct{}{}
+		}
+
+		return merged, nil
 	}
 
 	// Return only configured models
-	// Convert channel status to model status
-	var modelStatusIn []model.Status
-
-	if len(input.StatusIn) > 0 {
-		for _, status := range input.StatusIn {
-			modelStatusIn = append(modelStatusIn, model.Status(status.String()))
-		}
-	}
-
 	models, err := r.modelService.ListModels(ctx, modelStatusIn)
 	if err != nil {
 		return nil, err

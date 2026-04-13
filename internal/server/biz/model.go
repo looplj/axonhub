@@ -575,13 +575,18 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		allowedModelIDs = profile.ModelIDs
 	}
 
+	settings := svc.systemService.ModelSettingsOrDefault(ctx)
+
 	// Query configured Model entities (used in both modes)
-	configuredModels, err := svc.queryConfiguredModelFacades(ctx, allowedModelIDs, channels)
+	configuredModels, err := svc.queryConfiguredModelFacades(
+		ctx,
+		allowedModelIDs,
+		channels,
+		settings.FallbackToChannelsOnModelNotFound,
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	settings := svc.systemService.ModelSettingsOrDefault(ctx)
 	if !settings.QueryAllChannelModels {
 		return configuredModels, nil
 	}
@@ -628,7 +633,12 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 
 // queryConfiguredModelFacades queries enabled Model entities and returns them as ModelFacades
 // filtered by allowed model IDs and channel associations.
-func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowedModelIDs []string, channels []*Channel) ([]ModelFacade, error) {
+func (svc *ModelService) queryConfiguredModelFacades(
+	ctx context.Context,
+	allowedModelIDs []string,
+	channels []*Channel,
+	allowFallback bool,
+) ([]ModelFacade, error) {
 	query := svc.entFromContext(ctx).
 		Model.
 		Query().
@@ -642,26 +652,49 @@ func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowe
 		return nil, fmt.Errorf("failed to list configured models: %w", err)
 	}
 
-	var models []ModelFacade
+	models := make([]ModelFacade, 0, len(enabledModels))
 
-	for _, m := range enabledModels {
-		if m.Settings == nil {
+	for _, configuredModel := range enabledModels {
+		if !svc.isConfiguredModelRoutable(configuredModel, channels, allowFallback) {
 			continue
 		}
 
-		associations := MatchConnections(m.Settings.Associations, channels)
-		if len(associations) > 0 {
-			models = append(models, ModelFacade{
-				ID:          m.ModelID,
-				DisplayName: m.ModelID,
-				CreatedAt:   m.CreatedAt,
-				Created:     m.CreatedAt.Unix(),
-				OwnedBy:     "configured",
-			})
-		}
+		models = append(models, ModelFacade{
+			ID:          configuredModel.ModelID,
+			DisplayName: configuredModel.ModelID,
+			CreatedAt:   configuredModel.CreatedAt,
+			Created:     configuredModel.CreatedAt.Unix(),
+			OwnedBy:     "configured",
+		})
 	}
 
 	return models, nil
+}
+
+func (svc *ModelService) isConfiguredModelRoutable(configuredModel *ent.Model, channels []*Channel, allowFallback bool) bool {
+	if configuredModel == nil {
+		return false
+	}
+
+	if configuredModel.Settings != nil && len(configuredModel.Settings.Associations) > 0 {
+		associations := MatchConnections(configuredModel.Settings.Associations, channels)
+		if len(associations) > 0 {
+			return true
+		}
+	}
+
+	if !allowFallback {
+		return false
+	}
+
+	for _, ch := range channels {
+		entries := ch.GetModelEntries()
+		if _, ok := entries[configuredModel.ModelID]; ok {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CountAssociatedChannels counts the number of unique channels associated with the given model associations.

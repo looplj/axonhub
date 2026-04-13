@@ -3,7 +3,6 @@ package biz
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sync"
 	"time"
 
@@ -373,8 +372,7 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 			// Add model mappings if requested
 			if input.IncludeMapping && ch.Settings != nil {
 				for _, mapping := range ch.Settings.ModelMappings {
-					// Only add the mapping if the target model is supported
-					if slices.Contains(ch.SupportedModels, mapping.To) {
+					if mapping.From != "" && mapping.To != "" {
 						setModelStatus(modelMap, mapping.From, ch.Status)
 					}
 				}
