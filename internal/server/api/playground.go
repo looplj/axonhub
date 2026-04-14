@@ -42,6 +42,7 @@ type PlaygroundHandlersParams struct {
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
+	LiveStreamRegistry *biz.LiveStreamRegistry
 }
 
 type PlaygroundHandlers struct {
@@ -63,6 +64,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			params.PromptService,
 			params.QuotaService,
 			params.PromptProtectionRuleService,
+			params.LiveStreamRegistry,
 		),
 	}
 }

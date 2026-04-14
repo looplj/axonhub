@@ -118,5 +118,5 @@ func newTestRequestService(client *ent.Client) *biz.RequestService {
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
-	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
+	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService, biz.NewLiveStreamRegistry())
 }

@@ -95,11 +95,12 @@ func createTestRequestService(t *testing.T, client *ent.Client) *biz.RequestServ
 		SystemService:   systemService,
 		Cache:           xcache.NewFromConfig[ent.DataStorage](xcache.Config{Mode: xcache.ModeMemory}),
 	}
+	liveStreamRegistry := biz.NewLiveStreamRegistry()
 
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
-	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
+	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService, liveStreamRegistry)
 }
 
 // newInboundPersistentStreamHelper creates a configured InboundPersistentStream for testing.
@@ -121,7 +122,7 @@ func newInboundPersistentStreamHelper(
 	testRequest := &ent.Request{ID: 1}
 	testRequestExec := &ent.RequestExecution{ID: 1}
 
-	state := &PersistenceState{StreamCompleted: false, StoreChunks: true}
+	state := &PersistenceState{StreamCompleted: false}
 
 	stream := NewInboundPersistentStream(
 		ctx,

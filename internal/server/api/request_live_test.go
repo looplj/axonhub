@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/chunkbuffer"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -28,13 +29,13 @@ import (
 
 func TestRequestPreviewHandlers_ReplayOnConnect(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
-	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
+	defer setup.liveStreamRegistry.UnregisterRequest(setup.req.ID)
 
-	buffer := biz.NewChunkBuffer()
+	buffer := chunkbuffer.New()
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: llm.DoneStreamEvent.Data})
 	buffer.Close()
-	biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(setup.req.ID), buffer)
+	setup.liveStreamRegistry.RegisterRequest(setup.req.ID, buffer)
 
 	resp := performPreviewRequest(t, setup.router, setup.req.ID)
 	defer resp.Body.Close()
@@ -56,11 +57,11 @@ func TestRequestPreviewHandlers_ReplayOnConnect(t *testing.T) {
 
 func TestRequestPreviewHandlers_IncrementalDeliveryAfterReplay(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
-	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
+	defer setup.liveStreamRegistry.UnregisterRequest(setup.req.ID)
 
-	buffer := biz.NewChunkBuffer()
+	buffer := chunkbuffer.New()
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
-	biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(setup.req.ID), buffer)
+	setup.liveStreamRegistry.RegisterRequest(setup.req.ID, buffer)
 
 	server := httptest.NewServer(setup.router)
 	defer server.Close()
@@ -89,7 +90,10 @@ func TestRequestPreviewHandlers_IncrementalDeliveryAfterReplay(t *testing.T) {
 
 func TestRequestPreviewHandlers_WaitsForFirstChunkWhenProcessing(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
-	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
+	defer setup.liveStreamRegistry.UnregisterRequest(setup.req.ID)
+
+	buffer := chunkbuffer.New()
+	setup.liveStreamRegistry.RegisterRequest(setup.req.ID, buffer)
 
 	server := httptest.NewServer(setup.router)
 	defer server.Close()
@@ -101,7 +105,7 @@ func TestRequestPreviewHandlers_WaitsForFirstChunkWhenProcessing(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "text/event-stream")
 
-	buffer := biz.DefaultStreamPreviewRegistry.GetBuffer(biz.RequestKey(setup.req.ID))
+	buffer = setup.liveStreamRegistry.GetRequestBuffer(setup.req.ID)
 	require.NotNil(t, buffer)
 
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
@@ -120,12 +124,12 @@ func TestRequestPreviewHandlers_WaitsForFirstChunkWhenProcessing(t *testing.T) {
 
 func TestRequestPreviewHandlers_CorrectHeaders(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
-	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
+	defer setup.liveStreamRegistry.UnregisterRequest(setup.req.ID)
 
-	buffer := biz.NewChunkBuffer()
+	buffer := chunkbuffer.New()
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
 	buffer.Close()
-	biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(setup.req.ID), buffer)
+	setup.liveStreamRegistry.RegisterRequest(setup.req.ID, buffer)
 
 	resp := performPreviewRequest(t, setup.router, setup.req.ID)
 	defer resp.Body.Close()
@@ -158,10 +162,11 @@ func TestRequestPreviewHandlers_FallbackToStaticFetchForCompletedRequests(t *tes
 }
 
 type requestPreviewTestSetup struct {
-	client *ent.Client
-	ctx    context.Context
-	router *gin.Engine
-	req    *ent.Request
+	client             *ent.Client
+	ctx                context.Context
+	router             *gin.Engine
+	req                *ent.Request
+	liveStreamRegistry *biz.LiveStreamRegistry
 }
 
 func newRequestPreviewTestSetup(t *testing.T) requestPreviewTestSetup {
@@ -185,8 +190,12 @@ func newRequestPreviewTestSetup(t *testing.T) requestPreviewTestSetup {
 		SystemService:   systemService,
 		Cache:           xcache.NewFromConfig[ent.DataStorage](xcache.Config{Mode: xcache.ModeMemory}),
 	}
-	requestService := biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
-	handlers := NewRequestPreviewHandlers(RequestPreviewHandlersParams{RequestService: requestService})
+	liveStreamRegistry := biz.NewLiveStreamRegistry()
+	requestService := biz.NewRequestService(client, systemService, usageLogService, dataStorageService, liveStreamRegistry)
+	handlers := NewRequestPreviewHandlers(RequestPreviewHandlersParams{
+		RequestService:     requestService,
+		LiveStreamRegistry: liveStreamRegistry,
+	})
 
 	project, err := client.Project.Create().SetName("p1").SetDescription("d").Save(ctx)
 	require.NoError(t, err)
@@ -219,6 +228,7 @@ func newRequestPreviewTestSetup(t *testing.T) requestPreviewTestSetup {
 		ctx:    ctx,
 		router: router,
 		req:    reqRow,
+		liveStreamRegistry: liveStreamRegistry,
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 )
 
 var Module = fx.Module("biz",
+	fx.Provide(NewLiveStreamRegistry),
 	fx.Provide(NewSystemService),
 	fx.Provide(NewWebhookNotifier),
 	fx.Provide(NewAuthService),
@@ -46,13 +47,13 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
-	fx.Invoke(func(lc fx.Lifecycle) {
+	fx.Invoke(func(lc fx.Lifecycle, registry *LiveStreamRegistry) {
 		var cancel context.CancelFunc
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
 				var bgCtx context.Context
 				bgCtx, cancel = context.WithCancel(context.Background())
-				DefaultStreamPreviewRegistry.StartSweeper(bgCtx)
+				registry.StartSweeper(bgCtx)
 				return nil
 			},
 			OnStop: func(ctx context.Context) error {

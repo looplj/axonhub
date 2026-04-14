@@ -143,6 +143,19 @@ func (p *pipeline) applyInboundRawResponseMiddlewares(ctx context.Context, respo
 	return response, nil
 }
 
+func (p *pipeline) applyInboundRawStreamMiddlewares(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	var err error
+
+	for _, dec := range p.middlewares {
+		stream, err = dec.OnInboundRawStream(ctx, stream)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return stream, nil
+}
+
 func (p *pipeline) applyRawRequestMiddlewares(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 	var err error
 

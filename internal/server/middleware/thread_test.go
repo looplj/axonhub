@@ -39,7 +39,7 @@ func setupTestThreadMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Thr
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 	traceService := biz.NewTraceService(biz.TraceServiceParams{
-		RequestService: biz.NewRequestService(client, systemService, usageLogService, dataStorageService),
+		RequestService: biz.NewRequestService(client, systemService, usageLogService, dataStorageService, biz.NewLiveStreamRegistry()),
 		Ent:            client,
 	})
 

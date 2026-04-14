@@ -54,7 +54,7 @@ func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *en
 	channelService := NewChannelServiceForTest(client)
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 	traceService := NewTraceService(TraceServiceParams{
-		RequestService: NewRequestService(client, systemService, usageLogService, dataStorageService),
+		RequestService: NewRequestService(client, systemService, usageLogService, dataStorageService, NewLiveStreamRegistry()),
 		Ent:            client,
 	})
 
