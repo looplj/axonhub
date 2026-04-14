@@ -135,6 +135,16 @@ type ChannelTypeCount struct {
 	Count int    `json:"count"`
 }
 
+type ClearCacheInput struct {
+	Targets []DiagnosticsTarget `json:"targets,omitempty"`
+}
+
+type ClearCachePayload struct {
+	Success bool                `json:"success"`
+	Message string              `json:"message"`
+	Targets []DiagnosticsTarget `json:"targets"`
+}
+
 type CompleteAutoDisableChannelOnboardingInput struct {
 	Dummy *string `json:"dummy,omitempty"`
 }
@@ -214,6 +224,16 @@ type FastestModel struct {
 type FetchModelsPayload struct {
 	Models []*biz.ModelIdentify `json:"models"`
 	Error  *string              `json:"error,omitempty"`
+}
+
+type GetCacheDiagnosticsInput struct {
+	Targets []DiagnosticsTarget `json:"targets,omitempty"`
+}
+
+type GetCacheDiagnosticsPayload struct {
+	FileName string              `json:"fileName"`
+	Content  string              `json:"content"`
+	Targets  []DiagnosticsTarget `json:"targets"`
 }
 
 type HourlyRequestStats struct {
@@ -470,6 +490,59 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type DiagnosticsTarget string
+
+const (
+	DiagnosticsTargetChannelCache DiagnosticsTarget = "CHANNEL_CACHE"
+)
+
+var AllDiagnosticsTarget = []DiagnosticsTarget{
+	DiagnosticsTargetChannelCache,
+}
+
+func (e DiagnosticsTarget) IsValid() bool {
+	switch e {
+	case DiagnosticsTargetChannelCache:
+		return true
+	}
+	return false
+}
+
+func (e DiagnosticsTarget) String() string {
+	return string(e)
+}
+
+func (e *DiagnosticsTarget) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DiagnosticsTarget(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DiagnosticsTarget", str)
+	}
+	return nil
+}
+
+func (e DiagnosticsTarget) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *DiagnosticsTarget) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e DiagnosticsTarget) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type OverrideApplyMode string

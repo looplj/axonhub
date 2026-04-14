@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AboutSettings } from './about-settings';
 import { BrandSettings } from './brand-settings';
+import { DiagnosticsSettings } from './diagnostics-settings';
 import { GeneralSettings } from './general-settings';
 import { RetrySettings } from './retry-settings';
 import { StorageSettings } from './storage-settings';
@@ -13,7 +14,7 @@ import { ProxyPresetsSettings } from './proxy-presets-settings';
 import { WebhookSettings } from './webhook-settings';
 import { usePermissions } from '@/hooks/usePermissions';
 
-type SystemTabKey = 'general' | 'brand' | 'storage' | 'retry' | 'webhook' | 'proxy' | 'backup' | 'about';
+type SystemTabKey = 'general' | 'brand' | 'storage' | 'retry' | 'webhook' | 'proxy' | 'backup' | 'diagnostics' | 'about';
 
 interface SystemSettingsTabsProps {
   initialTab?: SystemTabKey;
@@ -25,14 +26,32 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
   const [activeTab, setActiveTab] = useState<SystemTabKey>('general');
 
   useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
+    if (!initialTab) {
+      return;
     }
-  }, [initialTab]);
+
+    if (!isOwner && (initialTab === 'backup' || initialTab === 'diagnostics')) {
+      setActiveTab('general');
+      return;
+    }
+
+    setActiveTab(initialTab);
+  }, [initialTab, isOwner]);
 
   return (
-    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SystemTabKey)} className='w-full'>
-      <TabsList className={`shadow-soft border-border bg-background grid w-full rounded-2xl border ${isOwner ? 'grid-cols-8' : 'grid-cols-7'}`}>
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => {
+        const nextTab = value as SystemTabKey;
+        if (!isOwner && (nextTab === 'backup' || nextTab === 'diagnostics')) {
+          setActiveTab('general');
+          return;
+        }
+        setActiveTab(nextTab);
+      }}
+      className='w-full'
+    >
+      <TabsList className={`shadow-soft border-border bg-background grid w-full rounded-2xl border ${isOwner ? 'grid-cols-9' : 'grid-cols-7'}`}>
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}
         </TabsTrigger>
@@ -51,6 +70,11 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
         <TabsTrigger value='proxy' data-value='proxy'>
           {t('system.tabs.proxy')}
         </TabsTrigger>
+        {isOwner && (
+          <TabsTrigger value='diagnostics' data-value='diagnostics'>
+            {t('system.tabs.diagnostics')}
+          </TabsTrigger>
+        )}
         {isOwner && (
           <TabsTrigger value='backup' data-value='backup'>
             {t('system.tabs.backup')}
@@ -79,6 +103,11 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
         <TabsContent value='proxy' className='mt-0 p-0'>
           <ProxyPresetsSettings />
         </TabsContent>
+        {isOwner && (
+          <TabsContent value='diagnostics' className='mt-0 p-0'>
+            <DiagnosticsSettings />
+          </TabsContent>
+        )}
         {isOwner && (
           <TabsContent value='backup' className='mt-0 p-0'>
             <BackupSettings />
