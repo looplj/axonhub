@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -188,38 +188,18 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 	return traceID, nil
 }
 
-const codexTraceHeader = "Session_id"
-const codexTurnMetadataHeader = "X-Codex-Turn-Metadata"
-
-type codexTurnMetadata struct {
-	SessionID string `json:"session_id"`
-}
-
 // tryExtractTraceIDFromCodexRequest extracts the trace ID from the Codex session header.
 func tryExtractTraceIDFromCodexRequest(c *gin.Context) string {
-	traceID := strings.TrimSpace(c.GetHeader(codexTraceHeader))
+	traceID := codex.GetSessionIDFromHeaders(c.Request.Header)
 	if traceID == "" {
-		turnMetadataRaw := strings.TrimSpace(c.GetHeader(codexTurnMetadataHeader))
-		if turnMetadataRaw == "" {
-			return ""
-		}
-
-		var turnMetadata codexTurnMetadata
-		if err := json.Unmarshal([]byte(turnMetadataRaw), &turnMetadata); err != nil {
-			return ""
-		}
-
-		traceID = strings.TrimSpace(turnMetadata.SessionID)
-		if traceID == "" {
-			return ""
-		}
-
-		log.Debug(c.Request.Context(), "Extracted trace ID from codex turn metadata", log.String("trace_id", traceID))
-
-		return traceID
+		return ""
 	}
 
-	log.Debug(c.Request.Context(), "Extracted trace ID from codex header", log.String("trace_id", traceID))
+	traceSource := "codex header"
+	if strings.TrimSpace(c.GetHeader(codex.SessionHeader)) == "" {
+		traceSource = "codex turn metadata"
+	}
+	log.Debug(c.Request.Context(), "Extracted trace ID from "+traceSource, log.String("trace_id", traceID))
 
 	return traceID
 }

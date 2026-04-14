@@ -1,12 +1,14 @@
 package responses
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
@@ -128,4 +130,60 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	_, err = streams.All(transformedStream)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Something went wrong")
+}
+
+func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type":"response.created",
+				"response":{
+					"id":"resp_stream_prev",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-5.4",
+					"status":"in_progress",
+					"previous_response_id":"resp_prev_123",
+					"output":[]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type":"response.completed",
+				"response":{
+					"id":"resp_stream_prev",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-5.4",
+					"status":"completed",
+					"previous_response_id":"resp_prev_123",
+					"output":[],
+					"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}
+				}
+			}`),
+		},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), streams.SliceStream(events))
+	require.NoError(t, err)
+
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.Len(t, actual, 4)
+
+	require.NotNil(t, actual[0].PreviousResponseID)
+	require.Equal(t, "resp_prev_123", *actual[0].PreviousResponseID)
+
+	require.NotNil(t, actual[1].PreviousResponseID)
+	require.Equal(t, "resp_prev_123", *actual[1].PreviousResponseID)
+
+	require.NotNil(t, actual[2].PreviousResponseID)
+	require.Equal(t, "resp_prev_123", *actual[2].PreviousResponseID)
+	require.Equal(t, llm.DoneResponse, actual[3])
 }
