@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { useStoragePolicy } from '@/features/system/data/system';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { type Request, useRequest } from '../data';
@@ -121,7 +122,8 @@ export default function RequestDetailPage() {
   const navigate = useNavigate();
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
   const selectedProjectId = useSelectedProjectId();
-
+  const { data: storagePolicy } = useStoragePolicy();
+  const isLivePreviewEnabled = storagePolicy?.livePreview ?? false;
   const [previewRequest, setPreviewRequest] = useState<Request | null>(null);
   const [isPreviewStreaming, setIsPreviewStreaming] = useState(false);
   const [previewFallbackActive, setPreviewFallbackActive] = useState(false);
@@ -152,6 +154,15 @@ export default function RequestDetailPage() {
   }, [requestData]);
 
   useEffect(() => {
+    if (!isLivePreviewEnabled) {
+      setPreviewRequest(null);
+      setIsPreviewStreaming(false);
+      setPreviewFallbackActive(false);
+      previewCompletedRef.current = false;
+      previewChunkCountRef.current = 0;
+      return;
+    }
+
     if (!requestData || requestData.status !== 'processing' || !requestData.stream) {
       return;
     }
@@ -321,7 +332,7 @@ export default function RequestDetailPage() {
       clearReconnectTimer();
       controller.abort();
     };
-  }, [previewFallbackActive, requestData, refetchRequest, selectedProjectId]);
+  }, [isLivePreviewEnabled, previewFallbackActive, requestData, refetchRequest, selectedProjectId]);
 
   const handleBack = () => {
     navigate({
