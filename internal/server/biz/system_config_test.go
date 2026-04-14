@@ -10,12 +10,12 @@ import (
 func TestMetricsSamplingConfig_Defaults(t *testing.T) {
 	config := defaultMetricsSamplingConfig
 
-	require.False(t, config.Enabled, "Enabled should default to false")
+	require.True(t, config.Enabled, "Enabled should default to true")
 	require.False(t, config.AlwaysSample, "AlwaysSample should default to false")
-	require.Equal(t, 30, config.RequestRateThreshold, "RequestRateThreshold should default to 30")
+	require.Equal(t, 10, config.RequestRateThreshold, "RequestRateThreshold should default to 10")
 	require.Equal(t, 100.0, config.ScoreThreshold, "ScoreThreshold should default to 100")
 	require.Equal(t, 5, config.AlternativeCount, "AlternativeCount should default to 5")
-	require.Equal(t, 0.10, config.SamplingRate, "SamplingRate should default to 0.10")
+	require.Equal(t, 0.20, config.SamplingRate, "SamplingRate should default to 0.20")
 }
 
 func TestMetricsSamplingJSON_Marshal(t *testing.T) {

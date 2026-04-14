@@ -77,10 +77,10 @@ var defaultPerformanceStrategyConfig = PerformanceStrategyConfig{
 }
 
 var defaultMetricsSamplingConfig = MetricsSamplingConfig{
-	Enabled:              false,
+	Enabled:              true,
 	AlwaysSample:         false,
-	RequestRateThreshold: 30,
+	RequestRateThreshold: 10,
 	ScoreThreshold:       100,
 	AlternativeCount:     5,
-	SamplingRate:         0.10,
+	SamplingRate:         0.20,
 }

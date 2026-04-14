@@ -525,9 +525,9 @@ func TestMetricsSamplingConcurrent(t *testing.T) {
 		triggerRate*100, triggeredCount, totalIterations)
 }
 
-// TestMetricsSamplingDisabledDefault verifies that metrics sampling is disabled
-// by default and does not trigger when no configuration is set.
-func TestMetricsSamplingDisabledDefault(t *testing.T) {
+// TestMetricsSamplingEnabledDefault verifies that metrics sampling is enabled
+// by default and can trigger when thresholds are met.
+func TestMetricsSamplingEnabledDefault(t *testing.T) {
 	ctx, client := setupTest(t)
 
 	// Create test channels
@@ -569,8 +569,7 @@ func TestMetricsSamplingDisabledDefault(t *testing.T) {
 	systemService := newTestSystemService(client)
 	modelService := newTestModelService(client)
 
-	// Do NOT set any metrics sampling config - use default (should be disabled)
-	// systemService.MetricsSamplingOrDefault should return default config with Enabled=false
+	// Do NOT set any metrics sampling config - use default (enabled with RequestRateThreshold=10, SamplingRate=0.20)
 
 	loadBalancer := NewLoadBalancer(systemService, nil, perfStrategy, NewWeightRoundRobinStrategy(channelService))
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
@@ -583,7 +582,7 @@ func TestMetricsSamplingDisabledDefault(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		result, err := selector.Select(ctx, req)
 		require.NoError(t, err)
-		require.LessOrEqual(t, len(result), 2, "with metrics sampling disabled, should not exceed available channels")
+		require.LessOrEqual(t, len(result), 2, "result should not exceed available channels")
 		require.Equal(t, ch1.ID, result[0].Channel.ID, "winner should be ch1 (highest weight)")
 	}
 }
