@@ -30,7 +30,7 @@ func TestRequestPreviewHandlers_ReplayOnConnect(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
 	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
 
-	buffer := biz.NewChunkBuffer(nil)
+	buffer := biz.NewChunkBuffer()
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: llm.DoneStreamEvent.Data})
 	buffer.Close()
@@ -58,7 +58,7 @@ func TestRequestPreviewHandlers_IncrementalDeliveryAfterReplay(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
 	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
 
-	buffer := biz.NewChunkBuffer(nil)
+	buffer := biz.NewChunkBuffer()
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
 	biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(setup.req.ID), buffer)
 
@@ -122,7 +122,7 @@ func TestRequestPreviewHandlers_CorrectHeaders(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
 	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
 
-	buffer := biz.NewChunkBuffer(nil)
+	buffer := biz.NewChunkBuffer()
 	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
 	buffer.Close()
 	biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(setup.req.ID), buffer)
