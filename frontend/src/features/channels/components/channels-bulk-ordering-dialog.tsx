@@ -21,11 +21,81 @@ const formatWeight = (value: number) => Math.round(value);
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
-const redistributeWeights = (items: Array<{ channel: ChannelSummary; orderingWeight: number }>) =>
-  items.map((item, index) => ({
-    ...item,
-    orderingWeight: clampWeight(items.length - index),
-  }));
+const buildWeightGroups = (items: Array<{ orderingWeight: number }>) => {
+  const groups: number[][] = [];
+  for (let i = 0; i < items.length; i++) {
+    const currentWeight = items[i].orderingWeight;
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && items[lastGroup[0]].orderingWeight === currentWeight) {
+      lastGroup.push(i);
+    } else {
+      groups.push([i]);
+    }
+  }
+  return groups;
+};
+
+const renumberGroups = (
+  result: Array<{ channel: ChannelSummary; orderingWeight: number }>,
+  groups: number[][],
+) => {
+  if (groups.length === 1) {
+    for (let i = 0; i < result.length; i++) {
+      result[i].orderingWeight = clampWeight(result.length - i);
+    }
+    return;
+  }
+  const groupCount = groups.length;
+  for (let g = 0; g < groupCount; g++) {
+    const groupWeight = clampWeight(groupCount - g);
+    for (const idx of groups[g]) {
+      result[idx].orderingWeight = groupWeight;
+    }
+  }
+};
+
+const reassignWeightsFromPosition = (
+  items: Array<{ channel: ChannelSummary; orderingWeight: number }>,
+  movedItemIndex: number,
+) => {
+  if (items.length <= 1) return items.map((item) => ({ ...item }));
+
+  const result = items.map((item) => ({ ...item }));
+
+  const movedPrevWeight = result[movedItemIndex - 1]?.orderingWeight;
+  const movedNextWeight = result[movedItemIndex + 1]?.orderingWeight;
+
+  if (movedPrevWeight != null && movedNextWeight != null && movedPrevWeight === movedNextWeight) {
+    result[movedItemIndex].orderingWeight = movedPrevWeight;
+  } else if (movedPrevWeight == null && movedNextWeight != null) {
+    result[movedItemIndex].orderingWeight = clampWeight(movedNextWeight + 1);
+  } else if (movedNextWeight == null && movedPrevWeight != null) {
+    result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight - 1);
+  } else if (movedPrevWeight != null && movedNextWeight != null) {
+    const midpoint = Math.floor((movedPrevWeight + movedNextWeight) / 2);
+    if (midpoint === movedPrevWeight || midpoint === movedNextWeight) {
+      const groups = buildWeightGroups(result);
+      renumberGroups(result, groups);
+      return result;
+    }
+    result[movedItemIndex].orderingWeight = clampWeight(midpoint);
+  }
+
+  const groups = buildWeightGroups(result);
+
+  const needsRenumber =
+    groups.length === 1 ||
+    groups.some((group, i) => {
+      if (i === 0) return false;
+      return result[group[0]].orderingWeight >= result[groups[i - 1][0]].orderingWeight;
+    });
+
+  if (needsRenumber) {
+    renumberGroups(result, groups);
+  }
+
+  return result;
+};
 
 interface ChannelOrderingItemProps {
   channel: ChannelSummary;
@@ -247,7 +317,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
 
       const newItems = arrayMove(items, oldIndex, newIndex);
       setHasChanges(true);
-      return redistributeWeights(newItems);
+      return reassignWeightsFromPosition(newItems, newIndex);
     });
   }, []);
 
@@ -271,7 +341,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
 
       const newItems = arrayMove(items, index, 0);
       setHasChanges(true);
-      return redistributeWeights(newItems);
+      return reassignWeightsFromPosition(newItems, 0);
     });
   }, []);
 
@@ -284,7 +354,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       const targetIndex = items.length - 1;
       const newItems = arrayMove(items, index, targetIndex);
       setHasChanges(true);
-      return redistributeWeights(newItems);
+      return reassignWeightsFromPosition(newItems, targetIndex);
     });
   }, []);
 
