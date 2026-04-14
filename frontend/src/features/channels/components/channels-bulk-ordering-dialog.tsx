@@ -21,37 +21,11 @@ const formatWeight = (value: number) => Math.round(value);
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
-const buildWeightGroups = (items: Array<{ orderingWeight: number }>) => {
-  const groups: number[][] = [];
-  for (let i = 0; i < items.length; i++) {
-    const currentWeight = items[i].orderingWeight;
-    const lastGroup = groups[groups.length - 1];
-    if (lastGroup && items[lastGroup[0]].orderingWeight === currentWeight) {
-      lastGroup.push(i);
-    } else {
-      groups.push([i]);
-    }
-  }
-  return groups;
-};
-
-const renumberGroups = (
-  result: Array<{ channel: ChannelSummary; orderingWeight: number }>,
-  groups: number[][],
-) => {
-  if (groups.length === 1) {
-    for (let i = 0; i < result.length; i++) {
-      result[i].orderingWeight = clampWeight(result.length - i);
-    }
-    return;
-  }
-  const groupCount = groups.length;
-  for (let g = 0; g < groupCount; g++) {
-    const groupWeight = clampWeight(groupCount - g);
-    for (const idx of groups[g]) {
-      result[idx].orderingWeight = groupWeight;
-    }
-  }
+const rankSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) => {
+  if (a.orderingWeight === 0 && b.orderingWeight === 0) return 0;
+  if (a.orderingWeight === 0) return 1;
+  if (b.orderingWeight === 0) return -1;
+  return a.orderingWeight - b.orderingWeight;
 };
 
 const reassignWeightsFromPosition = (
@@ -68,30 +42,31 @@ const reassignWeightsFromPosition = (
   if (movedPrevWeight != null && movedNextWeight != null && movedPrevWeight === movedNextWeight) {
     result[movedItemIndex].orderingWeight = movedPrevWeight;
   } else if (movedPrevWeight == null && movedNextWeight != null) {
-    result[movedItemIndex].orderingWeight = clampWeight(movedNextWeight + 1);
-  } else if (movedNextWeight == null && movedPrevWeight != null) {
-    result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight - 1);
-  } else if (movedPrevWeight != null && movedNextWeight != null) {
-    const midpoint = Math.floor((movedPrevWeight + movedNextWeight) / 2);
-    if (midpoint === movedPrevWeight || midpoint === movedNextWeight) {
-      const groups = buildWeightGroups(result);
-      renumberGroups(result, groups);
-      return result;
+    if (movedNextWeight === 0) {
+      result[movedItemIndex].orderingWeight = clampWeight(1);
+    } else if (movedNextWeight <= 1) {
+      for (let i = movedItemIndex + 1; i < result.length; i++) {
+        result[i].orderingWeight = clampWeight(result[i].orderingWeight + 1);
+      }
+      result[movedItemIndex].orderingWeight = clampWeight(1);
+    } else {
+      result[movedItemIndex].orderingWeight = clampWeight(movedNextWeight - 1);
     }
-    result[movedItemIndex].orderingWeight = clampWeight(midpoint);
-  }
-
-  const groups = buildWeightGroups(result);
-
-  const needsRenumber =
-    groups.length === 1 ||
-    groups.some((group, i) => {
-      if (i === 0) return false;
-      return result[group[0]].orderingWeight >= result[groups[i - 1][0]].orderingWeight;
-    });
-
-  if (needsRenumber) {
-    renumberGroups(result, groups);
+  } else if (movedNextWeight == null && movedPrevWeight != null) {
+    result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight + 1);
+  } else if (movedPrevWeight != null && movedNextWeight != null) {
+    const effectiveNext = movedNextWeight === 0 ? movedPrevWeight + 2 : movedNextWeight;
+    const gap = effectiveNext - movedPrevWeight;
+    if (gap <= 1) {
+      for (let i = movedItemIndex + 1; i < result.length; i++) {
+        if (result[i].orderingWeight !== 0) {
+          result[i].orderingWeight = clampWeight(result[i].orderingWeight + 1);
+        }
+      }
+      result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight + 1);
+    } else {
+      result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight + Math.floor(gap / 2));
+    }
   }
 
   return result;
@@ -282,12 +257,16 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
   // Initialize ordered channels when data loads
   useEffect(() => {
     if (channelsData?.edges) {
-      const channels = channelsData.edges.map((edge, index) => ({
-        channel: edge.node,
-        orderingWeight: clampWeight(edge.node.orderingWeight ?? channelsData.edges.length - index),
-      }));
-      // Sort by orderingWeight DESC (higher weight first)
-      channels.sort((a, b) => b.orderingWeight - a.orderingWeight);
+      const channels = channelsData.edges
+        .map((edge) => ({
+          channel: edge.node,
+          backendWeight: edge.node.orderingWeight ?? 0,
+        }))
+        .sort((a, b) => b.backendWeight - a.backendWeight)
+        .map((item, index) => ({
+          channel: item.channel,
+          orderingWeight: item.backendWeight === 0 ? 0 : index + 1,
+        }));
       setOrderedChannels(channels);
       setHasChanges(false);
     }
@@ -325,9 +304,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
     const normalizedWeight = clampWeight(weight);
     setOrderedChannels((items) => {
       const newItems = items.map((item) => (item.channel.id === id ? { ...item, orderingWeight: normalizedWeight } : item));
-      // Sort by orderingWeight DESC (higher weight first)
-      // Maintain stable sort for equal weights? Javascript sort is stable.
-      newItems.sort((a, b) => b.orderingWeight - a.orderingWeight);
+      newItems.sort(rankSort);
       setHasChanges(true);
       return newItems;
     });
@@ -360,9 +337,10 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
 
   const handleSave = async () => {
     try {
+      const channelCount = orderedChannels.length;
       const updates = orderedChannels.map((item) => ({
         id: item.channel.id,
-        orderingWeight: item.orderingWeight,
+        orderingWeight: item.orderingWeight === 0 ? 0 : channelCount - item.orderingWeight + 1,
       }));
 
       await bulkUpdateMutation.mutateAsync({
@@ -379,11 +357,16 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
   const handleCancel = () => {
     // Reset to original order
     if (channelsData?.edges) {
-      const channels = channelsData.edges.map((edge, index) => ({
-        channel: edge.node,
-        orderingWeight: clampWeight(edge.node.orderingWeight ?? channelsData.edges.length - index),
-      }));
-      channels.sort((a, b) => b.orderingWeight - a.orderingWeight);
+      const channels = channelsData.edges
+        .map((edge) => ({
+          channel: edge.node,
+          backendWeight: edge.node.orderingWeight ?? 0,
+        }))
+        .sort((a, b) => b.backendWeight - a.backendWeight)
+        .map((item, index) => ({
+          channel: item.channel,
+          orderingWeight: item.backendWeight === 0 ? 0 : index + 1,
+        }));
       setOrderedChannels(channels);
       setHasChanges(false);
     }
