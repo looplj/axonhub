@@ -13,7 +13,6 @@ import { Separator } from '@/components/ui/separator';
 import { useAllChannelSummarys, useBulkUpdateChannelOrdering } from '../data/channels';
 import { ChannelSummary } from '../data/schema';
 
-const WEIGHT_PRECISION = 0;
 const MIN_WEIGHT = 0;
 const MAX_WEIGHT = 9999;
 
@@ -28,6 +27,38 @@ const rankSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) 
   return a.orderingWeight - b.orderingWeight;
 };
 
+// Normalize ranks to sequential 1..N with 0 for unranked items
+const normalizeRanks = (items: Array<{ channel: ChannelSummary; orderingWeight: number }>) => {
+  const ranked = items.filter((item) => item.orderingWeight !== 0);
+  const unranked = items.filter((item) => item.orderingWeight === 0);
+
+  // Reassign sequential ranks to ranked items
+  ranked.forEach((item, index) => {
+    item.orderingWeight = index + 1;
+  });
+
+  // Keep unranked items at 0 and append them
+  unranked.forEach((item) => {
+    item.orderingWeight = 0;
+  });
+
+  return [...ranked, ...unranked];
+};
+
+// Initialize channels from GraphQL edges
+const initializeOrderedChannels = (edges: Array<{ node: ChannelSummary }>) => {
+  return edges
+    .map((edge) => ({
+      channel: edge.node,
+      backendWeight: edge.node.orderingWeight ?? 0,
+    }))
+    .sort((a, b) => b.backendWeight - a.backendWeight)
+    .map((item, index) => ({
+      channel: item.channel,
+      orderingWeight: item.backendWeight === 0 ? 0 : index + 1,
+    }));
+};
+
 const reassignWeightsFromPosition = (
   items: Array<{ channel: ChannelSummary; orderingWeight: number }>,
   movedItemIndex: number,
@@ -40,13 +71,21 @@ const reassignWeightsFromPosition = (
   const movedNextWeight = result[movedItemIndex + 1]?.orderingWeight;
 
   if (movedPrevWeight != null && movedNextWeight != null && movedPrevWeight === movedNextWeight) {
-    result[movedItemIndex].orderingWeight = movedPrevWeight;
+    // Special case: don't make ranked items unranked when between two unranked items
+    if (movedPrevWeight === 0 && movedNextWeight === 0) {
+      result[movedItemIndex].orderingWeight = clampWeight(1);
+    } else {
+      result[movedItemIndex].orderingWeight = movedPrevWeight;
+    }
   } else if (movedPrevWeight == null && movedNextWeight != null) {
     if (movedNextWeight === 0) {
       result[movedItemIndex].orderingWeight = clampWeight(1);
     } else if (movedNextWeight <= 1) {
       for (let i = movedItemIndex + 1; i < result.length; i++) {
-        result[i].orderingWeight = clampWeight(result[i].orderingWeight + 1);
+        // Don't shift unranked (weight=0) items - they stay unranked
+        if (result[i].orderingWeight !== 0) {
+          result[i].orderingWeight = clampWeight(result[i].orderingWeight + 1);
+        }
       }
       result[movedItemIndex].orderingWeight = clampWeight(1);
     } else {
@@ -254,20 +293,9 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
   const [orderedChannels, setOrderedChannels] = useState<Array<{ channel: ChannelSummary; orderingWeight: number }>>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize ordered channels when data loads
   useEffect(() => {
     if (channelsData?.edges) {
-      const channels = channelsData.edges
-        .map((edge) => ({
-          channel: edge.node,
-          backendWeight: edge.node.orderingWeight ?? 0,
-        }))
-        .sort((a, b) => b.backendWeight - a.backendWeight)
-        .map((item, index) => ({
-          channel: item.channel,
-          orderingWeight: item.backendWeight === 0 ? 0 : index + 1,
-        }));
-      setOrderedChannels(channels);
+      setOrderedChannels(initializeOrderedChannels(channelsData.edges));
       setHasChanges(false);
     }
   }, [channelsData]);
@@ -295,18 +323,23 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       }
 
       const newItems = arrayMove(items, oldIndex, newIndex);
+      const withWeights = reassignWeightsFromPosition(newItems, newIndex);
       setHasChanges(true);
-      return reassignWeightsFromPosition(newItems, newIndex);
+      return normalizeRanks(withWeights);
     });
   }, []);
 
   const handleWeightChange = useCallback((id: string, weight: number) => {
-    const normalizedWeight = clampWeight(weight);
     setOrderedChannels((items) => {
+      const channelCount = items.length;
+      // Clamp manual weight to valid rank range [0, channelCount]
+      // 0 = unranked, 1..channelCount = valid rank positions
+      const clampedWeight = Math.min(Math.max(weight, 0), channelCount);
+      const normalizedWeight = clampWeight(clampedWeight);
       const newItems = items.map((item) => (item.channel.id === id ? { ...item, orderingWeight: normalizedWeight } : item));
       newItems.sort(rankSort);
       setHasChanges(true);
-      return newItems;
+      return normalizeRanks(newItems);
     });
   }, []);
 
@@ -317,8 +350,9 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       }
 
       const newItems = arrayMove(items, index, 0);
+      const withWeights = reassignWeightsFromPosition(newItems, 0);
       setHasChanges(true);
-      return reassignWeightsFromPosition(newItems, 0);
+      return normalizeRanks(withWeights);
     });
   }, []);
 
@@ -330,8 +364,9 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
 
       const targetIndex = items.length - 1;
       const newItems = arrayMove(items, index, targetIndex);
+      const withWeights = reassignWeightsFromPosition(newItems, targetIndex);
       setHasChanges(true);
-      return reassignWeightsFromPosition(newItems, targetIndex);
+      return normalizeRanks(withWeights);
     });
   }, []);
 
@@ -355,19 +390,8 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
   };
 
   const handleCancel = () => {
-    // Reset to original order
     if (channelsData?.edges) {
-      const channels = channelsData.edges
-        .map((edge) => ({
-          channel: edge.node,
-          backendWeight: edge.node.orderingWeight ?? 0,
-        }))
-        .sort((a, b) => b.backendWeight - a.backendWeight)
-        .map((item, index) => ({
-          channel: item.channel,
-          orderingWeight: item.backendWeight === 0 ? 0 : index + 1,
-        }));
-      setOrderedChannels(channels);
+      setOrderedChannels(initializeOrderedChannels(channelsData.edges));
       setHasChanges(false);
     }
     onOpenChange(false);
