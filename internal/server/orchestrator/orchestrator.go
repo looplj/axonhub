@@ -19,7 +19,7 @@ import (
 
 func NewChatCompletionOrchestrator(
 	channelService *biz.ChannelService,
-	modelService *biz.ModelService,
+	defaultSelector *DefaultSelector,
 	requestService *biz.RequestService,
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
@@ -66,8 +66,7 @@ func NewChatCompletionOrchestrator(
 		},
 		PipelineFactory:            pipeline.NewFactory(httpClient),
 		ModelMapper:                NewModelMapper(),
-		channelSelector:            NewDefaultSelector(channelService, modelService, systemService),
-		selectedChannelIds:         []int{},
+		channelSelector:            defaultSelector,
 		connectionTracker:          connectionTracker,
 		rateLimitTracker:           rateLimitTracker,
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
@@ -95,8 +94,6 @@ type ChatCompletionOrchestrator struct {
 
 	// The default channel selector.
 	channelSelector CandidateSelector
-	// The runtime selected channel ids.
-	selectedChannelIds []int
 	// The load balancer for channel load balancing.
 	adaptiveLoadBalancer       *LoadBalancer
 	failoverLoadBalancer       *LoadBalancer

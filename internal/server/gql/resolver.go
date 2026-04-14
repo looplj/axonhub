@@ -42,6 +42,8 @@ type Resolver struct {
 	promptProtectionRuleService    *biz.PromptProtectionRuleService
 	providerQuotaService           *biz.ProviderQuotaService
 	modelFetcher                   *biz.ModelFetcher
+	defaultSelector                *orchestrator.DefaultSelector
+	candidateSelectorDiagnostics   *orchestrator.CandidateSelectorDiagnostics
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
 	gcWorker                       *gc.Worker
 }
@@ -68,6 +70,8 @@ func NewSchema(
 	promptService *biz.PromptService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	providerQuotaService *biz.ProviderQuotaService,
+	defaultSelector *orchestrator.DefaultSelector,
+	candidateSelectorDiagnostics *orchestrator.CandidateSelectorDiagnostics,
 	httpClient *httpclient.HttpClient,
 	gcWorker *gc.Worker,
 ) graphql.ExecutableSchema {
@@ -95,6 +99,8 @@ func NewSchema(
 			promptProtectionRuleService:    promptProtectionRuleService,
 			providerQuotaService:           providerQuotaService,
 			modelFetcher:                   modelFetcher,
+			defaultSelector:                defaultSelector,
+			candidateSelectorDiagnostics:   candidateSelectorDiagnostics,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
 			gcWorker:                       gcWorker,
 		},

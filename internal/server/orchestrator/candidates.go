@@ -41,6 +41,7 @@ type CandidateSelector interface {
 
 // associationCacheEntry stores cached association resolution results.
 type associationCacheEntry struct {
+	associations            []*objects.ModelAssociation
 	candidates              []*resolvedAssociationCandidate
 	channelCount            int
 	latestChannelUpdateTime time.Time
@@ -307,6 +308,7 @@ func (s *DefaultSelector) resolveAssociations(
 	// Update cache
 	s.cacheMu.Lock()
 	s.associationCache[modelID] = &associationCacheEntry{
+		associations:            append([]*objects.ModelAssociation(nil), associations...),
 		candidates:              resolvedCandidates,
 		channelCount:            channelCount,
 		latestChannelUpdateTime: latestChannelUpdateTime,
