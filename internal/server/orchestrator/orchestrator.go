@@ -147,6 +147,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
+	storagePolicy := processor.SystemService.StoragePolicyOrDefault(ctx)
 
 	strategy := deriveLoadBalancerStrategy(retryPolicy, apiKey)
 	if log.DebugEnabled(ctx) {
@@ -184,6 +185,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		LoadBalancer:          loadBalancer,
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
+		LivePreview:           storagePolicy.LivePreview,
+		StoreChunks:           storagePolicy.StoreChunks,
 		CurrentCandidateIndex: 0,
 	}
 

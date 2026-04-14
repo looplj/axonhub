@@ -46,6 +46,23 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
+	fx.Invoke(func(lc fx.Lifecycle) {
+		var cancel context.CancelFunc
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				var bgCtx context.Context
+				bgCtx, cancel = context.WithCancel(context.Background())
+				DefaultStreamPreviewRegistry.StartSweeper(bgCtx)
+				return nil
+			},
+			OnStop: func(ctx context.Context) error {
+				if cancel != nil {
+					cancel()
+				}
+				return nil
+			},
+		})
+	}),
 	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelService) {
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {

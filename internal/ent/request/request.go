@@ -58,6 +58,8 @@ const (
 	FieldMetricsLatencyMs = "metrics_latency_ms"
 	// FieldMetricsFirstTokenLatencyMs holds the string denoting the metrics_first_token_latency_ms field in the database.
 	FieldMetricsFirstTokenLatencyMs = "metrics_first_token_latency_ms"
+	// FieldMetricsReasoningDurationMs holds the string denoting the metrics_reasoning_duration_ms field in the database.
+	FieldMetricsReasoningDurationMs = "metrics_reasoning_duration_ms"
 	// FieldContentSaved holds the string denoting the content_saved field in the database.
 	FieldContentSaved = "content_saved"
 	// FieldContentStorageID holds the string denoting the content_storage_id field in the database.
@@ -156,6 +158,7 @@ var Columns = []string{
 	FieldClientIP,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
+	FieldMetricsReasoningDurationMs,
 	FieldContentSaved,
 	FieldContentStorageID,
 	FieldContentStorageKey,
@@ -337,6 +340,11 @@ func ByMetricsLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 // ByMetricsFirstTokenLatencyMs orders the results by the metrics_first_token_latency_ms field.
 func ByMetricsFirstTokenLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMetricsFirstTokenLatencyMs, opts...).ToFunc()
+}
+
+// ByMetricsReasoningDurationMs orders the results by the metrics_reasoning_duration_ms field.
+func ByMetricsReasoningDurationMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMetricsReasoningDurationMs, opts...).ToFunc()
 }
 
 // ByContentSaved orders the results by the content_saved field.

@@ -44,6 +44,7 @@ const STORAGE_POLICY_QUERY = `
   query StoragePolicy {
     storagePolicy {
       storeChunks
+      livePreview
       storeRequestBody
       storeResponseBody
       cleanupOptions {
@@ -211,6 +212,7 @@ export interface UpdateVideoStorageSettingsInput {
 
 export interface StoragePolicy {
   storeChunks: boolean;
+  livePreview: boolean;
   storeRequestBody: boolean;
   storeResponseBody: boolean;
   cleanupOptions: CleanupOption[];
@@ -229,6 +231,7 @@ export interface UpdateBrandSettingsInput {
 
 export interface UpdateStoragePolicyInput {
   storeChunks?: boolean;
+  livePreview?: boolean;
   storeRequestBody?: boolean;
   storeResponseBody?: boolean;
   cleanupOptions?: CleanupOptionInput[];

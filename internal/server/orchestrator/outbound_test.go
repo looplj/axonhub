@@ -395,7 +395,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 			apiFormat:          llm.APIFormatOpenAIResponse,
 			aggregatedResponse: []byte(`{"id":"resp_123","status":"in_progress"}`),
 		}
-		state := &PersistenceState{}
+		state := &PersistenceState{StoreChunks: true}
 
 		persistentStream := NewOutboundPersistentStream(ctx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
 		for persistentStream.Next() {
@@ -457,7 +457,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 				},
 			},
 		}
-		state := &PersistenceState{}
+		state := &PersistenceState{StoreChunks: true}
 
 		persistentStream := NewOutboundPersistentStream(ctx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
 		for persistentStream.Next() {
@@ -520,7 +520,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 				},
 			},
 		}
-		state := &PersistenceState{}
+		state := &PersistenceState{StoreChunks: true}
 
 		requestCtx, cancel := context.WithCancel(baseCtx)
 		cancel()

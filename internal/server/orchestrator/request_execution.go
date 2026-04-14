@@ -150,6 +150,13 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 		if state.Perf.Stream && state.Perf.FirstTokenTime != nil {
 			metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
 		}
+
+		if state.Perf.Stream {
+			reasoningDurationMs := state.Perf.CalculateReasoningDurationMs()
+			if reasoningDurationMs > 0 {
+				metrics.ReasoningDurationMs = &reasoningDurationMs
+			}
+		}
 	}
 
 	err := state.RequestService.UpdateRequestExecutionCompleted(

@@ -58,6 +58,8 @@ type RequestExecution struct {
 	MetricsLatencyMs *int64 `json:"metrics_latency_ms,omitempty"`
 	// MetricsFirstTokenLatencyMs holds the value of the "metrics_first_token_latency_ms" field.
 	MetricsFirstTokenLatencyMs *int64 `json:"metrics_first_token_latency_ms,omitempty"`
+	// Reasoning/thinking duration in milliseconds
+	MetricsReasoningDurationMs *int64 `json:"metrics_reasoning_duration_ms,omitempty"`
 	// Request headers
 	RequestHeaders objects.JSONRawMessage `json:"request_headers,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -123,7 +125,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case requestexecution.FieldStream:
 			values[i] = new(sql.NullBool)
-		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs:
+		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs, requestexecution.FieldMetricsReasoningDurationMs:
 			values[i] = new(sql.NullInt64)
 		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -267,6 +269,13 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 				_m.MetricsFirstTokenLatencyMs = new(int64)
 				*_m.MetricsFirstTokenLatencyMs = value.Int64
 			}
+		case requestexecution.FieldMetricsReasoningDurationMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field metrics_reasoning_duration_ms", values[i])
+			} else if value.Valid {
+				_m.MetricsReasoningDurationMs = new(int64)
+				*_m.MetricsReasoningDurationMs = value.Int64
+			}
 		case requestexecution.FieldRequestHeaders:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field request_headers", values[i])
@@ -383,6 +392,11 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	if v := _m.MetricsFirstTokenLatencyMs; v != nil {
 		builder.WriteString("metrics_first_token_latency_ms=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.MetricsReasoningDurationMs; v != nil {
+		builder.WriteString("metrics_reasoning_duration_ms=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")

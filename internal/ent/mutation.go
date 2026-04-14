@@ -13240,6 +13240,8 @@ type RequestMutation struct {
 	addmetrics_latency_ms             *int64
 	metrics_first_token_latency_ms    *int64
 	addmetrics_first_token_latency_ms *int64
+	metrics_reasoning_duration_ms     *int64
+	addmetrics_reasoning_duration_ms  *int64
 	content_saved                     *bool
 	content_storage_id                *int
 	addcontent_storage_id             *int
@@ -14320,6 +14322,76 @@ func (m *RequestMutation) ResetMetricsFirstTokenLatencyMs() {
 	delete(m.clearedFields, request.FieldMetricsFirstTokenLatencyMs)
 }
 
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (m *RequestMutation) SetMetricsReasoningDurationMs(i int64) {
+	m.metrics_reasoning_duration_ms = &i
+	m.addmetrics_reasoning_duration_ms = nil
+}
+
+// MetricsReasoningDurationMs returns the value of the "metrics_reasoning_duration_ms" field in the mutation.
+func (m *RequestMutation) MetricsReasoningDurationMs() (r int64, exists bool) {
+	v := m.metrics_reasoning_duration_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetricsReasoningDurationMs returns the old "metrics_reasoning_duration_ms" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldMetricsReasoningDurationMs(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetricsReasoningDurationMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetricsReasoningDurationMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetricsReasoningDurationMs: %w", err)
+	}
+	return oldValue.MetricsReasoningDurationMs, nil
+}
+
+// AddMetricsReasoningDurationMs adds i to the "metrics_reasoning_duration_ms" field.
+func (m *RequestMutation) AddMetricsReasoningDurationMs(i int64) {
+	if m.addmetrics_reasoning_duration_ms != nil {
+		*m.addmetrics_reasoning_duration_ms += i
+	} else {
+		m.addmetrics_reasoning_duration_ms = &i
+	}
+}
+
+// AddedMetricsReasoningDurationMs returns the value that was added to the "metrics_reasoning_duration_ms" field in this mutation.
+func (m *RequestMutation) AddedMetricsReasoningDurationMs() (r int64, exists bool) {
+	v := m.addmetrics_reasoning_duration_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearMetricsReasoningDurationMs clears the value of the "metrics_reasoning_duration_ms" field.
+func (m *RequestMutation) ClearMetricsReasoningDurationMs() {
+	m.metrics_reasoning_duration_ms = nil
+	m.addmetrics_reasoning_duration_ms = nil
+	m.clearedFields[request.FieldMetricsReasoningDurationMs] = struct{}{}
+}
+
+// MetricsReasoningDurationMsCleared returns if the "metrics_reasoning_duration_ms" field was cleared in this mutation.
+func (m *RequestMutation) MetricsReasoningDurationMsCleared() bool {
+	_, ok := m.clearedFields[request.FieldMetricsReasoningDurationMs]
+	return ok
+}
+
+// ResetMetricsReasoningDurationMs resets all changes to the "metrics_reasoning_duration_ms" field.
+func (m *RequestMutation) ResetMetricsReasoningDurationMs() {
+	m.metrics_reasoning_duration_ms = nil
+	m.addmetrics_reasoning_duration_ms = nil
+	delete(m.clearedFields, request.FieldMetricsReasoningDurationMs)
+}
+
 // SetContentSaved sets the "content_saved" field.
 func (m *RequestMutation) SetContentSaved(b bool) {
 	m.content_saved = &b
@@ -14801,7 +14873,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -14861,6 +14933,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.metrics_first_token_latency_ms != nil {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
+	}
+	if m.metrics_reasoning_duration_ms != nil {
+		fields = append(fields, request.FieldMetricsReasoningDurationMs)
 	}
 	if m.content_saved != nil {
 		fields = append(fields, request.FieldContentSaved)
@@ -14922,6 +14997,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.MetricsLatencyMs()
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.MetricsFirstTokenLatencyMs()
+	case request.FieldMetricsReasoningDurationMs:
+		return m.MetricsReasoningDurationMs()
 	case request.FieldContentSaved:
 		return m.ContentSaved()
 	case request.FieldContentStorageID:
@@ -14979,6 +15056,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldMetricsLatencyMs(ctx)
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.OldMetricsFirstTokenLatencyMs(ctx)
+	case request.FieldMetricsReasoningDurationMs:
+		return m.OldMetricsReasoningDurationMs(ctx)
 	case request.FieldContentSaved:
 		return m.OldContentSaved(ctx)
 	case request.FieldContentStorageID:
@@ -15136,6 +15215,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMetricsFirstTokenLatencyMs(v)
 		return nil
+	case request.FieldMetricsReasoningDurationMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetricsReasoningDurationMs(v)
+		return nil
 	case request.FieldContentSaved:
 		v, ok := value.(bool)
 		if !ok {
@@ -15178,6 +15264,9 @@ func (m *RequestMutation) AddedFields() []string {
 	if m.addmetrics_first_token_latency_ms != nil {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
 	}
+	if m.addmetrics_reasoning_duration_ms != nil {
+		fields = append(fields, request.FieldMetricsReasoningDurationMs)
+	}
 	if m.addcontent_storage_id != nil {
 		fields = append(fields, request.FieldContentStorageID)
 	}
@@ -15193,6 +15282,8 @@ func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedMetricsLatencyMs()
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.AddedMetricsFirstTokenLatencyMs()
+	case request.FieldMetricsReasoningDurationMs:
+		return m.AddedMetricsReasoningDurationMs()
 	case request.FieldContentStorageID:
 		return m.AddedContentStorageID()
 	}
@@ -15217,6 +15308,13 @@ func (m *RequestMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddMetricsFirstTokenLatencyMs(v)
+		return nil
+	case request.FieldMetricsReasoningDurationMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMetricsReasoningDurationMs(v)
 		return nil
 	case request.FieldContentStorageID:
 		v, ok := value.(int)
@@ -15262,6 +15360,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(request.FieldMetricsFirstTokenLatencyMs) {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
+	}
+	if m.FieldCleared(request.FieldMetricsReasoningDurationMs) {
+		fields = append(fields, request.FieldMetricsReasoningDurationMs)
 	}
 	if m.FieldCleared(request.FieldContentStorageID) {
 		fields = append(fields, request.FieldContentStorageID)
@@ -15315,6 +15416,9 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldMetricsFirstTokenLatencyMs:
 		m.ClearMetricsFirstTokenLatencyMs()
+		return nil
+	case request.FieldMetricsReasoningDurationMs:
+		m.ClearMetricsReasoningDurationMs()
 		return nil
 	case request.FieldContentStorageID:
 		m.ClearContentStorageID()
@@ -15392,6 +15496,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldMetricsFirstTokenLatencyMs:
 		m.ResetMetricsFirstTokenLatencyMs()
+		return nil
+	case request.FieldMetricsReasoningDurationMs:
+		m.ResetMetricsReasoningDurationMs()
 		return nil
 	case request.FieldContentSaved:
 		m.ResetContentSaved()
@@ -15637,6 +15744,8 @@ type RequestExecutionMutation struct {
 	addmetrics_latency_ms             *int64
 	metrics_first_token_latency_ms    *int64
 	addmetrics_first_token_latency_ms *int64
+	metrics_reasoning_duration_ms     *int64
+	addmetrics_reasoning_duration_ms  *int64
 	request_headers                   *objects.JSONRawMessage
 	appendrequest_headers             objects.JSONRawMessage
 	clearedFields                     map[string]struct{}
@@ -16644,6 +16753,76 @@ func (m *RequestExecutionMutation) ResetMetricsFirstTokenLatencyMs() {
 	delete(m.clearedFields, requestexecution.FieldMetricsFirstTokenLatencyMs)
 }
 
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (m *RequestExecutionMutation) SetMetricsReasoningDurationMs(i int64) {
+	m.metrics_reasoning_duration_ms = &i
+	m.addmetrics_reasoning_duration_ms = nil
+}
+
+// MetricsReasoningDurationMs returns the value of the "metrics_reasoning_duration_ms" field in the mutation.
+func (m *RequestExecutionMutation) MetricsReasoningDurationMs() (r int64, exists bool) {
+	v := m.metrics_reasoning_duration_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetricsReasoningDurationMs returns the old "metrics_reasoning_duration_ms" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldMetricsReasoningDurationMs(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetricsReasoningDurationMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetricsReasoningDurationMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetricsReasoningDurationMs: %w", err)
+	}
+	return oldValue.MetricsReasoningDurationMs, nil
+}
+
+// AddMetricsReasoningDurationMs adds i to the "metrics_reasoning_duration_ms" field.
+func (m *RequestExecutionMutation) AddMetricsReasoningDurationMs(i int64) {
+	if m.addmetrics_reasoning_duration_ms != nil {
+		*m.addmetrics_reasoning_duration_ms += i
+	} else {
+		m.addmetrics_reasoning_duration_ms = &i
+	}
+}
+
+// AddedMetricsReasoningDurationMs returns the value that was added to the "metrics_reasoning_duration_ms" field in this mutation.
+func (m *RequestExecutionMutation) AddedMetricsReasoningDurationMs() (r int64, exists bool) {
+	v := m.addmetrics_reasoning_duration_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearMetricsReasoningDurationMs clears the value of the "metrics_reasoning_duration_ms" field.
+func (m *RequestExecutionMutation) ClearMetricsReasoningDurationMs() {
+	m.metrics_reasoning_duration_ms = nil
+	m.addmetrics_reasoning_duration_ms = nil
+	m.clearedFields[requestexecution.FieldMetricsReasoningDurationMs] = struct{}{}
+}
+
+// MetricsReasoningDurationMsCleared returns if the "metrics_reasoning_duration_ms" field was cleared in this mutation.
+func (m *RequestExecutionMutation) MetricsReasoningDurationMsCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldMetricsReasoningDurationMs]
+	return ok
+}
+
+// ResetMetricsReasoningDurationMs resets all changes to the "metrics_reasoning_duration_ms" field.
+func (m *RequestExecutionMutation) ResetMetricsReasoningDurationMs() {
+	m.metrics_reasoning_duration_ms = nil
+	m.addmetrics_reasoning_duration_ms = nil
+	delete(m.clearedFields, requestexecution.FieldMetricsReasoningDurationMs)
+}
+
 // SetRequestHeaders sets the "request_headers" field.
 func (m *RequestExecutionMutation) SetRequestHeaders(orm objects.JSONRawMessage) {
 	m.request_headers = &orm
@@ -16824,7 +17003,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 20)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -16879,6 +17058,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	if m.metrics_first_token_latency_ms != nil {
 		fields = append(fields, requestexecution.FieldMetricsFirstTokenLatencyMs)
 	}
+	if m.metrics_reasoning_duration_ms != nil {
+		fields = append(fields, requestexecution.FieldMetricsReasoningDurationMs)
+	}
 	if m.request_headers != nil {
 		fields = append(fields, requestexecution.FieldRequestHeaders)
 	}
@@ -16926,6 +17108,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.MetricsLatencyMs()
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
 		return m.MetricsFirstTokenLatencyMs()
+	case requestexecution.FieldMetricsReasoningDurationMs:
+		return m.MetricsReasoningDurationMs()
 	case requestexecution.FieldRequestHeaders:
 		return m.RequestHeaders()
 	}
@@ -16973,6 +17157,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldMetricsLatencyMs(ctx)
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
 		return m.OldMetricsFirstTokenLatencyMs(ctx)
+	case requestexecution.FieldMetricsReasoningDurationMs:
+		return m.OldMetricsReasoningDurationMs(ctx)
 	case requestexecution.FieldRequestHeaders:
 		return m.OldRequestHeaders(ctx)
 	}
@@ -17110,6 +17296,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetMetricsFirstTokenLatencyMs(v)
 		return nil
+	case requestexecution.FieldMetricsReasoningDurationMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetricsReasoningDurationMs(v)
+		return nil
 	case requestexecution.FieldRequestHeaders:
 		v, ok := value.(objects.JSONRawMessage)
 		if !ok {
@@ -17137,6 +17330,9 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 	if m.addmetrics_first_token_latency_ms != nil {
 		fields = append(fields, requestexecution.FieldMetricsFirstTokenLatencyMs)
 	}
+	if m.addmetrics_reasoning_duration_ms != nil {
+		fields = append(fields, requestexecution.FieldMetricsReasoningDurationMs)
+	}
 	return fields
 }
 
@@ -17153,6 +17349,8 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedMetricsLatencyMs()
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
 		return m.AddedMetricsFirstTokenLatencyMs()
+	case requestexecution.FieldMetricsReasoningDurationMs:
+		return m.AddedMetricsReasoningDurationMs()
 	}
 	return nil, false
 }
@@ -17190,6 +17388,13 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 		}
 		m.AddMetricsFirstTokenLatencyMs(v)
 		return nil
+	case requestexecution.FieldMetricsReasoningDurationMs:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMetricsReasoningDurationMs(v)
+		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution numeric field %s", name)
 }
@@ -17224,6 +17429,9 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(requestexecution.FieldMetricsFirstTokenLatencyMs) {
 		fields = append(fields, requestexecution.FieldMetricsFirstTokenLatencyMs)
+	}
+	if m.FieldCleared(requestexecution.FieldMetricsReasoningDurationMs) {
+		fields = append(fields, requestexecution.FieldMetricsReasoningDurationMs)
 	}
 	if m.FieldCleared(requestexecution.FieldRequestHeaders) {
 		fields = append(fields, requestexecution.FieldRequestHeaders)
@@ -17268,6 +17476,9 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 		return nil
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
 		m.ClearMetricsFirstTokenLatencyMs()
+		return nil
+	case requestexecution.FieldMetricsReasoningDurationMs:
+		m.ClearMetricsReasoningDurationMs()
 		return nil
 	case requestexecution.FieldRequestHeaders:
 		m.ClearRequestHeaders()
@@ -17333,6 +17544,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
 		m.ResetMetricsFirstTokenLatencyMs()
+		return nil
+	case requestexecution.FieldMetricsReasoningDurationMs:
+		m.ResetMetricsReasoningDurationMs()
 		return nil
 	case requestexecution.FieldRequestHeaders:
 		m.ResetRequestHeaders()
