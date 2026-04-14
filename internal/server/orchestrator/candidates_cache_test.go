@@ -169,7 +169,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		selector.cacheMu.RUnlock()
 
 		require.NotSame(t, initialEntry, currentEntry, "cache entry should be refreshed when model is updated")
-		require.True(t, currentEntry.latestModelUpdatedAt.After(initialEntry.latestModelUpdatedAt), "model update time should be newer")
+		require.True(t, currentEntry.latestModelUpdateTime.After(initialEntry.latestModelUpdateTime), "model update time should be newer")
 	})
 
 	t.Run("cache invalidated when model associations updated", func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		require.NotSame(t, initialEntry, currentEntry, "cache entry should be refreshed when model associations are updated")
 		require.True(
 			t,
-			currentEntry.latestModelUpdatedAt.After(initialEntry.latestModelUpdatedAt) || !currentEntry.latestModelUpdatedAt.Equal(initialEntry.latestModelUpdatedAt),
+			currentEntry.latestModelUpdateTime.After(initialEntry.latestModelUpdateTime) || !currentEntry.latestModelUpdateTime.Equal(initialEntry.latestModelUpdateTime),
 			"model update time should be newer or different",
 		)
 	})

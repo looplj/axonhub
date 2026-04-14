@@ -478,7 +478,7 @@ func (c *IndexedCache[K, V]) watchWorker(ch <-chan CacheEvent[K]) {
 			switch event.Type {
 			case EventForceRefresh:
 				if c.inner != nil {
-					c.inner.TriggerAsyncReload()
+					c.inner.TriggerForceAsyncReload()
 				}
 			case EventRefresh:
 				if c.inner != nil {
