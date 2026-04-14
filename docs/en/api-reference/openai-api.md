@@ -59,8 +59,8 @@ AxonHub provides partial support for the OpenAI Responses API. This API offers a
 **Endpoints:**
 - `POST /v1/responses` - Generate a response
 
-**Limitations:**
-- ❌ `previous_response_id` is **not supported** - conversation history must be managed client-side
+**Capabilities:**
+- ✅ `previous_response_id` passthrough is supported for continued Responses conversations on the same upstream channel
 - ✅ Basic response generation is fully functional
 - ✅ Streaming responses are supported
 
@@ -84,9 +84,10 @@ client := openai.NewClient(
 
 ctx := context.Background()
 
-// Generate a response (previous_response_id not supported)
+// Generate a response (previous_response_id passthrough on the same upstream channel)
 params := responses.ResponseNewParams{
     Model: shared.ResponsesModel("gpt-4o"),
+    PreviousResponseID: openai.String("resp_prev_123"),
     Input: responses.ResponseNewParamsInputUnion{
         OfString: openai.String("Hello, how are you?"),
     },

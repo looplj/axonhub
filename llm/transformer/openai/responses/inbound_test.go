@@ -417,6 +417,21 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, v.([]string))
 			},
 		},
+		{
+			name: "request with previous_response_id",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-5.4",
+					"previous_response_id": "resp_prev_123",
+					"input": "Continue"
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.NotNil(t, result.PreviousResponseID)
+				require.Equal(t, "resp_prev_123", *result.PreviousResponseID)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -611,6 +626,37 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, resp.Status)
 				require.Equal(t, "incomplete", *resp.Status)
+			},
+		},
+		{
+			name: "response with previous_response_id",
+			chatResp: &llm.Response{
+				ID:                 "chatcmpl-prev",
+				Object:             "chat.completion",
+				Created:            1677652288,
+				Model:              "gpt-5.4",
+				PreviousResponseID: lo.ToPtr("resp_prev_123"),
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("continued"),
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Response) {
+				var resp Response
+
+				err := json.Unmarshal(result.Body, &resp)
+				require.NoError(t, err)
+				require.NotNil(t, resp.PreviousResponseID)
+				require.Equal(t, "resp_prev_123", *resp.PreviousResponseID)
 			},
 		},
 	}
