@@ -15,27 +15,17 @@ import { ChannelSummary } from '../data/schema';
 
 const WEIGHT_PRECISION = 0;
 const MIN_WEIGHT = 0;
-const MAX_WEIGHT = 100;
+const MAX_WEIGHT = 9999;
 
 const formatWeight = (value: number) => Math.round(value);
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
-const calculateRelativeWeight = (prev?: number, next?: number) => {
-  if (prev == null && next == null) {
-    return clampWeight(1);
-  }
-  if (prev == null) {
-    return clampWeight((next ?? 0) + 1);
-  }
-  if (next == null) {
-    return clampWeight(prev - 1);
-  }
-  if (prev === next) {
-    return clampWeight(prev);
-  }
-  return clampWeight(Math.floor((prev + next) / 2));
-};
+const redistributeWeights = (items: Array<{ channel: ChannelSummary; orderingWeight: number }>) =>
+  items.map((item, index) => ({
+    ...item,
+    orderingWeight: clampWeight(items.length - index),
+  }));
 
 interface ChannelOrderingItemProps {
   channel: ChannelSummary;
@@ -256,16 +246,8 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       }
 
       const newItems = arrayMove(items, oldIndex, newIndex);
-      const prevWeight = newItems[newIndex - 1]?.orderingWeight;
-      const nextWeight = newItems[newIndex + 1]?.orderingWeight;
-
-      newItems[newIndex] = {
-        ...newItems[newIndex],
-        orderingWeight: calculateRelativeWeight(prevWeight, nextWeight),
-      };
-
       setHasChanges(true);
-      return newItems;
+      return redistributeWeights(newItems);
     });
   }, []);
 
@@ -288,15 +270,8 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       }
 
       const newItems = arrayMove(items, index, 0);
-      const nextWeight = newItems[1]?.orderingWeight;
-
-      newItems[0] = {
-        ...newItems[0],
-        orderingWeight: calculateRelativeWeight(undefined, nextWeight),
-      };
-
       setHasChanges(true);
-      return newItems;
+      return redistributeWeights(newItems);
     });
   }, []);
 
@@ -308,15 +283,8 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
 
       const targetIndex = items.length - 1;
       const newItems = arrayMove(items, index, targetIndex);
-      const prevWeight = newItems[targetIndex - 1]?.orderingWeight;
-
-      newItems[targetIndex] = {
-        ...newItems[targetIndex],
-        orderingWeight: calculateRelativeWeight(prevWeight, undefined),
-      };
-
       setHasChanges(true);
-      return newItems;
+      return redistributeWeights(newItems);
     });
   }, []);
 
