@@ -63,10 +63,9 @@ func NewInboundPersistentStream(
 		s.previewKey = biz.RequestKey(request.ID)
 		s.chunkBuffer = biz.DefaultStreamPreviewRegistry.GetBuffer(s.previewKey)
 		if s.chunkBuffer == nil {
-			s.chunkBuffer = biz.NewChunkBuffer(nil)
+			s.chunkBuffer = biz.NewChunkBuffer()
 		}
-		notifyFn := biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
-		s.chunkBuffer.SetNotify(notifyFn)
+		biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
 	}
 
 	return s

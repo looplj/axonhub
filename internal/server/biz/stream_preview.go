@@ -50,15 +50,9 @@ func ExecutionKey(executionID int) string {
 
 // RegisterBuffer registers a ChunkBuffer for preview access.
 // Called when the persistent stream is created.
-// Returns a notification function that should be called after each append.
-func (r *StreamPreviewRegistry) RegisterBuffer(key string, buffer *ChunkBuffer) func() {
+func (r *StreamPreviewRegistry) RegisterBuffer(key string, buffer *ChunkBuffer) {
 	entry := &previewEntry{buffer: buffer}
 	r.entries.Store(key, entry)
-
-	// Return a notification function that updates the buffer's length snapshot
-	return func() {
-		r.NotifyAppend(key)
-	}
 }
 
 // Register registers the stream's chunk slice for preview access.
@@ -70,24 +64,6 @@ func (r *StreamPreviewRegistry) Register(key string, chunks *[]*httpclient.Strea
 	})
 }
 
-// NotifyAppend updates the length snapshot after a new chunk is appended.
-// This is O(1) — just reads the current buffer length.
-// Called from Current() in the streaming goroutine.
-func (r *StreamPreviewRegistry) NotifyAppend(key string) {
-	v, ok := r.entries.Load(key)
-	if !ok {
-		return
-	}
-
-	entry, ok := v.(*previewEntry)
-	if !ok {
-		return
-	}
-
-	// The ChunkBuffer handles its own synchronization
-	// This method is kept for backward compatibility
-	_ = entry
-}
 // GetChunks returns the current live chunks as JSON in the same format
 // as SaveRequestChunks (jsonStreamEvent marshaling). Returns nil if no
 // entry is registered for the key.

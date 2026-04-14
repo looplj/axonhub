@@ -127,7 +127,7 @@ func (h *RequestPreviewHandlers) PreviewRequest(c *gin.Context) {
 
 	buffer := biz.DefaultStreamPreviewRegistry.GetBuffer(biz.RequestKey(req.ID))
 	if buffer == nil {
-		buffer = biz.NewChunkBuffer(nil)
+		buffer = biz.NewChunkBuffer()
 		biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(req.ID), buffer)
 	}
 

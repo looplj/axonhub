@@ -14,24 +14,20 @@ import (
 // The buffer supports:
 //   - Append: adding new chunks from the streaming goroutine
 //   - Slice: reading all chunks for final persistence
-//   - Notify: callback mechanism for append notifications (used by preview registry)
 type ChunkBuffer struct {
 	mu             sync.RWMutex
 	chunks         []*httpclient.StreamEvent
-	notify         func() // called after each append, may be nil
-	closed         bool   // marks buffer as closed (no more appends)
+	closed         bool // marks buffer as closed (no more appends)
 	subscribers    map[chan struct{}]struct{}
 	lastAppendedAt time.Time
 }
 
 const maxChunkCapacity = 50000
 
-// NewChunkBuffer creates a new ChunkBuffer with optional notification callback.
-// The notify callback is invoked after each successful append.
-func NewChunkBuffer(notify func()) *ChunkBuffer {
+// NewChunkBuffer creates a new ChunkBuffer.
+func NewChunkBuffer() *ChunkBuffer {
 	return &ChunkBuffer{
 		chunks:         make([]*httpclient.StreamEvent, 0),
-		notify:         notify,
 		subscribers:    make(map[chan struct{}]struct{}),
 		lastAppendedAt: time.Now(),
 	}
@@ -60,11 +56,6 @@ func (b *ChunkBuffer) Append(chunk *httpclient.StreamEvent) bool {
 	b.chunks = append(b.chunks, chunk)
 	b.lastAppendedAt = time.Now()
 
-	// Invoke notification callback while holding the lock to ensure
-	// the length snapshot is consistent with the append.
-	if b.notify != nil {
-		b.notify()
-	}
 	b.broadcastLocked()
 
 	return true
@@ -110,14 +101,6 @@ func (b *ChunkBuffer) IsClosed() bool {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.closed
-}
-
-// SetNotify sets the notification callback.
-// This is used by StreamPreviewRegistry to receive append notifications.
-func (b *ChunkBuffer) SetNotify(notify func()) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.notify = notify
 }
 
 // ChunksPointer returns a pointer to the internal slice.

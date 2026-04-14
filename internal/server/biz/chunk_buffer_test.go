@@ -1,7 +1,6 @@
 package biz
 
 import (
-	"sync/atomic"
 	"testing"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestChunkBuffer_Append(t *testing.T) {
-	buffer := NewChunkBuffer(nil)
+	buffer := NewChunkBuffer()
 
 	// Append chunks
 	chunk1 := &httpclient.StreamEvent{Type: "test", Data: []byte("data1")}
@@ -25,7 +24,7 @@ func TestChunkBuffer_Append(t *testing.T) {
 }
 
 func TestChunkBuffer_Slice(t *testing.T) {
-	buffer := NewChunkBuffer(nil)
+	buffer := NewChunkBuffer()
 
 	chunk1 := &httpclient.StreamEvent{Type: "test", Data: []byte("data1")}
 	chunk2 := &httpclient.StreamEvent{Type: "test", Data: []byte("data2")}
@@ -44,7 +43,7 @@ func TestChunkBuffer_Slice(t *testing.T) {
 }
 
 func TestChunkBuffer_Close(t *testing.T) {
-	buffer := NewChunkBuffer(nil)
+	buffer := NewChunkBuffer()
 
 	assert.False(t, buffer.IsClosed())
 
@@ -59,37 +58,8 @@ func TestChunkBuffer_Close(t *testing.T) {
 	assert.Equal(t, 1, buffer.Len())
 }
 
-func TestChunkBuffer_NotifyCallback(t *testing.T) {
-	var callCount int32
-	buffer := NewChunkBuffer(func() {
-		atomic.AddInt32(&callCount, 1)
-	})
-
-	chunk1 := &httpclient.StreamEvent{Type: "test", Data: []byte("data1")}
-	chunk2 := &httpclient.StreamEvent{Type: "test", Data: []byte("data2")}
-
-	buffer.Append(chunk1)
-	buffer.Append(chunk2)
-
-	assert.Equal(t, int32(2), atomic.LoadInt32(&callCount))
-}
-
-func TestChunkBuffer_SetNotify(t *testing.T) {
-	var callCount int32
-	buffer := NewChunkBuffer(nil)
-
-	buffer.SetNotify(func() {
-		atomic.AddInt32(&callCount, 1)
-	})
-
-	chunk := &httpclient.StreamEvent{Type: "test", Data: []byte("data")}
-	buffer.Append(chunk)
-
-	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
-}
-
 func TestChunkBuffer_ConcurrentAccess(t *testing.T) {
-	buffer := NewChunkBuffer(nil)
+	buffer := NewChunkBuffer()
 
 	// Simulate concurrent appends
 	done := make(chan bool)
@@ -113,7 +83,7 @@ func TestChunkBuffer_ConcurrentAccess(t *testing.T) {
 }
 
 func TestChunkBuffer_SnapshotLen(t *testing.T) {
-	buffer := NewChunkBuffer(nil)
+	buffer := NewChunkBuffer()
 
 	assert.Equal(t, 0, buffer.SnapshotLen())
 
@@ -124,7 +94,7 @@ func TestChunkBuffer_SnapshotLen(t *testing.T) {
 }
 
 func TestChunkBuffer_ChunksPointer(t *testing.T) {
-	buffer := NewChunkBuffer(nil)
+	buffer := NewChunkBuffer()
 
 	chunk := &httpclient.StreamEvent{Type: "test", Data: []byte("data")}
 	buffer.Append(chunk)
