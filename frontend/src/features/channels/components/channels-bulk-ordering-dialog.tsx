@@ -36,16 +36,22 @@ const normalizeRanks = (items: Array<{ channel: ChannelSummary; orderingWeight: 
 
 // Initialize channels from GraphQL edges
 const initializeOrderedChannels = (edges: Array<{ node: ChannelSummary }>) => {
-  return edges
+  const withBackend = edges
     .map((edge) => ({
       channel: edge.node,
       backendWeight: edge.node.orderingWeight ?? 0,
     }))
-    .sort((a, b) => b.backendWeight - a.backendWeight)
-    .map((item, index) => ({
-      channel: item.channel,
-      orderingWeight: item.backendWeight === 0 ? 0 : index + 1,
-    }));
+    .sort((a, b) => b.backendWeight - a.backendWeight);
+
+  const distinctWeights = [...new Set(withBackend.map((item) => item.backendWeight).filter((w) => w > 0))].sort(
+    (a, b) => b - a,
+  );
+  const weightToRank = new Map(distinctWeights.map((w, i) => [w, i + 1]));
+
+  return withBackend.map((item) => ({
+    channel: item.channel,
+    orderingWeight: item.backendWeight === 0 ? 0 : weightToRank.get(item.backendWeight)!,
+  }));
 };
 
 const reassignWeightsFromPosition = (
