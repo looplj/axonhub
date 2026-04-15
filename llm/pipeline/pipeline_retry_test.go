@@ -13,14 +13,29 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
-type mockInbound struct{ transformer.Inbound }
+type mockInbound struct {
+	transformer.Inbound
+
+	transformRequest func(context.Context, *httpclient.Request) (*llm.Request, error)
+}
 
 func (m *mockInbound) TransformRequest(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
+	if m.transformRequest != nil {
+		return m.transformRequest(ctx, req)
+	}
+
 	return &llm.Request{}, nil
 }
 
 func (m *mockInbound) TransformResponse(ctx context.Context, resp *llm.Response) (*httpclient.Response, error) {
 	return &httpclient.Response{}, nil
+}
+
+func (m *mockInbound) TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error) {
+	// Pass-through: convert each llm.Response to an empty StreamEvent
+	return streams.Map(stream, func(resp *llm.Response) *httpclient.StreamEvent {
+		return &httpclient.StreamEvent{}
+	}), nil
 }
 
 type mockOutbound struct {
@@ -33,6 +48,7 @@ type mockOutbound struct {
 	prepareForRetry       func(context.Context) error
 	transformRequest      func(context.Context, *llm.Request) (*httpclient.Request, error)
 	transformResponse     func(context.Context, *httpclient.Response) (*llm.Response, error)
+	transformStream       func(context.Context, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error)
 	transformError        func(context.Context, *httpclient.Error) *llm.ResponseError
 	aggregateStreamChunks func(context.Context, []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
@@ -52,6 +68,14 @@ func (m *mockOutbound) TransformResponse(ctx context.Context, resp *httpclient.R
 	}
 
 	return &llm.Response{}, nil
+}
+
+func (m *mockOutbound) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	if m.transformStream != nil {
+		return m.transformStream(ctx, stream)
+	}
+
+	return nil, nil
 }
 
 func (m *mockOutbound) TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError {
@@ -95,7 +119,8 @@ func (m *mockOutbound) PrepareForRetry(ctx context.Context) error {
 }
 
 type mockExecutor struct {
-	do func(context.Context, *httpclient.Request) (*httpclient.Response, error)
+	do       func(context.Context, *httpclient.Request) (*httpclient.Response, error)
+	doStream func(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error)
 }
 
 func (m *mockExecutor) Do(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
@@ -103,6 +128,10 @@ func (m *mockExecutor) Do(ctx context.Context, req *httpclient.Request) (*httpcl
 }
 
 func (m *mockExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	if m.doStream != nil {
+		return m.doStream(ctx, req)
+	}
+
 	return nil, nil
 }
 

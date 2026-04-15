@@ -125,6 +125,8 @@
   "system.retry.maxSingleChannelRetries.description": "Maximum number of times to retry on the same channel (0-5). Controls how many times to retry the same channel before switching to a different channel. Useful for temporary glitches.",
   "system.retry.retryDelayMs.label": "Retry Delay (ms)",
   "system.retry.retryDelayMs.description": "Delay between retry attempts in milliseconds (100-10000ms). Shorter delays provide faster recovery but may overwhelm struggling services. Longer delays give services more time to recover.",
+  "system.retry.emptyResponseDetection.label": "Empty Response Detection",
+  "system.retry.emptyResponseDetection.description": "When enabled, the system pre-reads stream events to detect empty responses (no content generated). If detected, the empty response is treated as a failed attempt for subsequent retry handling.",
   "system.retry.autoDisableChannel.label": "Auto Disable Channel/API Key",
   "system.retry.autoDisableChannel.description": "Automatically disable a channel or API key when it encounters consecutive errors with specific HTTP status codes. When the error count reaches the threshold, the channel or API key will be disabled.",
   "system.retry.autoDisableChannel.statuses.label": "Error Status Rules",

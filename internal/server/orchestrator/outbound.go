@@ -493,6 +493,16 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
+	// Empty response detection: allow same-channel retry so the pipeline can
+	// re-execute the request against the same (or next model in the) channel.
+	if errors.Is(err, pipeline.ErrEmptyResponse) {
+		log.Debug(context.Background(), "empty response detected",
+			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
+		)
+
+		return true
+	}
+
 	// 429 Too Many Requests: check if Retry-After header is present
 	if httpclient.HasRetryAfterHeader(err) {
 		// If Retry-After header is present, skip same-channel retry

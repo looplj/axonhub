@@ -125,6 +125,8 @@
   "system.retry.maxSingleChannelRetries.description": "同一渠道的最大重试次数 (0-5)。控制在同一渠道上重试的次数，然后切换到不同的渠道。对于临时故障很有用。",
   "system.retry.retryDelayMs.label": "重试延迟",
   "system.retry.retryDelayMs.description": "重试间隔时间，单位毫秒 (100-10000ms)。较短的延迟提供更快的恢复速度，但可能会压倒 struggling 服务。较长的延迟给服务更多时间恢复。",
+  "system.retry.emptyResponseDetection.label": "空回检测",
+  "system.retry.emptyResponseDetection.description": "启用后，系统会预读流式响应事件来检测空回（未生成任何内容）。如果检测到空回，会将其视为一次失败尝试，供后续重试处理使用。",
   "system.retry.autoDisableChannel.label": "自动禁用渠道/API Key",
   "system.retry.autoDisableChannel.description": "当渠道或 API Key 连续遇到特定 HTTP 状态码的错误时，自动禁用。当错误次数达到阈值时，渠道或 API Key 将被禁用。",
   "system.retry.autoDisableChannel.statuses.label": "错误状态规则",

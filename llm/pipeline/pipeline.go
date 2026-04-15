@@ -63,6 +63,16 @@ func WithMiddlewares(decorators ...Middleware) Option {
 	}
 }
 
+// WithEmptyResponseDetection enables detection of empty streaming responses.
+// When enabled, the pipeline pre-reads up to 3 events from the LLM stream to check
+// if the response contains any meaningful content. If the stream ends without content,
+// an ErrEmptyResponse error is returned so the existing retry flow can handle it as a failed attempt.
+func WithEmptyResponseDetection() Option {
+	return func(p *pipeline) {
+		p.emptyResponseDetection = true
+	}
+}
+
 // Factory creates pipeline instances.
 type Factory struct {
 	Executor Executor
@@ -103,7 +113,8 @@ type pipeline struct {
 	middlewares           []Middleware
 	maxChannelRetries     int
 	maxSameChannelRetries int
-	retryDelay            time.Duration
+	retryDelay             time.Duration
+	emptyResponseDetection bool
 }
 
 type Result struct {

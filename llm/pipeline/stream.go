@@ -12,6 +12,69 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
+// hasFinishReason checks if an llm.Response event contains a finish reason.
+func hasFinishReason(resp *llm.Response) bool {
+	if resp == nil {
+		return false
+	}
+
+	for _, choice := range resp.Choices {
+		if choice.FinishReason != nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+// checkEmptyResponse pre-reads up to 3 events from the LLM stream to detect empty responses.
+// If the stream contains content, it returns a new stream with the pre-read events prepended.
+// If the stream is empty (finish reason reached without content), it returns ErrEmptyResponse.
+func (p *pipeline) checkEmptyResponse(
+	ctx context.Context,
+	llmStream streams.Stream[*llm.Response],
+) (streams.Stream[*llm.Response], error) {
+	const maxPreReadEvents = 3
+
+	var buffered []*llm.Response
+
+	for range maxPreReadEvents {
+		if !llmStream.Next() {
+			break
+		}
+
+		event := llmStream.Current()
+		buffered = append(buffered, event)
+
+		if hasResponseContent(event) {
+			// Has content, not empty — prepend buffered events back
+			return streams.PrependStream(llmStream, buffered...), nil
+		}
+
+		if event == llm.DoneResponse || hasFinishReason(event) {
+			// Reached end without content — empty response
+			slog.WarnContext(ctx, "empty response detected",
+				slog.Int("events_read", len(buffered)),
+			)
+
+			llmStream.Close()
+
+			return nil, ErrEmptyResponse
+		}
+	}
+
+	if err := llmStream.Err(); err != nil {
+		return nil, err
+	}
+
+	// Didn't find content or finish in 3 events — treat as non-empty (safe default)
+	if len(buffered) > 0 {
+		return streams.PrependStream(llmStream, buffered...), nil
+	}
+
+	return llmStream, nil
+}
+
 // Process executes the streaming LLM pipeline
 // Steps: outbound transform -> HTTP stream -> outbound stream transform -> inbound stream transform.
 func (p *pipeline) stream(
@@ -67,6 +130,14 @@ func (p *pipeline) stream(
 			slog.DebugContext(ctx, "LLM stream event", slog.Any("event", event))
 			return event
 		})
+	}
+
+	// Check for empty response if detection is enabled
+	if p.emptyResponseDetection {
+		llmStream, err = p.checkEmptyResponse(ctx, llmStream)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	inboundStream, err := p.Inbound.TransformStream(ctx, llmStream)
