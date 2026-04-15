@@ -543,32 +543,37 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		}
 	}
 
-	// Exploration mechanism: reserve the last retry slot for a cold channel
-	// that has no model-specific data, giving it a chance to gather metrics.
-	if len(result) >= requiredCount && requiredCount >= 2 {
-		// Find candidates that were not selected (lower priority or overflow)
+	// Exploration mechanism: insert cold channels that have no model-specific data
+	// into position 1 (after the winner) so they are tried as a primary fallback,
+	// not just as a deep retry slot. This ensures newly added channels get traffic
+	// and can gather metrics before being evaluated on performance.
+	if len(result) >= 2 {
 		selectedSet := make(map[int]bool)
 		for _, c := range result {
 			selectedSet[c.Channel.ID] = true
 		}
 
-		// Find unselected candidates with no model-specific data
 		var explorationCandidates []*ChannelModelsCandidate
 		for _, c := range candidates {
 			if selectedSet[c.Channel.ID] {
 				continue
 			}
-			// Check if this candidate has no model-specific data
 			if s.needsExploration(ctx, c, req.Model) {
 				explorationCandidates = append(explorationCandidates, c)
 			}
 		}
 
-		// If we have exploration candidates, replace the last slot with one
 		if len(explorationCandidates) > 0 {
 			explorationCandidate := s.selectExplorationCandidate(req.Model, explorationCandidates)
-			// Replace the last candidate with the exploration candidate
-			result[len(result)-1] = explorationCandidate
+
+			// Insert at position 1 (after the winner) instead of replacing the last
+			// retry slot. This makes cold channels visible as a primary fallback.
+			result = slices.Insert(result, 1, explorationCandidate)
+
+			// Trim back to requiredCount to avoid exceeding the configured retry limit.
+			if len(result) > requiredCount {
+				result = result[:requiredCount]
+			}
 
 			log.Info(ctx, "Exploration slot assigned to cold channel",
 				log.String("model", req.Model),
@@ -594,12 +599,24 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 			triggerReason := getTriggerReason(metricsSamplingConfig, winnerScore, winnerRequestRate)
 
 			if triggerReason != "" {
-				// Apply probabilistic sampling
-				if shouldSampleProbabilistically(metricsSamplingConfig.SamplingRate) {
+				// Check probabilistic sampling BEFORE selecting the alternative
+				// to avoid advancing the round-robin counter on rejections.
+				// First check with base rate; if it fails, compute the adaptive
+				// rate assuming the worst case (0 requests) to give cold channels
+				// a chance even when the base rate would reject them.
+				effectiveRate := metricsSamplingConfig.SamplingRate
+				shouldSample := shouldSampleProbabilistically(effectiveRate)
+
+				if !shouldSample {
+					effectiveRate = effectiveSamplingRate(metricsSamplingConfig.SamplingRate, 0)
+					shouldSample = shouldSampleProbabilistically(effectiveRate)
+				}
+
+				if shouldSample {
 					alternative := s.selectAlternativeCandidate(
 						ctx,
 						req.Model,
-						result, // Use sorted result to find actual runner-ups
+						result,
 						winnerID,
 						metricsSamplingConfig.AlternativeCount,
 						triggerReason,
@@ -608,14 +625,14 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 					)
 
 					if alternative != nil {
-						// Always append alternative - don't replace existing candidates
 						result = append(result, alternative)
 					}
 				} else {
 					if log.DebugEnabled(ctx) {
 						log.Debug(ctx, "Metrics sampling: probabilistic check skipped sampling",
 							log.String("model", req.Model),
-							log.Float64("sampling_rate", metricsSamplingConfig.SamplingRate))
+							log.Float64("sampling_rate", metricsSamplingConfig.SamplingRate),
+							log.Float64("effective_rate", effectiveRate))
 					}
 				}
 			}
@@ -797,8 +814,25 @@ func (s *LoadBalancedSelector) getCandidateScore(ctx context.Context, candidate 
 		return 0
 	}
 
-	// Use the load balancer's strategies to calculate the score
 	return s.loadBalancer.CalculateScore(ctx, candidate.Channel)
+}
+
+// effectiveSamplingRate returns an adaptive sampling rate that scales up when the
+// alternative channel has fewer than ColdStartMinRequests requests.
+// A channel with 0 requests gets near-100% sampling; the rate tapers to the
+// configured base rate as the channel accumulates data past ColdStartMinRequests.
+func effectiveSamplingRate(baseRate float64, requestCount int64) float64 {
+	if baseRate <= 0 {
+		return 0
+	}
+	if requestCount >= int64(ColdStartMinRequests) {
+		return baseRate
+	}
+	deficit := 1.0 - float64(requestCount)/float64(ColdStartMinRequests)
+	if deficit < 0 {
+		deficit = 0
+	}
+	return baseRate + (1.0-baseRate)*deficit
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.

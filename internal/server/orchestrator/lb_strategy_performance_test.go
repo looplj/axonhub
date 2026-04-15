@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
 	"time"
@@ -15,30 +16,32 @@ func TestPerformanceAwareStrategyInterface(t *testing.T) {
 	var _ LoadBalanceStrategy = (*PerformanceAwareStrategy)(nil)
 
 	strategy := &PerformanceAwareStrategy{maxScore: 150.0}
-	if strategy.Name() != "performance-aware" {
-		t.Errorf("Name() = %q, want %q", strategy.Name(), "performance-aware")
-	}
-
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "test"},
 	}
+
+	// A channel with no metrics provider should receive the cold start boost,
+	// not 0. This is the key fix: brand-new channels must be discoverable.
 	score := strategy.Score(context.Background(), channel)
-	if score != 0.0 {
-		t.Errorf("Score() = %f, want %f", score, 0.0)
+	if score != ColdStartBoostScore {
+		t.Errorf("Score() = %f, want %f (ColdStartBoostScore for channel with no metrics)", score, ColdStartBoostScore)
 	}
 
 	score, strategyScore := strategy.ScoreWithDebug(context.Background(), channel)
-	if score != 0.0 {
-		t.Errorf("ScoreWithDebug score = %f, want %f", score, 0.0)
+	if score != ColdStartBoostScore {
+		t.Errorf("ScoreWithDebug score = %f, want %f (ColdStartBoostScore for channel with no metrics)", score, ColdStartBoostScore)
 	}
-	if strategyScore.Score != 0.0 {
-		t.Errorf("ScoreWithDebug StrategyScore.Score = %f, want %f", strategyScore.Score, 0.0)
+	if strategyScore.Score != ColdStartBoostScore {
+		t.Errorf("ScoreWithDebug StrategyScore.Score = %f, want %f", strategyScore.Score, ColdStartBoostScore)
 	}
 	if strategyScore.StrategyName != "performance-aware" {
 		t.Errorf("ScoreWithDebug StrategyScore.StrategyName = %q, want %q", strategyScore.StrategyName, "performance-aware")
 	}
 	if strategyScore.Details == nil {
 		t.Error("ScoreWithDebug StrategyScore.Details should not be nil")
+	}
+	if strategyScore.Details["reason"] != "cold_start_no_metrics" {
+		t.Errorf("ScoreWithDebug reason = %v, want cold_start_no_metrics", strategyScore.Details["reason"])
 	}
 }
 
@@ -507,6 +510,32 @@ func TestColdStartBoost(t *testing.T) {
 	expectedBoost := maxScore * 0.8
 	if ColdStartBoostScore != expectedBoost {
 		t.Errorf("ColdStartBoostScore = %v, want %v (80%% of maxScore)", ColdStartBoostScore, expectedBoost)
+	}
+}
+
+func TestColdStartNoMetrics(t *testing.T) {
+	strategy := &PerformanceAwareStrategy{
+		maxScore: 150.0,
+		getMetricsFunc: func(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
+			return nil, errors.New("no model-specific metrics available")
+		},
+	}
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{ID: 1, Name: "brand-new-channel"},
+	}
+
+	score := strategy.Score(context.Background(), channel)
+	if score != ColdStartBoostScore {
+		t.Errorf("Score() for channel with no metrics = %f, want %f (ColdStartBoostScore)", score, ColdStartBoostScore)
+	}
+
+	score, debug := strategy.ScoreWithDebug(context.Background(), channel)
+	if score != ColdStartBoostScore {
+		t.Errorf("ScoreWithDebug() for channel with no metrics = %f, want %f", score, ColdStartBoostScore)
+	}
+	if debug.Details["reason"] != "cold_start_no_metrics" {
+		t.Errorf("debug reason = %v, want cold_start_no_metrics", debug.Details["reason"])
 	}
 }
 

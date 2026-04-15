@@ -179,17 +179,30 @@ func (s *PerformanceAwareStrategy) Name() string {
 // Score calculates a score for a channel based on performance metrics.
 // Higher scores indicate better performance.
 // Returns a score between 0 and maxScore.
-// Cold start channels receive a boost score to give them opportunity to gather metrics.
+// Cold start channels (no data or insufficient data) receive a boost score
+// to give them opportunity to gather metrics and be discovered.
 func (s *PerformanceAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
 	if channel == nil {
 		return 0.0
 	}
 
 	model := requestedModelFromContext(ctx)
+
+	// If we have metrics, check for cold start
 	if metrics, err := s.getChannelMetrics(ctx, channel.ID, model); err == nil && metrics != nil {
 		if s.isColdStart(metrics) {
 			return ColdStartBoostScore
 		}
+	} else {
+		// No metrics available — this covers both genuinely new channels
+		// (no data yet) and transient infrastructure errors (e.g., Redis timeout).
+		// A brand-new channel must not score 0 or it can never be discovered,
+		// so we err on the side of giving the boost. Transient boost for a
+		// warm channel is self-correcting: once metrics return, it resumes its
+		// real score on the next request.
+		// TODO: Consider distinguishing nil metrics (no data) from error metrics
+		// (infrastructure failure) to avoid boosting warm channels during outages.
+		return ColdStartBoostScore
 	}
 
 	performance := s.getChannelPerformance(ctx, channel.ID, model)
@@ -230,6 +243,7 @@ func (s *PerformanceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *
 	details := map[string]any{}
 
 	model := requestedModelFromContext(ctx)
+
 	if metrics, err := s.getChannelMetrics(ctx, channel.ID, model); err == nil && metrics != nil {
 		details["request_count"] = metrics.RequestCount
 		details["last_selected_at"] = metrics.LastSelectedAt
@@ -243,6 +257,16 @@ func (s *PerformanceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *
 				Details:      details,
 				Duration:     time.Since(start),
 			}
+		}
+	} else {
+		details["reason"] = "cold_start_no_metrics"
+		details["cold_start_boost_score"] = ColdStartBoostScore
+
+		return ColdStartBoostScore, StrategyScore{
+			StrategyName: s.Name(),
+			Score:        ColdStartBoostScore,
+			Details:      details,
+			Duration:     time.Since(start),
 		}
 	}
 

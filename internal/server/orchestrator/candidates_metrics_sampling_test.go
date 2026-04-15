@@ -389,7 +389,6 @@ func shouldSampleProbabilistic(config MetricsSamplingConfig) bool {
 func TestMetricsSamplingExplorationCoexistence(t *testing.T) {
 	ctx, client := setupTest(t)
 
-	// Create channels: 2 warm (have metrics), 1 cold (no metrics)
 	_, err := client.Channel.Create().
 		SetType(channel.TypeOpenai).
 		SetName("Hot Channel").
@@ -426,12 +425,11 @@ func TestMetricsSamplingExplorationCoexistence(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Mock metrics: ch1 and ch2 have data (warm), ch3 has no data (cold)
 	perfStrategy := &PerformanceAwareStrategy{
 		maxScore: 150.0,
 		getMetricsFunc: func(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
 			if channelID == ch3.ID {
-				return nil, nil // Cold channel - no metrics
+				return nil, nil
 			}
 			m := &biz.AggregatedMetrics{}
 			m.RequestCount = 100
@@ -443,7 +441,6 @@ func TestMetricsSamplingExplorationCoexistence(t *testing.T) {
 	systemService := newTestSystemService(client)
 	modelService := newTestModelService(client)
 
-	// Enable metrics sampling with AlwaysSample to ensure it triggers
 	err = systemService.SetMetricsSampling(ctx, &biz.MetricsSamplingConfig{
 		Enabled:              true,
 		AlwaysSample:         true,
@@ -462,27 +459,29 @@ func TestMetricsSamplingExplorationCoexistence(t *testing.T) {
 		Model: "gpt-4",
 	}
 
-	// Run multiple selections to verify both mechanisms work
 	explorationSeen := make(map[int]bool)
 	alternativeSeen := make(map[int]bool)
 
 	for i := 0; i < 20; i++ {
 		result, err := selector.Select(ctx, req)
 		require.NoError(t, err)
-		require.GreaterOrEqual(t, len(result), 2, "should have at least 2 candidates for retry slots")
+		require.GreaterOrEqual(t, len(result), 2, "should have at least 2 candidates")
 
-		// Check last slot - could be exploration or metrics sampling alternative
-		lastCandidate := result[len(result)-1]
-		if lastCandidate.Channel.ID == ch3.ID {
+		// Check position 1 for exploration candidate (cold channel inserted after winner)
+		if len(result) > 1 && result[1].Channel.ID == ch3.ID {
 			explorationSeen[ch3.ID] = true
-		} else if lastCandidate.Channel.ID == ch2.ID {
-			alternativeSeen[ch2.ID] = true
+		}
+
+		// Check for metrics sampling alternative (appended at end)
+		if len(result) > 2 {
+			for _, c := range result[2:] {
+				if c.Channel.ID == ch2.ID {
+					alternativeSeen[ch2.ID] = true
+				}
+			}
 		}
 	}
 
-	// Both mechanisms should have had a chance to work
-	// Note: We can't guarantee both fire every time due to round-robin, but over 20 runs
-	// we should see evidence of both mechanisms
 	require.True(t, explorationSeen[ch3.ID] || alternativeSeen[ch2.ID],
 		"at least one mechanism (exploration or metrics sampling) should have assigned an alternative slot")
 }
@@ -705,4 +704,72 @@ func TestMetricsSamplingHotReload(t *testing.T) {
 		require.NoError(t, err)
 		require.LessOrEqual(t, len(result), 2, "phase 5: after disabling, should not exceed available channels")
 	}
+}
+
+func TestEffectiveSamplingRate(t *testing.T) {
+	tests := []struct {
+		name         string
+		baseRate     float64
+		requestCount int64
+		wantMin      float64
+		wantMax      float64
+	}{
+		{
+			name:         "zero requests with 0.2 base rate gives near-1.0",
+			baseRate:     0.2,
+			requestCount: 0,
+			wantMin:      0.95,
+			wantMax:      1.0,
+		},
+		{
+			name:         "5 requests with 0.2 base rate gives 0.6",
+			baseRate:     0.2,
+			requestCount: 5,
+			wantMin:      0.55,
+			wantMax:      0.65,
+		},
+		{
+			name:         "at ColdStartMinRequests returns base rate",
+			baseRate:     0.2,
+			requestCount: int64(ColdStartMinRequests),
+			wantMin:      0.2,
+			wantMax:      0.2,
+		},
+		{
+			name:         "above ColdStartMinRequests returns base rate",
+			baseRate:     0.2,
+			requestCount: 100,
+			wantMin:      0.2,
+			wantMax:      0.2,
+		},
+		{
+			name:         "zero base rate returns zero",
+			baseRate:     0,
+			requestCount: 0,
+			wantMin:      0,
+			wantMax:      0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := effectiveSamplingRate(tt.baseRate, tt.requestCount)
+			require.GreaterOrEqual(t, got, tt.wantMin, "rate should be >= %f", tt.wantMin)
+			require.LessOrEqual(t, got, tt.wantMax, "rate should be <= %f", tt.wantMax)
+		})
+	}
+}
+
+func TestEffectiveSamplingRateMonotonicDecrease(t *testing.T) {
+	baseRate := 0.2
+	var prevRate float64 = 1.1
+
+	for i := int64(0); i <= int64(ColdStartMinRequests)+5; i++ {
+		rate := effectiveSamplingRate(baseRate, i)
+		require.LessOrEqual(t, rate, prevRate+0.001,
+			"rate should monotonically decrease as request count increases at count=%d", i)
+		prevRate = rate
+	}
+
+	require.Equal(t, baseRate, prevRate, "should converge to base rate")
 }
