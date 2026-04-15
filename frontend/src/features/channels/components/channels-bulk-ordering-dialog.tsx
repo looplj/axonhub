@@ -20,6 +20,7 @@ const formatWeight = (value: number) => Math.round(value);
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
+// Weight 0 = highest priority (sorts to top), otherwise ascending by weight
 const weightSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) => {
   if (a.orderingWeight === 0 && b.orderingWeight === 0) return 0;
   if (a.orderingWeight === 0) return -1;
@@ -27,9 +28,15 @@ const weightSort = (a: { orderingWeight: number }, b: { orderingWeight: number }
   return a.orderingWeight - b.orderingWeight;
 };
 
-// Normalize ranks to sequential 1..N with 0 for unranked items
+// Normalize ranks to sequential 1..N with 0 preserved for highest-priority items
 const normalizeRanks = (items: Array<{ channel: ChannelSummary; orderingWeight: number }>) => {
-  return items.sort(weightSort);
+  const sorted = [...items].sort(weightSort);
+  let nextRank = 1;
+  for (const item of sorted) {
+    if (item.orderingWeight === 0) continue; // Preserve 0 (highest priority)
+    item.orderingWeight = nextRank++;
+  }
+  return sorted;
 };
 
 // Initialize channels from GraphQL edges
@@ -196,7 +203,7 @@ const ChannelOrderingItemComponent = memo(function ChannelOrderingItemComponent(
             inputMode='decimal'
             step='any'
             min={MIN_WEIGHT}
-            max={MAX_WEIGHT}
+            max={total}
             className='h-6 w-16 px-1 text-center text-xs'
             value={localWeight}
             onChange={(e) => setLocalWeight(e.target.value)}
@@ -295,7 +302,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
     setOrderedChannels((items) => {
       const channelCount = items.length;
       // Clamp manual weight to valid rank range [0, channelCount]
-      // 0 = unranked, 1..channelCount = valid rank positions
+      // 0 = highest priority, 1..channelCount = valid rank positions
       const clampedWeight = Math.min(Math.max(weight, 0), channelCount);
       const normalizedWeight = clampWeight(clampedWeight);
       const newItems = items.map((item) => (item.channel.id === id ? { ...item, orderingWeight: normalizedWeight } : item));
