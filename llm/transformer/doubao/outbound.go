@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -13,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
@@ -113,6 +115,8 @@ func (t *OutboundTransformer) TransformRequest(
 	switch llmReq.RequestType {
 	case llm.RequestTypeChat, "":
 		// continue
+	case llm.RequestTypeEmbedding:
+		return t.transformEmbeddingRequest(ctx, llmReq)
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationAPIRequest(llmReq)
 	case llm.RequestTypeVideo:
@@ -286,5 +290,51 @@ func encodeImageBytesToDataURL(b []byte) string {
 		return ""
 	}
 
-	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(b)
+	mediaType := http.DetectContentType(b)
+	if !strings.HasPrefix(mediaType, "image/") {
+		mediaType = "image/png"
+	}
+
+	return xurl.BuildDataURL(mediaType, base64.StdEncoding.EncodeToString(b), true)
+}
+
+func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
+	if httpResp != nil && httpResp.Request != nil {
+		switch httpResp.Request.RequestType {
+		case llm.RequestTypeEmbedding.String():
+			return t.transformEmbeddingResponse(ctx, httpResp)
+		case llm.RequestTypeVideo.String():
+			// fall through to video handling below
+		default:
+			return t.Outbound.TransformResponse(ctx, httpResp)
+		}
+	} else {
+		return t.Outbound.TransformResponse(ctx, httpResp)
+	}
+
+	// Video create returns {id}.
+	var resp seedanceCreateResponse
+	if err := json.Unmarshal(httpResp.Body, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal seedance create response: %w", err)
+	}
+
+	if strings.TrimSpace(resp.ID) == "" {
+		return nil, fmt.Errorf("%w: missing id in seedance create response", transformer.ErrInvalidResponse)
+	}
+
+	return &llm.Response{
+		ID:          resp.ID, // provider task id for persistence
+		Object:      "video.create",
+		Created:     time.Now().Unix(),
+		Model:       llmReqModelOrFallback(httpResp),
+		RequestType: llm.RequestTypeVideo,
+		APIFormat:   llm.APIFormatSeedanceVideo,
+		Choices:     []llm.Choice{},
+		Video: &llm.VideoResponse{
+			ID:        resp.ID,
+			Status:    "queued",
+			Model:     llmReqModelOrFallback(httpResp),
+			CreatedAt: time.Now().Unix(),
+		},
+	}, nil
 }

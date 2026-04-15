@@ -678,6 +678,30 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, req.Include)
 			},
 		},
+		{
+			name: "request with previous_response_id",
+			chatReq: &llm.Request{
+				Model:              "gpt-5.4",
+				PreviousResponseID: lo.ToPtr("resp_prev_123"),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Continue"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.PreviousResponseID)
+				require.Equal(t, "resp_prev_123", *req.PreviousResponseID)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -869,6 +893,39 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 				require.NotNil(t, result.Choices[0].Message)
 				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
 				require.Equal(t, "encrypted_data_here", *result.Choices[0].Message.ReasoningSignature)
+			},
+		},
+		{
+			name: "response with previous_response_id",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id": "resp_456",
+					"object": "response",
+					"created_at": 1759161016,
+					"status": "completed",
+					"model": "gpt-5.4",
+					"previous_response_id": "resp_prev_123",
+					"output": [
+						{
+							"id": "msg_456",
+							"type": "message",
+							"status": "completed",
+							"content": [
+								{
+									"type": "output_text",
+									"text": "Continued response"
+								}
+							],
+							"role": "assistant"
+						}
+					]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Response) {
+				require.NotNil(t, result.PreviousResponseID)
+				require.Equal(t, "resp_prev_123", *result.PreviousResponseID)
 			},
 		},
 	}

@@ -86,6 +86,24 @@ func TestCodexOutbound_AllowsInboundIdentityOverrides(t *testing.T) {
 	assert.Contains(t, strings.ToLower(finalReq.Header.Get("User-Agent")), legacyCodexOriginator())
 }
 
+func TestCodexOutbound_PassthroughModernCodexHeaders(t *testing.T) {
+	ctx := context.Background()
+	sim := newCodexSimulator(t)
+	req := newCodexChatCompletionRequest(t)
+	req.Header.Set("X-Codex-Turn-Metadata", `{"session_id":"turn-session","turn_id":"turn-123"}`)
+	req.Header.Set("X-Codex-Window-Id", "window-123")
+	req.Header.Set("X-Client-Request-Id", "request-123")
+	req.Header.Set("X-Codex-Beta-Features", "js_repl")
+
+	finalReq, err := sim.Simulate(ctx, req)
+	require.NoError(t, err)
+
+	assert.Equal(t, `{"session_id":"turn-session","turn_id":"turn-123"}`, finalReq.Header.Get("X-Codex-Turn-Metadata"))
+	assert.Equal(t, "window-123", finalReq.Header.Get("X-Codex-Window-Id"))
+	assert.Equal(t, "request-123", finalReq.Header.Get("X-Client-Request-Id"))
+	assert.Equal(t, "js_repl", finalReq.Header.Get("X-Codex-Beta-Features"))
+}
+
 func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 	t.Run("inbound Session_id header is used", func(t *testing.T) {
 		ctx := shared.WithSessionID(context.Background(), "context-session")
@@ -99,10 +117,34 @@ func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 		assert.Equal(t, "header-session", finalReq.Header.Get("Session_id"))
 	})
 
+	t.Run("no inbound Session_id uses session_id from X-Codex-Turn-Metadata", func(t *testing.T) {
+		ctx := shared.WithSessionID(context.Background(), "context-session")
+		sim := newCodexSimulator(t)
+		req := newCodexChatCompletionRequest(t)
+		req.Header.Set("X-Codex-Turn-Metadata", `{"session_id":"turn-session","turn_id":"turn-123"}`)
+
+		finalReq, err := sim.Simulate(ctx, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "turn-session", finalReq.Header.Get("Session_id"))
+	})
+
 	t.Run("no inbound header but context has session uses context", func(t *testing.T) {
 		ctx := shared.WithSessionID(context.Background(), "context-session")
 		sim := newCodexSimulator(t)
 		req := newCodexChatCompletionRequest(t)
+
+		finalReq, err := sim.Simulate(ctx, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "context-session", finalReq.Header.Get("Session_id"))
+	})
+
+	t.Run("invalid X-Codex-Turn-Metadata falls back to context session", func(t *testing.T) {
+		ctx := shared.WithSessionID(context.Background(), "context-session")
+		sim := newCodexSimulator(t)
+		req := newCodexChatCompletionRequest(t)
+		req.Header.Set("X-Codex-Turn-Metadata", `{"session_id":`)
 
 		finalReq, err := sim.Simulate(ctx, req)
 		require.NoError(t, err)

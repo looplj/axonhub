@@ -35,6 +35,7 @@ type Handlers struct {
 	Copilot        *api.CopilotHandlers
 	RequestContent *api.RequestContentHandlers
 	OIDC           *api.OIDCHandlers
+	RequestPreview *api.RequestPreviewHandlers
 }
 
 type Services struct {
@@ -128,6 +129,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			"/requests/:request_id/content",
 			middleware.WithTimeout(server.Config.RequestTimeout),
 			handlers.RequestContent.DownloadRequestContent,
+		)
+		adminGroup.GET(
+			"/requests/:request_id/preview",
+			middleware.WithTimeout(server.Config.RequestTimeout),
+			handlers.RequestPreview.PreviewRequest,
 		)
 	}
 

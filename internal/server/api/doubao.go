@@ -22,6 +22,7 @@ type DoubaoHandlersParams struct {
 	VideoService    *biz.VideoService
 	ChannelService  *biz.ChannelService
 	ModelService    *biz.ModelService
+	DefaultSelector *orchestrator.DefaultSelector
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
@@ -44,7 +45,7 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 		VideoService: params.VideoService,
 		CreateOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 			params.ChannelService,
-			params.ModelService,
+			params.DefaultSelector,
 			params.RequestService,
 			params.HttpClient,
 			inbound,

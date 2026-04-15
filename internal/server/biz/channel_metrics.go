@@ -493,10 +493,12 @@ func deriveErrorMessage(errorCode int) string {
 type PerformanceRecord struct {
 	ChannelID        int
 	APIKey           string // API key used for the request (sensitive, do not log full value)
-	StartTime        time.Time
-	FirstTokenTime   *time.Time
-	EndTime          time.Time
-	Stream           bool
+	StartTime           time.Time
+	FirstTokenTime      *time.Time
+	ReasoningStartTime  *time.Time
+	ReasoningEndTime    *time.Time
+	EndTime             time.Time
+	Stream              bool
 	Success          bool
 	Canceled         bool
 	RequestCompleted bool
@@ -535,6 +537,15 @@ func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLaten
 	return firstTokenLatencyMs, requestLatencyMs, tokensPerSecond
 }
 
+// CalculateReasoningDurationMs calculates the reasoning duration.
+func (m *PerformanceRecord) CalculateReasoningDurationMs() int64 {
+	if m.ReasoningStartTime == nil || m.ReasoningEndTime == nil {
+		return 0
+	}
+	duration := m.ReasoningEndTime.Sub(*m.ReasoningStartTime)
+	return duration.Milliseconds()
+}
+
 // MarkSuccess marks the request as completed.
 func (m *PerformanceRecord) MarkSuccess() {
 	m.Success = true
@@ -547,6 +558,22 @@ func (m *PerformanceRecord) MarkFirstToken() {
 	if m.FirstTokenTime == nil {
 		now := time.Now()
 		m.FirstTokenTime = &now
+	}
+}
+
+// MarkReasoningStart marks the reasoning start time.
+func (m *PerformanceRecord) MarkReasoningStart() {
+	if m.ReasoningStartTime == nil {
+		now := time.Now()
+		m.ReasoningStartTime = &now
+	}
+}
+
+// MarkReasoningEnd marks the reasoning end time.
+func (m *PerformanceRecord) MarkReasoningEnd() {
+	if m.ReasoningEndTime == nil {
+		now := time.Now()
+		m.ReasoningEndTime = &now
 	}
 }
 

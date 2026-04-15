@@ -35,6 +35,8 @@ type OutboundPersistentStream struct {
 	transformer    transformer.Outbound
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
+	chunkBuffer    *biz.ChunkBuffer
+	previewKey     string
 	closed         bool
 	state          *PersistenceState
 }
@@ -52,7 +54,7 @@ func NewOutboundPersistentStream(
 	perf *biz.PerformanceRecord,
 	state *PersistenceState,
 ) *OutboundPersistentStream {
-	return &OutboundPersistentStream{
+	s := &OutboundPersistentStream{
 		ctx:             ctx,
 		stream:          stream,
 		request:         request,
@@ -65,6 +67,17 @@ func NewOutboundPersistentStream(
 		closed:          false,
 		state:           state,
 	}
+
+	if state.LivePreview && requestExec != nil {
+		s.previewKey = biz.ExecutionKey(requestExec.ID)
+		s.chunkBuffer = biz.DefaultStreamPreviewRegistry.GetBuffer(s.previewKey)
+		if s.chunkBuffer == nil {
+			s.chunkBuffer = biz.NewChunkBuffer()
+		}
+		biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
+	}
+
+	return s
 }
 
 func (ts *OutboundPersistentStream) Next() bool {
@@ -75,6 +88,9 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
+		if ts.chunkBuffer != nil {
+			ts.chunkBuffer.Append(event)
+		}
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
 		// response.completed; for Anthropic Messages API this is message_stop.
@@ -97,6 +113,12 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	ts.closed = true
 	ctx := ts.ctx
+	if ts.previewKey != "" {
+		defer biz.DefaultStreamPreviewRegistry.Unregister(ts.previewKey)
+	}
+	if ts.chunkBuffer != nil {
+		defer ts.chunkBuffer.Close()
+	}
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
 

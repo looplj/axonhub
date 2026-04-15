@@ -41,11 +41,12 @@ type responsesOutboundStream struct {
 
 // outboundStreamState holds the state for a streaming session.
 type outboundStreamState struct {
-	responseID    string
-	responseModel string
-	usage         *llm.Usage
-	created       int64
-	scope         shared.TransportScope
+	responseID         string
+	responseModel      string
+	previousResponseID *string
+	usage              *llm.Usage
+	created            int64
+	scope              shared.TransportScope
 
 	// Content accumulation
 	textContent      strings.Builder
@@ -134,10 +135,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	// Build base response
 	resp := &llm.Response{
-		Object:  "chat.completion.chunk",
-		ID:      s.state.responseID,
-		Model:   s.state.responseModel,
-		Created: s.state.created,
+		Object:             "chat.completion.chunk",
+		ID:                 s.state.responseID,
+		Model:              s.state.responseModel,
+		Created:            s.state.created,
+		PreviousResponseID: s.state.previousResponseID,
 	}
 
 	//nolint:exhaustive //Only process events we care about.
@@ -147,10 +149,12 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			s.state.responseID = streamEvent.Response.ID
 			s.state.responseModel = streamEvent.Response.Model
 			s.state.created = streamEvent.Response.CreatedAt
+			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 
 			resp.ID = s.state.responseID
 			resp.Model = s.state.responseModel
 			resp.Created = s.state.created
+			resp.PreviousResponseID = s.state.previousResponseID
 
 			if streamEvent.Response.Usage != nil {
 				s.state.usage = streamEvent.Response.Usage.ToUsage()
@@ -173,6 +177,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			s.state.responseID = streamEvent.Response.ID
 			s.state.responseModel = streamEvent.Response.Model
 			s.state.created = streamEvent.Response.CreatedAt
+			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 
 			if streamEvent.Response.Usage != nil {
 				s.state.usage = streamEvent.Response.Usage.ToUsage()
@@ -417,6 +422,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseCompleted:
 		// Response completed - emit two events: one with finish_reason, one with usage
+		if streamEvent.Response != nil {
+			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
+			resp.PreviousResponseID = s.state.previousResponseID
+		}
+
 		finishReason := "stop"
 		if len(s.state.toolCalls) > 0 {
 			finishReason = "tool_calls"
@@ -435,12 +445,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Response != nil && streamEvent.Response.Usage != nil {
 			s.state.usage = streamEvent.Response.Usage.ToUsage()
 			usageResp := &llm.Response{
-				Object:  "chat.completion.chunk",
-				ID:      s.state.responseID,
-				Model:   s.state.responseModel,
-				Created: s.state.created,
-				Choices: []llm.Choice{},
-				Usage:   s.state.usage,
+				Object:             "chat.completion.chunk",
+				ID:                 s.state.responseID,
+				Model:              s.state.responseModel,
+				Created:            s.state.created,
+				PreviousResponseID: s.state.previousResponseID,
+				Choices:            []llm.Choice{},
+				Usage:              s.state.usage,
 			}
 
 			s.enqueue(resp)

@@ -15,10 +15,11 @@ import (
 // streamAggregator holds the state for aggregating stream chunks.
 type streamAggregator struct {
 	// Response metadata
-	responseID string
-	model      string
-	createdAt  int64
-	status     string
+	responseID         string
+	model              string
+	createdAt          int64
+	status             string
+	previousResponseID *string
 
 	// Output items - keyed by output_index.
 	// Some streams may (unexpectedly) reuse output_index for multiple items, so we store a slice.
@@ -207,6 +208,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			a.responseID = ev.Response.ID
 			a.model = ev.Response.Model
 			a.createdAt = ev.Response.CreatedAt
+			a.previousResponseID = ev.Response.PreviousResponseID
 
 			if ev.Response.Usage != nil {
 				a.usage = ev.Response.Usage
@@ -444,8 +446,11 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 
 	case StreamEventTypeResponseCompleted:
 		a.status = "completed"
-		if ev.Response != nil && ev.Response.Usage != nil {
-			a.usage = ev.Response.Usage
+		if ev.Response != nil {
+			a.previousResponseID = ev.Response.PreviousResponseID
+			if ev.Response.Usage != nil {
+				a.usage = ev.Response.Usage
+			}
 		}
 
 	case StreamEventTypeResponseFailed:
@@ -571,12 +576,13 @@ func (a *streamAggregator) buildResponse() *Response {
 	}
 
 	return &Response{
-		Object:    "response",
-		ID:        a.responseID,
-		Model:     a.model,
-		CreatedAt: a.createdAt,
-		Status:    lo.ToPtr(a.status),
-		Output:    output,
-		Usage:     a.usage,
+		Object:             "response",
+		ID:                 a.responseID,
+		Model:              a.model,
+		CreatedAt:          a.createdAt,
+		Status:             lo.ToPtr(a.status),
+		Output:             output,
+		Usage:              a.usage,
+		PreviousResponseID: a.previousResponseID,
 	}
 }

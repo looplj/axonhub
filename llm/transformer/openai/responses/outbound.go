@@ -179,6 +179,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
 		Reasoning:            convertReasoning(llmReq),
 		PromptCacheKey:       llmReq.PromptCacheKey,
+		PreviousResponseID:   llmReq.PreviousResponseID,
 		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, "include"),
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
@@ -286,11 +287,12 @@ func (t *OutboundTransformer) transformStandardResponse(
 	}
 
 	llmResp := &llm.Response{
-		Object:  "chat.completion",
-		ID:      resp.ID,
-		Model:   resp.Model,
-		Created: resp.CreatedAt,
-		Choices: make([]llm.Choice, 0),
+		Object:             "chat.completion",
+		ID:                 resp.ID,
+		Model:              resp.Model,
+		Created:            resp.CreatedAt,
+		PreviousResponseID: resp.PreviousResponseID,
+		Choices:            make([]llm.Choice, 0),
 	}
 
 	// Convert usage if present

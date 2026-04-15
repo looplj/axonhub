@@ -125,6 +125,11 @@ func MetricsFirstTokenLatencyMs(v int64) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsFirstTokenLatencyMs, v))
 }
 
+// MetricsReasoningDurationMs applies equality check predicate on the "metrics_reasoning_duration_ms" field. It's identical to MetricsReasoningDurationMsEQ.
+func MetricsReasoningDurationMs(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsReasoningDurationMs, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldCreatedAt, v))
@@ -803,6 +808,56 @@ func MetricsFirstTokenLatencyMsIsNil() predicate.RequestExecution {
 // MetricsFirstTokenLatencyMsNotNil applies the NotNil predicate on the "metrics_first_token_latency_ms" field.
 func MetricsFirstTokenLatencyMsNotNil() predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldNotNull(FieldMetricsFirstTokenLatencyMs))
+}
+
+// MetricsReasoningDurationMsEQ applies the EQ predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsEQ(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldMetricsReasoningDurationMs, v))
+}
+
+// MetricsReasoningDurationMsNEQ applies the NEQ predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsNEQ(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldMetricsReasoningDurationMs, v))
+}
+
+// MetricsReasoningDurationMsIn applies the In predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsIn(vs ...int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldMetricsReasoningDurationMs, vs...))
+}
+
+// MetricsReasoningDurationMsNotIn applies the NotIn predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsNotIn(vs ...int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldMetricsReasoningDurationMs, vs...))
+}
+
+// MetricsReasoningDurationMsGT applies the GT predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsGT(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldMetricsReasoningDurationMs, v))
+}
+
+// MetricsReasoningDurationMsGTE applies the GTE predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsGTE(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldMetricsReasoningDurationMs, v))
+}
+
+// MetricsReasoningDurationMsLT applies the LT predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsLT(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldMetricsReasoningDurationMs, v))
+}
+
+// MetricsReasoningDurationMsLTE applies the LTE predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsLTE(v int64) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldMetricsReasoningDurationMs, v))
+}
+
+// MetricsReasoningDurationMsIsNil applies the IsNil predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldMetricsReasoningDurationMs))
+}
+
+// MetricsReasoningDurationMsNotNil applies the NotNil predicate on the "metrics_reasoning_duration_ms" field.
+func MetricsReasoningDurationMsNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldMetricsReasoningDurationMs))
 }
 
 // RequestHeadersIsNil applies the IsNil predicate on the "request_headers" field.

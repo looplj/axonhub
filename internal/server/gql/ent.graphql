@@ -1597,6 +1597,10 @@ input CreateRequestInput {
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
   """
+  Reasoning/thinking duration in milliseconds
+  """
+  metricsReasoningDurationMs: Int
+  """
   whether the generated content has been saved to external storage
   """
   contentSaved: Boolean
@@ -4169,6 +4173,10 @@ type Request implements Node {
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
   """
+  Reasoning/thinking duration in milliseconds
+  """
+  metricsReasoningDurationMs: Int
+  """
   whether the generated content has been saved to external storage
   """
   contentSaved: Boolean!
@@ -4308,6 +4316,10 @@ type RequestExecution implements Node {
   stream: Boolean!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
+  """
+  Reasoning/thinking duration in milliseconds
+  """
+  metricsReasoningDurationMs: Int
   """
   Request headers
   """
@@ -4573,6 +4585,19 @@ input RequestExecutionWhereInput {
   metricsFirstTokenLatencyMsIsNil: Boolean
   metricsFirstTokenLatencyMsNotNil: Boolean
   """
+  metrics_reasoning_duration_ms field predicates
+  """
+  metricsReasoningDurationMs: Int
+  metricsReasoningDurationMsNEQ: Int
+  metricsReasoningDurationMsIn: [Int!]
+  metricsReasoningDurationMsNotIn: [Int!]
+  metricsReasoningDurationMsGT: Int
+  metricsReasoningDurationMsGTE: Int
+  metricsReasoningDurationMsLT: Int
+  metricsReasoningDurationMsLTE: Int
+  metricsReasoningDurationMsIsNil: Boolean
+  metricsReasoningDurationMsNotNil: Boolean
+  """
   request edge predicates
   """
   hasRequest: Boolean
@@ -4821,6 +4846,19 @@ input RequestWhereInput {
   metricsFirstTokenLatencyMsLTE: Int
   metricsFirstTokenLatencyMsIsNil: Boolean
   metricsFirstTokenLatencyMsNotNil: Boolean
+  """
+  metrics_reasoning_duration_ms field predicates
+  """
+  metricsReasoningDurationMs: Int
+  metricsReasoningDurationMsNEQ: Int
+  metricsReasoningDurationMsIn: [Int!]
+  metricsReasoningDurationMsNotIn: [Int!]
+  metricsReasoningDurationMsGT: Int
+  metricsReasoningDurationMsGTE: Int
+  metricsReasoningDurationMsLT: Int
+  metricsReasoningDurationMsLTE: Int
+  metricsReasoningDurationMsIsNil: Boolean
+  metricsReasoningDurationMsNotNil: Boolean
   """
   content_saved field predicates
   """
@@ -5870,6 +5908,11 @@ input UpdateRequestInput {
   clearMetricsLatencyMs: Boolean
   metricsFirstTokenLatencyMs: Int
   clearMetricsFirstTokenLatencyMs: Boolean
+  """
+  Reasoning/thinking duration in milliseconds
+  """
+  metricsReasoningDurationMs: Int
+  clearMetricsReasoningDurationMs: Boolean
   """
   whether the generated content has been saved to external storage
   """

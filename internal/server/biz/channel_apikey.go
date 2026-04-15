@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcontext"
 )
 
 // DisableAPIKey 禁用指定 key；若所有 key 都不可用则禁用 channel.
@@ -61,7 +62,8 @@ func (svc *ChannelService) DisableAPIKey(ctx context.Context, channelID int, key
 		SetDisabledAPIKeys(newDisabledKeys)
 
 	// 如果没有可用 key 了，禁用整个 channel
-	if len(enabledKeys) == 0 {
+	channelDisabled := len(enabledKeys) == 0
+	if channelDisabled {
 		update.SetStatus(channel.StatusDisabled)
 		update.SetErrorMessage(fmt.Sprintf("All API keys disabled (last error: %d)", errorCode))
 		log.Warn(ctx, "Channel disabled because all API keys are disabled",
@@ -79,7 +81,21 @@ func (svc *ChannelService) DisableAPIKey(ctx context.Context, channelID int, key
 		log.Int("error_code", errorCode),
 	)
 
-	// Reload channels to reflect the change in load balancer
+	if channelDisabled {
+		// Synchronously reload the local cache to immediately stop selecting this channel.
+		// This matches the behavior of markChannelUnavailable.
+		reloadCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		if err := svc.enabledChannelsCache.Load(reloadCtx, true); err != nil {
+			log.Warn(ctx, "Failed to synchronously reload channels after API key exhaustion",
+				log.Int("channel_id", channelID),
+				log.Cause(err),
+			)
+		}
+	}
+
+	// Also notify other instances via the watcher for cross-instance cache invalidation.
 	svc.asyncReloadChannels()
 
 	return nil
@@ -283,8 +299,6 @@ func (svc *ChannelService) DeleteDisabledAPIKeys(ctx context.Context, channelID 
 		log.Int("channel_id", channelID),
 		log.Int("count", len(keys)),
 	)
-
-	svc.asyncReloadChannels()
 
 	// Check if we had to preserve a key
 	result := &DeleteDisabledAPIKeysResult{Success: true}

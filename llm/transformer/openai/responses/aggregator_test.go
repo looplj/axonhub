@@ -259,6 +259,52 @@ func TestAggregateStreamChunks_BasicEvents(t *testing.T) {
 	require.Equal(t, int64(5), meta.Usage.CompletionTokens)
 }
 
+func TestAggregateStreamChunks_PreservesPreviousResponseID(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type": "response.created",
+				"sequence_number": 0,
+				"response": {
+					"id": "resp_test_prev",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-5.4",
+					"status": "in_progress",
+					"previous_response_id": "resp_prev_123",
+					"output": []
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type": "response.completed",
+				"sequence_number": 1,
+				"response": {
+					"id": "resp_test_prev",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-5.4",
+					"status": "completed",
+					"previous_response_id": "resp_prev_123",
+					"output": []
+				}
+			}`),
+		},
+	}
+
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+
+	var resp Response
+	err = json.Unmarshal(resultBytes, &resp)
+	require.NoError(t, err)
+	require.NotNil(t, resp.PreviousResponseID)
+	require.Equal(t, "resp_prev_123", *resp.PreviousResponseID)
+}
+
 func TestAggregateStreamChunks_SkipsInvalidJSON(t *testing.T) {
 	chunks := []*httpclient.StreamEvent{
 		{

@@ -59,8 +59,8 @@ AxonHub 提供对 OpenAI Responses API 的部分支持。该 API 为单轮交互
 **端点：**
 - `POST /v1/responses` - 生成响应
 
-**限制：**
-- ❌ **不支持** `previous_response_id` - 对话历史需要在客户端管理
+**能力：**
+- ✅ 支持 `previous_response_id` 透传，可用于同一上游 channel 上的连续 Responses 对话复用
 - ✅ 基本响应生成完全可用
 - ✅ 支持流式响应
 
@@ -84,9 +84,10 @@ client := openai.NewClient(
 
 ctx := context.Background()
 
-// 生成响应（不支持 previous_response_id）
+// 生成响应（支持同一上游 channel 的 previous_response_id 透传）
 params := responses.ResponseNewParams{
     Model: shared.ResponsesModel("gpt-4o"),
+    PreviousResponseID: openai.String("resp_prev_123"),
     Input: responses.ResponseNewParamsInputUnion{
         OfString: openai.String("你好，最近怎么样？"),
     },

@@ -12,11 +12,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage['role'];
+  fullWidth?: boolean;
 };
 
-export const Message = ({ className, from, ...props }: MessageProps) => (
+export const Message = ({ className, from, fullWidth, ...props }: MessageProps) => (
   <div
-    className={cn('group flex w-full max-w-[80%] gap-2', from === 'user' ? 'is-user ml-auto justify-end' : 'is-assistant', className)}
+    className={cn(
+      'group flex w-full gap-2',
+      from === 'user' ? 'is-user ml-auto justify-end max-w-[80%]' : 'is-assistant',
+      !fullWidth && from !== 'user' && 'max-w-[80%]',
+      className
+    )}
     {...props}
   />
 );

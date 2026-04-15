@@ -436,6 +436,201 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 	require.Equal(t, "codex-session-123", capturedSessionID)
 }
 
+func TestWithTrace_CodexTurnMetadataSetsTrace(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:       "AH-Trace-Id",
+		CodexTraceEnabled: true,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var (
+		capturedTraceID   string
+		capturedSessionID string
+	)
+
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+
+		capturedTraceID = trace.TraceID
+
+		sessionID, ok := shared.GetSessionID(c.Request.Context())
+		require.True(t, ok)
+
+		capturedSessionID = sessionID
+
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte("{}")))
+	req.Header.Set("X-Codex-Turn-Metadata", `{"session_id":"codex-turn-session-123","turn_id":"turn-1"}`)
+
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "codex-turn-session-123", capturedTraceID)
+	require.Equal(t, "codex-turn-session-123", capturedSessionID)
+}
+
+func TestWithTrace_CodexHeaderHasPriorityOverTurnMetadata(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:       "AH-Trace-Id",
+		CodexTraceEnabled: true,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var (
+		capturedTraceID   string
+		capturedSessionID string
+	)
+
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+
+		capturedTraceID = trace.TraceID
+
+		sessionID, ok := shared.GetSessionID(c.Request.Context())
+		require.True(t, ok)
+
+		capturedSessionID = sessionID
+
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte("{}")))
+	req.Header.Set("Session_id", "codex-session-123")
+	req.Header.Set("X-Codex-Turn-Metadata", `{"session_id":"codex-turn-session-123","turn_id":"turn-1"}`)
+
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "codex-session-123", capturedTraceID)
+	require.Equal(t, "codex-session-123", capturedSessionID)
+}
+
+func TestWithTrace_CodexTurnMetadataInvalidOrMissingSessionDoesNotSetTrace(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:       "AH-Trace-Id",
+		CodexTraceEnabled: true,
+	}
+
+	testCases := []struct {
+		name   string
+		header string
+	}{
+		{
+			name:   "invalid json",
+			header: `{"session_id":`,
+		},
+		{
+			name:   "missing session_id",
+			header: `{"turn_id":"turn-1"}`,
+		},
+		{
+			name:   "empty session_id",
+			header: `{"session_id":"   ","turn_id":"turn-1"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			router, client, traceService := setupTestTraceMiddleware(t)
+			defer client.Close()
+
+			ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+			ctx = ent.NewContext(ctx, client)
+
+			testProject, err := client.Project.Create().
+				SetName("test-project").
+				SetStatus(project.StatusActive).
+				Save(ctx)
+			require.NoError(t, err)
+
+			router.Use(func(c *gin.Context) {
+				ctx := authz.WithTestBypass(c.Request.Context())
+				ctx = ent.NewContext(ctx, client)
+				ctx = contexts.WithProjectID(ctx, testProject.ID)
+				c.Request = c.Request.WithContext(ctx)
+				c.Next()
+			})
+			router.Use(WithTrace(config, traceService))
+
+			var (
+				hasTrace   bool
+				hasSession bool
+			)
+
+			router.POST("/v1/chat/completions", func(c *gin.Context) {
+				_, hasTrace = contexts.GetTrace(c.Request.Context())
+				_, hasSession = shared.GetSessionID(c.Request.Context())
+				c.Status(http.StatusOK)
+			})
+
+			req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte("{}")))
+			req.Header.Set("X-Codex-Turn-Metadata", tc.header)
+
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Code)
+			require.False(t, hasTrace)
+			require.False(t, hasSession)
+		})
+	}
+}
+
 func TestWithTrace_CodexSessionMissingDoesNotSetTrace(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

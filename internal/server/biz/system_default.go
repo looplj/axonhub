@@ -2,6 +2,7 @@ package biz
 
 var defaultStoragePolicy = StoragePolicy{
 	StoreChunks:       false,
+	LivePreview:       false,
 	StoreRequestBody:  true,
 	StoreResponseBody: true,
 	CleanupOptions: []CleanupOption{

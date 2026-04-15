@@ -92,6 +92,9 @@ func (Request) Fields() []ent.Field {
 		field.Int64("metrics_latency_ms").Optional().Nillable(),
 		// First token latency in milliseconds (only for streaming requests)
 		field.Int64("metrics_first_token_latency_ms").Optional().Nillable(),
+		// Reasoning/thinking duration in milliseconds
+		field.Int64("metrics_reasoning_duration_ms").Optional().Nillable().Comment("Reasoning/thinking duration in milliseconds"),
+
 
 		// ContentSaved indicates whether the generated content (e.g. video, audio) has been downloaded and saved to external storage.
 		field.Bool("content_saved").

@@ -90,11 +90,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	rawSessionID := ""
 	rawOriginator := ""
 	rawUserAgent := ""
+	rawTurnMetadata := ""
+	var rawHeaders http.Header
 
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		rawSessionID = llmReq.RawRequest.Headers.Get("Session_id")
+		rawHeaders = llmReq.RawRequest.Headers
+		rawSessionID = llmReq.RawRequest.Headers.Get(SessionHeader)
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
+		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
 	}
 
 	creds, err := t.tokens.Get(ctx)
@@ -163,13 +167,21 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.Headers.Set("User-Agent", rawUserAgent)
 	}
 
+	for _, header := range PassthroughHeaders {
+		if value := rawHeaders.Get(header); value != "" {
+			hreq.Headers.Set(header, value)
+		}
+	}
+
 	if rawSessionID != "" {
-		hreq.Headers.Set("Session_id", rawSessionID)
-	} else if hreq.Headers.Get("Session_id") == "" {
+		hreq.Headers.Set(SessionHeader, rawSessionID)
+	} else if sessionID := ExtractSessionIDFromTurnMetadata(rawTurnMetadata); sessionID != "" {
+		hreq.Headers.Set(SessionHeader, sessionID)
+	} else if hreq.Headers.Get(SessionHeader) == "" {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
-			hreq.Headers.Set("Session_id", sessionID)
+			hreq.Headers.Set(SessionHeader, sessionID)
 		} else {
-			hreq.Headers.Set("Session_id", uuid.NewString())
+			hreq.Headers.Set(SessionHeader, uuid.NewString())
 		}
 	}
 

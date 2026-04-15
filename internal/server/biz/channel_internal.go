@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -74,4 +75,13 @@ func (svc *ChannelService) initChannelPerformances(ctx context.Context) {
 	if err := svc.loadChannelPerformances(ctx); err != nil {
 		log.Warn(ctx, "failed to load channel performances", log.Cause(err))
 	}
+}
+
+func (svc *ChannelService) ReloadEnabledChannelsCache(ctx context.Context) error {
+	ctx = authz.WithSystemBypass(ctx, "channel-reload-enabled-channels-cache")
+	if err := svc.enabledChannelsCache.Load(ctx, true); err != nil {
+		return fmt.Errorf("failed to reload enabled channels cache: %w", err)
+	}
+
+	return nil
 }

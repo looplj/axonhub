@@ -494,6 +494,12 @@ type ComplexityRoot struct {
 		ResourceType func(childComplexity int) int
 	}
 
+	ClearCachePayload struct {
+		Message func(childComplexity int) int
+		Success func(childComplexity int) int
+		Targets func(childComplexity int) int
+	}
+
 	CostItem struct {
 		ItemCode      func(childComplexity int) int
 		Quantity      func(childComplexity int) int
@@ -625,6 +631,12 @@ type ComplexityRoot struct {
 
 	GCS struct {
 		BucketName func(childComplexity int) int
+	}
+
+	GetCacheDiagnosticsPayload struct {
+		Content  func(childComplexity int) int
+		FileName func(childComplexity int) int
+		Targets  func(childComplexity int) int
 	}
 
 	HeaderEntry struct {
@@ -808,6 +820,7 @@ type ComplexityRoot struct {
 		BulkRecoverChannels                  func(childComplexity int, ids []*objects.GUID) int
 		BulkUpdateChannelOrdering            func(childComplexity int, input BulkUpdateChannelOrderingInput) int
 		CheckProviderQuotas                  func(childComplexity int) int
+		ClearCache                           func(childComplexity int, input ClearCacheInput) int
 		CompleteAutoDisableChannelOnboarding func(childComplexity int, input CompleteAutoDisableChannelOnboardingInput) int
 		CompleteOnboarding                   func(childComplexity int, input CompleteOnboardingInput) int
 		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
@@ -1131,6 +1144,7 @@ type ComplexityRoot struct {
 		FastestChannels              func(childComplexity int, input FastestChannelsInput) int
 		FastestModels                func(childComplexity int, input FastestChannelsInput) int
 		FetchModels                  func(childComplexity int, input biz.FetchModelsInput) int
+		GetCacheDiagnostics          func(childComplexity int, input *GetCacheDiagnosticsInput) int
 		Me                           func(childComplexity int) int
 		ModelPerformanceStats        func(childComplexity int) int
 		Models                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
@@ -1199,6 +1213,7 @@ type ComplexityRoot struct {
 		ID                         func(childComplexity int) int
 		MetricsFirstTokenLatencyMs func(childComplexity int) int
 		MetricsLatencyMs           func(childComplexity int) int
+		MetricsReasoningDurationMs func(childComplexity int) int
 		ModelID                    func(childComplexity int) int
 		Project                    func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
@@ -1238,6 +1253,7 @@ type ComplexityRoot struct {
 		ID                         func(childComplexity int) int
 		MetricsFirstTokenLatencyMs func(childComplexity int) int
 		MetricsLatencyMs           func(childComplexity int) int
+		MetricsReasoningDurationMs func(childComplexity int) int
 		ModelID                    func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
 		Request                    func(childComplexity int) int
@@ -1424,6 +1440,7 @@ type ComplexityRoot struct {
 
 	StoragePolicy struct {
 		CleanupOptions    func(childComplexity int) int
+		LivePreview       func(childComplexity int) int
 		StoreChunks       func(childComplexity int) int
 		StoreRequestBody  func(childComplexity int) int
 		StoreResponseBody func(childComplexity int) int
@@ -1938,6 +1955,7 @@ type MutationResolver interface {
 	SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error)
 	DeleteProxyPreset(ctx context.Context, url string) (bool, error)
 	UpdateUserAgentPassThroughSettings(ctx context.Context, input UpdateUserAgentPassThroughSettingsInput) (bool, error)
+	ClearCache(ctx context.Context, input ClearCacheInput) (*ClearCachePayload, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
 	BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error)
 	UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error)
@@ -2050,6 +2068,7 @@ type QueryResolver interface {
 	VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error)
 	ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, error)
 	UserAgentPassThroughSettings(ctx context.Context) (*UserAgentPassThroughSettings, error)
+	GetCacheDiagnostics(ctx context.Context, input *GetCacheDiagnosticsInput) (*GetCacheDiagnosticsPayload, error)
 	FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error)
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
@@ -3654,6 +3673,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CleanupOption.ResourceType(childComplexity), true
 
+	case "ClearCachePayload.message":
+		if e.complexity.ClearCachePayload.Message == nil {
+			break
+		}
+
+		return e.complexity.ClearCachePayload.Message(childComplexity), true
+	case "ClearCachePayload.success":
+		if e.complexity.ClearCachePayload.Success == nil {
+			break
+		}
+
+		return e.complexity.ClearCachePayload.Success(childComplexity), true
+	case "ClearCachePayload.targets":
+		if e.complexity.ClearCachePayload.Targets == nil {
+			break
+		}
+
+		return e.complexity.ClearCachePayload.Targets(childComplexity), true
+
 	case "CostItem.itemCode":
 		if e.complexity.CostItem.ItemCode == nil {
 			break
@@ -4138,6 +4176,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GCS.BucketName(childComplexity), true
+
+	case "GetCacheDiagnosticsPayload.content":
+		if e.complexity.GetCacheDiagnosticsPayload.Content == nil {
+			break
+		}
+
+		return e.complexity.GetCacheDiagnosticsPayload.Content(childComplexity), true
+	case "GetCacheDiagnosticsPayload.fileName":
+		if e.complexity.GetCacheDiagnosticsPayload.FileName == nil {
+			break
+		}
+
+		return e.complexity.GetCacheDiagnosticsPayload.FileName(childComplexity), true
+	case "GetCacheDiagnosticsPayload.targets":
+		if e.complexity.GetCacheDiagnosticsPayload.Targets == nil {
+			break
+		}
+
+		return e.complexity.GetCacheDiagnosticsPayload.Targets(childComplexity), true
 
 	case "HeaderEntry.key":
 		if e.complexity.HeaderEntry.Key == nil {
@@ -4958,6 +5015,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CheckProviderQuotas(childComplexity), true
+	case "Mutation.clearCache":
+		if e.complexity.Mutation.ClearCache == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_clearCache_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ClearCache(childComplexity, args["input"].(ClearCacheInput)), true
 	case "Mutation.completeAutoDisableChannelOnboarding":
 		if e.complexity.Mutation.CompleteAutoDisableChannelOnboarding == nil {
 			break
@@ -6834,6 +6902,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.FetchModels(childComplexity, args["input"].(biz.FetchModelsInput)), true
+	case "Query.getCacheDiagnostics":
+		if e.complexity.Query.GetCacheDiagnostics == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getCacheDiagnostics_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetCacheDiagnostics(childComplexity, args["input"].(*GetCacheDiagnosticsInput)), true
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
 			break
@@ -7328,6 +7407,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.MetricsLatencyMs(childComplexity), true
+	case "Request.metricsReasoningDurationMs":
+		if e.complexity.Request.MetricsReasoningDurationMs == nil {
+			break
+		}
+
+		return e.complexity.Request.MetricsReasoningDurationMs(childComplexity), true
 	case "Request.modelID":
 		if e.complexity.Request.ModelID == nil {
 			break
@@ -7516,6 +7601,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.MetricsLatencyMs(childComplexity), true
+	case "RequestExecution.metricsReasoningDurationMs":
+		if e.complexity.RequestExecution.MetricsReasoningDurationMs == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.MetricsReasoningDurationMs(childComplexity), true
 	case "RequestExecution.modelID":
 		if e.complexity.RequestExecution.ModelID == nil {
 			break
@@ -8161,6 +8252,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StoragePolicy.CleanupOptions(childComplexity), true
+	case "StoragePolicy.livePreview":
+		if e.complexity.StoragePolicy.LivePreview == nil {
+			break
+		}
+
+		return e.complexity.StoragePolicy.LivePreview(childComplexity), true
 	case "StoragePolicy.storeChunks":
 		if e.complexity.StoragePolicy.StoreChunks == nil {
 			break
@@ -9752,6 +9849,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelTagsRegexAssociationInput,
 		ec.unmarshalInputChannelWhereInput,
 		ec.unmarshalInputCleanupOptionInput,
+		ec.unmarshalInputClearCacheInput,
 		ec.unmarshalInputCompleteAutoDisableChannelOnboardingInput,
 		ec.unmarshalInputCompleteOnboardingInput,
 		ec.unmarshalInputCompleteSystemModelSettingOnboardingInput,
@@ -9782,6 +9880,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputFilterConditionInput,
 		ec.unmarshalInputGCPCredentialInput,
 		ec.unmarshalInputGCSInput,
+		ec.unmarshalInputGetCacheDiagnosticsInput,
 		ec.unmarshalInputGetChannelProbeDataInput,
 		ec.unmarshalInputHeaderEntryInput,
 		ec.unmarshalInputInitializeSystemInput,
@@ -10516,6 +10615,17 @@ func (ec *executionContext) field_Mutation_bulkUpdateChannelOrdering_args(ctx co
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBulkUpdateChannelOrderingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_clearCache_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNClearCacheInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐClearCacheInput)
 	if err != nil {
 		return nil, err
 	}
@@ -12010,6 +12120,17 @@ func (ec *executionContext) field_Query_fetchModels_args(ctx context.Context, ra
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFetchModelsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getCacheDiagnostics_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalOGetCacheDiagnosticsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGetCacheDiagnosticsInput)
 	if err != nil {
 		return nil, err
 	}
@@ -20909,6 +21030,93 @@ func (ec *executionContext) fieldContext_CleanupOption_cleanupDays(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ClearCachePayload_success(ctx context.Context, field graphql.CollectedField, obj *ClearCachePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClearCachePayload_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClearCachePayload_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClearCachePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClearCachePayload_message(ctx context.Context, field graphql.CollectedField, obj *ClearCachePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClearCachePayload_message,
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClearCachePayload_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClearCachePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClearCachePayload_targets(ctx context.Context, field graphql.CollectedField, obj *ClearCachePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClearCachePayload_targets,
+		func(ctx context.Context) (any, error) {
+			return obj.Targets, nil
+		},
+		nil,
+		ec.marshalNDiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClearCachePayload_targets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClearCachePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DiagnosticsTarget does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CostItem_itemCode(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23262,6 +23470,93 @@ func (ec *executionContext) fieldContext_GCS_bucketName(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GetCacheDiagnosticsPayload_fileName(ctx context.Context, field graphql.CollectedField, obj *GetCacheDiagnosticsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GetCacheDiagnosticsPayload_fileName,
+		func(ctx context.Context) (any, error) {
+			return obj.FileName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GetCacheDiagnosticsPayload_fileName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GetCacheDiagnosticsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GetCacheDiagnosticsPayload_content(ctx context.Context, field graphql.CollectedField, obj *GetCacheDiagnosticsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GetCacheDiagnosticsPayload_content,
+		func(ctx context.Context) (any, error) {
+			return obj.Content, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GetCacheDiagnosticsPayload_content(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GetCacheDiagnosticsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GetCacheDiagnosticsPayload_targets(ctx context.Context, field graphql.CollectedField, obj *GetCacheDiagnosticsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GetCacheDiagnosticsPayload_targets,
+		func(ctx context.Context) (any, error) {
+			return obj.Targets, nil
+		},
+		nil,
+		ec.marshalNDiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GetCacheDiagnosticsPayload_targets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GetCacheDiagnosticsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DiagnosticsTarget does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29688,6 +29983,55 @@ func (ec *executionContext) fieldContext_Mutation_updateUserAgentPassThroughSett
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateUserAgentPassThroughSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_clearCache(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_clearCache,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ClearCache(ctx, fc.Args["input"].(ClearCacheInput))
+		},
+		nil,
+		ec.marshalNClearCachePayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐClearCachePayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_clearCache(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ClearCachePayload_success(ctx, field)
+			case "message":
+				return ec.fieldContext_ClearCachePayload_message(ctx, field)
+			case "targets":
+				return ec.fieldContext_ClearCachePayload_targets(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ClearCachePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_clearCache_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -37861,6 +38205,8 @@ func (ec *executionContext) fieldContext_Query_storagePolicy(_ context.Context, 
 			switch field.Name {
 			case "storeChunks":
 				return ec.fieldContext_StoragePolicy_storeChunks(ctx, field)
+			case "livePreview":
+				return ec.fieldContext_StoragePolicy_livePreview(ctx, field)
 			case "storeRequestBody":
 				return ec.fieldContext_StoragePolicy_storeRequestBody(ctx, field)
 			case "storeResponseBody":
@@ -38316,6 +38662,55 @@ func (ec *executionContext) fieldContext_Query_userAgentPassThroughSettings(_ co
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserAgentPassThroughSettings", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getCacheDiagnostics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_getCacheDiagnostics,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().GetCacheDiagnostics(ctx, fc.Args["input"].(*GetCacheDiagnosticsInput))
+		},
+		nil,
+		ec.marshalNGetCacheDiagnosticsPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGetCacheDiagnosticsPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_getCacheDiagnostics(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "fileName":
+				return ec.fieldContext_GetCacheDiagnosticsPayload_fileName(ctx, field)
+			case "content":
+				return ec.fieldContext_GetCacheDiagnosticsPayload_content(ctx, field)
+			case "targets":
+				return ec.fieldContext_GetCacheDiagnosticsPayload_targets(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GetCacheDiagnosticsPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getCacheDiagnostics_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -39379,6 +39774,35 @@ func (ec *executionContext) fieldContext_Request_metricsFirstTokenLatencyMs(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_metricsReasoningDurationMs(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_metricsReasoningDurationMs,
+		func(ctx context.Context) (any, error) {
+			return obj.MetricsReasoningDurationMs, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_metricsReasoningDurationMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_contentSaved(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -40081,6 +40505,8 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_Request_metricsFirstTokenLatencyMs(ctx, field)
+			case "metricsReasoningDurationMs":
+				return ec.fieldContext_Request_metricsReasoningDurationMs(ctx, field)
 			case "contentSaved":
 				return ec.fieldContext_Request_contentSaved(ctx, field)
 			case "contentStorageID":
@@ -40690,6 +41116,35 @@ func (ec *executionContext) fieldContext_RequestExecution_metricsFirstTokenLaten
 	return fc, nil
 }
 
+func (ec *executionContext) _RequestExecution_metricsReasoningDurationMs(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_metricsReasoningDurationMs,
+		func(ctx context.Context) (any, error) {
+			return obj.MetricsReasoningDurationMs, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_metricsReasoningDurationMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestExecution_requestHeaders(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -40785,6 +41240,8 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_Request_metricsFirstTokenLatencyMs(ctx, field)
+			case "metricsReasoningDurationMs":
+				return ec.fieldContext_Request_metricsReasoningDurationMs(ctx, field)
 			case "contentSaved":
 				return ec.fieldContext_Request_contentSaved(ctx, field)
 			case "contentStorageID":
@@ -41117,6 +41574,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_RequestExecution_metricsFirstTokenLatencyMs(ctx, field)
+			case "metricsReasoningDurationMs":
+				return ec.fieldContext_RequestExecution_metricsReasoningDurationMs(ctx, field)
 			case "requestHeaders":
 				return ec.fieldContext_RequestExecution_requestHeaders(ctx, field)
 			case "request":
@@ -43882,6 +44341,35 @@ func (ec *executionContext) _StoragePolicy_storeChunks(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_StoragePolicy_storeChunks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StoragePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StoragePolicy_livePreview(ctx context.Context, field graphql.CollectedField, obj *biz.StoragePolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_StoragePolicy_livePreview,
+		func(ctx context.Context) (any, error) {
+			return obj.LivePreview, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_StoragePolicy_livePreview(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StoragePolicy",
 		Field:      field,
@@ -48700,6 +49188,8 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_Request_metricsFirstTokenLatencyMs(ctx, field)
+			case "metricsReasoningDurationMs":
+				return ec.fieldContext_Request_metricsReasoningDurationMs(ctx, field)
 			case "contentSaved":
 				return ec.fieldContext_Request_contentSaved(ctx, field)
 			case "contentStorageID":
@@ -58704,6 +59194,33 @@ func (ec *executionContext) unmarshalInputCleanupOptionInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputClearCacheInput(ctx context.Context, obj any) (ClearCacheInput, error) {
+	var it ClearCacheInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"targets"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "targets":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targets"))
+			data, err := ec.unmarshalODiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Targets = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCompleteAutoDisableChannelOnboardingInput(ctx context.Context, obj any) (CompleteAutoDisableChannelOnboardingInput, error) {
 	var it CompleteAutoDisableChannelOnboardingInput
 	asMap := map[string]any{}
@@ -59458,7 +59975,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59556,6 +60073,13 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.MetricsFirstTokenLatencyMs = data
+		case "metricsReasoningDurationMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMs = data
 		case "contentSaved":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSaved"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -60996,6 +61520,33 @@ func (ec *executionContext) unmarshalInputGCSInput(ctx context.Context, obj any)
 				return it, err
 			}
 			it.Credential = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputGetCacheDiagnosticsInput(ctx context.Context, obj any) (GetCacheDiagnosticsInput, error) {
+	var it GetCacheDiagnosticsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"targets"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "targets":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targets"))
+			data, err := ec.unmarshalODiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Targets = data
 		}
 	}
 
@@ -66618,7 +67169,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67706,6 +68257,76 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 				return it, err
 			}
 			it.MetricsFirstTokenLatencyMsNotNil = data
+		case "metricsReasoningDurationMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMs = data
+		case "metricsReasoningDurationMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsNEQ = data
+		case "metricsReasoningDurationMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsIn = data
+		case "metricsReasoningDurationMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsNotIn = data
+		case "metricsReasoningDurationMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsGT = data
+		case "metricsReasoningDurationMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsGTE = data
+		case "metricsReasoningDurationMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsLT = data
+		case "metricsReasoningDurationMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsLTE = data
+		case "metricsReasoningDurationMsIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsIsNil = data
+		case "metricsReasoningDurationMsNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsNotNil = data
 		case "hasRequest":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRequest"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -67799,7 +68420,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68891,6 +69512,76 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.MetricsFirstTokenLatencyMsNotNil = data
+		case "metricsReasoningDurationMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMs = data
+		case "metricsReasoningDurationMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsNEQ = data
+		case "metricsReasoningDurationMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsIn = data
+		case "metricsReasoningDurationMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsNotIn = data
+		case "metricsReasoningDurationMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsGT = data
+		case "metricsReasoningDurationMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsGTE = data
+		case "metricsReasoningDurationMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsLT = data
+		case "metricsReasoningDurationMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsLTE = data
+		case "metricsReasoningDurationMsIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsIsNil = data
+		case "metricsReasoningDurationMsNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMsNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMsNotNil = data
 		case "contentSaved":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSaved"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -72805,7 +73496,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "clearContentStorageID", "contentStorageKey", "clearContentStorageKey", "contentSavedAt", "clearContentSavedAt", "channelID", "clearChannel"}
+	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "clearMetricsReasoningDurationMs", "contentSaved", "contentStorageID", "clearContentStorageID", "contentStorageKey", "clearContentStorageKey", "contentSavedAt", "clearContentSavedAt", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72924,6 +73615,20 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ClearMetricsFirstTokenLatencyMs = data
+		case "metricsReasoningDurationMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsReasoningDurationMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetricsReasoningDurationMs = data
+		case "clearMetricsReasoningDurationMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearMetricsReasoningDurationMs"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearMetricsReasoningDurationMs = data
 		case "contentSaved":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSaved"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -73161,7 +73866,7 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"storeChunks", "storeRequestBody", "storeResponseBody", "cleanupOptions"}
+	fieldsInOrder := [...]string{"storeChunks", "livePreview", "storeRequestBody", "storeResponseBody", "cleanupOptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73175,6 +73880,13 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 				return it, err
 			}
 			it.StoreChunks = data
+		case "livePreview":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("livePreview"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LivePreview = data
 		case "storeRequestBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeRequestBody"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -81240,6 +81952,55 @@ func (ec *executionContext) _CleanupOption(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var clearCachePayloadImplementors = []string{"ClearCachePayload"}
+
+func (ec *executionContext) _ClearCachePayload(ctx context.Context, sel ast.SelectionSet, obj *ClearCachePayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clearCachePayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ClearCachePayload")
+		case "success":
+			out.Values[i] = ec._ClearCachePayload_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._ClearCachePayload_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "targets":
+			out.Values[i] = ec._ClearCachePayload_targets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var costItemImplementors = []string{"CostItem"}
 
 func (ec *executionContext) _CostItem(ctx context.Context, sel ast.SelectionSet, obj *objects.CostItem) graphql.Marshaler {
@@ -82273,6 +83034,55 @@ func (ec *executionContext) _GCS(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Values[i] = graphql.MarshalString("GCS")
 		case "bucketName":
 			out.Values[i] = ec._GCS_bucketName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var getCacheDiagnosticsPayloadImplementors = []string{"GetCacheDiagnosticsPayload"}
+
+func (ec *executionContext) _GetCacheDiagnosticsPayload(ctx context.Context, sel ast.SelectionSet, obj *GetCacheDiagnosticsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, getCacheDiagnosticsPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GetCacheDiagnosticsPayload")
+		case "fileName":
+			out.Values[i] = ec._GetCacheDiagnosticsPayload_fileName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "content":
+			out.Values[i] = ec._GetCacheDiagnosticsPayload_content(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "targets":
+			out.Values[i] = ec._GetCacheDiagnosticsPayload_targets(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -83998,6 +84808,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateUserAgentPassThroughSettings":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateUserAgentPassThroughSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "clearCache":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_clearCache(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -87707,6 +88524,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getCacheDiagnostics":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getCacheDiagnostics(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "fetchModels":
 			field := field
 
@@ -88276,6 +89115,8 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Request_metricsLatencyMs(ctx, field, obj)
 		case "metricsFirstTokenLatencyMs":
 			out.Values[i] = ec._Request_metricsFirstTokenLatencyMs(ctx, field, obj)
+		case "metricsReasoningDurationMs":
+			out.Values[i] = ec._Request_metricsReasoningDurationMs(ctx, field, obj)
 		case "contentSaved":
 			out.Values[i] = ec._Request_contentSaved(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -88933,6 +89774,8 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._RequestExecution_metricsLatencyMs(ctx, field, obj)
 		case "metricsFirstTokenLatencyMs":
 			out.Values[i] = ec._RequestExecution_metricsFirstTokenLatencyMs(ctx, field, obj)
+		case "metricsReasoningDurationMs":
+			out.Values[i] = ec._RequestExecution_metricsReasoningDurationMs(ctx, field, obj)
 		case "requestHeaders":
 			out.Values[i] = ec._RequestExecution_requestHeaders(ctx, field, obj)
 		case "request":
@@ -90536,6 +91379,11 @@ func (ec *executionContext) _StoragePolicy(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("StoragePolicy")
 		case "storeChunks":
 			out.Values[i] = ec._StoragePolicy_storeChunks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "livePreview":
+			out.Values[i] = ec._StoragePolicy_livePreview(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -96249,6 +97097,25 @@ func (ec *executionContext) unmarshalNCleanupOptionInput2githubᚗcomᚋlooplj�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNClearCacheInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐClearCacheInput(ctx context.Context, v any) (ClearCacheInput, error) {
+	res, err := ec.unmarshalInputClearCacheInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNClearCachePayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐClearCachePayload(ctx context.Context, sel ast.SelectionSet, v ClearCachePayload) graphql.Marshaler {
+	return ec._ClearCachePayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNClearCachePayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐClearCachePayload(ctx context.Context, sel ast.SelectionSet, v *ClearCachePayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ClearCachePayload(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNCompleteAutoDisableChannelOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteAutoDisableChannelOnboardingInput(ctx context.Context, v any) (CompleteAutoDisableChannelOnboardingInput, error) {
 	res, err := ec.unmarshalInputCompleteAutoDisableChannelOnboardingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -96708,6 +97575,75 @@ func (ec *executionContext) marshalNDeleteDisabledAPIKeysPayload2ᚖgithubᚗcom
 	return ec._DeleteDisabledAPIKeysPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNDiagnosticsTarget2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTarget(ctx context.Context, v any) (DiagnosticsTarget, error) {
+	var res DiagnosticsTarget
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDiagnosticsTarget2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTarget(ctx context.Context, sel ast.SelectionSet, v DiagnosticsTarget) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNDiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ(ctx context.Context, v any) ([]DiagnosticsTarget, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]DiagnosticsTarget, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNDiagnosticsTarget2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTarget(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNDiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ(ctx context.Context, sel ast.SelectionSet, v []DiagnosticsTarget) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDiagnosticsTarget2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTarget(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNDisabledAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDisabledAPIKey(ctx context.Context, sel ast.SelectionSet, v *objects.DisabledAPIKey) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -96905,6 +97841,20 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 		}
 	}
 	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) marshalNGetCacheDiagnosticsPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGetCacheDiagnosticsPayload(ctx context.Context, sel ast.SelectionSet, v GetCacheDiagnosticsPayload) graphql.Marshaler {
+	return ec._GetCacheDiagnosticsPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGetCacheDiagnosticsPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGetCacheDiagnosticsPayload(ctx context.Context, sel ast.SelectionSet, v *GetCacheDiagnosticsPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GetCacheDiagnosticsPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNGetChannelProbeDataInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐGetChannelProbeDataInput(ctx context.Context, v any) (biz.GetChannelProbeDataInput, error) {
@@ -102310,6 +103260,71 @@ func (ec *executionContext) marshalODecimalInput2ᚖgithubᚗcomᚋshopspringᚋ
 	return res
 }
 
+func (ec *executionContext) unmarshalODiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ(ctx context.Context, v any) ([]DiagnosticsTarget, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]DiagnosticsTarget, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNDiagnosticsTarget2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTarget(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalODiagnosticsTarget2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTargetᚄ(ctx context.Context, sel ast.SelectionSet, v []DiagnosticsTarget) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDiagnosticsTarget2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDiagnosticsTarget(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalODisabledAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDisabledAPIKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.DisabledAPIKey) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -102593,6 +103608,14 @@ func (ec *executionContext) unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhu
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputGCSInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOGetCacheDiagnosticsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGetCacheDiagnosticsInput(ctx context.Context, v any) (*GetCacheDiagnosticsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGetCacheDiagnosticsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

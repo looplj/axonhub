@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { DashboardIcon } from '@radix-ui/react-icons';
 import { zhCN, enUS } from 'date-fns/locale';
@@ -14,18 +14,22 @@ import { JsonViewer } from '@/components/json-tree-view';
 import { useGeneralSettings } from '@/features/system/data/system';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { useUsageLogs } from '../data/usage-logs';
-import { useRequest, useRequestExecutions } from '../data';
+import { type Request, useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
+import { ResponseFlow } from './response-flow';
+import { parseResponse } from '../utils/response-parser';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
 
 interface RequestDetailContentProps {
   requestId: string;
   projectId?: string | null;
+  previewRequest?: Request | null;
+  isPreviewStreaming?: boolean;
 }
 
-export function RequestDetailContent({ requestId, projectId }: RequestDetailContentProps) {
+export function RequestDetailContent({ requestId, projectId, previewRequest, isPreviewStreaming = false }: RequestDetailContentProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
 
@@ -36,9 +40,11 @@ export function RequestDetailContent({ requestId, projectId }: RequestDetailCont
   const [showCurlPreview, setShowCurlPreview] = useState(false);
   const [curlCommand, setCurlCommand] = useState('');
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
+  const [responseView, setResponseView] = useState<'preview' | 'json'>('preview');
 
   const { data: settings } = useGeneralSettings();
-  const { data: request, isLoading } = useRequest(requestId, { projectId });
+  const { data: requestData, isLoading } = useRequest(requestId, { projectId, disableAutoRefresh: isPreviewStreaming });
+  const request = previewRequest ?? requestData;
   const {
     data: executions,
     isLoading: isExecutionsLoading,
@@ -59,6 +65,40 @@ export function RequestDetailContent({ requestId, projectId }: RequestDetailCont
     },
     { projectId, enabled: true }
   );
+
+  const parsedResponse = useMemo(() => {
+    if (!request) return { content: '', reasoning: '', toolCalls: [] };
+    if (previewRequest) {
+      return parseResponse(undefined, previewRequest.responseChunks);
+    }
+    return parseResponse(request.responseBody, request.responseChunks);
+  }, [previewRequest, request]);
+
+  const hasPreviewData = !!(parsedResponse.content || parsedResponse.reasoning || parsedResponse.toolCalls.length > 0);
+  const isLive = isPreviewStreaming || !!(request?.status === 'processing' && request?.stream);
+  const hasResponseBody = !!(request?.responseBody && Object.keys(request.responseBody).length > 0);
+  const hasResponseChunks = !!(request?.responseChunks && request.responseChunks.length > 0);
+
+  const extractResponseText = useCallback(() => {
+    if (!request) return '';
+    const { content, reasoning, toolCalls } = parsedResponse;
+
+    let result = '';
+    if (reasoning) {
+      result += `${reasoning}\n\n`;
+    }
+    if (content) {
+      result += content;
+    }
+    if (toolCalls.length > 0) {
+      if (result) result += '\n\n';
+      result += toolCalls.map(tc => {
+        return `Tool Call: ${tc.function?.name}\nArguments: ${tc.function?.arguments}`;
+      }).join('\n\n');
+    }
+
+    return result.trim();
+  }, [request, parsedResponse]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -428,46 +468,118 @@ export function RequestDetailContent({ requestId, projectId }: RequestDetailCont
             </TabsContent>
 
             <TabsContent value='response' className='space-y-6 p-6'>
-              <div className='space-y-4'>
-                <div className='flex items-center justify-between'>
-                  <h4 className='flex items-center gap-2 text-base font-semibold'>
-                    <FileText className='text-primary h-4 w-4' />
-                    {t('requests.columns.responseBody')}
-                  </h4>
-                  <div className='flex gap-2'>
-                    {(request.format === 'openai/video' || request.format === 'seedance/video') && request.contentSaved && request.contentStorageKey && (
-                      <Button variant='outline' size='sm' onClick={downloadVideo} disabled={isDownloadingVideo || !projectId} className='hover:bg-primary hover:text-primary-foreground'>
+              <Tabs value={responseView} onValueChange={(v: any) => setResponseView(v)} className='w-full'>
+                <div className='flex flex-wrap items-center justify-between gap-4'>
+                  <TabsList className='grid w-full grid-cols-2 sm:w-[300px]'>
+                    <TabsTrigger value='preview'>{t('requests.detail.tabs.preview')}</TabsTrigger>
+                    <TabsTrigger value='json'>{t('requests.detail.tabs.json')}</TabsTrigger>
+                  </TabsList>
+
+                  <div className='flex flex-wrap items-center gap-2'>
+                    {(request.format === 'openai/video' || request.format === 'seedance/video') &&
+                      request.contentSaved &&
+                      request.contentStorageKey && (
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={downloadVideo}
+                        disabled={isDownloadingVideo}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
                         <Download className='mr-2 h-4 w-4' />
                         {t('requests.actions.downloadVideo')}
                       </Button>
                     )}
-                    <Button variant='outline' size='sm' onClick={showResponseChunksModal} disabled={!request?.responseChunks || request.responseChunks.length === 0} className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={showResponseChunksModal}
+                      disabled={!hasResponseChunks}
+                      className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
+                    >
                       <Layers className='mr-2 h-4 w-4' />
-                      {t('requests.columns.responseChunks')}
+                      {request?.stream && request?.status === 'processing'
+                        ? t('requests.actions.preview')
+                        : t('requests.columns.responseChunks')}
                     </Button>
-                    <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.responseBody))} disabled={!request.responseBody} className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => {
+                        if (responseView === 'preview') {
+                          copyToClipboard(extractResponseText());
+                        } else {
+                          copyToClipboard(formatJson(request.responseBody));
+                        }
+                      }}
+                      disabled={responseView === 'preview' ? !extractResponseText() : !hasResponseBody}
+                      className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
+                    >
                       <Copy className='mr-2 h-4 w-4' />
                       {t('requests.dialogs.jsonViewer.copy')}
                     </Button>
-                    <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.responseBody), `response-body-${request.id}.json`)} disabled={!request.responseBody} className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => downloadFile(formatJson(request.responseBody), `response-body-${request.id}.json`)}
+                      disabled={!hasResponseBody}
+                      className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
+                    >
                       <Download className='mr-2 h-4 w-4' />
                       {t('requests.dialogs.jsonViewer.download')}
                     </Button>
                   </div>
                 </div>
-                {request.responseBody ? (
-                  <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                    <JsonViewer data={request.responseBody} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
-                  </div>
-                ) : (
-                  <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
-                    <div className='space-y-3 text-center'>
-                      <FileText className='text-muted-foreground mx-auto h-12 w-12' />
-                      <p className='text-muted-foreground text-base'>{t('requests.detail.noResponse')}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+
+                <div className='mt-6'>
+                  <TabsContent value='preview' className='mt-0 transition-all focus-visible:outline-none'>
+                    {hasPreviewData || isLive ? (
+                      <ResponseFlow
+                        chunks={request.responseChunks}
+                        body={request.responseBody}
+                        isLive={isLive}
+                        reasoningDurationMs={request.metricsReasoningDurationMs}
+                      />
+                    ) : request.status === 'processing' ? (
+                      <div className='bg-muted/20 flex h-[400px] w-full items-center justify-center rounded-lg border'>
+                        <div className='space-y-4 text-center'>
+                          <div className='border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2'></div>
+                          <p className='text-muted-foreground text-sm'>{t('common.loading')}...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className='bg-muted/20 flex h-[400px] w-full items-center justify-center rounded-lg border'>
+                        <div className='space-y-3 text-center'>
+                          <FileText className='text-muted-foreground mx-auto h-12 w-12' />
+                          <p className='text-muted-foreground text-base'>{t('requests.detail.noResponse')}</p>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value='json' className='mt-0 focus-visible:outline-none'>
+                    {hasResponseBody ? (
+                      <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
+                        <JsonViewer data={request.responseBody} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
+                      </div>
+                    ) : request.status === 'processing' ? (
+                      <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
+                        <div className='space-y-4 text-center'>
+                          <div className='border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2'></div>
+                          <p className='text-muted-foreground text-sm'>{t('common.loading')}...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
+                        <div className='space-y-3 text-center'>
+                          <FileText className='text-muted-foreground mx-auto h-12 w-12' />
+                          <p className='text-muted-foreground text-base'>{t('requests.detail.noResponse')}</p>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+                </div>
+              </Tabs>
             </TabsContent>
 
             <TabsContent value='executions' className='space-y-6 p-6'>
@@ -672,8 +784,19 @@ export function RequestDetailContent({ requestId, projectId }: RequestDetailCont
         </CardContent>
       </Card>
 
-      <ChunksDialog open={showResponseChunks} onOpenChange={setShowResponseChunks} chunks={selectedResponseChunks} title={t('requests.columns.responseChunks')} />
-      <ChunksDialog open={showExecutionChunks} onOpenChange={setShowExecutionChunks} chunks={selectedExecutionChunks} title={t('requests.columns.responseChunks')} />
+      <ChunksDialog
+        open={showResponseChunks}
+        onOpenChange={setShowResponseChunks}
+        chunks={request?.responseChunks ?? []}
+        isLive={request?.stream === true && request?.status === 'processing'}
+        title={t('requests.dialogs.jsonViewer.responseChunks')}
+      />
+      <ChunksDialog
+        open={showExecutionChunks}
+        onOpenChange={setShowExecutionChunks}
+        chunks={selectedExecutionChunks}
+        title={t('requests.dialogs.jsonViewer.responseChunks')}
+      />
       <CurlPreviewDialog open={showCurlPreview} onOpenChange={setShowCurlPreview} curlCommand={curlCommand} />
     </div>
   );

@@ -141,7 +141,9 @@ type recordPerformanceStream struct {
 	stream streams.Stream[*llm.Response]
 	state  *PersistenceState
 
-	firstTokenSet bool
+	firstTokenSet     bool
+	reasoningStartSet bool
+	reasoningEndSet   bool
 }
 
 func (s *recordPerformanceStream) Current() *llm.Response {
@@ -153,6 +155,23 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	if !s.firstTokenSet && s.state.Perf != nil {
 		s.state.Perf.MarkFirstToken()
 		s.firstTokenSet = true
+	}
+
+	if s.state.Perf != nil && len(event.Choices) > 0 {
+		delta := event.Choices[0].Delta
+		if delta != nil {
+			if delta.ReasoningContent != nil && *delta.ReasoningContent != "" {
+				if !s.reasoningStartSet {
+					s.state.Perf.MarkReasoningStart()
+					s.reasoningStartSet = true
+				}
+			} else if (delta.Content.Content != nil && *delta.Content.Content != "") || len(delta.Content.MultipleContent) > 0 || len(delta.ToolCalls) > 0 {
+				if s.reasoningStartSet && !s.reasoningEndSet {
+					s.state.Perf.MarkReasoningEnd()
+					s.reasoningEndSet = true
+				}
+			}
+		}
 	}
 
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {

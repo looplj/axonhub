@@ -350,6 +350,7 @@ func (s *RequestService) CreateRequestExecution(
 type LatencyMetrics struct {
 	LatencyMs           *int64
 	FirstTokenLatencyMs *int64
+	ReasoningDurationMs *int64
 }
 
 // UpdateRequestCompleted updates request status to completed with response body.
@@ -398,6 +399,10 @@ func (s *RequestService) UpdateRequestCompleted(
 
 		if metrics.FirstTokenLatencyMs != nil {
 			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+
+		if metrics.ReasoningDurationMs != nil {
+			upd = upd.SetMetricsReasoningDurationMs(*metrics.ReasoningDurationMs)
 		}
 	}
 
@@ -482,6 +487,10 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		if metrics.FirstTokenLatencyMs != nil {
 			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
 		}
+
+		if metrics.ReasoningDurationMs != nil {
+			upd = upd.SetMetricsReasoningDurationMs(*metrics.ReasoningDurationMs)
+		}
 	}
 
 	if storeResponseBody {
@@ -562,6 +571,10 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 
 		if metrics.FirstTokenLatencyMs != nil {
 			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+
+		if metrics.ReasoningDurationMs != nil {
+			upd = upd.SetMetricsReasoningDurationMs(*metrics.ReasoningDurationMs)
 		}
 	}
 
@@ -1039,6 +1052,11 @@ func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Reques
 	if req == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
+	// Live preview for active streaming requests
+	if req.Stream && req.Status == request.StatusProcessing {
+		chunks := DefaultStreamPreviewRegistry.GetChunks(RequestKey(req.ID))
+		return chunks, nil
+	}
 	// Only load response chunks if request is completed and streaming.
 	if !req.Stream || req.Status != request.StatusCompleted {
 		return []objects.JSONRawMessage{}, nil
@@ -1155,6 +1173,11 @@ func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context,
 		return nil, fmt.Errorf("request execution is nil")
 	}
 
+	// Live preview for active streaming executions
+	if exec.Stream && exec.Status == requestexecution.StatusProcessing {
+		chunks := DefaultStreamPreviewRegistry.GetChunks(ExecutionKey(exec.ID))
+		return chunks, nil
+	}
 	// Only load response body if execution is completed
 	if !exec.Stream || exec.Status != requestexecution.StatusCompleted {
 		return []objects.JSONRawMessage{}, nil

@@ -208,6 +208,33 @@ func (_u *RequestExecutionUpdate) ClearMetricsFirstTokenLatencyMs() *RequestExec
 	return _u
 }
 
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (_u *RequestExecutionUpdate) SetMetricsReasoningDurationMs(v int64) *RequestExecutionUpdate {
+	_u.mutation.ResetMetricsReasoningDurationMs()
+	_u.mutation.SetMetricsReasoningDurationMs(v)
+	return _u
+}
+
+// SetNillableMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field if the given value is not nil.
+func (_u *RequestExecutionUpdate) SetNillableMetricsReasoningDurationMs(v *int64) *RequestExecutionUpdate {
+	if v != nil {
+		_u.SetMetricsReasoningDurationMs(*v)
+	}
+	return _u
+}
+
+// AddMetricsReasoningDurationMs adds value to the "metrics_reasoning_duration_ms" field.
+func (_u *RequestExecutionUpdate) AddMetricsReasoningDurationMs(v int64) *RequestExecutionUpdate {
+	_u.mutation.AddMetricsReasoningDurationMs(v)
+	return _u
+}
+
+// ClearMetricsReasoningDurationMs clears the value of the "metrics_reasoning_duration_ms" field.
+func (_u *RequestExecutionUpdate) ClearMetricsReasoningDurationMs() *RequestExecutionUpdate {
+	_u.mutation.ClearMetricsReasoningDurationMs()
+	return _u
+}
+
 // SetRequestHeaders sets the "request_headers" field.
 func (_u *RequestExecutionUpdate) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpdate {
 	_u.mutation.SetRequestHeaders(v)
@@ -364,6 +391,15 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
 		_spec.ClearField(requestexecution.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.MetricsReasoningDurationMs(); ok {
+		_spec.SetField(requestexecution.FieldMetricsReasoningDurationMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedMetricsReasoningDurationMs(); ok {
+		_spec.AddField(requestexecution.FieldMetricsReasoningDurationMs, field.TypeInt64, value)
+	}
+	if _u.mutation.MetricsReasoningDurationMsCleared() {
+		_spec.ClearField(requestexecution.FieldMetricsReasoningDurationMs, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.RequestHeaders(); ok {
 		_spec.SetField(requestexecution.FieldRequestHeaders, field.TypeJSON, value)
@@ -575,6 +611,33 @@ func (_u *RequestExecutionUpdateOne) ClearMetricsFirstTokenLatencyMs() *RequestE
 	return _u
 }
 
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (_u *RequestExecutionUpdateOne) SetMetricsReasoningDurationMs(v int64) *RequestExecutionUpdateOne {
+	_u.mutation.ResetMetricsReasoningDurationMs()
+	_u.mutation.SetMetricsReasoningDurationMs(v)
+	return _u
+}
+
+// SetNillableMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field if the given value is not nil.
+func (_u *RequestExecutionUpdateOne) SetNillableMetricsReasoningDurationMs(v *int64) *RequestExecutionUpdateOne {
+	if v != nil {
+		_u.SetMetricsReasoningDurationMs(*v)
+	}
+	return _u
+}
+
+// AddMetricsReasoningDurationMs adds value to the "metrics_reasoning_duration_ms" field.
+func (_u *RequestExecutionUpdateOne) AddMetricsReasoningDurationMs(v int64) *RequestExecutionUpdateOne {
+	_u.mutation.AddMetricsReasoningDurationMs(v)
+	return _u
+}
+
+// ClearMetricsReasoningDurationMs clears the value of the "metrics_reasoning_duration_ms" field.
+func (_u *RequestExecutionUpdateOne) ClearMetricsReasoningDurationMs() *RequestExecutionUpdateOne {
+	_u.mutation.ClearMetricsReasoningDurationMs()
+	return _u
+}
+
 // SetRequestHeaders sets the "request_headers" field.
 func (_u *RequestExecutionUpdateOne) SetRequestHeaders(v objects.JSONRawMessage) *RequestExecutionUpdateOne {
 	_u.mutation.SetRequestHeaders(v)
@@ -761,6 +824,15 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	}
 	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
 		_spec.ClearField(requestexecution.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.MetricsReasoningDurationMs(); ok {
+		_spec.SetField(requestexecution.FieldMetricsReasoningDurationMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedMetricsReasoningDurationMs(); ok {
+		_spec.AddField(requestexecution.FieldMetricsReasoningDurationMs, field.TypeInt64, value)
+	}
+	if _u.mutation.MetricsReasoningDurationMsCleared() {
+		_spec.ClearField(requestexecution.FieldMetricsReasoningDurationMs, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.RequestHeaders(); ok {
 		_spec.SetField(requestexecution.FieldRequestHeaders, field.TypeJSON, value)

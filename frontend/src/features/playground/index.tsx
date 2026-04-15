@@ -156,6 +156,7 @@ export default function Playground() {
     },
   });
   const isLoading = status === 'submitted' || status === 'streaming';
+  const hasUserMessage = useMemo(() => messages.some((m) => m.role === 'user'), [messages]);
 
   // Handle form submission
   const handleSubmit = useCallback(
@@ -411,7 +412,7 @@ export default function Playground() {
                         .map((p: any) => p.text)
                         .join('\n');
                       return (
-                        <Message from={message.role} key={message.id}>
+                        <Message from={message.role} key={message.id} fullWidth={!hasUserMessage}>
                           <MessageContent>
                             {message.parts?.map((part, index) => {
                               if (part.type === 'text') {

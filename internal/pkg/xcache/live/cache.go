@@ -5,6 +5,7 @@ package live
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -40,8 +41,9 @@ type Cache[T any] struct {
 	onSwap func(old, new T)
 	name   string
 
-	debounceDelay time.Duration
-	asyncReloadCh chan struct{}
+	debounceDelay       time.Duration
+	asyncReloadCh       chan struct{}
+	pendingForceRefresh atomic.Bool
 
 	refreshInterval time.Duration
 	refreshTimeout  time.Duration
@@ -170,8 +172,13 @@ func (c *Cache[T]) SetLastUpdate(t time.Time) {
 func (c *Cache[T]) Load(ctx context.Context, force bool) error {
 	log.Debug(ctx, "live cache load requested", log.String("name", c.name), log.Bool("force", force))
 
+	sfKey := "load"
+	if force {
+		sfKey = "load:force"
+	}
+
 	// Use singleflight to ensure only one reload happens at a time across all callers
-	_, err, shared := c.sf.Do("load", func() (any, error) {
+	_, err, shared := c.sf.Do(sfKey, func() (any, error) {
 		return nil, c.loadInternal(ctx, force)
 	})
 
@@ -246,6 +253,20 @@ func (c *Cache[T]) TriggerAsyncReload() {
 		log.Debug(context.Background(), "live cache async reload triggered", log.String("name", c.name))
 	default:
 		log.Debug(context.Background(), "live cache async reload already pending, skipped", log.String("name", c.name))
+	}
+}
+
+// TriggerForceAsyncReload signals the background worker to perform a forced async reload.
+// Unlike TriggerAsyncReload, this ensures the next doRefresh call uses force=true,
+// bypassing the timestamp comparison in RefreshFunc.
+func (c *Cache[T]) TriggerForceAsyncReload() {
+	c.pendingForceRefresh.Store(true)
+
+	select {
+	case c.asyncReloadCh <- struct{}{}:
+		log.Debug(context.Background(), "live cache force async reload triggered", log.String("name", c.name))
+	default:
+		log.Debug(context.Background(), "live cache force async reload already pending, skipped", log.String("name", c.name))
 	}
 }
 
@@ -324,11 +345,19 @@ func (c *Cache[T]) doRefresh(source string) {
 		}
 	}()
 
+	// Consume the pending force flag. If any TriggerForceAsyncReload was called
+	// since the last doRefresh, we force a full reload bypassing timestamp comparison.
+	force := c.pendingForceRefresh.Swap(false)
+
 	ctx, cancel := context.WithTimeout(context.Background(), c.refreshTimeout)
 	defer cancel()
 
-	if err := c.loadInternal(ctx, false); err != nil {
-		log.Error(ctx, "live cache refresh failed", log.String("name", c.name), log.String("source", source), log.Cause(err))
+	if err := c.loadInternal(ctx, force); err != nil {
+		log.Error(ctx, "live cache refresh failed",
+			log.String("name", c.name),
+			log.String("source", source),
+			log.Bool("force", force),
+			log.Cause(err))
 	}
 }
 
@@ -344,7 +373,7 @@ func (c *Cache[T]) watchWorker(ch <-chan CacheEvent[struct{}]) {
 
 			switch event.Type {
 			case EventForceRefresh:
-				c.TriggerAsyncReload()
+				c.TriggerForceAsyncReload()
 			case EventRefresh:
 				if event.UpdatedAt.IsZero() {
 					c.TriggerAsyncReload()

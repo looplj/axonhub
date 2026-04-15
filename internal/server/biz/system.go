@@ -148,6 +148,7 @@ type AutoBackupSettings struct {
 // StoragePolicy represents the storage policy configuration.
 type StoragePolicy struct {
 	StoreChunks       bool            `json:"store_chunks"`
+	LivePreview       bool            `json:"live_preview"`
 	StoreRequestBody  bool            `json:"store_request_body"`
 	StoreResponseBody bool            `json:"store_response_body"`
 	CleanupOptions    []CleanupOption `json:"cleanup_options"`
@@ -738,6 +739,21 @@ func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, erro
 	}
 
 	return &policy, nil
+}
+
+// StoragePolicyOrDefault retrieves the storage policy configuration or returns the default policy.
+func (s *SystemService) StoragePolicyOrDefault(ctx context.Context) *StoragePolicy {
+	policy, err := s.StoragePolicy(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultStoragePolicy)
+		}
+
+		log.Warn(ctx, "failed to get storage policy", log.Cause(err))
+		return lo.ToPtr(defaultStoragePolicy)
+	}
+
+	return policy
 }
 
 // SetStoragePolicy sets the storage policy configuration.

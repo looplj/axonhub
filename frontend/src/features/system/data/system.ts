@@ -31,6 +31,26 @@ export const CHECK_FOR_UPDATE_QUERY = `
   }
 `;
 
+const GET_CACHE_DIAGNOSTICS_QUERY = `
+  query GetCacheDiagnostics($input: GetCacheDiagnosticsInput) {
+    getCacheDiagnostics(input: $input) {
+      fileName
+      content
+      targets
+    }
+  }
+`;
+
+const CLEAR_CACHE_MUTATION = `
+  mutation ClearCache($input: ClearCacheInput!) {
+    clearCache(input: $input) {
+      success
+      message
+      targets
+    }
+  }
+`;
+
 const BRAND_SETTINGS_QUERY = `
   query BrandSettings {
     brandSettings {
@@ -44,6 +64,7 @@ const STORAGE_POLICY_QUERY = `
   query StoragePolicy {
     storagePolicy {
       storeChunks
+      livePreview
       storeRequestBody
       storeResponseBody
       cleanupOptions {
@@ -211,6 +232,7 @@ export interface UpdateVideoStorageSettingsInput {
 
 export interface StoragePolicy {
   storeChunks: boolean;
+  livePreview: boolean;
   storeRequestBody: boolean;
   storeResponseBody: boolean;
   cleanupOptions: CleanupOption[];
@@ -229,6 +251,7 @@ export interface UpdateBrandSettingsInput {
 
 export interface UpdateStoragePolicyInput {
   storeChunks?: boolean;
+  livePreview?: boolean;
   storeRequestBody?: boolean;
   storeResponseBody?: boolean;
   cleanupOptions?: CleanupOptionInput[];
@@ -350,6 +373,20 @@ export interface VersionCheck {
   latestVersion: string;
   hasUpdate: boolean;
   releaseUrl: string;
+}
+
+export type DiagnosticsTarget = 'CHANNEL_CACHE';
+
+export interface GetCacheDiagnosticsPayload {
+  fileName: string;
+  content: string;
+  targets: DiagnosticsTarget[];
+}
+
+export interface ClearCachePayload {
+  success: boolean;
+  message: string;
+  targets: DiagnosticsTarget[];
 }
 
 // Hooks
@@ -636,6 +673,59 @@ export function useCheckForUpdate() {
     },
     retry: false,
     staleTime: 60 * 60 * 1000, // 1 hour
+  });
+}
+
+export function useExportCacheDiagnostics() {
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async () => {
+      const data = await graphqlRequest<{ getCacheDiagnostics: GetCacheDiagnosticsPayload }>(
+        GET_CACHE_DIAGNOSTICS_QUERY,
+        { input: { targets: ['CHANNEL_CACHE'] } }
+      );
+      return data.getCacheDiagnostics;
+    },
+    onSuccess: (data) => {
+      const blob = new Blob([data.content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(i18n.t('system.diagnostics.cache.exportSuccess'));
+    },
+    onError: (error) => {
+      handleError(error, i18n.t('system.diagnostics.cache.exportFailed'));
+    },
+  });
+}
+
+export function useClearCache() {
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async () => {
+      const data = await graphqlRequest<{ clearCache: ClearCachePayload }>(CLEAR_CACHE_MUTATION, {
+        input: { targets: ['CHANNEL_CACHE'] },
+      });
+      return data.clearCache;
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(i18n.t('system.diagnostics.cache.clearSuccess'));
+        return;
+      }
+
+      toast.error(data.message || i18n.t('system.diagnostics.cache.clearFailed'));
+    },
+    onError: (error) => {
+      handleError(error, i18n.t('system.diagnostics.cache.clearFailed'));
+    },
   });
 }
 

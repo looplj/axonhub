@@ -130,6 +130,7 @@ func WriteSSEStreamWithErrorFormatter(c *gin.Context, stream streams.Stream[*htt
 	c.Header("Content-Type", sse.ContentType)
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Writer.Flush()
 
 	for {
 		select {
