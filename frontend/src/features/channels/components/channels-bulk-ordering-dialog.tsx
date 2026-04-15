@@ -31,17 +31,6 @@ const rankSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) 
 const normalizeRanks = (items: Array<{ channel: ChannelSummary; orderingWeight: number }>) => {
   const ranked = items.filter((item) => item.orderingWeight !== 0);
   const unranked = items.filter((item) => item.orderingWeight === 0);
-
-  // Reassign sequential ranks to ranked items
-  ranked.forEach((item, index) => {
-    item.orderingWeight = index + 1;
-  });
-
-  // Keep unranked items at 0 and append them
-  unranked.forEach((item) => {
-    item.orderingWeight = 0;
-  });
-
   return [...ranked, ...unranked];
 };
 
