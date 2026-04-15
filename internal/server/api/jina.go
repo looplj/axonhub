@@ -25,10 +25,8 @@ type JinaHandlersParams struct {
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
 	ChannelProbeService         *biz.ChannelProbeService
-=======
 	HistoricalWeight            float64 `name:"historical_weight"`
 	RealtimeWeight              float64 `name:"realtime_weight"`
->>>>>>> 0e3d84a9 (feat: implement performance-aware load balancing strategy)
 }
 
 func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {

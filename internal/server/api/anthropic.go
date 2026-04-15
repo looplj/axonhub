@@ -29,6 +29,8 @@ type AnthropicHandlersParams struct {
 	QuotaService                *biz.QuotaService
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
+	HistoricalWeight            float64 `name:"historical_weight"`
+	RealtimeWeight              float64 `name:"realtime_weight"`
 }
 
 type AnthropicHandlers struct {

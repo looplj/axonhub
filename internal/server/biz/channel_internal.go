@@ -114,3 +114,99 @@ func (svc *ChannelService) startHistoricalRefresh(refreshInterval time.Duration)
 		log.Info(context.Background(), "historical refresh disabled (interval <= 0)")
 		return
 	}
+
+	svc.refreshTicker = time.NewTicker(refreshInterval)
+	svc.refreshStopCh = make(chan struct{})
+	svc.refreshWg.Add(1)
+
+	go svc.historicalRefreshWorker()
+}
+
+// historicalRefreshWorker is the background goroutine that listens for ticker events and stop signals.
+func (svc *ChannelService) historicalRefreshWorker() {
+	defer svc.refreshWg.Done()
+
+	for {
+		select {
+		case <-svc.refreshStopCh:
+			return
+		case <-svc.refreshTicker.C:
+			svc.doHistoricalRefreshWithRetry()
+		}
+	}
+}
+
+// doHistoricalRefreshWithRetry performs the historical refresh with exponential backoff retry logic.
+// Retries up to 3 times with backoff: 1s, 2s, 4s. After 3 failures, waits for next tick.
+func (svc *ChannelService) doHistoricalRefreshWithRetry() {
+	ctx := authz.WithSystemBypass(context.Background(), "channel-historical-refresh")
+
+	maxRetries := 3
+	baseDelay := time.Second
+
+	windowDays := svc.histWindowDays
+	if windowDays <= 0 {
+		windowDays = 7
+	}
+	windowDuration := time.Duration(windowDays) * 24 * time.Hour
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		_, err, shared := svc.refreshSingleflight.Do("historical-refresh", func() (any, error) {
+			return nil, svc.loadChannelPerformances(ctx, windowDuration)
+		})
+
+		if shared {
+			log.Debug(ctx, "historical refresh deduplicated via singleflight")
+			return
+		}
+
+		if err == nil {
+			log.Info(ctx, "historical refresh completed successfully")
+			return
+		}
+
+		log.Warn(ctx, "historical refresh failed", log.Int("attempt", attempt+1), log.Cause(err))
+
+		if attempt < maxRetries-1 {
+			delay := baseDelay * time.Duration(1<<attempt)
+			select {
+			case <-svc.refreshStopCh:
+				return
+			case <-time.After(delay):
+			}
+		}
+	}
+
+	log.Error(ctx, "historical refresh failed after all retries, waiting for next tick")
+}
+
+// stopHistoricalRefresh stops the background refresh goroutine gracefully.
+// This method is idempotent and safe for concurrent calls.
+func (svc *ChannelService) stopHistoricalRefresh() {
+	svc.refreshMu.Lock()
+	defer svc.refreshMu.Unlock()
+
+	if svc.refreshTicker != nil {
+		svc.refreshTicker.Stop()
+		svc.refreshTicker = nil
+	}
+
+	if svc.refreshStopCh != nil {
+		select {
+		case <-svc.refreshStopCh:
+		default:
+			close(svc.refreshStopCh)
+		}
+	}
+
+	done := make(chan struct{})
+	go func() {
+		svc.refreshWg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+	}
+}

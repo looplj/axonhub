@@ -39,9 +39,9 @@ type OpenAIHandlersParams struct {
 	QuotaService                *biz.QuotaService
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
-	Client                      *ent.Client
 	HistoricalWeight            float64 `name:"historical_weight"`
 	RealtimeWeight              float64 `name:"realtime_weight"`
+	Client                      *ent.Client
 }
 
 type OpenAIHandlers struct {
