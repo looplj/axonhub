@@ -20,11 +20,11 @@ const formatWeight = (value: number) => Math.round(value);
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
-const rankSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) => {
+const weightSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) => {
   if (a.orderingWeight === 0 && b.orderingWeight === 0) return 0;
   if (a.orderingWeight === 0) return 1;
   if (b.orderingWeight === 0) return -1;
-  return a.orderingWeight - b.orderingWeight;
+  return b.orderingWeight - a.orderingWeight;
 };
 
 // Normalize ranks to sequential 1..N with 0 for unranked items
@@ -36,22 +36,12 @@ const normalizeRanks = (items: Array<{ channel: ChannelSummary; orderingWeight: 
 
 // Initialize channels from GraphQL edges
 const initializeOrderedChannels = (edges: Array<{ node: ChannelSummary }>) => {
-  const withBackend = edges
+  return edges
     .map((edge) => ({
       channel: edge.node,
-      backendWeight: edge.node.orderingWeight ?? 0,
+      orderingWeight: edge.node.orderingWeight ?? 0,
     }))
-    .sort((a, b) => b.backendWeight - a.backendWeight);
-
-  const distinctWeights = [...new Set(withBackend.map((item) => item.backendWeight).filter((w) => w > 0))].sort(
-    (a, b) => b - a,
-  );
-  const weightToRank = new Map(distinctWeights.map((w, i) => [w, i + 1]));
-
-  return withBackend.map((item) => ({
-    channel: item.channel,
-    orderingWeight: item.backendWeight === 0 ? 0 : weightToRank.get(item.backendWeight)!,
-  }));
+    .sort((a, b) => b.orderingWeight - a.orderingWeight);
 };
 
 const reassignWeightsFromPosition = (
@@ -61,45 +51,35 @@ const reassignWeightsFromPosition = (
   if (items.length <= 1) return items.map((item) => ({ ...item }));
 
   const result = items.map((item) => ({ ...item }));
+  const prevWeight = result[movedItemIndex - 1]?.orderingWeight;
+  const nextWeight = result[movedItemIndex + 1]?.orderingWeight;
 
-  const movedPrevWeight = result[movedItemIndex - 1]?.orderingWeight;
-  const movedNextWeight = result[movedItemIndex + 1]?.orderingWeight;
-
-  if (movedPrevWeight != null && movedNextWeight != null && movedPrevWeight === movedNextWeight) {
-    // Special case: don't make ranked items unranked when between two unranked items
-    if (movedPrevWeight === 0 && movedNextWeight === 0) {
+  if (prevWeight != null && nextWeight != null && prevWeight === nextWeight) {
+    if (prevWeight === 0) {
+      result[movedItemIndex].orderingWeight = 1;
+    } else {
+      result[movedItemIndex].orderingWeight = prevWeight;
+    }
+  } else if (prevWeight == null && nextWeight != null) {
+    if (nextWeight === 0) {
       result[movedItemIndex].orderingWeight = clampWeight(1);
     } else {
-      result[movedItemIndex].orderingWeight = movedPrevWeight;
+      result[movedItemIndex].orderingWeight = clampWeight(nextWeight + 1);
     }
-  } else if (movedPrevWeight == null && movedNextWeight != null) {
-    if (movedNextWeight === 0) {
-      result[movedItemIndex].orderingWeight = clampWeight(1);
-    } else if (movedNextWeight <= 1) {
-      for (let i = movedItemIndex + 1; i < result.length; i++) {
-        // Don't shift unranked (weight=0) items - they stay unranked
-        if (result[i].orderingWeight !== 0) {
-          result[i].orderingWeight = clampWeight(result[i].orderingWeight + 1);
-        }
-      }
-      result[movedItemIndex].orderingWeight = clampWeight(1);
-    } else {
-      result[movedItemIndex].orderingWeight = clampWeight(movedNextWeight - 1);
-    }
-  } else if (movedNextWeight == null && movedPrevWeight != null) {
-    result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight + 1);
-  } else if (movedPrevWeight != null && movedNextWeight != null) {
-    const effectiveNext = movedNextWeight === 0 ? movedPrevWeight + 2 : movedNextWeight;
-    const gap = effectiveNext - movedPrevWeight;
+  } else if (nextWeight == null && prevWeight != null) {
+    result[movedItemIndex].orderingWeight = clampWeight(Math.max(prevWeight - 1, 1));
+  } else if (prevWeight != null && nextWeight != null) {
+    const effectiveNext = nextWeight === 0 ? 0 : nextWeight;
+    const gap = prevWeight - effectiveNext;
     if (gap <= 1) {
       for (let i = movedItemIndex + 1; i < result.length; i++) {
         if (result[i].orderingWeight !== 0) {
-          result[i].orderingWeight = clampWeight(result[i].orderingWeight + 1);
+          result[i].orderingWeight = clampWeight(result[i].orderingWeight - 1);
         }
       }
-      result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight + 1);
+      result[movedItemIndex].orderingWeight = clampWeight(prevWeight);
     } else {
-      result[movedItemIndex].orderingWeight = clampWeight(movedPrevWeight + Math.floor(gap / 2));
+      result[movedItemIndex].orderingWeight = clampWeight(prevWeight - Math.floor(gap / 2));
     }
   }
 
@@ -332,7 +312,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       const clampedWeight = Math.min(Math.max(weight, 0), channelCount);
       const normalizedWeight = clampWeight(clampedWeight);
       const newItems = items.map((item) => (item.channel.id === id ? { ...item, orderingWeight: normalizedWeight } : item));
-      newItems.sort(rankSort);
+      newItems.sort(weightSort);
       setHasChanges(true);
       return normalizeRanks(newItems);
     });
@@ -367,10 +347,9 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
 
   const handleSave = async () => {
     try {
-      const channelCount = orderedChannels.length;
       const updates = orderedChannels.map((item) => ({
         id: item.channel.id,
-        orderingWeight: item.orderingWeight === 0 ? 0 : channelCount - item.orderingWeight + 1,
+        orderingWeight: item.orderingWeight,
       }));
 
       await bulkUpdateMutation.mutateAsync({
