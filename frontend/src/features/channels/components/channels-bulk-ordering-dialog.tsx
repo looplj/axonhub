@@ -21,32 +21,26 @@ const formatWeight = (value: number) => Math.round(value);
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
 // Weight 0 = highest priority (sorts to top), otherwise ascending by weight
-const weightSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) => {
-  if (a.orderingWeight === 0 && b.orderingWeight === 0) return 0;
-  if (a.orderingWeight === 0) return -1;
-  if (b.orderingWeight === 0) return 1;
-  return a.orderingWeight - b.orderingWeight;
-};
+const weightSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) =>
+  a.orderingWeight - b.orderingWeight;
 
 // Normalize ranks to sequential 1..N with 0 preserved for highest-priority items
 const normalizeRanks = (items: Array<{ channel: ChannelSummary; orderingWeight: number }>) => {
   const sorted = [...items].sort(weightSort);
   let nextRank = 1;
-  for (const item of sorted) {
-    if (item.orderingWeight === 0) continue; // Preserve 0 (highest priority)
-    item.orderingWeight = nextRank++;
-  }
-  return sorted;
+  return sorted.map((item) => {
+    if (item.orderingWeight === 0) return item;
+    return { ...item, orderingWeight: nextRank++ };
+  });
 };
 
 // Initialize channels from GraphQL edges
 const initializeOrderedChannels = (edges: Array<{ node: ChannelSummary }>) => {
-  return edges
-    .map((edge) => ({
-      channel: edge.node,
-      orderingWeight: edge.node.orderingWeight ?? 0,
-    }))
-    .sort((a, b) => a.orderingWeight - b.orderingWeight);
+  const items = edges.map((edge) => ({
+    channel: edge.node,
+    orderingWeight: edge.node.orderingWeight ?? 0,
+  }));
+  return normalizeRanks(items);
 };
 
 const reassignWeightsFromPosition = (
