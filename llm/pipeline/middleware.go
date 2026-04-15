@@ -27,6 +27,11 @@ type Middleware interface {
 	// Order: Forward.
 	OnInboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
 
+	// OnInboundRawStream executes after the final unified stream is transformed back to provider format (Unified -> Provider).
+	// Timing: Once per successful streaming Request.
+	// Order: Forward.
+	OnInboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)
+
 	// OnOutboundRawRequest executes after outbound transformation (Unified -> Provider) and before sending the request.
 	// Timing: Once per Attempt (will repeat on retries/switches).
 	// Order: Forward.
@@ -104,6 +109,10 @@ func (d *simpleMiddleware) OnInboundRawResponse(ctx context.Context, response *h
 	return d.inboundRawResponseHandler(ctx, response)
 }
 
+func (d *simpleMiddleware) OnInboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	return stream, nil
+}
+
 func (d *simpleMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 	if d.outboundRawRequestHandler == nil {
 		return request, nil
@@ -166,6 +175,10 @@ func (d *DummyMiddleware) OnInboundLlmRequest(ctx context.Context, request *llm.
 
 func (d *DummyMiddleware) OnInboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 	return response, nil
+}
+
+func (d *DummyMiddleware) OnInboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	return stream, nil
 }
 
 func (d *DummyMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {

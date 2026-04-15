@@ -28,6 +28,7 @@ func NewChatCompletionOrchestrator(
 	promptService *biz.PromptService,
 	quotaService *biz.QuotaService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
+	liveStreamRegistry *biz.LiveStreamRegistry,
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
@@ -58,6 +59,7 @@ func NewChatCompletionOrchestrator(
 		SystemService:   systemService,
 		UsageLogService: usageLogService,
 		QuotaService:    quotaService,
+		LiveStreamRegistry: liveStreamRegistry,
 		PromptProvider:  promptService,
 		PromptProtecter: promptProtectionRuleService,
 		Middlewares: []pipeline.Middleware{
@@ -84,6 +86,7 @@ type ChatCompletionOrchestrator struct {
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	QuotaService    *biz.QuotaService
+	LiveStreamRegistry *biz.LiveStreamRegistry
 	PromptProvider  PromptProvider
 	PromptProtecter PromptProtecter
 	Middlewares     []pipeline.Middleware
@@ -144,7 +147,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
-	storagePolicy := processor.SystemService.StoragePolicyOrDefault(ctx)
 
 	strategy := deriveLoadBalancerStrategy(retryPolicy, apiKey)
 	if log.DebugEnabled(ctx) {
@@ -182,8 +184,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		LoadBalancer:          loadBalancer,
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
-		LivePreview:           storagePolicy.LivePreview,
-		StoreChunks:           storagePolicy.StoreChunks,
 		CurrentCandidateIndex: 0,
 	}
 
@@ -233,6 +233,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
+		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
 
 		// Rate limit tracking middleware for load balancing.
 		withRateLimitTracking(outbound, processor.rateLimitTracker),

@@ -75,6 +75,11 @@ func (p *pipeline) stream(
 		return nil, err
 	}
 
+	inboundStream, err = p.applyInboundRawStreamMiddlewares(ctx, inboundStream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply inbound raw stream middlewares: %w", err)
+	}
+
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		inboundStream = streams.Map(
 			inboundStream,

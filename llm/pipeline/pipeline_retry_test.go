@@ -120,6 +120,10 @@ func (m *mockMiddleware) OnInboundRawResponse(ctx context.Context, response *htt
 	return response, nil
 }
 
+func (m *mockMiddleware) OnInboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	return stream, nil
+}
+
 func (m *mockMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 	return request, nil
 }

@@ -28,8 +28,6 @@ type InboundPersistentStream struct {
 	transformer    transformer.Inbound
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
-	chunkBuffer    *biz.ChunkBuffer
-	previewKey     string
 	closed         bool
 	state          *PersistenceState
 }
@@ -59,15 +57,6 @@ func NewInboundPersistentStream(
 		state:          state,
 	}
 
-	if state.LivePreview && request != nil {
-		s.previewKey = biz.RequestKey(request.ID)
-		s.chunkBuffer = biz.DefaultStreamPreviewRegistry.GetBuffer(s.previewKey)
-		if s.chunkBuffer == nil {
-			s.chunkBuffer = biz.NewChunkBuffer()
-		}
-		biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
-	}
-
 	return s
 }
 
@@ -79,9 +68,6 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
-		if ts.chunkBuffer != nil {
-			ts.chunkBuffer.Append(event)
-		}
 		if isTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
 		}
@@ -112,12 +98,6 @@ func (ts *InboundPersistentStream) Close() error {
 
 	ts.closed = true
 	ctx := ts.ctx
-	if ts.previewKey != "" {
-		defer biz.DefaultStreamPreviewRegistry.Unregister(ts.previewKey)
-	}
-	if ts.chunkBuffer != nil {
-		defer ts.chunkBuffer.Close()
-	}
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
 
