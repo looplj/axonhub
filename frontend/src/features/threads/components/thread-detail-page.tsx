@@ -137,33 +137,33 @@ export default function ThreadDetailPage() {
   return (
     <div className='flex h-screen flex-col'>
       <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 w-full border-b backdrop-blur'>
-        <div className='flex w-full items-center justify-between'>
-          <div className='flex items-center space-x-4'>
-            <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
-              <ArrowLeft className='mr-2 h-4 w-4' />
-              {t('common.back')}
+        <div className='flex w-full items-center justify-between gap-2'>
+          <div className='flex items-center gap-2 sm:gap-4 min-w-0 flex-1'>
+            <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent shrink-0'>
+              <ArrowLeft className='mr-1 sm:mr-2 h-4 w-4' />
+              <span className='hidden sm:inline'>{t('common.back')}</span>
             </Button>
-            <Separator orientation='vertical' className='h-6' />
-            <div className='flex items-center space-x-3'>
-              <div className='bg-primary/10 flex h-8 w-8 items-center justify-center rounded-lg'>
-                <Activity className='text-primary h-4 w-4' />
+            <Separator orientation='vertical' className='h-6 shrink-0 hidden sm:block' />
+            <div className='flex items-center gap-2 sm:gap-3 min-w-0'>
+              <div className='bg-primary/10 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shrink-0'>
+                <Activity className='text-primary h-3.5 w-3.5 sm:h-4 sm:w-4' />
               </div>
-              <div>
-                <h1 className='text-lg leading-none font-semibold'>
+              <div className='min-w-0'>
+                <h1 className='text-sm sm:text-lg leading-none font-semibold truncate'>
                   {t('threads.detail.title')} #{extractNumberID(thread.id) || thread.threadID}
                 </h1>
-                <div className='mt-1 flex items-center gap-2'>
-                  <p className='text-muted-foreground text-sm'>{thread.threadID}</p>
-                  <span className='text-muted-foreground text-xs'>•</span>
-                  <p className='text-muted-foreground text-xs'>{createdAtLabel}</p>
+                <div className='mt-1 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm'>
+                  <p className='text-muted-foreground truncate max-w-[120px] sm:max-w-none'>{thread.threadID}</p>
+                  <span className='text-muted-foreground hidden sm:inline'>•</span>
+                  <p className='text-muted-foreground text-[10px] sm:text-xs hidden sm:inline'>{createdAtLabel}</p>
                 </div>
               </div>
             </div>
           </div>
-          <div className='flex items-center space-x-2'>
-            <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {t('common.refresh')}
+          <div className='flex items-center gap-1 sm:gap-2 shrink-0'>
+            <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading} className='px-2 sm:px-3'>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className='hidden sm:inline ml-2'>{t('common.refresh')}</span>
             </Button>
           </div>
         </div>
@@ -171,32 +171,32 @@ export default function ThreadDetailPage() {
 
       <Main className='flex-1 overflow-hidden flex flex-col p-0'>
         {/* Top: Usage Metadata */}
-        <div className='px-6 py-4 border-b bg-background'>
-          <div className='grid gap-4 md:grid-cols-6'>
-            <div>
-              <p className='text-muted-foreground text-sm'>{t('traces.detail.totalTokensLabel')}</p>
-              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalTokens ?? 0).toLocaleString()}</p>
+        <div className='px-4 sm:px-6 py-3 sm:py-4 border-b bg-background'>
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4'>
+            <div className='bg-muted/30 rounded-lg px-3 py-2'>
+              <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.detail.totalTokensLabel')}</p>
+              <p className='text-base sm:text-lg font-semibold'>{(thread.usageMetadata?.totalTokens ?? 0).toLocaleString()}</p>
             </div>
-            <div>
-              <p className='text-muted-foreground text-sm'>{t('traces.detail.inputTokensLabel')}</p>
-              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalInputTokens ?? 0).toLocaleString()}</p>
+            <div className='bg-muted/30 rounded-lg px-3 py-2'>
+              <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.detail.inputTokensLabel')}</p>
+              <p className='text-base sm:text-lg font-semibold'>{(thread.usageMetadata?.totalInputTokens ?? 0).toLocaleString()}</p>
             </div>
-            <div>
-              <p className='text-muted-foreground text-sm'>{t('traces.detail.outputTokensLabel')}</p>
-              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalOutputTokens ?? 0).toLocaleString()}</p>
+            <div className='bg-muted/30 rounded-lg px-3 py-2'>
+              <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.detail.outputTokensLabel')}</p>
+              <p className='text-base sm:text-lg font-semibold'>{(thread.usageMetadata?.totalOutputTokens ?? 0).toLocaleString()}</p>
             </div>
-            <div>
-              <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedTokensLabel')}</p>
-              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedTokens ?? 0).toLocaleString()}</p>
+            <div className='bg-muted/30 rounded-lg px-3 py-2'>
+              <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.detail.cachedTokensLabel')}</p>
+              <p className='text-base sm:text-lg font-semibold'>{(thread.usageMetadata?.totalCachedTokens ?? 0).toLocaleString()}</p>
             </div>
-            <div>
-              <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedWriteTokensLabel')}</p>
-              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedWriteTokens ?? 0).toLocaleString()}</p>
+            <div className='bg-muted/30 rounded-lg px-3 py-2'>
+              <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.detail.cachedWriteTokensLabel')}</p>
+              <p className='text-base sm:text-lg font-semibold'>{(thread.usageMetadata?.totalCachedWriteTokens ?? 0).toLocaleString()}</p>
             </div>
-            <div>
-              <p className='text-muted-foreground text-sm'>{t('usageLogs.columns.totalCost')}</p>
+            <div className='bg-muted/30 rounded-lg px-3 py-2'>
+              <p className='text-muted-foreground text-xs sm:text-sm'>{t('usageLogs.columns.totalCost')}</p>
               {thread.usageMetadata?.totalCost ? (
-                <p className='text-lg font-semibold'>
+                <p className='text-base sm:text-lg font-semibold'>
                   {t('currencies.format', {
                     val: thread.usageMetadata.totalCost,
                     currency: settings?.currencyCode,
@@ -205,16 +205,16 @@ export default function ThreadDetailPage() {
                   })}
                 </p>
               ) : (
-                <p className='text-muted-foreground text-lg font-semibold'>-</p>
+                <p className='text-muted-foreground text-base sm:text-lg font-semibold'>-</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Traces List */}
-        <div className='flex-1 overflow-auto p-6'>
+        <div className='flex-1 overflow-auto p-3 sm:p-6'>
           {traces.length > 0 ? (
-            <div className='space-y-4'>
+            <div className='space-y-3 sm:space-y-4'>
               {traces.map((trace, index) => (
                 <TraceCard key={trace.id} trace={trace} onViewTrace={handleViewTrace} index={index} />
               ))}
@@ -237,7 +237,7 @@ export default function ThreadDetailPage() {
 
         {/* Pagination */}
         {totalCount !== undefined && totalCount > 0 && (
-          <div className='border-t bg-background px-6 py-3'>
+          <div className='border-t bg-background px-3 sm:px-6 py-3'>
             <ServerSidePagination
               pageInfo={pageInfo}
               pageSize={pageSize}

@@ -51,7 +51,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
       }}
       className='w-full'
     >
-      <TabsList className={`shadow-soft border-border bg-background grid w-full rounded-2xl border ${isOwner ? 'grid-cols-9' : 'grid-cols-7'}`}>
+      <TabsList className='shadow-soft border-border bg-background flex w-full rounded-2xl border overflow-x-auto scrollbar-hide'>
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}
         </TabsTrigger>
@@ -84,7 +84,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
           {t('system.tabs.about')}
         </TabsTrigger>
       </TabsList>
-      <div className='shadow-soft border-border bg-card mt-6 rounded-2xl border p-6'>
+      <div className='shadow-soft border-border bg-card mt-6 rounded-2xl border p-4 sm:p-6'>
         <TabsContent value='general' className='mt-0 p-0'>
           <GeneralSettings />
         </TabsContent>
