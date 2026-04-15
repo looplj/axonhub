@@ -190,6 +190,11 @@ type RetryPolicy struct {
 	// For compatibility with legacy setting, the name is AutoDisableChannel.
 	// If the channel has more than one key, the API key will be disabled instead of the channel.
 	AutoDisableChannel AutoDisableChannel `json:"auto_disable_channel"`
+
+	// EmptyResponseDetection controls whether to detect empty streaming responses.
+	// When enabled, the pipeline pre-reads stream events to check if the response
+	// contains meaningful content, and marks empty responses as failed attempts for retry handling.
+	EmptyResponseDetection bool `json:"empty_response_detection"`
 }
 
 type AutoDisableChannel struct {

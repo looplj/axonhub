@@ -50,6 +50,10 @@ func (p *pipeline) notStream(
 		return nil, fmt.Errorf("failed to apply llm response middlewares: %w", err)
 	}
 
+	if p.emptyResponseDetection && !hasResponseContent(llmResp) {
+		return nil, ErrEmptyResponse
+	}
+
 	slog.DebugContext(ctx, "LLM response", slog.Any("response", llmResp))
 
 	finalResp, err := p.Inbound.TransformResponse(ctx, llmResp)
