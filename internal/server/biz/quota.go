@@ -342,3 +342,36 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 		TotalCost:   agg1.TotalCost,   // .Add(agg2.TotalCost),
 	}, nil
 }
+
+func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window QuotaWindow) (decimal.Decimal, error) {
+	q := s.ent.UsageLog.Query().Where(usagelog.ChannelIDEQ(channelID))
+
+	if window.Start != nil {
+		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+	}
+
+	if window.End != nil {
+		q = q.Where(usagelog.CreatedAtLT(*window.End))
+	}
+
+	type row struct {
+		TotalCost float64 `json:"total_cost"`
+	}
+
+	var rows []row
+
+	err := q.Modify(func(sel *sql.Selector) {
+		sel.Select(
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalCost)), "total_cost"),
+		)
+	}).Scan(ctx, &rows)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	if len(rows) == 0 {
+		return decimal.Zero, nil
+	}
+
+	return decimal.NewFromFloat(rows[0].TotalCost), nil
+}

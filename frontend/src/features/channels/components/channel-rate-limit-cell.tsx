@@ -39,7 +39,10 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
   const tpmRatio = status.tpmLimit != null && status.tpmCurrent != null && status.tpmLimit > 0
     ? status.tpmCurrent / status.tpmLimit : -1;
 
-  const maxRatio = Math.max(rpmRatio, tpmRatio);
+  const costRatio = status.costLimit != null && status.costCurrent != null && status.costLimit > 0
+    ? status.costCurrent / status.costLimit : -1;
+
+  const maxRatio = Math.max(rpmRatio, tpmRatio, costRatio);
   const isCritical = maxRatio >= 1;
   const isHigh = maxRatio >= 0.8 && maxRatio < 1;
 
@@ -49,6 +52,9 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
   }
   if (status.tpmCurrent != null && status.tpmLimit != null) {
     rateLimitSegments.push({ label: t('channels.expandedRow.rateLimit.tokens'), current: status.tpmCurrent, limit: status.tpmLimit, resetAt: status.tpmResetAt });
+  }
+  if (status.costCurrent != null && status.costLimit != null) {
+    rateLimitSegments.push({ label: t('channels.expandedRow.rateLimit.cost'), current: status.costCurrent, limit: status.costLimit, resetAt: status.costResetAt });
   }
 
   const hasConcurrent = status.concurrentCurrent != null && status.concurrentLimit != null;

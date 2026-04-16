@@ -162,9 +162,11 @@ export type ModelConcurrentEntry = z.infer<typeof modelConcurrentEntrySchema>;
 export const channelRateLimitSchema = z.object({
   rpm: z.number().int().positive().optional().nullable(),
   tpm: z.number().int().positive().optional().nullable(),
+  cost: z.number().positive().optional().nullable(),
   maxConcurrent: z.number().int().positive().optional().nullable(),
   rpmDuration: rateLimitDurationEnum.optional().nullable(),
   tpmDuration: rateLimitDurationEnum.optional().nullable(),
+  costDuration: rateLimitDurationEnum.optional().nullable(),
   modelConcurrent: z.array(modelConcurrentEntrySchema).optional().nullable(),
 });
 export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
@@ -176,6 +178,9 @@ export const channelRateLimitStatusSchema = z.object({
   tpmCurrent: z.number().nullable().optional(),
   tpmLimit: z.number().nullable().optional(),
   tpmResetAt: z.string().nullable().optional(),
+  costCurrent: z.number().nullable().optional(),
+  costLimit: z.number().nullable().optional(),
+  costResetAt: z.string().nullable().optional(),
   concurrentCurrent: z.number().nullable().optional(),
   concurrentLimit: z.number().nullable().optional(),
   isCoolingDown: z.boolean(),

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 )
@@ -147,12 +148,14 @@ type ChannelSettings struct {
 }
 
 type ChannelRateLimit struct {
-	RPM             *int64             `json:"rpm,omitempty"`             // Requests Per Minute, nil = unlimited
-	TPM             *int64             `json:"tpm,omitempty"`             // Tokens Per Minute, nil = unlimited
-	MaxConcurrent   *int64             `json:"maxConcurrent,omitempty"`   // Maximum concurrent requests, nil = unlimited
-	RPMDuration     *RateLimitDuration `json:"rpmDuration,omitempty"`     // Duration window for RPM, nil = 1 minute default
-	TPMDuration     *RateLimitDuration `json:"tpmDuration,omitempty"`     // Duration window for TPM, nil = 1 minute default
-	ModelConcurrent map[string]int64   `json:"modelConcurrent,omitempty"` // Per-model concurrent limits, nil = use MaxConcurrent
+	RPM             *int64             `json:"rpm,omitempty"`
+	TPM             *int64             `json:"tpm,omitempty"`
+	Cost            *decimal.Decimal   `json:"cost,omitempty"`
+	MaxConcurrent   *int64             `json:"maxConcurrent,omitempty"`
+	RPMDuration     *RateLimitDuration `json:"rpmDuration,omitempty"`
+	TPMDuration     *RateLimitDuration `json:"tpmDuration,omitempty"`
+	CostDuration    *RateLimitDuration `json:"costDuration,omitempty"`
+	ModelConcurrent map[string]int64   `json:"modelConcurrent,omitempty"`
 }
 
 // GetModelConcurrentLimit returns the concurrent limit for a specific model.
@@ -196,6 +199,13 @@ func (c *ChannelRateLimit) GetTPMDuration() RateLimitDuration {
 		return RateLimitDurationOneMin
 	}
 	return *c.TPMDuration
+}
+
+func (c *ChannelRateLimit) GetCostDuration() RateLimitDuration {
+	if c == nil || c.CostDuration == nil {
+		return RateLimitDurationOneWeek
+	}
+	return *c.CostDuration
 }
 
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）

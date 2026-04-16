@@ -389,7 +389,7 @@ func TestIntegration_IndependentRPMAndTPMDurations_WindowReset(t *testing.T) {
 
 func TestIntegration_BackwardCompatibility_RPMOnly_DefaultOneMinuteWindow(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 
 	rpm := int64(100)
 	entChannel := &ent.Channel{
@@ -418,7 +418,7 @@ func TestIntegration_BackwardCompatibility_RPMOnly_DefaultOneMinuteWindow(t *tes
 
 func TestIntegration_BackwardCompatibility_RPMExhausted_DefaultOneMinuteWindow(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 
 	rpm := int64(100)
 	entChannel := &ent.Channel{
@@ -443,7 +443,7 @@ func TestIntegration_BackwardCompatibility_RPMExhausted_DefaultOneMinuteWindow(t
 
 func TestIntegration_BackwardCompatibility_TPMOnly_DefaultOneMinuteWindow(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 
 	tpm := int64(1000)
 	entChannel := &ent.Channel{
@@ -470,7 +470,7 @@ func TestIntegration_BackwardCompatibility_TPMOnly_DefaultOneMinuteWindow(t *tes
 
 func TestIntegration_BackwardCompatibility_NoDurationFields(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 
 	rpm := int64(100)
 	tpm := int64(1000)
@@ -500,7 +500,7 @@ func TestIntegration_BackwardCompatibility_NoDurationFields(t *testing.T) {
 
 func TestIntegration_LBScoring_MixedDurationConfigs(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 
 	rpmA := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -561,7 +561,7 @@ func TestIntegration_LBScoring_MixedDurationConfigs(t *testing.T) {
 
 func TestIntegration_LBScoring_MixedDurationConfigs_WithDebug(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 
 	rpm := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -752,7 +752,7 @@ func TestIntegration_ConcurrentAccess_MixedTrackersAndStrategy(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	connectionTracker := NewDefaultConnectionTracker(10)
 	modelTracker := NewModelConnectionTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, modelTracker)
+	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, modelTracker, nil, nil)
 
 	rpm := int64(100)
 	tpm := int64(1000)
@@ -949,7 +949,7 @@ func TestIntegration_ModelConcurrent_WithChannelWideLimit(t *testing.T) {
 
 func TestIntegration_Cooldown_ChannelExhaustedDuringCooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 	rpm := int64(100)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "cooldown-test",
@@ -991,7 +991,7 @@ func TestIntegration_Cooldown_CooldownExpiration(t *testing.T) {
 	// Channel should NOT be cooling down after expiration
 	assert.False(t, tracker.IsCoolingDown(ch.ID))
 
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 	score := strategy.Score(context.Background(), ch)
 	assert.Equal(t, 100.0, score, "Channel should score normally after cooldown expires")
 }
@@ -1022,7 +1022,7 @@ func TestIntegration_Cooldown_SetCooldownMonotonic(t *testing.T) {
 
 func TestIntegration_Cooldown_ScoreWithDebug(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 	rpm := int64(100)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "cooldown-debug",
@@ -1043,7 +1043,7 @@ func TestIntegration_ModelConcurrent_ScoreWithModelContext(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mt := NewModelConnectionTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, ct, mt)
+	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
 	maxConcurrent := int64(10)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "model-ctx-score",
@@ -1078,7 +1078,7 @@ func TestIntegration_ModelConcurrent_ScoreWithDebugModelContext(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mt := NewModelConnectionTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, ct, mt)
+	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
 	maxConcurrent := int64(10)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "model-ctx-debug",

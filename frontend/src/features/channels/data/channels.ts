@@ -613,9 +613,11 @@ const QUERY_CHANNELS_QUERY = `
             rateLimit {
               rpm
               tpm
+              cost
               maxConcurrent
               rpmDuration
               tpmDuration
+              costDuration
               modelConcurrent {
                 model
                 limit
@@ -629,6 +631,9 @@ const QUERY_CHANNELS_QUERY = `
             tpmCurrent
             tpmLimit
             tpmResetAt
+            costCurrent
+            costLimit
+            costResetAt
             concurrentCurrent
             concurrentLimit
             isCoolingDown

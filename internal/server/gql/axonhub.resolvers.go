@@ -12,6 +12,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -84,7 +85,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 	}
 
 	rl := settings.RateLimit
-	hasAnyLimit := (rl.RPM != nil && *rl.RPM > 0) || (rl.TPM != nil && *rl.TPM > 0) || (rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0)
+	hasAnyLimit := (rl.RPM != nil && *rl.RPM > 0) || (rl.TPM != nil && *rl.TPM > 0) || (rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0) || (rl.Cost != nil && rl.Cost.IsPositive())
 	if !hasAnyLimit {
 		return nil, nil
 	}
@@ -124,6 +125,21 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 		status.ConcurrentLimit = &concurrentLimit
 	}
 
+	if rl.Cost != nil && rl.Cost.IsPositive() && r.quotaService != nil {
+		costDuration := rl.GetCostDuration()
+		windowStart := time.Now().Truncate(costDuration.Duration())
+		windowEnd := windowStart.Add(costDuration.Duration())
+
+		currentCost, err := r.quotaService.GetChannelCost(ctx, channelID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+		if err == nil {
+			costCurrentFloat, _ := currentCost.Float64()
+			status.CostCurrent = &costCurrentFloat
+			costLimitFloat, _ := rl.Cost.Float64()
+			status.CostLimit = &costLimitFloat
+			status.CostResetAt = &windowEnd
+		}
+	}
+
 	if until, ok := r.rateLimitTracker.GetCooldownUntil(channelID); ok {
 		status.IsCoolingDown = true
 		status.CooldownUntil = &until
@@ -132,6 +148,11 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 	}
 
 	return status, nil
+}
+
+// Cost is the resolver for the cost field.
+func (r *channelRateLimitResolver) Cost(ctx context.Context, obj *objects.ChannelRateLimit) (*float64, error) {
+	panic(fmt.Errorf("not implemented: Cost - cost"))
 }
 
 // ModelConcurrent is the resolver for the modelConcurrent field.
@@ -862,6 +883,11 @@ func (r *traceResolver) FirstText(ctx context.Context, obj *ent.Trace) (*string,
 // UsageMetadata is the resolver for the usageMetadata field.
 func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz.UsageMetadata, error) {
 	return r.traceService.UsageMetadata(ctx, obj.ID)
+}
+
+// Cost is the resolver for the cost field.
+func (r *channelRateLimitInputResolver) Cost(ctx context.Context, obj *objects.ChannelRateLimit, data *float64) error {
+	panic(fmt.Errorf("not implemented: Cost - cost"))
 }
 
 // ModelConcurrent is the resolver for the modelConcurrent field.

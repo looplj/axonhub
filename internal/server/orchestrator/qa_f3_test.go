@@ -184,7 +184,7 @@ func TestQA_Task4_ConcurrentAccessSafety(t *testing.T) {
 // Task 6: Duration-aware RPM scoring
 func TestQA_Task6_DurationAwareRPMScore(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 	rpm := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
 	ch := &biz.Channel{Channel: &ent.Channel{
@@ -202,7 +202,7 @@ func TestQA_Task6_DurationAwareRPMScore(t *testing.T) {
 // Task 6: Backward compat - no duration defaults to 1min
 func TestQA_Task6_BackwardCompat_NoDurationDefaults1Min(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 	rpm := int64(100)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "legacy",
@@ -220,7 +220,7 @@ func TestQA_Task7_PerModelConcurrentLimitAtLimit(t *testing.T) {
 	mt := NewModelConnectionTracker()
 	tracker := NewChannelRequestTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strat := NewRateLimitAwareStrategy(tracker, ct, mt)
+	strat := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
 	maxConcurrent := int64(10)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "model-at-limit",
@@ -241,7 +241,7 @@ func TestQA_Task7_PerModelConcurrentLimitExceeded(t *testing.T) {
 	mt := NewModelConnectionTracker()
 	tracker := NewChannelRequestTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strat := NewRateLimitAwareStrategy(tracker, ct, mt)
+	strat := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
 	maxConcurrent := int64(10)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "model-exceeded",
@@ -348,7 +348,7 @@ func TestQA_Task11_IntegrationSuitePasses(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mt := NewModelConnectionTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, ct, mt)
+	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
 	rpm := int64(100)
 	tpm := int64(1000)
 	maxConcurrent := int64(10)
@@ -435,7 +435,7 @@ func TestQA_Edge_MissingModelNames(t *testing.T) {
 
 func TestQA_Edge_ZeroLimits(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 	zeroRPM := int64(0)
 	zeroTPM := int64(0)
 	ch := &biz.Channel{Channel: &ent.Channel{
@@ -531,7 +531,7 @@ func TestQA_CrossTask_FullDurationAndModelConcurrentIntegration(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mt := NewModelConnectionTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, ct, mt)
+	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
 	rpm := int64(100)
 	tpm := int64(1000)
 	maxConcurrent := int64(10)
@@ -567,7 +567,7 @@ func TestQA_CrossTask_FullDurationAndModelConcurrentIntegration(t *testing.T) {
 
 func TestQA_CrossTask_BackwardCompatWithNewFeatures(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
 	rpm := int64(100)
 	legacyCh := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "legacy",

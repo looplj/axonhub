@@ -54,10 +54,12 @@ func NewChatCompletionOrchestrator(
 		modelConnectionTracker = NewModelConnectionTracker()
 	}
 
+	costTracker := NewChannelCostTracker()
+
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
-	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker, modelConnectionTracker)
+	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker, modelConnectionTracker, costTracker, quotaService)
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewTraceAwareStrategy(requestService),

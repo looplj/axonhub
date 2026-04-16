@@ -20,15 +20,19 @@ type RateLimitAwareStrategy struct {
 	requestTracker    *ChannelRequestTracker
 	connectionTracker ConnectionTracker
 	modelConnTracker  *ModelConnectionTracker
+	costTracker       *ChannelCostTracker
+	quotaService      *biz.QuotaService
 	maxScore          float64
 }
 
 // NewRateLimitAwareStrategy creates a new rate limit aware load balancing strategy.
-func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker, modelConnTracker *ModelConnectionTracker) *RateLimitAwareStrategy {
+func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker, modelConnTracker *ModelConnectionTracker, costTracker *ChannelCostTracker, quotaService *biz.QuotaService) *RateLimitAwareStrategy {
 	return &RateLimitAwareStrategy{
 		requestTracker:    tracker,
 		connectionTracker: connectionTracker,
 		modelConnTracker:  modelConnTracker,
+		costTracker:       costTracker,
+		quotaService:      quotaService,
 		maxScore:          100.0,
 	}
 }
@@ -115,6 +119,19 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 		ratio := float64(tpm) / float64(*rl.TPM)
 		if ratio > maxRatio {
 			maxRatio = ratio
+		}
+	}
+
+	if rl.Cost != nil && rl.Cost.IsPositive() && s.costTracker != nil {
+		if currentCost, ok := s.costTracker.GetCachedCost(channel.ID); ok {
+			if currentCost.GreaterThanOrEqual(*rl.Cost) {
+				return rateLimitExhaustedScore
+			}
+
+			ratio := currentCost.Div(*rl.Cost).InexactFloat64()
+			if ratio > maxRatio {
+				maxRatio = ratio
+			}
 		}
 	}
 
@@ -278,6 +295,24 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			ratio := float64(tpm) / float64(*rl.TPM)
 			if ratio > maxRatio {
 				maxRatio = ratio
+			}
+		}
+	}
+
+	if rl.Cost != nil && rl.Cost.IsPositive() && s.costTracker != nil {
+		if currentCost, ok := s.costTracker.GetCachedCost(channel.ID); ok {
+			details["cost_limit"] = rl.Cost.String()
+			details["cost_current"] = currentCost.String()
+			details["cost_duration"] = string(rl.GetCostDuration())
+
+			if currentCost.GreaterThanOrEqual(*rl.Cost) {
+				exhausted = true
+				details["cost_exhausted"] = true
+			} else {
+				ratio := currentCost.Div(*rl.Cost).InexactFloat64()
+				if ratio > maxRatio {
+					maxRatio = ratio
+				}
 			}
 		}
 	}

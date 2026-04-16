@@ -133,18 +133,22 @@ input ChannelSettingsInput {
 input ChannelRateLimitInput {
   rpm: Int
   tpm: Int
+  cost: Float
   maxConcurrent: Int
   rpmDuration: RateLimitDuration
   tpmDuration: RateLimitDuration
+  costDuration: RateLimitDuration
   modelConcurrent: [ModelConcurrentInput!]
 }
 
 type ChannelRateLimit {
   rpm: Int
   tpm: Int
+  cost: Float
   maxConcurrent: Int
   rpmDuration: RateLimitDuration
   tpmDuration: RateLimitDuration
+  costDuration: RateLimitDuration
   modelConcurrent: [ModelConcurrent!]
 }
 
@@ -608,6 +612,9 @@ type ChannelRateLimitStatus {
   tpmCurrent: Int
   tpmLimit: Int
   tpmResetAt: Time
+  costCurrent: Float
+  costLimit: Float
+  costResetAt: Time
   concurrentCurrent: Int
   concurrentLimit: Int
   isCoolingDown: Boolean!

@@ -46,6 +46,7 @@ type Resolver struct {
 	candidateSelectorDiagnostics   *orchestrator.CandidateSelectorDiagnostics
 	rateLimitTracker               *orchestrator.ChannelRequestTracker
 	connectionTracker              *orchestrator.DefaultConnectionTracker
+	quotaService                   *biz.QuotaService
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
 	gcWorker                       *gc.Worker
 }
@@ -76,6 +77,7 @@ func NewSchema(
 	candidateSelectorDiagnostics *orchestrator.CandidateSelectorDiagnostics,
 	rateLimitTracker *orchestrator.ChannelRequestTracker,
 	connectionTracker *orchestrator.DefaultConnectionTracker,
+	quotaService *biz.QuotaService,
 	httpClient *httpclient.HttpClient,
 	gcWorker *gc.Worker,
 ) graphql.ExecutableSchema {
@@ -107,6 +109,7 @@ func NewSchema(
 			candidateSelectorDiagnostics:   candidateSelectorDiagnostics,
 			rateLimitTracker:               rateLimitTracker,
 			connectionTracker:              connectionTracker,
+			quotaService:                   quotaService,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
 			gcWorker:                       gcWorker,
 		},

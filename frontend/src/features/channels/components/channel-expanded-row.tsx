@@ -112,9 +112,10 @@ interface RateLimitStatusSectionProps {
   status: ChannelRateLimitStatus;
   rpmDuration: string | null | undefined;
   tpmDuration: string | null | undefined;
+  costDuration: string | null | undefined;
 }
 
-function RateLimitStatusSection({ status, rpmDuration, tpmDuration }: RateLimitStatusSectionProps) {
+function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration }: RateLimitStatusSectionProps) {
   const { t } = useTranslation();
 
   const durationKeyMap: Record<string, string> = {
@@ -129,7 +130,8 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration }: RateLimitS
   const hasRpm = status.rpmCurrent != null;
   const hasTpm = status.tpmCurrent != null;
   const hasConcurrent = status.concurrentCurrent != null;
-  const hasRateLimits = hasRpm || hasTpm;
+  const hasCost = status.costCurrent != null;
+  const hasRateLimits = hasRpm || hasTpm || hasCost;
 
   return (
     <div className='space-y-2'>
@@ -149,6 +151,15 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration }: RateLimitS
           limit={status.tpmLimit}
           resetAt={status.tpmResetAt}
           windowDuration={formatWindowDuration(tpmDuration)}
+        />
+      )}
+      {hasCost && (
+        <RateLimitMetric
+          label={t('channels.expandedRow.rateLimit.cost')}
+          current={status.costCurrent}
+          limit={status.costLimit}
+          resetAt={status.costResetAt}
+          windowDuration={formatWindowDuration(costDuration)}
         />
       )}
       {hasConcurrent && (
@@ -252,6 +263,7 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
               status={channel.rateLimitStatus}
               rpmDuration={channel.settings?.rateLimit?.rpmDuration}
               tpmDuration={channel.settings?.rateLimit?.tpmDuration}
+              costDuration={channel.settings?.rateLimit?.costDuration}
             />
           </div>
         )}

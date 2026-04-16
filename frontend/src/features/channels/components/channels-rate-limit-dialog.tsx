@@ -41,6 +41,8 @@ const rateLimitFormSchema = z.object({
   rpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
   tpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   tpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
+  cost: z.union([z.number().positive(), z.literal('')]).optional().nullable(),
+  costDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
   maxConcurrent: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   modelConcurrent: z.array(z.object({
     model: z.string(),
@@ -85,6 +87,8 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
       tpm: currentRow.settings?.rateLimit?.tpm ?? '',
       tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
+      cost: currentRow.settings?.rateLimit?.cost ?? '',
+      costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
       maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
       modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit),
     },
@@ -106,6 +110,8 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
         tpm: currentRow.settings?.rateLimit?.tpm ?? '',
         tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
+        cost: currentRow.settings?.rateLimit?.cost ?? '',
+        costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
         maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
         modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit),
       });
@@ -114,17 +120,17 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
 
   const onSubmit = async (values: RateLimitFormValues) => {
     try {
-      // Bug 5: Nullify duration when corresponding value is null/empty
       const finalRpm = values.rpm === '' || values.rpm == null ? null : values.rpm;
       const finalTpm = values.tpm === '' || values.tpm == null ? null : values.tpm;
+      const finalCost = values.cost === '' || values.cost == null ? null : values.cost;
 
       const rateLimit: Record<string, unknown> = {
         rpm: finalRpm,
-        // Only include duration if rpm has a value
         rpmDuration: finalRpm != null ? values.rpmDuration : null,
         tpm: finalTpm,
-        // Only include duration if tpm has a value
         tpmDuration: finalTpm != null ? values.tpmDuration : null,
+        cost: finalCost,
+        costDuration: finalCost != null ? values.costDuration : null,
         maxConcurrent: values.maxConcurrent === '' || values.maxConcurrent == null ? null : values.maxConcurrent,
       };
 
@@ -150,6 +156,8 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         rateLimit.rpmDuration == null &&
         rateLimit.tpm == null &&
         rateLimit.tpmDuration == null &&
+        rateLimit.cost == null &&
+        rateLimit.costDuration == null &&
         rateLimit.maxConcurrent == null &&
         !hasModelConcurrent
           ? null
@@ -290,6 +298,56 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                           />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.tpm.description')}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='cost'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('channels.dialogs.rateLimit.fields.cost.label')}</FormLabel>
+                        <div className='flex gap-2'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              step='0.01'
+                              placeholder={t('channels.dialogs.rateLimit.fields.cost.placeholder')}
+                              value={field.value === '' || field.value == null ? '' : field.value}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? '' : parseFloat(val));
+                              }}
+                            />
+                          </FormControl>
+                          <FormField
+                            control={form.control}
+                            name='costDuration'
+                            render={({ field: durationField }) => (
+                              <FormItem className='w-[150px]'>
+                                <Select
+                                  value={durationField.value ?? 'ONE_WEEK'}
+                                  onValueChange={durationField.onChange}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {RATE_LIMIT_DURATIONS.map((duration) => (
+                                      <SelectItem key={duration} value={duration}>
+                                        {t(DURATION_I18N_KEYS[duration])}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <FormDescription>{t('channels.dialogs.rateLimit.fields.cost.description')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
