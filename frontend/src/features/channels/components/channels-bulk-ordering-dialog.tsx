@@ -13,10 +13,11 @@ import { Separator } from '@/components/ui/separator';
 import { useAllChannelSummarys, useBulkUpdateChannelOrdering } from '../data/channels';
 import { ChannelSummary } from '../data/schema';
 
+const WEIGHT_PRECISION = 0;
 const MIN_WEIGHT = 0;
-const MAX_WEIGHT = 9999;
+const MAX_WEIGHT = 100;
 
-const formatWeight = (value: number) => Math.round(value);
+const formatWeight = (value: number) => Number(value.toFixed(WEIGHT_PRECISION));
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
