@@ -629,17 +629,15 @@ func TestDataStorageService_SaveData(t *testing.T) {
 	t.Run("save data to database storage", func(t *testing.T) {
 		dbDS := createTestDataStorage(t, client, ctx, "db-storage", false, datastorage.TypeDatabase)
 
-		result, err := service.SaveData(ctx, dbDS, testKey, testData)
+		err := service.SaveData(ctx, dbDS, testKey, testData)
 		require.NoError(t, err)
-		require.Equal(t, string(testData), result)
 	})
 
 	t.Run("save data to fs storage", func(t *testing.T) {
 		fsDS := createTestDataStorage(t, client, ctx, "fs-storage", false, datastorage.TypeFs)
 
-		result, err := service.SaveData(ctx, fsDS, testKey, testData)
+		err := service.SaveData(ctx, fsDS, testKey, testData)
 		require.NoError(t, err)
-		require.Equal(t, testKey, result)
 
 		// Verify file was created
 		fs, err := service.GetFileSystem(ctx, fsDS)
@@ -678,7 +676,7 @@ func TestDataStorageService_LoadData(t *testing.T) {
 		fsDS := createTestDataStorage(t, client, ctx, "fs-storage", false, datastorage.TypeFs)
 
 		// First save data
-		_, err := service.SaveData(ctx, fsDS, testKey, testData)
+		err := service.SaveData(ctx, fsDS, testKey, testData)
 		require.NoError(t, err)
 
 		// Then load it

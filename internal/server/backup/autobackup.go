@@ -130,7 +130,7 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	filename := fmt.Sprintf("axonhub-backup-%s.json", timestamp)
 
-	if _, err := svc.dataStorageService.SaveData(ctx, ds, filename, data); err != nil {
+	if err := svc.dataStorageService.SaveData(ctx, ds, filename, data); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
