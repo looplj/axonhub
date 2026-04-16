@@ -198,78 +198,48 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                 <form className='space-y-4'>
                   <FormField
                     control={form.control}
-                    name='rpmDuration'
-                    render={({ field: durationField }) => (
-                      <FormItem>
-                        <FormLabel>{t('channels.dialogs.rateLimit.fields.rpmDuration.label')}</FormLabel>
-                        <Select
-                          value={durationField.value ?? 'ONE_MIN'}
-                          onValueChange={(val) => {
-                            durationField.onChange(val);
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {RATE_LIMIT_DURATIONS.map((duration) => (
-                              <SelectItem key={duration} value={duration}>
-                                {t(DURATION_I18N_KEYS[duration])}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
                     name='rpm'
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.rpm.label')}</FormLabel>
-                        <FormControl>
-                          <Input
-                            type='number'
-                            placeholder={t('channels.dialogs.rateLimit.fields.rpm.placeholder')}
-                            value={field.value === '' || field.value == null ? '' : field.value}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(val === '' ? '' : parseInt(val, 10));
-                            }}
+                        <div className='flex gap-2'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              placeholder={t('channels.dialogs.rateLimit.fields.rpm.placeholder')}
+                              value={field.value === '' || field.value == null ? '' : field.value}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? '' : parseInt(val, 10));
+                              }}
+                            />
+                          </FormControl>
+                          <FormField
+                            control={form.control}
+                            name='rpmDuration'
+                            render={({ field: durationField }) => (
+                              <FormItem className='w-[150px]'>
+                                <Select
+                                  value={durationField.value ?? 'ONE_MIN'}
+                                  onValueChange={durationField.onChange}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {RATE_LIMIT_DURATIONS.map((duration) => (
+                                      <SelectItem key={duration} value={duration}>
+                                        {t(DURATION_I18N_KEYS[duration])}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
                           />
-                        </FormControl>
+                        </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.rpm.description')}</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name='tpmDuration'
-                    render={({ field: durationField }) => (
-                      <FormItem>
-                        <FormLabel>{t('channels.dialogs.rateLimit.fields.tpmDuration.label')}</FormLabel>
-                        <Select
-                          value={durationField.value ?? 'ONE_MIN'}
-                          onValueChange={(val) => {
-                            durationField.onChange(val);
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {RATE_LIMIT_DURATIONS.map((duration) => (
-                              <SelectItem key={duration} value={duration}>
-                                {t(DURATION_I18N_KEYS[duration])}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -281,17 +251,43 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.tpm.label')}</FormLabel>
-                        <FormControl>
-                          <Input
-                            type='number'
-                            placeholder={t('channels.dialogs.rateLimit.fields.tpm.placeholder')}
-                            value={field.value === '' || field.value == null ? '' : field.value}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(val === '' ? '' : parseInt(val, 10));
-                            }}
+                        <div className='flex gap-2'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              placeholder={t('channels.dialogs.rateLimit.fields.tpm.placeholder')}
+                              value={field.value === '' || field.value == null ? '' : field.value}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? '' : parseInt(val, 10));
+                              }}
+                            />
+                          </FormControl>
+                          <FormField
+                            control={form.control}
+                            name='tpmDuration'
+                            render={({ field: durationField }) => (
+                              <FormItem className='w-[150px]'>
+                                <Select
+                                  value={durationField.value ?? 'ONE_MIN'}
+                                  onValueChange={durationField.onChange}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {RATE_LIMIT_DURATIONS.map((duration) => (
+                                      <SelectItem key={duration} value={duration}>
+                                        {t(DURATION_I18N_KEYS[duration])}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
                           />
-                        </FormControl>
+                        </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.tpm.description')}</FormDescription>
                         <FormMessage />
                       </FormItem>

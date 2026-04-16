@@ -481,8 +481,6 @@
   "channels.dialogs.rateLimit.fields.modelConcurrent.limitPlaceholder": "不限制",
   "channels.dialogs.rateLimit.fields.modelConcurrent.noModels": "未配置按模型并发限制",
   "channels.dialogs.rateLimit.fields.modelConcurrent.duplicateError": "不允许重复的模型名称",
-  "channels.dialogs.rateLimit.fields.rpmDuration.label": "RPM 时间窗口",
-  "channels.dialogs.rateLimit.fields.tpmDuration.label": "TPM 时间窗口",
   "channels.dialogs.rateLimit.durations.1min": "1 分钟",
   "channels.dialogs.rateLimit.durations.1hr": "1 小时",
   "channels.dialogs.rateLimit.durations.5hr": "5 小时",
