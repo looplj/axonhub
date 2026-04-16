@@ -3,6 +3,8 @@ package objects
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -145,9 +147,55 @@ type ChannelSettings struct {
 }
 
 type ChannelRateLimit struct {
-	RPM           *int64 `json:"rpm,omitempty"`           // Requests Per Minute, nil = unlimited
-	TPM           *int64 `json:"tpm,omitempty"`           // Tokens Per Minute, nil = unlimited
-	MaxConcurrent *int64 `json:"maxConcurrent,omitempty"` // Maximum concurrent requests, nil = unlimited
+	RPM             *int64             `json:"rpm,omitempty"`             // Requests Per Minute, nil = unlimited
+	TPM             *int64             `json:"tpm,omitempty"`             // Tokens Per Minute, nil = unlimited
+	MaxConcurrent   *int64             `json:"maxConcurrent,omitempty"`   // Maximum concurrent requests, nil = unlimited
+	RPMDuration     *RateLimitDuration `json:"rpmDuration,omitempty"`     // Duration window for RPM, nil = 1 minute default
+	TPMDuration     *RateLimitDuration `json:"tpmDuration,omitempty"`     // Duration window for TPM, nil = 1 minute default
+	ModelConcurrent map[string]int64   `json:"modelConcurrent,omitempty"` // Per-model concurrent limits, nil = use MaxConcurrent
+}
+
+// GetModelConcurrentLimit returns the concurrent limit for a specific model.
+// If a per-model limit is configured, it returns that limit and true.
+// Otherwise, it falls back to MaxConcurrent and returns false for the second value.
+func (c *ChannelRateLimit) GetModelConcurrentLimit(model string) (int64, bool) {
+	if c == nil {
+		return 0, false
+	}
+
+	model = strings.ToLower(model)
+
+	if c.ModelConcurrent != nil {
+		for k, v := range c.ModelConcurrent {
+			if strings.ToLower(k) == model {
+				return v, true
+			}
+		}
+	}
+
+	if c.MaxConcurrent != nil {
+		return *c.MaxConcurrent, false
+	}
+
+	return 0, false
+}
+
+// GetRPMDuration returns the RPM duration window.
+// Returns 1 minute (RateLimitDurationOneMin) as default when not configured.
+func (c *ChannelRateLimit) GetRPMDuration() RateLimitDuration {
+	if c == nil || c.RPMDuration == nil {
+		return RateLimitDurationOneMin
+	}
+	return *c.RPMDuration
+}
+
+// GetTPMDuration returns the TPM duration window.
+// Returns 1 minute (RateLimitDurationOneMin) as default when not configured.
+func (c *ChannelRateLimit) GetTPMDuration() RateLimitDuration {
+	if c == nil || c.TPMDuration == nil {
+		return RateLimitDurationOneMin
+	}
+	return *c.TPMDuration
 }
 
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）
@@ -282,6 +330,112 @@ const (
 	CapabilityPolicyRequire   CapabilityPolicy = "require"
 	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
 )
+
+type RateLimitDuration string
+
+const (
+	RateLimitDurationOneMin   RateLimitDuration = "1min"
+	RateLimitDurationOneHour  RateLimitDuration = "1hr"
+	RateLimitDurationFiveHour RateLimitDuration = "5hr"
+	RateLimitDurationOneMonth RateLimitDuration = "1mo"
+)
+
+func (d RateLimitDuration) Duration() time.Duration {
+	switch d {
+	case RateLimitDurationOneMin:
+		return time.Minute
+	case RateLimitDurationOneHour:
+		return time.Hour
+	case RateLimitDurationFiveHour:
+		return 5 * time.Hour
+	case RateLimitDurationOneMonth:
+		return 30 * 24 * time.Hour
+	default:
+		return time.Minute
+	}
+}
+
+// graphqlEnumToGo maps GraphQL enum names to Go string constants.
+var graphqlEnumToGo = map[string]RateLimitDuration{
+	"ONE_MIN":    RateLimitDurationOneMin,
+	"ONE_HOUR":   RateLimitDurationOneHour,
+	"FIVE_HOURS": RateLimitDurationFiveHour,
+	"ONE_MONTH":  RateLimitDurationOneMonth,
+}
+
+// goToGraphqlEnum maps Go string constants to GraphQL enum names.
+var goToGraphqlEnum = map[RateLimitDuration]string{
+	RateLimitDurationOneMin:   "ONE_MIN",
+	RateLimitDurationOneHour:  "ONE_HOUR",
+	RateLimitDurationFiveHour: "FIVE_HOURS",
+	RateLimitDurationOneMonth: "ONE_MONTH",
+}
+
+// MarshalGQL implements graphql.Marshaler for RateLimitDuration.
+// It converts the Go string constant to the corresponding GraphQL enum name.
+func (d RateLimitDuration) MarshalGQL(w io.Writer) {
+	graphqlName, ok := goToGraphqlEnum[d]
+	if !ok {
+		graphqlName = "ONE_MIN" // default fallback
+	}
+	_, _ = io.WriteString(w, strconv.Quote(graphqlName))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler for RateLimitDuration.
+// It converts the GraphQL enum name to the corresponding Go string constant.
+func (d *RateLimitDuration) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("RateLimitDuration must be a string, got %T", v)
+	}
+
+	goValue, ok := graphqlEnumToGo[str]
+	if !ok {
+		return fmt.Errorf("invalid RateLimitDuration value: %q", str)
+	}
+
+	*d = goValue
+	return nil
+}
+
+// IsValid returns true if the RateLimitDuration value is a recognized constant.
+func (d RateLimitDuration) IsValid() bool {
+	_, ok := goToGraphqlEnum[d]
+	return ok
+}
+
+// UnmarshalJSON validates RateLimitDuration during JSON deserialization.
+// It accepts both Go constant values ("1min", "1hr", "5hr", "1mo") and GraphQL enum names
+// ("ONE_MIN", "ONE_HOUR", "FIVE_HOURS", "ONE_MONTH") for backward compatibility.
+// An empty string is treated as the default (1 minute), consistent with the omitempty JSON tag
+// and the GetRPMDuration/GetTPMDuration fallback behavior.
+func (d *RateLimitDuration) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	// Empty string means not set — use default (1 minute)
+	if s == "" {
+		*d = RateLimitDurationOneMin
+		return nil
+	}
+
+	// Try Go constant values first
+	rd := RateLimitDuration(s)
+	if rd.IsValid() {
+		*d = rd
+		return nil
+	}
+
+	// Try GraphQL enum names
+	if goValue, ok := graphqlEnumToGo[s]; ok {
+		*d = goValue
+		return nil
+	}
+
+	return fmt.Errorf("invalid RateLimitDuration value: %q", s)
+}
 
 type ChannelPolicies struct {
 	Stream CapabilityPolicy `json:"stream,omitempty"`

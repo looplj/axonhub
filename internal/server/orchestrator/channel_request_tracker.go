@@ -6,12 +6,13 @@ import (
 )
 
 // ChannelRequestTracker tracks per-channel request and token counts
-// within a fixed 1-minute sliding window for rate limiting.
+// within configurable duration windows for rate limiting.
+// It supports multiple window durations per channel (e.g., 1min, 1hr, 5hr, 1mo).
 // It also manages cooldown periods for channels that received 429 errors.
 type ChannelRequestTracker struct {
 	mu        sync.RWMutex
-	counters  map[int]*rateLimitWindow // channelID -> window
-	cooldowns map[int]time.Time        // channelID -> cooldown expiration time
+	counters  map[int]map[time.Duration]*rateLimitWindow // channelID -> duration -> window
+	cooldowns map[int]time.Time                          // channelID -> cooldown expiration time
 }
 
 type rateLimitWindow struct {
@@ -23,36 +24,65 @@ type rateLimitWindow struct {
 // NewChannelRequestTracker creates a new rate limit tracker.
 func NewChannelRequestTracker() *ChannelRequestTracker {
 	return &ChannelRequestTracker{
-		counters:  make(map[int]*rateLimitWindow),
+		counters:  make(map[int]map[time.Duration]*rateLimitWindow),
 		cooldowns: make(map[int]time.Time),
 	}
 }
 
-// getOrResetWindow returns the current window for a channel, resetting if expired.
-func (t *ChannelRequestTracker) getOrResetWindow(channelID int) *rateLimitWindow {
+// getOrResetWindow returns the current window for a channel and duration, resetting if expired.
+func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration) *rateLimitWindow {
 	now := time.Now()
-	windowStart := now.Truncate(time.Minute)
+	windowStart := now.Truncate(d)
 
-	w, ok := t.counters[channelID]
+	durationMap, ok := t.counters[channelID]
+	if !ok {
+		durationMap = make(map[time.Duration]*rateLimitWindow)
+		t.counters[channelID] = durationMap
+	}
+
+	for dur, w := range durationMap {
+		if d != dur && now.Sub(w.windowStart) > dur*2 {
+			delete(durationMap, dur)
+		}
+	}
+
+	// Clean up empty channel entries to prevent memory leaks
+	if len(durationMap) == 0 {
+		delete(t.counters, channelID)
+		durationMap = make(map[time.Duration]*rateLimitWindow)
+		t.counters[channelID] = durationMap
+	}
+
+	w, ok := durationMap[d]
 	if !ok || w.windowStart != windowStart {
 		w = &rateLimitWindow{windowStart: windowStart}
-		t.counters[channelID] = w
+		durationMap[d] = w
 	}
 
 	return w
 }
 
-// IncrementRequest increments the request count for a channel.
+// IncrementRequest increments the request count for a channel (1-minute window, for backward compatibility).
 func (t *ChannelRequestTracker) IncrementRequest(channelID int) {
+	t.IncrementRequestForDuration(channelID, time.Minute)
+}
+
+// IncrementRequestForDuration increments the request count for a channel with a specific duration window.
+func (t *ChannelRequestTracker) IncrementRequestForDuration(channelID int, d time.Duration) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	w := t.getOrResetWindow(channelID)
+	w := t.getOrResetWindow(channelID, d)
 	w.requests++
 }
 
-// AddTokens adds token count for a channel.
+// AddTokens adds token count for a channel (1-minute window, for backward compatibility).
 func (t *ChannelRequestTracker) AddTokens(channelID int, tokens int64) {
+	t.AddTokensForDuration(channelID, tokens, time.Minute)
+}
+
+// AddTokensForDuration adds token count for a channel with a specific duration window.
+func (t *ChannelRequestTracker) AddTokensForDuration(channelID int, tokens int64, d time.Duration) {
 	if tokens <= 0 {
 		return
 	}
@@ -60,21 +90,31 @@ func (t *ChannelRequestTracker) AddTokens(channelID int, tokens int64) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	w := t.getOrResetWindow(channelID)
+	w := t.getOrResetWindow(channelID, d)
 	w.tokens += tokens
 }
 
-// GetRequestCount returns the current request count for a channel in the current window.
+// GetRequestCount returns the current request count for a channel in the current 1-minute window (backward compatibility).
 func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {
+	return t.GetRequestCountForDuration(channelID, time.Minute)
+}
+
+// GetRequestCountForDuration returns the current request count for a channel in the current window for the specified duration.
+func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time.Duration) int64 {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	w, ok := t.counters[channelID]
+	durationMap, ok := t.counters[channelID]
 	if !ok {
 		return 0
 	}
 
-	windowStart := time.Now().Truncate(time.Minute)
+	w, ok := durationMap[d]
+	if !ok {
+		return 0
+	}
+
+	windowStart := time.Now().Truncate(d)
 	if w.windowStart != windowStart {
 		return 0
 	}
@@ -82,17 +122,27 @@ func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {
 	return w.requests
 }
 
-// GetTokenCount returns the current token count for a channel in the current window.
+// GetTokenCount returns the current token count for a channel in the current 1-minute window (backward compatibility).
 func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
+	return t.GetTokenCountForDuration(channelID, time.Minute)
+}
+
+// GetTokenCountForDuration returns the current token count for a channel in the current window for the specified duration.
+func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.Duration) int64 {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	w, ok := t.counters[channelID]
+	durationMap, ok := t.counters[channelID]
 	if !ok {
 		return 0
 	}
 
-	windowStart := time.Now().Truncate(time.Minute)
+	w, ok := durationMap[d]
+	if !ok {
+		return 0
+	}
+
+	windowStart := time.Now().Truncate(d)
 	if w.windowStart != windowStart {
 		return 0
 	}
@@ -131,7 +181,6 @@ func (t *ChannelRequestTracker) GetCooldownUntil(channelID int) (time.Time, bool
 		return time.Time{}, false
 	}
 
-	// Check if cooldown has expired
 	now := time.Now()
 	if now.After(until) {
 		t.clearExpiredCooldown(channelID, until, now)

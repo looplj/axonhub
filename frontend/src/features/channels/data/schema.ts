@@ -147,11 +147,25 @@ export const channelProbeDataSchema = z.object({
 });
 export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
 
+// Rate Limit Duration Enum
+export const rateLimitDurationEnum = z.enum(['ONE_MIN', 'ONE_HOUR', 'FIVE_HOURS', 'ONE_MONTH']);
+export type RateLimitDuration = z.infer<typeof rateLimitDurationEnum>;
+
+// Model Concurrent Entry (model + limit pairs)
+export const modelConcurrentEntrySchema = z.object({
+  model: z.string().min(1, 'Model name is required'),
+  limit: z.number().int().positive().optional().nullable(),
+});
+export type ModelConcurrentEntry = z.infer<typeof modelConcurrentEntrySchema>;
+
 // Channel Rate Limit
 export const channelRateLimitSchema = z.object({
   rpm: z.number().int().positive().optional().nullable(),
   tpm: z.number().int().positive().optional().nullable(),
   maxConcurrent: z.number().int().positive().optional().nullable(),
+  rpmDuration: rateLimitDurationEnum.optional().nullable(),
+  tpmDuration: rateLimitDurationEnum.optional().nullable(),
+  modelConcurrent: z.array(modelConcurrentEntrySchema).optional().nullable(),
 });
 export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
 

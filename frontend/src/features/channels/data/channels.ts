@@ -614,6 +614,12 @@ const QUERY_CHANNELS_QUERY = `
               rpm
               tpm
               maxConcurrent
+              rpmDuration
+              tpmDuration
+              modelConcurrent {
+                model
+                limit
+              }
             }
           }
           orderingWeight

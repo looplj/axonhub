@@ -266,6 +266,16 @@ type InitializeSystemPayload struct {
 	Token   *string   `json:"token,omitempty"`
 }
 
+type ModelConcurrent struct {
+	Model string `json:"model"`
+	Limit *int   `json:"limit,omitempty"`
+}
+
+type ModelConcurrentInput struct {
+	Model string `json:"model"`
+	Limit *int   `json:"limit,omitempty"`
+}
+
 // Performance statistics for a specific model on a given date
 type ModelPerformanceStat struct {
 	Date         string   `json:"date"`

@@ -94,6 +94,13 @@ enum CapabilityPolicy {
   forbid
 }
 
+enum RateLimitDuration {
+  ONE_MIN
+  ONE_HOUR
+  FIVE_HOURS
+  ONE_MONTH
+}
+
 type ChannelPolicies {
   stream: CapabilityPolicy
 }
@@ -126,12 +133,28 @@ input ChannelRateLimitInput {
   rpm: Int
   tpm: Int
   maxConcurrent: Int
+  rpmDuration: RateLimitDuration
+  tpmDuration: RateLimitDuration
+  modelConcurrent: [ModelConcurrentInput!]
 }
 
 type ChannelRateLimit {
   rpm: Int
   tpm: Int
   maxConcurrent: Int
+  rpmDuration: RateLimitDuration
+  tpmDuration: RateLimitDuration
+  modelConcurrent: [ModelConcurrent!]
+}
+
+input ModelConcurrentInput {
+  model: String!
+  limit: Int
+}
+
+type ModelConcurrent {
+  model: String!
+  limit: Int
 }
 
 type ChannelCredentials {

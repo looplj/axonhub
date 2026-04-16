@@ -32,11 +32,12 @@ func NewChatCompletionOrchestrator(
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
+	modelConnectionTracker := NewModelConnectionTracker()
 
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
-	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker)
+	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker, modelConnectionTracker)
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewTraceAwareStrategy(requestService),
@@ -71,6 +72,7 @@ func NewChatCompletionOrchestrator(
 		channelSelector:            defaultSelector,
 		connectionTracker:          connectionTracker,
 		rateLimitTracker:           rateLimitTracker,
+		modelConnectionTracker:     modelConnectionTracker,
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
 		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
@@ -105,6 +107,8 @@ type ChatCompletionOrchestrator struct {
 	connectionTracker ConnectionTracker
 	// The rate limit tracker for rate limit aware load balancing.
 	rateLimitTracker *ChannelRequestTracker
+	// The model connection tracker for per-model connection tracking.
+	modelConnectionTracker *ModelConnectionTracker
 	// The model circuit breaker for circuit-breaker load balancing.
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 
@@ -247,6 +251,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		withRateLimitTracking(outbound, processor.rateLimitTracker),
 		// Connection tracking middleware for load balancing.
 		withConnectionTracking(outbound, processor.connectionTracker),
+		// Model connection tracking middleware for per-model concurrency tracking.
+		withModelConnectionTracking(outbound, processor.modelConnectionTracker),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))

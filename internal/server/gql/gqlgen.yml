@@ -114,6 +114,9 @@ models:
   CapabilityPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.CapabilityPolicy
+  RateLimitDuration:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RateLimitDuration
   ChannelPolicies:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelPolicies

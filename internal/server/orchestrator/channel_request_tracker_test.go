@@ -72,10 +72,12 @@ func TestChannelRequestTracker_WindowReset(t *testing.T) {
 
 	// Manually insert a window that belongs to a past minute
 	tracker.mu.Lock()
-	tracker.counters[1] = &rateLimitWindow{
-		requests:    10,
-		tokens:      500,
-		windowStart: time.Now().Truncate(time.Minute).Add(-time.Minute),
+	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
+		time.Minute: {
+			requests:    10,
+			tokens:      500,
+			windowStart: time.Now().Truncate(time.Minute).Add(-time.Minute),
+		},
 	}
 	tracker.mu.Unlock()
 
@@ -94,10 +96,12 @@ func TestChannelRequestTracker_WindowReset_AddTokens(t *testing.T) {
 
 	// Manually insert a window that belongs to a past minute
 	tracker.mu.Lock()
-	tracker.counters[1] = &rateLimitWindow{
-		requests:    10,
-		tokens:      500,
-		windowStart: time.Now().Truncate(time.Minute).Add(-time.Minute),
+	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
+		time.Minute: {
+			requests:    10,
+			tokens:      500,
+			windowStart: time.Now().Truncate(time.Minute).Add(-time.Minute),
+		},
 	}
 	tracker.mu.Unlock()
 
@@ -352,4 +356,84 @@ func TestChannelRequestTracker_Cooldown_ConcurrentReadWrite(t *testing.T) {
 
 	// Should still be in cooldown
 	assert.True(t, tracker.IsCoolingDown(1))
+}
+
+func TestChannelRequestTracker_ForDuration_MultiWindow(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	tracker.IncrementRequestForDuration(1, time.Minute)
+	tracker.IncrementRequestForDuration(1, time.Minute)
+	tracker.IncrementRequestForDuration(1, time.Hour)
+	tracker.IncrementRequestForDuration(1, time.Hour)
+	tracker.IncrementRequestForDuration(1, time.Hour)
+	tracker.IncrementRequestForDuration(1, 5*time.Hour)
+
+	minuteCount := tracker.GetRequestCountForDuration(1, time.Minute)
+	hourCount := tracker.GetRequestCountForDuration(1, time.Hour)
+	fiveHourCount := tracker.GetRequestCountForDuration(1, 5*time.Hour)
+
+	assert.Equal(t, int64(2), minuteCount)
+	assert.Equal(t, int64(3), hourCount)
+	assert.Equal(t, int64(1), fiveHourCount)
+}
+
+func TestChannelRequestTracker_ForDuration_WindowExpiry(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	oldWindowStart := time.Now().Truncate(time.Minute).Add(-2 * time.Minute)
+	tracker.mu.Lock()
+	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
+		time.Minute: {
+			requests:    10,
+			tokens:      500,
+			windowStart: oldWindowStart,
+		},
+	}
+	tracker.mu.Unlock()
+
+	requestCount := tracker.GetRequestCountForDuration(1, time.Minute)
+	tokenCount := tracker.GetTokenCountForDuration(1, time.Minute)
+
+	assert.Equal(t, int64(0), requestCount)
+	assert.Equal(t, int64(0), tokenCount)
+}
+
+func TestChannelRequestTracker_ForDuration_Tokens(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	tracker.AddTokensForDuration(1, 1000, time.Minute)
+	tracker.AddTokensForDuration(1, 2000, time.Hour)
+	tracker.AddTokensForDuration(1, 5000, 5*time.Hour)
+
+	minuteTokens := tracker.GetTokenCountForDuration(1, time.Minute)
+	hourTokens := tracker.GetTokenCountForDuration(1, time.Hour)
+	fiveHourTokens := tracker.GetTokenCountForDuration(1, 5*time.Hour)
+
+	assert.Equal(t, int64(1000), minuteTokens)
+	assert.Equal(t, int64(2000), hourTokens)
+	assert.Equal(t, int64(5000), fiveHourTokens)
+}
+
+func TestChannelRequestTracker_ForDuration_BackwardCompat(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	tracker.IncrementRequest(1)
+	tracker.IncrementRequest(1)
+	tracker.AddTokens(1, 500)
+
+	backwardCompatRequestCount := tracker.GetRequestCount(1)
+	forDurationRequestCount := tracker.GetRequestCountForDuration(1, time.Minute)
+	assert.Equal(t, backwardCompatRequestCount, forDurationRequestCount)
+	assert.Equal(t, int64(2), forDurationRequestCount)
+
+	backwardCompatTokenCount := tracker.GetTokenCount(1)
+	forDurationTokenCount := tracker.GetTokenCountForDuration(1, time.Minute)
+	assert.Equal(t, backwardCompatTokenCount, forDurationTokenCount)
+	assert.Equal(t, int64(500), forDurationTokenCount)
+
+	tracker.IncrementRequestForDuration(1, time.Minute)
+	tracker.AddTokensForDuration(1, 100, time.Minute)
+
+	assert.Equal(t, int64(3), tracker.GetRequestCount(1))
+	assert.Equal(t, int64(600), tracker.GetTokenCount(1))
 }

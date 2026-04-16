@@ -19,14 +19,16 @@ const rateLimitExhaustedScore = -10000
 type RateLimitAwareStrategy struct {
 	requestTracker    *ChannelRequestTracker
 	connectionTracker ConnectionTracker
+	modelConnTracker  *ModelConnectionTracker
 	maxScore          float64
 }
 
 // NewRateLimitAwareStrategy creates a new rate limit aware load balancing strategy.
-func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker) *RateLimitAwareStrategy {
+func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker, modelConnTracker *ModelConnectionTracker) *RateLimitAwareStrategy {
 	return &RateLimitAwareStrategy{
 		requestTracker:    tracker,
 		connectionTracker: connectionTracker,
+		modelConnTracker:  modelConnTracker,
 		maxScore:          100.0,
 	}
 }
@@ -92,7 +94,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	// Check RPM (Requests Per Minute)
 	if rl.RPM != nil && *rl.RPM > 0 {
-		rpm := s.requestTracker.GetRequestCount(channel.ID)
+		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rl.GetRPMDuration().Duration())
 		if rpm >= *rl.RPM {
 			return rateLimitExhaustedScore
 		}
@@ -105,7 +107,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	// Check TPM (Tokens Per Minute)
 	if rl.TPM != nil && *rl.TPM > 0 {
-		tpm := s.requestTracker.GetTokenCount(channel.ID)
+		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, rl.GetTPMDuration().Duration())
 		if tpm >= *rl.TPM {
 			return rateLimitExhaustedScore
 		}
@@ -126,6 +128,28 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			ratio := float64(concurrent) / float64(concurrencyLimit)
 			if ratio > maxRatio {
 				maxRatio = ratio
+			}
+		}
+	}
+
+	if s.modelConnTracker != nil && ctx != nil {
+		modelID := requestedModelFromContext(ctx)
+		if modelID != "" {
+			// Per-model concurrent limits are only enforced when explicitly configured in ModelConcurrent.
+			// When no per-model limit is configured (hasCustom=false), the channel-wide MaxConcurrent check
+			// (via connectionTracker above) handles the fallback.
+			// Example: MaxConcurrent=5 with ModelConcurrent={"gpt-4":2} allows gpt-4 up to 2 concurrent,
+			// while other models share the channel-wide 5 concurrent limit.
+			if modelLimit, hasCustom := rl.GetModelConcurrentLimit(modelID); hasCustom && modelLimit > 0 {
+				modelConcurrent := int64(s.modelConnTracker.GetModelConnectionCount(channel.ID, modelID))
+				if modelConcurrent >= modelLimit {
+					return rateLimitExhaustedScore
+				}
+
+				ratio := float64(modelConcurrent) / float64(modelLimit)
+				if ratio > maxRatio {
+					maxRatio = ratio
+				}
 			}
 		}
 	}
@@ -222,9 +246,11 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 
 	// Check RPM
 	if rl.RPM != nil && *rl.RPM > 0 {
-		rpm := s.requestTracker.GetRequestCount(channel.ID)
+		rpmDuration := rl.GetRPMDuration().Duration()
+		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rpmDuration)
 		details["rpm_limit"] = *rl.RPM
 		details["rpm_current"] = rpm
+		details["rpm_duration"] = string(rl.GetRPMDuration())
 
 		if rpm >= *rl.RPM {
 			exhausted = true
@@ -239,9 +265,11 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 
 	// Check TPM
 	if rl.TPM != nil && *rl.TPM > 0 {
-		tpm := s.requestTracker.GetTokenCount(channel.ID)
+		tpmDuration := rl.GetTPMDuration().Duration()
+		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, tpmDuration)
 		details["tpm_limit"] = *rl.TPM
 		details["tpm_current"] = tpm
+		details["tpm_duration"] = string(rl.GetTPMDuration())
 
 		if tpm >= *rl.TPM {
 			exhausted = true
@@ -270,6 +298,33 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 				ratio := float64(concurrent) / float64(concurrencyLimit)
 				if ratio > maxRatio {
 					maxRatio = ratio
+				}
+			}
+		}
+	}
+
+	if s.modelConnTracker != nil && ctx != nil {
+		modelID := requestedModelFromContext(ctx)
+		if modelID != "" {
+			// Per-model concurrent limits are only enforced when explicitly configured in ModelConcurrent.
+			// When no per-model limit is configured (hasCustom=false), the channel-wide MaxConcurrent check
+			// (via connectionTracker above) handles the fallback.
+			// Example: MaxConcurrent=5 with ModelConcurrent={"gpt-4":2} allows gpt-4 up to 2 concurrent,
+			// while other models share the channel-wide 5 concurrent limit.
+			if modelLimit, hasCustom := rl.GetModelConcurrentLimit(modelID); hasCustom && modelLimit > 0 {
+				modelConcurrent := int64(s.modelConnTracker.GetModelConnectionCount(channel.ID, modelID))
+				details["model_concurrent_limit"] = modelLimit
+				details["model_concurrent_current"] = modelConcurrent
+				details["model_concurrent_model"] = modelID
+
+				if modelConcurrent >= modelLimit {
+					exhausted = true
+					details["model_concurrent_exhausted"] = true
+				} else {
+					ratio := float64(modelConcurrent) / float64(modelLimit)
+					if ratio > maxRatio {
+						maxRatio = ratio
+					}
 				}
 			}
 		}

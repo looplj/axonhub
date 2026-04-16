@@ -5,11 +5,26 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+func getRPMDuration(channel *biz.Channel) time.Duration {
+	if channel.Settings != nil && channel.Settings.RateLimit != nil {
+		return channel.Settings.RateLimit.GetRPMDuration().Duration()
+	}
+	return time.Minute
+}
+
+func getTPMDuration(channel *biz.Channel) time.Duration {
+	if channel.Settings != nil && channel.Settings.RateLimit != nil {
+		return channel.Settings.RateLimit.GetTPMDuration().Duration()
+	}
+	return time.Minute
+}
 
 // withRateLimitTracking creates a middleware that tracks request counts per channel for rate limiting.
 func withRateLimitTracking(outbound *PersistentOutboundTransformer, tracker *ChannelRequestTracker) pipeline.Middleware {
@@ -41,13 +56,15 @@ func (m *rateLimitTracking) OnOutboundRawRequest(ctx context.Context, request *h
 		return request, nil
 	}
 
-	m.tracker.IncrementRequest(channel.ID)
+	duration := getRPMDuration(channel)
+	m.tracker.IncrementRequestForDuration(channel.ID, duration)
 
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "Incremented rate limit request count",
 			log.Int("channel_id", channel.ID),
 			log.String("channel_name", channel.Name),
-			log.Int64("current_rpm", m.tracker.GetRequestCount(channel.ID)),
+			log.Duration("window", duration),
+			log.Int64("current_rpm", m.tracker.GetRequestCountForDuration(channel.ID, duration)),
 		)
 	}
 
@@ -62,14 +79,16 @@ func (m *rateLimitTracking) OnOutboundLlmResponse(ctx context.Context, response 
 
 	totalTokens := response.Usage.TotalTokens
 	if totalTokens > 0 {
-		m.tracker.AddTokens(channel.ID, totalTokens)
+		duration := getTPMDuration(channel)
+		m.tracker.AddTokensForDuration(channel.ID, totalTokens, duration)
 
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "Incremented rate limit token count",
 				log.Int("channel_id", channel.ID),
 				log.String("channel_name", channel.Name),
 				log.Int64("tokens", totalTokens),
-				log.Int64("current_tpm", m.tracker.GetTokenCount(channel.ID)),
+				log.Duration("window", duration),
+				log.Int64("current_tpm", m.tracker.GetTokenCountForDuration(channel.ID, duration)),
 			)
 		}
 	}
@@ -140,14 +159,16 @@ func (s *rateLimitTrackingStream) Current() *llm.Response {
 	if event.Usage != nil && event.Usage.TotalTokens > 0 {
 		channel := s.outbound.GetCurrentChannel()
 		if channel != nil {
-			s.tracker.AddTokens(channel.ID, event.Usage.TotalTokens)
+			duration := getTPMDuration(channel)
+			s.tracker.AddTokensForDuration(channel.ID, event.Usage.TotalTokens, duration)
 
 			if log.DebugEnabled(s.ctx) {
 				log.Debug(s.ctx, "Incremented rate limit token count from stream",
 					log.Int("channel_id", channel.ID),
 					log.String("channel_name", channel.Name),
 					log.Int64("tokens", event.Usage.TotalTokens),
-					log.Int64("current_tpm", s.tracker.GetTokenCount(channel.ID)),
+					log.Duration("window", duration),
+					log.Int64("current_tpm", s.tracker.GetTokenCountForDuration(channel.ID, duration)),
 				)
 			}
 		}

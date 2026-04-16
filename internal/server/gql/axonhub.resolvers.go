@@ -9,6 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -68,6 +70,29 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	}
 
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
+}
+
+// ModelConcurrent is the resolver for the modelConcurrent field.
+func (r *channelRateLimitResolver) ModelConcurrent(ctx context.Context, obj *objects.ChannelRateLimit) ([]*ModelConcurrent, error) {
+	if obj == nil || obj.ModelConcurrent == nil {
+		return []*ModelConcurrent{}, nil
+	}
+
+	result := make([]*ModelConcurrent, 0, len(obj.ModelConcurrent))
+	for model, limit := range obj.ModelConcurrent {
+		limitInt := int(limit)
+		result = append(result, &ModelConcurrent{
+			Model: model,
+			Limit: &limitInt,
+		})
+	}
+
+	// Sort by model name for deterministic ordering
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Model < result[j].Model
+	})
+
+	return result, nil
 }
 
 // HeaderOverrideOperations is the resolver for the headerOverrideOperations field.
@@ -771,6 +796,47 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
+// ModelConcurrent is the resolver for the modelConcurrent field.
+func (r *channelRateLimitInputResolver) ModelConcurrent(ctx context.Context, obj *objects.ChannelRateLimit, data []*ModelConcurrentInput) error {
+	if obj == nil || len(data) == 0 {
+		return nil
+	}
+
+	if obj.ModelConcurrent == nil {
+		obj.ModelConcurrent = make(map[string]int64, len(data))
+	}
+
+	seen := make(map[string]bool, len(data))
+	for _, item := range data {
+		if item == nil {
+			continue
+		}
+
+		modelName := strings.TrimSpace(item.Model)
+		if modelName == "" {
+			return fmt.Errorf("model name cannot be empty")
+		}
+
+		normalizedName := strings.ToLower(modelName)
+		if seen[normalizedName] {
+			return fmt.Errorf("duplicate model name: %s", modelName)
+		}
+		seen[normalizedName] = true
+
+		// nil/zero limit means unlimited — skip entry
+		if item.Limit == nil || *item.Limit <= 0 {
+			continue
+		}
+
+		obj.ModelConcurrent[normalizedName] = int64(*item.Limit)
+	}
+
+	return nil
+}
+
+// ChannelRateLimit returns ChannelRateLimitResolver implementation.
+func (r *Resolver) ChannelRateLimit() ChannelRateLimitResolver { return &channelRateLimitResolver{r} }
+
 // ChannelSettings returns ChannelSettingsResolver implementation.
 func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
 
@@ -780,18 +846,13 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
+// ChannelRateLimitInput returns ChannelRateLimitInputResolver implementation.
+func (r *Resolver) ChannelRateLimitInput() ChannelRateLimitInputResolver {
+	return &channelRateLimitInputResolver{r}
+}
+
+type channelRateLimitResolver struct{ *Resolver }
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *mutationResolver) ClearChannelOverrideTemplates(ctx context.Context, input ClearChannelOverrideTemplatesInput) (*ClearChannelOverrideTemplatesPayload, error) {
-	panic(fmt.Errorf("not implemented: ClearChannelOverrideTemplates - clearChannelOverrideTemplates"))
-}
-*/
+type channelRateLimitInputResolver struct{ *Resolver }
