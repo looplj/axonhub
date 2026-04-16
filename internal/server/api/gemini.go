@@ -29,6 +29,9 @@ type GeminiHandlersParams struct {
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
+	RateLimitTracker         *orchestrator.ChannelRequestTracker
+	ConnectionTracker        *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
 }
 
 type GeminiHandlers struct {
@@ -52,6 +55,9 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		),
 		ChannelService: params.ChannelService,

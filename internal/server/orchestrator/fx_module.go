@@ -5,4 +5,11 @@ import "go.uber.org/fx"
 var Module = fx.Module("orchestrator",
 	fx.Provide(NewDefaultSelector),
 	fx.Provide(NewCandidateSelectorDiagnostics),
+	fx.Provide(NewChannelRequestTracker),
+	fx.Provide(NewDefaultConnectionTrackerForFx),
+	fx.Provide(NewModelConnectionTracker),
 )
+
+func NewDefaultConnectionTrackerForFx() *DefaultConnectionTracker {
+	return NewDefaultConnectionTracker(256)
+}

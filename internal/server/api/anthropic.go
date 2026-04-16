@@ -28,6 +28,9 @@ type AnthropicHandlersParams struct {
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
+	RateLimitTracker         *orchestrator.ChannelRequestTracker
+	ConnectionTracker        *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
 }
 
 type AnthropicHandlers struct {
@@ -52,6 +55,9 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		ChannelService: params.ChannelService,

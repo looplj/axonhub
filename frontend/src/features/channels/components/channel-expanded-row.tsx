@@ -2,8 +2,131 @@ import { memo } from 'react';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
-import { Channel } from '../data/schema';
+import { Channel, ChannelRateLimitStatus } from '../data/schema';
+
+function formatTimeRemaining(resetAt: string | null | undefined): string {
+  if (!resetAt) return '';
+  const reset = new Date(resetAt).getTime();
+  const now = Date.now();
+  const diffMs = reset - now;
+  if (diffMs <= 0) return '';
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  if (minutes > 0) {
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+  return `${seconds}s`;
+}
+
+interface RateLimitMetricProps {
+  label: string;
+  current: number;
+  limit: number | null | undefined;
+  resetAt: string | null | undefined;
+  windowDuration: string;
+}
+
+function RateLimitMetric({ label, current, limit, resetAt, windowDuration }: RateLimitMetricProps) {
+  const timeRemaining = formatTimeRemaining(resetAt);
+  const usageRatio = limit != null && limit > 0 ? current / limit : 0;
+  const isHigh = usageRatio >= 0.8;
+  const isCritical = usageRatio >= 1;
+
+  return (
+    <div className='flex items-center justify-between gap-2 text-sm'>
+      <span className='text-muted-foreground shrink-0'>{label}:</span>
+      <div className='flex items-center gap-2'>
+        <span className={`font-mono text-xs ${isCritical ? 'text-destructive font-semibold' : isHigh ? 'text-yellow-600 font-semibold' : ''}`}>
+          {current}{limit != null ? `/${limit}` : ''}
+        </span>
+        {timeRemaining && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className='text-muted-foreground font-mono text-xs'>
+                {timeRemaining} / {windowDuration || '?'}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <span className='text-xs'>{resetAt ? format(new Date(resetAt), 'HH:mm:ss') : ''}</span>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface RateLimitStatusSectionProps {
+  status: ChannelRateLimitStatus;
+  rpmDuration: string | null | undefined;
+  tpmDuration: string | null | undefined;
+}
+
+function RateLimitStatusSection({ status, rpmDuration, tpmDuration }: RateLimitStatusSectionProps) {
+  const { t } = useTranslation();
+
+  const durationKeyMap: Record<string, string> = {
+    ONE_MIN: 'channels.dialogs.rateLimit.durations.1min',
+    ONE_HOUR: 'channels.dialogs.rateLimit.durations.1hr',
+    FIVE_HOUR: 'channels.dialogs.rateLimit.durations.5hr',
+    ONE_WEEK: 'channels.dialogs.rateLimit.durations.1wk',
+    ONE_MONTH: 'channels.dialogs.rateLimit.durations.1mo',
+  };
+
+  const formatWindowDuration = (d: string | null | undefined) => d ? t(durationKeyMap[d] ?? d) : '';
+  const hasRpm = status.rpmCurrent != null;
+  const hasTpm = status.tpmCurrent != null;
+  const hasConcurrent = status.concurrentCurrent != null;
+
+  return (
+    <div className='space-y-2'>
+      {hasRpm && (
+        <RateLimitMetric
+          label={t('channels.expandedRow.rateLimit.requests')}
+          current={status.rpmCurrent}
+          limit={status.rpmLimit}
+          resetAt={status.rpmResetAt}
+          windowDuration={formatWindowDuration(rpmDuration)}
+        />
+      )}
+      {hasTpm && (
+        <RateLimitMetric
+          label={t('channels.expandedRow.rateLimit.tokens')}
+          current={status.tpmCurrent}
+          limit={status.tpmLimit}
+          resetAt={status.tpmResetAt}
+          windowDuration={formatWindowDuration(tpmDuration)}
+        />
+      )}
+      {hasConcurrent && (
+        <RateLimitMetric
+          label={t('channels.expandedRow.rateLimit.concurrent')}
+          current={status.concurrentCurrent}
+          limit={status.concurrentLimit}
+          resetAt={undefined}
+          windowDuration=''
+        />
+      )}
+      {status.isCoolingDown && status.cooldownUntil && (
+        <div className='flex items-center justify-between text-sm'>
+          <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.cooldown')}:</span>
+          <span className='text-destructive font-mono text-xs font-semibold'>
+            {formatTimeRemaining(status.cooldownUntil)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ChannelExpandedRowProps {
   channel: Channel;
@@ -80,6 +203,17 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
 
           </div>
         </div>
+
+        {channel.rateLimitStatus && (
+          <div className='space-y-3'>
+            <h4 className='text-sm font-semibold'>{t('channels.expandedRow.rateLimit.title')}</h4>
+            <RateLimitStatusSection
+              status={channel.rateLimitStatus}
+              rpmDuration={channel.settings?.rateLimit?.rpmDuration}
+              tpmDuration={channel.settings?.rateLimit?.tpmDuration}
+            />
+          </div>
+        )}
 
         {channel.supportedModels && channel.supportedModels.length > 0 && (
           <div className='space-y-3'>

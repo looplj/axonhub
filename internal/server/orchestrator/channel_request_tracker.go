@@ -99,6 +99,23 @@ func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {
 	return t.GetRequestCountForDuration(channelID, time.Minute)
 }
 
+func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d time.Duration) time.Time {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	durationMap, ok := t.counters[channelID]
+	if !ok {
+		return time.Time{}
+	}
+
+	w, ok := durationMap[d]
+	if !ok {
+		return time.Time{}
+	}
+
+	return w.windowStart.Add(d)
+}
+
 // GetRequestCountForDuration returns the current request count for a channel in the current window for the specified duration.
 func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time.Duration) int64 {
 	t.mu.RLock()

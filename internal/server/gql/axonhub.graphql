@@ -593,6 +593,25 @@ extend type Channel {
   Disabled API keys for this channel. Sensitive: will be null if user can not access.
   """
   disabledAPIKeys: [DisabledAPIKey!] @goField(forceResolver: true)
+
+  """
+  Live rate limit status showing current usage vs configured limits and window reset times.
+  Returns null if no rate limits are configured for this channel.
+  """
+  rateLimitStatus: ChannelRateLimitStatus @goField(forceResolver: true)
+}
+
+type ChannelRateLimitStatus {
+  rpmCurrent: Int
+  rpmLimit: Int
+  rpmResetAt: Time
+  tpmCurrent: Int
+  tpmLimit: Int
+  tpmResetAt: Time
+  concurrentCurrent: Int
+  concurrentLimit: Int
+  isCoolingDown: Boolean!
+  cooldownUntil: Time
 }
 
 type Segment {

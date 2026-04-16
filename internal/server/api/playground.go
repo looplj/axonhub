@@ -43,6 +43,9 @@ type PlaygroundHandlersParams struct {
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
+	RateLimitTracker         *orchestrator.ChannelRequestTracker
+	ConnectionTracker        *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
 }
 
 type PlaygroundHandlers struct {
@@ -65,6 +68,9 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			params.QuotaService,
 			params.PromptProtectionRuleService,
 			params.LiveStreamRegistry,
+			params.RateLimitTracker,
+			params.ConnectionTracker,
+			params.ModelConnectionTracker,
 		),
 	}
 }

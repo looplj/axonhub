@@ -29,10 +29,30 @@ func NewChatCompletionOrchestrator(
 	quotaService *biz.QuotaService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	liveStreamRegistry *biz.LiveStreamRegistry,
+	externalRateLimitTracker *ChannelRequestTracker,
+	externalConnectionTracker *DefaultConnectionTracker,
+	externalModelConnectionTracker *ModelConnectionTracker,
 ) *ChatCompletionOrchestrator {
-	connectionTracker := NewDefaultConnectionTracker(256)
-	rateLimitTracker := NewChannelRequestTracker()
-	modelConnectionTracker := NewModelConnectionTracker()
+	var connectionTracker ConnectionTracker
+	if externalConnectionTracker != nil {
+		connectionTracker = externalConnectionTracker
+	} else {
+		connectionTracker = NewDefaultConnectionTracker(256)
+	}
+
+	var rateLimitTracker *ChannelRequestTracker
+	if externalRateLimitTracker != nil {
+		rateLimitTracker = externalRateLimitTracker
+	} else {
+		rateLimitTracker = NewChannelRequestTracker()
+	}
+
+	var modelConnectionTracker *ModelConnectionTracker
+	if externalModelConnectionTracker != nil {
+		modelConnectionTracker = externalModelConnectionTracker
+	} else {
+		modelConnectionTracker = NewModelConnectionTracker()
+	}
 
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()

@@ -73,6 +73,67 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
 }
 
+// RateLimitStatus is the resolver for the rateLimitStatus field.
+func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel) (*ChannelRateLimitStatus, error) {
+	channelID := int(obj.ID)
+
+	settings := obj.Settings
+
+	if settings == nil || settings.RateLimit == nil {
+		return nil, nil
+	}
+
+	rl := settings.RateLimit
+	hasAnyLimit := (rl.RPM != nil && *rl.RPM > 0) || (rl.TPM != nil && *rl.TPM > 0) || (rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0)
+	if !hasAnyLimit {
+		return nil, nil
+	}
+
+	status := &ChannelRateLimitStatus{}
+
+	if rl.RPM != nil && *rl.RPM > 0 {
+		rpmDuration := rl.GetRPMDuration().Duration()
+		rpmCurrent := r.rateLimitTracker.GetRequestCountForDuration(channelID, rpmDuration)
+		rpmLimit := int(*rl.RPM)
+		rpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, rpmDuration)
+		rpmCurrentInt := int(rpmCurrent)
+		status.RpmCurrent = &rpmCurrentInt
+		status.RpmLimit = &rpmLimit
+		if !rpmResetAt.IsZero() {
+			status.RpmResetAt = &rpmResetAt
+		}
+	}
+
+	if rl.TPM != nil && *rl.TPM > 0 {
+		tpmDuration := rl.GetTPMDuration().Duration()
+		tpmCurrent := r.rateLimitTracker.GetTokenCountForDuration(channelID, tpmDuration)
+		tpmLimit := int(*rl.TPM)
+		tpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, tpmDuration)
+		tpmCurrentInt := int(tpmCurrent)
+		status.TpmCurrent = &tpmCurrentInt
+		status.TpmLimit = &tpmLimit
+		if !tpmResetAt.IsZero() {
+			status.TpmResetAt = &tpmResetAt
+		}
+	}
+
+	if rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 {
+		concurrentCurrent := r.connectionTracker.GetActiveConnections(channelID)
+		status.ConcurrentCurrent = &concurrentCurrent
+		concurrentLimit := int(*rl.MaxConcurrent)
+		status.ConcurrentLimit = &concurrentLimit
+	}
+
+	if until, ok := r.rateLimitTracker.GetCooldownUntil(channelID); ok {
+		status.IsCoolingDown = true
+		status.CooldownUntil = &until
+	} else {
+		status.IsCoolingDown = false
+	}
+
+	return status, nil
+}
+
 // ModelConcurrent is the resolver for the modelConcurrent field.
 func (r *channelRateLimitResolver) ModelConcurrent(ctx context.Context, obj *objects.ChannelRateLimit) ([]*ModelConcurrent, error) {
 	if obj == nil || obj.ModelConcurrent == nil {

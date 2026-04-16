@@ -39,6 +39,9 @@ type OpenAIHandlersParams struct {
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
 	Client                      *ent.Client
+	RateLimitTracker            *orchestrator.ChannelRequestTracker
+	ConnectionTracker           *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker      *orchestrator.ModelConnectionTracker
 }
 
 type OpenAIHandlers struct {
@@ -75,6 +78,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -90,6 +96,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -105,6 +114,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -120,6 +132,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -135,6 +150,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -150,6 +168,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -165,6 +186,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -180,6 +204,9 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 		},
 		VideoInboundTransformer: videoInbound,

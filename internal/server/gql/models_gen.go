@@ -120,6 +120,19 @@ type ChannelPerformanceStat struct {
 	RequestCount int      `json:"requestCount"`
 }
 
+type ChannelRateLimitStatus struct {
+	RpmCurrent        *int       `json:"rpmCurrent,omitempty"`
+	RpmLimit          *int       `json:"rpmLimit,omitempty"`
+	RpmResetAt        *time.Time `json:"rpmResetAt,omitempty"`
+	TpmCurrent        *int       `json:"tpmCurrent,omitempty"`
+	TpmLimit          *int       `json:"tpmLimit,omitempty"`
+	TpmResetAt        *time.Time `json:"tpmResetAt,omitempty"`
+	ConcurrentCurrent *int       `json:"concurrentCurrent,omitempty"`
+	ConcurrentLimit   *int       `json:"concurrentLimit,omitempty"`
+	IsCoolingDown     bool       `json:"isCoolingDown"`
+	CooldownUntil     *time.Time `json:"cooldownUntil,omitempty"`
+}
+
 type ChannelSuccessRate struct {
 	ChannelID    objects.GUID `json:"channelId"`
 	ChannelName  string       `json:"channelName"`

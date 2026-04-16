@@ -26,6 +26,9 @@ type AiSdkHandlersParams struct {
 	QuotaService                *biz.QuotaService
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
+	RateLimitTracker            *orchestrator.ChannelRequestTracker
+	ConnectionTracker           *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker      *orchestrator.ModelConnectionTracker
 }
 
 type AiSDKHandlers struct {
@@ -47,6 +50,9 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.RateLimitTracker,
+				params.ConnectionTracker,
+				params.ModelConnectionTracker,
 			),
 			StreamWriter: WriteJSONStream,
 		},

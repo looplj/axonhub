@@ -169,6 +169,20 @@ export const channelRateLimitSchema = z.object({
 });
 export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
 
+export const channelRateLimitStatusSchema = z.object({
+  rpmCurrent: z.number().nullable().optional(),
+  rpmLimit: z.number().nullable().optional(),
+  rpmResetAt: z.string().nullable().optional(),
+  tpmCurrent: z.number().nullable().optional(),
+  tpmLimit: z.number().nullable().optional(),
+  tpmResetAt: z.string().nullable().optional(),
+  concurrentCurrent: z.number().nullable().optional(),
+  concurrentLimit: z.number().nullable().optional(),
+  isCoolingDown: z.boolean(),
+  cooldownUntil: z.string().nullable().optional(),
+});
+export type ChannelRateLimitStatus = z.infer<typeof channelRateLimitStatusSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -250,6 +264,7 @@ export const channelSchema = z.object({
   tags: z.array(z.string()).optional().default([]).nullable(),
   defaultTestModel: z.string(),
   settings: channelSettingsSchema.optional().nullable(),
+  rateLimitStatus: channelRateLimitStatusSchema.optional().nullable(),
   orderingWeight: z.number().optional().default(0),
   errorMessage: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),

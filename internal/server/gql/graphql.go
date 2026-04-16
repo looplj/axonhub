@@ -69,6 +69,8 @@ type Dependencies struct {
 	ProviderQuotaService           *biz.ProviderQuotaService
 	DefaultSelector                *orchestrator.DefaultSelector
 	CandidateSelectorDiagnostics   *orchestrator.CandidateSelectorDiagnostics
+	RateLimitTracker               *orchestrator.ChannelRequestTracker
+	ConnectionTracker              *orchestrator.DefaultConnectionTracker
 	HttpClient                     *httpclient.HttpClient
 	GCWorker                       *gc.Worker
 }
@@ -103,6 +105,8 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ProviderQuotaService,
 			deps.DefaultSelector,
 			deps.CandidateSelectorDiagnostics,
+			deps.RateLimitTracker,
+			deps.ConnectionTracker,
 			deps.HttpClient,
 			deps.GCWorker,
 		),

@@ -621,6 +621,18 @@ const QUERY_CHANNELS_QUERY = `
                 limit
               }
             }
+            rateLimitStatus {
+              rpmCurrent
+              rpmLimit
+              rpmResetAt
+              tpmCurrent
+              tpmLimit
+              tpmResetAt
+              concurrentCurrent
+              concurrentLimit
+              isCoolingDown
+              cooldownUntil
+            }
           }
           orderingWeight
           errorMessage
