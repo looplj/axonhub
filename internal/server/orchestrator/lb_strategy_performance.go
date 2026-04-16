@@ -17,13 +17,12 @@ const (
 
 // TTFT scoring thresholds
 const (
-	// TTFTGoodThreshold is the threshold below which TTFT is considered "very good"
-	// and receives full score (2 seconds)
-	TTFTGoodThreshold = 2000.0
-
-	// TTFTOkThreshold is the threshold below which TTFT is considered "fine"
-	// and receives partial score (5 seconds)
-	TTFTOkThreshold = 5000.0
+	TTFTGoodThreshold   = 2000.0
+	TTFTOkThreshold     = 5000.0
+	TTFTSlowThreshold   = 10000.0
+	TTFTOkPenalty       = 0.7
+	TTFTSlowFloor       = 0.20
+	TTFTExponentialTau  = 5000.0
 )
 
 // TPS scoring constant
@@ -319,21 +318,20 @@ func (s *PerformanceAwareStrategy) calculateTTFTScore(ttftMs float64) float64 {
 
 	maxScore := s.scoreMax()
 
-	// Threshold-based scoring:
-	// - Under 2 seconds: full score (very good)
-	// - 2-5 seconds: partial score with linear decay (fine)
-	// - Above 5 seconds: exponential penalty
 	if ttftMs <= TTFTGoodThreshold {
-		// Under 2 seconds: full score - any latency here is "very good"
 		return maxScore
 	} else if ttftMs <= TTFTOkThreshold {
-		// 2-5 seconds: linear decay, lose up to 70% of score
 		ratio := (ttftMs - TTFTGoodThreshold) / (TTFTOkThreshold - TTFTGoodThreshold)
-		return maxScore * (1.0 - ratio*0.7)
+		return maxScore * (1.0 - ratio*TTFTOkPenalty)
+	} else if ttftMs <= TTFTSlowThreshold {
+		okScore := maxScore * (1.0 - TTFTOkPenalty)
+		floorScore := maxScore * TTFTSlowFloor
+		ratio := (ttftMs - TTFTOkThreshold) / (TTFTSlowThreshold - TTFTOkThreshold)
+		return okScore + (floorScore-okScore)*ratio
 	} else {
-		// Above 5 seconds: exponential penalty
-		excess := ttftMs - TTFTOkThreshold
-		return maxScore * 0.3 * math.Exp(-excess/3000.0)
+		floorScore := maxScore * TTFTSlowFloor
+		excess := ttftMs - TTFTSlowThreshold
+		return floorScore * math.Exp(-excess/TTFTExponentialTau)
 	}
 }
 

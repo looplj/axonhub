@@ -58,12 +58,14 @@ func TestTTFTScoring(t *testing.T) {
 		{name: "1500ms under threshold - full score", ttftMs: 1500, want: 150.0},
 		{name: "2000ms at threshold - full score", ttftMs: 2000, want: 150.0},
 		// 2-5 seconds: linear decay
-		{name: "2500ms just over threshold", ttftMs: 2500, want: 150.0 * (1.0 - 0.1667*0.7)}, // 500/3000 ratio
-		{name: "3500ms in penalty zone", ttftMs: 3500, want: 150.0 * (1.0 - 0.5*0.7)},     // 1500/3000 ratio
-		{name: "5000ms at ok threshold", ttftMs: 5000, want: 150.0 * 0.3},              // 30% remaining
-		// Above 5s: exponential penalty
-		{name: "6000ms above ok threshold", ttftMs: 6000, want: 150.0 * 0.3 * math.Exp(-1000.0/3000.0)},
-		{name: "8000ms deep penalty", ttftMs: 8000, want: 150.0 * 0.3 * math.Exp(-3000.0/3000.0)},
+		{name: "2500ms just over threshold", ttftMs: 2500, want: 150.0 * (1.0 - 0.1667*TTFTOkPenalty)},
+		{name: "3500ms in penalty zone", ttftMs: 3500, want: 150.0 * (1.0 - 0.5*TTFTOkPenalty)},
+		{name: "5000ms at ok threshold", ttftMs: 5000, want: 150.0 * (1.0 - TTFTOkPenalty)},
+		// 5-10 seconds: linear decay to floor
+		{name: "7500ms in slow zone", ttftMs: 7500, want: 150.0*(1.0-TTFTOkPenalty) + (150.0*TTFTSlowFloor-150.0*(1.0-TTFTOkPenalty))*(2500.0/(TTFTSlowThreshold-TTFTOkThreshold))},
+		{name: "10000ms at slow threshold", ttftMs: TTFTSlowThreshold, want: 150.0 * TTFTSlowFloor},
+		// Above 10s: exponential decay from floor
+		{name: "15000ms above slow threshold", ttftMs: 15000, want: 150.0 * TTFTSlowFloor * math.Exp(-5000.0/TTFTExponentialTau)},
 		// Edge cases
 		{name: "zero ttft clamps to zero", ttftMs: 0, want: 0},
 		{name: "negative ttft clamps to zero", ttftMs: -10, want: 0},
@@ -72,7 +74,7 @@ func TestTTFTScoring(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := strategy.calculateTTFTScore(tt.ttftMs)
-			if math.Abs(got-tt.want) > 0.1 { // Allow small floating point tolerance
+			if math.Abs(got-tt.want) > 0.1 {
 				t.Fatalf("calculateTTFTScore(%v) = %v, want %v", tt.ttftMs, got, tt.want)
 			}
 			if got < 0 || got > 150.0 {
@@ -81,6 +83,20 @@ func TestTTFTScoring(t *testing.T) {
 		})
 	}
 }
+
+func TestTTFTScoringMonotonicDecrease(t *testing.T) {
+	strategy := &PerformanceAwareStrategy{maxScore: 150.0}
+
+	prevScore := strategy.calculateTTFTScore(100.0)
+	for ms := 200.0; ms <= 20000; ms += 100 {
+		score := strategy.calculateTTFTScore(ms)
+		if score > prevScore+0.01 {
+			t.Fatalf("TTFT score not monotonic at %vms: %v > prev %v", ms, score, prevScore)
+		}
+		prevScore = score
+	}
+}
+
 func TestTPSScoring(t *testing.T) {
 	strategy := &PerformanceAwareStrategy{maxScore: 150.0}
 
