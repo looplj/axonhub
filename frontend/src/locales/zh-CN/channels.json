@@ -559,6 +559,8 @@
   "channels.expandedRow.rateLimit.tokens": "Token数",
   "channels.expandedRow.rateLimit.concurrent": "并发数",
   "channels.expandedRow.rateLimit.cooldown": "冷却中",
+  "channels.expandedRow.rateLimit.resets": "重置",
+  "channels.expandedRow.rateLimit.windowAligned": "窗口按时钟边界对齐（如5小时窗口在 :00, :05, :10... UTC 重置）",
   "channels.templates.section.description": "加载已保存的覆盖配置或将当前设置保存为模板以供重复使用",
   "channels.templates.selectTemplate": "选择模板...",
   "channels.templates.searchPlaceholder": "搜索模板...",

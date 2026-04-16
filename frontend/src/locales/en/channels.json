@@ -562,6 +562,8 @@
   "channels.expandedRow.rateLimit.tokens": "Tokens",
   "channels.expandedRow.rateLimit.concurrent": "Concurrent",
   "channels.expandedRow.rateLimit.cooldown": "Cooldown",
+  "channels.expandedRow.rateLimit.resets": "resets",
+  "channels.expandedRow.rateLimit.windowAligned": "Windows are aligned to clock boundaries (e.g. 5hr resets at :00, :05, :10... UTC)",
   "channels.templates.section.description": "Load saved override configurations or save current settings as a template for reuse",
   "channels.templates.selectTemplate": "Select template...",
   "channels.templates.searchPlaceholder": "Search templates...",

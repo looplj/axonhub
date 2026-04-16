@@ -27,6 +27,12 @@ function formatTimeRemaining(resetAt: string | null | undefined): string {
   return `${seconds}s`;
 }
 
+function formatResetTime(resetAt: string | null | undefined): string {
+  if (!resetAt) return '';
+  const d = new Date(resetAt);
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+}
+
 interface RateLimitMetricProps {
   label: string;
   current: number;
@@ -36,6 +42,7 @@ interface RateLimitMetricProps {
 }
 
 function RateLimitMetric({ label, current, limit, resetAt, windowDuration }: RateLimitMetricProps) {
+  const { t } = useTranslation();
   const timeRemaining = formatTimeRemaining(resetAt);
   const usageRatio = limit != null && limit > 0 ? current / limit : 0;
   const isHigh = usageRatio >= 0.8;
@@ -56,10 +63,46 @@ function RateLimitMetric({ label, current, limit, resetAt, windowDuration }: Rat
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <span className='text-xs'>{resetAt ? format(new Date(resetAt), 'HH:mm:ss') : ''}</span>
+              <div className='space-y-1 text-xs'>
+                <div className='flex justify-between gap-3'>
+                  <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.resets')}:</span>
+                  <span className='font-mono'>{formatResetTime(resetAt)}</span>
+                </div>
+                <div className='text-muted-foreground'>
+                  {t('channels.expandedRow.rateLimit.windowAligned')}
+                </div>
+              </div>
             </TooltipContent>
           </Tooltip>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface ConcurrentMetricProps {
+  current: number;
+  limit: number | null | undefined;
+}
+
+function ConcurrentMetric({ current, limit }: ConcurrentMetricProps) {
+  const { t } = useTranslation();
+  const isFull = limit != null && limit > 0 && current >= limit;
+  const isHigh = limit != null && limit > 0 && current / limit >= 0.8 && !isFull;
+
+  return (
+    <div className='flex items-center justify-between gap-2 text-sm'>
+      <span className='text-muted-foreground shrink-0'>{t('channels.expandedRow.rateLimit.concurrent')}:</span>
+      <div className='flex items-center gap-2'>
+        <div className='bg-muted h-1.5 w-16 overflow-hidden rounded-full'>
+          <div
+            className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : isHigh ? 'bg-yellow-500' : 'bg-blue-400'}`}
+            style={{ width: `${limit != null && limit > 0 ? Math.min((current / limit) * 100, 100) : 0}%` }}
+          />
+        </div>
+        <span className={`font-mono text-xs ${isFull ? 'text-destructive font-semibold' : isHigh ? 'text-yellow-600 font-semibold' : ''}`}>
+          {current}{limit != null ? `/${limit}` : ''}
+        </span>
       </div>
     </div>
   );
@@ -86,6 +129,7 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration }: RateLimitS
   const hasRpm = status.rpmCurrent != null;
   const hasTpm = status.tpmCurrent != null;
   const hasConcurrent = status.concurrentCurrent != null;
+  const hasRateLimits = hasRpm || hasTpm;
 
   return (
     <div className='space-y-2'>
@@ -108,12 +152,9 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration }: RateLimitS
         />
       )}
       {hasConcurrent && (
-        <RateLimitMetric
-          label={t('channels.expandedRow.rateLimit.concurrent')}
+        <ConcurrentMetric
           current={status.concurrentCurrent}
           limit={status.concurrentLimit}
-          resetAt={undefined}
-          windowDuration=''
         />
       )}
       {status.isCoolingDown && status.cooldownUntil && (
