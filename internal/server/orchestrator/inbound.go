@@ -140,7 +140,7 @@ func (ts *InboundPersistentStream) Close() error {
 				errToReport = ctxErr
 			}
 
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport, ts.state.StreamCompleted); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
 		}

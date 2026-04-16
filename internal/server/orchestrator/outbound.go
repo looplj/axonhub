@@ -126,7 +126,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		}
 
 		if ts.requestExec != nil {
-			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, errToReport); err != nil {
+			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, errToReport, ts.state.StreamCompleted); err != nil {
 				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
 			}
 		}
@@ -311,6 +311,11 @@ func (p *PersistentOutboundTransformer) GetCurrentModelID() string {
 // GetRequestedModel returns the originally requested model ID.
 func (p *PersistentOutboundTransformer) GetRequestedModel() string {
 	return p.state.OriginalModel
+}
+
+// StreamCompleted returns true if the stream received a terminal event.
+func (p *PersistentOutboundTransformer) StreamCompleted() bool {
+	return p.state.StreamCompleted
 }
 
 // HasMoreChannels returns true if there are more candidates available for retry.

@@ -633,9 +633,15 @@ func (s *RequestService) UpdateRequestExecutionStatus(
 }
 
 // UpdateRequestExecutionStatusFromError updates request execution status based on error type and sets error message.
-func (s *RequestService) UpdateRequestExecutionStatusFromError(ctx context.Context, executionID int, rawErr error) error {
+// If streamCompleted is true and the error is a context cancellation, the execution is not marked as cancelled
+// (the client disconnected after the stream finished).
+func (s *RequestService) UpdateRequestExecutionStatusFromError(ctx context.Context, executionID int, rawErr error, streamCompleted bool) error {
 	status := requestexecution.StatusFailed
 	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+		if streamCompleted {
+			return nil
+		}
+
 		status = requestexecution.StatusCanceled
 	}
 
@@ -858,8 +864,14 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 }
 
 // UpdateRequestStatusFromError updates request status based on error type: canceled if context canceled, otherwise failed.
-func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, requestID int, rawErr error) error {
+// If streamCompleted is true and the error is a context cancellation, the request is not marked as cancelled
+// (the client disconnected after the stream finished).
+func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, requestID int, rawErr error, streamCompleted bool) error {
 	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+		if streamCompleted {
+			return nil
+		}
+
 		return s.UpdateRequestStatus(ctx, requestID, request.StatusCanceled)
 	}
 
