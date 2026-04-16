@@ -636,15 +636,15 @@ export function ModelsAssociationDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent ref={dialogContentRef} className='flex h-[85vh] max-h-[800px] flex-col sm:max-w-6xl'>
+      <DialogContent ref={dialogContentRef} className='flex h-[90vh] max-h-[800px] flex-col w-full max-w-full sm:max-w-6xl'>
         <DialogHeader className='shrink-0 text-left'>
-          <DialogTitle>{t('models.dialogs.association.title')}</DialogTitle>
-          <DialogDescription>{t('models.dialogs.association.description', { name: currentRow?.name })}</DialogDescription>
+          <DialogTitle className='text-lg sm:text-xl'>{t('models.dialogs.association.title')}</DialogTitle>
+          <DialogDescription className='text-sm sm:text-base'>{t('models.dialogs.association.description', { name: currentRow?.name })}</DialogDescription>
         </DialogHeader>
 
-        <div className='flex min-h-0 flex-1 gap-6'>
+        <div className='flex min-h-0 flex-1 flex-col gap-6 sm:flex-row'>
           {/* Left Side - Association Rules */}
-          <div className='flex min-h-0 flex-[2] flex-col'>
+          <div className='flex min-h-0 flex-1 flex-col sm:flex-[2]'>
             {/* Scrollable Rules Section */}
             <div className='flex-1 overflow-y-auto py-4'>
               <Form {...form}>
@@ -654,10 +654,10 @@ export function ModelsAssociationDialog() {
                   )}
 
                   {fields.length > 0 && (
-                    <div className='grid grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-[13px] pb-2'>
+                    <div className='grid grid-cols-[2.25rem_3rem_1fr_2.25rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-3 sm:px-[13px] pb-2'>
                       <div />
                       <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.priority')}</div>
-                      <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.type')}</div>
+                      <div className='text-muted-foreground text-center text-xs font-medium sm:block hidden'>{t('models.dialogs.association.type')}</div>
                       <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.rule')}</div>
                       <div />
                     </div>
@@ -696,7 +696,7 @@ export function ModelsAssociationDialog() {
           </div>
 
           {/* Right Side - Preview */}
-          <div className='flex min-h-0 flex-1 flex-col border-l pl-6'>
+          <div className='flex min-h-0 flex-1 flex-col border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-6'>
             <div className='shrink-0 space-y-2 pb-4'>
               <h3 className='text-sm font-semibold'>{t('models.dialogs.association.preview')}</h3>
               <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.previewDescription')}</p>
@@ -704,7 +704,7 @@ export function ModelsAssociationDialog() {
                 placeholder={t('models.dialogs.association.filterByChannel')}
                 value={channelFilter}
                 onChange={(e) => setChannelFilter(e.target.value)}
-                className='h-8'
+                className='h-9 sm:h-8'
               />
             </div>
             <div className='flex-1 overflow-y-auto'>
@@ -720,11 +720,11 @@ export function ModelsAssociationDialog() {
           </div>
         </div>
 
-        <DialogFooter className='shrink-0 border-t pt-4'>
-          <Button type='button' variant='outline' onClick={handleClose}>
+        <DialogFooter className='shrink-0 border-t pt-4 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end'>
+          <Button type='button' variant='outline' onClick={handleClose} className='w-full sm:w-auto'>
             {t('common.buttons.cancel')}
           </Button>
-          <Button type='submit' form='association-form' disabled={updateModel.isPending || !form.formState.isValid}>
+          <Button type='submit' form='association-form' disabled={updateModel.isPending || !form.formState.isValid} className='w-full sm:w-auto'>
             {t('common.buttons.save')}
           </Button>
         </DialogFooter>
@@ -933,14 +933,14 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
   }, [channelId, channelOptions, allModelOptions, showModel, type]);
 
   return (
-    <div className={`flex flex-col gap-2 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''}`}>
-      <div className='grid grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
+    <div className={`flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''}`}>
+      <div className='grid grid-cols-[2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
         {/* Enable/Disable Switch */}
         <div className='flex items-center justify-center'>
           <Switch
             checked={!disabled}
             onCheckedChange={(checked) => form.setValue(`associations.${index}.disabled`, !checked)}
-            className='scale-75'
+            className='scale-100 sm:scale-75'
           />
         </div>
 
@@ -958,7 +958,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                   {...field}
                   value={field.value ?? 0}
                   onChange={(e) => field.onChange(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
-                  className='h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
+                  className='h-10 sm:h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
                   placeholder='0'
                 />
               </FormControl>
@@ -971,10 +971,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           control={form.control}
           name={`associations.${index}.type`}
           render={({ field }) => (
-            <FormItem className='min-w-0 gap-0'>
+            <FormItem className='min-w-0 gap-0 sm:block hidden'>
               <FormControl>
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className='h-9 w-full text-xs'>
+                  <SelectTrigger className='h-10 sm:h-9 w-full text-xs'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1022,7 +1022,6 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             name={`associations.${index}.modelId`}
             render={({ field }) => (
               <FormItem className='min-w-0 gap-0'>
-                {/* <FormLabel className='text-xs'>{t('models.dialogs.association.selectModel')}</FormLabel> */}
                 <FormControl>
                   <AutoComplete
                     selectedValue={field.value?.toString() || ''}
@@ -1041,7 +1040,6 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                     portalContainer={portalContainer}
                   />
                 </FormControl>
-                {/* <FormMessage /> */}
               </FormItem>
             )}
           />
@@ -1054,30 +1052,57 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             name={`associations.${index}.pattern`}
             render={({ field }) => (
               <FormItem className='min-w-0 gap-0'>
-                {/* <FormLabel className='text-xs'>{t('models.dialogs.association.pattern')}</FormLabel> */}
                 <FormControl>
                   <Input
                     {...field}
                     value={field.value?.toString() || ''}
                     placeholder={t('models.dialogs.association.patternPlaceholder')}
-                    className='h-9'
+                    className='h-10 sm:h-9'
                   />
                 </FormControl>
-                {/* <FormMessage /> */}
               </FormItem>
             )}
           />
         )}
 
         {/* Delete Button */}
-        <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive h-9 w-9 p-0'>
-          <IconTrash className='h-4 w-4' />
+        <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive h-10 sm:h-9 w-10 sm:w-9 p-0'>
+          <IconTrash className='h-5 w-5 sm:h-4 sm:w-4' />
         </Button>
+      </div>
+
+      {/* Type Select for mobile */}
+      <div className='sm:hidden'>
+        <FormField
+          control={form.control}
+          name={`associations.${index}.type`}
+          render={({ field }) => (
+            <FormItem className='min-w-0 gap-1'>
+              <FormLabel className='text-xs'>{t('models.dialogs.association.type')}</FormLabel>
+              <FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className='h-10 w-full text-xs'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='channel_model'>{t('models.dialogs.association.types.channelModel')}</SelectItem>
+                    <SelectItem value='channel_regex'>{t('models.dialogs.association.types.channelRegex')}</SelectItem>
+                    <SelectItem value='channel_tags_model'>{t('models.dialogs.association.types.channelTagsModel')}</SelectItem>
+                    <SelectItem value='channel_tags_regex'>{t('models.dialogs.association.types.channelTagsRegex')}</SelectItem>
+                    <SelectItem value='model'>{t('models.dialogs.association.types.model')}</SelectItem>
+                    <SelectItem value='regex'>{t('models.dialogs.association.types.regex')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
       {/* Model and Pattern on Second Row for channel_model and channel_regex */}
       {showModelPatternOnSecondRow && (
-        <div className='ml-[6.25rem] grid gap-2'>
+        <div className='ml-0 sm:ml-[6.25rem] grid gap-2'>
           {showModel && (
             <FormField
               control={form.control}
@@ -1117,7 +1142,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                       {...field}
                       value={field.value?.toString() || ''}
                       placeholder={t('models.dialogs.association.patternPlaceholder')}
-                      className='h-9'
+                      className='h-10 sm:h-9'
                     />
                   </FormControl>
                 </FormItem>
@@ -1129,7 +1154,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
 
       {/* Channel Tags Input - Second Row */}
       {showChannelTags && (
-        <div className='ml-[6.25rem] grid gap-2'>
+        <div className='ml-0 sm:ml-[6.25rem] grid gap-2'>
           <FormField
             control={form.control}
             name={`associations.${index}.channelTags`}
@@ -1142,7 +1167,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                     onChange={field.onChange}
                     placeholder={t('models.dialogs.association.selectChannelTags')}
                     suggestions={allTags}
-                    className='h-auto min-h-9 py-1'
+                    className='h-auto min-h-10 sm:min-h-9 py-1'
                   />
                 </FormControl>
                 {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
@@ -1152,29 +1177,29 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
         </div>
       )}
 
-      <div className='ml-[6.25rem] border-t pt-2'>
+      <div className='ml-0 sm:ml-[6.25rem] border-t pt-2'>
         <Button
           type='button'
           variant='ghost'
           size='sm'
           onClick={() => setWhenExpanded(!whenExpanded)}
-          className='text-muted-foreground hover:text-foreground mb-2 h-7 px-2 text-xs'
+          className='text-muted-foreground hover:text-foreground mb-2 h-10 sm:h-7 px-3 sm:px-2 text-xs'
         >
-          {whenExpanded ? <IconChevronUp className='mr-1 h-3 w-3' /> : <IconChevronDown className='mr-1 h-3 w-3' />}
+          {whenExpanded ? <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' /> : <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />}
           {t('models.dialogs.association.conditions.section')}
           {hasWhenData && !whenExpanded && (
-            <Badge variant='secondary' className='ml-2 h-4 px-1 text-[10px]'>
+            <Badge variant='secondary' className='ml-2 h-5 sm:h-4 px-2 sm:px-1 text-xs sm:text-[10px]'>
               1
             </Badge>
           )}
         </Button>
         {whenExpanded && (
-          <div className='grid gap-2'>
+          <div className='grid gap-3'>
             <FormField
               control={form.control}
               name={`associations.${index}.whenEnabled`}
               render={({ field }) => (
-                <div className='flex items-center gap-2'>
+                <div className='flex items-center gap-3'>
                   <Switch
                     checked={field.value}
                     onCheckedChange={(checked) => {
@@ -1187,7 +1212,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                         );
                       }
                     }}
-                    className='scale-75'
+                    className='scale-100 sm:scale-75'
                   />
                   <FormLabel className='text-xs'>{t('models.dialogs.association.conditions.enabled')}</FormLabel>
                 </div>
@@ -1242,25 +1267,25 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
 
       {/* Exclude Section */}
       {showExclude && (
-        <div className='ml-[6.25rem] border-t pt-2'>
+        <div className='ml-0 sm:ml-[6.25rem] border-t pt-2'>
           <Button
             type='button'
             variant='ghost'
             size='sm'
             onClick={() => setExcludeExpanded(!excludeExpanded)}
-            className='text-muted-foreground hover:text-foreground mb-2 h-7 px-2 text-xs'
+            className='text-muted-foreground hover:text-foreground mb-2 h-10 sm:h-7 px-3 sm:px-2 text-xs'
           >
-            {excludeExpanded ? <IconChevronUp className='mr-1 h-3 w-3' /> : <IconChevronDown className='mr-1 h-3 w-3' />}
+            {excludeExpanded ? <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' /> : <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />}
             {t('models.dialogs.association.excludeSection')}
             {hasExcludeData && !excludeExpanded && (
-              <Badge variant='secondary' className='ml-2 h-4 px-1 text-[10px]'>
+              <Badge variant='secondary' className='ml-2 h-5 sm:h-4 px-2 sm:px-1 text-xs sm:text-[10px]'>
                 {(excludeChannelNamePattern ? 1 : 0) + (excludeChannelIds?.length || 0) + (excludeChannelTags?.length || 0)}
               </Badge>
             )}
           </Button>
           {excludeExpanded && (
-            <div className='space-y-2'>
-              <div className='grid grid-cols-2 gap-2'>
+            <div className='space-y-3'>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <FormField
                   control={form.control}
                   name={`associations.${index}.excludeChannelNamePattern`}
@@ -1272,7 +1297,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                           {...field}
                           value={field.value?.toString() || ''}
                           placeholder={t('models.dialogs.association.excludeChannelNamePattern')}
-                          className='h-9'
+                          className='h-10 sm:h-9'
                         />
                       </FormControl>
                       <FormMessage />
@@ -1291,7 +1316,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                           onChange={field.onChange}
                           placeholder={t('models.dialogs.association.excludeChannelTags')}
                           suggestions={allTags}
-                          className='h-auto min-h-9 py-1'
+                          className='h-auto min-h-10 sm:min-h-9 py-1'
                         />
                       </FormControl>
                       <FormMessage />
@@ -1322,7 +1347,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                         }}
                         placeholder={t('models.dialogs.association.excludeChannelIds')}
                         suggestions={channelOptions.map((opt) => opt.label)}
-                        className='h-auto min-h-9 py-1'
+                        className='h-auto min-h-10 sm:min-h-9 py-1'
                       />
                     </FormControl>
                     <FormMessage />
@@ -1355,7 +1380,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
             hint = t('models.dialogs.association.ruleHints.channelTagsRegex', { pattern, tags: channelTags.join(', ') });
           }
           if (hint) {
-            return <div className='text-muted-foreground ml-[6.25rem] text-xs'>{hint}</div>;
+            return <div className='text-muted-foreground ml-0 sm:ml-[6.25rem] text-xs'>{hint}</div>;
           }
           return null;
         })()}

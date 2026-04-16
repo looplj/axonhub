@@ -89,5 +89,6 @@
   "traces.treeTimeline.title": "Tree",
   "traces.detail.viewMode.flat": "Flat",
   "traces.detail.viewMode.flow": "Flow",
-  "traces.detail.viewMode.tree": "Tree"
+  "traces.detail.viewMode.tree": "Tree",
+  "traces.detail.spanDetail": "Span Detail"
 }
