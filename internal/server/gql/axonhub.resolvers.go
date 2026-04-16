@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -80,7 +81,13 @@ func (r *channelRateLimitResolver) ModelConcurrent(ctx context.Context, obj *obj
 
 	result := make([]*ModelConcurrent, 0, len(obj.ModelConcurrent))
 	for model, limit := range obj.ModelConcurrent {
-		limitInt := int(limit)
+		// Clamp to int32 range to prevent overflow on GraphQL Int (32-bit)
+		var limitInt int
+		if limit > math.MaxInt32 {
+			limitInt = math.MaxInt32
+		} else {
+			limitInt = int(limit)
+		}
 		result = append(result, &ModelConcurrent{
 			Model: model,
 			Limit: &limitInt,

@@ -292,3 +292,46 @@ func TestModelConnectionTracker_GetCountNonExistent(t *testing.T) {
 	// Should return 0 for non-existent channel/model
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(999, "non-existent"))
 }
+
+func TestModelConnectionTracker_DecrementBelowZero(t *testing.T) {
+	mt := NewModelConnectionTracker()
+	mt.DecrementModelConnection(1, "gpt-4")
+	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
+
+	mt.IncrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(1, "gpt-4")
+	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
+}
+
+func TestModelConnectionTracker_CleanupOnZero(t *testing.T) {
+	mt := NewModelConnectionTracker()
+
+	mt.IncrementModelConnection(1, "gpt-4")
+	assert.Equal(t, 1, mt.GetModelConnectionCount(1, "gpt-4"))
+	mt.DecrementModelConnection(1, "gpt-4")
+	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
+
+	mt.mu.RLock()
+	models := mt.connections[1]
+	_, exists := models["gpt-4"]
+	mt.mu.RUnlock()
+	assert.False(t, exists, "Model entry should be cleaned up when count reaches 0")
+
+	mt.IncrementModelConnection(2, "claude-3")
+	mt.DecrementModelConnection(2, "claude-3")
+	mt.mu.RLock()
+	_, channelExists := mt.connections[2]
+	mt.mu.RUnlock()
+	assert.False(t, channelExists, "Channel entry should be cleaned up when no models remain")
+}
+
+func TestModelConnectionTracker_DoubleDecrementIdempotent(t *testing.T) {
+	mt := NewModelConnectionTracker()
+	mt.IncrementModelConnection(1, "gpt-4")
+
+	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(1, "gpt-4")
+	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
+}

@@ -30,6 +30,8 @@ export default function TraceDetailPage() {
   const [selectedSpan, setSelectedSpan] = useState<Span | null>(null);
   const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  // Default to 'flat' view for better performance with large traces;
+  // 'flow' view can be slow with many spans.
   const [viewMode, setViewMode] = useState<'flat' | 'flow' | 'tree'>('flat');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });

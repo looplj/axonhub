@@ -829,6 +829,7 @@ func TestIntegration_RateLimitDuration_Parsing(t *testing.T) {
 		{objects.RateLimitDurationOneMin, time.Minute},
 		{objects.RateLimitDurationOneHour, time.Hour},
 		{objects.RateLimitDurationFiveHour, 5 * time.Hour},
+		{objects.RateLimitDurationOneWeek, 7 * 24 * time.Hour},
 		{objects.RateLimitDurationOneMonth, 30 * 24 * time.Hour},
 		{objects.RateLimitDuration("unknown"), time.Minute},
 	}
@@ -942,4 +943,157 @@ func TestIntegration_ModelConcurrent_WithChannelWideLimit(t *testing.T) {
 	assert.Equal(t, 2, modelTracker.GetModelConnectionCount(1, "gpt-4"))
 	assert.Equal(t, 3, modelTracker.GetModelConnectionCount(1, "claude-3"))
 	assert.Equal(t, 1, modelTracker.GetModelConnectionCount(1, "other-model"))
+}
+
+// ========== Cooldown / 429 integration tests ==========
+
+func TestIntegration_Cooldown_ChannelExhaustedDuringCooldown(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	rpm := int64(100)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "cooldown-test",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm}},
+	}}
+
+	// Channel should score normally before cooldown
+	score := strategy.Score(context.Background(), ch)
+	assert.Equal(t, 100.0, score)
+
+	// Set cooldown
+	until := time.Now().Add(30 * time.Second)
+	tracker.SetCooldown(ch.ID, until)
+
+	// Channel should be exhausted during cooldown
+	score = strategy.Score(context.Background(), ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+
+	// IsCoolingDown should return true
+	assert.True(t, tracker.IsCoolingDown(ch.ID))
+
+	// GetCooldownUntil should return the set time
+	gotUntil, ok := tracker.GetCooldownUntil(ch.ID)
+	assert.True(t, ok)
+	assert.Equal(t, until, gotUntil)
+}
+
+func TestIntegration_Cooldown_CooldownExpiration(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	rpm := int64(100)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "cooldown-expiry",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm}},
+	}}
+
+	// Set cooldown that expires immediately
+	tracker.SetCooldown(ch.ID, time.Now().Add(-1*time.Second))
+
+	// Channel should NOT be cooling down after expiration
+	assert.False(t, tracker.IsCoolingDown(ch.ID))
+
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	score := strategy.Score(context.Background(), ch)
+	assert.Equal(t, 100.0, score, "Channel should score normally after cooldown expires")
+}
+
+func TestIntegration_Cooldown_SetCooldownMonotonic(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// Set a long cooldown
+	longUntil := time.Now().Add(1 * time.Hour)
+	tracker.SetCooldown(1, longUntil)
+
+	// Try to set a shorter cooldown — should not overwrite
+	shortUntil := time.Now().Add(30 * time.Second)
+	tracker.SetCooldown(1, shortUntil)
+
+	gotUntil, ok := tracker.GetCooldownUntil(1)
+	assert.True(t, ok)
+	assert.Equal(t, longUntil, gotUntil, "Shorter cooldown should not overwrite longer one")
+
+	// Set a longer cooldown — should overwrite
+	longerUntil := time.Now().Add(2 * time.Hour)
+	tracker.SetCooldown(1, longerUntil)
+
+	gotUntil, ok = tracker.GetCooldownUntil(1)
+	assert.True(t, ok)
+	assert.Equal(t, longerUntil, gotUntil, "Longer cooldown should overwrite shorter one")
+}
+
+func TestIntegration_Cooldown_ScoreWithDebug(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil)
+	rpm := int64(100)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "cooldown-debug",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm}},
+	}}
+
+	tracker.SetCooldown(ch.ID, time.Now().Add(30*time.Second))
+
+	score, ss := strategy.ScoreWithDebug(context.Background(), ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+	assert.Equal(t, true, ss.Details["exhausted"])
+	assert.Equal(t, "channel_in_cooldown", ss.Details["reason"])
+}
+
+// ========== Model-in-context Score() integration tests ==========
+
+func TestIntegration_ModelConcurrent_ScoreWithModelContext(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mt := NewModelConnectionTracker()
+	ct := NewDefaultConnectionTracker(10)
+	strategy := NewRateLimitAwareStrategy(tracker, ct, mt)
+	maxConcurrent := int64(10)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "model-ctx-score",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{
+			MaxConcurrent:   &maxConcurrent,
+			ModelConcurrent: map[string]int64{"gpt-4": 2},
+		}},
+	}}
+
+	// Without model context, per-model limit is not enforced
+	score := strategy.Score(context.Background(), ch)
+	assert.Greater(t, score, float64(rateLimitExhaustedScore))
+
+	// With model context and under limit
+	ctx := contextWithModel(t, "gpt-4")
+	score = strategy.Score(ctx, ch)
+	assert.Greater(t, score, float64(rateLimitExhaustedScore))
+
+	// With model context and at limit
+	mt.IncrementModelConnection(1, "gpt-4")
+	mt.IncrementModelConnection(1, "gpt-4")
+	score = strategy.Score(ctx, ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score, "Should be exhausted when per-model limit reached")
+
+	// Other model should still be allowed (falls back to MaxConcurrent)
+	otherCtx := contextWithModel(t, "claude-3")
+	score = strategy.Score(otherCtx, ch)
+	assert.Greater(t, score, float64(rateLimitExhaustedScore))
+}
+
+func TestIntegration_ModelConcurrent_ScoreWithDebugModelContext(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mt := NewModelConnectionTracker()
+	ct := NewDefaultConnectionTracker(10)
+	strategy := NewRateLimitAwareStrategy(tracker, ct, mt)
+	maxConcurrent := int64(10)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "model-ctx-debug",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{
+			MaxConcurrent:   &maxConcurrent,
+			ModelConcurrent: map[string]int64{"gpt-4": 2},
+		}},
+	}}
+
+	mt.IncrementModelConnection(1, "gpt-4")
+
+	ctx := contextWithModel(t, "gpt-4")
+	score, ss := strategy.ScoreWithDebug(ctx, ch)
+	assert.Greater(t, score, float64(rateLimitExhaustedScore))
+	assert.Equal(t, int64(2), ss.Details["model_concurrent_limit"])
+	assert.Equal(t, int64(1), ss.Details["model_concurrent_current"])
+	assert.Equal(t, "gpt-4", ss.Details["model_concurrent_model"])
 }

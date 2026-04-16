@@ -122,16 +122,16 @@ func TestModelConnectionTracking_OnOutboundLlmResponse(t *testing.T) {
 
 	ctx := context.Background()
 
-	// First increment
-	tracker.IncrementModelConnection(channel.ID, "claude-3")
-	tracker.IncrementModelConnection(channel.ID, "claude-3")
-	assert.Equal(t, 2, tracker.GetModelConnectionCount(channel.ID, "claude-3"))
+	// Use proper lifecycle: OnOutboundRawRequest increments, then OnOutboundLlmResponse decrements
+	_, err := middleware.OnOutboundRawRequest(ctx, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "claude-3"))
 
 	// Decrement on response
 	result, err := middleware.OnOutboundLlmResponse(ctx, &llm.Response{ID: "test"})
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "claude-3"))
+	assert.Equal(t, 0, tracker.GetModelConnectionCount(channel.ID, "claude-3"))
 }
 
 func TestModelConnectionTracking_OnOutboundLlmResponse_NoChannel(t *testing.T) {
@@ -177,8 +177,9 @@ func TestModelConnectionTracking_OnOutboundRawError(t *testing.T) {
 
 	ctx := context.Background()
 
-	// First increment
-	tracker.IncrementModelConnection(channel.ID, "gpt-4")
+	// Use proper lifecycle: OnOutboundRawRequest increments
+	_, err := middleware.OnOutboundRawRequest(ctx, nil)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 
 	// Decrement on error
@@ -225,8 +226,10 @@ func TestModelConnectionTracking_OnOutboundLlmStream(t *testing.T) {
 		tracker:  tracker,
 	}
 
-	// Pre-increment to simulate request start
-	tracker.IncrementModelConnection(channel.ID, "gpt-4")
+	// Use proper lifecycle: OnOutboundRawRequest increments
+	ctx := context.Background()
+	_, err := middleware.OnOutboundRawRequest(ctx, nil)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 
 	// Create mock stream
@@ -236,7 +239,6 @@ func TestModelConnectionTracking_OnOutboundLlmStream(t *testing.T) {
 	}
 	mockStream := streams.SliceStream(events)
 
-	ctx := context.Background()
 	wrappedStream, err := middleware.OnOutboundLlmStream(ctx, mockStream)
 	assert.NoError(t, err)
 
@@ -272,13 +274,14 @@ func TestModelConnectionTracking_OnOutboundLlmStream_CloseIdempotent(t *testing.
 		tracker:  tracker,
 	}
 
-	// Pre-increment to simulate request start
-	tracker.IncrementModelConnection(channel.ID, "gpt-4")
+	// Use proper lifecycle: OnOutboundRawRequest increments
+	ctx := context.Background()
+	_, err := middleware.OnOutboundRawRequest(ctx, nil)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 
 	mockStream := streams.SliceStream([]*llm.Response{{ID: "1"}})
 
-	ctx := context.Background()
 	wrappedStream, err := middleware.OnOutboundLlmStream(ctx, mockStream)
 	assert.NoError(t, err)
 

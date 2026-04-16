@@ -338,6 +338,9 @@ const (
 	RateLimitDurationOneHour  RateLimitDuration = "1hr"
 	RateLimitDurationFiveHour RateLimitDuration = "5hr"
 	RateLimitDurationOneWeek  RateLimitDuration = "1wk"
+	// RateLimitDurationOneMonth represents a 30-day fixed duration (720 hours).
+	// Note: This uses a fixed 30*24h rather than calendar-month alignment,
+	// and time.Truncate(720h) may produce non-intuitive window boundaries.
 	RateLimitDurationOneMonth RateLimitDuration = "1mo"
 )
 
@@ -368,6 +371,11 @@ var graphqlEnumToGo = map[string]RateLimitDuration{
 }
 
 // goToGraphqlEnum maps Go string constants to GraphQL enum names.
+// NOTE: When adding a new duration value, it must be added in 4 places:
+// 1. The RateLimitDuration const block
+// 2. This goToGraphqlEnum map
+// 3. The graphqlEnumToGo map
+// 4. The GraphQL schema (axonhub.graphql)
 var goToGraphqlEnum = map[RateLimitDuration]string{
 	RateLimitDurationOneMin:   "ONE_MIN",
 	RateLimitDurationOneHour:  "ONE_HOUR",

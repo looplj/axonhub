@@ -148,7 +148,7 @@ export const channelProbeDataSchema = z.object({
 export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
 
 // Rate Limit Duration Enum
-export const rateLimitDurationEnum = z.enum(['ONE_MIN', 'ONE_HOUR', 'FIVE_HOUR', 'ONE_MONTH']);
+export const rateLimitDurationEnum = z.enum(['ONE_MIN', 'ONE_HOUR', 'FIVE_HOUR', 'ONE_WEEK', 'ONE_MONTH']);
 export type RateLimitDuration = z.infer<typeof rateLimitDurationEnum>;
 
 // Model Concurrent Entry (model + limit pairs)

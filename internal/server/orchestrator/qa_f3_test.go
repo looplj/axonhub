@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"testing"
@@ -13,6 +14,10 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
+
+func contextWithModel(t *testing.T, model string) context.Context {
+	return context.WithValue(context.Background(), modelContextKey{}, model)
+}
 
 // ============================================================================
 // QA F3: Real Manual QA - Final Verification
@@ -40,6 +45,16 @@ func TestQA_Task1_NewDurationFieldParsing(t *testing.T) {
 	assert.Equal(t, objects.RateLimitDurationOneMonth, rl.GetTPMDuration())
 	assert.Equal(t, 5*time.Hour, rl.GetRPMDuration().Duration())
 	assert.Equal(t, 30*24*time.Hour, rl.GetTPMDuration().Duration())
+}
+
+// Task 1: One week duration parsing
+func TestQA_Task1_OneWeekDurationParsing(t *testing.T) {
+	raw := `{"rpm": 50, "rpmDuration": "1wk"}`
+	var rl objects.ChannelRateLimit
+	err := json.Unmarshal([]byte(raw), &rl)
+	require.NoError(t, err)
+	assert.Equal(t, objects.RateLimitDurationOneWeek, rl.GetRPMDuration())
+	assert.Equal(t, 7*24*time.Hour, rl.GetRPMDuration().Duration())
 }
 
 // Task 1: Per-model concurrent fallback
@@ -179,7 +194,7 @@ func TestQA_Task6_DurationAwareRPMScore(t *testing.T) {
 	for range 5 {
 		tracker.IncrementRequestForDuration(ch.ID, fiveHour.Duration())
 	}
-	score := strategy.Score(nil, ch)
+	score := strategy.Score(context.Background(), ch)
 	assert.Equal(t, 50.0, score, "Strategy uses 5-hour window, sees 5/10 requests = 50%% usage")
 	assert.Equal(t, int64(5), tracker.GetRequestCountForDuration(ch.ID, fiveHour.Duration()))
 }
@@ -197,18 +212,50 @@ func TestQA_Task6_BackwardCompat_NoDurationDefaults1Min(t *testing.T) {
 	for range 50 {
 		tracker.IncrementRequest(ch.ID)
 	}
-	assert.Equal(t, 50.0, strategy.Score(nil, ch))
+	assert.Equal(t, 50.0, strategy.Score(context.Background(), ch))
+}
+
+// Task 7: Per-model concurrent limit at limit
+func TestQA_Task7_PerModelConcurrentLimitAtLimit(t *testing.T) {
+	mt := NewModelConnectionTracker()
+	tracker := NewChannelRequestTracker()
+	ct := NewDefaultConnectionTracker(10)
+	strat := NewRateLimitAwareStrategy(tracker, ct, mt)
+	maxConcurrent := int64(10)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "model-at-limit",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{
+			MaxConcurrent:   &maxConcurrent,
+			ModelConcurrent: map[string]int64{"gpt-4": 2},
+		}},
+	}}
+	mt.IncrementModelConnection(1, "gpt-4")
+	mt.IncrementModelConnection(1, "gpt-4")
+	ctx := contextWithModel(t, "gpt-4")
+	score := strat.Score(ctx, ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score, "Per-model limit at exact limit should return exhausted score")
 }
 
 // Task 7: Per-model concurrent limit exceeded
 func TestQA_Task7_PerModelConcurrentLimitExceeded(t *testing.T) {
 	mt := NewModelConnectionTracker()
-	settings := &objects.ChannelRateLimit{ModelConcurrent: map[string]int64{"gpt-4": 2}}
+	tracker := NewChannelRequestTracker()
+	ct := NewDefaultConnectionTracker(10)
+	strat := NewRateLimitAwareStrategy(tracker, ct, mt)
+	maxConcurrent := int64(10)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "model-exceeded",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{
+			MaxConcurrent:   &maxConcurrent,
+			ModelConcurrent: map[string]int64{"gpt-4": 2},
+		}},
+	}}
 	mt.IncrementModelConnection(1, "gpt-4")
 	mt.IncrementModelConnection(1, "gpt-4")
-	count := mt.GetModelConnectionCount(1, "gpt-4")
-	limit, _ := mt.GetModelConcurrentLimit(1, "gpt-4", settings)
-	assert.GreaterOrEqual(t, int64(count), limit)
+	mt.IncrementModelConnection(1, "gpt-4")
+	ctx := contextWithModel(t, "gpt-4")
+	score := strat.Score(ctx, ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score, "Per-model limit exceeded should return exhausted score")
 }
 
 // Task 7: Fallback to channel-wide MaxConcurrent
@@ -321,7 +368,7 @@ func TestQA_Task11_IntegrationSuitePasses(t *testing.T) {
 	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(ch.ID, fiveHour.Duration()))
 	assert.Equal(t, 1, mt.GetModelConnectionCount(ch.ID, "gpt-4"))
 	assert.Equal(t, 1, ct.GetActiveConnections(ch.ID))
-	score := strategy.Score(nil, ch)
+	score := strategy.Score(contextWithModel(t, "gpt-4"), ch)
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))
 }
 
@@ -514,7 +561,7 @@ func TestQA_CrossTask_FullDurationAndModelConcurrentIntegration(t *testing.T) {
 	assert.Equal(t, int64(5), claude3Limit)
 	otherLimit, _ := mt.GetModelConcurrentLimit(ch.ID, "other", ch.Settings.RateLimit)
 	assert.Equal(t, int64(10), otherLimit)
-	score := strategy.Score(nil, ch)
+	score := strategy.Score(contextWithModel(t, "gpt-4"), ch)
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))
 }
 
@@ -536,8 +583,8 @@ func TestQA_CrossTask_BackwardCompatWithNewFeatures(t *testing.T) {
 	}}
 	tracker.IncrementRequest(legacyCh.ID)
 	tracker.IncrementRequestForDuration(newCh.ID, fiveHour.Duration())
-	legacyScore := strategy.Score(nil, legacyCh)
-	newScore := strategy.Score(nil, newCh)
+	legacyScore := strategy.Score(context.Background(), legacyCh)
+	newScore := strategy.Score(contextWithModel(t, "gpt-4"), newCh)
 	assert.Greater(t, legacyScore, float64(rateLimitExhaustedScore))
 	assert.Greater(t, newScore, float64(rateLimitExhaustedScore))
 }
