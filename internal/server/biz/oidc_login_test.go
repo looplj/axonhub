@@ -24,6 +24,7 @@ func setupTestOIDCService(t *testing.T) (*OIDCService, *ent.Client) {
 		db:        client,
 		cache:     xcache.NewFromConfig[[]byte](cacheConfig),
 		providers: make(map[string]*oidcProvider),
+		lastCheck: make(map[string]int64),
 	}
 
 	return svc, client
@@ -39,6 +40,7 @@ func TestResolveUser_AccountFirstAndMultipleOIDC(t *testing.T) {
 
 	p := &oidcProvider{
 		config: OIDCProvider{
+			ID:         "google",
 			Name:       "google",
 			IssuerURL:  "https://accounts.google.com",
 			JITEnabled: true,
@@ -61,6 +63,7 @@ func TestResolveUser_AccountFirstAndMultipleOIDC(t *testing.T) {
 	// 2. Test Account First (Matching by Email): Existing user, new OIDC provider
 	p2 := &oidcProvider{
 		config: OIDCProvider{
+			ID:        "github",
 			Name:      "github",
 			IssuerURL: "https://github.com",
 		},
@@ -79,6 +82,7 @@ func TestResolveUser_AccountFirstAndMultipleOIDC(t *testing.T) {
 	// 3. Test JIT Disabled: Fail if account not found
 	p3 := &oidcProvider{
 		config: OIDCProvider{
+			ID:         "limited",
 			Name:       "limited",
 			IssuerURL:  "https://limited.com",
 			JITEnabled: false,
@@ -114,8 +118,8 @@ func TestResolveUser_CascadeDelete(t *testing.T) {
 	err = client.User.DeleteOne(u).Exec(authz.WithTestBypass(ctx)) // Need bypass for delete?
 	// Wait, SoftDeleteMixin will turn this into update if not skipped.
 	// But ent.OpDeleteOne is intercepted.
-    
-    // Let's force physical delete by using SkipSoftDelete context
+
+	// Let's force physical delete by using SkipSoftDelete context
 	ctxPhysical := schematype.SkipSoftDelete(ctx)
 	err = client.User.DeleteOne(u).Exec(ctxPhysical)
 	require.NoError(t, err)

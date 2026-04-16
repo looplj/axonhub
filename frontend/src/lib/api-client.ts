@@ -147,13 +147,15 @@ export const authApi = {
 
   getOIDCProviders: (): Promise<{
     data: {
+      id: string;
       name: string;
       display_name: string;
       jit_enabled: boolean;
       icon_url: string;
       button_color: string;
+      active?: boolean;
       is_linked: boolean;
-      linked_identity_id?: number;
+      linked_identity_id?: string;
       linked_email?: string;
     }[];
   }> => apiRequest('/oauth/oidc/providers', { requireAuth: true }),

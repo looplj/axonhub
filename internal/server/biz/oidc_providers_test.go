@@ -22,10 +22,12 @@ func TestOIDCService_GetProviders_IsLinked(t *testing.T) {
 	// Configure mock providers
 	svc.cfg.Providers = []OIDCProvider{
 		{
+			ID:        "google",
 			Name:      "google",
 			IssuerURL: "https://accounts.google.com",
 		},
 		{
+			ID:        "github",
 			Name:      "github",
 			IssuerURL: "https://github.com",
 		},
@@ -53,17 +55,17 @@ func TestOIDCService_GetProviders_IsLinked(t *testing.T) {
 
 	providers = svc.GetProviders(ctx)
 	require.Len(t, providers, 2)
-	
+
 	// Find google provider
 	var google, github ProviderInfo
 	for _, p := range providers {
-		if p.Name == "google" {
+		if p.ID == "google" {
 			google = p
-		} else if p.Name == "github" {
+		} else if p.ID == "github" {
 			github = p
 		}
 	}
-	
+
 	require.True(t, google.IsLinked)
 	require.False(t, github.IsLinked)
 }

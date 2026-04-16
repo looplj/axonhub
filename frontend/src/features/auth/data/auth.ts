@@ -118,8 +118,8 @@ export function useOIDCProviders() {
 
 export function useOIDCAuthorize() {
   return useMutation({
-    mutationFn: async (providerName: string) => {
-      return await authApi.getOIDCAuthorizeURL(providerName);
+    mutationFn: async (providerId: string) => {
+      return await authApi.getOIDCAuthorizeURL(providerId);
     },
     onSuccess: (response) => {
       if (response && response.data && response.data.url) {

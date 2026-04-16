@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/fx"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"go.uber.org/fx"
 )
 
 type OIDCHandlers struct {
@@ -122,7 +122,7 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 			// If only one provider, we don't need the parameter
 			providers := h.oidc.GetProviders(c.Request.Context())
 			if len(providers) > 0 {
-				provider = providers[0].Name
+				provider = providers[0].ID
 			}
 		}
 

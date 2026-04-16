@@ -141,10 +141,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             <div className='mt-6 grid gap-2'>
               {oidcProviders.map((provider) => {
                 const isInactive = provider.active === false;
+                const providerId = provider.id || provider.name;
+                const providerLabel = provider.display_name || provider.name;
 
                 return (
                   <Button
-                    key={provider.name}
+                    key={providerId}
                     type='button'
                     variant='outline'
                     className={cn(
@@ -161,18 +163,18 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                         : undefined
                     }
                     disabled={oidcAuthorizeMutation.isPending}
-                    onClick={() => oidcAuthorizeMutation.mutate(provider.name)}
+                    onClick={() => oidcAuthorizeMutation.mutate(providerId)}
                     title={isInactive ? t('common.status.inactiveRetry') : undefined}
                   >
-                    {oidcAuthorizeMutation.isPending && oidcAuthorizeMutation.variables === provider.name ? (
+                    {oidcAuthorizeMutation.isPending && oidcAuthorizeMutation.variables === providerId ? (
                       <div className='mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current'></div>
                     ) : provider.icon_url ? (
-                      <img src={provider.icon_url} alt={provider.display_name || provider.name} className='mr-2 h-4 w-4 object-contain' />
+                      <img src={provider.icon_url} alt={providerLabel} className='mr-2 h-4 w-4 object-contain' />
                     ) : (
                       <LogIn className='mr-2 h-4 w-4' />
                     )}
                     <span className='flex min-w-0 flex-1 flex-col items-start'>
-                      <span className='truncate'>{provider.display_name || provider.name}</span>
+                      <span className='truncate'>{providerLabel}</span>
                       {isInactive && <span className='text-xs font-medium text-current/85'>{t('common.status.inactiveRetry')}</span>}
                     </span>
                   </Button>
