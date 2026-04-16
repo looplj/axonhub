@@ -225,7 +225,7 @@ func (s *RequestService) CreateRequest(
 	if useExternalStorage {
 		key := GenerateRequestBodyKey(projectID, req.ID)
 
-		_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
+		err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
 		if err != nil {
 			log.Error(ctx, "Failed to save request body to external storage", log.Cause(err))
 			// Continue anyway, don't fail the request creation
@@ -338,7 +338,7 @@ func (s *RequestService) CreateRequestExecution(
 	if useExternalStorage {
 		key := GenerateExecutionRequestBodyKey(request.ProjectID, request.ID, execution.ID)
 
-		_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
+		err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
 		if err != nil {
 			log.Error(ctx, "Failed to save execution request body to external storage", log.Cause(err))
 			// Continue anyway, don't fail the execution creation
@@ -420,7 +420,7 @@ func (s *RequestService) UpdateRequestCompleted(
 			// Save to external storage
 			key := GenerateResponseBodyKey(req.ProjectID, requestID)
 
-			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
+			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
 			if err != nil {
 				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
 				// Continue anyway
@@ -507,7 +507,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 			// Save to external storage
 			key := GenerateResponseBodyKey(req.ProjectID, requestID)
 
-			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
+			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
 			if err != nil {
 				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
 				// Continue anyway
@@ -591,7 +591,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 			// Save to external storage
 			key := GenerateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
 
-			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
+			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
 			if err != nil {
 				log.Error(ctx, "Failed to save execution response body to external storage", log.Cause(err))
 			}
@@ -755,7 +755,7 @@ func (s *RequestService) SaveRequestExecutionChunks(
 			return fmt.Errorf("failed to marshal all chunks: %w", err)
 		}
 
-		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
+		err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
 		if err != nil {
 			return fmt.Errorf("failed to save chunks to external storage: %w", err)
 		}
@@ -847,7 +847,7 @@ func (s *RequestService) SaveRequestChunks(
 			return fmt.Errorf("failed to marshal all chunks: %w", err)
 		}
 
-		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
+		err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
 		if err != nil {
 			return fmt.Errorf("failed to save chunks to external storage: %w", err)
 		}

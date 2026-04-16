@@ -504,25 +504,22 @@ func (s *DataStorageService) GetFileSystem(ctx context.Context, ds *ent.DataStor
 }
 
 // SaveData saves data to the specified data storage.
-// For file system storage, it writes the data to a file and returns the file path.
-func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, key string, data []byte) (string, error) {
+func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, key string, data []byte) error {
 	switch ds.Type {
 	case datastorage.TypeDatabase:
-		// For database storage, we just return the data as a string
-		// The caller will store it in the database
-		return string(data), nil
+		return nil
 	case datastorage.TypeFs, datastorage.TypeS3, datastorage.TypeGcs, datastorage.TypeWebdav:
 		// For file-based storage, write to file system
 		fs, err := s.GetFileSystem(ctx, ds)
 		if err != nil {
-			return "", fmt.Errorf("failed to get file system: %w", err)
+			return fmt.Errorf("failed to get file system: %w", err)
 		}
 
 		if ds.Type == datastorage.TypeFs {
 			key = filepath.FromSlash(key)
 			err = fs.MkdirAll(filepath.Dir(key), 0o777)
 			if err != nil {
-				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+				return fmt.Errorf("failed to create directory: %w, key: %s", err, key)
 			}
 		} else if ds.Type == datastorage.TypeWebdav {
 			// For WebDAV, remove leading slash to avoid 405 error on some servers (e.g., Synology)
@@ -530,7 +527,7 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 
 			err = s.mkdirAll(fs, filepath.Dir(key))
 			if err != nil {
-				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+				return fmt.Errorf("failed to create directory: %w, key: %s", err, key)
 			}
 		}
 
@@ -543,7 +540,7 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 
 			f, err := fs.Create(key)
 			if err != nil {
-				return "", fmt.Errorf("failed to create file: %w, key: %s", err, key)
+				return fmt.Errorf("failed to create file: %w, key: %s", err, key)
 			}
 
 			_ = f.Close()
@@ -551,12 +548,12 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 
 		// Write data to file
 		if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
-			return "", fmt.Errorf("failed to write file: %w, key: %s", err, key)
+			return fmt.Errorf("failed to write file: %w, key: %s", err, key)
 		}
 
-		return key, nil
+		return nil
 	default:
-		return "", fmt.Errorf("unsupported storage type: %s", ds.Type)
+		return fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
 }
 
