@@ -60,7 +60,6 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	// Verify Claude Code specific headers
 	require.Equal(t, "2023-06-01", finalReq.Header.Get("Anthropic-Version"))
 	require.Equal(t, "true", finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-	require.Equal(t, "claude-cli/2.1.78 (external, cli)", finalReq.Header.Get("User-Agent"))
 	require.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
 	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
@@ -137,7 +136,7 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	require.Contains(t, finalReq.Header.Get("Anthropic-Beta"), "interleaved-thinking-2025-05-14")
 	require.Equal(t, "2023-06-01", finalReq.Header.Get("Anthropic-Version"))
 	require.Equal(t, "true", finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-	require.Equal(t, "claude-cli/2.1.78 (external, cli)", finalReq.Header.Get("User-Agent"))
+	require.Contains(t, finalReq.Header.Get("User-Agent"), "claude-cli/")
 	require.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
 	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
@@ -165,7 +164,7 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	require.Equal(t, "user", finalAnthropicReq.Messages[0].Role)
 }
 
-func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *testing.T) {
+func TestClaudeCodeTransformer_WithSimulator_InboundHeadersPassthrough(t *testing.T) {
 	ctx := context.Background()
 
 	inbound := anthropic.NewInboundTransformer()
@@ -191,31 +190,34 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 	require.NoError(t, err)
 
 	tests := []struct {
-		name            string
-		inboundUA       string
-		wantFinalUA     string
-		wantFinalBeta   string
-		wantFinalXApp   string
-		wantFinalVer    string
-		wantFinalDanger string
+		name                    string
+		inboundUA               string
+		wantFinalUA             string
+		wantFinalBeta           string
+		wantFinalXApp           string
+		wantFinalVer            string
+		wantFinalDanger         string
+		wantFinalPkgVer         string
 	}{
 		{
-			name:            "non-claude UA is ignored",
-			inboundUA:       "axonhub-test/0.0.1",
-			wantFinalUA:     UserAgent,
-			wantFinalBeta:   "interleaved-thinking-2025-05-14",
-			wantFinalXApp:   "cli",
-			wantFinalVer:    "2023-06-01",
-			wantFinalDanger: "true",
+			name:                    "non-claude UA passthrough headers override defaults",
+			inboundUA:               "axonhub-test/0.0.1",
+			wantFinalUA:             UserAgent,
+			wantFinalBeta:           "injected",
+			wantFinalXApp:           "web",
+			wantFinalVer:            "1999-01-01",
+			wantFinalDanger:         "false",
+			wantFinalPkgVer:         "999.0.0",
 		},
 		{
-			name:            "claude-cli UA is preserved",
-			inboundUA:       "claude-cli/1.0.99 (external, cli)",
-			wantFinalUA:     "claude-cli/1.0.99 (external, cli)",
-			wantFinalBeta:   "interleaved-thinking-2025-05-14",
-			wantFinalXApp:   "cli",
-			wantFinalVer:    "2023-06-01",
-			wantFinalDanger: "true",
+			name:                    "claude-cli UA passthrough headers override defaults",
+			inboundUA:               "claude-cli/1.0.99 (external, cli)",
+			wantFinalUA:             "claude-cli/1.0.99 (external, cli)",
+			wantFinalBeta:           "injected",
+			wantFinalXApp:           "web",
+			wantFinalVer:            "1999-01-01",
+			wantFinalDanger:         "false",
+			wantFinalPkgVer:         "999.0.0",
 		},
 	}
 
@@ -241,6 +243,7 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			require.Equal(t, tt.wantFinalDanger, finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 			require.Equal(t, tt.wantFinalUA, finalReq.Header.Get("User-Agent"))
 			require.Equal(t, tt.wantFinalXApp, finalReq.Header.Get("X-App"))
+			require.Equal(t, tt.wantFinalPkgVer, finalReq.Header.Get("X-Stainless-Package-Version"))
 			// Claude Code OAuth always uses Bearer authentication
 			require.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
 			require.Empty(t, finalReq.Header.Get("X-Api-Key"))

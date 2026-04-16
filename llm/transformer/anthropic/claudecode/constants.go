@@ -20,10 +20,10 @@ const (
 	RedirectURI = "http://localhost:54545/callback"
 	Scopes      = "org:create_api_key user:profile user:inference"
 	// UserAgent keep consistent with Claude CLI.
-	UserAgent = "claude-cli/2.1.78 (external, cli)"
+	UserAgent = "claude-cli/2.1.110 (external, cli)"
 
 	// ClaudeCodeBetaHeader contains the beta feature identifiers for Claude Code API.
-	ClaudeCodeBetaHeader = "claude-code-20250219,interleaved-thinking-2025-05-14,prompt-caching-scope-2026-01-05,effort-2025-11-24"
+	ClaudeCodeBetaHeader = "claude-code-20250219,interleaved-thinking-2025-05-14,redact-thinking-2026-02-12,context-management-2025-06-27,prompt-caching-scope-2026-01-05,effort-2025-11-24"
 
 	// ClaudeCodeVersionHeader specifies the API version for Claude Code.
 	ClaudeCodeVersionHeader = "2023-06-01"
