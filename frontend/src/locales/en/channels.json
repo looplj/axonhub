@@ -17,6 +17,7 @@
   "channels.columns.type": "Type",
   "channels.columns.provider": "Provider",
   "channels.columns.health": "Health",
+  "channels.columns.rateLimit": "Rate Limit",
   "channels.columns.healthTooltip.probeTime": "Probe Time",
   "channels.columns.healthTooltip.successRate": "Success Rate",
   "channels.columns.healthTooltip.firstTokenLatency": "TTFT",

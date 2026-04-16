@@ -17,6 +17,7 @@
   "channels.columns.type": "类型",
   "channels.columns.provider": "服务商",
   "channels.columns.health": "健康状态",
+  "channels.columns.rateLimit": "速率限制",
   "channels.columns.healthTooltip.probeTime": "探测时间",
   "channels.columns.healthTooltip.successRate": "成功率",
   "channels.columns.healthTooltip.firstTokenLatency": "首字延迟",

@@ -45,6 +45,7 @@ import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { ChannelHealthCell } from './channel-health-cell';
+import { ChannelRateLimitCell } from './channel-rate-limit-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 
 const WEIGHT_PRECISION = 4;
@@ -759,6 +760,21 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       },
       meta: {
         className: 'text-center',
+      },
+      enableSorting: false,
+      enableHiding: true,
+    },
+    {
+      id: 'rateLimit',
+      accessorFn: (row) => row.rateLimitStatus ?? null,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.rateLimit')} className='justify-center' />,
+      cell: ({ row }: { row: Row<Channel> }) => (
+        <div className='flex justify-center'>
+          <ChannelRateLimitCell status={row.original.rateLimitStatus} />
+        </div>
+      ),
+      meta: {
+        className: 'w-24 min-w-24 text-center',
       },
       enableSorting: false,
       enableHiding: true,
