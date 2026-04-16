@@ -14,42 +14,17 @@ import (
 const claudeCodeBillingCCHMetadataKey = "claudecode_billing_cch"
 
 // injectFakeUserIDStructured generates and injects a fake user ID into the request metadata.
-func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request) llm.Request {
+func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request, accountIdentity string) llm.Request {
 	if llmReq.Metadata == nil {
 		llmReq.Metadata = make(map[string]string)
 	}
 
 	existingUserID := llmReq.Metadata["user_id"]
 	if existingUserID == "" || ParseUserID(existingUserID) == nil {
-		llmReq.Metadata["user_id"] = GenerateUserID(ctx)
+		llmReq.Metadata["user_id"] = GenerateUserID(ctx, accountIdentity)
 	}
 
 	return llmReq
-}
-
-// extractAndRemoveBetas extracts the "betas" array from the body and removes it.
-// Returns the extracted betas as a string slice and the modified body.
-func extractAndRemoveBetas(body []byte) ([]string, []byte) {
-	betasResult := gjson.GetBytes(body, "betas")
-	if !betasResult.Exists() {
-		return nil, body
-	}
-
-	var betas []string
-
-	if betasResult.IsArray() {
-		for _, item := range betasResult.Array() {
-			if s := strings.TrimSpace(item.String()); s != "" {
-				betas = append(betas, s)
-			}
-		}
-	} else if s := strings.TrimSpace(betasResult.String()); s != "" {
-		betas = append(betas, s)
-	}
-
-	body, _ = sjson.DeleteBytes(body, "betas")
-
-	return betas, body
 }
 
 // disableThinkingIfToolChoiceForcedStructured clears ReasoningEffort when tool_choice forces tool use.

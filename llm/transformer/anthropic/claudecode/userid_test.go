@@ -60,8 +60,8 @@ func TestBuildUserID(t *testing.T) {
 	assert.Equal(t, uid, *parsed)
 }
 
-func TestGenerateUserID(t *testing.T) {
-	raw := GenerateUserID(context.Background())
+func TestGenerateUserID_Random(t *testing.T) {
+	raw := GenerateUserID(context.Background(), "")
 	uid := ParseUserID(raw)
 	require.NotNil(t, uid)
 	assert.Len(t, uid.DeviceID, 64)
@@ -69,10 +69,35 @@ func TestGenerateUserID(t *testing.T) {
 	assert.Equal(t, "", uid.AccountUUID)
 }
 
+func TestGenerateUserID_Stable(t *testing.T) {
+	raw1 := GenerateUserID(context.Background(), "42")
+	raw2 := GenerateUserID(context.Background(), "42")
+
+	uid1 := ParseUserID(raw1)
+	uid2 := ParseUserID(raw2)
+	require.NotNil(t, uid1)
+	require.NotNil(t, uid2)
+
+	assert.Equal(t, uid1.DeviceID, uid2.DeviceID, "DeviceID should be deterministic")
+	assert.Equal(t, uid1.AccountUUID, uid2.AccountUUID, "AccountUUID should be deterministic")
+	assert.Len(t, uid1.DeviceID, 64)
+	assert.NotEmpty(t, uid1.AccountUUID)
+}
+
+func TestGenerateUserID_DifferentIdentities(t *testing.T) {
+	uid1 := ParseUserID(GenerateUserID(context.Background(), "1"))
+	uid2 := ParseUserID(GenerateUserID(context.Background(), "2"))
+	require.NotNil(t, uid1)
+	require.NotNil(t, uid2)
+
+	assert.NotEqual(t, uid1.DeviceID, uid2.DeviceID)
+	assert.NotEqual(t, uid1.AccountUUID, uid2.AccountUUID)
+}
+
 func TestGenerateUserID_UsesSharedSessionID(t *testing.T) {
 	ctx := shared.WithSessionID(context.Background(), "shared-session-id")
 
-	raw := GenerateUserID(ctx)
+	raw := GenerateUserID(ctx, "")
 	uid := ParseUserID(raw)
 	require.NotNil(t, uid)
 	assert.Equal(t, "shared-session-id", uid.SessionID)
