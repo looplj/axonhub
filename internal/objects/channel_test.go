@@ -18,6 +18,7 @@ func TestRateLimitDuration_Duration(t *testing.T) {
 		{RateLimitDurationOneMin, time.Minute},
 		{RateLimitDurationOneHour, time.Hour},
 		{RateLimitDurationFiveHour, 5 * time.Hour},
+		{RateLimitDurationOneWeek, 7 * 24 * time.Hour},
 		{RateLimitDurationOneMonth, 30 * 24 * time.Hour},
 		{"unknown", time.Minute}, // Default to 1 minute
 	}
@@ -240,7 +241,8 @@ func TestRateLimitDuration_MarshalGQL(t *testing.T) {
 	}{
 		{RateLimitDurationOneMin, `"ONE_MIN"`},
 		{RateLimitDurationOneHour, `"ONE_HOUR"`},
-		{RateLimitDurationFiveHour, `"FIVE_HOURS"`},
+		{RateLimitDurationFiveHour, `"FIVE_HOUR"`},
+		{RateLimitDurationOneWeek, `"ONE_WEEK"`},
 		{RateLimitDurationOneMonth, `"ONE_MONTH"`},
 		{"unknown", `"ONE_MIN"`}, // default fallback
 	}
@@ -265,7 +267,8 @@ func TestRateLimitDuration_UnmarshalGQL(t *testing.T) {
 	}{
 		{"ONE_MIN", "ONE_MIN", RateLimitDurationOneMin, false},
 		{"ONE_HOUR", "ONE_HOUR", RateLimitDurationOneHour, false},
-		{"FIVE_HOURS", "FIVE_HOURS", RateLimitDurationFiveHour, false},
+		{"FIVE_HOUR", "FIVE_HOUR", RateLimitDurationFiveHour, false},
+		{"ONE_WEEK", "ONE_WEEK", RateLimitDurationOneWeek, false},
 		{"ONE_MONTH", "ONE_MONTH", RateLimitDurationOneMonth, false},
 		{"invalid string", "invalid", RateLimitDuration(""), true},
 		{"wrong type", 123, RateLimitDuration(""), true},
@@ -327,11 +330,12 @@ func TestRateLimitDuration_UnmarshalJSON(t *testing.T) {
 	})
 
 	t.Run("accepts all Go constants", func(t *testing.T) {
-		constants := []string{"1min", "1hr", "5hr", "1mo"}
+		constants := []string{"1min", "1hr", "5hr", "1wk", "1mo"}
 		expected := []RateLimitDuration{
 			RateLimitDurationOneMin,
 			RateLimitDurationOneHour,
 			RateLimitDurationFiveHour,
+			RateLimitDurationOneWeek,
 			RateLimitDurationOneMonth,
 		}
 
@@ -348,11 +352,12 @@ func TestRateLimitDuration_UnmarshalJSON(t *testing.T) {
 	})
 
 	t.Run("accepts all GraphQL enum names", func(t *testing.T) {
-		enums := []string{"ONE_MIN", "ONE_HOUR", "FIVE_HOURS", "ONE_MONTH"}
+		enums := []string{"ONE_MIN", "ONE_HOUR", "FIVE_HOUR", "ONE_WEEK", "ONE_MONTH"}
 		expected := []RateLimitDuration{
 			RateLimitDurationOneMin,
 			RateLimitDurationOneHour,
 			RateLimitDurationFiveHour,
+			RateLimitDurationOneWeek,
 			RateLimitDurationOneMonth,
 		}
 

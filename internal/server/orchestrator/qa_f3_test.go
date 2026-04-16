@@ -258,6 +258,7 @@ func TestQA_Task9_DurationDropdownValues(t *testing.T) {
 		objects.RateLimitDurationOneMin:   time.Minute,
 		objects.RateLimitDurationOneHour:  time.Hour,
 		objects.RateLimitDurationFiveHour: 5 * time.Hour,
+		objects.RateLimitDurationOneWeek:  7 * 24 * time.Hour,
 		objects.RateLimitDurationOneMonth: 30 * 24 * time.Hour,
 	}
 	for d, expected := range durations {

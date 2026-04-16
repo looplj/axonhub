@@ -337,6 +337,7 @@ const (
 	RateLimitDurationOneMin   RateLimitDuration = "1min"
 	RateLimitDurationOneHour  RateLimitDuration = "1hr"
 	RateLimitDurationFiveHour RateLimitDuration = "5hr"
+	RateLimitDurationOneWeek  RateLimitDuration = "1wk"
 	RateLimitDurationOneMonth RateLimitDuration = "1mo"
 )
 
@@ -348,6 +349,8 @@ func (d RateLimitDuration) Duration() time.Duration {
 		return time.Hour
 	case RateLimitDurationFiveHour:
 		return 5 * time.Hour
+	case RateLimitDurationOneWeek:
+		return 7 * 24 * time.Hour
 	case RateLimitDurationOneMonth:
 		return 30 * 24 * time.Hour
 	default:
@@ -359,7 +362,8 @@ func (d RateLimitDuration) Duration() time.Duration {
 var graphqlEnumToGo = map[string]RateLimitDuration{
 	"ONE_MIN":    RateLimitDurationOneMin,
 	"ONE_HOUR":   RateLimitDurationOneHour,
-	"FIVE_HOURS": RateLimitDurationFiveHour,
+	"FIVE_HOUR": RateLimitDurationFiveHour,
+	"ONE_WEEK":   RateLimitDurationOneWeek,
 	"ONE_MONTH":  RateLimitDurationOneMonth,
 }
 
@@ -367,7 +371,8 @@ var graphqlEnumToGo = map[string]RateLimitDuration{
 var goToGraphqlEnum = map[RateLimitDuration]string{
 	RateLimitDurationOneMin:   "ONE_MIN",
 	RateLimitDurationOneHour:  "ONE_HOUR",
-	RateLimitDurationFiveHour: "FIVE_HOURS",
+	RateLimitDurationFiveHour: "FIVE_HOUR",
+	RateLimitDurationOneWeek:  "ONE_WEEK",
 	RateLimitDurationOneMonth: "ONE_MONTH",
 }
 
@@ -406,7 +411,7 @@ func (d RateLimitDuration) IsValid() bool {
 
 // UnmarshalJSON validates RateLimitDuration during JSON deserialization.
 // It accepts both Go constant values ("1min", "1hr", "5hr", "1mo") and GraphQL enum names
-// ("ONE_MIN", "ONE_HOUR", "FIVE_HOURS", "ONE_MONTH") for backward compatibility.
+// ("ONE_MIN", "ONE_HOUR", "FIVE_HOUR", "ONE_MONTH") for backward compatibility.
 // An empty string is treated as the default (1 minute), consistent with the omitempty JSON tag
 // and the GetRPMDuration/GetTPMDuration fallback behavior.
 func (d *RateLimitDuration) UnmarshalJSON(data []byte) error {

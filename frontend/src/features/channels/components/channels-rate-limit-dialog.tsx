@@ -23,13 +23,14 @@ interface Props {
   currentRow: Channel;
 }
 
-const RATE_LIMIT_DURATIONS = ['ONE_MIN', 'ONE_HOUR', 'FIVE_HOURS', 'ONE_MONTH'] as const;
+const RATE_LIMIT_DURATIONS = ['ONE_MIN', 'ONE_HOUR', 'FIVE_HOUR', 'ONE_WEEK', 'ONE_MONTH'] as const;
 type RateLimitDuration = (typeof RATE_LIMIT_DURATIONS)[number];
 
 const DURATION_I18N_KEYS: Record<RateLimitDuration, string> = {
   ONE_MIN: 'channels.dialogs.rateLimit.durations.1min',
   ONE_HOUR: 'channels.dialogs.rateLimit.durations.1hr',
-  FIVE_HOURS: 'channels.dialogs.rateLimit.durations.5hr',
+  FIVE_HOUR: 'channels.dialogs.rateLimit.durations.5hr',
+  ONE_WEEK: 'channels.dialogs.rateLimit.durations.1wk',
   ONE_MONTH: 'channels.dialogs.rateLimit.durations.1mo',
 };
 

@@ -97,7 +97,8 @@ enum CapabilityPolicy {
 enum RateLimitDuration {
   ONE_MIN
   ONE_HOUR
-  FIVE_HOURS
+  FIVE_HOUR
+  ONE_WEEK
   ONE_MONTH
 }
 
