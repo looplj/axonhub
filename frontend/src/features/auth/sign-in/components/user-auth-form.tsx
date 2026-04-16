@@ -139,30 +139,45 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             </div>
 
             <div className='mt-6 grid gap-2'>
-              {oidcProviders.map((provider) => (
-                <Button
-                  key={provider.name}
-                  type='button'
-                  variant='outline'
-                  className='w-full border-slate-300 disabled:opacity-50'
-                  style={
-                    provider.button_color
-                      ? { backgroundColor: provider.button_color, color: '#ffffff', borderColor: provider.button_color }
-                      : undefined
-                  }
-                  disabled={oidcAuthorizeMutation.isPending}
-                  onClick={() => oidcAuthorizeMutation.mutate(provider.name)}
-                >
-                  {oidcAuthorizeMutation.isPending && oidcAuthorizeMutation.variables === provider.name ? (
-                    <div className='mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current'></div>
-                  ) : provider.icon_url ? (
-                    <img src={provider.icon_url} alt={provider.display_name || provider.name} className='mr-2 h-4 w-4 object-contain' />
-                  ) : (
-                    <LogIn className='mr-2 h-4 w-4' />
-                  )}
-                  {provider.display_name || provider.name}
-                </Button>
-              ))}
+              {oidcProviders.map((provider) => {
+                const isInactive = provider.active === false;
+
+                return (
+                  <Button
+                    key={provider.name}
+                    type='button'
+                    variant='outline'
+                    className={cn(
+                      'h-auto w-full justify-start border-slate-300 py-3 text-left disabled:opacity-50',
+                      isInactive && 'border-2 border-destructive'
+                    )}
+                    style={
+                      provider.button_color
+                        ? {
+                            backgroundColor: provider.button_color,
+                            color: '#ffffff',
+                            borderColor: isInactive ? 'var(--destructive)' : provider.button_color,
+                          }
+                        : undefined
+                    }
+                    disabled={oidcAuthorizeMutation.isPending}
+                    onClick={() => oidcAuthorizeMutation.mutate(provider.name)}
+                    title={isInactive ? t('common.status.inactiveRetry') : undefined}
+                  >
+                    {oidcAuthorizeMutation.isPending && oidcAuthorizeMutation.variables === provider.name ? (
+                      <div className='mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current'></div>
+                    ) : provider.icon_url ? (
+                      <img src={provider.icon_url} alt={provider.display_name || provider.name} className='mr-2 h-4 w-4 object-contain' />
+                    ) : (
+                      <LogIn className='mr-2 h-4 w-4' />
+                    )}
+                    <span className='flex min-w-0 flex-1 flex-col items-start'>
+                      <span className='truncate'>{provider.display_name || provider.name}</span>
+                      {isInactive && <span className='text-xs font-medium text-current/85'>{t('common.status.inactiveRetry')}</span>}
+                    </span>
+                  </Button>
+                );
+              })}
             </div>
           </div>
         )}
