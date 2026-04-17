@@ -774,7 +774,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         </div>
       ),
       meta: {
-        className: 'w-24 min-w-24 text-center',
+        className: 'w-28 min-w-28 text-center',
       },
       enableSorting: false,
       enableHiding: true,

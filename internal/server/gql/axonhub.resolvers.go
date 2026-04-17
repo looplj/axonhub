@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -29,7 +27,31 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 )
+
+// copyTimePtr creates a copy of a time.Time pointer.
+func copyTimePtr(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	cp := *t
+	return &cp
+}
+
+// validateWindowAnchor validates that a window anchor is valid.
+func validateWindowAnchor(anchor *time.Time, fieldName string) error {
+	if anchor == nil {
+		return nil
+	}
+	if anchor.IsZero() {
+		return fmt.Errorf("%s must not be a zero time", fieldName)
+	}
+	if anchor.After(time.Now()) {
+		return fmt.Errorf("%s must not be in the future", fieldName)
+	}
+	return nil
+}
 
 // AllModelEntries is the resolver for the allModelEntries field.
 func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel) ([]*biz.ChannelModelEntry, error) {
@@ -97,28 +119,30 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 	if rl.RPM != nil && *rl.RPM > 0 {
 		rpmDuration := rl.GetRPMDuration().Duration()
-		rpmCurrent := r.rateLimitTracker.GetRequestCountForDuration(channelID, rpmDuration)
+		rpmCurrent := r.rateLimitTracker.GetRequestCountForDuration(channelID, rpmDuration, rl.RPMWindowAnchor)
 		rpmLimit := int(*rl.RPM)
-		rpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, rpmDuration)
+		rpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, rpmDuration, rl.RPMWindowAnchor)
 		rpmCurrentInt := int(rpmCurrent)
 		status.RpmCurrent = &rpmCurrentInt
 		status.RpmLimit = &rpmLimit
 		if !rpmResetAt.IsZero() {
 			status.RpmResetAt = &rpmResetAt
 		}
+		status.RpmWindowAnchor = copyTimePtr(rl.RPMWindowAnchor)
 	}
 
 	if rl.TPM != nil && *rl.TPM > 0 {
 		tpmDuration := rl.GetTPMDuration().Duration()
-		tpmCurrent := r.rateLimitTracker.GetTokenCountForDuration(channelID, tpmDuration)
+		tpmCurrent := r.rateLimitTracker.GetTokenCountForDuration(channelID, tpmDuration, rl.TPMWindowAnchor)
 		tpmLimit := int(*rl.TPM)
-		tpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, tpmDuration)
+		tpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, tpmDuration, rl.TPMWindowAnchor)
 		tpmCurrentInt := int(tpmCurrent)
 		status.TpmCurrent = &tpmCurrentInt
 		status.TpmLimit = &tpmLimit
 		if !tpmResetAt.IsZero() {
 			status.TpmResetAt = &tpmResetAt
 		}
+		status.TpmWindowAnchor = copyTimePtr(rl.TPMWindowAnchor)
 	}
 
 	if rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 {
@@ -130,7 +154,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 	if rl.Cost != nil && rl.Cost.IsPositive() && r.quotaService != nil {
 		costDuration := rl.GetCostDuration()
-		windowStart := time.Now().Truncate(costDuration.Duration())
+		windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 		windowEnd := windowStart.Add(costDuration.Duration())
 
 		currentCost, err := r.quotaService.GetChannelCost(ctx, channelID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
@@ -145,6 +169,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 			status.CostLimit = &costLimitFloat
 			status.CostResetAt = &windowEnd
 		}
+		status.CostWindowAnchor = copyTimePtr(rl.CostWindowAnchor)
 	}
 
 	if until, ok := r.rateLimitTracker.GetCooldownUntil(channelID); ok {
@@ -944,6 +969,21 @@ func (r *channelRateLimitInputResolver) ModelConcurrent(ctx context.Context, obj
 	}
 
 	return nil
+}
+
+// RpmWindowAnchor validates the rpmWindowAnchor field.
+func (r *channelRateLimitInputResolver) RpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error {
+	return validateWindowAnchor(data, "rpmWindowAnchor")
+}
+
+// TpmWindowAnchor validates the tpmWindowAnchor field.
+func (r *channelRateLimitInputResolver) TpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error {
+	return validateWindowAnchor(data, "tpmWindowAnchor")
+}
+
+// CostWindowAnchor validates the costWindowAnchor field.
+func (r *channelRateLimitInputResolver) CostWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error {
+	return validateWindowAnchor(data, "costWindowAnchor")
 }
 
 // ChannelRateLimit returns ChannelRateLimitResolver implementation.

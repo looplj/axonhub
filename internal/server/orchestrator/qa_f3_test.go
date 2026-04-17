@@ -108,11 +108,11 @@ func TestQA_Task3_MultiWindowTracking_IndependentWindows(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	oneHour := objects.RateLimitDurationOneHour
 	fiveHour := objects.RateLimitDurationFiveHour
-	tracker.IncrementRequestForDuration(1, oneHour.Duration())
-	tracker.IncrementRequestForDuration(1, oneHour.Duration())
-	tracker.IncrementRequestForDuration(1, fiveHour.Duration())
-	assert.Equal(t, int64(2), tracker.GetRequestCountForDuration(1, oneHour.Duration()))
-	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, fiveHour.Duration()))
+	tracker.IncrementRequestForDuration(1, oneHour.Duration(), nil)
+	tracker.IncrementRequestForDuration(1, oneHour.Duration(), nil)
+	tracker.IncrementRequestForDuration(1, fiveHour.Duration(), nil)
+	assert.Equal(t, int64(2), tracker.GetRequestCountForDuration(1, oneHour.Duration(), nil))
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, fiveHour.Duration(), nil))
 }
 
 // Task 3: Backward compat - existing 1-minute methods still work
@@ -123,7 +123,7 @@ func TestQA_Task3_BackwardCompat_OneMinuteMethods(t *testing.T) {
 	tracker.AddTokens(1, 100)
 	assert.Equal(t, int64(2), tracker.GetRequestCount(1))
 	assert.Equal(t, int64(100), tracker.GetTokenCount(1))
-	assert.Equal(t, tracker.GetRequestCount(1), tracker.GetRequestCountForDuration(1, time.Minute))
+	assert.Equal(t, tracker.GetRequestCount(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
 }
 
 // Task 3: Window expiry for long durations
@@ -136,9 +136,9 @@ func TestQA_Task3_WindowExpiry_LongDuration(t *testing.T) {
 		duration: {requests: 100, tokens: 5000, windowStart: time.Now().Truncate(duration).Add(-duration)},
 	}
 	tracker.mu.Unlock()
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, duration))
-	tracker.IncrementRequestForDuration(1, duration)
-	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, duration))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, duration, nil))
+	tracker.IncrementRequestForDuration(1, duration, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, duration, nil))
 }
 
 // Task 4: Per-model connection tracking works
@@ -192,11 +192,11 @@ func TestQA_Task6_DurationAwareRPMScore(t *testing.T) {
 		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm, RPMDuration: &fiveHour}},
 	}}
 	for range 5 {
-		tracker.IncrementRequestForDuration(ch.ID, fiveHour.Duration())
+		tracker.IncrementRequestForDuration(ch.ID, fiveHour.Duration(), nil)
 	}
 	score := strategy.Score(context.Background(), ch)
 	assert.Equal(t, 50.0, score, "Strategy uses 5-hour window, sees 5/10 requests = 50%% usage")
-	assert.Equal(t, int64(5), tracker.GetRequestCountForDuration(ch.ID, fiveHour.Duration()))
+	assert.Equal(t, int64(5), tracker.GetRequestCountForDuration(ch.ID, fiveHour.Duration(), nil))
 }
 
 // Task 6: Backward compat - no duration defaults to 1min
@@ -279,12 +279,12 @@ func TestQA_Task8_DurationAwareRateLimitTracking(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	oneHour := objects.RateLimitDurationOneHour
 	fiveHour := objects.RateLimitDurationFiveHour
-	tracker.IncrementRequestForDuration(1, oneHour.Duration())
-	tracker.AddTokensForDuration(1, 500, fiveHour.Duration())
-	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, oneHour.Duration()))
-	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(1, fiveHour.Duration()))
-	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, oneHour.Duration()))
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, fiveHour.Duration()))
+	tracker.IncrementRequestForDuration(1, oneHour.Duration(), nil)
+	tracker.AddTokensForDuration(1, 500, fiveHour.Duration(), nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, oneHour.Duration(), nil))
+	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(1, fiveHour.Duration(), nil))
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, oneHour.Duration(), nil))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, fiveHour.Duration(), nil))
 }
 
 // Task 8: Model connection tracking lifecycle
@@ -360,12 +360,12 @@ func TestQA_Task11_IntegrationSuitePasses(t *testing.T) {
 			RPMDuration: &fiveHour, ModelConcurrent: map[string]int64{"gpt-4": 2},
 		}},
 	}}
-	tracker.IncrementRequestForDuration(ch.ID, fiveHour.Duration())
-	tracker.AddTokensForDuration(ch.ID, 500, fiveHour.Duration())
+	tracker.IncrementRequestForDuration(ch.ID, fiveHour.Duration(), nil)
+	tracker.AddTokensForDuration(ch.ID, 500, fiveHour.Duration(), nil)
 	mt.IncrementModelConnection(ch.ID, "gpt-4")
 	ct.IncrementConnection(ch.ID)
-	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(ch.ID, fiveHour.Duration()))
-	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(ch.ID, fiveHour.Duration()))
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(ch.ID, fiveHour.Duration(), nil))
+	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(ch.ID, fiveHour.Duration(), nil))
 	assert.Equal(t, 1, mt.GetModelConnectionCount(ch.ID, "gpt-4"))
 	assert.Equal(t, 1, ct.GetActiveConnections(ch.ID))
 	score := strategy.Score(contextWithModel(t, "gpt-4"), ch)
@@ -449,13 +449,13 @@ func TestQA_Edge_MixedDurationConfigs(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	oneHour := objects.RateLimitDurationOneHour
 	fiveHour := objects.RateLimitDurationFiveHour
-	tracker.IncrementRequestForDuration(1, oneHour.Duration())
-	tracker.IncrementRequestForDuration(1, oneHour.Duration())
-	tracker.AddTokensForDuration(1, 500, fiveHour.Duration())
-	assert.Equal(t, int64(2), tracker.GetRequestCountForDuration(1, oneHour.Duration()))
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, fiveHour.Duration()))
-	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(1, fiveHour.Duration()))
-	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, oneHour.Duration()))
+	tracker.IncrementRequestForDuration(1, oneHour.Duration(), nil)
+	tracker.IncrementRequestForDuration(1, oneHour.Duration(), nil)
+	tracker.AddTokensForDuration(1, 500, fiveHour.Duration(), nil)
+	assert.Equal(t, int64(2), tracker.GetRequestCountForDuration(1, oneHour.Duration(), nil))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, fiveHour.Duration(), nil))
+	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(1, fiveHour.Duration(), nil))
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, oneHour.Duration(), nil))
 }
 
 func TestQA_Edge_ConcurrentAccessRaceDetector(t *testing.T) {
@@ -471,13 +471,13 @@ func TestQA_Edge_ConcurrentAccessRaceDetector(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range ops {
-				tracker.IncrementRequestForDuration(1, duration)
+				tracker.IncrementRequestForDuration(1, duration, nil)
 			}
 		}()
 		go func() {
 			defer wg.Done()
 			for range ops {
-				tracker.AddTokensForDuration(1, 10, duration)
+				tracker.AddTokensForDuration(1, 10, duration, nil)
 			}
 		}()
 		go func() {
@@ -488,8 +488,8 @@ func TestQA_Edge_ConcurrentAccessRaceDetector(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	assert.Equal(t, int64(g*ops), tracker.GetRequestCountForDuration(1, duration))
-	assert.Equal(t, int64(g*ops*10), tracker.GetTokenCountForDuration(1, duration))
+	assert.Equal(t, int64(g*ops), tracker.GetRequestCountForDuration(1, duration, nil))
+	assert.Equal(t, int64(g*ops*10), tracker.GetTokenCountForDuration(1, duration, nil))
 	assert.Equal(t, g*ops, mt.GetModelConnectionCount(1, "gpt-4"))
 }
 
@@ -512,10 +512,10 @@ func TestQA_Edge_CaseInsensitiveModelNames(t *testing.T) {
 
 func TestQA_Edge_NegativeTokens(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	tracker.AddTokensForDuration(1, -100, time.Minute)
-	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, time.Minute))
-	tracker.AddTokensForDuration(1, 0, time.Minute)
-	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, time.Minute))
+	tracker.AddTokensForDuration(1, -100, time.Minute, nil)
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+	tracker.AddTokensForDuration(1, 0, time.Minute, nil)
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, time.Minute, nil))
 }
 
 func TestQA_Edge_UnknownDurationString(t *testing.T) {
@@ -546,15 +546,15 @@ func TestQA_CrossTask_FullDurationAndModelConcurrentIntegration(t *testing.T) {
 		}},
 	}}
 	for range 50 {
-		tracker.IncrementRequestForDuration(ch.ID, oneHour.Duration())
+		tracker.IncrementRequestForDuration(ch.ID, oneHour.Duration(), nil)
 	}
-	tracker.AddTokensForDuration(ch.ID, 500, fiveHour.Duration())
+	tracker.AddTokensForDuration(ch.ID, 500, fiveHour.Duration(), nil)
 	mt.IncrementModelConnection(ch.ID, "gpt-4")
 	mt.IncrementModelConnection(ch.ID, "claude-3")
 	ct.IncrementConnection(ch.ID)
 	ct.IncrementConnection(ch.ID)
-	assert.Equal(t, int64(50), tracker.GetRequestCountForDuration(ch.ID, oneHour.Duration()))
-	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(ch.ID, fiveHour.Duration()))
+	assert.Equal(t, int64(50), tracker.GetRequestCountForDuration(ch.ID, oneHour.Duration(), nil))
+	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(ch.ID, fiveHour.Duration(), nil))
 	gpt4Limit, _ := mt.GetModelConcurrentLimit(ch.ID, "gpt-4", ch.Settings.RateLimit)
 	assert.Equal(t, int64(2), gpt4Limit)
 	claude3Limit, _ := mt.GetModelConcurrentLimit(ch.ID, "claude-3", ch.Settings.RateLimit)
@@ -582,7 +582,7 @@ func TestQA_CrossTask_BackwardCompatWithNewFeatures(t *testing.T) {
 		}},
 	}}
 	tracker.IncrementRequest(legacyCh.ID)
-	tracker.IncrementRequestForDuration(newCh.ID, fiveHour.Duration())
+	tracker.IncrementRequestForDuration(newCh.ID, fiveHour.Duration(), nil)
 	legacyScore := strategy.Score(context.Background(), legacyCh)
 	newScore := strategy.Score(contextWithModel(t, "gpt-4"), newCh)
 	assert.Greater(t, legacyScore, float64(rateLimitExhaustedScore))

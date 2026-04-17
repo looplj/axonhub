@@ -6,8 +6,10 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Info } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl, FormDescription } from '@/components/ui/form';
@@ -34,15 +36,38 @@ const DURATION_I18N_KEYS: Record<RateLimitDuration, string> = {
   ONE_MONTH: 'channels.dialogs.rateLimit.durations.1mo',
 };
 
+function utcToLocalDatetime(utcIso: string | null | undefined): string {
+  if (!utcIso) return '';
+  try {
+    // Ensure the string is treated as UTC: append 'Z' if no timezone info is present
+    let normalized = utcIso;
+    if (!normalized.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(normalized)) {
+      normalized = normalized + 'Z';
+    }
+    const d = parseISO(normalized);
+    return format(d, "yyyy-MM-dd'T'HH:mm");
+  } catch {
+    return '';
+  }
+}
 
+function localDatetimeToUtc(localValue: string): string | null {
+  if (!localValue) return null;
+  const d = new Date(localValue);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
 
 const rateLimitFormSchema = z.object({
   rpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   rpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
+  rpmWindowAnchor: z.string().datetime({ message: 'Invalid ISO datetime format' }).optional().nullable(),
   tpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   tpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
+  tpmWindowAnchor: z.string().datetime({ message: 'Invalid ISO datetime format' }).optional().nullable(),
   cost: z.union([z.number().positive(), z.literal('')]).optional().nullable(),
   costDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
+  costWindowAnchor: z.string().datetime({ message: 'Invalid ISO datetime format' }).optional().nullable(),
   maxConcurrent: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   modelConcurrent: z.array(z.object({
     model: z.string(),
@@ -78,6 +103,116 @@ function modelConcurrentToArray(
   });
 }
 
+const HOUR_DURATIONS: RateLimitDuration[] = ['ONE_HOUR', 'FIVE_HOUR'];
+const DATE_DURATIONS: RateLimitDuration[] = ['ONE_WEEK', 'ONE_MONTH'];
+
+function isHourBasedDuration(d: RateLimitDuration | null | undefined): boolean {
+  return !!d && HOUR_DURATIONS.includes(d);
+}
+
+function WindowAnchorField({ control, name, duration }: { control: ReturnType<typeof useForm<RateLimitFormValues>>['control']; name: 'rpmWindowAnchor' | 'tpmWindowAnchor' | 'costWindowAnchor'; duration: RateLimitDuration | null | undefined }) {
+  const { t } = useTranslation();
+
+  const isHourBased = isHourBasedDuration(duration);
+  const isDateBased = !!duration && DATE_DURATIONS.includes(duration);
+
+  if (!isHourBased && !isDateBased) {
+    return null;
+  }
+
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => {
+        const anchorValue = field.value;
+
+        if (isHourBased) {
+          // Hour-based durations: show a number input for the hour (0–23)
+          const hourValue = (() => {
+            if (!anchorValue) return '';
+            try {
+              const d = parseISO(anchorValue.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(anchorValue) ? anchorValue : anchorValue + 'Z');
+              return String(d.getUTCHours());
+            } catch {
+              return '';
+            }
+          })();
+
+          return (
+            <FormItem className='w-[240px]'>
+              <div className='flex items-center gap-1'>
+                <FormLabel className='sr-only'>{t('channels.dialogs.rateLimit.fields.windowAnchor.label')}</FormLabel>
+                <span className='text-sm text-muted-foreground whitespace-nowrap'>{t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className='h-3.5 w-3.5 text-muted-foreground cursor-help shrink-0' />
+                  </TooltipTrigger>
+                  <TooltipContent side='top' className='max-w-[260px]'>
+                    {t('channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip')}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <FormControl>
+                <Input
+                  type='number'
+                  min={0}
+                  max={23}
+                  placeholder='0–23'
+                  value={hourValue}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      field.onChange(null);
+                      return;
+                    }
+                    const hour = parseInt(val, 10);
+                    if (isNaN(hour) || hour < 0 || hour > 23) return;
+                    // Build a UTC time.Time at today's date with this hour, preserving the date portion
+                    const now = new Date();
+                    const utcDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, 0, 0, 0));
+                    field.onChange(utcDate.toISOString());
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }
+
+        // Day-based durations: show a date+time picker
+        return (
+          <FormItem className='w-[240px]'>
+            <div className='flex items-center gap-1'>
+              <FormLabel className='sr-only'>{t('channels.dialogs.rateLimit.fields.windowAnchor.label')}</FormLabel>
+              <span className='text-sm text-muted-foreground whitespace-nowrap'>{t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className='h-3.5 w-3.5 text-muted-foreground cursor-help shrink-0' />
+                </TooltipTrigger>
+                <TooltipContent side='top' className='max-w-[260px]'>
+                  {t('channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip')}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <FormControl>
+              <Input
+                type='datetime-local'
+                value={utcToLocalDatetime(anchorValue)}
+                onChange={(e) => {
+                  field.onChange(localDatetimeToUtc(e.target.value));
+                }}
+                placeholder={t('channels.dialogs.rateLimit.fields.windowAnchor.placeholder')}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
 export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
@@ -87,10 +222,13 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
     defaultValues: {
       rpm: currentRow.settings?.rateLimit?.rpm ?? '',
       rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
+      rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
       tpm: currentRow.settings?.rateLimit?.tpm ?? '',
       tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
+      tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
       cost: currentRow.settings?.rateLimit?.cost ?? '',
       costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
+      costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
       maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
       modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
     },
@@ -110,10 +248,13 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       form.reset({
         rpm: currentRow.settings?.rateLimit?.rpm ?? '',
         rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
+        rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
         tpm: currentRow.settings?.rateLimit?.tpm ?? '',
         tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
+        tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
         cost: currentRow.settings?.rateLimit?.cost ?? '',
         costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
+        costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
         maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
         modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
       });
@@ -129,20 +270,21 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       const rateLimit: Record<string, unknown> = {
         rpm: finalRpm,
         rpmDuration: finalRpm != null ? values.rpmDuration : null,
+        rpmWindowAnchor: finalRpm != null ? values.rpmWindowAnchor : null,
         tpm: finalTpm,
         tpmDuration: finalTpm != null ? values.tpmDuration : null,
+        tpmWindowAnchor: finalTpm != null ? values.tpmWindowAnchor : null,
         cost: finalCost,
         costDuration: finalCost != null ? values.costDuration : null,
+        costWindowAnchor: finalCost != null ? values.costWindowAnchor : null,
         maxConcurrent: values.maxConcurrent === '' || values.maxConcurrent == null ? null : values.maxConcurrent,
       };
 
-      // Bug 3: Empty limit should save as null, not 0
       if (values.modelConcurrent && values.modelConcurrent.length > 0) {
         const mcArray: { model: string; limit: number | null }[] = [];
         for (const entry of values.modelConcurrent) {
           const model = entry.model.trim().toLowerCase();
           if (!model) continue;
-          // Empty limit should be null (unlimited), not 0 (block all)
           const limit = entry.limit != null && entry.limit !== '' ? entry.limit : null;
           mcArray.push({ model, limit });
         }
@@ -151,15 +293,17 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         }
       }
 
-      // Bug 6: Include duration fields and modelConcurrent in null-cleanup check
       const hasModelConcurrent = !!rateLimit.modelConcurrent && (rateLimit.modelConcurrent as { model: string; limit: number | null }[]).length > 0;
       const rateLimitValue =
         rateLimit.rpm == null &&
         rateLimit.rpmDuration == null &&
+        rateLimit.rpmWindowAnchor == null &&
         rateLimit.tpm == null &&
         rateLimit.tpmDuration == null &&
+        rateLimit.tpmWindowAnchor == null &&
         rateLimit.cost == null &&
         rateLimit.costDuration == null &&
+        rateLimit.costWindowAnchor == null &&
         rateLimit.maxConcurrent == null &&
         !hasModelConcurrent
           ? null
@@ -213,10 +357,11 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.rpm.label')}</FormLabel>
-                        <div className='flex gap-2'>
+                        <div className='flex gap-2 items-start'>
                           <FormControl>
                             <Input
                               type='number'
+                              className='w-[100px]'
                               placeholder={t('channels.dialogs.rateLimit.fields.rpm.placeholder')}
                               value={field.value === '' || field.value == null ? '' : field.value}
                               onChange={(e) => {
@@ -249,6 +394,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
+                          <WindowAnchorField control={form.control} name='rpmWindowAnchor' duration={form.watch('rpmDuration')} />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.rpm.description')}</FormDescription>
                         <FormMessage />
@@ -262,10 +408,11 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.tpm.label')}</FormLabel>
-                        <div className='flex gap-2'>
+                        <div className='flex gap-2 items-start'>
                           <FormControl>
                             <Input
                               type='number'
+                              className='w-[100px]'
                               placeholder={t('channels.dialogs.rateLimit.fields.tpm.placeholder')}
                               value={field.value === '' || field.value == null ? '' : field.value}
                               onChange={(e) => {
@@ -298,6 +445,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
+                          <WindowAnchorField control={form.control} name='tpmWindowAnchor' duration={form.watch('tpmDuration')} />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.tpm.description')}</FormDescription>
                         <FormMessage />
@@ -311,10 +459,11 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.cost.label')}</FormLabel>
-                        <div className='flex gap-2'>
+                        <div className='flex gap-2 items-start'>
                           <FormControl>
                             <Input
                               type='number'
+                              className='w-[100px]'
                               step='0.01'
                               placeholder={t('channels.dialogs.rateLimit.fields.cost.placeholder')}
                               value={field.value === '' || field.value == null ? '' : field.value}
@@ -348,6 +497,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
+                          <WindowAnchorField control={form.control} name='costWindowAnchor' duration={form.watch('costDuration')} />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.cost.description')}</FormDescription>
                         <FormMessage />

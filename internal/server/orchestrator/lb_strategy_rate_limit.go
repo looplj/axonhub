@@ -7,6 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -100,7 +101,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	// Check RPM (Requests Per Minute)
 	if rl.RPM != nil && *rl.RPM > 0 {
-		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rl.GetRPMDuration().Duration())
+		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rl.GetRPMDuration().Duration(), rl.RPMWindowAnchor)
 		if rpm >= *rl.RPM {
 			return rateLimitExhaustedScore
 		}
@@ -113,7 +114,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	// Check TPM (Tokens Per Minute)
 	if rl.TPM != nil && *rl.TPM > 0 {
-		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, rl.GetTPMDuration().Duration())
+		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, rl.GetTPMDuration().Duration(), rl.TPMWindowAnchor)
 		if tpm >= *rl.TPM {
 			return rateLimitExhaustedScore
 		}
@@ -133,7 +134,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 		if !costCached && s.quotaService != nil {
 			costDuration := rl.GetCostDuration()
-			windowStart := time.Now().Truncate(costDuration.Duration())
+			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
 			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
@@ -287,7 +288,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	// Check RPM
 	if rl.RPM != nil && *rl.RPM > 0 {
 		rpmDuration := rl.GetRPMDuration().Duration()
-		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rpmDuration)
+		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
 		details["rpm_limit"] = *rl.RPM
 		details["rpm_current"] = rpm
 		details["rpm_duration"] = string(rl.GetRPMDuration())
@@ -306,7 +307,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	// Check TPM
 	if rl.TPM != nil && *rl.TPM > 0 {
 		tpmDuration := rl.GetTPMDuration().Duration()
-		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, tpmDuration)
+		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
 		details["tpm_limit"] = *rl.TPM
 		details["tpm_current"] = tpm
 		details["tpm_duration"] = string(rl.GetTPMDuration())
@@ -331,7 +332,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 
 		if !costCached && s.quotaService != nil {
 			costDuration := rl.GetCostDuration()
-			windowStart := time.Now().Truncate(costDuration.Duration())
+			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
 			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {

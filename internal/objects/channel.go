@@ -155,6 +155,9 @@ type ChannelRateLimit struct {
 	RPMDuration     *RateLimitDuration `json:"rpmDuration,omitempty"`
 	TPMDuration     *RateLimitDuration `json:"tpmDuration,omitempty"`
 	CostDuration    *RateLimitDuration `json:"costDuration,omitempty"`
+	RPMWindowAnchor  *time.Time         `json:"rpmWindowAnchor,omitempty"`
+	TPMWindowAnchor  *time.Time         `json:"tpmWindowAnchor,omitempty"`
+	CostWindowAnchor *time.Time         `json:"costWindowAnchor,omitempty"`
 	ModelConcurrent map[string]int64   `json:"modelConcurrent,omitempty"`
 }
 
@@ -369,6 +372,19 @@ func (d RateLimitDuration) Duration() time.Duration {
 	default:
 		return time.Minute
 	}
+}
+
+func ComputeWindowStart(now time.Time, d time.Duration, anchor *time.Time) time.Time {
+	if anchor == nil || anchor.IsZero() || d <= 0 {
+		return now.Truncate(d)
+	}
+	elapsed := now.Sub(*anchor)
+	if elapsed < 0 {
+		// Future anchor: fall back to clock-boundary alignment until the anchor is reached.
+		return now.Truncate(d)
+	}
+	steps := elapsed / d
+	return anchor.Add(steps * d)
 }
 
 // graphqlEnumToGo maps GraphQL enum names to Go string constants.

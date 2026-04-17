@@ -138,6 +138,9 @@ input ChannelRateLimitInput {
   rpmDuration: RateLimitDuration
   tpmDuration: RateLimitDuration
   costDuration: RateLimitDuration
+  rpmWindowAnchor: Time
+  tpmWindowAnchor: Time
+  costWindowAnchor: Time
   modelConcurrent: [ModelConcurrentInput!]
 }
 
@@ -149,6 +152,9 @@ type ChannelRateLimit {
   rpmDuration: RateLimitDuration
   tpmDuration: RateLimitDuration
   costDuration: RateLimitDuration
+  rpmWindowAnchor: Time
+  tpmWindowAnchor: Time
+  costWindowAnchor: Time
   modelConcurrent: [ModelConcurrent!]
 }
 
@@ -609,12 +615,15 @@ type ChannelRateLimitStatus {
   rpmCurrent: Int
   rpmLimit: Int
   rpmResetAt: Time
+  rpmWindowAnchor: Time
   tpmCurrent: Int
   tpmLimit: Int
   tpmResetAt: Time
+  tpmWindowAnchor: Time
   costCurrent: Float
   costLimit: Float
   costResetAt: Time
+  costWindowAnchor: Time
   concurrentCurrent: Int
   concurrentLimit: Int
   isCoolingDown: Boolean!

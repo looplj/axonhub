@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -35,10 +36,10 @@ func TestIntegration_RPM_FiveHourWindow_ExhaustsAtLimit(t *testing.T) {
 	duration := fiveHour.Duration()
 
 	for range rpm {
-		tracker.IncrementRequestForDuration(channel.ID, duration)
+		tracker.IncrementRequestForDuration(channel.ID, duration, nil)
 	}
 
-	currentCount := tracker.GetRequestCountForDuration(channel.ID, duration)
+	currentCount := tracker.GetRequestCountForDuration(channel.ID, duration, nil)
 	assert.Equal(t, rpm, currentCount, "10 requests in 5-hour window should exhaust RPM limit")
 	assert.GreaterOrEqual(t, currentCount, rpm)
 }
@@ -63,10 +64,10 @@ func TestIntegration_RPM_FiveHourWindow_NotExhaustedBelowLimit(t *testing.T) {
 	duration := fiveHour.Duration()
 
 	for range 9 {
-		tracker.IncrementRequestForDuration(channel.ID, duration)
+		tracker.IncrementRequestForDuration(channel.ID, duration, nil)
 	}
 
-	currentCount := tracker.GetRequestCountForDuration(channel.ID, duration)
+	currentCount := tracker.GetRequestCountForDuration(channel.ID, duration, nil)
 	assert.Equal(t, int64(9), currentCount)
 	assert.Less(t, currentCount, rpm)
 }
@@ -87,10 +88,10 @@ func TestIntegration_RPM_FiveHourWindow_WindowReset(t *testing.T) {
 	}
 	tracker.mu.Unlock()
 
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, duration))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, duration, nil))
 
-	tracker.IncrementRequestForDuration(1, duration)
-	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, duration))
+	tracker.IncrementRequestForDuration(1, duration, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, duration, nil))
 }
 
 // ========== Test 2: tpm=1000, tpmDuration="1mo" ==========
@@ -114,9 +115,9 @@ func TestIntegration_TPM_MonthlyWindow_TokenCounting(t *testing.T) {
 
 	duration := oneMonth.Duration()
 
-	tracker.AddTokensForDuration(channel.ID, 1000, duration)
+	tracker.AddTokensForDuration(channel.ID, 1000, duration, nil)
 
-	currentTokens := tracker.GetTokenCountForDuration(channel.ID, duration)
+	currentTokens := tracker.GetTokenCountForDuration(channel.ID, duration, nil)
 	assert.Equal(t, int64(1000), currentTokens)
 }
 
@@ -127,10 +128,10 @@ func TestIntegration_TPM_MonthlyWindow_BelowLimit(t *testing.T) {
 	oneMonth := objects.RateLimitDurationOneMonth
 	duration := oneMonth.Duration()
 
-	tracker.AddTokensForDuration(2, 500, duration)
-	tracker.AddTokensForDuration(2, 200, duration)
+	tracker.AddTokensForDuration(2, 500, duration, nil)
+	tracker.AddTokensForDuration(2, 200, duration, nil)
 
-	currentTokens := tracker.GetTokenCountForDuration(2, duration)
+	currentTokens := tracker.GetTokenCountForDuration(2, duration, nil)
 	assert.Equal(t, int64(700), currentTokens)
 	assert.Less(t, currentTokens, tpm)
 }
@@ -151,11 +152,11 @@ func TestIntegration_TPM_MonthlyWindow_WindowReset(t *testing.T) {
 	}
 	tracker.mu.Unlock()
 
-	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(2, duration))
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(2, duration))
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(2, duration, nil))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(2, duration, nil))
 
-	tracker.AddTokensForDuration(2, 100, duration)
-	assert.Equal(t, int64(100), tracker.GetTokenCountForDuration(2, duration))
+	tracker.AddTokensForDuration(2, 100, duration, nil)
+	assert.Equal(t, int64(100), tracker.GetTokenCountForDuration(2, duration, nil))
 }
 
 // ========== Test 3: modelConcurrent={"gpt-4": 2} ==========
@@ -331,22 +332,22 @@ func TestIntegration_IndependentRPMAndTPMDurations(t *testing.T) {
 	rpmDuration := oneHour.Duration()
 	tpmDuration := fiveHour.Duration()
 
-	tracker.IncrementRequestForDuration(channel.ID, rpmDuration)
-	tracker.IncrementRequestForDuration(channel.ID, rpmDuration)
+	tracker.IncrementRequestForDuration(channel.ID, rpmDuration, nil)
+	tracker.IncrementRequestForDuration(channel.ID, rpmDuration, nil)
 
-	tracker.AddTokensForDuration(channel.ID, 500, tpmDuration)
-	tracker.AddTokensForDuration(channel.ID, 300, tpmDuration)
+	tracker.AddTokensForDuration(channel.ID, 500, tpmDuration, nil)
+	tracker.AddTokensForDuration(channel.ID, 300, tpmDuration, nil)
 
-	rpmCount := tracker.GetRequestCountForDuration(channel.ID, rpmDuration)
-	tpmCount := tracker.GetTokenCountForDuration(channel.ID, tpmDuration)
+	rpmCount := tracker.GetRequestCountForDuration(channel.ID, rpmDuration, nil)
+	tpmCount := tracker.GetTokenCountForDuration(channel.ID, tpmDuration, nil)
 
 	assert.Equal(t, int64(2), rpmCount, "RPM should track in 1-hour window")
 	assert.Equal(t, int64(800), tpmCount, "TPM should track in 5-hour window")
 
-	rpmTokens := tracker.GetTokenCountForDuration(channel.ID, rpmDuration)
+	rpmTokens := tracker.GetTokenCountForDuration(channel.ID, rpmDuration, nil)
 	assert.Equal(t, int64(0), rpmTokens, "1-hour window should not see 5-hour TPM tokens")
 
-	tpmRequests := tracker.GetRequestCountForDuration(channel.ID, tpmDuration)
+	tpmRequests := tracker.GetRequestCountForDuration(channel.ID, tpmDuration, nil)
 	assert.Equal(t, int64(0), tpmRequests, "5-hour window should not see 1-hour RPM requests")
 }
 
@@ -373,16 +374,16 @@ func TestIntegration_IndependentRPMAndTPMDurations_WindowReset(t *testing.T) {
 	}
 	tracker.mu.Unlock()
 
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(5, rpmDuration))
-	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(5, tpmDuration))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(5, rpmDuration, nil))
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(5, tpmDuration, nil))
 
-	tracker.IncrementRequestForDuration(5, rpmDuration)
-	tracker.AddTokensForDuration(5, 100, tpmDuration)
+	tracker.IncrementRequestForDuration(5, rpmDuration, nil)
+	tracker.AddTokensForDuration(5, 100, tpmDuration, nil)
 
-	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(5, rpmDuration))
-	assert.Equal(t, int64(100), tracker.GetTokenCountForDuration(5, tpmDuration))
-	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(5, rpmDuration))
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(5, tpmDuration))
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(5, rpmDuration, nil))
+	assert.Equal(t, int64(100), tracker.GetTokenCountForDuration(5, tpmDuration, nil))
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(5, rpmDuration, nil))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(5, tpmDuration, nil))
 }
 
 // ========== Test 6: Backward compatibility — rpm=100 with 1-minute default ==========
@@ -536,7 +537,7 @@ func TestIntegration_LBScoring_MixedDurationConfigs(t *testing.T) {
 
 	rpmDurationA := fiveHour.Duration()
 	for range 5 {
-		tracker.IncrementRequestForDuration(channelA.ID, rpmDurationA)
+		tracker.IncrementRequestForDuration(channelA.ID, rpmDurationA, nil)
 	}
 
 	for range 50 {
@@ -555,7 +556,7 @@ func TestIntegration_LBScoring_MixedDurationConfigs(t *testing.T) {
 	// Strategy uses 5-hour window for channel A, sees 5/10 requests = 50% usage → score = 50
 	assert.Equal(t, 50.0, scoreA, "channel A: strategy uses 5-hour window, sees 5/10 requests")
 
-	fiveHourCount := tracker.GetRequestCountForDuration(channelA.ID, rpmDurationA)
+	fiveHourCount := tracker.GetRequestCountForDuration(channelA.ID, rpmDurationA, nil)
 	assert.Equal(t, int64(5), fiveHourCount, "tracker should correctly track 5-hour window requests")
 }
 
@@ -579,7 +580,7 @@ func TestIntegration_LBScoring_MixedDurationConfigs_WithDebug(t *testing.T) {
 
 	rpmDuration := fiveHour.Duration()
 	for range 5 {
-		tracker.IncrementRequestForDuration(channel.ID, rpmDuration)
+		tracker.IncrementRequestForDuration(channel.ID, rpmDuration, nil)
 	}
 
 	ctx := context.Background()
@@ -611,7 +612,7 @@ func TestIntegration_ConcurrentAccess_RPMWithCustomDuration(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range opsPerGoroutine {
-				tracker.IncrementRequestForDuration(1, duration)
+				tracker.IncrementRequestForDuration(1, duration, nil)
 			}
 		}()
 	}
@@ -620,15 +621,15 @@ func TestIntegration_ConcurrentAccess_RPMWithCustomDuration(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range opsPerGoroutine {
-				tracker.AddTokensForDuration(1, 10, duration)
+				tracker.AddTokensForDuration(1, 10, duration, nil)
 			}
 		}()
 	}
 
 	wg.Wait()
 
-	assert.Equal(t, int64(goroutines*opsPerGoroutine), tracker.GetRequestCountForDuration(1, duration))
-	assert.Equal(t, int64(goroutines*opsPerGoroutine*10), tracker.GetTokenCountForDuration(1, duration))
+	assert.Equal(t, int64(goroutines*opsPerGoroutine), tracker.GetRequestCountForDuration(1, duration, nil))
+	assert.Equal(t, int64(goroutines*opsPerGoroutine*10), tracker.GetTokenCountForDuration(1, duration, nil))
 }
 
 func TestIntegration_ConcurrentAccess_MultipleDurations(t *testing.T) {
@@ -653,14 +654,14 @@ func TestIntegration_ConcurrentAccess_MultipleDurations(t *testing.T) {
 		go func(duration time.Duration) {
 			defer wg.Done()
 			for range opsPerGoroutine {
-				tracker.IncrementRequestForDuration(1, duration)
+				tracker.IncrementRequestForDuration(1, duration, nil)
 			}
 		}(d)
 
 		go func(duration time.Duration) {
 			defer wg.Done()
 			for range opsPerGoroutine {
-				tracker.AddTokensForDuration(1, 10, duration)
+				tracker.AddTokensForDuration(1, 10, duration, nil)
 			}
 		}(d)
 	}
@@ -668,9 +669,9 @@ func TestIntegration_ConcurrentAccess_MultipleDurations(t *testing.T) {
 	wg.Wait()
 
 	for _, d := range durations {
-		assert.Equal(t, int64(opsPerGoroutine), tracker.GetRequestCountForDuration(1, d),
+		assert.Equal(t, int64(opsPerGoroutine), tracker.GetRequestCountForDuration(1, d, nil),
 			"request count mismatch for duration %v", d)
-		assert.Equal(t, int64(opsPerGoroutine*10), tracker.GetTokenCountForDuration(1, d),
+		assert.Equal(t, int64(opsPerGoroutine*10), tracker.GetTokenCountForDuration(1, d, nil),
 			"token count mismatch for duration %v", d)
 	}
 }
@@ -687,27 +688,27 @@ func TestIntegration_ConcurrentAccess_ReadWriteWithCustomDurations(t *testing.T)
 	go func() {
 		defer wg.Done()
 		for range 1000 {
-			tracker.IncrementRequestForDuration(1, duration)
+			tracker.IncrementRequestForDuration(1, duration, nil)
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		for range 1000 {
-			_ = tracker.GetRequestCountForDuration(1, duration)
+			_ = tracker.GetRequestCountForDuration(1, duration, nil)
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		for range 1000 {
-			_ = tracker.GetTokenCountForDuration(1, duration)
+			_ = tracker.GetTokenCountForDuration(1, duration, nil)
 		}
 	}()
 
 	wg.Wait()
 
-	assert.Equal(t, int64(1000), tracker.GetRequestCountForDuration(1, duration))
+	assert.Equal(t, int64(1000), tracker.GetRequestCountForDuration(1, duration, nil))
 }
 
 func TestIntegration_ConcurrentAccess_ModelConnectionTracker(t *testing.T) {
@@ -1096,4 +1097,158 @@ func TestIntegration_ModelConcurrent_ScoreWithDebugModelContext(t *testing.T) {
 	assert.Equal(t, int64(2), ss.Details["model_concurrent_limit"])
 	assert.Equal(t, int64(1), ss.Details["model_concurrent_current"])
 	assert.Equal(t, "gpt-4", ss.Details["model_concurrent_model"])
+}
+
+func TestIntegration_Anchor_RPMWithAnchor(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(10)
+	fiveHour := objects.RateLimitDurationFiveHour
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchored-rpm-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				RPM:             &rpm,
+				RPMDuration:     &fiveHour,
+				RPMWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	duration := fiveHour.Duration()
+	for range 5 {
+		tracker.IncrementRequestForDuration(channel.ID, duration, &anchor)
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, 50.0, score)
+}
+
+func TestIntegration_Anchor_RPMExhaustedWithAnchor(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(5)
+	fiveHour := objects.RateLimitDurationFiveHour
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchored-exhausted-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				RPM:             &rpm,
+				RPMDuration:     &fiveHour,
+				RPMWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	duration := fiveHour.Duration()
+	for range rpm {
+		tracker.IncrementRequestForDuration(channel.ID, duration, &anchor)
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+}
+
+func TestIntegration_Anchor_TPMWithAnchor(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	tpm := int64(1000)
+	oneHour := objects.RateLimitDurationOneHour
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchored-tpm-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				TPM:             &tpm,
+				TPMDuration:     &oneHour,
+				TPMWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	duration := oneHour.Duration()
+	tracker.AddTokensForDuration(channel.ID, 500, duration, &anchor)
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, 50.0, score)
+}
+
+func TestIntegration_Anchor_CostWithAnchor(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	costTracker := NewChannelCostTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+
+	cost := decimal.NewFromFloat(10.0)
+	oneWeek := objects.RateLimitDurationOneWeek
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchored-cost-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				Cost:             &cost,
+				CostDuration:     &oneWeek,
+				CostWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	windowStart := objects.ComputeWindowStart(time.Now(), oneWeek.Duration(), &anchor)
+	windowEnd := windowStart.Add(oneWeek.Duration())
+
+	costTracker.SetCachedCost(channel.ID, decimal.NewFromFloat(5.0), windowEnd)
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, 50.0, score)
+}
+
+func TestIntegration_Anchor_MixedAnchors(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(100)
+	tpm := int64(1000)
+	oneHour := objects.RateLimitDurationOneHour
+	fiveHour := objects.RateLimitDurationFiveHour
+	rpmAnchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	tpmAnchor := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
+
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "mixed-anchor-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				RPM:             &rpm,
+				TPM:             &tpm,
+				RPMDuration:     &oneHour,
+				TPMDuration:     &fiveHour,
+				RPMWindowAnchor: &rpmAnchor,
+				TPMWindowAnchor: &tpmAnchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	tracker.IncrementRequestForDuration(channel.ID, oneHour.Duration(), &rpmAnchor)
+	tracker.AddTokensForDuration(channel.ID, 500, fiveHour.Duration(), &tpmAnchor)
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, 50.0, score)
 }

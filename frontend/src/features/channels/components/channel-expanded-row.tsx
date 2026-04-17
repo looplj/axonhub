@@ -1,5 +1,15 @@
 import { memo } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+
+function formatUTCShort(iso: string): string {
+  const d = parseISO(iso.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso + 'Z');
+  const yyyy = d.getUTCFullYear();
+  const MM = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const HH = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${yyyy}-${MM}-${dd} ${HH}:${mm}`;
+}
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -40,42 +50,57 @@ interface RateLimitMetricProps {
   resetAt: string | null | undefined;
   windowDuration: string;
   isCost?: boolean;
+  anchor?: string | null;
 }
 
-function RateLimitMetric({ label, current, limit, resetAt, windowDuration, isCost }: RateLimitMetricProps) {
+function RateLimitMetric({ label, current, limit, resetAt, windowDuration, isCost, anchor }: RateLimitMetricProps) {
   const { t } = useTranslation();
   const timeRemaining = formatTimeRemaining(resetAt);
-  const usageRatio = limit != null && limit > 0 ? current / limit : 0;
-  const isHigh = usageRatio >= 0.8;
-  const isCritical = usageRatio >= 1;
+  const usagePct = limit != null && limit > 0 ? Math.floor((current / limit) * 100) : 0;
+  const isHigh = usagePct >= 80;
+  const isCritical = usagePct >= 100;
 
   return (
-    <div className='flex items-center justify-between gap-2 text-sm'>
-      <span className='text-muted-foreground shrink-0'>{label}:</span>
-      <div className='flex items-center gap-2'>
-        <span className={`font-mono text-xs ${isCritical ? 'text-destructive font-semibold' : isHigh ? 'text-yellow-600 font-semibold' : ''}`}>
-          {isCost ? current.toFixed(2) : current}{limit != null ? `/${isCost && limit != null ? limit.toFixed(2) : limit}` : ''}
-        </span>
-        {timeRemaining && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className='text-muted-foreground font-mono text-xs'>
-                {timeRemaining} / {windowDuration || '?'}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <div className='space-y-1 text-xs'>
-                <div className='flex justify-between gap-3'>
-                  <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.resets')}:</span>
-                  <span className='font-mono'>{formatResetTime(resetAt)}</span>
+    <div className='space-y-1.5'>
+      <div className='flex items-center justify-between gap-2 text-sm'>
+        <span className='text-muted-foreground shrink-0'>{label}:</span>
+        <div className='flex items-center gap-2'>
+          <span className={`font-mono text-xs ${isCritical ? 'text-destructive font-semibold' : isHigh ? 'text-yellow-600 font-semibold' : ''}`}>
+            {isCost ? current.toFixed(2) : current}{limit != null ? `/${isCost && limit != null ? limit.toFixed(2) : limit}` : ''} ({usagePct}%)
+          </span>
+          {timeRemaining && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className='text-muted-foreground font-mono text-xs'>
+                  {timeRemaining} / {windowDuration || '?'}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className='space-y-1 text-xs'>
+                  <div className='flex justify-between gap-3'>
+                    <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.resets')}:</span>
+                    <span className='font-mono'>{formatResetTime(resetAt)}</span>
+                  </div>
+                  {anchor && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.anchor')}:</span>
+                      <span className='font-mono'>{formatUTCShort(anchor)} UTC</span>
+                    </div>
+                  )}
+                  <div className='text-muted-foreground'>
+                    {t('channels.expandedRow.rateLimit.windowAligned')}
+                  </div>
                 </div>
-                <div className='text-muted-foreground'>
-                  {t('channels.expandedRow.rateLimit.windowAligned')}
-                </div>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        )}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+      <div className='bg-muted h-2 w-full overflow-hidden rounded-full'>
+        <div
+          className={`h-full rounded-full transition-all ${isCritical ? 'bg-destructive' : isHigh ? 'bg-yellow-500' : 'bg-primary'}`}
+          style={{ width: `${Math.min(usagePct, 100)}%` }}
+        />
       </div>
     </div>
   );
@@ -88,22 +113,23 @@ interface ConcurrentMetricProps {
 
 function ConcurrentMetric({ current, limit }: ConcurrentMetricProps) {
   const { t } = useTranslation();
+  const usagePct = limit != null && limit > 0 ? Math.floor((current / limit) * 100) : 0;
   const isFull = limit != null && limit > 0 && current >= limit;
-  const isHigh = limit != null && limit > 0 && current / limit >= 0.8 && !isFull;
+  const isHigh = usagePct >= 80 && !isFull;
 
   return (
-    <div className='flex items-center justify-between gap-2 text-sm'>
-      <span className='text-muted-foreground shrink-0'>{t('channels.expandedRow.rateLimit.concurrent')}:</span>
-      <div className='flex items-center gap-2'>
-        <div className='bg-muted h-1.5 w-16 overflow-hidden rounded-full'>
-          <div
-            className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : isHigh ? 'bg-yellow-500' : 'bg-blue-400'}`}
-            style={{ width: `${limit != null && limit > 0 ? Math.min((current / limit) * 100, 100) : 0}%` }}
-          />
-        </div>
+    <div className='space-y-1.5'>
+      <div className='flex items-center justify-between gap-2 text-sm'>
+        <span className='text-muted-foreground shrink-0'>{t('channels.expandedRow.rateLimit.concurrent')}:</span>
         <span className={`font-mono text-xs ${isFull ? 'text-destructive font-semibold' : isHigh ? 'text-yellow-600 font-semibold' : ''}`}>
           {current}{limit != null ? `/${limit}` : ''}
         </span>
+      </div>
+      <div className='bg-muted h-2 w-full overflow-hidden rounded-full'>
+        <div
+          className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : isHigh ? 'bg-yellow-500' : 'bg-blue-400'}`}
+          style={{ width: `${Math.min(usagePct, 100)}%` }}
+        />
       </div>
     </div>
   );
@@ -114,9 +140,12 @@ interface RateLimitStatusSectionProps {
   rpmDuration: string | null | undefined;
   tpmDuration: string | null | undefined;
   costDuration: string | null | undefined;
+  rpmWindowAnchor?: string | null;
+  tpmWindowAnchor?: string | null;
+  costWindowAnchor?: string | null;
 }
 
-function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration }: RateLimitStatusSectionProps) {
+function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration, rpmWindowAnchor, tpmWindowAnchor, costWindowAnchor }: RateLimitStatusSectionProps) {
   const { t } = useTranslation();
 
   const durationKeyMap: Record<string, string> = {
@@ -143,6 +172,7 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration
           limit={status.rpmLimit}
           resetAt={status.rpmResetAt}
           windowDuration={formatWindowDuration(rpmDuration)}
+          anchor={rpmWindowAnchor}
         />
       )}
       {hasTpm && (
@@ -152,6 +182,7 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration
           limit={status.tpmLimit}
           resetAt={status.tpmResetAt}
           windowDuration={formatWindowDuration(tpmDuration)}
+          anchor={tpmWindowAnchor}
         />
       )}
       {hasCost && (
@@ -162,6 +193,7 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration
           resetAt={status.costResetAt}
           windowDuration={formatWindowDuration(costDuration)}
           isCost
+          anchor={costWindowAnchor}
         />
       )}
       {hasConcurrent && (
@@ -266,6 +298,9 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
               rpmDuration={channel.settings?.rateLimit?.rpmDuration}
               tpmDuration={channel.settings?.rateLimit?.tpmDuration}
               costDuration={channel.settings?.rateLimit?.costDuration}
+              rpmWindowAnchor={channel.rateLimitStatus.rpmWindowAnchor}
+              tpmWindowAnchor={channel.rateLimitStatus.tpmWindowAnchor}
+              costWindowAnchor={channel.rateLimitStatus.costWindowAnchor}
             />
           </div>
         )}

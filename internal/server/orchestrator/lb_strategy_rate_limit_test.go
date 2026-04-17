@@ -528,7 +528,7 @@ func TestRateLimitAwareStrategy_Score_DurationAwareRPM(t *testing.T) {
 
 	fiveHourDuration := objects.RateLimitDurationFiveHour.Duration()
 	for i := range 5 {
-		tracker.IncrementRequestForDuration(channel.ID, fiveHourDuration)
+		tracker.IncrementRequestForDuration(channel.ID, fiveHourDuration, nil)
 		_ = i
 	}
 
@@ -557,7 +557,7 @@ func TestRateLimitAwareStrategy_Score_DurationAwareTPM(t *testing.T) {
 	channel := &biz.Channel{Channel: entChannel}
 
 	fiveHourDuration := objects.RateLimitDurationFiveHour.Duration()
-	tracker.AddTokensForDuration(channel.ID, 1000, fiveHourDuration)
+	tracker.AddTokensForDuration(channel.ID, 1000, fiveHourDuration, nil)
 
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
@@ -668,4 +668,121 @@ func TestRateLimitAwareStrategy_Score_CostNil_TrackerSkipped(t *testing.T) {
 	score := strategy.Score(ctx, channel)
 
 	assert.Equal(t, 100.0, score)
+}
+
+func TestRateLimitAwareStrategy_Score_AnchorRPM(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(10)
+	fiveHour := objects.RateLimitDurationFiveHour
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchor-rpm-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				RPM:             &rpm,
+				RPMDuration:     &fiveHour,
+				RPMWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	for range 5 {
+		tracker.IncrementRequestForDuration(channel.ID, fiveHour.Duration(), &anchor)
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, 50.0, score)
+}
+
+func TestRateLimitAwareStrategy_Score_AnchorRPMExhausted(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(10)
+	fiveHour := objects.RateLimitDurationFiveHour
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchor-rpm-exhausted",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				RPM:             &rpm,
+				RPMDuration:     &fiveHour,
+				RPMWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	for range rpm {
+		tracker.IncrementRequestForDuration(channel.ID, fiveHour.Duration(), &anchor)
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+}
+
+func TestRateLimitAwareStrategy_Score_AnchorTPM(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	tpm := int64(1000)
+	oneHour := objects.RateLimitDurationOneHour
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchor-tpm-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				TPM:             &tpm,
+				TPMDuration:     &oneHour,
+				TPMWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	tracker.AddTokensForDuration(channel.ID, 500, oneHour.Duration(), &anchor)
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, 50.0, score)
+}
+
+func TestRateLimitAwareStrategy_ScoreWithDebug_AnchorRPM(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(10)
+	fiveHour := objects.RateLimitDurationFiveHour
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "anchor-rpm-debug",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				RPM:             &rpm,
+				RPMDuration:     &fiveHour,
+				RPMWindowAnchor: &anchor,
+			},
+		},
+	}
+	channel := &biz.Channel{Channel: entChannel}
+
+	for range 5 {
+		tracker.IncrementRequestForDuration(channel.ID, fiveHour.Duration(), &anchor)
+	}
+
+	ctx := context.Background()
+	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
+
+	assert.Equal(t, 50.0, score)
+	assert.Equal(t, int64(10), strategyScore.Details["rpm_limit"])
+	assert.Equal(t, int64(5), strategyScore.Details["rpm_current"])
 }

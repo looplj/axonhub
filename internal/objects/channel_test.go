@@ -236,8 +236,8 @@ func int64Ptr(i int64) *int64 {
 
 func TestRateLimitDuration_MarshalGQL(t *testing.T) {
 	tests := []struct {
-		name     RateLimitDuration
-		wantW    string
+		name  RateLimitDuration
+		wantW string
 	}{
 		{RateLimitDurationOneMin, `"ONE_MIN"`},
 		{RateLimitDurationOneHour, `"ONE_HOUR"`},
@@ -292,7 +292,7 @@ func TestRateLimitDuration_UnmarshalGQL(t *testing.T) {
 
 func TestRateLimitDuration_IsValid(t *testing.T) {
 	tests := []struct {
-		name     RateLimitDuration
+		name      RateLimitDuration
 		wantValid bool
 	}{
 		{RateLimitDurationOneMin, true},
@@ -399,4 +399,103 @@ func TestRateLimitDuration_UnmarshalJSON(t *testing.T) {
 		assert.Equal(t, RateLimitDurationOneMin, *rl.RPMDuration)
 		assert.Equal(t, RateLimitDurationOneHour, *rl.TPMDuration)
 	})
+}
+
+func TestComputeWindowStart_NilAnchor(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 45, 0, time.UTC)
+	result := ComputeWindowStart(now, time.Hour, nil)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_ZeroTimeAnchor(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 45, 0, time.UTC)
+	zeroTime := time.Time{}
+	result := ComputeWindowStart(now, time.Hour, &zeroTime)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_NegativeDuration(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 45, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, -1*time.Hour, &anchor)
+	assert.Equal(t, now.Truncate(-1*time.Hour), result)
+}
+
+func TestComputeWindowStart_ZeroDuration(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 45, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, 0, &anchor)
+	assert.Equal(t, now.Truncate(0), result)
+}
+
+func TestComputeWindowStart_FutureAnchor(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	futureAnchor := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, time.Hour, &futureAnchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_PastAnchor_ExactStep(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, time.Hour, &anchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_PastAnchor_PartialStep(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, time.Hour, &anchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_PastAnchor_FiveHourWindow(t *testing.T) {
+	now := time.Date(2024, 1, 15, 12, 30, 0, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, 5*time.Hour, &anchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_AnchorAtStepBoundary(t *testing.T) {
+	now := time.Date(2024, 1, 15, 5, 0, 0, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, 5*time.Hour, &anchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 5, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_AnchorJustBeforeStepBoundary(t *testing.T) {
+	now := time.Date(2024, 1, 15, 4, 59, 59, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, 5*time.Hour, &anchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_AnchorMidnight_OneMinuteWindow(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 45, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, time.Minute, &anchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_TruncateFallback(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 45, 123456789, time.UTC)
+	nilResult := ComputeWindowStart(now, time.Hour, nil)
+	truncateResult := now.Truncate(time.Hour)
+	assert.Equal(t, truncateResult, nilResult)
+}
+
+func TestComputeWindowStart_WeeklyWindow(t *testing.T) {
+	now := time.Date(2024, 1, 17, 10, 30, 0, 0, time.UTC) // Wed
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC) // Mon
+	result := ComputeWindowStart(now, 7*24*time.Hour, &anchor)
+	// 2 days 10.5 hours elapsed, 0 steps of 7 days → anchor + 0*7d = Mon Jan 15
+	assert.Equal(t, time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), result)
+}
+
+func TestComputeWindowStart_MonthlyWindow(t *testing.T) {
+	now := time.Date(2024, 2, 10, 10, 30, 0, 0, time.UTC)
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, 30*24*time.Hour, &anchor)
+	// ~26 days elapsed, 0 steps of 30 days → anchor + 0*30d = Jan 15
+	assert.Equal(t, time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), result)
 }
