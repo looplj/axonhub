@@ -328,7 +328,7 @@
   "channels.dialogs.fields.transformOptions.forceArrayInputs.label": "强制数组输入",
   "channels.dialogs.fields.transformOptions.forceArrayInputs.description": "强制渠道接受数组格式的输入",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label": "将 developer 角色替换为 system",
-  "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "发送请求前把 developer 角色替换为 system（仅百炼）",
+  "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "用于不支持 developer 角色的渠道，发送请求前将 developer 角色替换为 system",
   "channels.dialogs.buttons.add": "添加",
   "channels.dialogs.buttons.batchAdd": "批量添加",
   "channels.dialogs.buttons.batchAddTooltip": "输入多个模型，用逗号分隔，例如：gpt-4, gpt-3.5-turbo, claude-3-opus",
