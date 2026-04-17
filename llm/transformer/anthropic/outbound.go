@@ -233,12 +233,13 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	return &httpclient.Request{
-		Method:   http.MethodPost,
-		URL:      url,
-		Headers:  headers,
-		Body:     body,
-		Auth:     authConfig,
-		Metadata: scope.Metadata(),
+		Method:    http.MethodPost,
+		URL:       url,
+		Headers:   headers,
+		Body:      body,
+		Auth:      authConfig,
+		APIFormat: string(llm.APIFormatAnthropicMessage),
+		Metadata:  scope.Metadata(),
 	}, nil
 }
 
