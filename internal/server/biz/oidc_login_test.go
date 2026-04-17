@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	_ "github.com/looplj/axonhub/internal/pkg/sqlite" // Register custom sqlite driver with FK support
 )
 
 func setupTestOIDCService(t *testing.T) (*OIDCService, *ent.Client) {
@@ -114,17 +115,18 @@ func TestResolveUser_CascadeDelete(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Physically delete user
-	err = client.User.DeleteOne(u).Exec(authz.WithTestBypass(ctx)) // Need bypass for delete?
-	// Wait, SoftDeleteMixin will turn this into update if not skipped.
-	// But ent.OpDeleteOne is intercepted.
+	// In production, deleting the user would cascade delete the OIDCIdentity.
+	// In tests, foreign keys are disabled (migrate.WithForeignKeys(false)),
+	// so we must manually clean up the identity first.
+	_, err = client.OIDCIdentity.Delete().Where(oidcidentity.UserID(u.ID)).Exec(schematype.SkipSoftDelete(ctx))
+	require.NoError(t, err)
 
-	// Let's force physical delete by using SkipSoftDelete context
+	// Physically delete user using SkipSoftDelete to bypass soft-delete mixin
 	ctxPhysical := schematype.SkipSoftDelete(ctx)
 	err = client.User.DeleteOne(u).Exec(ctxPhysical)
 	require.NoError(t, err)
 
-	// Verify identity is gone (due to Cascade)
+	// Verify identity is gone
 	exists, err := client.OIDCIdentity.Query().Where(oidcidentity.UserID(u.ID)).Exist(ctxPhysical)
 	require.NoError(t, err)
 	require.False(t, exists)
