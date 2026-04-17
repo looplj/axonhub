@@ -34,6 +34,7 @@ type DoubaoHandlersParams struct {
 	RateLimitTracker         *orchestrator.ChannelRequestTracker
 	ConnectionTracker        *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
+	CostTracker              *orchestrator.ChannelCostTracker
 }
 
 type DoubaoHandlers struct {
@@ -62,6 +63,7 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 			params.RateLimitTracker,
 			params.ConnectionTracker,
 			params.ModelConnectionTracker,
+			params.CostTracker,
 		),
 		InboundTransformer: inbound,
 	}

@@ -46,6 +46,7 @@ type PlaygroundHandlersParams struct {
 	RateLimitTracker         *orchestrator.ChannelRequestTracker
 	ConnectionTracker        *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
+	CostTracker              *orchestrator.ChannelCostTracker
 }
 
 type PlaygroundHandlers struct {
@@ -71,6 +72,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			params.RateLimitTracker,
 			params.ConnectionTracker,
 			params.ModelConnectionTracker,
+				params.CostTracker,
 		),
 	}
 }

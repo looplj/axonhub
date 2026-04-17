@@ -31,6 +31,7 @@ type AnthropicHandlersParams struct {
 	RateLimitTracker         *orchestrator.ChannelRequestTracker
 	ConnectionTracker        *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
+	CostTracker              *orchestrator.ChannelCostTracker
 }
 
 type AnthropicHandlers struct {
@@ -58,6 +59,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		ChannelService: params.ChannelService,

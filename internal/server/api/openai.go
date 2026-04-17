@@ -42,6 +42,7 @@ type OpenAIHandlersParams struct {
 	RateLimitTracker            *orchestrator.ChannelRequestTracker
 	ConnectionTracker           *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker      *orchestrator.ModelConnectionTracker
+	CostTracker                 *orchestrator.ChannelCostTracker
 }
 
 type OpenAIHandlers struct {
@@ -81,6 +82,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -99,6 +101,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -117,6 +120,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -135,6 +139,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -153,6 +158,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -171,6 +177,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -189,6 +196,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -207,6 +215,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		VideoInboundTransformer: videoInbound,

@@ -32,6 +32,7 @@ type GeminiHandlersParams struct {
 	RateLimitTracker         *orchestrator.ChannelRequestTracker
 	ConnectionTracker        *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
+	CostTracker              *orchestrator.ChannelCostTracker
 }
 
 type GeminiHandlers struct {
@@ -58,6 +59,7 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		),
 		ChannelService: params.ChannelService,

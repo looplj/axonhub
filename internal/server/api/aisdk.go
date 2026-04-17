@@ -29,6 +29,7 @@ type AiSdkHandlersParams struct {
 	RateLimitTracker            *orchestrator.ChannelRequestTracker
 	ConnectionTracker           *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker      *orchestrator.ModelConnectionTracker
+	CostTracker                 *orchestrator.ChannelCostTracker
 }
 
 type AiSDKHandlers struct {
@@ -53,6 +54,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 			StreamWriter: WriteJSONStream,
 		},

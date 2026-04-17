@@ -27,6 +27,7 @@ type JinaHandlersParams struct {
 	RateLimitTracker         *orchestrator.ChannelRequestTracker
 	ConnectionTracker        *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
+	CostTracker              *orchestrator.ChannelCostTracker
 }
 
 func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
@@ -47,6 +48,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -65,6 +67,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				params.RateLimitTracker,
 				params.ConnectionTracker,
 				params.ModelConnectionTracker,
+				params.CostTracker,
 			),
 		},
 	}
