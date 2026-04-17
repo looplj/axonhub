@@ -139,54 +139,62 @@ func TestModelConnectionTracker_ConcurrentMultiChannelMultiModel(t *testing.T) {
 	tracker := NewModelConnectionTracker()
 	numChannels := 10
 	numModels := 5
-	numOperations := 50
+	incrementsPerModel := 30
 
-	var wg sync.WaitGroup
-
-	// Concurrent operations across multiple channels and models
+	var incWg sync.WaitGroup
 	for c := 1; c <= numChannels; c++ {
 		for m := 0; m < numModels; m++ {
 			model := "model-" + string(rune('A'+m))
-			wg.Add(1)
+			incWg.Add(1)
 			go func(channelID int, modelName string) {
-				defer wg.Done()
-				for i := 0; i < numOperations; i++ {
+				defer incWg.Done()
+				for i := 0; i < incrementsPerModel; i++ {
 					tracker.IncrementModelConnection(channelID, modelName)
-					if i%2 == 0 {
-						tracker.DecrementModelConnection(channelID, modelName)
-					}
 				}
 			}(c, model)
 		}
 	}
+	incWg.Wait()
 
-	wg.Wait()
+	decrementsPerModel := 10
+	expectedPerModel := incrementsPerModel - decrementsPerModel
 
-	// Verify counts are consistent
+	var decWg sync.WaitGroup
+	for c := 1; c <= numChannels; c++ {
+		for m := 0; m < numModels; m++ {
+			model := "model-" + string(rune('A'+m))
+			decWg.Add(1)
+			go func(channelID int, modelName string) {
+				defer decWg.Done()
+				for i := 0; i < decrementsPerModel; i++ {
+					tracker.DecrementModelConnection(channelID, modelName)
+				}
+			}(c, model)
+		}
+	}
+	decWg.Wait()
+
 	for c := 1; c <= numChannels; c++ {
 		for m := 0; m < numModels; m++ {
 			model := "model-" + string(rune('A'+m))
 			count := tracker.GetModelConnectionCount(c, model)
-			// Each goroutine does numOperations increments and numOperations/2 decrements
-			// So expected count is numOperations - numOperations/2 = numOperations/2
-			expectedCount := numOperations - numOperations/2
-			assert.Equal(t, expectedCount, count, "Channel %d, Model %s", c, model)
+			assert.Equal(t, expectedPerModel, count, "Channel %d, Model %s", c, model)
 		}
 	}
 }
 
-func TestModelConnectionTracker_GetModelConcurrentLimit(t *testing.T) {
-	tracker := NewModelConnectionTracker()
+func TestChannelRateLimit_GetModelConcurrentLimit(t *testing.T) {
 
 	t.Run("nil settings", func(t *testing.T) {
-		limit, hasCustom := tracker.GetModelConcurrentLimit(1, "gpt-4", nil)
+		var rl *objects.ChannelRateLimit
+		limit, hasCustom := rl.GetModelConcurrentLimit("gpt-4")
 		assert.Equal(t, int64(0), limit)
 		assert.False(t, hasCustom)
 	})
 
 	t.Run("empty settings", func(t *testing.T) {
 		settings := &objects.ChannelRateLimit{}
-		limit, hasCustom := tracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
 		assert.Equal(t, int64(0), limit)
 		assert.False(t, hasCustom)
 	})
@@ -196,7 +204,7 @@ func TestModelConnectionTracker_GetModelConcurrentLimit(t *testing.T) {
 		settings := &objects.ChannelRateLimit{
 			MaxConcurrent: &maxConcurrent,
 		}
-		limit, hasCustom := tracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
 		assert.Equal(t, int64(100), limit)
 		assert.False(t, hasCustom)
 	})
@@ -209,7 +217,7 @@ func TestModelConnectionTracker_GetModelConcurrentLimit(t *testing.T) {
 				"gpt-4": 50,
 			},
 		}
-		limit, hasCustom := tracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
 		assert.Equal(t, int64(50), limit)
 		assert.True(t, hasCustom)
 	})
@@ -222,7 +230,7 @@ func TestModelConnectionTracker_GetModelConcurrentLimit(t *testing.T) {
 				"gpt-4": 50,
 			},
 		}
-		limit, hasCustom := tracker.GetModelConcurrentLimit(1, "GPT-4", settings)
+		limit, hasCustom := settings.GetModelConcurrentLimit("GPT-4")
 		assert.Equal(t, int64(50), limit)
 		assert.True(t, hasCustom)
 	})
@@ -235,7 +243,7 @@ func TestModelConnectionTracker_GetModelConcurrentLimit(t *testing.T) {
 				"gpt-4": 50,
 			},
 		}
-		limit, hasCustom := tracker.GetModelConcurrentLimit(1, "claude-3", settings)
+		limit, hasCustom := settings.GetModelConcurrentLimit("claude-3")
 		assert.Equal(t, int64(100), limit)
 		assert.False(t, hasCustom)
 	})
@@ -246,12 +254,12 @@ func TestModelConnectionTracker_GetModelConcurrentLimit(t *testing.T) {
 				"gpt-4": 50,
 			},
 		}
-		limit, hasCustom := tracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
 		assert.Equal(t, int64(50), limit)
 		assert.True(t, hasCustom)
 
 		// Fallback for unknown model should return 0
-		limit, hasCustom = tracker.GetModelConcurrentLimit(1, "claude-3", settings)
+		limit, hasCustom = settings.GetModelConcurrentLimit("claude-3")
 		assert.Equal(t, int64(0), limit)
 		assert.False(t, hasCustom)
 	})

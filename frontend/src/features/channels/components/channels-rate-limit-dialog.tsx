@@ -140,10 +140,9 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
           })();
 
           return (
-            <FormItem className='w-[240px]'>
-              <div className='flex items-center gap-1'>
-                <FormLabel className='sr-only'>{t('channels.dialogs.rateLimit.fields.windowAnchor.label')}</FormLabel>
-                <span className='text-sm text-muted-foreground whitespace-nowrap'>{t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}</span>
+            <FormItem className='w-[220px]'>
+              <FormLabel className='flex items-center gap-1'>
+                {t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className='h-3.5 w-3.5 text-muted-foreground cursor-help shrink-0' />
@@ -152,7 +151,7 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
                     {t('channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip')}
                   </TooltipContent>
                 </Tooltip>
-              </div>
+              </FormLabel>
               <FormControl>
                 <Input
                   type='number'
@@ -182,10 +181,9 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
 
         // Day-based durations: show a date+time picker
         return (
-          <FormItem className='w-[240px]'>
-            <div className='flex items-center gap-1'>
-              <FormLabel className='sr-only'>{t('channels.dialogs.rateLimit.fields.windowAnchor.label')}</FormLabel>
-              <span className='text-sm text-muted-foreground whitespace-nowrap'>{t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}</span>
+          <FormItem className='w-[220px]'>
+            <FormLabel className='flex items-center gap-1'>
+              {t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className='h-3.5 w-3.5 text-muted-foreground cursor-help shrink-0' />
@@ -194,7 +192,7 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
                   {t('channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip')}
                 </TooltipContent>
               </Tooltip>
-            </div>
+            </FormLabel>
             <FormControl>
               <Input
                 type='datetime-local'
@@ -357,11 +355,11 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.rpm.label')}</FormLabel>
-                        <div className='flex gap-2 items-start'>
+                        <div className='flex gap-2 items-end'>
                           <FormControl>
                             <Input
                               type='number'
-                              className='w-[100px]'
+                              className='w-[130px]'
                               placeholder={t('channels.dialogs.rateLimit.fields.rpm.placeholder')}
                               value={field.value === '' || field.value == null ? '' : field.value}
                               onChange={(e) => {
@@ -408,11 +406,11 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.tpm.label')}</FormLabel>
-                        <div className='flex gap-2 items-start'>
+                        <div className='flex gap-2 items-end'>
                           <FormControl>
                             <Input
                               type='number'
-                              className='w-[100px]'
+                              className='w-[130px]'
                               placeholder={t('channels.dialogs.rateLimit.fields.tpm.placeholder')}
                               value={field.value === '' || field.value == null ? '' : field.value}
                               onChange={(e) => {
@@ -459,11 +457,11 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.cost.label')}</FormLabel>
-                        <div className='flex gap-2 items-start'>
+                        <div className='flex gap-2 items-end'>
                           <FormControl>
                             <Input
                               type='number'
-                              className='w-[100px]'
+                              className='w-[130px]'
                               step='0.01'
                               placeholder={t('channels.dialogs.rateLimit.fields.cost.placeholder')}
                               value={field.value === '' || field.value == null ? '' : field.value}

@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -123,4 +124,68 @@ func TestChannelCostTracker_Overwrite(t *testing.T) {
 	got, ok := tracker.GetCachedCost(1)
 	assert.True(t, ok)
 	assert.True(t, cost2.Equal(got))
+}
+
+func TestChannelCostTracker_ConcurrentSetAndGet(t *testing.T) {
+	tracker := NewChannelCostTracker()
+	windowEnd := time.Now().Add(time.Hour)
+	const goroutines = 50
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 2)
+
+	for i := range goroutines {
+		go func(id int) {
+			defer wg.Done()
+			cost := decimal.NewFromFloat(float64(id) * 1.5)
+			tracker.SetCachedCost(id, cost, windowEnd)
+		}(i)
+	}
+
+	for i := range goroutines {
+		go func(id int) {
+			defer wg.Done()
+			tracker.GetCachedCost(id)
+		}(i)
+	}
+
+	wg.Wait()
+
+	for i := range goroutines {
+		got, ok := tracker.GetCachedCost(i)
+		assert.True(t, ok, "channel %d should have cached cost", i)
+		expected := decimal.NewFromFloat(float64(i) * 1.5)
+		assert.True(t, expected.Equal(got), "channel %d cost mismatch", i)
+	}
+}
+
+func TestChannelCostTracker_ConcurrentInvalidate(t *testing.T) {
+	tracker := NewChannelCostTracker()
+	windowEnd := time.Now().Add(time.Hour)
+	cost := decimal.NewFromFloat(10.0)
+
+	tracker.SetCachedCost(1, cost, windowEnd)
+
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 2)
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			tracker.Invalidate(1)
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			tracker.GetCachedCost(1)
+		}()
+	}
+
+	wg.Wait()
+
+	_, ok := tracker.GetCachedCost(1)
+	assert.False(t, ok)
 }

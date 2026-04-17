@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func newTrackerWithClock(now time.Time) (*ChannelRequestTracker, *time.Time) {
+	clockPtr := &now
+	tracker := NewChannelRequestTracker(WithClock(func() time.Time { return *clockPtr }))
+	return tracker, clockPtr
+}
+
 func TestNewChannelRequestTracker(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	assert.NotNil(t, tracker)
@@ -68,46 +74,37 @@ func TestChannelRequestTracker_MultipleChannels(t *testing.T) {
 }
 
 func TestChannelRequestTracker_WindowReset(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
 
-	// Manually insert a window that belongs to a past minute
-	tracker.mu.Lock()
-	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
-		time.Minute: {
-			requests:    10,
-			tokens:      500,
-			windowStart: time.Now().Truncate(time.Minute).Add(-time.Minute),
-		},
-	}
-	tracker.mu.Unlock()
+	tracker.IncrementRequest(1)
+	assert.Equal(t, int64(1), tracker.GetRequestCount(1))
+	assert.Equal(t, int64(0), tracker.GetTokenCount(1))
 
-	// Reads should return 0 because the window is expired
+	*clockPtr = now.Add(time.Minute + time.Second)
+
 	assert.Equal(t, int64(0), tracker.GetRequestCount(1))
 	assert.Equal(t, int64(0), tracker.GetTokenCount(1))
 
-	// Writes should create a new window
 	tracker.IncrementRequest(1)
 	assert.Equal(t, int64(1), tracker.GetRequestCount(1))
 	assert.Equal(t, int64(0), tracker.GetTokenCount(1))
 }
 
 func TestChannelRequestTracker_WindowReset_AddTokens(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
 
-	// Manually insert a window that belongs to a past minute
-	tracker.mu.Lock()
-	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
-		time.Minute: {
-			requests:    10,
-			tokens:      500,
-			windowStart: time.Now().Truncate(time.Minute).Add(-time.Minute),
-		},
-	}
-	tracker.mu.Unlock()
+	tracker.AddTokens(1, 500)
+	assert.Equal(t, int64(500), tracker.GetTokenCount(1))
+
+	*clockPtr = now.Add(time.Minute + time.Second)
+
+	assert.Equal(t, int64(0), tracker.GetTokenCount(1))
+	assert.Equal(t, int64(0), tracker.GetRequestCount(1))
 
 	tracker.AddTokens(1, 200)
 	assert.Equal(t, int64(200), tracker.GetTokenCount(1))
-	// Requests should have been reset too since AddTokens creates a new window
 	assert.Equal(t, int64(0), tracker.GetRequestCount(1))
 }
 
@@ -209,21 +206,15 @@ func TestChannelRequestTracker_IsCoolingDown_NotSet(t *testing.T) {
 }
 
 func TestChannelRequestTracker_IsCoolingDown_Expired(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 
-	// Set cooldown in the past (expired)
-	tracker.mu.Lock()
-	tracker.cooldowns[1] = time.Now().Add(-10 * time.Second)
-	tracker.mu.Unlock()
+	tracker.SetCooldown(1, now.Add(-10*time.Second))
 
-	// Should return false and clean up
 	assert.False(t, tracker.IsCoolingDown(1))
 
-	// Verify entry was deleted
-	tracker.mu.RLock()
-	_, exists := tracker.cooldowns[1]
-	tracker.mu.RUnlock()
-	assert.False(t, exists)
+	tracker.SetCooldown(1, now.Add(30*time.Second))
+	assert.True(t, tracker.IsCoolingDown(1))
 }
 
 func TestChannelRequestTracker_GetCooldownUntil(t *testing.T) {
@@ -244,37 +235,30 @@ func TestChannelRequestTracker_GetCooldownUntil(t *testing.T) {
 }
 
 func TestChannelRequestTracker_GetCooldownUntil_Expired(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 
-	// Set cooldown in the past (expired)
-	tracker.mu.Lock()
-	tracker.cooldowns[1] = time.Now().Add(-10 * time.Second)
-	tracker.mu.Unlock()
+	tracker.SetCooldown(1, now.Add(-10*time.Second))
 
-	// Should return false and clean up
 	_, ok := tracker.GetCooldownUntil(1)
 	assert.False(t, ok)
 
-	// Verify entry was deleted
-	tracker.mu.RLock()
-	_, exists := tracker.cooldowns[1]
-	tracker.mu.RUnlock()
-	assert.False(t, exists)
+	tracker.SetCooldown(1, now.Add(30*time.Second))
+	gotUntil, ok := tracker.GetCooldownUntil(1)
+	assert.True(t, ok)
+	assert.Equal(t, now.Add(30*time.Second), gotUntil)
 }
 
 func TestChannelRequestTracker_ClearExpiredCooldown_DoesNotDeleteNewerValue(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 
-	expiredUntil := time.Now().Add(-10 * time.Second)
-	newUntil := time.Now().Add(30 * time.Second)
-	now := time.Now()
+	tracker.SetCooldown(1, now.Add(-10*time.Second))
 
-	tracker.mu.Lock()
-	tracker.cooldowns[1] = expiredUntil
-	tracker.mu.Unlock()
-
+	newUntil := now.Add(30 * time.Second)
 	tracker.SetCooldown(1, newUntil)
-	tracker.clearExpiredCooldown(1, expiredUntil, now)
+
+	tracker.clearExpiredCooldown(1, now.Add(-10*time.Second), now)
 
 	gotUntil, ok := tracker.GetCooldownUntil(1)
 	assert.True(t, ok)
@@ -378,18 +362,16 @@ func TestChannelRequestTracker_ForDuration_MultiWindow(t *testing.T) {
 }
 
 func TestChannelRequestTracker_ForDuration_WindowExpiry(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
 
-	oldWindowStart := time.Now().Truncate(time.Minute).Add(-2 * time.Minute)
-	tracker.mu.Lock()
-	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
-		time.Minute: {
-			requests:    10,
-			tokens:      500,
-			windowStart: oldWindowStart,
-		},
-	}
-	tracker.mu.Unlock()
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.AddTokensForDuration(1, 500, time.Minute, nil)
+
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+
+	*clockPtr = now.Add(2*time.Minute + time.Second)
 
 	requestCount := tracker.GetRequestCountForDuration(1, time.Minute, nil)
 	tokenCount := tracker.GetTokenCountForDuration(1, time.Minute, nil)

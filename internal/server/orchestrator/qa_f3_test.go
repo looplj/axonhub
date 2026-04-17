@@ -16,11 +16,11 @@ import (
 )
 
 func contextWithModel(t *testing.T, model string) context.Context {
-	return context.WithValue(context.Background(), modelContextKey{}, model)
+	return contextWithRequestedModel(context.Background(), model)
 }
 
 // ============================================================================
-// QA F3: Real Manual QA - Final Verification
+// Duration & Model Concurrent Extensions — QA Tests
 // ============================================================================
 
 // Task 1: Backward compatibility - existing config loads without duration
@@ -128,15 +128,22 @@ func TestQA_Task3_BackwardCompat_OneMinuteMethods(t *testing.T) {
 
 // Task 3: Window expiry for long durations
 func TestQA_Task3_WindowExpiry_LongDuration(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
 	oneMonth := objects.RateLimitDurationOneMonth
 	duration := oneMonth.Duration()
-	tracker.mu.Lock()
-	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
-		duration: {requests: 100, tokens: 5000, windowStart: time.Now().Truncate(duration).Add(-duration)},
-	}
-	tracker.mu.Unlock()
+
+	tracker.IncrementRequestForDuration(1, duration, nil)
+	tracker.AddTokensForDuration(1, 5000, duration, nil)
+
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, duration, nil))
+	assert.Equal(t, int64(5000), tracker.GetTokenCountForDuration(1, duration, nil))
+
+	*clockPtr = now.Add(duration + time.Second)
+
 	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, duration, nil))
+
 	tracker.IncrementRequestForDuration(1, duration, nil)
 	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, duration, nil))
 }
@@ -154,10 +161,9 @@ func TestQA_Task4_PerModelConnectionTracking(t *testing.T) {
 
 // Task 4: Fallback to channel-wide MaxConcurrent
 func TestQA_Task4_FallbackToChannelWideMaxConcurrent(t *testing.T) {
-	mt := NewModelConnectionTracker()
 	maxConcurrent := int64(10)
 	settings := &objects.ChannelRateLimit{MaxConcurrent: &maxConcurrent}
-	limit, hasCustom := mt.GetModelConcurrentLimit(1, "any-model", settings)
+	limit, hasCustom := settings.GetModelConcurrentLimit("any-model")
 	assert.Equal(t, int64(10), limit)
 	assert.False(t, hasCustom)
 }
@@ -260,16 +266,15 @@ func TestQA_Task7_PerModelConcurrentLimitExceeded(t *testing.T) {
 
 // Task 7: Fallback to channel-wide MaxConcurrent
 func TestQA_Task7_FallbackToChannelWideMaxConcurrent(t *testing.T) {
-	mt := NewModelConnectionTracker()
 	maxConcurrent := int64(10)
 	settings := &objects.ChannelRateLimit{
 		MaxConcurrent:   &maxConcurrent,
 		ModelConcurrent: map[string]int64{"gpt-4": 2},
 	}
-	gpt4Limit, gpt4Custom := mt.GetModelConcurrentLimit(1, "gpt-4", settings)
+	gpt4Limit, gpt4Custom := settings.GetModelConcurrentLimit("gpt-4")
 	assert.Equal(t, int64(2), gpt4Limit)
 	assert.True(t, gpt4Custom)
-	otherLimit, otherCustom := mt.GetModelConcurrentLimit(1, "other", settings)
+	otherLimit, otherCustom := settings.GetModelConcurrentLimit("other")
 	assert.Equal(t, int64(10), otherLimit)
 	assert.False(t, otherCustom)
 }
@@ -442,7 +447,7 @@ func TestQA_Edge_ZeroLimits(t *testing.T) {
 		ID: 1, Name: "zero-limit",
 		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &zeroRPM, TPM: &zeroTPM}},
 	}}
-	assert.Equal(t, 100.0, strategy.Score(nil, ch), "Zero limits should mean unlimited")
+	assert.Equal(t, 100.0, strategy.Score(context.Background(), ch), "Zero limits should mean unlimited")
 }
 
 func TestQA_Edge_MixedDurationConfigs(t *testing.T) {
@@ -555,11 +560,11 @@ func TestQA_CrossTask_FullDurationAndModelConcurrentIntegration(t *testing.T) {
 	ct.IncrementConnection(ch.ID)
 	assert.Equal(t, int64(50), tracker.GetRequestCountForDuration(ch.ID, oneHour.Duration(), nil))
 	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(ch.ID, fiveHour.Duration(), nil))
-	gpt4Limit, _ := mt.GetModelConcurrentLimit(ch.ID, "gpt-4", ch.Settings.RateLimit)
+	gpt4Limit, _ := ch.Settings.RateLimit.GetModelConcurrentLimit("gpt-4")
 	assert.Equal(t, int64(2), gpt4Limit)
-	claude3Limit, _ := mt.GetModelConcurrentLimit(ch.ID, "claude-3", ch.Settings.RateLimit)
+	claude3Limit, _ := ch.Settings.RateLimit.GetModelConcurrentLimit("claude-3")
 	assert.Equal(t, int64(5), claude3Limit)
-	otherLimit, _ := mt.GetModelConcurrentLimit(ch.ID, "other", ch.Settings.RateLimit)
+	otherLimit, _ := ch.Settings.RateLimit.GetModelConcurrentLimit("other")
 	assert.Equal(t, int64(10), otherLimit)
 	score := strategy.Score(contextWithModel(t, "gpt-4"), ch)
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))

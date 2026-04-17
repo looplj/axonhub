@@ -242,13 +242,11 @@ func TestModelConnectionTracking_OnOutboundLlmStream(t *testing.T) {
 	wrappedStream, err := middleware.OnOutboundLlmStream(ctx, mockStream)
 	assert.NoError(t, err)
 
-	// Consume the stream - connection should still be active
 	for wrappedStream.Next() {
 		_ = wrappedStream.Current()
 	}
-	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
+	assert.Equal(t, 0, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 
-	// Close the stream - connection should be decremented
 	err = wrappedStream.Close()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
@@ -459,13 +457,11 @@ func TestModelConnectionTracking_StreamLifecycle(t *testing.T) {
 	wrappedStream, err := middleware.OnOutboundLlmStream(ctx, mockStream)
 	assert.NoError(t, err)
 
-	// 3. Consume stream - connection still active
 	for wrappedStream.Next() {
 		_ = wrappedStream.Current()
 	}
-	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
+	assert.Equal(t, 0, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 
-	// 4. Close stream - decrement
 	err = wrappedStream.Close()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))

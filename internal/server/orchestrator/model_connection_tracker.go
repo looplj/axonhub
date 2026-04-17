@@ -3,8 +3,6 @@ package orchestrator
 import (
 	"strings"
 	"sync"
-
-	"github.com/looplj/axonhub/internal/objects"
 )
 
 // ModelConnectionTracker tracks active connections per channel+model combination.
@@ -86,14 +84,3 @@ func (t *ModelConnectionTracker) GetModelConnectionCount(channelID int, model st
 	return 0
 }
 
-// GetModelConcurrentLimit is a convenience method that delegates to
-// ChannelRateLimit.GetModelConcurrentLimit. It does not use any tracker
-// state — it simply provides a consistent API surface for callers
-// that already have a reference to the tracker.
-// It uses the settings.GetModelConcurrentLimit method which returns per-model limit if configured,
-// otherwise falls back to MaxConcurrent.
-// Returns the limit and a boolean indicating whether a custom per-model limit was found.
-func (t *ModelConnectionTracker) GetModelConcurrentLimit(channelID int, model string, settings *objects.ChannelRateLimit) (int64, bool) {
-	// Delegate to the settings method which handles fallback logic
-	return settings.GetModelConcurrentLimit(model)
-}

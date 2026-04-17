@@ -17,6 +17,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
+const defaultMaxConnectionsPerChannel = 256
+
 func NewChatCompletionOrchestrator(
 	channelService *biz.ChannelService,
 	defaultSelector *DefaultSelector,
@@ -30,14 +32,13 @@ func NewChatCompletionOrchestrator(
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	liveStreamRegistry *biz.LiveStreamRegistry,
 	externalRateLimitTracker *ChannelRequestTracker,
-	externalConnectionTracker *DefaultConnectionTracker,
+	externalConnectionTracker ConnectionTracker,
 	externalModelConnectionTracker *ModelConnectionTracker,
+	externalCostTracker *ChannelCostTracker,
 ) *ChatCompletionOrchestrator {
 	var connectionTracker ConnectionTracker
 	if externalConnectionTracker != nil {
 		connectionTracker = externalConnectionTracker
-	} else {
-		connectionTracker = NewDefaultConnectionTracker(256)
 	}
 
 	var rateLimitTracker *ChannelRequestTracker
@@ -54,7 +55,12 @@ func NewChatCompletionOrchestrator(
 		modelConnectionTracker = NewModelConnectionTracker()
 	}
 
-	costTracker := NewChannelCostTracker()
+	var costTracker *ChannelCostTracker
+	if externalCostTracker != nil {
+		costTracker = externalCostTracker
+	} else {
+		costTracker = NewChannelCostTracker()
+	}
 
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()

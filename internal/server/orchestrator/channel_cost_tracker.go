@@ -13,17 +13,31 @@ type costCacheEntry struct {
 	fetchedAt time.Time
 }
 
+type CostTrackerOption func(*ChannelCostTracker)
+
+func WithCostTrackerClock(clock func() time.Time) CostTrackerOption {
+	return func(t *ChannelCostTracker) {
+		t.clock = clock
+	}
+}
+
 type ChannelCostTracker struct {
 	mu    sync.RWMutex
 	cache map[int]costCacheEntry
 	ttl   time.Duration
+	clock func() time.Time
 }
 
-func NewChannelCostTracker() *ChannelCostTracker {
-	return &ChannelCostTracker{
+func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
+	t := &ChannelCostTracker{
 		cache: make(map[int]costCacheEntry),
 		ttl:   30 * time.Second,
+		clock: time.Now,
 	}
+	for _, opt := range opts {
+		opt(t)
+	}
+	return t
 }
 
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {
@@ -35,7 +49,7 @@ func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool
 		return decimal.Zero, false
 	}
 
-	now := time.Now()
+	now := t.clock()
 
 	if now.After(entry.windowEnd) {
 		t.mu.Lock()
@@ -67,7 +81,7 @@ func (t *ChannelCostTracker) SetCachedCost(channelID int, cost decimal.Decimal, 
 	t.cache[channelID] = costCacheEntry{
 		cost:      cost,
 		windowEnd: windowEnd,
-		fetchedAt: time.Now(),
+		fetchedAt: t.clock(),
 	}
 }
 
@@ -82,7 +96,7 @@ func (t *ChannelCostTracker) EvictExpired() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	now := time.Now()
+	now := t.clock()
 
 	for id, entry := range t.cache {
 		if now.After(entry.windowEnd) || now.Sub(entry.fetchedAt) > t.ttl {

@@ -11,6 +11,15 @@ type ChannelRequestTracker struct {
 	mu        sync.RWMutex
 	counters  map[int]map[time.Duration]*rateLimitWindow
 	cooldowns map[int]time.Time
+	clock     func() time.Time
+}
+
+type ClockOption func(*ChannelRequestTracker)
+
+func WithClock(c func() time.Time) ClockOption {
+	return func(t *ChannelRequestTracker) {
+		t.clock = c
+	}
 }
 
 type rateLimitWindow struct {
@@ -20,15 +29,20 @@ type rateLimitWindow struct {
 	anchor      *time.Time
 }
 
-func NewChannelRequestTracker() *ChannelRequestTracker {
-	return &ChannelRequestTracker{
+func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
+	t := &ChannelRequestTracker{
 		counters:  make(map[int]map[time.Duration]*rateLimitWindow),
 		cooldowns: make(map[int]time.Time),
+		clock:     time.Now,
 	}
+	for _, opt := range opts {
+		opt(t)
+	}
+	return t
 }
 
 func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration, anchor *time.Time) *rateLimitWindow {
-	now := time.Now()
+	now := t.clock()
 	windowStart := objects.ComputeWindowStart(now, d, anchor)
 
 	durationMap, ok := t.counters[channelID]
@@ -122,7 +136,7 @@ func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d t
 		return time.Time{}
 	}
 
-	windowStart := objects.ComputeWindowStart(time.Now(), d, anchor)
+	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
 	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
 		return time.Time{}
 	}
@@ -144,7 +158,7 @@ func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time
 		return 0
 	}
 
-	windowStart := objects.ComputeWindowStart(time.Now(), d, anchor)
+	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
 	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
 		return 0
 	}
@@ -170,7 +184,7 @@ func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.D
 		return 0
 	}
 
-	windowStart := objects.ComputeWindowStart(time.Now(), d, anchor)
+	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
 	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
 		return 0
 	}
@@ -203,7 +217,7 @@ func (t *ChannelRequestTracker) GetCooldownUntil(channelID int) (time.Time, bool
 		return time.Time{}, false
 	}
 
-	now := time.Now()
+	now := t.clock()
 	if now.After(until) {
 		t.clearExpiredCooldown(channelID, until, now)
 		return time.Time{}, false

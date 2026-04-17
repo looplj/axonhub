@@ -8,8 +8,9 @@ var Module = fx.Module("orchestrator",
 	fx.Provide(NewChannelRequestTracker),
 	fx.Provide(NewDefaultConnectionTrackerForFx),
 	fx.Provide(NewModelConnectionTracker),
+	fx.Provide(NewChannelCostTracker),
 )
 
 func NewDefaultConnectionTrackerForFx() *DefaultConnectionTracker {
-	return NewDefaultConnectionTracker(256)
+	return NewDefaultConnectionTracker(defaultMaxConnectionsPerChannel)
 }

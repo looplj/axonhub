@@ -117,7 +117,20 @@ func (s *modelConnectionTrackingStream) Current() *llm.Response {
 }
 
 func (s *modelConnectionTrackingStream) Next() bool {
-	return s.stream.Next()
+	if !s.stream.Next() {
+		s.closeOnce.Do(func() {
+			if s.decrKey != nil {
+				s.tracker.DecrementModelConnection(s.decrKey.channelID, s.decrKey.model)
+				log.Debug(s.ctx, "Decremented model connection count (stream exhausted)",
+					log.Int("channel_id", s.decrKey.channelID),
+					log.String("model", s.decrKey.model),
+					log.Int("active_connections", s.tracker.GetModelConnectionCount(s.decrKey.channelID, s.decrKey.model)),
+				)
+			}
+		})
+		return false
+	}
+	return true
 }
 
 func (s *modelConnectionTrackingStream) Close() error {

@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -73,20 +74,17 @@ func TestIntegration_RPM_FiveHourWindow_NotExhaustedBelowLimit(t *testing.T) {
 }
 
 func TestIntegration_RPM_FiveHourWindow_WindowReset(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
 
 	fiveHour := objects.RateLimitDurationFiveHour
 	duration := fiveHour.Duration()
 
-	tracker.mu.Lock()
-	tracker.counters[1] = map[time.Duration]*rateLimitWindow{
-		duration: {
-			requests:    10,
-			tokens:      0,
-			windowStart: time.Now().Truncate(duration).Add(-duration),
-		},
-	}
-	tracker.mu.Unlock()
+	tracker.IncrementRequestForDuration(1, duration, nil)
+	tracker.IncrementRequestForDuration(1, duration, nil)
+	assert.Equal(t, int64(2), tracker.GetRequestCountForDuration(1, duration, nil))
+
+	*clockPtr = now.Add(duration + time.Second)
 
 	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, duration, nil))
 
@@ -137,20 +135,17 @@ func TestIntegration_TPM_MonthlyWindow_BelowLimit(t *testing.T) {
 }
 
 func TestIntegration_TPM_MonthlyWindow_WindowReset(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
 
 	oneMonth := objects.RateLimitDurationOneMonth
 	duration := oneMonth.Duration()
 
-	tracker.mu.Lock()
-	tracker.counters[2] = map[time.Duration]*rateLimitWindow{
-		duration: {
-			requests:    5,
-			tokens:      1000,
-			windowStart: time.Now().Truncate(duration).Add(-duration),
-		},
-	}
-	tracker.mu.Unlock()
+	tracker.AddTokensForDuration(2, 500, duration, nil)
+	tracker.AddTokensForDuration(2, 500, duration, nil)
+	assert.Equal(t, int64(1000), tracker.GetTokenCountForDuration(2, duration, nil))
+
+	*clockPtr = now.Add(duration + time.Second)
 
 	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(2, duration, nil))
 	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(2, duration, nil))
@@ -177,7 +172,7 @@ func TestIntegration_ModelConcurrent_TwoConcurrentExhausts(t *testing.T) {
 	currentCount := modelTracker.GetModelConnectionCount(1, "gpt-4")
 	assert.Equal(t, 2, currentCount)
 
-	limit, hasCustom := modelTracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+	limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
 	assert.Equal(t, int64(2), limit)
 	assert.True(t, hasCustom)
 	assert.GreaterOrEqual(t, int64(currentCount), limit)
@@ -198,7 +193,7 @@ func TestIntegration_ModelConcurrent_OneConcurrentNotExhausted(t *testing.T) {
 	currentCount := modelTracker.GetModelConnectionCount(1, "gpt-4")
 	assert.Equal(t, 1, currentCount)
 
-	limit, hasCustom := modelTracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+	limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
 	assert.Equal(t, int64(2), limit)
 	assert.True(t, hasCustom)
 	assert.Less(t, int64(currentCount), limit)
@@ -222,11 +217,11 @@ func TestIntegration_ModelConcurrent_DifferentModelsIndependent(t *testing.T) {
 	assert.Equal(t, 2, modelTracker.GetModelConnectionCount(1, "gpt-4"))
 	assert.Equal(t, 1, modelTracker.GetModelConnectionCount(1, "claude-3"))
 
-	gpt4Limit, gpt4Custom := modelTracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+	gpt4Limit, gpt4Custom := settings.GetModelConcurrentLimit("gpt-4")
 	assert.Equal(t, int64(2), gpt4Limit)
 	assert.True(t, gpt4Custom)
 
-	claude3Limit, claude3Custom := modelTracker.GetModelConcurrentLimit(1, "claude-3", settings)
+	claude3Limit, claude3Custom := settings.GetModelConcurrentLimit("claude-3")
 	assert.Equal(t, int64(3), claude3Limit)
 	assert.True(t, claude3Custom)
 }
@@ -245,7 +240,7 @@ func TestIntegration_MixedConcurrent_PerModelTakesPrecedenceForGPT4(t *testing.T
 		ModelConcurrent: modelConcurrent,
 	}
 
-	limit, hasCustom := modelTracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+	limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
 	assert.Equal(t, int64(2), limit, "gpt-4 should use per-model limit of 2, not MaxConcurrent of 10")
 	assert.True(t, hasCustom)
 
@@ -268,7 +263,7 @@ func TestIntegration_MixedConcurrent_ChannelWideForOtherModels(t *testing.T) {
 		ModelConcurrent: modelConcurrent,
 	}
 
-	limit, hasCustom := modelTracker.GetModelConcurrentLimit(1, "claude-3", settings)
+	limit, hasCustom := settings.GetModelConcurrentLimit("claude-3")
 	assert.Equal(t, int64(10), limit, "claude-3 should fall back to MaxConcurrent of 10")
 	assert.False(t, hasCustom)
 
@@ -299,8 +294,8 @@ func TestIntegration_MixedConcurrent_BothLimitsTrackedIndependently(t *testing.T
 	assert.Equal(t, 2, modelTracker.GetModelConnectionCount(1, "gpt-4"))
 	assert.Equal(t, 1, modelTracker.GetModelConnectionCount(1, "claude-3"))
 
-	gpt4Limit, _ := modelTracker.GetModelConcurrentLimit(1, "gpt-4", settings)
-	claude3Limit, _ := modelTracker.GetModelConcurrentLimit(1, "claude-3", settings)
+	gpt4Limit, _ := settings.GetModelConcurrentLimit("gpt-4")
+	claude3Limit, _ := settings.GetModelConcurrentLimit("claude-3")
 	assert.Equal(t, int64(2), gpt4Limit)
 	assert.Equal(t, int64(10), claude3Limit)
 }
@@ -352,29 +347,27 @@ func TestIntegration_IndependentRPMAndTPMDurations(t *testing.T) {
 }
 
 func TestIntegration_IndependentRPMAndTPMDurations_WindowReset(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
 
 	oneHour := objects.RateLimitDurationOneHour
 	fiveHour := objects.RateLimitDurationFiveHour
 	rpmDuration := oneHour.Duration()
 	tpmDuration := fiveHour.Duration()
 
-	tracker.mu.Lock()
-	tracker.counters[5] = map[time.Duration]*rateLimitWindow{
-		rpmDuration: {
-			requests:    50,
-			tokens:      0,
-			windowStart: time.Now().Truncate(rpmDuration).Add(-rpmDuration),
-		},
-		tpmDuration: {
-			requests:    0,
-			tokens:      800,
-			windowStart: time.Now().Truncate(tpmDuration).Add(-tpmDuration),
-		},
-	}
-	tracker.mu.Unlock()
+	tracker.IncrementRequestForDuration(5, rpmDuration, nil)
+	tracker.AddTokensForDuration(5, 800, tpmDuration, nil)
+
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(5, rpmDuration, nil))
+	assert.Equal(t, int64(800), tracker.GetTokenCountForDuration(5, tpmDuration, nil))
+
+	*clockPtr = now.Add(rpmDuration + time.Second)
 
 	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(5, rpmDuration, nil))
+	assert.Equal(t, int64(800), tracker.GetTokenCountForDuration(5, tpmDuration, nil))
+
+	*clockPtr = now.Add(tpmDuration + time.Second)
+
 	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(5, tpmDuration, nil))
 
 	tracker.IncrementRequestForDuration(5, rpmDuration, nil)
@@ -915,15 +908,15 @@ func TestIntegration_ModelConcurrent_WithChannelWideLimit(t *testing.T) {
 		ModelConcurrent: modelConcurrent,
 	}
 
-	gpt4Limit, gpt4Custom := modelTracker.GetModelConcurrentLimit(1, "gpt-4", settings)
+	gpt4Limit, gpt4Custom := settings.GetModelConcurrentLimit("gpt-4")
 	assert.Equal(t, int64(2), gpt4Limit)
 	assert.True(t, gpt4Custom)
 
-	claude3Limit, claude3Custom := modelTracker.GetModelConcurrentLimit(1, "claude-3", settings)
+	claude3Limit, claude3Custom := settings.GetModelConcurrentLimit("claude-3")
 	assert.Equal(t, int64(5), claude3Limit)
 	assert.True(t, claude3Custom)
 
-	otherLimit, otherCustom := modelTracker.GetModelConcurrentLimit(1, "other-model", settings)
+	otherLimit, otherCustom := settings.GetModelConcurrentLimit("other-model")
 	assert.Equal(t, int64(10), otherLimit)
 	assert.False(t, otherCustom)
 
@@ -1251,4 +1244,75 @@ func TestIntegration_Anchor_MixedAnchors(t *testing.T) {
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
 	assert.Equal(t, 50.0, score)
+}
+
+func TestIntegration_ZeroLimitsMeanNoLimit(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	zeroRPM := int64(0)
+	zeroTPM := int64(0)
+	zeroConcurrent := int64(0)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "zero-limit",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{
+			RPM: &zeroRPM, TPM: &zeroTPM, MaxConcurrent: &zeroConcurrent,
+		}},
+	}}
+	tracker.IncrementRequest(1)
+	tracker.AddTokens(1, 1000)
+	score := strategy.Score(context.Background(), ch)
+	assert.Equal(t, 100.0, score)
+}
+
+func TestIntegration_NilRateLimitPointer(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "nil-rl",
+		Settings: &objects.ChannelSettings{RateLimit: nil},
+	}}
+	score := strategy.Score(context.Background(), ch)
+	assert.Equal(t, 100.0, score)
+}
+
+func TestIntegration_ScoreRecoveryAfterDecrement(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	ct := NewDefaultConnectionTracker(10)
+	mt := NewModelConnectionTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
+	maxConcurrent := int64(2)
+	modelConcurrent := map[string]int64{"gpt-4": 1}
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "recovery-test",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{
+			MaxConcurrent: &maxConcurrent, ModelConcurrent: modelConcurrent,
+		}},
+	}}
+
+	ctx := contextWithModel(t, "gpt-4")
+
+	mt.IncrementModelConnection(1, "gpt-4")
+	score := strategy.Score(ctx, ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+
+	mt.DecrementModelConnection(1, "gpt-4")
+	score = strategy.Score(ctx, ch)
+	assert.Greater(t, score, float64(rateLimitExhaustedScore))
+
+	ct.IncrementConnection(1)
+	ct.IncrementConnection(1)
+	score = strategy.Score(context.Background(), ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+
+	ct.DecrementConnection(1)
+	score = strategy.Score(context.Background(), ch)
+	assert.Greater(t, score, float64(rateLimitExhaustedScore))
+}
+
+func TestIntegration_AddTokensForDuration_OverflowIsDetectable(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	tracker.AddTokensForDuration(1, math.MaxInt64, time.Minute, nil)
+	tracker.AddTokensForDuration(1, 1, time.Minute, nil)
+	count := tracker.GetTokenCountForDuration(1, time.Minute, nil)
+	assert.Less(t, count, int64(0), "int64 overflow should be detectable")
 }
