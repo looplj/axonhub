@@ -331,7 +331,7 @@
   "channels.dialogs.fields.transformOptions.forceArrayInputs.label": "Force Array Inputs",
   "channels.dialogs.fields.transformOptions.forceArrayInputs.description": "Force the channel to accept array format for inputs",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label": "Replace developer role with system",
-  "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "Replace developer role with system before sending requests (Bailian only)",
+  "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "Replace developer role with system before sending requests for channels that do not support the developer role",
   "channels.dialogs.buttons.add": "Add",
   "channels.dialogs.buttons.batchAdd": "Batch Add",
   "channels.dialogs.buttons.batchAddTooltip": "Enter multiple models separated by commas, e.g., gpt-4, gpt-3.5-turbo, claude-3-opus",
