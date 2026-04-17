@@ -353,6 +353,9 @@ log:
 
 ## Next Steps
 
+### Understand the Request Flow
+- [Request Processing Guide](request-processing.md): Understand the full request lifecycle from entry to upstream execution, and the differences between model mapping, model association, and channel selection
+
 ### Explore Features
 - **Tracing**: Set up request tracing for observability
 - **Permissions**: Configure role-based access control
