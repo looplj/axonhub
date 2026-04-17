@@ -62,18 +62,20 @@ const rateLimitFormSchema = z.object({
 
 type RateLimitFormValues = z.infer<typeof rateLimitFormSchema>;
 
-/**
- * Convert modelConcurrent from server array format to form array format.
- * The server now returns an array directly: { modelConcurrent: [{ model: string, limit: number | null }] }
- */
 function modelConcurrentToArray(
-  rateLimit: { modelConcurrent?: { model: string; limit: number | null }[] | null } | null | undefined
+  rateLimit: { modelConcurrent?: { model: string; limit: number | null }[] | null } | null | undefined,
+  supportedModels: string[]
 ): { model: string; limit: number | '' }[] {
   if (!rateLimit?.modelConcurrent) return [];
-  return rateLimit.modelConcurrent.map((entry) => ({
-    model: entry.model ?? '',
-    limit: entry.limit ?? '',
-  }));
+  return rateLimit.modelConcurrent.map((entry) => {
+    const serverModel = entry.model ?? '';
+    const originalCasedModel =
+      supportedModels.find((m) => m.toLowerCase() === serverModel.toLowerCase()) ?? serverModel;
+    return {
+      model: originalCasedModel,
+      limit: entry.limit ?? '',
+    };
+  });
 }
 
 export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Props) {
@@ -90,7 +92,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       cost: currentRow.settings?.rateLimit?.cost ?? '',
       costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
       maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
-      modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit),
+      modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
     },
   });
 
@@ -113,7 +115,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         cost: currentRow.settings?.rateLimit?.cost ?? '',
         costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
         maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
-        modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit),
+        modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
       });
     }
   }, [open, currentRow, form]);
