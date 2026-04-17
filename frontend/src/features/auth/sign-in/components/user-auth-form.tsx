@@ -150,7 +150,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                     type='button'
                     variant='outline'
                     className={cn(
-                      'h-auto w-full justify-start border-slate-300 py-3 text-left disabled:opacity-50',
+                      'h-auto w-full border-slate-300 py-3 disabled:opacity-50',
                       isInactive && 'border-2 border-destructive'
                     )}
                     style={
@@ -173,7 +173,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                     ) : (
                       <LogIn className='mr-2 h-4 w-4' />
                     )}
-                    <span className='flex min-w-0 flex-1 flex-col items-start'>
+                    <span className='flex min-w-0 flex-col items-center'>
                       <span className='truncate'>{providerLabel}</span>
                       {isInactive && <span className='text-xs font-medium text-current/85'>{t('common.status.inactiveRetry')}</span>}
                     </span>
