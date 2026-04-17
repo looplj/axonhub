@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -562,4 +563,109 @@ func TestRateLimitAwareStrategy_Score_DurationAwareTPM(t *testing.T) {
 	score := strategy.Score(ctx, channel)
 
 	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+}
+
+func TestRateLimitAwareStrategy_Score_CostExhausted(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	costTracker := NewChannelCostTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := time.Now().Add(time.Hour)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				Cost: &cost,
+			},
+		},
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	costTracker.SetCachedCost(channel.ID, decimal.NewFromFloat(10.0), windowEnd)
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+}
+
+func TestRateLimitAwareStrategy_Score_CostNotExhausted(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	costTracker := NewChannelCostTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := time.Now().Add(time.Hour)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				Cost: &cost,
+			},
+		},
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	costTracker.SetCachedCost(channel.ID, decimal.NewFromFloat(5.0), windowEnd)
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+
+	assert.Equal(t, 50.0, score)
+}
+
+func TestRateLimitAwareStrategy_Score_CostCacheMiss_NoQuotaService(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	costTracker := NewChannelCostTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+
+	cost := decimal.NewFromFloat(10.0)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				Cost: &cost,
+			},
+		},
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+
+	assert.Equal(t, 100.0, score)
+}
+
+func TestRateLimitAwareStrategy_Score_CostNil_TrackerSkipped(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	cost := decimal.NewFromFloat(10.0)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				Cost: &cost,
+			},
+		},
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+
+	assert.Equal(t, 100.0, score)
 }

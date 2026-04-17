@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -21,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -131,9 +134,13 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 		windowEnd := windowStart.Add(costDuration.Duration())
 
 		currentCost, err := r.quotaService.GetChannelCost(ctx, channelID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
-		if err == nil {
-			costCurrentFloat, _ := currentCost.Float64()
-			status.CostCurrent = &costCurrentFloat
+		if err != nil {
+			log.Warn(ctx, "failed to query channel cost for rate limit status",
+				log.Int("channel_id", channelID),
+				log.Cause(err),
+			)
+		} else {
+			status.CostCurrent = &currentCost
 			costLimitFloat, _ := rl.Cost.Float64()
 			status.CostLimit = &costLimitFloat
 			status.CostResetAt = &windowEnd
@@ -152,7 +159,12 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 // Cost is the resolver for the cost field.
 func (r *channelRateLimitResolver) Cost(ctx context.Context, obj *objects.ChannelRateLimit) (*float64, error) {
-	panic(fmt.Errorf("not implemented: Cost - cost"))
+	if obj == nil || obj.Cost == nil {
+		return nil, nil
+	}
+
+	f, _ := obj.Cost.Float64()
+	return &f, nil
 }
 
 // ModelConcurrent is the resolver for the modelConcurrent field.
@@ -887,7 +899,13 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 
 // Cost is the resolver for the cost field.
 func (r *channelRateLimitInputResolver) Cost(ctx context.Context, obj *objects.ChannelRateLimit, data *float64) error {
-	panic(fmt.Errorf("not implemented: Cost - cost"))
+	if data == nil {
+		obj.Cost = nil
+		return nil
+	}
+
+	obj.Cost = lo.ToPtr(decimal.NewFromFloat(*data))
+	return nil
 }
 
 // ModelConcurrent is the resolver for the modelConcurrent field.

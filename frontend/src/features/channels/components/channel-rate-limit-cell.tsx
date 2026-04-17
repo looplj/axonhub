@@ -27,6 +27,10 @@ function formatResetTime(resetAt: string | null | undefined): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
 }
 
+function formatCostValue(value: number): string {
+  return value.toFixed(2);
+}
+
 export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps) => {
   const { t } = useTranslation();
 
@@ -46,7 +50,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
   const isCritical = maxRatio >= 1;
   const isHigh = maxRatio >= 0.8 && maxRatio < 1;
 
-  const rateLimitSegments: { label: string; current: number; limit: number; resetAt?: string | null }[] = [];
+  const rateLimitSegments: { label: string; current: number; limit: number; resetAt?: string | null; isCost?: boolean }[] = [];
   if (status.rpmCurrent != null && status.rpmLimit != null) {
     rateLimitSegments.push({ label: t('channels.expandedRow.rateLimit.requests'), current: status.rpmCurrent, limit: status.rpmLimit, resetAt: status.rpmResetAt });
   }
@@ -54,7 +58,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
     rateLimitSegments.push({ label: t('channels.expandedRow.rateLimit.tokens'), current: status.tpmCurrent, limit: status.tpmLimit, resetAt: status.tpmResetAt });
   }
   if (status.costCurrent != null && status.costLimit != null) {
-    rateLimitSegments.push({ label: t('channels.expandedRow.rateLimit.cost'), current: status.costCurrent, limit: status.costLimit, resetAt: status.costResetAt });
+    rateLimitSegments.push({ label: t('channels.expandedRow.rateLimit.cost'), current: status.costCurrent, limit: status.costLimit, resetAt: status.costResetAt, isCost: true });
   }
 
   const hasConcurrent = status.concurrentCurrent != null && status.concurrentLimit != null;
@@ -114,7 +118,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
           {rateLimitSegments.map((s) => (
             <div key={s.label} className='flex justify-between gap-4'>
               <span className='text-muted-foreground'>{s.label}:</span>
-              <span className='font-mono'>{s.current}/{s.limit}</span>
+              <span className='font-mono'>{s.isCost ? `${formatCostValue(s.current)}/${formatCostValue(s.limit)}` : `${s.current}/${s.limit}`}</span>
             </div>
           ))}
           {hasConcurrent && (

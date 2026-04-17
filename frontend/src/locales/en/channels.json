@@ -467,7 +467,7 @@
   "channels.dialogs.rateLimit.title": "Rate Limit",
   "channels.dialogs.rateLimit.description": "Configure upstream rate limits for {{name}}.",
   "channels.dialogs.rateLimit.config.title": "Rate Limit Settings",
-  "channels.dialogs.rateLimit.config.description": "Set the maximum requests and tokens per time window for the upstream channel. Leave empty for unlimited.",
+  "channels.dialogs.rateLimit.config.description": "Set the maximum requests, tokens, and cost per time window for the upstream channel. Leave empty for unlimited.",
   "channels.dialogs.rateLimit.fields.rpm.label": "Requests",
   "channels.dialogs.rateLimit.fields.rpm.placeholder": "Unlimited",
   "channels.dialogs.rateLimit.fields.rpm.description": "Maximum number of requests in the selected time window. Leave empty for unlimited.",

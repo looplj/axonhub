@@ -464,7 +464,7 @@
   "channels.dialogs.rateLimit.title": "速率限制",
   "channels.dialogs.rateLimit.description": "配置 {{name}} 的上游速率限制。",
   "channels.dialogs.rateLimit.config.title": "速率限制设置",
-  "channels.dialogs.rateLimit.config.description": "设置上游渠道每个时间窗口的最大请求数和 Token 数。留空表示不限制。",
+  "channels.dialogs.rateLimit.config.description": "设置上游渠道每个时间窗口的最大请求数、Token 数和费用。留空表示不限制。",
   "channels.dialogs.rateLimit.fields.rpm.label": "请求数",
   "channels.dialogs.rateLimit.fields.rpm.placeholder": "不限制",
   "channels.dialogs.rateLimit.fields.rpm.description": "在所选时间窗口内的最大请求数。留空表示不限制。",

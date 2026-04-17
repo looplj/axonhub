@@ -39,9 +39,10 @@ interface RateLimitMetricProps {
   limit: number | null | undefined;
   resetAt: string | null | undefined;
   windowDuration: string;
+  isCost?: boolean;
 }
 
-function RateLimitMetric({ label, current, limit, resetAt, windowDuration }: RateLimitMetricProps) {
+function RateLimitMetric({ label, current, limit, resetAt, windowDuration, isCost }: RateLimitMetricProps) {
   const { t } = useTranslation();
   const timeRemaining = formatTimeRemaining(resetAt);
   const usageRatio = limit != null && limit > 0 ? current / limit : 0;
@@ -53,7 +54,7 @@ function RateLimitMetric({ label, current, limit, resetAt, windowDuration }: Rat
       <span className='text-muted-foreground shrink-0'>{label}:</span>
       <div className='flex items-center gap-2'>
         <span className={`font-mono text-xs ${isCritical ? 'text-destructive font-semibold' : isHigh ? 'text-yellow-600 font-semibold' : ''}`}>
-          {current}{limit != null ? `/${limit}` : ''}
+          {isCost ? current.toFixed(2) : current}{limit != null ? `/${isCost && limit != null ? limit.toFixed(2) : limit}` : ''}
         </span>
         {timeRemaining && (
           <Tooltip>
@@ -160,6 +161,7 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration
           limit={status.costLimit}
           resetAt={status.costResetAt}
           windowDuration={formatWindowDuration(costDuration)}
+          isCost
         />
       )}
       {hasConcurrent && (

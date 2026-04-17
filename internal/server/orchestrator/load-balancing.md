@@ -120,7 +120,7 @@ loadBalancer := NewLoadBalancer(
     NewErrorAwareStrategy(channelService),                         // Priority 2: Health
     NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Fairness + admin weight
     NewLatencyAwareStrategy(channelService),                       // Priority 4: Streaming FTTL/TPS or non-streaming latency
-    NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker), // Priority 5: Rate limits + concurrency fallback
+    NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker, nil, costTracker, quotaService), // Priority 5: Rate limits + concurrency + cost
 )
 ```
 

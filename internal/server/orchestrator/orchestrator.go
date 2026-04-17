@@ -95,6 +95,7 @@ func NewChatCompletionOrchestrator(
 		connectionTracker:          connectionTracker,
 		rateLimitTracker:           rateLimitTracker,
 		modelConnectionTracker:     modelConnectionTracker,
+		costTracker:                costTracker,
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
 		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
@@ -131,6 +132,8 @@ type ChatCompletionOrchestrator struct {
 	rateLimitTracker *ChannelRequestTracker
 	// The model connection tracker for per-model connection tracking.
 	modelConnectionTracker *ModelConnectionTracker
+	// costTracker caches channel spend for cost-based rate-limit scoring.
+	costTracker *ChannelCostTracker
 	// The model circuit breaker for circuit-breaker load balancing.
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 

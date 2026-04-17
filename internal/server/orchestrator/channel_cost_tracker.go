@@ -28,14 +28,32 @@ func NewChannelCostTracker() *ChannelCostTracker {
 
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {
 	t.mu.RLock()
-	defer t.mu.RUnlock()
-
 	entry, ok := t.cache[channelID]
+	t.mu.RUnlock()
+
 	if !ok {
 		return decimal.Zero, false
 	}
 
-	if time.Since(entry.fetchedAt) > t.ttl {
+	now := time.Now()
+
+	if now.After(entry.windowEnd) {
+		t.mu.Lock()
+		if e, exists := t.cache[channelID]; exists && e.fetchedAt.Equal(entry.fetchedAt) {
+			delete(t.cache, channelID)
+		}
+		t.mu.Unlock()
+
+		return decimal.Zero, false
+	}
+
+	if now.Sub(entry.fetchedAt) > t.ttl {
+		t.mu.Lock()
+		if e, exists := t.cache[channelID]; exists && e.fetchedAt.Equal(entry.fetchedAt) {
+			delete(t.cache, channelID)
+		}
+		t.mu.Unlock()
+
 		return decimal.Zero, false
 	}
 
@@ -58,4 +76,17 @@ func (t *ChannelCostTracker) Invalidate(channelID int) {
 	defer t.mu.Unlock()
 
 	delete(t.cache, channelID)
+}
+
+func (t *ChannelCostTracker) EvictExpired() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	now := time.Now()
+
+	for id, entry := range t.cache {
+		if now.After(entry.windowEnd) || now.Sub(entry.fetchedAt) > t.ttl {
+			delete(t.cache, id)
+		}
+	}
 }

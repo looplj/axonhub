@@ -343,7 +343,7 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 	}, nil
 }
 
-func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window QuotaWindow) (decimal.Decimal, error) {
+func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	q := s.ent.UsageLog.Query().Where(usagelog.ChannelIDEQ(channelID))
 
 	if window.Start != nil {
@@ -366,12 +366,12 @@ func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window
 		)
 	}).Scan(ctx, &rows)
 	if err != nil {
-		return decimal.Zero, err
+		return 0, err
 	}
 
 	if len(rows) == 0 {
-		return decimal.Zero, nil
+		return 0, nil
 	}
 
-	return decimal.NewFromFloat(rows[0].TotalCost), nil
+	return rows[0].TotalCost, nil
 }

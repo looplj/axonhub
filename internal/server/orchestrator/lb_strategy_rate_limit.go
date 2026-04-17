@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -122,12 +124,33 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 		}
 	}
 
-	if rl.Cost != nil && rl.Cost.IsPositive() && s.costTracker != nil {
-		if currentCost, ok := s.costTracker.GetCachedCost(channel.ID); ok {
-			if currentCost.GreaterThanOrEqual(*rl.Cost) {
-				return rateLimitExhaustedScore
-			}
+	if rl.Cost != nil && rl.Cost.IsPositive() {
+		currentCost, costCached := decimal.Zero, false
 
+		if s.costTracker != nil {
+			currentCost, costCached = s.costTracker.GetCachedCost(channel.ID)
+		}
+
+		if !costCached && s.quotaService != nil {
+			costDuration := rl.GetCostDuration()
+			windowStart := time.Now().Truncate(costDuration.Duration())
+			windowEnd := windowStart.Add(costDuration.Duration())
+
+			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
+				currentCost = decimal.NewFromFloat(fetchedCost)
+				costCached = true
+
+				if s.costTracker != nil {
+					s.costTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
+				}
+			}
+		}
+
+		if costCached && currentCost.GreaterThanOrEqual(*rl.Cost) {
+			return rateLimitExhaustedScore
+		}
+
+		if costCached {
 			ratio := currentCost.Div(*rl.Cost).InexactFloat64()
 			if ratio > maxRatio {
 				maxRatio = ratio
@@ -299,8 +322,33 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 		}
 	}
 
-	if rl.Cost != nil && rl.Cost.IsPositive() && s.costTracker != nil {
-		if currentCost, ok := s.costTracker.GetCachedCost(channel.ID); ok {
+	if rl.Cost != nil && rl.Cost.IsPositive() {
+		currentCost, costCached := decimal.Zero, false
+
+		if s.costTracker != nil {
+			currentCost, costCached = s.costTracker.GetCachedCost(channel.ID)
+		}
+
+		if !costCached && s.quotaService != nil {
+			costDuration := rl.GetCostDuration()
+			windowStart := time.Now().Truncate(costDuration.Duration())
+			windowEnd := windowStart.Add(costDuration.Duration())
+
+			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
+				currentCost = decimal.NewFromFloat(fetchedCost)
+				costCached = true
+
+				if s.costTracker != nil {
+					s.costTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
+				}
+
+				details["cost_fetched_from_db"] = true
+			} else {
+				details["cost_fetch_error"] = err.Error()
+			}
+		}
+
+		if costCached {
 			details["cost_limit"] = rl.Cost.String()
 			details["cost_current"] = currentCost.String()
 			details["cost_duration"] = string(rl.GetCostDuration())
