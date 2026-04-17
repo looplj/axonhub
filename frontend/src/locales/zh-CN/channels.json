@@ -596,5 +596,8 @@
   "channels.dialogs.userAgentPassThrough.label": "User-Agent 穿透",
   "channels.dialogs.userAgentPassThrough.inherit": "继承系统设置",
   "channels.dialogs.userAgentPassThrough.enabled": "已启用",
-  "channels.dialogs.userAgentPassThrough.disabled": "已禁用"
+  "channels.dialogs.userAgentPassThrough.disabled": "已禁用",
+  "channels.dialogs.bodyPassThrough.label": "请求体透传",
+  "channels.dialogs.bodyPassThrough.enabled": "启用请求体透传",
+  "channels.dialogs.bodyPassThrough.warning": "启用后，提示词注入和提示词保护将不会生效。"
 }

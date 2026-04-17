@@ -284,6 +284,56 @@ func TestOverrideHeadersKeepJSONLikeString(t *testing.T) {
 	require.Equal(t, expectedValue, processedRequest.Headers.Get("Extra"))
 }
 
+func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-model-mapping",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "gpt-4o",
+				APIFormat: llm.APIFormatOpenAIChatCompletion,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+					Body:      []byte(`{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
+	}
+
+	processed, err := applyPassThroughBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, 0.4, gjson.GetBytes(processed.Body, "temperature").Float())
+	require.Equal(t, "my-alias", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
+
+	processed.Body[0] = '['
+	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
+}
+
+func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
+	rawBody := []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`)
+
+	merged, err := mergePassThroughBody(rawBody, llm.APIFormatGeminiContents, "gemini-2.5-pro")
+	require.NoError(t, err)
+	require.Equal(t, string(rawBody), string(merged))
+}
+
 // TestOverrideParameters tests that TransformRequest works correctly.
 // Note: Override parameters are now applied via OnRawRequest middleware,
 // so this test only verifies the base transformation without overrides.

@@ -20,7 +20,15 @@ globs: "internal/ent/schema/**/*.go, internal/server/gql/**/*.go, internal/serve
 4. Prefer GraphQL-side filtering inputs instead of moving filtering logic to the frontend.
 5. If a Go field uses a string enum type, prefer a GraphQL `enum` plus `gqlgen.yml` mapping instead of GraphQL `String` with manual conversions.
 6. For object or input fields backed by the same Go struct, prefer schema and `gqlgen.yml` mappings that let gqlgen bind directly before adding manual field resolvers.
-7. **Adding nested object fields**: When adding a nested object field (e.g., `settings.rateLimit`):
+7. When adding, renaming, or removing any GraphQL field, update the full request/response chain in the same task:
+   - update the GraphQL schema in `*.graphql`
+   - update both output `type` and input `input` when applicable
+   - run `make generate`
+   - update all affected frontend GraphQL operations, including mutations that send the field and queries that read it
+   - update list/detail/bulk operations that return the same object shape when the UI depends on that field
+   - verify create/edit forms can both submit and echo the field back correctly
+8. Do not stop after only updating local TypeScript schema, frontend form state, or backend Go structs when the field is delivered through GraphQL.
+9. **Adding nested object fields**: When adding a nested object field (e.g., `settings.rateLimit`):
    - Define both Input type (e.g., `ChannelRateLimitInput`) and Output type (e.g., `ChannelRateLimit`) in the GraphQL schema
    - Add the field to both the Input type (e.g., `ChannelSettingsInput`) and Output type (e.g., `ChannelSettings`)
    - Add type mappings in `gqlgen.yml` for both Input and Output types to map to the same Go struct

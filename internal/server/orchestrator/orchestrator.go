@@ -53,15 +53,15 @@ func NewChatCompletionOrchestrator(
 		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy)
 
 	return &ChatCompletionOrchestrator{
-		Inbound:         inbound,
-		RequestService:  requestService,
-		ChannelService:  channelService,
-		SystemService:   systemService,
-		UsageLogService: usageLogService,
-		QuotaService:    quotaService,
+		Inbound:            inbound,
+		RequestService:     requestService,
+		ChannelService:     channelService,
+		SystemService:      systemService,
+		UsageLogService:    usageLogService,
+		QuotaService:       quotaService,
 		LiveStreamRegistry: liveStreamRegistry,
-		PromptProvider:  promptService,
-		PromptProtecter: promptProtectionRuleService,
+		PromptProvider:     promptService,
+		PromptProtecter:    promptProtectionRuleService,
 		Middlewares: []pipeline.Middleware{
 			cc.StripBillingHeaderCCH(),
 			stream.EnsureUsage(),
@@ -80,18 +80,18 @@ func NewChatCompletionOrchestrator(
 }
 
 type ChatCompletionOrchestrator struct {
-	Inbound         transformer.Inbound
-	RequestService  *biz.RequestService
-	ChannelService  *biz.ChannelService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	QuotaService    *biz.QuotaService
+	Inbound            transformer.Inbound
+	RequestService     *biz.RequestService
+	ChannelService     *biz.ChannelService
+	SystemService      *biz.SystemService
+	UsageLogService    *biz.UsageLogService
+	QuotaService       *biz.QuotaService
 	LiveStreamRegistry *biz.LiveStreamRegistry
-	PromptProvider  PromptProvider
-	PromptProtecter PromptProtecter
-	Middlewares     []pipeline.Middleware
-	PipelineFactory *pipeline.Factory
-	ModelMapper     *ModelMapper
+	PromptProvider     PromptProvider
+	PromptProtecter    PromptProtecter
+	Middlewares        []pipeline.Middleware
+	PipelineFactory    *pipeline.Factory
+	ModelMapper        *ModelMapper
 
 	// The runtime fields.
 
@@ -222,6 +222,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
+		// applyPassThroughBody runs first so that override operations can still modify the pass-through body.
+		applyPassThroughBody(outbound),
 		applyOverrideRequestBody(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial
 		// User-Agent value (either from client pass-through or default "axonhub/1.0").
@@ -237,6 +239,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
+
+		// Forward the events to the live streaming.
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
 
 		// Rate limit tracking middleware for load balancing.
