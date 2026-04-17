@@ -117,13 +117,13 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
         <div className='space-y-1 text-xs'>
           {rateLimitSegments.map((s) => (
             <div key={s.label} className='flex justify-between gap-4'>
-              <span className='text-muted-foreground'>{s.label}:</span>
+              <span className='opacity-70'>{s.label}:</span>
               <span className='font-mono'>{s.isCost ? `${formatCostValue(s.current)}/${formatCostValue(s.limit)}` : `${s.current}/${s.limit}`}</span>
             </div>
           ))}
           {hasConcurrent && (
             <div className='flex justify-between gap-4'>
-              <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.concurrent')}:</span>
+              <span className='opacity-70'>{t('channels.expandedRow.rateLimit.concurrent')}:</span>
               <span className='font-mono'>{status.concurrentCurrent}/{status.concurrentLimit}</span>
             </div>
           )}
@@ -131,7 +131,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
             <div className='border-t pt-1 mt-1'>
               {rateLimitSegments.filter((s) => s.resetAt).map((s) => (
                 <div key={s.label} className='flex justify-between gap-4'>
-                  <span className='text-muted-foreground'>{s.label} {t('channels.expandedRow.rateLimit.resets')}:</span>
+                  <span className='opacity-70'>{s.label} {t('channels.expandedRow.rateLimit.resets')}:</span>
                   <span className='font-mono'>{formatTimeRemaining(s.resetAt)} ({formatResetTime(s.resetAt)})</span>
                 </div>
               ))}
