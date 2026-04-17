@@ -89,10 +89,10 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			// output_config is optional for adaptive thinking (defaults to "high" effort upstream)
 			if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
 				switch anthropicReq.OutputConfig.Effort {
-				case "low", "medium", "high", "max":
+				case "low", "medium", "high", "xhigh", "max":
 					// valid
 				default:
-					return nil, fmt.Errorf("%w: output_config.effort must be one of: low, medium, high, max", transformer.ErrInvalidRequest)
+					return nil, fmt.Errorf("%w: output_config.effort must be one of: low, medium, high, xhigh, max", transformer.ErrInvalidRequest)
 				}
 			}
 		default:

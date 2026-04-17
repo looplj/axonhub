@@ -588,6 +588,25 @@ func TestInboundTransformer_TransformRequest_ThinkingValidation(t *testing.T) {
 		require.Nil(t, got.ReasoningBudget)
 	})
 
+	t.Run("thinking adaptive with xhigh effort is accepted", func(t *testing.T) {
+		req := mkReq(`{
+			"model": "claude-opus-4-7",
+			"max_tokens": 1024,
+			"messages": [{"role": "user", "content": "Hello"}],
+			"thinking": {"type": "adaptive"},
+			"output_config": {"effort": "xhigh"}
+		}`)
+
+		got, err := transformer.TransformRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.NotNil(t, got.TransformerMetadata)
+		require.Equal(t, "adaptive", got.TransformerMetadata[TransformerMetadataKeyThinkingType])
+		require.Equal(t, "xhigh", got.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
+		require.Equal(t, "xhigh", got.ReasoningEffort)
+		require.Nil(t, got.ReasoningBudget)
+	})
+
 	t.Run("invalid thinking.type is rejected", func(t *testing.T) {
 		req := mkReq(`{
 			"model": "claude-sonnet-4-5-20250929",
