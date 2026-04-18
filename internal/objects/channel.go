@@ -379,10 +379,10 @@ func ComputeWindowStart(now time.Time, d time.Duration, anchor *time.Time) time.
 		return now.Truncate(d)
 	}
 	elapsed := now.Sub(*anchor)
-	if elapsed < 0 {
-		return now.Truncate(d)
-	}
 	steps := elapsed / d
+	if elapsed < 0 && elapsed%d != 0 {
+		steps--
+	}
 	return anchor.Add(steps * d)
 }
 

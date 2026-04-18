@@ -121,26 +121,6 @@ export function getTzTimeValue(iso: string | null | undefined, timezone: string)
   }
 }
 
-export function fromBrowserLocalTime(browserLocalTime: string, datePartInTz: string, timezone: string): string | null {
-  if (!browserLocalTime) return null;
-  try {
-    const [year, month, day] = datePartInTz.split('-').map(Number);
-    const [hour, minute] = browserLocalTime.split(':').map(Number);
-    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
-
-    const browserLocalDate = new Date(year, month - 1, day, hour, minute, 0);
-    const configuredWallClock = getTzParts(browserLocalDate, timezone, false);
-    if (!configuredWallClock) return null;
-
-    return tzDatetimeToUtc(
-      `${configuredWallClock.year}-${configuredWallClock.month}-${configuredWallClock.day}T${configuredWallClock.hour}:${configuredWallClock.minute}`,
-      timezone,
-    );
-  } catch {
-    return null;
-  }
-}
-
 export function getTzDateParts(timezone: string): { year: number; month: number; day: number } {
   const now = new Date();
   const p = getTzParts(now, timezone, false);

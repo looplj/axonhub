@@ -435,6 +435,13 @@ func TestComputeWindowStart_FutureAnchor(t *testing.T) {
 	assert.Equal(t, time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), result)
 }
 
+func TestComputeWindowStart_FutureAnchor_FiveHourWindow(t *testing.T) {
+	now := time.Date(2024, 1, 15, 1, 48, 0, 0, time.UTC)
+	futureAnchor := time.Date(2024, 1, 15, 11, 0, 0, 0, time.UTC)
+	result := ComputeWindowStart(now, 5*time.Hour, &futureAnchor)
+	assert.Equal(t, time.Date(2024, 1, 15, 1, 0, 0, 0, time.UTC), result)
+}
+
 func TestComputeWindowStart_PastAnchor_ExactStep(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)

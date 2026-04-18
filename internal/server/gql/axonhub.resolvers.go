@@ -48,9 +48,6 @@ func validateWindowAnchor(anchor *time.Time, fieldName string) error {
 	if anchor.IsZero() {
 		return fmt.Errorf("%s must not be a zero time", fieldName)
 	}
-	if anchor.After(time.Now()) {
-		return fmt.Errorf("%s must not be in the future", fieldName)
-	}
 	return nil
 }
 

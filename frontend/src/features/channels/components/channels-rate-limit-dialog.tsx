@@ -18,7 +18,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
-import { utcToTzDatetime, tzDatetimeToUtc, getTzTimeValue, fromBrowserLocalTime, getTzDateParts } from '../utils/timezone';
+import { utcToTzDatetime, tzDatetimeToUtc, getTzTimeValue, getTzDateParts } from '../utils/timezone';
 
 interface Props {
   open: boolean;
@@ -134,15 +134,10 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
                       field.onChange(null);
                       return;
                     }
-                    let datePart: string;
-                    if (anchorValue) {
-                      const tzDatetime = utcToTzDatetime(anchorValue, timezone);
-                      datePart = tzDatetime.split('T')[0];
-                    } else {
-                      const { year, month, day } = getTzDateParts(timezone);
-                      datePart = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    }
-                    field.onChange(fromBrowserLocalTime(val, datePart, timezone));
+                    const { year, month, day } = getTzDateParts(timezone);
+                    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const tzDatetime = `${dateStr}T${val}`;
+                    field.onChange(tzDatetimeToUtc(tzDatetime, timezone));
                   }}
                 />
               </FormControl>
