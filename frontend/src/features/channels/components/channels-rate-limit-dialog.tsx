@@ -110,6 +110,7 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
 
         if (isHourBased) {
           const tzTimeValue = getTzTimeValue(anchorValue, timezone);
+          if (anchorValue) console.log('[rate-limit-anchor] display: anchorValue:', anchorValue, 'timezone:', timezone, '-> display:', tzTimeValue);
 
           return (
             <FormItem className='w-[220px]'>
@@ -142,7 +143,9 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
                       const { year, month, day } = getTzDateParts(timezone);
                       datePart = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     }
-                    field.onChange(tzDatetimeToUtc(`${datePart}T${val}`, timezone));
+                    const result = tzDatetimeToUtc(`${datePart}T${val}`, timezone);
+                    console.log('[rate-limit-anchor] input:', `${datePart}T${val}`, 'timezone:', timezone, '-> UTC:', result);
+                    field.onChange(result);
                   }}
                 />
               </FormControl>

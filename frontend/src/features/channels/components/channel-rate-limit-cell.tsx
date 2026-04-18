@@ -137,6 +137,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
                   <span className='font-mono'>{formatTimeRemaining(s.resetAt)} ({formatInTz(s.resetAt!, timezone, 'HH:mm:ss')})</span>
                 </div>
               ))}
+              {console.log('[rate-limit-cell] resetAt values:', rateLimitSegments.map(s => ({ type: s.shortLabel, resetAt: s.resetAt, formatted: formatInTz(s.resetAt!, timezone, 'HH:mm:ss') })), 'timezone:', timezone)}
             </div>
           )}
           {status.isCoolingDown && status.cooldownUntil && (
