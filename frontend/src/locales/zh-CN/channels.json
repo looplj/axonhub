@@ -565,7 +565,6 @@
   "channels.expandedRow.rateLimit.resetsIn": "剩余时间",
   "channels.expandedRow.rateLimit.resetsAt": "重置于",
   "channels.expandedRow.rateLimit.window": "窗口",
-  "channels.expandedRow.rateLimit.windowAligned": "窗口从锚点时间对齐。未设置锚点时，使用时钟边界（如5小时窗口在 :00, :05, :10... UTC 重置）",
   "channels.expandedRow.rateLimit.anchor": "锚点",
   "channels.templates.section.description": "加载已保存的覆盖配置或将当前设置保存为模板以供重复使用",
   "channels.templates.selectTemplate": "选择模板...",

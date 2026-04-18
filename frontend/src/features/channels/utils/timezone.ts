@@ -52,7 +52,7 @@ function getTzParts(date: Date, timezone: string, withSeconds = false): TzDateTi
   }
 }
 
-export function formatInTz(iso: string | null | undefined, timezone: string, formatStr: 'yyyy-MM-dd HH:mm' | 'HH:mm:ss' | 'yyyy-MM-dd HH:mm:ss'): string {
+export function formatInTz(iso: string | null | undefined, timezone: string, formatStr: 'yyyy-MM-dd HH:mm' | 'HH:mm:ss' | 'yyyy-MM-dd HH:mm:ss' | 'yyyy-MM-dd HH'): string {
   if (!iso) return '';
   try {
     const d = parseUtcIso(iso);
@@ -61,6 +61,8 @@ export function formatInTz(iso: string | null | undefined, timezone: string, for
     if (!p) return '';
 
     switch (formatStr) {
+      case 'yyyy-MM-dd HH':
+        return `${p.year}-${p.month}-${p.day} ${p.hour}`;
       case 'yyyy-MM-dd HH:mm':
         return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
       case 'HH:mm:ss':
