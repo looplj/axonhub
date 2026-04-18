@@ -488,29 +488,40 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	// Sort priorities: lower value = higher priority
 	slices.Sort(priorities)
 
-	// For each priority group, apply load balancing to sort candidates within the group
-	// Stop early if we have collected enough candidates
-	var result []*ChannelModelsCandidate
+	useStream := req.Stream != nil && *req.Stream
+	strategyCtx := contextWithRequestedModel(ctx, req.Model)
+	strategyCtx = contextWithRequestStream(strategyCtx, useStream)
+
+	result := make([]*ChannelModelsCandidate, 0, min(requiredCount, len(candidates)))
+	exhaustedFallbacks := make([]*ChannelModelsCandidate, 0)
 
 	for _, p := range priorities {
 		group := priorityGroups[p]
-
-		// Apply load balancing to sort candidates within this priority group.
-		useStream := req.Stream != nil && *req.Stream
 		sortedCandidates := s.loadBalancer.Sort(ctx, group, req.Model, useStream)
+		usable, exhausted := splitHardExhaustedCandidates(strategyCtx, sortedCandidates, s.loadBalancer)
 
-		// Add candidates, but stop if we have enough
 		remaining := requiredCount - len(result)
 		if remaining <= 0 {
 			break
 		}
 
-		if len(sortedCandidates) <= remaining {
-			result = append(result, sortedCandidates...)
-		} else {
-			result = append(result, sortedCandidates[:remaining]...)
+		if len(usable) > remaining {
+			usable = usable[:remaining]
+		}
+		result = append(result, usable...)
+		exhaustedFallbacks = append(exhaustedFallbacks, exhausted...)
+
+		if len(result) >= requiredCount {
 			break
 		}
+	}
+
+	if len(result) < requiredCount {
+		remaining := requiredCount - len(result)
+		if len(exhaustedFallbacks) > remaining {
+			exhaustedFallbacks = exhaustedFallbacks[:remaining]
+		}
+		result = append(result, exhaustedFallbacks...)
 	}
 
 	if log.DebugEnabled(ctx) {
@@ -522,6 +533,45 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	return result, nil
+}
+
+func splitHardExhaustedCandidates(
+	ctx context.Context,
+	candidates []*ChannelModelsCandidate,
+	lb *LoadBalancer,
+) (usable []*ChannelModelsCandidate, exhausted []*ChannelModelsCandidate) {
+	usable = make([]*ChannelModelsCandidate, 0, len(candidates))
+	exhausted = make([]*ChannelModelsCandidate, 0)
+
+	for _, candidate := range candidates {
+		if isHardExhaustedCandidate(ctx, candidate, lb) {
+			exhausted = append(exhausted, candidate)
+			continue
+		}
+
+		usable = append(usable, candidate)
+	}
+
+	return usable, exhausted
+}
+
+func isHardExhaustedCandidate(ctx context.Context, candidate *ChannelModelsCandidate, lb *LoadBalancer) bool {
+	if candidate == nil || candidate.Channel == nil || lb == nil {
+		return false
+	}
+
+	for _, strategy := range lb.strategies {
+		rateLimitStrategy, ok := strategy.(*RateLimitAwareStrategy)
+		if !ok {
+			continue
+		}
+
+		if rateLimitStrategy.Score(ctx, candidate.Channel) == rateLimitExhaustedScore {
+			return true
+		}
+	}
+
+	return false
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.

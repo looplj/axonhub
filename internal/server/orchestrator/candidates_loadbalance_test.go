@@ -562,3 +562,59 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 	require.Len(t, result, 1)
 	require.Equal(t, ch.ID, result[0].Channel.ID)
 }
+
+func TestLoadBalancedSelector_Select_PriorityGroupExhaustionBackfill(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	chHighPriority, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Priority 0 Exhausted Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-high"}).
+		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
+		SetDefaultTestModel("gpt-4").
+		SetOrderingWeight(0).
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	chLowPriority, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Priority 1 Available Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key-low"}).
+		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
+		SetDefaultTestModel("gpt-4").
+		SetOrderingWeight(100).
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	connectionTracker := NewDefaultConnectionTracker(1)
+	tracker := NewChannelRequestTracker()
+	connectionTracker.IncrementConnection(chHighPriority.ID)
+
+	rateLimitStrategy := NewRateLimitAwareStrategy(tracker, connectionTracker, nil, nil, nil)
+	systemService := newTestSystemService(client)
+	loadBalancer := NewLoadBalancer(systemService, nil, rateLimitStrategy)
+
+	baseSelector := &mockSelector{candidates: []*ChannelModelsCandidate{
+		{
+			Channel:  &biz.Channel{Channel: chHighPriority},
+			Priority: 0,
+			Models:   []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+		},
+		{
+			Channel:  &biz.Channel{Channel: chLowPriority},
+			Priority: 1,
+			Models:   []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+		},
+	}}
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
+
+	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4"})
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+	require.Equal(t, chLowPriority.ID, result[0].Channel.ID)
+	require.Equal(t, chHighPriority.ID, result[1].Channel.ID)
+}
