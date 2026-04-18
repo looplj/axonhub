@@ -498,31 +498,3 @@ func TestComputeWindowStart_MonthlyWindow(t *testing.T) {
 	result := ComputeWindowStart(now, 30*24*time.Hour, &anchor)
 	assert.Equal(t, time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), result)
 }
-
-func TestComputeWindowStart_FiveHourWindow_AnchorFromPreviousDay(t *testing.T) {
-	anchor := time.Date(2024, 1, 14, 5, 0, 0, 0, time.UTC)
-	now := time.Date(2024, 1, 15, 7, 30, 0, 0, time.UTC)
-	result := ComputeWindowStart(now, 5*time.Hour, &anchor)
-	assert.Equal(t, time.Date(2024, 1, 15, 5, 0, 0, 0, time.UTC), result)
-}
-
-func TestComputeWindowStart_OneHourWindow_AnchorFromPreviousDay(t *testing.T) {
-	anchor := time.Date(2024, 1, 14, 5, 0, 0, 0, time.UTC)
-	now := time.Date(2024, 1, 15, 7, 30, 0, 0, time.UTC)
-	result := ComputeWindowStart(now, time.Hour, &anchor)
-	assert.Equal(t, time.Date(2024, 1, 15, 7, 0, 0, 0, time.UTC), result)
-}
-
-func TestComputeWindowStart_FiveHourWindow_AnchorFromPreviousWeek(t *testing.T) {
-	anchor := time.Date(2024, 1, 8, 5, 0, 0, 0, time.UTC)
-	now := time.Date(2024, 1, 15, 7, 30, 0, 0, time.UTC)
-	result := ComputeWindowStart(now, 5*time.Hour, &anchor)
-	assert.Equal(t, time.Date(2024, 1, 15, 5, 0, 0, 0, time.UTC), result)
-}
-
-func TestComputeWindowStart_FiveHourWindow_BeforeTodaysFirstWindow(t *testing.T) {
-	anchor := time.Date(2024, 1, 14, 22, 0, 0, 0, time.UTC)
-	now := time.Date(2024, 1, 15, 1, 30, 0, 0, time.UTC)
-	result := ComputeWindowStart(now, 5*time.Hour, &anchor)
-	assert.Equal(t, time.Date(2024, 1, 14, 22, 0, 0, 0, time.UTC), result)
-}

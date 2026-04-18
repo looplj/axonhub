@@ -378,37 +378,12 @@ func ComputeWindowStart(now time.Time, d time.Duration, anchor *time.Time) time.
 	if anchor == nil || anchor.IsZero() || d <= 0 {
 		return now.Truncate(d)
 	}
-
-	if d < 24*time.Hour {
-		return recentSubDayWindowStart(now, d, anchor)
-	}
-
-	return recentMultiDayWindowStart(now, d, anchor)
-}
-
-func recentSubDayWindowStart(now time.Time, d time.Duration, anchor *time.Time) time.Time {
-	wallClockOffsetFromMidnight := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), anchor.Hour(), anchor.Minute(), anchor.Second(), 0, time.UTC).
-		Sub(time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, time.UTC))
-
-	todayMidnightUTC := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	todayAnchor := todayMidnightUTC.Add(wallClockOffsetFromMidnight)
-
-	if now.Before(todayAnchor) {
-		todayAnchor = todayAnchor.Add(-24 * time.Hour)
-	}
-
-	elapsedSinceReanchored := now.Sub(todayAnchor)
-	wholeStepsCompleted := elapsedSinceReanchored / d
-	return todayAnchor.Add(wholeStepsCompleted * d)
-}
-
-func recentMultiDayWindowStart(now time.Time, d time.Duration, anchor *time.Time) time.Time {
-	elapsedSinceAnchor := now.Sub(*anchor)
-	if elapsedSinceAnchor < 0 {
+	elapsed := now.Sub(*anchor)
+	if elapsed < 0 {
 		return now.Truncate(d)
 	}
-	wholeStepsElapsed := elapsedSinceAnchor / d
-	return anchor.Add(wholeStepsElapsed * d)
+	steps := elapsed / d
+	return anchor.Add(steps * d)
 }
 
 // graphqlEnumToGo maps GraphQL enum names to Go string constants.
