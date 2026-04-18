@@ -144,12 +144,12 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 					log.Int("limit", rpmLimit),
 				)
 			}
-		}
 
-		status.RpmCurrent = &rpmCurrentInt
-		status.RpmLimit = &rpmLimit
-		status.RpmResetAt = &rpmWindowEnd
-		status.RpmWindowAnchor = copyTimePtr(rl.RPMWindowAnchor)
+			status.RpmCurrent = &rpmCurrentInt
+			status.RpmLimit = &rpmLimit
+			status.RpmResetAt = &rpmWindowEnd
+			status.RpmWindowAnchor = copyTimePtr(rl.RPMWindowAnchor)
+		}
 	}
 
 	if rl.TPM != nil && *rl.TPM > 0 {
@@ -179,12 +179,12 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 					log.Int("limit", tpmLimit),
 				)
 			}
-		}
 
-		status.TpmCurrent = &tpmCurrentInt
-		status.TpmLimit = &tpmLimit
-		status.TpmResetAt = &tpmWindowEnd
-		status.TpmWindowAnchor = copyTimePtr(rl.TPMWindowAnchor)
+			status.TpmCurrent = &tpmCurrentInt
+			status.TpmLimit = &tpmLimit
+			status.TpmResetAt = &tpmWindowEnd
+			status.TpmWindowAnchor = copyTimePtr(rl.TPMWindowAnchor)
+		}
 	}
 
 	if rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 {

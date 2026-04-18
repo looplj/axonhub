@@ -203,7 +203,11 @@ func (t *ChannelRequestTracker) SeedRequestCountForDuration(channelID int, count
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	w.requestSeed = count
+	seed := count - w.requests
+	if seed < 0 {
+		seed = 0
+	}
+	w.requestSeed = seed
 }
 
 func (t *ChannelRequestTracker) SeedTokenCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time) {
@@ -215,7 +219,11 @@ func (t *ChannelRequestTracker) SeedTokenCountForDuration(channelID int, count i
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	w.tokenSeed = count
+	seed := count - w.tokens
+	if seed < 0 {
+		seed = 0
+	}
+	w.tokenSeed = seed
 }
 
 func (t *ChannelRequestTracker) SetCooldown(channelID int, until time.Time) {

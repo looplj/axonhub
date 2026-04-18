@@ -96,13 +96,13 @@ export function tzDatetimeToUtc(localValue: string, timezone: string): string | 
     const hour = timeSegments[0];
     const minute = timeSegments[1] || 0;
     const second = timeSegments[2] || 0;
-    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
+    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute) || isNaN(second)) return null;
 
-    const tzOffsetMs = getTimezoneOffsetMs(
-      timezone,
-      new Date(Date.UTC(year, month - 1, day, hour, minute, second)),
-    );
-    const utcMs = Date.UTC(year, month - 1, day, hour, minute, second) - tzOffsetMs;
+    const seedMs = Date.UTC(year, month - 1, day, hour, minute, second);
+    let utcMs = seedMs - getTimezoneOffsetMs(timezone, new Date(seedMs));
+    for (let i = 0; i < 2; i++) {
+      utcMs = seedMs - getTimezoneOffsetMs(timezone, new Date(utcMs));
+    }
     return new Date(utcMs).toISOString();
   } catch {
     return null;
@@ -131,11 +131,26 @@ export function getTzDateParts(timezone: string): { year: number; month: number;
 }
 
 function getTimezoneOffsetMs(timezone: string, referenceDate: Date): number {
-  const utcStr = referenceDate.toLocaleString('en-US', { timeZone: 'UTC' });
-  const tzStr = referenceDate.toLocaleString('en-US', { timeZone: timezone });
-  const tzDate = new Date(tzStr);
-  const utcDate = new Date(utcStr);
-  return tzDate.getTime() - utcDate.getTime();
+  try {
+    const tzParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).formatToParts(referenceDate);
+    const utcParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'UTC',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).formatToParts(referenceDate);
+    const get = (parts: Intl.DateTimeFormatPart[], type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0', 10);
+    const tzMs = Date.UTC(get(tzParts, 'year'), get(tzParts, 'month') - 1, get(tzParts, 'day'), get(tzParts, 'hour'), get(tzParts, 'minute'), get(tzParts, 'second'));
+    const utcMs = Date.UTC(get(utcParts, 'year'), get(utcParts, 'month') - 1, get(utcParts, 'day'), get(utcParts, 'hour'), get(utcParts, 'minute'), get(utcParts, 'second'));
+    return tzMs - utcMs;
+  } catch {
+    return 0;
+  }
 }
 
 export function getTimezoneAbbrev(timezone: string): string {

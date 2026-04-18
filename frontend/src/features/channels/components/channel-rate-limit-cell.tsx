@@ -141,7 +141,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
           )}
           {status.isCoolingDown && status.cooldownUntil && (
             <div className='text-destructive font-semibold'>
-              {t('channels.expandedRow.rateLimit.cooldown')}: {formatTimeRemaining(status.cooldownUntil)}
+              {t('channels.expandedRow.rateLimit.cooldown')}: {formatTimeRemaining(status.cooldownUntil) ?? '<1m'}
             </div>
           )}
         </div>

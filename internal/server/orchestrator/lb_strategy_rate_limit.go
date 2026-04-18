@@ -52,7 +52,7 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 
 	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
 	windowEnd := windowStart.Add(rpmDuration)
-	dbCount, err := s.quotaService.GetChannelRequestCount(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+	dbCount, err := s.quotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 	if err != nil || dbCount <= 0 {
 		return rpm
 	}
@@ -72,7 +72,7 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 
 	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
 	windowEnd := windowStart.Add(tpmDuration)
-	dbCount, err := s.quotaService.GetChannelTokenCount(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+	dbCount, err := s.quotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 	if err != nil || dbCount <= 0 {
 		return tpm
 	}

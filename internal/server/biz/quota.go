@@ -383,76 +383,100 @@ func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window
 
 func (s *QuotaService) GetChannelRequestCount(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-request-count", func(bypassCtx context.Context) (int64, error) {
-		q := s.ent.UsageLog.Query().Where(
-			usagelog.ChannelIDEQ(channelID),
-			usagelog.SourceEQ(usagelog.SourceAPI),
-		)
-
-		if window.Start != nil {
-			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
-		}
-
-		if window.End != nil {
-			q = q.Where(usagelog.CreatedAtLT(*window.End))
-		}
-
-		type row struct {
-			Count int64 `json:"count"`
-		}
-
-		var rows []row
-
-		err := q.Modify(func(sel *sql.Selector) {
-			sel.Select(
-				sql.As(fmt.Sprintf("COALESCE(COUNT(%s), 0)", sel.C(usagelog.FieldID)), "count"),
-			)
-		}).Scan(bypassCtx, &rows)
-		if err != nil {
-			return 0, err
-		}
-
-		if len(rows) == 0 {
-			return 0, nil
-		}
-
-		return rows[0].Count, nil
+		return s.channelRequestCount(bypassCtx, channelID, window, usagelog.SourceAPI)
 	})
+}
+
+func (s *QuotaService) GetChannelRequestCountAllSources(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
+	return authz.RunWithSystemBypass(ctx, "channel-request-count-all", func(bypassCtx context.Context) (int64, error) {
+		return s.channelRequestCount(bypassCtx, channelID, window, "")
+	})
+}
+
+func (s *QuotaService) channelRequestCount(ctx context.Context, channelID int, window QuotaWindow, source usagelog.Source) (int64, error) {
+	q := s.ent.UsageLog.Query().Where(
+		usagelog.ChannelIDEQ(channelID),
+	)
+	if source != "" {
+		q = q.Where(usagelog.SourceEQ(source))
+	}
+
+	if window.Start != nil {
+		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+	}
+
+	if window.End != nil {
+		q = q.Where(usagelog.CreatedAtLT(*window.End))
+	}
+
+	type row struct {
+		Count int64 `json:"count"`
+	}
+
+	var rows []row
+
+	err := q.Modify(func(sel *sql.Selector) {
+		sel.Select(
+			sql.As(fmt.Sprintf("COALESCE(COUNT(%s), 0)", sel.C(usagelog.FieldID)), "count"),
+		)
+	}).Scan(ctx, &rows)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(rows) == 0 {
+		return 0, nil
+	}
+
+	return rows[0].Count, nil
 }
 
 func (s *QuotaService) GetChannelTokenCount(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-token-count", func(bypassCtx context.Context) (int64, error) {
-		q := s.ent.UsageLog.Query().Where(
-			usagelog.ChannelIDEQ(channelID),
-			usagelog.SourceEQ(usagelog.SourceAPI),
-		)
-
-		if window.Start != nil {
-			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
-		}
-
-		if window.End != nil {
-			q = q.Where(usagelog.CreatedAtLT(*window.End))
-		}
-
-		type row struct {
-			TotalTokens int64 `json:"total_tokens"`
-		}
-
-		var rows []row
-
-		err := q.Modify(func(sel *sql.Selector) {
-			sel.Select(
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalTokens)), "total_tokens"),
-			)
-		}).Scan(bypassCtx, &rows)
-		if err != nil {
-			return 0, err
-		}
-
-		if len(rows) == 0 {
-			return 0, nil
-		}
-
-		return rows[0].TotalTokens, nil
+		return s.channelTokenCount(bypassCtx, channelID, window, usagelog.SourceAPI)
 	})
+}
+
+func (s *QuotaService) GetChannelTokenCountAllSources(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
+	return authz.RunWithSystemBypass(ctx, "channel-token-count-all", func(bypassCtx context.Context) (int64, error) {
+		return s.channelTokenCount(bypassCtx, channelID, window, "")
+	})
+}
+
+func (s *QuotaService) channelTokenCount(ctx context.Context, channelID int, window QuotaWindow, source usagelog.Source) (int64, error) {
+	q := s.ent.UsageLog.Query().Where(
+		usagelog.ChannelIDEQ(channelID),
+	)
+	if source != "" {
+		q = q.Where(usagelog.SourceEQ(source))
+	}
+
+	if window.Start != nil {
+		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+	}
+
+	if window.End != nil {
+		q = q.Where(usagelog.CreatedAtLT(*window.End))
+	}
+
+	type row struct {
+		TotalTokens int64 `json:"total_tokens"`
+	}
+
+	var rows []row
+
+	err := q.Modify(func(sel *sql.Selector) {
+		sel.Select(
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalTokens)), "total_tokens"),
+		)
+	}).Scan(ctx, &rows)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(rows) == 0 {
+		return 0, nil
+	}
+
+	return rows[0].TotalTokens, nil
 }
