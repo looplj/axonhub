@@ -618,6 +618,9 @@ const QUERY_CHANNELS_QUERY = `
               rpmDuration
               tpmDuration
               costDuration
+              rpmWindowAnchor
+              tpmWindowAnchor
+              costWindowAnchor
               modelConcurrent {
                 model
                 limit
@@ -628,12 +631,15 @@ const QUERY_CHANNELS_QUERY = `
             rpmCurrent
             rpmLimit
             rpmResetAt
+            rpmWindowAnchor
             tpmCurrent
             tpmLimit
             tpmResetAt
+            tpmWindowAnchor
             costCurrent
             costLimit
             costResetAt
+            costWindowAnchor
             concurrentCurrent
             concurrentLimit
             isCoolingDown

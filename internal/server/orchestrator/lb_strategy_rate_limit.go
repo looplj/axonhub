@@ -40,6 +40,47 @@ func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker
 	}
 }
 
+// resolveRPM returns the current RPM count, falling back to DB when the in-memory counter returns 0
+// (e.g. after process restart or window rotation). When a DB fallback occurs, the in-memory counter
+// is seeded so subsequent requests use the fast path.
+func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
+	rpmDuration := rl.GetRPMDuration().Duration()
+	rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
+	if rpm > 0 || s.quotaService == nil {
+		return rpm
+	}
+
+	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
+	windowEnd := windowStart.Add(rpmDuration)
+	dbCount, err := s.quotaService.GetChannelRequestCount(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+	if err != nil || dbCount <= 0 {
+		return rpm
+	}
+
+	s.requestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
+	return dbCount
+}
+
+// resolveTPM returns the current TPM count, falling back to DB when the in-memory counter returns 0.
+// Same seeding logic as resolveRPM.
+func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
+	tpmDuration := rl.GetTPMDuration().Duration()
+	tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
+	if tpm > 0 || s.quotaService == nil {
+		return tpm
+	}
+
+	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
+	windowEnd := windowStart.Add(tpmDuration)
+	dbCount, err := s.quotaService.GetChannelTokenCount(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+	if err != nil || dbCount <= 0 {
+		return tpm
+	}
+
+	s.requestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
+	return dbCount
+}
+
 // Name returns the strategy name.
 func (s *RateLimitAwareStrategy) Name() string {
 	return "RateLimitAware"
@@ -105,7 +146,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	// Check RPM (Requests Per Minute)
 	if rl.RPM != nil && *rl.RPM > 0 {
-		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rl.GetRPMDuration().Duration(), rl.RPMWindowAnchor)
+		rpm := s.resolveRPM(ctx, channel, rl)
 		if rpm >= *rl.RPM {
 			return rateLimitExhaustedScore
 		}
@@ -118,7 +159,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	// Check TPM (Tokens Per Minute)
 	if rl.TPM != nil && *rl.TPM > 0 {
-		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, rl.GetTPMDuration().Duration(), rl.TPMWindowAnchor)
+		tpm := s.resolveTPM(ctx, channel, rl)
 		if tpm >= *rl.TPM {
 			return rateLimitExhaustedScore
 		}
@@ -299,8 +340,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 
 	// Check RPM
 	if rl.RPM != nil && *rl.RPM > 0 {
-		rpmDuration := rl.GetRPMDuration().Duration()
-		rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
+		rpm := s.resolveRPM(ctx, channel, rl)
 		details["rpm_limit"] = *rl.RPM
 		details["rpm_current"] = rpm
 		details["rpm_duration"] = string(rl.GetRPMDuration())
@@ -318,8 +358,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 
 	// Check TPM
 	if rl.TPM != nil && *rl.TPM > 0 {
-		tpmDuration := rl.GetTPMDuration().Duration()
-		tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
+		tpm := s.resolveTPM(ctx, channel, rl)
 		details["tpm_limit"] = *rl.TPM
 		details["tpm_current"] = tpm
 		details["tpm_duration"] = string(rl.GetTPMDuration())

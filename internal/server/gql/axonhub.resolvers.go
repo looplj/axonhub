@@ -119,29 +119,71 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 	if rl.RPM != nil && *rl.RPM > 0 {
 		rpmDuration := rl.GetRPMDuration().Duration()
-		rpmCurrent := r.rateLimitTracker.GetRequestCountForDuration(channelID, rpmDuration, rl.RPMWindowAnchor)
 		rpmLimit := int(*rl.RPM)
-		rpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, rpmDuration, rl.RPMWindowAnchor)
-		rpmCurrentInt := int(rpmCurrent)
+		rpmWindowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
+		rpmWindowEnd := rpmWindowStart.Add(rpmDuration)
+
+		var rpmCurrentInt int
+		if r.quotaService != nil {
+			rpmCount, err := r.quotaService.GetChannelRequestCount(ctx, channelID, biz.QuotaWindow{Start: &rpmWindowStart, End: &rpmWindowEnd})
+			if err != nil {
+				log.Warn(ctx, "failed to query channel request count for rate limit status",
+					log.Int("channel_id", channelID),
+					log.Cause(err),
+				)
+			} else {
+				rpmCurrentInt = int(rpmCount)
+			}
+			if log.DebugEnabled(ctx) {
+				log.Debug(ctx, "channel rpm status queried",
+					log.Int("channel_id", channelID),
+					log.Duration("window_duration", rpmDuration),
+					log.Time("window_start", rpmWindowStart),
+					log.Time("window_end", rpmWindowEnd),
+					log.Int("current", rpmCurrentInt),
+					log.Int("limit", rpmLimit),
+				)
+			}
+		}
+
 		status.RpmCurrent = &rpmCurrentInt
 		status.RpmLimit = &rpmLimit
-		if !rpmResetAt.IsZero() {
-			status.RpmResetAt = &rpmResetAt
-		}
+		status.RpmResetAt = &rpmWindowEnd
 		status.RpmWindowAnchor = copyTimePtr(rl.RPMWindowAnchor)
 	}
 
 	if rl.TPM != nil && *rl.TPM > 0 {
 		tpmDuration := rl.GetTPMDuration().Duration()
-		tpmCurrent := r.rateLimitTracker.GetTokenCountForDuration(channelID, tpmDuration, rl.TPMWindowAnchor)
 		tpmLimit := int(*rl.TPM)
-		tpmResetAt := r.rateLimitTracker.GetWindowResetTimeForDuration(channelID, tpmDuration, rl.TPMWindowAnchor)
-		tpmCurrentInt := int(tpmCurrent)
+		tpmWindowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
+		tpmWindowEnd := tpmWindowStart.Add(tpmDuration)
+
+		var tpmCurrentInt int
+		if r.quotaService != nil {
+			tpmCount, err := r.quotaService.GetChannelTokenCount(ctx, channelID, biz.QuotaWindow{Start: &tpmWindowStart, End: &tpmWindowEnd})
+			if err != nil {
+				log.Warn(ctx, "failed to query channel token count for rate limit status",
+					log.Int("channel_id", channelID),
+					log.Cause(err),
+				)
+			} else {
+				tpmCurrentInt = int(tpmCount)
+			}
+			if log.DebugEnabled(ctx) {
+				log.Debug(ctx, "channel tpm status queried",
+					log.Int("channel_id", channelID),
+					log.Duration("window_duration", tpmDuration),
+					log.Time("window_start", tpmWindowStart),
+					log.Time("window_end", tpmWindowEnd),
+					log.Int("current", tpmCurrentInt),
+					log.Int("limit", tpmLimit),
+				)
+			}
+		}
+
 		status.TpmCurrent = &tpmCurrentInt
 		status.TpmLimit = &tpmLimit
-		if !tpmResetAt.IsZero() {
-			status.TpmResetAt = &tpmResetAt
-		}
+		status.TpmResetAt = &tpmWindowEnd
 		status.TpmWindowAnchor = copyTimePtr(rl.TPMWindowAnchor)
 	}
 

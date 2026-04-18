@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Plus, X, Info } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +14,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useGeneralSettings } from '@/features/system/data/system';
 import { useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
+import { utcToTzDatetime, tzDatetimeToUtc, getTzTimeValue, getTzDateParts } from '../utils/timezone';
 
 interface Props {
   open: boolean;
@@ -36,38 +37,18 @@ const DURATION_I18N_KEYS: Record<RateLimitDuration, string> = {
   ONE_MONTH: 'channels.dialogs.rateLimit.durations.1mo',
 };
 
-function utcToLocalDatetime(utcIso: string | null | undefined): string {
-  if (!utcIso) return '';
-  try {
-    // Ensure the string is treated as UTC: append 'Z' if no timezone info is present
-    let normalized = utcIso;
-    if (!normalized.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(normalized)) {
-      normalized = normalized + 'Z';
-    }
-    const d = parseISO(normalized);
-    return format(d, "yyyy-MM-dd'T'HH:mm");
-  } catch {
-    return '';
-  }
-}
 
-function localDatetimeToUtc(localValue: string): string | null {
-  if (!localValue) return null;
-  const d = new Date(localValue);
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
 
 const rateLimitFormSchema = z.object({
   rpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   rpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-  rpmWindowAnchor: z.string().datetime({ message: 'Invalid ISO datetime format' }).optional().nullable(),
+  rpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
   tpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   tpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-  tpmWindowAnchor: z.string().datetime({ message: 'Invalid ISO datetime format' }).optional().nullable(),
+  tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
   cost: z.union([z.number().positive(), z.literal('')]).optional().nullable(),
   costDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-  costWindowAnchor: z.string().datetime({ message: 'Invalid ISO datetime format' }).optional().nullable(),
+  costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
   maxConcurrent: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   modelConcurrent: z.array(z.object({
     model: z.string(),
@@ -110,7 +91,7 @@ function isHourBasedDuration(d: RateLimitDuration | null | undefined): boolean {
   return !!d && HOUR_DURATIONS.includes(d);
 }
 
-function WindowAnchorField({ control, name, duration }: { control: ReturnType<typeof useForm<RateLimitFormValues>>['control']; name: 'rpmWindowAnchor' | 'tpmWindowAnchor' | 'costWindowAnchor'; duration: RateLimitDuration | null | undefined }) {
+function WindowAnchorField({ control, name, duration, timezone }: { control: ReturnType<typeof useForm<RateLimitFormValues>>['control']; name: 'rpmWindowAnchor' | 'tpmWindowAnchor' | 'costWindowAnchor'; duration: RateLimitDuration | null | undefined; timezone: string }) {
   const { t } = useTranslation();
 
   const isHourBased = isHourBasedDuration(duration);
@@ -128,16 +109,7 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
         const anchorValue = field.value;
 
         if (isHourBased) {
-          // Hour-based durations: show a number input for the hour (0–23)
-          const hourValue = (() => {
-            if (!anchorValue) return '';
-            try {
-              const d = parseISO(anchorValue.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(anchorValue) ? anchorValue : anchorValue + 'Z');
-              return String(d.getUTCHours());
-            } catch {
-              return '';
-            }
-          })();
+          const tzTimeValue = getTzTimeValue(anchorValue, timezone);
 
           return (
             <FormItem className='w-[220px]'>
@@ -154,23 +126,23 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
               </FormLabel>
               <FormControl>
                 <Input
-                  type='number'
-                  min={0}
-                  max={23}
-                  placeholder='0–23'
-                  value={hourValue}
+                  type='time'
+                  value={tzTimeValue}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val === '') {
+                    if (!val) {
                       field.onChange(null);
                       return;
                     }
-                    const hour = parseInt(val, 10);
-                    if (isNaN(hour) || hour < 0 || hour > 23) return;
-                    // Build a UTC time.Time at today's date with this hour, preserving the date portion
-                    const now = new Date();
-                    const utcDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, 0, 0, 0));
-                    field.onChange(utcDate.toISOString());
+                    let datePart: string;
+                    if (anchorValue) {
+                      const tzDatetime = utcToTzDatetime(anchorValue, timezone);
+                      datePart = tzDatetime.split('T')[0];
+                    } else {
+                      const { year, month, day } = getTzDateParts(timezone);
+                      datePart = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    }
+                    field.onChange(tzDatetimeToUtc(`${datePart}T${val}`, timezone));
                   }}
                 />
               </FormControl>
@@ -179,7 +151,6 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
           );
         }
 
-        // Day-based durations: show a date+time picker
         return (
           <FormItem className='w-[220px]'>
             <FormLabel className='flex items-center gap-1'>
@@ -191,14 +162,14 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
                 <TooltipContent side='top' className='max-w-[260px]'>
                   {t('channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip')}
                 </TooltipContent>
-              </Tooltip>
+                </Tooltip>
             </FormLabel>
             <FormControl>
               <Input
                 type='datetime-local'
-                value={utcToLocalDatetime(anchorValue)}
+                value={utcToTzDatetime(anchorValue, timezone)}
                 onChange={(e) => {
-                  field.onChange(localDatetimeToUtc(e.target.value));
+                  field.onChange(tzDatetimeToUtc(e.target.value, timezone));
                 }}
                 placeholder={t('channels.dialogs.rateLimit.fields.windowAnchor.placeholder')}
               />
@@ -214,6 +185,8 @@ function WindowAnchorField({ control, name, duration }: { control: ReturnType<ty
 export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
+  const { data: generalSettings } = useGeneralSettings();
+  const timezone = generalSettings?.timezone || 'UTC';
 
   const form = useForm<RateLimitFormValues>({
     resolver: zodResolver(rateLimitFormSchema),
@@ -392,7 +365,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
-                          <WindowAnchorField control={form.control} name='rpmWindowAnchor' duration={form.watch('rpmDuration')} />
+                          <WindowAnchorField control={form.control} name='rpmWindowAnchor' duration={form.watch('rpmDuration')} timezone={timezone} />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.rpm.description')}</FormDescription>
                         <FormMessage />
@@ -443,7 +416,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
-                          <WindowAnchorField control={form.control} name='tpmWindowAnchor' duration={form.watch('tpmDuration')} />
+                          <WindowAnchorField control={form.control} name='tpmWindowAnchor' duration={form.watch('tpmDuration')} timezone={timezone} />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.tpm.description')}</FormDescription>
                         <FormMessage />
@@ -495,7 +468,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
-                          <WindowAnchorField control={form.control} name='costWindowAnchor' duration={form.watch('costDuration')} />
+                          <WindowAnchorField control={form.control} name='costWindowAnchor' duration={form.watch('costDuration')} timezone={timezone} />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.cost.description')}</FormDescription>
                         <FormMessage />

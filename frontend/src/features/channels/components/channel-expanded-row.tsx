@@ -1,19 +1,10 @@
 import { memo } from 'react';
-import { format, parseISO } from 'date-fns';
-
-function formatUTCShort(iso: string): string {
-  const d = parseISO(iso.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso + 'Z');
-  const yyyy = d.getUTCFullYear();
-  const MM = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const HH = String(d.getUTCHours()).padStart(2, '0');
-  const mm = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${yyyy}-${MM}-${dd} ${HH}:${mm}`;
-}
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useGeneralSettings } from '@/features/system/data/system';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
+import { formatInTz, getTimezoneAbbrev } from '../utils/timezone';
 import { Channel, ChannelRateLimitStatus } from '../data/schema';
 
 function formatTimeRemaining(resetAt: string | null | undefined): string {
@@ -37,12 +28,6 @@ function formatTimeRemaining(resetAt: string | null | undefined): string {
   return `${seconds}s`;
 }
 
-function formatResetTime(resetAt: string | null | undefined): string {
-  if (!resetAt) return '';
-  const d = new Date(resetAt);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
-}
-
 interface RateLimitMetricProps {
   label: string;
   current: number;
@@ -51,9 +36,11 @@ interface RateLimitMetricProps {
   windowDuration: string;
   isCost?: boolean;
   anchor?: string | null;
+  timezone: string;
+  tzAbbr: string;
 }
 
-function RateLimitMetric({ label, current, limit, resetAt, windowDuration, isCost, anchor }: RateLimitMetricProps) {
+function RateLimitMetric({ label, current, limit, resetAt, windowDuration, isCost, anchor, timezone, tzAbbr }: RateLimitMetricProps) {
   const { t } = useTranslation();
   const timeRemaining = formatTimeRemaining(resetAt);
   const usagePct = limit != null && limit > 0 ? Math.floor((current / limit) * 100) : 0;
@@ -79,12 +66,12 @@ function RateLimitMetric({ label, current, limit, resetAt, windowDuration, isCos
                 <div className='space-y-1 text-xs'>
                   <div className='flex justify-between gap-3'>
                     <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.resets')}:</span>
-                    <span className='font-mono'>{formatResetTime(resetAt)}</span>
+                    <span className='font-mono'>{formatInTz(resetAt, timezone, 'HH:mm:ss')}</span>
                   </div>
                   {anchor && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.anchor')}:</span>
-                      <span className='font-mono'>{formatUTCShort(anchor)} UTC</span>
+                      <span className='font-mono'>{formatInTz(anchor, timezone, 'yyyy-MM-dd HH:mm')} {tzAbbr}</span>
                     </div>
                   )}
                   <div className='text-muted-foreground'>
@@ -143,9 +130,11 @@ interface RateLimitStatusSectionProps {
   rpmWindowAnchor?: string | null;
   tpmWindowAnchor?: string | null;
   costWindowAnchor?: string | null;
+  timezone: string;
+  tzAbbr: string;
 }
 
-function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration, rpmWindowAnchor, tpmWindowAnchor, costWindowAnchor }: RateLimitStatusSectionProps) {
+function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration, rpmWindowAnchor, tpmWindowAnchor, costWindowAnchor, timezone, tzAbbr }: RateLimitStatusSectionProps) {
   const { t } = useTranslation();
 
   const durationKeyMap: Record<string, string> = {
@@ -173,6 +162,8 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration
           resetAt={status.rpmResetAt}
           windowDuration={formatWindowDuration(rpmDuration)}
           anchor={rpmWindowAnchor}
+          timezone={timezone}
+          tzAbbr={tzAbbr}
         />
       )}
       {hasTpm && (
@@ -183,6 +174,8 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration
           resetAt={status.tpmResetAt}
           windowDuration={formatWindowDuration(tpmDuration)}
           anchor={tpmWindowAnchor}
+          timezone={timezone}
+          tzAbbr={tzAbbr}
         />
       )}
       {hasCost && (
@@ -194,6 +187,8 @@ function RateLimitStatusSection({ status, rpmDuration, tpmDuration, costDuration
           windowDuration={formatWindowDuration(costDuration)}
           isCost
           anchor={costWindowAnchor}
+          timezone={timezone}
+          tzAbbr={tzAbbr}
         />
       )}
       {hasConcurrent && (
@@ -223,6 +218,9 @@ interface ChannelExpandedRowProps {
 export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLabel }: ChannelExpandedRowProps) => {
   const { t } = useTranslation();
   const config = CHANNEL_CONFIGS[channel.type];
+  const { data: generalSettings } = useGeneralSettings();
+  const timezone = generalSettings?.timezone || 'UTC';
+  const tzAbbr = getTimezoneAbbrev(timezone);
 
   return (
     <div className='bg-muted/30 p-6 hover:bg-muted/50'>
@@ -247,11 +245,11 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
               </div>
               <div className='flex justify-between'>
                 <span className='text-muted-foreground'>{t('common.columns.createdAt')}:</span>
-                <span>{format(channel.createdAt, 'yyyy-MM-dd HH:mm')}</span>
+                <span>{formatInTz(channel.createdAt, timezone, 'yyyy-MM-dd HH:mm')}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-muted-foreground'>{t('common.columns.updatedAt')}:</span>
-                <span>{format(channel.updatedAt, 'yyyy-MM-dd HH:mm')}</span>
+                <span>{formatInTz(channel.updatedAt, timezone, 'yyyy-MM-dd HH:mm')}</span>
               </div>
             </div>
           </div>
@@ -301,6 +299,8 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
               rpmWindowAnchor={channel.rateLimitStatus.rpmWindowAnchor}
               tpmWindowAnchor={channel.rateLimitStatus.tpmWindowAnchor}
               costWindowAnchor={channel.rateLimitStatus.costWindowAnchor}
+              timezone={timezone}
+              tzAbbr={tzAbbr}
             />
           </div>
         )}

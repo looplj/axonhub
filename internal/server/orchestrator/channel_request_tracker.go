@@ -25,6 +25,8 @@ func WithClock(c func() time.Time) ClockOption {
 type rateLimitWindow struct {
 	requests    int64
 	tokens      int64
+	requestSeed int64
+	tokenSeed   int64
 	windowStart time.Time
 	anchor      *time.Time
 }
@@ -163,7 +165,7 @@ func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time
 		return 0
 	}
 
-	return w.requests
+	return w.requestSeed + w.requests
 }
 
 func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
@@ -189,7 +191,31 @@ func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.D
 		return 0
 	}
 
-	return w.tokens
+	return w.tokenSeed + w.tokens
+}
+
+func (t *ChannelRequestTracker) SeedRequestCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time) {
+	if count <= 0 {
+		return
+	}
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	w := t.getOrResetWindow(channelID, d, anchor)
+	w.requestSeed = count
+}
+
+func (t *ChannelRequestTracker) SeedTokenCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time) {
+	if count <= 0 {
+		return
+	}
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	w := t.getOrResetWindow(channelID, d, anchor)
+	w.tokenSeed = count
 }
 
 func (t *ChannelRequestTracker) SetCooldown(channelID int, until time.Time) {
