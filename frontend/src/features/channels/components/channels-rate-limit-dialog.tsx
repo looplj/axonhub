@@ -4,16 +4,16 @@ import { useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, X, Info, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Plus, X, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useGeneralSettings } from '@/features/system/data/system';
 import { useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
@@ -37,34 +37,50 @@ const DURATION_I18N_KEYS: Record<RateLimitDuration, string> = {
   ONE_MONTH: 'channels.dialogs.rateLimit.durations.1mo',
 };
 
-
-
-const rateLimitFormSchema = z.object({
-  rpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
-  rpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-  rpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
-  tpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
-  tpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-  tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
-  cost: z.union([z.number().positive(), z.literal('')]).optional().nullable(),
-  costDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-  costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
-  maxConcurrent: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
-  modelConcurrent: z.array(z.object({
-    model: z.string(),
-    limit: z.union([z.number().int().positive(), z.literal('')]),
-  })).optional(),
-}).refine(
-  (data) => {
-    const models = data.modelConcurrent?.map((entry) => entry.model.trim().toLowerCase()) ?? [];
-    const uniqueModels = new Set(models);
-    return models.length === uniqueModels.size;
-  },
-  {
-    message: 'channels.dialogs.rateLimit.fields.modelConcurrent.duplicateError',
-    path: ['modelConcurrent'],
-  }
-);
+const rateLimitFormSchema = z
+  .object({
+    rpm: z
+      .union([z.number().int().positive(), z.literal('')])
+      .optional()
+      .nullable(),
+    rpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
+    rpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
+    tpm: z
+      .union([z.number().int().positive(), z.literal('')])
+      .optional()
+      .nullable(),
+    tpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
+    tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
+    cost: z
+      .union([z.number().positive(), z.literal('')])
+      .optional()
+      .nullable(),
+    costDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
+    costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
+    maxConcurrent: z
+      .union([z.number().int().positive(), z.literal('')])
+      .optional()
+      .nullable(),
+    modelConcurrent: z
+      .array(
+        z.object({
+          model: z.string(),
+          limit: z.union([z.number().int().positive(), z.literal('')]),
+        })
+      )
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      const models = data.modelConcurrent?.map((entry) => entry.model.trim().toLowerCase()) ?? [];
+      const uniqueModels = new Set(models);
+      return models.length === uniqueModels.size;
+    },
+    {
+      message: 'channels.dialogs.rateLimit.fields.modelConcurrent.duplicateError',
+      path: ['modelConcurrent'],
+    }
+  );
 
 type RateLimitFormValues = z.infer<typeof rateLimitFormSchema>;
 
@@ -75,8 +91,7 @@ function modelConcurrentToArray(
   if (!rateLimit?.modelConcurrent) return [];
   return rateLimit.modelConcurrent.map((entry) => {
     const serverModel = entry.model ?? '';
-    const originalCasedModel =
-      supportedModels.find((m) => m.toLowerCase() === serverModel.toLowerCase()) ?? serverModel;
+    const originalCasedModel = supportedModels.find((m) => m.toLowerCase() === serverModel.toLowerCase()) ?? serverModel;
     return {
       model: originalCasedModel,
       limit: entry.limit ?? '',
@@ -91,7 +106,17 @@ function isHourBasedDuration(d: RateLimitDuration | null | undefined): boolean {
   return !!d && HOUR_DURATIONS.includes(d);
 }
 
-function WindowAnchorField({ control, name, duration, timezone }: { control: ReturnType<typeof useForm<RateLimitFormValues>>['control']; name: 'rpmWindowAnchor' | 'tpmWindowAnchor' | 'costWindowAnchor'; duration: RateLimitDuration | null | undefined; timezone: string }) {
+function WindowAnchorField({
+  control,
+  name,
+  duration,
+  timezone,
+}: {
+  control: ReturnType<typeof useForm<RateLimitFormValues>>['control'];
+  name: 'rpmWindowAnchor' | 'tpmWindowAnchor' | 'costWindowAnchor';
+  duration: RateLimitDuration | null | undefined;
+  timezone: string;
+}) {
   const { t } = useTranslation();
 
   const isHourBased = isHourBasedDuration(duration);
@@ -117,7 +142,7 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
                 {t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className='h-3.5 w-3.5 text-muted-foreground cursor-help shrink-0' />
+                    <Info className='text-muted-foreground h-3.5 w-3.5 shrink-0 cursor-help' />
                   </TooltipTrigger>
                   <TooltipContent side='top' className='max-w-[260px]'>
                     {t('channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip')}
@@ -152,12 +177,12 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
               {t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className='h-3.5 w-3.5 text-muted-foreground cursor-help shrink-0' />
+                  <Info className='text-muted-foreground h-3.5 w-3.5 shrink-0 cursor-help' />
                 </TooltipTrigger>
                 <TooltipContent side='top' className='max-w-[260px]'>
                   {t('channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip')}
                 </TooltipContent>
-                </Tooltip>
+              </Tooltip>
             </FormLabel>
             <FormControl>
               <Input
@@ -259,7 +284,8 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         }
       }
 
-      const hasModelConcurrent = !!rateLimit.modelConcurrent && (rateLimit.modelConcurrent as { model: string; limit: number | null }[]).length > 0;
+      const hasModelConcurrent =
+        !!rateLimit.modelConcurrent && (rateLimit.modelConcurrent as { model: string; limit: number | null }[]).length > 0;
       const rateLimitValue =
         rateLimit.rpm == null &&
         rateLimit.rpmDuration == null &&
@@ -311,8 +337,40 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         <div className='space-y-6'>
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.config.title')}</CardTitle>
-              <CardDescription>{t('channels.dialogs.rateLimit.config.description')}</CardDescription>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.config.title')}</CardTitle>
+                  <CardDescription>{t('channels.dialogs.rateLimit.config.description')}</CardDescription>
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon'
+                      className='text-muted-foreground hover:text-foreground h-8 w-8 shrink-0'
+                      onClick={() => {
+                        form.reset({
+                          ...form.getValues(),
+                          rpm: currentRow.settings?.rateLimit?.rpm ?? '',
+                          rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
+                          rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
+                          tpm: currentRow.settings?.rateLimit?.tpm ?? '',
+                          tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
+                          tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
+                          cost: currentRow.settings?.rateLimit?.cost ?? '',
+                          costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
+                          costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
+                          maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
+                        });
+                      }}
+                    >
+                      <RotateCcw className='h-4 w-4' />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('channels.dialogs.rateLimit.config.reset')}</TooltipContent>
+                </Tooltip>
+              </div>
             </CardHeader>
             <CardContent className='space-y-4'>
               <Form {...form}>
@@ -323,7 +381,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.rpm.label')}</FormLabel>
-                        <div className='flex gap-2 items-end'>
+                        <div className='flex items-end gap-2'>
                           <FormControl>
                             <Input
                               type='number'
@@ -341,10 +399,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                             name='rpmDuration'
                             render={({ field: durationField }) => (
                               <FormItem className='w-[150px]'>
-                                <Select
-                                  value={durationField.value ?? 'ONE_MIN'}
-                                  onValueChange={durationField.onChange}
-                                >
+                                <Select value={durationField.value ?? 'ONE_MIN'} onValueChange={durationField.onChange}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
@@ -360,7 +415,12 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
-                          <WindowAnchorField control={form.control} name='rpmWindowAnchor' duration={form.watch('rpmDuration')} timezone={timezone} />
+                          <WindowAnchorField
+                            control={form.control}
+                            name='rpmWindowAnchor'
+                            duration={form.watch('rpmDuration')}
+                            timezone={timezone}
+                          />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.rpm.description')}</FormDescription>
                         <FormMessage />
@@ -374,7 +434,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.tpm.label')}</FormLabel>
-                        <div className='flex gap-2 items-end'>
+                        <div className='flex items-end gap-2'>
                           <FormControl>
                             <Input
                               type='number'
@@ -392,10 +452,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                             name='tpmDuration'
                             render={({ field: durationField }) => (
                               <FormItem className='w-[150px]'>
-                                <Select
-                                  value={durationField.value ?? 'ONE_MIN'}
-                                  onValueChange={durationField.onChange}
-                                >
+                                <Select value={durationField.value ?? 'ONE_MIN'} onValueChange={durationField.onChange}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
@@ -411,7 +468,12 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
-                          <WindowAnchorField control={form.control} name='tpmWindowAnchor' duration={form.watch('tpmDuration')} timezone={timezone} />
+                          <WindowAnchorField
+                            control={form.control}
+                            name='tpmWindowAnchor'
+                            duration={form.watch('tpmDuration')}
+                            timezone={timezone}
+                          />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.tpm.description')}</FormDescription>
                         <FormMessage />
@@ -425,7 +487,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.rateLimit.fields.cost.label')}</FormLabel>
-                        <div className='flex gap-2 items-end'>
+                        <div className='flex items-end gap-2'>
                           <FormControl>
                             <Input
                               type='number'
@@ -444,10 +506,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                             name='costDuration'
                             render={({ field: durationField }) => (
                               <FormItem className='w-[150px]'>
-                                <Select
-                                  value={durationField.value ?? 'ONE_WEEK'}
-                                  onValueChange={durationField.onChange}
-                                >
+                                <Select value={durationField.value ?? 'ONE_WEEK'} onValueChange={durationField.onChange}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
@@ -463,7 +522,12 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                               </FormItem>
                             )}
                           />
-                          <WindowAnchorField control={form.control} name='costWindowAnchor' duration={form.watch('costDuration')} timezone={timezone} />
+                          <WindowAnchorField
+                            control={form.control}
+                            name='costWindowAnchor'
+                            duration={form.watch('costDuration')}
+                            timezone={timezone}
+                          />
                         </div>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.cost.description')}</FormDescription>
                         <FormMessage />
@@ -500,8 +564,31 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
 
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.fields.modelConcurrent.label')}</CardTitle>
-              <CardDescription>{t('channels.dialogs.rateLimit.fields.modelConcurrent.description')}</CardDescription>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.fields.modelConcurrent.label')}</CardTitle>
+                  <CardDescription>{t('channels.dialogs.rateLimit.fields.modelConcurrent.description')}</CardDescription>
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon'
+                      className='text-muted-foreground hover:text-foreground h-8 w-8 shrink-0'
+                      onClick={() => {
+                        form.reset({
+                          ...form.getValues(),
+                          modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
+                        });
+                      }}
+                    >
+                      <RotateCcw className='h-4 w-4' />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('channels.dialogs.rateLimit.fields.modelConcurrent.reset')}</TooltipContent>
+                </Tooltip>
+              </div>
             </CardHeader>
             <CardContent className='space-y-4'>
               <Form {...form}>
@@ -518,10 +605,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                           name={`modelConcurrent.${index}.model`}
                           render={({ field }) => (
                             <FormItem className='flex-1'>
-                              <Select
-                                value={field.value ?? ''}
-                                onValueChange={field.onChange}
-                              >
+                              <Select value={field.value ?? ''} onValueChange={field.onChange}>
                                 <SelectTrigger>
                                   <SelectValue placeholder={t('channels.dialogs.rateLimit.fields.modelConcurrent.modelPlaceholder')} />
                                 </SelectTrigger>
@@ -570,17 +654,8 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                       </div>
                     ))
                   )}
-                  <FormField
-                    control={form.control}
-                    name='modelConcurrent'
-                    render={() => <FormMessage />}
-                  />
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    onClick={addModelEntry}
-                  >
+                  <FormField control={form.control} name='modelConcurrent' render={() => <FormMessage />} />
+                  <Button type='button' variant='outline' size='sm' onClick={addModelEntry}>
                     <Plus className='mr-1 h-4 w-4' />
                     {t('channels.dialogs.rateLimit.fields.modelConcurrent.addModel')}
                   </Button>
