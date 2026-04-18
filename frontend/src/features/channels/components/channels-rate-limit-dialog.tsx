@@ -8,7 +8,7 @@ import { Plus, X, Info, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -337,11 +337,9 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         <div className='space-y-6'>
           <Card>
             <CardHeader>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.config.title')}</CardTitle>
-                  <CardDescription>{t('channels.dialogs.rateLimit.config.description')}</CardDescription>
-                </div>
+              <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.config.title')}</CardTitle>
+              <CardDescription>{t('channels.dialogs.rateLimit.config.description')}</CardDescription>
+              <CardAction>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -349,6 +347,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                       variant='ghost'
                       size='icon'
                       className='text-muted-foreground hover:text-foreground h-8 w-8 shrink-0'
+                      aria-label={t('channels.dialogs.rateLimit.config.reset')}
                       onClick={() => {
                         form.reset({
                           ...form.getValues(),
@@ -370,7 +369,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                   </TooltipTrigger>
                   <TooltipContent>{t('channels.dialogs.rateLimit.config.reset')}</TooltipContent>
                 </Tooltip>
-              </div>
+              </CardAction>
             </CardHeader>
             <CardContent className='space-y-4'>
               <Form {...form}>
@@ -564,11 +563,9 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
 
           <Card>
             <CardHeader>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.fields.modelConcurrent.label')}</CardTitle>
-                  <CardDescription>{t('channels.dialogs.rateLimit.fields.modelConcurrent.description')}</CardDescription>
-                </div>
+              <CardTitle className='text-lg'>{t('channels.dialogs.rateLimit.fields.modelConcurrent.label')}</CardTitle>
+              <CardDescription>{t('channels.dialogs.rateLimit.fields.modelConcurrent.description')}</CardDescription>
+              <CardAction>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -576,6 +573,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                       variant='ghost'
                       size='icon'
                       className='text-muted-foreground hover:text-foreground h-8 w-8 shrink-0'
+                      aria-label={t('channels.dialogs.rateLimit.fields.modelConcurrent.reset')}
                       onClick={() => {
                         form.reset({
                           ...form.getValues(),
@@ -588,7 +586,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                   </TooltipTrigger>
                   <TooltipContent>{t('channels.dialogs.rateLimit.fields.modelConcurrent.reset')}</TooltipContent>
                 </Tooltip>
-              </div>
+              </CardAction>
             </CardHeader>
             <CardContent className='space-y-4'>
               <Form {...form}>

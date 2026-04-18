@@ -5,33 +5,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useGeneralSettings } from '@/features/system/data/system';
 import { ChannelRateLimitStatus } from '../data/schema';
 import { formatInTz } from '../utils/timezone';
+import { formatTimeRemaining } from '../utils/format-time-remaining';
 
 interface ChannelRateLimitCellProps {
   status: ChannelRateLimitStatus | null | undefined;
-}
-
-function formatTimeRemaining(resetAt: string | null | undefined): string | null {
-  if (!resetAt) return null;
-  const reset = new Date(resetAt).getTime();
-  const now = Date.now();
-  const diffMs = reset - now;
-  if (diffMs <= 0) return null;
-  const totalSeconds = Math.floor(diffMs / 1000);
-  const totalMinutes = Math.floor(totalSeconds / 60);
-  const totalHours = Math.floor(totalMinutes / 60);
-  const totalDays = Math.floor(totalHours / 24);
-  if (totalDays >= 7) {
-    const weeks = Math.floor(totalDays / 7);
-    const remDays = totalDays % 7;
-    return remDays > 0 ? `${weeks}w ${remDays}d` : `${weeks}w`;
-  }
-  if (totalDays >= 1) {
-    const remHours = totalHours % 24;
-    return remHours > 0 ? `${totalDays}d ${remHours}h` : `${totalDays}d`;
-  }
-  if (totalHours > 0) return `${totalHours}h ${totalMinutes % 60}m`;
-  if (totalMinutes > 0) return `${totalMinutes}m`;
-  return null;
 }
 
 function formatTooltipValue(value: number, isCost?: boolean): string {
@@ -169,17 +146,17 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
               </span>
             </div>
           )}
-          {rateLimitSegments.some((s) => formatTimeRemaining(s.resetAt) !== null) && (
+          {rateLimitSegments.some((s) => formatTimeRemaining(s.resetAt, 'compact') !== null) && (
             <div className='mt-1 border-t pt-1'>
               {rateLimitSegments
-                .filter((s) => formatTimeRemaining(s.resetAt) !== null)
+                .filter((s) => formatTimeRemaining(s.resetAt, 'compact') !== null)
                 .map((s) => (
                   <div key={s.label} className='flex justify-between gap-4'>
                     <span className='opacity-70'>
                       {s.label} {t('channels.expandedRow.rateLimit.resets')}:
                     </span>
                     <span className='font-mono'>
-                      {formatTimeRemaining(s.resetAt)} ({formatInTz(s.resetAt!, timezone, 'HH:mm:ss')})
+                      {formatTimeRemaining(s.resetAt, 'compact')} ({formatInTz(s.resetAt!, timezone, 'HH:mm:ss')})
                     </span>
                   </div>
                 ))}
@@ -187,7 +164,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
           )}
           {status.isCoolingDown && status.cooldownUntil && (
             <div className='text-destructive font-semibold'>
-              {t('channels.expandedRow.rateLimit.cooldown')}: {formatTimeRemaining(status.cooldownUntil) ?? '<1m'}
+              {t('channels.expandedRow.rateLimit.cooldown')}: {formatTimeRemaining(status.cooldownUntil, 'compact') ?? '<1m'}
             </div>
           )}
         </div>

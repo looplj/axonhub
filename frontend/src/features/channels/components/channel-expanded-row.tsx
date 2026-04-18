@@ -6,52 +6,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { Channel, ChannelRateLimitStatus } from '../data/schema';
 import { formatInTz, getTimezoneAbbrev } from '../utils/timezone';
-
-function formatTimeRemaining(resetAt: string | null | undefined, windowDuration?: string | null): string {
-  if (!resetAt) return '';
-  const reset = new Date(resetAt).getTime();
-  const now = Date.now();
-  const diffMs = reset - now;
-  if (diffMs <= 0) return '';
-
-  const totalSeconds = Math.floor(diffMs / 1000);
-  const totalMinutes = Math.floor(totalSeconds / 60);
-  const totalHours = Math.floor(totalMinutes / 60);
-  const totalDays = Math.floor(totalHours / 24);
-  const weeks = Math.floor(totalDays / 7);
-
-  const isLongWindow = windowDuration === 'ONE_WEEK' || windowDuration === 'ONE_MONTH';
-
-  if (isLongWindow) {
-    if (totalDays >= 7) {
-      const remDays = totalDays % 7;
-      return remDays > 0 ? `${weeks}w ${remDays}d` : `${weeks}w`;
-    }
-    if (totalDays >= 1) {
-      const remHours = totalHours % 24;
-      return remHours > 0 ? `${totalDays}d ${remHours}h` : `${totalDays}d`;
-    }
-    if (totalHours > 0) {
-      const remMinutes = totalMinutes % 60;
-      return remMinutes > 0 ? `${totalHours}h ${remMinutes}m` : `${totalHours}h`;
-    }
-    if (totalMinutes > 0) {
-      const seconds = totalSeconds % 60;
-      return seconds > 0 ? `${totalMinutes}m ${seconds}s` : `${totalMinutes}m`;
-    }
-    return `${totalSeconds}s`;
-  }
-
-  if (totalHours > 0) {
-    const minutes = totalMinutes % 60;
-    return minutes > 0 ? `${totalHours}h ${minutes}m` : `${totalHours}h`;
-  }
-  if (totalMinutes > 0) {
-    const seconds = totalSeconds % 60;
-    return seconds > 0 ? `${totalMinutes}m ${seconds}s` : `${totalMinutes}m`;
-  }
-  return `${totalSeconds}s`;
-}
+import { formatTimeRemaining } from '../utils/format-time-remaining';
 
 interface RateLimitMetricProps {
   label: string;
@@ -79,7 +34,7 @@ function RateLimitMetric({
   tzAbbr,
 }: RateLimitMetricProps) {
   const { t } = useTranslation();
-  const timeRemaining = formatTimeRemaining(resetAt, rawDuration);
+  const timeRemaining = formatTimeRemaining(resetAt, 'detailed', rawDuration);
   const usagePct = limit != null && limit > 0 ? Math.floor((current / limit) * 100) : 0;
   const isHigh = usagePct >= 80;
   const isCritical = usagePct >= 100;
@@ -260,7 +215,7 @@ function RateLimitStatusSection({
       {status.isCoolingDown && status.cooldownUntil && (
         <div className='flex items-center justify-between text-sm'>
           <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.cooldown')}:</span>
-          <span className='text-destructive font-mono text-xs font-semibold'>{formatTimeRemaining(status.cooldownUntil)}</span>
+          <span className='text-destructive font-mono text-xs font-semibold'>{formatTimeRemaining(status.cooldownUntil, 'detailed')}</span>
         </div>
       )}
     </div>
