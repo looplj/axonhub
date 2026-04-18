@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useGeneralSettings } from '@/features/system/data/system';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { Channel, ChannelRateLimitStatus } from '../data/schema';
+import { formatNumber } from '@/utils/format-number';
 import { formatInTz, getTimezoneAbbrev } from '../utils/timezone';
 import { formatTimeRemaining } from '../utils/format-time-remaining';
 
@@ -47,8 +48,8 @@ function RateLimitMetric({
           <span
             className={`font-mono text-xs ${isCritical ? 'text-destructive font-semibold' : isHigh ? 'font-semibold text-yellow-600' : ''}`}
           >
-            {isCost ? current.toFixed(2) : current}
-            {limit != null ? `/${isCost && limit != null ? limit.toFixed(2) : limit}` : ''} ({usagePct}%)
+            {isCost ? current.toFixed(2) : formatNumber(current)}
+            {limit != null ? `/${isCost && limit != null ? limit.toFixed(2) : formatNumber(limit)}` : ''} ({usagePct}%)
           </span>
         </div>
       </div>

@@ -156,7 +156,7 @@ export const ChannelRateLimitCell = memo(({ status }: ChannelRateLimitCellProps)
                       {s.label} {t('channels.expandedRow.rateLimit.resets')}:
                     </span>
                     <span className='font-mono'>
-                      {formatTimeRemaining(s.resetAt, 'compact')} ({formatInTz(s.resetAt!, timezone, 'HH:mm:ss')})
+                      {formatTimeRemaining(s.resetAt, 'compact')}
                     </span>
                   </div>
                 ))}
