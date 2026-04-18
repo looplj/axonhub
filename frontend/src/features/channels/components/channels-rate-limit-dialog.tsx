@@ -18,7 +18,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
-import { utcToTzDatetime, tzDatetimeToUtc, getTzTimeValue, getTzDateParts } from '../utils/timezone';
+import { utcToTzDatetime, tzDatetimeToUtc, toBrowserLocalTime, fromBrowserLocalTime, getTzDateParts } from '../utils/timezone';
 
 interface Props {
   open: boolean;
@@ -109,8 +109,7 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
         const anchorValue = field.value;
 
         if (isHourBased) {
-          const tzTimeValue = getTzTimeValue(anchorValue, timezone);
-          if (anchorValue) console.log('[rate-limit-anchor] display: anchorValue:', anchorValue, 'timezone:', timezone, '-> display:', tzTimeValue);
+          const browserTimeValue = toBrowserLocalTime(anchorValue);
 
           return (
             <FormItem className='w-[220px]'>
@@ -128,7 +127,7 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
               <FormControl>
                 <Input
                   type='time'
-                  value={tzTimeValue}
+                  value={browserTimeValue}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (!val) {
@@ -143,9 +142,7 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
                       const { year, month, day } = getTzDateParts(timezone);
                       datePart = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     }
-                    const result = tzDatetimeToUtc(`${datePart}T${val}`, timezone);
-                    console.log('[rate-limit-anchor] input:', `${datePart}T${val}`, 'timezone:', timezone, '-> UTC:', result);
-                    field.onChange(result);
+                    field.onChange(fromBrowserLocalTime(val, datePart, timezone));
                   }}
                 />
               </FormControl>

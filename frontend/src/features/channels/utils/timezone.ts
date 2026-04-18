@@ -121,6 +121,37 @@ export function getTzTimeValue(iso: string | null | undefined, timezone: string)
   }
 }
 
+export function toBrowserLocalTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    const d = parseUtcIso(iso);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return '';
+  }
+}
+
+export function fromBrowserLocalTime(browserLocalTime: string, datePartInTz: string, timezone: string): string | null {
+  if (!browserLocalTime) return null;
+  try {
+    const [year, month, day] = datePartInTz.split('-').map(Number);
+    const [bh, bm] = browserLocalTime.split(':').map(Number);
+    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(bh) || isNaN(bm)) return null;
+
+    const browserLocalDate = new Date(year, month - 1, day, bh, bm, 0);
+    const utcInstant = new Date(browserLocalDate.getTime());
+    const wallClockInConfiguredTz = getTzParts(utcInstant, timezone, false);
+    if (!wallClockInConfiguredTz) return null;
+
+    return tzDatetimeToUtc(
+      `${wallClockInConfiguredTz.year}-${wallClockInConfiguredTz.month}-${wallClockInConfiguredTz.day}T${wallClockInConfiguredTz.hour}:${wallClockInConfiguredTz.minute}`,
+      timezone,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function getTzDateParts(timezone: string): { year: number; month: number; day: number } {
   const now = new Date();
   const p = getTzParts(now, timezone, false);

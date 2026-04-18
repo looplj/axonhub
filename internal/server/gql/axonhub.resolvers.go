@@ -124,17 +124,6 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 		rpmWindowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
 		rpmWindowEnd := rpmWindowStart.Add(rpmDuration)
 
-		if rl.RPMWindowAnchor != nil {
-			log.Info(ctx, "rpm window computed",
-				log.Int("channel_id", channelID),
-				log.Time("anchor", *rl.RPMWindowAnchor),
-				log.String("anchor_location", rl.RPMWindowAnchor.Location().String()),
-				log.Duration("duration", rpmDuration),
-				log.Time("window_start", rpmWindowStart),
-				log.Time("window_end", rpmWindowEnd),
-			)
-		}
-
 		var rpmCurrentInt int
 		if r.quotaService != nil {
 			rpmCount, err := r.quotaService.GetChannelRequestCount(ctx, channelID, biz.QuotaWindow{Start: &rpmWindowStart, End: &rpmWindowEnd})
