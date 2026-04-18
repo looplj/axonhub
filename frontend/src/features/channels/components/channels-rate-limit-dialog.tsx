@@ -18,7 +18,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
-import { utcToTzDatetime, tzDatetimeToUtc, toBrowserLocalTime, fromBrowserLocalTime, getTzDateParts } from '../utils/timezone';
+import { utcToTzDatetime, tzDatetimeToUtc, getTzTimeValue, fromBrowserLocalTime, getTzDateParts } from '../utils/timezone';
 
 interface Props {
   open: boolean;
@@ -109,7 +109,7 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
         const anchorValue = field.value;
 
         if (isHourBased) {
-          const browserTimeValue = toBrowserLocalTime(anchorValue);
+          const tzTimeValue = getTzTimeValue(anchorValue, timezone);
 
           return (
             <FormItem className='w-[220px]'>
@@ -127,7 +127,7 @@ function WindowAnchorField({ control, name, duration, timezone }: { control: Ret
               <FormControl>
                 <Input
                   type='time'
-                  value={browserTimeValue}
+                  value={tzTimeValue}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (!val) {
