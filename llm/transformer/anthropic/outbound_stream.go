@@ -163,18 +163,41 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		}
 
 	case "content_block_start":
-		// Only process tool_use content blocks, skip text content blocks
-		if streamEvent.ContentBlock != nil && streamEvent.ContentBlock.Type == "tool_use" {
-			// Initialize a new tool call
+		if streamEvent.ContentBlock == nil {
+			//nolint:nilnil // It is expected.
+			return nil, nil
+		}
+
+		cb := streamEvent.ContentBlock
+
+		// Anthropic assigns a stable ordinal index to each content block;
+		// preserve it so non-streaming and interleaving consumers can
+		// reconstruct the original order.
+		blockIdx := -1
+		if streamEvent.Index != nil {
+			blockIdx = int(*streamEvent.Index)
+		}
+
+		switch {
+		case isAnthropicToolUseLike(cb.Type):
+			if cb.Name == nil {
+				//nolint:nilnil // Defensive; Anthropic always sends a name on *_tool_use.
+				return nil, nil
+			}
+
 			state.toolIndex++
 			toolCall := llm.ToolCall{
 				Index: state.toolIndex,
-				ID:    streamEvent.ContentBlock.ID,
+				ID:    cb.ID,
 				Type:  "function",
 				Function: llm.FunctionCall{
-					Name:      *streamEvent.ContentBlock.Name,
+					Name:      *cb.Name,
 					Arguments: "",
 				},
+			}
+			setAnthropicSpecialMeta(&toolCall.TransformerMetadata, cb.Type, cb.Caller)
+			if blockIdx >= 0 {
+				setAnthropicBlockIndex(&toolCall.TransformerMetadata, blockIdx)
 			}
 			state.toolCalls[state.toolIndex] = &toolCall
 
@@ -186,8 +209,27 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				},
 			}
 			resp.Choices = []llm.Choice{choice}
-		} else {
-			//nolint:nilnil // It is expected.
+		case isAnthropicToolResultLike(cb.Type):
+			// Server-side tool results (web_search_tool_result,
+			// code_execution_tool_result, ...) arrive complete in
+			// content_block_start and carry no subsequent deltas. Emit them
+			// inline on the assistant message; inbound transformers that
+			// cannot represent inline results will drop them.
+			ir := inlineToolResultFromBlock(cb)
+			if blockIdx >= 0 {
+				setAnthropicBlockIndex(&ir.TransformerMetadata, blockIdx)
+			}
+
+			choice := llm.Choice{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:              "assistant",
+					InlineToolResults: []llm.InlineToolResult{ir},
+				},
+			}
+			resp.Choices = []llm.Choice{choice}
+		default:
+			//nolint:nilnil // Ignore other content block starts (text, thinking, etc.).
 			return nil, nil
 		}
 
@@ -203,20 +245,33 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			switch *streamEvent.Delta.Type {
 			case "input_json_delta":
 				if streamEvent.Delta.PartialJSON != nil {
+					tc, ok := state.toolCalls[state.toolIndex]
+					if !ok || tc == nil {
+						// A tool_use-style delta arrived without a preceding
+						// content_block_start we registered (e.g. a block type
+						// we do not handle). Drop the delta rather than
+						// dereference nil.
+						//nolint:nilnil // Intentional no-op.
+						return nil, nil
+					}
+
+					deltaTC := llm.ToolCall{
+						Index: state.toolIndex,
+						ID:    tc.ID,
+						Type:  "function",
+						Function: llm.FunctionCall{
+							Arguments: *streamEvent.Delta.PartialJSON,
+						},
+					}
+					if len(tc.TransformerMetadata) > 0 {
+						deltaTC.TransformerMetadata = tc.TransformerMetadata
+					}
+
 					choice := llm.Choice{
 						Index: 0,
 						Delta: &llm.Message{
-							Role: "assistant",
-							ToolCalls: []llm.ToolCall{
-								{
-									Index: state.toolIndex,
-									ID:    state.toolCalls[state.toolIndex].ID,
-									Type:  "function",
-									Function: llm.FunctionCall{
-										Arguments: *streamEvent.Delta.PartialJSON,
-									},
-								},
-							},
+							Role:      "assistant",
+							ToolCalls: []llm.ToolCall{deltaTC},
 						},
 					}
 					resp.Choices = []llm.Choice{choice}

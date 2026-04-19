@@ -619,16 +619,26 @@ func (s *anthropicInboundStream) Next() bool {
 							Name:      deltaToolCall.Function.Name,
 							Arguments: "",
 						},
+						TransformerMetadata: deltaToolCall.TransformerMetadata,
+					}
+
+					// Restore the original Anthropic block type (tool_use /
+					// server_tool_use / mcp_tool_use / ...) and caller when the
+					// upstream tagged it via TransformerMetadata.
+					blockType := "tool_use"
+					if at := getAnthropicType(deltaToolCall.TransformerMetadata); at != "" {
+						blockType = at
 					}
 
 					streamEvent := StreamEvent{
 						Type:  "content_block_start",
 						Index: &s.contentIndex,
 						ContentBlock: &MessageContentBlock{
-							Type:  "tool_use",
-							ID:    deltaToolCall.ID,
-							Name:  &deltaToolCall.Function.Name,
-							Input: json.RawMessage("{}"),
+							Type:   blockType,
+							ID:     deltaToolCall.ID,
+							Name:   &deltaToolCall.Function.Name,
+							Input:  json.RawMessage("{}"),
+							Caller: getAnthropicCaller(deltaToolCall.TransformerMetadata),
 						},
 					}
 
@@ -681,6 +691,77 @@ func (s *anthropicInboundStream) Next() bool {
 						return false
 					}
 				}
+			}
+		}
+
+		// Handle assistant-inlined tool results (Anthropic *_tool_result
+		// blocks carried via llm.Message.InlineToolResults). Each one is
+		// emitted as a complete content_block_start + content_block_stop
+		// pair, since Anthropic delivers tool result blocks whole.
+		if choice.Delta != nil && len(choice.Delta.InlineToolResults) > 0 {
+			if err := s.closeThinkingBlock(); err != nil {
+				s.err = fmt.Errorf("failed to close thinking block: %w", err)
+				return false
+			}
+
+			// Close any open tool_use block before starting a tool_result.
+			if s.hasToolContentStarted {
+				s.hasToolContentStarted = false
+
+				stopEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+				if err := s.enqueEvent(&stopEvent); err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
+			// Close any open text block before starting a tool_result.
+			if s.hasTextContentStarted {
+				s.hasTextContentStarted = false
+
+				stopEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+				if err := s.enqueEvent(&stopEvent); err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
+			for _, ir := range choice.Delta.InlineToolResults {
+				block, ok := toolResultBlockFromInline(ir)
+				if !ok {
+					continue
+				}
+
+				startEvent := StreamEvent{
+					Type:         "content_block_start",
+					Index:        &s.contentIndex,
+					ContentBlock: &block,
+				}
+				if err := s.enqueEvent(&startEvent); err != nil {
+					s.err = fmt.Errorf("failed to enqueue *_tool_result content_block_start: %w", err)
+					return false
+				}
+
+				stopEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+				if err := s.enqueEvent(&stopEvent); err != nil {
+					s.err = fmt.Errorf("failed to enqueue *_tool_result content_block_stop: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
 			}
 		}
 
