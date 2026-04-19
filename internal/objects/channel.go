@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 )
@@ -148,17 +149,17 @@ type ChannelSettings struct {
 }
 
 type ChannelRateLimit struct {
-	RPM             *int64             `json:"rpm,omitempty"`
-	TPM             *int64             `json:"tpm,omitempty"`
-	Cost            *decimal.Decimal   `json:"cost,omitempty"`
-	MaxConcurrent   *int64             `json:"maxConcurrent,omitempty"`
-	RPMDuration     *RateLimitDuration `json:"rpmDuration,omitempty"`
-	TPMDuration     *RateLimitDuration `json:"tpmDuration,omitempty"`
-	CostDuration    *RateLimitDuration `json:"costDuration,omitempty"`
+	RPM              *int64             `json:"rpm,omitempty"`
+	TPM              *int64             `json:"tpm,omitempty"`
+	Cost             *decimal.Decimal   `json:"cost,omitempty"`
+	MaxConcurrent    *int64             `json:"maxConcurrent,omitempty"`
+	RPMDuration      *RateLimitDuration `json:"rpmDuration,omitempty"`
+	TPMDuration      *RateLimitDuration `json:"tpmDuration,omitempty"`
+	CostDuration     *RateLimitDuration `json:"costDuration,omitempty"`
 	RPMWindowAnchor  *time.Time         `json:"rpmWindowAnchor,omitempty"`
 	TPMWindowAnchor  *time.Time         `json:"tpmWindowAnchor,omitempty"`
 	CostWindowAnchor *time.Time         `json:"costWindowAnchor,omitempty"`
-	ModelConcurrent map[string]int64   `json:"modelConcurrent,omitempty"`
+	ModelConcurrent  map[string]int64   `json:"modelConcurrent,omitempty"`
 }
 
 // GetModelConcurrentLimit returns the concurrent limit for a specific model.
@@ -379,20 +380,22 @@ func ComputeWindowStart(now time.Time, d time.Duration, anchor *time.Time) time.
 		return now.Truncate(d)
 	}
 	elapsed := now.Sub(*anchor)
-	steps := elapsed / d
+
+	steps := int64(elapsed / d)
 	if elapsed < 0 && elapsed%d != 0 {
 		steps--
 	}
-	return anchor.Add(steps * d)
+
+	return anchor.Add(time.Duration(steps * int64(d)))
 }
 
 // graphqlEnumToGo maps GraphQL enum names to Go string constants.
 var graphqlEnumToGo = map[string]RateLimitDuration{
-	"ONE_MIN":    RateLimitDurationOneMin,
-	"ONE_HOUR":   RateLimitDurationOneHour,
+	"ONE_MIN":   RateLimitDurationOneMin,
+	"ONE_HOUR":  RateLimitDurationOneHour,
 	"FIVE_HOUR": RateLimitDurationFiveHour,
-	"ONE_WEEK":   RateLimitDurationOneWeek,
-	"ONE_MONTH":  RateLimitDurationOneMonth,
+	"ONE_WEEK":  RateLimitDurationOneWeek,
+	"ONE_MONTH": RateLimitDurationOneMonth,
 }
 
 // goToGraphqlEnum maps Go string constants to GraphQL enum names.

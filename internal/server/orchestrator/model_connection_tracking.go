@@ -20,7 +20,9 @@ func isNilModelConnectionTracker(tracker ModelConnectionTrackerInterface) bool {
 	if tracker == nil {
 		return true
 	}
+
 	concrete, ok := tracker.(*ModelConnectionTracker)
+
 	return ok && concrete == nil
 }
 
@@ -38,11 +40,11 @@ func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracke
 type modelConnectionTracking struct {
 	pipeline.DummyMiddleware
 
-	outbound     *PersistentOutboundTransformer
-	tracker      ModelConnectionTrackerInterface
-	incrKey      *modelConnectionKey
-	decremented  bool
-	decrementMu  sync.Mutex
+	outbound    *PersistentOutboundTransformer
+	tracker     ModelConnectionTrackerInterface
+	incrKey     *modelConnectionKey
+	decremented bool
+	decrementMu sync.Mutex
 }
 
 func (m *modelConnectionTracking) Name() string {
@@ -87,8 +89,9 @@ func (m *modelConnectionTracking) OnOutboundLlmResponse(ctx context.Context, res
 func (m *modelConnectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	tracker := m.tracker
 	decrKey := m.incrKey
+
 	return &onCloseStream{
-		stream:  stream,
+		stream: stream,
 		onClose: func() {
 			if decrKey != nil {
 				tracker.DecrementModelConnection(decrKey.channelID, decrKey.model)

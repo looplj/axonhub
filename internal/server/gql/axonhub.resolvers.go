@@ -104,7 +104,7 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 // GetBatchChannelCost) for future N+1 optimization via DataLoader pattern.
 // Uses all-sources methods to match RateLimitAwareStrategy in the load balancer.
 func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel) (*ChannelRateLimitStatus, error) {
-	channelID := int(obj.ID)
+	channelID := obj.ID
 
 	settings := obj.Settings
 

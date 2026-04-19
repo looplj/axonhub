@@ -62,13 +62,15 @@ func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	outbound := m.outbound
 	tracker := m.tracker
+
 	return &onCloseStream{
-		stream:  stream,
+		stream: stream,
 		onClose: func() {
 			channel := outbound.GetCurrentChannel()
 			if channel == nil {
 				return
 			}
+
 			tracker.DecrementConnection(channel.ID)
 			log.Debug(ctx, "Decremented connection count (stream closed)",
 				log.Int("channel_id", channel.ID),
@@ -98,7 +100,6 @@ func (m *connectionTracking) decrementConnection(ctx context.Context) {
 		log.Int("active_connections", m.tracker.GetActiveConnections(channel.ID)),
 	)
 }
-
 
 // noopConnectionTracking is a no-op middleware when connection tracking is disabled.
 type noopConnectionTracking struct {

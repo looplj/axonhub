@@ -552,7 +552,7 @@ func (s *QuotaService) GetBatchChannelRequestCount(ctx context.Context, channelI
 				sel.C(usagelog.FieldChannelID),
 				sql.As(fmt.Sprintf("COALESCE(COUNT(%s), 0)", sel.C(usagelog.FieldID)), "count"),
 			)
-			 sel.GroupBy(sel.C(usagelog.FieldChannelID))
+			sel.GroupBy(sel.C(usagelog.FieldChannelID))
 		}).Scan(bypassCtx, &rows)
 		if err != nil {
 			return nil, err
@@ -599,7 +599,7 @@ func (s *QuotaService) GetBatchChannelTokenCount(ctx context.Context, channelIDs
 				sel.C(usagelog.FieldChannelID),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalTokens)), "total_tokens"),
 			)
-			 sel.GroupBy(sel.C(usagelog.FieldChannelID))
+			sel.GroupBy(sel.C(usagelog.FieldChannelID))
 		}).Scan(bypassCtx, &rows)
 		if err != nil {
 			return nil, err
@@ -646,7 +646,7 @@ func (s *QuotaService) GetBatchChannelCost(ctx context.Context, channelIDs []int
 				sel.C(usagelog.FieldChannelID),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalCost)), "total_cost"),
 			)
-			 sel.GroupBy(sel.C(usagelog.FieldChannelID))
+			sel.GroupBy(sel.C(usagelog.FieldChannelID))
 		}).Scan(bypassCtx, &rows)
 		if err != nil {
 			return nil, err

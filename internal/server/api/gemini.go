@@ -18,17 +18,17 @@ import (
 type GeminiHandlersParams struct {
 	fx.In
 
-	ChannelService               *biz.ChannelService
-	ModelService                 *biz.ModelService
-	DefaultSelector              *orchestrator.DefaultSelector
-	RequestService               *biz.RequestService
-	SystemService                *biz.SystemService
-	UsageLogService              *biz.UsageLogService
-	PromptService                *biz.PromptService
-	PromptProtectionRuleService  *biz.PromptProtectionRuleService
-	QuotaService                 *biz.QuotaService
-	HttpClient                   *httpclient.HttpClient
-	LiveStreamRegistry           *biz.LiveStreamRegistry
+	ChannelService              *biz.ChannelService
+	ModelService                *biz.ModelService
+	DefaultSelector             *orchestrator.DefaultSelector
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
+	PromptProtectionRuleService *biz.PromptProtectionRuleService
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+	LiveStreamRegistry          *biz.LiveStreamRegistry
 	// These trackers may be nil; the orchestrator creates defaults when nil.
 	RateLimitTracker       *orchestrator.ChannelRequestTracker
 	ConnectionTracker      *orchestrator.DefaultConnectionTracker
@@ -62,9 +62,9 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 					ConnectionTracker:           params.ConnectionTracker,
 					ModelConnectionTracker:      params.ModelConnectionTracker,
 					CostTracker:                 params.CostTracker,
-					},
-				),
+				},
 			),
+		),
 		ChannelService: params.ChannelService,
 		ModelService:   params.ModelService,
 	}

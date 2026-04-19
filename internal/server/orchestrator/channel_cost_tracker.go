@@ -28,14 +28,14 @@ func WithEvictionInterval(d time.Duration) CostTrackerOption {
 }
 
 type ChannelCostTracker struct {
-	mu        sync.RWMutex
-	cache     map[int]costCacheEntry
-	ttl       time.Duration
-	clock     func() time.Time
-	stopCh    chan struct{}
-	evictInt  time.Duration
-	started   sync.Once
-	stopped   sync.Once
+	mu       sync.RWMutex
+	cache    map[int]costCacheEntry
+	ttl      time.Duration
+	clock    func() time.Time
+	stopCh   chan struct{}
+	evictInt time.Duration
+	started  sync.Once
+	stopped  sync.Once
 }
 
 func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
@@ -56,9 +56,11 @@ func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 func (t *ChannelCostTracker) Start() {
 	t.started.Do(func() {
 		t.stopCh = make(chan struct{})
+
 		go func() {
 			ticker := time.NewTicker(t.evictInt)
 			defer ticker.Stop()
+
 			for {
 				select {
 				case <-ticker.C:

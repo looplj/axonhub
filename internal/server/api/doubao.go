@@ -66,8 +66,8 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 				ConnectionTracker:           params.ConnectionTracker,
 				ModelConnectionTracker:      params.ModelConnectionTracker,
 				CostTracker:                 params.CostTracker,
-				},
-			),
+			},
+		),
 		InboundTransformer: inbound,
 	}
 }

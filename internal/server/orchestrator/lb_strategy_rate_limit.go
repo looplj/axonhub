@@ -29,15 +29,15 @@ type RateLimitProvider struct {
 // RateLimitAwareStrategy adjusts channel scores based on configured RPM/TPM rate limits and concurrency limits.
 // Channels that have exhausted their rate limits receive a heavily negative score to be ranked last.
 type RateLimitAwareStrategy struct {
-	provider  RateLimitProvider
-	maxScore  float64
+	provider RateLimitProvider
+	maxScore float64
 }
 
 // NewRateLimitAwareStrategy creates a new rate limit aware load balancing strategy.
 func NewRateLimitAwareStrategy(provider RateLimitProvider) *RateLimitAwareStrategy {
 	return &RateLimitAwareStrategy{
-		provider:  provider,
-		maxScore:  100.0,
+		provider: provider,
+		maxScore: 100.0,
 	}
 }
 
@@ -46,6 +46,7 @@ func NewRateLimitAwareStrategy(provider RateLimitProvider) *RateLimitAwareStrate
 // is seeded so subsequent requests use the fast path.
 func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	rpmDuration := rl.GetRPMDuration().Duration()
+
 	rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
 	if rpm > 0 || s.provider.QuotaService == nil {
 		return rpm
@@ -53,6 +54,7 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 
 	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
 	windowEnd := windowStart.Add(rpmDuration)
+
 	dbCount, err := s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 	if err != nil || dbCount <= 0 {
 		return rpm
@@ -66,6 +68,7 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 // Same seeding logic as resolveRPM.
 func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	tpmDuration := rl.GetTPMDuration().Duration()
+
 	tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
 	if tpm > 0 || s.provider.QuotaService == nil {
 		return tpm
@@ -73,6 +76,7 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 
 	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
 	windowEnd := windowStart.Add(tpmDuration)
+
 	dbCount, err := s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 	if err != nil || dbCount <= 0 {
 		return tpm

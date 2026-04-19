@@ -24,6 +24,7 @@ func (s *onCloseStream) Next() bool {
 		s.closed.Do(s.onClose)
 		return false
 	}
+
 	return true
 }
 
