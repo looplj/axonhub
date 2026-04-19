@@ -868,7 +868,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       antigravity: 'antigravity',
     };
 
-    let channelTypeForURL: ChannelType | undefined = providerToChannelType[selectedProvider];
+    const channelTypeForURL: ChannelType | undefined = providerToChannelType[selectedProvider];
 
     if (channelTypeForURL) {
       const baseURL = getDefaultBaseURL(channelTypeForURL);

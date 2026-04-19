@@ -17,26 +17,27 @@ import (
 // so that exhausted channels always rank last, while still remaining as fallback candidates.
 const rateLimitExhaustedScore = -10000
 
+// RateLimitProvider bundles the dependencies needed by RateLimitAwareStrategy.
+type RateLimitProvider struct {
+	RequestTracker    *ChannelRequestTracker
+	ConnectionTracker ConnectionTracker
+	ModelConnTracker  ModelConnectionTrackerInterface
+	CostTracker       *ChannelCostTracker
+	QuotaService      *biz.QuotaService
+}
+
 // RateLimitAwareStrategy adjusts channel scores based on configured RPM/TPM rate limits and concurrency limits.
 // Channels that have exhausted their rate limits receive a heavily negative score to be ranked last.
 type RateLimitAwareStrategy struct {
-	requestTracker    *ChannelRequestTracker
-	connectionTracker ConnectionTracker
-	modelConnTracker  ModelConnectionTrackerInterface
-	costTracker       *ChannelCostTracker
-	quotaService      *biz.QuotaService
-	maxScore          float64
+	provider  RateLimitProvider
+	maxScore  float64
 }
 
 // NewRateLimitAwareStrategy creates a new rate limit aware load balancing strategy.
-func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker, modelConnTracker ModelConnectionTrackerInterface, costTracker *ChannelCostTracker, quotaService *biz.QuotaService) *RateLimitAwareStrategy {
+func NewRateLimitAwareStrategy(provider RateLimitProvider) *RateLimitAwareStrategy {
 	return &RateLimitAwareStrategy{
-		requestTracker:    tracker,
-		connectionTracker: connectionTracker,
-		modelConnTracker:  modelConnTracker,
-		costTracker:       costTracker,
-		quotaService:      quotaService,
-		maxScore:          100.0,
+		provider:  provider,
+		maxScore:  100.0,
 	}
 }
 
@@ -45,19 +46,19 @@ func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker
 // is seeded so subsequent requests use the fast path.
 func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	rpmDuration := rl.GetRPMDuration().Duration()
-	rpm := s.requestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
-	if rpm > 0 || s.quotaService == nil {
+	rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
+	if rpm > 0 || s.provider.QuotaService == nil {
 		return rpm
 	}
 
 	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
 	windowEnd := windowStart.Add(rpmDuration)
-	dbCount, err := s.quotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+	dbCount, err := s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 	if err != nil || dbCount <= 0 {
 		return rpm
 	}
 
-	s.requestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
+	s.provider.RequestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
 	return dbCount
 }
 
@@ -65,19 +66,19 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 // Same seeding logic as resolveRPM.
 func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	tpmDuration := rl.GetTPMDuration().Duration()
-	tpm := s.requestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
-	if tpm > 0 || s.quotaService == nil {
+	tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
+	if tpm > 0 || s.provider.QuotaService == nil {
 		return tpm
 	}
 
 	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
 	windowEnd := windowStart.Add(tpmDuration)
-	dbCount, err := s.quotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+	dbCount, err := s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 	if err != nil || dbCount <= 0 {
 		return tpm
 	}
 
-	s.requestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
+	s.provider.RequestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
 	return dbCount
 }
 
@@ -93,11 +94,11 @@ func (s *RateLimitAwareStrategy) resolveConcurrencyLimit(channel *biz.Channel) (
 		}
 	}
 
-	if s.connectionTracker == nil {
+	if s.provider.ConnectionTracker == nil {
 		return 0, "", false
 	}
 
-	limit = int64(s.connectionTracker.GetMaxConnections(channel.ID))
+	limit = int64(s.provider.ConnectionTracker.GetMaxConnections(channel.ID))
 	if limit <= 0 {
 		return 0, "", false
 	}
@@ -108,20 +109,20 @@ func (s *RateLimitAwareStrategy) resolveConcurrencyLimit(channel *biz.Channel) (
 // Score calculates the score based on channel rate limit usage.
 // This is the production path with minimal overhead.
 func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
-	if s.requestTracker == nil {
+	if s.provider.RequestTracker == nil {
 		return s.maxScore
 	}
 
 	// Check if channel is in cooldown (429 Retry-After)
-	if s.requestTracker.IsCoolingDown(channel.ID) {
+	if s.provider.RequestTracker.IsCoolingDown(channel.ID) {
 		return rateLimitExhaustedScore
 	}
 
 	settings := channel.Settings
 	if settings == nil || settings.RateLimit == nil {
-		if s.connectionTracker != nil {
+		if s.provider.ConnectionTracker != nil {
 			if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
-				concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+				concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 				if int64(concurrent) >= concurrencyLimit {
 					return rateLimitExhaustedScore
 				}
@@ -173,21 +174,21 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 	if rl.Cost != nil && rl.Cost.IsPositive() {
 		currentCost, costCached := decimal.Zero, false
 
-		if s.costTracker != nil {
-			currentCost, costCached = s.costTracker.GetCachedCost(channel.ID)
+		if s.provider.CostTracker != nil {
+			currentCost, costCached = s.provider.CostTracker.GetCachedCost(channel.ID)
 		}
 
-		if !costCached && s.quotaService != nil {
+		if !costCached && s.provider.QuotaService != nil {
 			costDuration := rl.GetCostDuration()
 			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
-			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
+			if fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
 				currentCost = decimal.NewFromFloatWithExponent(fetchedCost, -12)
 				costCached = true
 
-				if s.costTracker != nil {
-					s.costTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
+				if s.provider.CostTracker != nil {
+					s.provider.CostTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
 				}
 			}
 		}
@@ -204,9 +205,9 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 		}
 	}
 
-	if s.connectionTracker != nil {
+	if s.provider.ConnectionTracker != nil {
 		if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
-			concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+			concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 			if int64(concurrent) >= concurrencyLimit {
 				return rateLimitExhaustedScore
 			}
@@ -218,7 +219,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 		}
 	}
 
-	if s.modelConnTracker != nil && ctx != nil {
+	if s.provider.ModelConnTracker != nil && ctx != nil {
 		modelID := requestedModelFromContext(ctx)
 		if modelID != "" {
 			// Per-model concurrent limits are only enforced when explicitly configured in ModelConcurrent.
@@ -227,7 +228,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			// Example: MaxConcurrent=5 with ModelConcurrent={"gpt-4":2} allows gpt-4 up to 2 concurrent,
 			// while other models share the channel-wide 5 concurrent limit.
 			if modelLimit, hasCustom := rl.GetModelConcurrentLimit(modelID); hasCustom && modelLimit > 0 {
-				modelConcurrent := int64(s.modelConnTracker.GetModelConnectionCount(channel.ID, modelID))
+				modelConcurrent := int64(s.provider.ModelConnTracker.GetModelConnectionCount(channel.ID, modelID))
 				if modelConcurrent >= modelLimit {
 					return rateLimitExhaustedScore
 				}
@@ -250,7 +251,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 // ScoreWithDebug calculates the score with detailed debug information.
 func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
-	if s.requestTracker == nil {
+	if s.provider.RequestTracker == nil {
 		return s.maxScore, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        s.maxScore,
@@ -265,7 +266,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	}
 
 	// Check if channel is in cooldown (429 Retry-After)
-	if until, ok := s.requestTracker.GetCooldownUntil(channel.ID); ok {
+	if until, ok := s.provider.RequestTracker.GetCooldownUntil(channel.ID); ok {
 		score := float64(rateLimitExhaustedScore)
 		details["reason"] = "channel_in_cooldown"
 		details["exhausted"] = true
@@ -282,8 +283,8 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	settings := channel.Settings
 
 	if settings == nil || settings.RateLimit == nil {
-		if concurrencyLimit, source, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 && s.connectionTracker != nil {
-			concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+		if concurrencyLimit, source, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 && s.provider.ConnectionTracker != nil {
+			concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 			details["concurrent_limit"] = concurrencyLimit
 			details["concurrent_current"] = concurrent
 			details["concurrency_limit_source"] = source
@@ -377,21 +378,21 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	if rl.Cost != nil && rl.Cost.IsPositive() {
 		currentCost, costCached := decimal.Zero, false
 
-		if s.costTracker != nil {
-			currentCost, costCached = s.costTracker.GetCachedCost(channel.ID)
+		if s.provider.CostTracker != nil {
+			currentCost, costCached = s.provider.CostTracker.GetCachedCost(channel.ID)
 		}
 
-		if !costCached && s.quotaService != nil {
+		if !costCached && s.provider.QuotaService != nil {
 			costDuration := rl.GetCostDuration()
 			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
-			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
+			if fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
 				currentCost = decimal.NewFromFloatWithExponent(fetchedCost, -12)
 				costCached = true
 
-				if s.costTracker != nil {
-					s.costTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
+				if s.provider.CostTracker != nil {
+					s.provider.CostTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
 				}
 
 				details["cost_fetched_from_db"] = true
@@ -418,9 +419,9 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	}
 
 	// Check concurrent requests using explicit MaxConcurrent first, then default tracker fallback.
-	if s.connectionTracker != nil {
+	if s.provider.ConnectionTracker != nil {
 		if concurrencyLimit, source, configured := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
-			concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+			concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 			details["concurrent_limit"] = concurrencyLimit
 			details["concurrent_current"] = concurrent
 			details["concurrency_limit_source"] = source
@@ -438,7 +439,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 		}
 	}
 
-	if s.modelConnTracker != nil && ctx != nil {
+	if s.provider.ModelConnTracker != nil && ctx != nil {
 		modelID := requestedModelFromContext(ctx)
 		if modelID != "" {
 			// Per-model concurrent limits are only enforced when explicitly configured in ModelConcurrent.
@@ -447,7 +448,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			// Example: MaxConcurrent=5 with ModelConcurrent={"gpt-4":2} allows gpt-4 up to 2 concurrent,
 			// while other models share the channel-wide 5 concurrent limit.
 			if modelLimit, hasCustom := rl.GetModelConcurrentLimit(modelID); hasCustom && modelLimit > 0 {
-				modelConcurrent := int64(s.modelConnTracker.GetModelConnectionCount(channel.ID, modelID))
+				modelConcurrent := int64(s.provider.ModelConnTracker.GetModelConnectionCount(channel.ID, modelID))
 				details["model_concurrent_limit"] = modelLimit
 				details["model_concurrent_current"] = modelConcurrent
 				details["model_concurrent_model"] = modelID

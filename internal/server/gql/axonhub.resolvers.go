@@ -100,7 +100,9 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 // RateLimitStatus is the resolver for the rateLimitStatus field.
 // NOTE: This field resolver is called per-channel, resulting in N+1 queries when
 // rateLimitStatus is requested for multiple channels in a single query.
-// A DataLoader pattern could batch these queries in a future optimization.
+// Batch query methods exist in QuotaService (GetBatchChannelRequestCount, GetBatchChannelTokenCount,
+// GetBatchChannelCost) for future N+1 optimization via DataLoader pattern.
+// Uses all-sources methods to match RateLimitAwareStrategy in the load balancer.
 func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel) (*ChannelRateLimitStatus, error) {
 	channelID := int(obj.ID)
 
@@ -126,7 +128,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 		var rpmCurrentInt int
 		if r.quotaService != nil {
-			rpmCount, err := r.quotaService.GetChannelRequestCount(ctx, channelID, biz.QuotaWindow{Start: &rpmWindowStart, End: &rpmWindowEnd})
+			rpmCount, err := r.quotaService.GetChannelRequestCountAllSources(ctx, channelID, biz.QuotaWindow{Start: &rpmWindowStart, End: &rpmWindowEnd})
 			if err != nil {
 				log.Warn(ctx, "failed to query channel request count for rate limit status",
 					log.Int("channel_id", channelID),
@@ -161,7 +163,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 		var tpmCurrentInt int
 		if r.quotaService != nil {
-			tpmCount, err := r.quotaService.GetChannelTokenCount(ctx, channelID, biz.QuotaWindow{Start: &tpmWindowStart, End: &tpmWindowEnd})
+			tpmCount, err := r.quotaService.GetChannelTokenCountAllSources(ctx, channelID, biz.QuotaWindow{Start: &tpmWindowStart, End: &tpmWindowEnd})
 			if err != nil {
 				log.Warn(ctx, "failed to query channel token count for rate limit status",
 					log.Int("channel_id", channelID),
@@ -200,7 +202,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 		windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 		windowEnd := windowStart.Add(costDuration.Duration())
 
-		currentCost, err := r.quotaService.GetChannelCost(ctx, channelID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+		currentCost, err := r.quotaService.GetChannelCostAllSources(ctx, channelID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 		if err != nil {
 			log.Warn(ctx, "failed to query channel cost for rate limit status",
 				log.Int("channel_id", channelID),

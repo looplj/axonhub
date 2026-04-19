@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"reflect"
 	"sync"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -17,8 +16,16 @@ type modelConnectionKey struct {
 	model     string
 }
 
+func isNilModelConnectionTracker(tracker ModelConnectionTrackerInterface) bool {
+	if tracker == nil {
+		return true
+	}
+	concrete, ok := tracker.(*ModelConnectionTracker)
+	return ok && concrete == nil
+}
+
 func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracker ModelConnectionTrackerInterface) pipeline.Middleware {
-	if tracker == nil || reflect.ValueOf(tracker).IsNil() {
+	if isNilModelConnectionTracker(tracker) {
 		return &noopModelConnectionTracking{}
 	}
 
@@ -78,11 +85,20 @@ func (m *modelConnectionTracking) OnOutboundLlmResponse(ctx context.Context, res
 }
 
 func (m *modelConnectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	return &modelConnectionTrackingStream{
-		ctx:     ctx,
+	tracker := m.tracker
+	decrKey := m.incrKey
+	return &onCloseStream{
 		stream:  stream,
-		tracker: m.tracker,
-		decrKey: m.incrKey,
+		onClose: func() {
+			if decrKey != nil {
+				tracker.DecrementModelConnection(decrKey.channelID, decrKey.model)
+				log.Debug(ctx, "Decremented model connection count (stream closed)",
+					log.Int("channel_id", decrKey.channelID),
+					log.String("model", decrKey.model),
+					log.Int("active_connections", tracker.GetModelConnectionCount(decrKey.channelID, decrKey.model)),
+				)
+			}
+		},
 	}, nil
 }
 
@@ -106,54 +122,6 @@ func (m *modelConnectionTracking) decrementConnection(ctx context.Context) {
 		log.String("model", m.incrKey.model),
 		log.Int("active_connections", m.tracker.GetModelConnectionCount(m.incrKey.channelID, m.incrKey.model)),
 	)
-}
-
-type modelConnectionTrackingStream struct {
-	ctx       context.Context
-	stream    streams.Stream[*llm.Response]
-	tracker   ModelConnectionTrackerInterface
-	decrKey   *modelConnectionKey
-	closeOnce sync.Once
-}
-
-func (s *modelConnectionTrackingStream) Current() *llm.Response {
-	return s.stream.Current()
-}
-
-func (s *modelConnectionTrackingStream) Next() bool {
-	if !s.stream.Next() {
-		s.closeOnce.Do(func() {
-			if s.decrKey != nil {
-				s.tracker.DecrementModelConnection(s.decrKey.channelID, s.decrKey.model)
-				log.Debug(s.ctx, "Decremented model connection count (stream exhausted)",
-					log.Int("channel_id", s.decrKey.channelID),
-					log.String("model", s.decrKey.model),
-					log.Int("active_connections", s.tracker.GetModelConnectionCount(s.decrKey.channelID, s.decrKey.model)),
-				)
-			}
-		})
-		return false
-	}
-	return true
-}
-
-func (s *modelConnectionTrackingStream) Close() error {
-	s.closeOnce.Do(func() {
-		if s.decrKey != nil {
-			s.tracker.DecrementModelConnection(s.decrKey.channelID, s.decrKey.model)
-			log.Debug(s.ctx, "Decremented model connection count (stream closed)",
-				log.Int("channel_id", s.decrKey.channelID),
-				log.String("model", s.decrKey.model),
-				log.Int("active_connections", s.tracker.GetModelConnectionCount(s.decrKey.channelID, s.decrKey.model)),
-			)
-		}
-	})
-
-	return s.stream.Close()
-}
-
-func (s *modelConnectionTrackingStream) Err() error {
-	return s.stream.Err()
 }
 
 type noopModelConnectionTracking struct {

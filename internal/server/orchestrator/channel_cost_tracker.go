@@ -28,12 +28,14 @@ func WithEvictionInterval(d time.Duration) CostTrackerOption {
 }
 
 type ChannelCostTracker struct {
-	mu       sync.RWMutex
-	cache    map[int]costCacheEntry
-	ttl      time.Duration
-	clock    func() time.Time
-	stopCh   chan struct{}
-	evictInt time.Duration
+	mu        sync.RWMutex
+	cache     map[int]costCacheEntry
+	ttl       time.Duration
+	clock     func() time.Time
+	stopCh    chan struct{}
+	evictInt  time.Duration
+	started   sync.Once
+	stopped   sync.Once
 }
 
 func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
@@ -42,7 +44,6 @@ func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 		ttl:      30 * time.Second,
 		clock:    time.Now,
 		evictInt: 60 * time.Second,
-		stopCh:   make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(t)
@@ -50,31 +51,33 @@ func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 	return t
 }
 
-// Start begins the background eviction goroutine.
+// Start begins the background eviction goroutine. Safe to call multiple times;
+// only the first call launches the goroutine.
 func (t *ChannelCostTracker) Start() {
-	if t.stopCh == nil {
+	t.started.Do(func() {
 		t.stopCh = make(chan struct{})
-	}
-	go func() {
-		ticker := time.NewTicker(t.evictInt)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				t.EvictExpired()
-			case <-t.stopCh:
-				return
+		go func() {
+			ticker := time.NewTicker(t.evictInt)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					t.EvictExpired()
+				case <-t.stopCh:
+					return
+				}
 			}
-		}
-	}()
+		}()
+	})
 }
 
-// Stop stops the background eviction goroutine.
+// Stop stops the background eviction goroutine. Safe to call multiple times.
 func (t *ChannelCostTracker) Stop() {
-	if t.stopCh != nil {
-		close(t.stopCh)
-		t.stopCh = nil
-	}
+	t.stopped.Do(func() {
+		if t.stopCh != nil {
+			close(t.stopCh)
+		}
+	})
 }
 
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {

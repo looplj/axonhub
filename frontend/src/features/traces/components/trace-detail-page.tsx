@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
@@ -30,27 +30,7 @@ export default function TraceDetailPage() {
   const [selectedSpan, setSelectedSpan] = useState<Span | null>(null);
   const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  // Default to 'flat' view for better performance with large traces;
-  // 'flow' view can be slow with many spans.
-  // Persist user preference in localStorage.
-  const [viewMode, setViewMode] = useState<'flat' | 'flow' | 'tree'>(() => {
-    try {
-      const saved = localStorage.getItem('trace-view-mode');
-      if (saved === 'flat' || saved === 'flow' || saved === 'tree') return saved;
-    } catch {
-      // localStorage not available (e.g., private browsing)
-    }
-    return 'flat';
-  });
-
-  const handleViewModeChange = useCallback((mode: 'flat' | 'flow' | 'tree') => {
-    setViewMode(mode);
-    try {
-      localStorage.setItem('trace-view-mode', mode);
-    } catch {
-      // localStorage not available (e.g., private browsing)
-    }
-  }, []);
+  const [viewMode, setViewMode] = useState<'flat' | 'flow' | 'tree'>('flat');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
 
@@ -248,7 +228,7 @@ export default function TraceDetailPage() {
                       variant='ghost'
                       size='sm'
                       className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
-                      onClick={() => handleViewModeChange('flat')}
+                      onClick={() => setViewMode('flat')}
                     >
                       <List className='h-3.5 w-3.5' />
                       {t('traces.detail.viewMode.flat')}
@@ -257,7 +237,7 @@ export default function TraceDetailPage() {
                       variant='ghost'
                       size='sm'
                       className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
-                      onClick={() => handleViewModeChange('flow')}
+                      onClick={() => setViewMode('flow')}
                     >
                       <GitBranch className='h-3.5 w-3.5' />
                       {t('traces.detail.viewMode.flow')}
@@ -266,7 +246,7 @@ export default function TraceDetailPage() {
                       variant='ghost'
                       size='sm'
                       className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
-                      onClick={() => handleViewModeChange('tree')}
+                      onClick={() => setViewMode('tree')}
                     >
                       <Waypoints className='h-3.5 w-3.5' />
                       {t('traces.detail.viewMode.tree')}
@@ -293,7 +273,7 @@ export default function TraceDetailPage() {
                     variant='ghost'
                     size='sm'
                     className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
-                    onClick={() => handleViewModeChange('flat')}
+                    onClick={() => setViewMode('flat')}
                   >
                     <List className='h-3.5 w-3.5' />
                     {t('traces.detail.viewMode.flat')}
@@ -302,7 +282,7 @@ export default function TraceDetailPage() {
                     variant='ghost'
                     size='sm'
                     className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
-                    onClick={() => handleViewModeChange('flow')}
+                    onClick={() => setViewMode('flow')}
                   >
                     <GitBranch className='h-3.5 w-3.5' />
                     {t('traces.detail.viewMode.flow')}
@@ -311,7 +291,7 @@ export default function TraceDetailPage() {
                     variant='ghost'
                     size='sm'
                     className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
-                    onClick={() => handleViewModeChange('tree')}
+                    onClick={() => setViewMode('tree')}
                   >
                     <Waypoints className='h-3.5 w-3.5' />
                     {t('traces.detail.viewMode.tree')}

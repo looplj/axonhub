@@ -594,7 +594,10 @@ func TestLoadBalancedSelector_Select_PriorityGroupExhaustionBackfill(t *testing.
 	tracker := NewChannelRequestTracker()
 	connectionTracker.IncrementConnection(chHighPriority.ID)
 
-	rateLimitStrategy := NewRateLimitAwareStrategy(tracker, connectionTracker, nil, nil, nil)
+	rateLimitStrategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:    tracker,
+		ConnectionTracker: connectionTracker,
+	})
 	systemService := newTestSystemService(client)
 	loadBalancer := NewLoadBalancer(systemService, nil, rateLimitStrategy)
 

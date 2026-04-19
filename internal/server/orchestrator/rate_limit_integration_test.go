@@ -386,7 +386,7 @@ func TestIntegration_IndependentRPMAndTPMDurations_WindowReset(t *testing.T) {
 
 func TestIntegration_BackwardCompatibility_RPMOnly_DefaultOneMinuteWindow(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(100)
 	entChannel := &ent.Channel{
@@ -415,7 +415,7 @@ func TestIntegration_BackwardCompatibility_RPMOnly_DefaultOneMinuteWindow(t *tes
 
 func TestIntegration_BackwardCompatibility_RPMExhausted_DefaultOneMinuteWindow(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(100)
 	entChannel := &ent.Channel{
@@ -440,7 +440,7 @@ func TestIntegration_BackwardCompatibility_RPMExhausted_DefaultOneMinuteWindow(t
 
 func TestIntegration_BackwardCompatibility_TPMOnly_DefaultOneMinuteWindow(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	tpm := int64(1000)
 	entChannel := &ent.Channel{
@@ -467,7 +467,7 @@ func TestIntegration_BackwardCompatibility_TPMOnly_DefaultOneMinuteWindow(t *tes
 
 func TestIntegration_BackwardCompatibility_NoDurationFields(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(100)
 	tpm := int64(1000)
@@ -497,7 +497,7 @@ func TestIntegration_BackwardCompatibility_NoDurationFields(t *testing.T) {
 
 func TestIntegration_LBScoring_MixedDurationConfigs(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpmA := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -558,7 +558,7 @@ func TestIntegration_LBScoring_MixedDurationConfigs(t *testing.T) {
 
 func TestIntegration_LBScoring_MixedDurationConfigs_WithDebug(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -749,7 +749,7 @@ func TestIntegration_ConcurrentAccess_MixedTrackersAndStrategy(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	connectionTracker := NewDefaultConnectionTracker(10)
 	modelTracker := NewModelConnectionTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, modelTracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker, ConnectionTracker: connectionTracker, ModelConnTracker: modelTracker})
 
 	rpm := int64(100)
 	tpm := int64(1000)
@@ -946,7 +946,7 @@ func TestIntegration_ModelConcurrent_WithChannelWideLimit(t *testing.T) {
 
 func TestIntegration_Cooldown_ChannelExhaustedDuringCooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 	rpm := int64(100)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "cooldown-test",
@@ -988,7 +988,7 @@ func TestIntegration_Cooldown_CooldownExpiration(t *testing.T) {
 	// Channel should NOT be cooling down after expiration
 	assert.False(t, tracker.IsCoolingDown(ch.ID))
 
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 	score := strategy.Score(context.Background(), ch)
 	assert.Equal(t, 100.0, score, "Channel should score normally after cooldown expires")
 }
@@ -1019,7 +1019,7 @@ func TestIntegration_Cooldown_SetCooldownMonotonic(t *testing.T) {
 
 func TestIntegration_Cooldown_ScoreWithDebug(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 	rpm := int64(100)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "cooldown-debug",
@@ -1040,7 +1040,7 @@ func TestIntegration_ModelConcurrent_ScoreWithModelContext(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mt := NewModelConnectionTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker, ConnectionTracker: ct, ModelConnTracker: mt})
 	maxConcurrent := int64(10)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "model-ctx-score",
@@ -1055,7 +1055,7 @@ func TestIntegration_ModelConcurrent_ScoreWithModelContext(t *testing.T) {
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))
 
 	// With model context and under limit
-	ctx := contextWithModel(t, "gpt-4")
+	ctx := contextWithRequestedModel(context.Background(), "gpt-4")
 	score = strategy.Score(ctx, ch)
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))
 
@@ -1066,7 +1066,7 @@ func TestIntegration_ModelConcurrent_ScoreWithModelContext(t *testing.T) {
 	assert.Equal(t, float64(rateLimitExhaustedScore), score, "Should be exhausted when per-model limit reached")
 
 	// Other model should still be allowed (falls back to MaxConcurrent)
-	otherCtx := contextWithModel(t, "claude-3")
+	otherCtx := contextWithRequestedModel(context.Background(), "claude-3")
 	score = strategy.Score(otherCtx, ch)
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))
 }
@@ -1075,7 +1075,7 @@ func TestIntegration_ModelConcurrent_ScoreWithDebugModelContext(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mt := NewModelConnectionTracker()
 	ct := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker, ConnectionTracker: ct, ModelConnTracker: mt})
 	maxConcurrent := int64(10)
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "model-ctx-debug",
@@ -1087,7 +1087,7 @@ func TestIntegration_ModelConcurrent_ScoreWithDebugModelContext(t *testing.T) {
 
 	mt.IncrementModelConnection(1, "gpt-4")
 
-	ctx := contextWithModel(t, "gpt-4")
+	ctx := contextWithRequestedModel(context.Background(), "gpt-4")
 	score, ss := strategy.ScoreWithDebug(ctx, ch)
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))
 	assert.Equal(t, int64(2), ss.Details["model_concurrent_limit"])
@@ -1097,7 +1097,7 @@ func TestIntegration_ModelConcurrent_ScoreWithDebugModelContext(t *testing.T) {
 
 func TestIntegration_Anchor_RPMWithAnchor(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -1127,7 +1127,7 @@ func TestIntegration_Anchor_RPMWithAnchor(t *testing.T) {
 
 func TestIntegration_Anchor_RPMExhaustedWithAnchor(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(5)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -1157,7 +1157,7 @@ func TestIntegration_Anchor_RPMExhaustedWithAnchor(t *testing.T) {
 
 func TestIntegration_Anchor_TPMWithAnchor(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	tpm := int64(1000)
 	oneHour := objects.RateLimitDurationOneHour
@@ -1186,7 +1186,7 @@ func TestIntegration_Anchor_TPMWithAnchor(t *testing.T) {
 func TestIntegration_Anchor_CostWithAnchor(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	costTracker := NewChannelCostTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker, CostTracker: costTracker})
 
 	cost := decimal.NewFromFloat(10.0)
 	oneWeek := objects.RateLimitDurationOneWeek
@@ -1216,7 +1216,7 @@ func TestIntegration_Anchor_CostWithAnchor(t *testing.T) {
 
 func TestIntegration_Anchor_MixedAnchors(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(100)
 	tpm := int64(1000)
@@ -1251,7 +1251,7 @@ func TestIntegration_Anchor_MixedAnchors(t *testing.T) {
 
 func TestIntegration_ZeroLimitsMeanNoLimit(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 	zeroRPM := int64(0)
 	zeroTPM := int64(0)
 	zeroConcurrent := int64(0)
@@ -1269,7 +1269,7 @@ func TestIntegration_ZeroLimitsMeanNoLimit(t *testing.T) {
 
 func TestIntegration_NilRateLimitPointer(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 	ch := &biz.Channel{Channel: &ent.Channel{
 		ID: 1, Name: "nil-rl",
 		Settings: &objects.ChannelSettings{RateLimit: nil},
@@ -1282,7 +1282,7 @@ func TestIntegration_ScoreRecoveryAfterDecrement(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	ct := NewDefaultConnectionTracker(10)
 	mt := NewModelConnectionTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, ct, mt, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker, ConnectionTracker: ct, ModelConnTracker: mt})
 	maxConcurrent := int64(2)
 	modelConcurrent := map[string]int64{"gpt-4": 1}
 	ch := &biz.Channel{Channel: &ent.Channel{
@@ -1292,7 +1292,7 @@ func TestIntegration_ScoreRecoveryAfterDecrement(t *testing.T) {
 		}},
 	}}
 
-	ctx := contextWithModel(t, "gpt-4")
+	ctx := contextWithRequestedModel(context.Background(), "gpt-4")
 
 	mt.IncrementModelConnection(1, "gpt-4")
 	score := strategy.Score(ctx, ch)
@@ -1395,7 +1395,7 @@ func TestIntegration_Cost_NilQuotaService_FailOpenBehavior(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	costTracker := NewChannelCostTracker()
 	// Note: quotaService is nil here - this is the key behavior being tested
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker, CostTracker: costTracker})
 
 	costLimit := decimal.NewFromFloat(100.0)
 	entCh := &ent.Channel{ID: 1, Name: "cost-limit-channel", Settings: &objects.ChannelSettings{
@@ -1421,7 +1421,7 @@ func TestIntegration_Cost_NilQuotaService_FailOpenBehavior(t *testing.T) {
 func TestIntegration_Cooldown_ChannelExhaustedDuringCooldown_WithClock(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	tracker, clockPtr := newTrackerWithClock(now)
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(100)
 	ch := &biz.Channel{Channel: &ent.Channel{
@@ -1468,7 +1468,7 @@ func TestIntegration_Cooldown_CooldownExpiration_WithClock(t *testing.T) {
 	// Channel should NOT be cooling down after expiration
 	assert.False(t, tracker.IsCoolingDown(ch.ID))
 
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 	score := strategy.Score(context.Background(), ch)
 	assert.Equal(t, 100.0, score, "Channel should score normally after cooldown expires")
 }
@@ -1504,7 +1504,7 @@ func TestIntegration_Cooldown_SetCooldownMonotonic_WithClock(t *testing.T) {
 func TestIntegration_Cooldown_ScoreWithDebug_WithClock(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	tracker, clockPtr := newTrackerWithClock(now)
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{RequestTracker: tracker})
 
 	rpm := int64(100)
 	ch := &biz.Channel{Channel: &ent.Channel{

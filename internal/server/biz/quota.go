@@ -381,6 +381,45 @@ func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window
 	})
 }
 
+// GetChannelCostAllSources returns the total cost for a channel across all sources (not just API).
+// This matches the RateLimitAwareStrategy behavior in the load balancer.
+func (s *QuotaService) GetChannelCostAllSources(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
+	return authz.RunWithSystemBypass(ctx, "channel-cost-all", func(bypassCtx context.Context) (float64, error) {
+		q := s.ent.UsageLog.Query().Where(
+			usagelog.ChannelIDEQ(channelID),
+		)
+
+		if window.Start != nil {
+			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+		}
+
+		if window.End != nil {
+			q = q.Where(usagelog.CreatedAtLT(*window.End))
+		}
+
+		type row struct {
+			TotalCost float64 `json:"total_cost"`
+		}
+
+		var rows []row
+
+		err := q.Modify(func(sel *sql.Selector) {
+			sel.Select(
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalCost)), "total_cost"),
+			)
+		}).Scan(bypassCtx, &rows)
+		if err != nil {
+			return 0, err
+		}
+
+		if len(rows) == 0 {
+			return 0, nil
+		}
+
+		return rows[0].TotalCost, nil
+	})
+}
+
 func (s *QuotaService) GetChannelRequestCount(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-request-count", func(bypassCtx context.Context) (int64, error) {
 		return s.channelRequestCount(bypassCtx, channelID, window, usagelog.SourceAPI)
@@ -479,4 +518,145 @@ func (s *QuotaService) channelTokenCount(ctx context.Context, channelID int, win
 	}
 
 	return rows[0].TotalTokens, nil
+}
+
+// GetBatchChannelRequestCount returns request counts for multiple channels in a single query.
+// Uses GROUP BY channel_id to fetch all counts at once. Returns a map of channelID to count.
+func (s *QuotaService) GetBatchChannelRequestCount(ctx context.Context, channelIDs []int, window QuotaWindow) (map[int]int64, error) {
+	if len(channelIDs) == 0 {
+		return map[int]int64{}, nil
+	}
+
+	return authz.RunWithSystemBypass(ctx, "batch-channel-request-count", func(bypassCtx context.Context) (map[int]int64, error) {
+		q := s.ent.UsageLog.Query().Where(
+			usagelog.ChannelIDIn(channelIDs...),
+		)
+
+		if window.Start != nil {
+			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+		}
+
+		if window.End != nil {
+			q = q.Where(usagelog.CreatedAtLT(*window.End))
+		}
+
+		type row struct {
+			ChannelID int   `json:"channel_id"`
+			Count     int64 `json:"count"`
+		}
+
+		var rows []row
+
+		err := q.Modify(func(sel *sql.Selector) {
+			sel.Select(
+				sel.C(usagelog.FieldChannelID),
+				sql.As(fmt.Sprintf("COALESCE(COUNT(%s), 0)", sel.C(usagelog.FieldID)), "count"),
+			)
+			 sel.GroupBy(sel.C(usagelog.FieldChannelID))
+		}).Scan(bypassCtx, &rows)
+		if err != nil {
+			return nil, err
+		}
+
+		result := make(map[int]int64, len(rows))
+		for _, r := range rows {
+			result[r.ChannelID] = r.Count
+		}
+
+		return result, nil
+	})
+}
+
+// GetBatchChannelTokenCount returns token counts for multiple channels in a single query.
+// Uses GROUP BY channel_id to fetch all counts at once. Returns a map of channelID to token count.
+func (s *QuotaService) GetBatchChannelTokenCount(ctx context.Context, channelIDs []int, window QuotaWindow) (map[int]int64, error) {
+	if len(channelIDs) == 0 {
+		return map[int]int64{}, nil
+	}
+
+	return authz.RunWithSystemBypass(ctx, "batch-channel-token-count", func(bypassCtx context.Context) (map[int]int64, error) {
+		q := s.ent.UsageLog.Query().Where(
+			usagelog.ChannelIDIn(channelIDs...),
+		)
+
+		if window.Start != nil {
+			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+		}
+
+		if window.End != nil {
+			q = q.Where(usagelog.CreatedAtLT(*window.End))
+		}
+
+		type row struct {
+			ChannelID   int   `json:"channel_id"`
+			TotalTokens int64 `json:"total_tokens"`
+		}
+
+		var rows []row
+
+		err := q.Modify(func(sel *sql.Selector) {
+			sel.Select(
+				sel.C(usagelog.FieldChannelID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalTokens)), "total_tokens"),
+			)
+			 sel.GroupBy(sel.C(usagelog.FieldChannelID))
+		}).Scan(bypassCtx, &rows)
+		if err != nil {
+			return nil, err
+		}
+
+		result := make(map[int]int64, len(rows))
+		for _, r := range rows {
+			result[r.ChannelID] = r.TotalTokens
+		}
+
+		return result, nil
+	})
+}
+
+// GetBatchChannelCost returns cost totals for multiple channels in a single query.
+// Uses GROUP BY channel_id to fetch all costs at once. Returns a map of channelID to cost.
+func (s *QuotaService) GetBatchChannelCost(ctx context.Context, channelIDs []int, window QuotaWindow) (map[int]float64, error) {
+	if len(channelIDs) == 0 {
+		return map[int]float64{}, nil
+	}
+
+	return authz.RunWithSystemBypass(ctx, "batch-channel-cost", func(bypassCtx context.Context) (map[int]float64, error) {
+		q := s.ent.UsageLog.Query().Where(
+			usagelog.ChannelIDIn(channelIDs...),
+		)
+
+		if window.Start != nil {
+			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+		}
+
+		if window.End != nil {
+			q = q.Where(usagelog.CreatedAtLT(*window.End))
+		}
+
+		type row struct {
+			ChannelID int     `json:"channel_id"`
+			TotalCost float64 `json:"total_cost"`
+		}
+
+		var rows []row
+
+		err := q.Modify(func(sel *sql.Selector) {
+			sel.Select(
+				sel.C(usagelog.FieldChannelID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalCost)), "total_cost"),
+			)
+			 sel.GroupBy(sel.C(usagelog.FieldChannelID))
+		}).Scan(bypassCtx, &rows)
+		if err != nil {
+			return nil, err
+		}
+
+		result := make(map[int]float64, len(rows))
+		for _, r := range rows {
+			result[r.ChannelID] = r.TotalCost
+		}
+
+		return result, nil
+	})
 }

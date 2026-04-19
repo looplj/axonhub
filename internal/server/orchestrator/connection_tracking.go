@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"sync"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
@@ -61,12 +60,22 @@ func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response
 }
 
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	// Wrap stream to decrement connection when stream closes
-	return &connectionTrackingStream{
-		ctx:      ctx,
-		stream:   stream,
-		tracker:  m.tracker,
-		outbound: m.outbound,
+	outbound := m.outbound
+	tracker := m.tracker
+	return &onCloseStream{
+		stream:  stream,
+		onClose: func() {
+			channel := outbound.GetCurrentChannel()
+			if channel == nil {
+				return
+			}
+			tracker.DecrementConnection(channel.ID)
+			log.Debug(ctx, "Decremented connection count (stream closed)",
+				log.Int("channel_id", channel.ID),
+				log.String("channel_name", channel.Name),
+				log.Int("active_connections", tracker.GetActiveConnections(channel.ID)),
+			)
+		},
 	}, nil
 }
 
@@ -90,57 +99,6 @@ func (m *connectionTracking) decrementConnection(ctx context.Context) {
 	)
 }
 
-// connectionTrackingStream wraps a stream to decrement connection count when closed.
-//
-//nolint:containedctx // ctx is used for logging.
-type connectionTrackingStream struct {
-	ctx      context.Context
-	stream   streams.Stream[*llm.Response]
-	tracker  ConnectionTracker
-	outbound *PersistentOutboundTransformer
-	closeOnce sync.Once
-}
-
-func (s *connectionTrackingStream) Current() *llm.Response {
-	return s.stream.Current()
-}
-
-func (s *connectionTrackingStream) Next() bool {
-	if !s.stream.Next() {
-		s.closeOnce.Do(func() {
-			s.decrementConnection()
-		})
-		return false
-	}
-	return true
-}
-
-func (s *connectionTrackingStream) Close() error {
-	s.closeOnce.Do(func() {
-		s.decrementConnection()
-	})
-
-	return s.stream.Close()
-}
-
-func (s *connectionTrackingStream) Err() error {
-	return s.stream.Err()
-}
-
-func (s *connectionTrackingStream) decrementConnection() {
-	channel := s.outbound.GetCurrentChannel()
-	if channel == nil {
-		return
-	}
-
-	s.tracker.DecrementConnection(channel.ID)
-
-	log.Debug(s.ctx, "Decremented connection count (stream closed)",
-		log.Int("channel_id", channel.ID),
-		log.String("channel_name", channel.Name),
-		log.Int("active_connections", s.tracker.GetActiveConnections(channel.ID)),
-	)
-}
 
 // noopConnectionTracking is a no-op middleware when connection tracking is disabled.
 type noopConnectionTracking struct {

@@ -171,7 +171,6 @@ func (s *rateLimitTrackingStream) Current() *llm.Response {
 		return event
 	}
 
-	// Track tokens if usage information is present (typically in the last chunk)
 	if event.Usage != nil && event.Usage.TotalTokens > 0 {
 		channel := s.outbound.GetCurrentChannel()
 		if channel != nil {

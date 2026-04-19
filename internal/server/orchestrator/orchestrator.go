@@ -19,45 +19,47 @@ import (
 
 const DefaultMaxConnectionsPerChannel = 256
 
-func NewChatCompletionOrchestrator(
-	channelService *biz.ChannelService,
-	defaultSelector *DefaultSelector,
-	requestService *biz.RequestService,
-	httpClient *httpclient.HttpClient,
-	inbound transformer.Inbound,
-	systemService *biz.SystemService,
-	usageLogService *biz.UsageLogService,
-	promptService *biz.PromptService,
-	quotaService *biz.QuotaService,
-	promptProtectionRuleService *biz.PromptProtectionRuleService,
-	liveStreamRegistry *biz.LiveStreamRegistry,
-	externalRateLimitTracker *ChannelRequestTracker,
-	externalConnectionTracker ConnectionTracker,
-	externalModelConnectionTracker *ModelConnectionTracker,
-	externalCostTracker *ChannelCostTracker,
-) *ChatCompletionOrchestrator {
+type OrchestratorConfig struct {
+	ChannelService              *biz.ChannelService
+	DefaultSelector             *DefaultSelector
+	RequestService              *biz.RequestService
+	HttpClient                  *httpclient.HttpClient
+	Inbound                     transformer.Inbound
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
+	QuotaService                *biz.QuotaService
+	PromptProtectionRuleService *biz.PromptProtectionRuleService
+	LiveStreamRegistry          *biz.LiveStreamRegistry
+	RateLimitTracker            *ChannelRequestTracker
+	ConnectionTracker           ConnectionTracker
+	ModelConnectionTracker      *ModelConnectionTracker
+	CostTracker                 *ChannelCostTracker
+}
+
+func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrchestrator {
 	var connectionTracker ConnectionTracker
-	if externalConnectionTracker != nil {
-		connectionTracker = externalConnectionTracker
+	if cfg.ConnectionTracker != nil {
+		connectionTracker = cfg.ConnectionTracker
 	}
 
 	var rateLimitTracker *ChannelRequestTracker
-	if externalRateLimitTracker != nil {
-		rateLimitTracker = externalRateLimitTracker
+	if cfg.RateLimitTracker != nil {
+		rateLimitTracker = cfg.RateLimitTracker
 	} else {
 		rateLimitTracker = NewChannelRequestTracker()
 	}
 
 	var modelConnectionTracker *ModelConnectionTracker
-	if externalModelConnectionTracker != nil {
-		modelConnectionTracker = externalModelConnectionTracker
+	if cfg.ModelConnectionTracker != nil {
+		modelConnectionTracker = cfg.ModelConnectionTracker
 	} else {
 		modelConnectionTracker = NewModelConnectionTracker()
 	}
 
 	var costTracker *ChannelCostTracker
-	if externalCostTracker != nil {
-		costTracker = externalCostTracker
+	if cfg.CostTracker != nil {
+		costTracker = cfg.CostTracker
 	} else {
 		costTracker = NewChannelCostTracker()
 	}
@@ -66,39 +68,45 @@ func NewChatCompletionOrchestrator(
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
-	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker, modelConnectionTracker, costTracker, quotaService)
+	rateLimitStrategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:    rateLimitTracker,
+		ConnectionTracker: connectionTracker,
+		ModelConnTracker:  modelConnectionTracker,
+		CostTracker:       costTracker,
+		QuotaService:      cfg.QuotaService,
+	})
 
-	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
-		NewTraceAwareStrategy(requestService),
-		NewErrorAwareStrategy(channelService),
-		NewWeightRoundRobinStrategy(channelService),
-		NewLatencyAwareStrategy(channelService),
+	adaptiveLoadBalancer := NewLoadBalancer(cfg.SystemService, cfg.ChannelService,
+		NewTraceAwareStrategy(cfg.RequestService),
+		NewErrorAwareStrategy(cfg.ChannelService),
+		NewWeightRoundRobinStrategy(cfg.ChannelService),
+		NewLatencyAwareStrategy(cfg.ChannelService),
 		rateLimitStrategy,
 	)
 
-	failoverLoadBalancer := NewLoadBalancer(systemService, channelService,
+	failoverLoadBalancer := NewLoadBalancer(cfg.SystemService, cfg.ChannelService,
 		NewWeightStrategy(), NewRandomStrategy(), rateLimitStrategy)
 
-	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
+	circuitBreakerLoadBalancer := NewLoadBalancer(cfg.SystemService, cfg.ChannelService,
 		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy)
 
 	return &ChatCompletionOrchestrator{
-		Inbound:            inbound,
-		RequestService:     requestService,
-		ChannelService:     channelService,
-		SystemService:      systemService,
-		UsageLogService:    usageLogService,
-		QuotaService:       quotaService,
-		LiveStreamRegistry: liveStreamRegistry,
-		PromptProvider:     promptService,
-		PromptProtecter:    promptProtectionRuleService,
+		Inbound:            cfg.Inbound,
+		RequestService:     cfg.RequestService,
+		ChannelService:     cfg.ChannelService,
+		SystemService:      cfg.SystemService,
+		UsageLogService:    cfg.UsageLogService,
+		QuotaService:       cfg.QuotaService,
+		LiveStreamRegistry: cfg.LiveStreamRegistry,
+		PromptProvider:     cfg.PromptService,
+		PromptProtecter:    cfg.PromptProtectionRuleService,
 		Middlewares: []pipeline.Middleware{
 			cc.StripBillingHeaderCCH(),
 			stream.EnsureUsage(),
 		},
-		PipelineFactory:            pipeline.NewFactory(httpClient),
+		PipelineFactory:            pipeline.NewFactory(cfg.HttpClient),
 		ModelMapper:                NewModelMapper(),
-		channelSelector:            defaultSelector,
+		channelSelector:            cfg.DefaultSelector,
 		connectionTracker:          connectionTracker,
 		rateLimitTracker:           rateLimitTracker,
 		modelConnectionTracker:     modelConnectionTracker,

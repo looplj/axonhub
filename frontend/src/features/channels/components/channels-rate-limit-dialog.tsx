@@ -102,6 +102,22 @@ function modelConcurrentToArray(
 const HOUR_DURATIONS: RateLimitDuration[] = ['ONE_HOUR', 'FIVE_HOUR'];
 const DATE_DURATIONS: RateLimitDuration[] = ['ONE_WEEK', 'ONE_MONTH'];
 
+function getRateLimitDefaults(currentRow: Channel): RateLimitFormValues {
+  return {
+    rpm: currentRow.settings?.rateLimit?.rpm ?? '',
+    rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
+    rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
+    tpm: currentRow.settings?.rateLimit?.tpm ?? '',
+    tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
+    tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
+    cost: currentRow.settings?.rateLimit?.cost ?? '',
+    costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
+    costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
+    maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
+    modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
+  };
+}
+
 function isHourBasedDuration(d: RateLimitDuration | null | undefined): boolean {
   return !!d && HOUR_DURATIONS.includes(d);
 }
@@ -210,19 +226,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
 
   const form = useForm<RateLimitFormValues>({
     resolver: zodResolver(rateLimitFormSchema),
-    defaultValues: {
-      rpm: currentRow.settings?.rateLimit?.rpm ?? '',
-      rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
-      rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
-      tpm: currentRow.settings?.rateLimit?.tpm ?? '',
-      tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
-      tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
-      cost: currentRow.settings?.rateLimit?.cost ?? '',
-      costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
-      costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
-      maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
-      modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
-    },
+    defaultValues: getRateLimitDefaults(currentRow),
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -238,19 +242,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
 
   useEffect(() => {
     if (open && currentRow.id !== lastResetRowId.current) {
-      form.reset({
-        rpm: currentRow.settings?.rateLimit?.rpm ?? '',
-        rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
-        rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
-        tpm: currentRow.settings?.rateLimit?.tpm ?? '',
-        tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
-        tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
-        cost: currentRow.settings?.rateLimit?.cost ?? '',
-        costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
-        costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
-        maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
-        modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
-      });
+      form.reset(getRateLimitDefaults(currentRow));
       lastResetRowId.current = currentRow.id;
     }
   }, [open, currentRow, form]);
@@ -352,18 +344,10 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                       className='text-muted-foreground hover:text-foreground h-8 w-8 shrink-0'
                       aria-label={t('channels.dialogs.rateLimit.config.reset')}
                       onClick={() => {
+                        const { modelConcurrent, ...rateLimitDefaults } = getRateLimitDefaults(currentRow);
                         form.reset({
                           ...form.getValues(),
-                          rpm: currentRow.settings?.rateLimit?.rpm ?? '',
-                          rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
-                          rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
-                          tpm: currentRow.settings?.rateLimit?.tpm ?? '',
-                          tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
-                          tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
-                          cost: currentRow.settings?.rateLimit?.cost ?? '',
-                          costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
-                          costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
-                          maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
+                          ...rateLimitDefaults,
                         });
                       }}
                     >

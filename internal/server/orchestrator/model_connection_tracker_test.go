@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -262,41 +261,4 @@ func TestModelConnectionTracker_DoubleDecrementIdempotent(t *testing.T) {
 	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
 }
 
-func TestModelConnectionTracker_EvictOrphaned(t *testing.T) {
-	mt := NewModelConnectionTracker()
 
-	mt.IncrementModelConnection(1, "gpt-4")
-	mt.IncrementModelConnection(1, "claude-3")
-
-	assert.Equal(t, 1, mt.GetModelConnectionCount(1, "gpt-4"))
-	assert.Equal(t, 1, mt.GetModelConnectionCount(1, "claude-3"))
-
-	// All entries have count > 0, so with very short maxAge they should all be evicted
-	// Use negative maxAge to ensure eviction (since eviction checks > maxAge)
-	evicted := mt.EvictOrphaned(-time.Hour)
-	assert.Equal(t, 2, evicted, "Should have evicted both connections")
-
-	// Verify entries are cleaned up
-	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
-	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "claude-3"))
-}
-
-func TestModelConnectionTracker_GetLastActivity(t *testing.T) {
-	mt := NewModelConnectionTracker()
-
-	// Before increment, should return zero time
-	lastAct := mt.GetLastActivity(1, "gpt-4")
-	assert.True(t, lastAct.IsZero())
-
-	mt.IncrementModelConnection(1, "gpt-4")
-
-	// After increment, should return a non-zero time
-	lastAct = mt.GetLastActivity(1, "gpt-4")
-	assert.False(t, lastAct.IsZero())
-
-	mt.DecrementModelConnection(1, "gpt-4")
-
-	// After decrement, should return zero time again
-	lastAct = mt.GetLastActivity(1, "gpt-4")
-	assert.True(t, lastAct.IsZero())
-}

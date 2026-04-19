@@ -15,7 +15,9 @@ import (
 
 func TestRateLimitAwareStrategy_Score_NoRateLimit(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	entChannel := &ent.Channel{
 		ID:   1,
@@ -35,7 +37,10 @@ func TestRateLimitAwareStrategy_Score_NoRateLimit(t *testing.T) {
 func TestRateLimitAwareStrategy_Score_NoRateLimit_UsesDefaultConnectionFallback(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:    tracker,
+		ConnectionTracker: connectionTracker,
+	})
 
 	entChannel := &ent.Channel{
 		ID:   1,
@@ -57,7 +62,9 @@ func TestRateLimitAwareStrategy_Score_NoRateLimit_UsesDefaultConnectionFallback(
 
 func TestRateLimitAwareStrategy_Score_Cooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	entChannel := &ent.Channel{
 		ID:   1,
@@ -79,7 +86,9 @@ func TestRateLimitAwareStrategy_Score_Cooldown(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(100)
 	entChannel := &ent.Channel{
@@ -109,7 +118,9 @@ func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	tpm := int64(1000)
 	entChannel := &ent.Channel{
@@ -137,7 +148,9 @@ func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(100)
 	entChannel := &ent.Channel{
@@ -168,7 +181,9 @@ func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(100)
 	tpm := int64(1000)
@@ -204,7 +219,10 @@ func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
 func TestRateLimitAwareStrategy_Score_UsesDefaultConnectionFallbackWhenMaxConcurrentMissing(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:    tracker,
+		ConnectionTracker: connectionTracker,
+	})
 
 	rpm := int64(100)
 	entChannel := &ent.Channel{
@@ -233,7 +251,10 @@ func TestRateLimitAwareStrategy_Score_UsesDefaultConnectionFallbackWhenMaxConcur
 func TestRateLimitAwareStrategy_Score_ExplicitMaxConcurrentOverridesDefaultConnectionFallback(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:    tracker,
+		ConnectionTracker: connectionTracker,
+	})
 
 	maxConcurrent := int64(20)
 	entChannel := &ent.Channel{
@@ -261,7 +282,9 @@ func TestRateLimitAwareStrategy_Score_ExplicitMaxConcurrentOverridesDefaultConne
 
 func TestRateLimitAwareStrategy_ScoreWithDebug_Cooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	entChannel := &ent.Channel{
 		ID:   1,
@@ -293,7 +316,9 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_Cooldown(t *testing.T) {
 
 func TestRateLimitAwareStrategy_ScoreWithDebug_RPMExhausted(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(10)
 	entChannel := &ent.Channel{
@@ -328,7 +353,9 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_RPMExhausted(t *testing.T) {
 
 func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	entChannel := &ent.Channel{
 		ID:   1,
@@ -351,7 +378,10 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit(t *testing.T) {
 func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit_UsesDefaultConnectionFallback(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:    tracker,
+		ConnectionTracker: connectionTracker,
+	})
 
 	entChannel := &ent.Channel{
 		ID:   1,
@@ -377,7 +407,9 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit_UsesDefaultConnection
 
 func TestRateLimitAwareStrategy_Score_ExpiredCooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	entChannel := &ent.Channel{
 		ID:   1,
@@ -402,7 +434,9 @@ func TestRateLimitAwareStrategy_Score_ExpiredCooldown(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_MultipleChannels(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	entChannel1 := &ent.Channel{ID: 1, Name: "channel-1"}
 	entChannel2 := &ent.Channel{ID: 2, Name: "channel-2"}
@@ -426,7 +460,9 @@ func TestRateLimitAwareStrategy_Score_MultipleChannels(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Name(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	assert.Equal(t, "RateLimitAware", strategy.Name())
 }
@@ -434,7 +470,10 @@ func TestRateLimitAwareStrategy_Name(t *testing.T) {
 func TestRateLimitAwareStrategy_Score_PerModelConcurrentExceeded(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	modelConnTracker := NewModelConnectionTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, modelConnTracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:   tracker,
+		ModelConnTracker: modelConnTracker,
+	})
 
 	modelConcurrent := map[string]int64{"gpt-4": 2}
 	entChannel := &ent.Channel{
@@ -460,7 +499,10 @@ func TestRateLimitAwareStrategy_Score_PerModelConcurrentExceeded(t *testing.T) {
 func TestRateLimitAwareStrategy_Score_PerModelConcurrentNotExceeded(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	modelConnTracker := NewModelConnectionTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, modelConnTracker, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:   tracker,
+		ModelConnTracker: modelConnTracker,
+	})
 
 	modelConcurrent := map[string]int64{"gpt-4": 5}
 	entChannel := &ent.Channel{
@@ -487,7 +529,10 @@ func TestRateLimitAwareStrategy_Score_PerModelConcurrentNotExceeded(t *testing.T
 func TestRateLimitAwareStrategy_Score_PerModelFallbackToChannelWide(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker:    tracker,
+		ConnectionTracker: connectionTracker,
+	})
 
 	maxConcurrent := int64(10)
 	entChannel := &ent.Channel{
@@ -510,7 +555,9 @@ func TestRateLimitAwareStrategy_Score_PerModelFallbackToChannelWide(t *testing.T
 
 func TestRateLimitAwareStrategy_Score_DurationAwareRPM(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(5)
 	rpmDuration := objects.RateLimitDurationFiveHour
@@ -540,7 +587,9 @@ func TestRateLimitAwareStrategy_Score_DurationAwareRPM(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_DurationAwareTPM(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	tpm := int64(1000)
 	tpmDuration := objects.RateLimitDurationFiveHour
@@ -568,7 +617,10 @@ func TestRateLimitAwareStrategy_Score_DurationAwareTPM(t *testing.T) {
 func TestRateLimitAwareStrategy_Score_CostExhausted(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	costTracker := NewChannelCostTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+		CostTracker:    costTracker,
+	})
 
 	cost := decimal.NewFromFloat(10.0)
 	windowEnd := time.Now().Add(time.Hour)
@@ -596,7 +648,10 @@ func TestRateLimitAwareStrategy_Score_CostExhausted(t *testing.T) {
 func TestRateLimitAwareStrategy_Score_CostNotExhausted(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	costTracker := NewChannelCostTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+		CostTracker:    costTracker,
+	})
 
 	cost := decimal.NewFromFloat(10.0)
 	windowEnd := time.Now().Add(time.Hour)
@@ -624,7 +679,10 @@ func TestRateLimitAwareStrategy_Score_CostNotExhausted(t *testing.T) {
 func TestRateLimitAwareStrategy_Score_CostCacheMiss_NoQuotaService(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	costTracker := NewChannelCostTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+		CostTracker:    costTracker,
+	})
 
 	cost := decimal.NewFromFloat(10.0)
 	entChannel := &ent.Channel{
@@ -648,7 +706,9 @@ func TestRateLimitAwareStrategy_Score_CostCacheMiss_NoQuotaService(t *testing.T)
 
 func TestRateLimitAwareStrategy_Score_CostNil_TrackerSkipped(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	cost := decimal.NewFromFloat(10.0)
 	entChannel := &ent.Channel{
@@ -672,7 +732,9 @@ func TestRateLimitAwareStrategy_Score_CostNil_TrackerSkipped(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_AnchorRPM(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -701,7 +763,9 @@ func TestRateLimitAwareStrategy_Score_AnchorRPM(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_AnchorRPMExhausted(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
@@ -730,7 +794,9 @@ func TestRateLimitAwareStrategy_Score_AnchorRPMExhausted(t *testing.T) {
 
 func TestRateLimitAwareStrategy_Score_AnchorTPM(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	tpm := int64(1000)
 	oneHour := objects.RateLimitDurationOneHour
@@ -757,7 +823,9 @@ func TestRateLimitAwareStrategy_Score_AnchorTPM(t *testing.T) {
 
 func TestRateLimitAwareStrategy_ScoreWithDebug_AnchorRPM(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	strategy := NewRateLimitAwareStrategy(RateLimitProvider{
+		RequestTracker: tracker,
+	})
 
 	rpm := int64(10)
 	fiveHour := objects.RateLimitDurationFiveHour
