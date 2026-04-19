@@ -489,8 +489,6 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	slices.Sort(priorities)
 
 	useStream := req.Stream != nil && *req.Stream
-	strategyCtx := contextWithRequestedModel(ctx, req.Model)
-	strategyCtx = contextWithRequestStream(strategyCtx, useStream)
 
 	result := make([]*ChannelModelsCandidate, 0, min(requiredCount, len(candidates)))
 	exhaustedFallbacks := make([]*ChannelModelsCandidate, 0)
