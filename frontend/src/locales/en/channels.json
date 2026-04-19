@@ -486,7 +486,6 @@
   "channels.dialogs.rateLimit.fields.modelConcurrent.limitPlaceholder": "Unlimited",
   "channels.dialogs.rateLimit.fields.modelConcurrent.noModels": "No per-model limits configured",
   "channels.dialogs.rateLimit.fields.modelConcurrent.duplicateError": "Duplicate model names are not allowed",
-  "channels.dialogs.rateLimit.fields.windowAnchor.invalidDateTime": "Invalid datetime format",
   "channels.expandedRow.rateLimit.label": "Rate limit details",
   "channels.dialogs.rateLimit.fields.windowAnchor.placeholder": "Select datetime",
   "channels.dialogs.rateLimit.fields.modelConcurrent.reset": "Clear fields",
