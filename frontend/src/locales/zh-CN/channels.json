@@ -593,7 +593,7 @@
   "channels.messages.deleteDisabledAPIKeysPreserved": "API 密钥已删除，但至少保留了一个密钥以确保渠道可用",
   "channels.messages.deleteDisabledAPIKeysError": "删除 API 密钥失败：{{error}}",
   "channels.messages.syncModelsError": "同步模型失败：{{error}}",
-  "channels.dialogs.userAgentPassThrough.label": "User-Agent 穿透",
+  "channels.dialogs.userAgentPassThrough.label": "User-Agent 透传",
   "channels.dialogs.userAgentPassThrough.inherit": "继承系统设置",
   "channels.dialogs.userAgentPassThrough.enabled": "已启用",
   "channels.dialogs.userAgentPassThrough.disabled": "已禁用",
