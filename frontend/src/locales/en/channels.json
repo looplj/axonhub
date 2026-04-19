@@ -649,5 +649,11 @@
   "channels.dialogs.userAgentPassThrough.disabled": "Disabled",
   "channels.dialogs.bodyPassThrough.label": "Request Body Pass-Through",
   "channels.dialogs.bodyPassThrough.enabled": "Enable request body pass-through",
-  "channels.dialogs.bodyPassThrough.warning": "When enabled, prompt injection and prompt protection will not take effect."
+  "channels.dialogs.bodyPassThrough.warning": "When enabled, prompt injection and prompt protection will not take effect.",
+  "channels.dialogs.rateLimit.fields.cost.label": "Cost",
+  "channels.dialogs.rateLimit.fields.cost.placeholder": "Unlimited",
+  "channels.dialogs.rateLimit.fields.cost.description": "Maximum cost in the selected time window. Leave empty for unlimited.",
+  "channels.dialogs.rateLimit.fields.windowAnchor.startTime": "Start Time",
+  "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "The time of day (in your local timezone) when the rate limit window resets. Requests are counted from this time each period.",
+  "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "The exact date and time (in your local timezone) when the rate limit window starts. Requests are counted from this point forward."
 }
