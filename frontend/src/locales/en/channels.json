@@ -656,5 +656,6 @@
   "channels.dialogs.rateLimit.fields.windowAnchor.startTime": "Start Time",
   "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "The time of day (in your local timezone) when the rate limit window resets. Requests are counted from this time each period.",
   "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "The exact date and time (in your local timezone) when the rate limit window starts. Requests are counted from this point forward.",
-  "channels.dialogs.rateLimit.durations.1wk": "1 week"
+  "channels.dialogs.rateLimit.durations.1wk": "1 week",
+  "channels.expandedRow.rateLimit.cost": "Cost"
 }
