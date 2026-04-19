@@ -14,10 +14,10 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -180,9 +180,9 @@ func TestRequestService_PersistsEffectiveIdentity(t *testing.T) {
 	ctx = shared.WithSessionID(ctx, "session-123")
 
 	llmRequest := &llm.Request{
-		Model:    "gpt-5.4",
-		Metadata: map[string]string{"user_id": "metadata-user"},
-		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+		Model:               "gpt-5.4",
+		Metadata:            map[string]string{"user_id": "metadata-user"},
+		Messages:            []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
 		TransformerMetadata: map[string]any{shared.TransformerMetadataKeyOpenAIIdentityOwner: "user:1"},
 	}
 
@@ -207,7 +207,7 @@ func TestRequestService_PersistsEffectiveIdentity(t *testing.T) {
 
 	channelReq := httpclient.Request{
 		Headers: http.Header{"Session_id": []string{"session-123"}},
-		Body: []byte(`{"model":"gpt-5.4","prompt_cache_key":"session-123","safety_identifier":"metadata-user","user":"metadata-user"}`),
+		Body:    []byte(`{"model":"gpt-5.4","prompt_cache_key":"session-123","safety_identifier":"metadata-user","user":"metadata-user"}`),
 	}
 
 	execRecord, err := svc.CreateRequestExecution(ctx, &Channel{Channel: channelEntity}, "gpt-5.4", reqRecord, channelReq, llm.APIFormatOpenAIResponse)
@@ -216,6 +216,61 @@ func TestRequestService_PersistsEffectiveIdentity(t *testing.T) {
 	require.Equal(t, "metadata-user", execRecord.EffectiveSafetyIdentifier)
 	require.Equal(t, "metadata-user", execRecord.EffectiveUser)
 	require.Equal(t, "session-123", execRecord.EffectiveSessionID)
+}
+
+func TestRequestService_LeavesMissingEffectiveIdentityNil(t *testing.T) {
+	svc, client, ctx := setupTestRequestService(t)
+	defer client.Close()
+
+	proj, err := client.Project.Create().SetName("test-project").SetStatus(project.StatusActive).Save(ctx)
+	require.NoError(t, err)
+
+	ctx = contexts.WithProjectID(ctx, proj.ID)
+
+	llmRequest := &llm.Request{
+		Model:    "gpt-5.4",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+	}
+
+	rawRequest := &httpclient.Request{Body: []byte(`{"model":"gpt-5.4"}`)}
+
+	reqRecord, err := svc.CreateRequest(ctx, llmRequest, rawRequest, llm.APIFormatOpenAIResponse)
+	require.NoError(t, err)
+
+	requestCount, err := client.Request.Query().Where(
+		request.ID(reqRecord.ID),
+		request.EffectivePromptCacheKeyIsNil(),
+		request.EffectiveSafetyIdentifierIsNil(),
+		request.EffectiveUserIsNil(),
+		request.EffectiveSessionIDIsNil(),
+	).Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, requestCount)
+
+	channelEntity, err := client.Channel.Create().
+		SetType("openai").
+		SetName("test-channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-api-key"}).
+		SetSupportedModels([]string{"gpt-5.4"}).
+		SetDefaultTestModel("gpt-5.4").
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelReq := httpclient.Request{Body: []byte(`{"model":"gpt-5.4"}`)}
+
+	execRecord, err := svc.CreateRequestExecution(ctx, &Channel{Channel: channelEntity}, "gpt-5.4", reqRecord, channelReq, llm.APIFormatOpenAIResponse)
+	require.NoError(t, err)
+
+	executionCount, err := client.RequestExecution.Query().Where(
+		requestexecution.ID(execRecord.ID),
+		requestexecution.EffectivePromptCacheKeyIsNil(),
+		requestexecution.EffectiveSafetyIdentifierIsNil(),
+		requestexecution.EffectiveUserIsNil(),
+		requestexecution.EffectiveSessionIDIsNil(),
+	).Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, executionCount)
 }
 
 func TestRequestService_ClearStaleProcessingOnStartup_NoStaleRecords(t *testing.T) {

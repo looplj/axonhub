@@ -218,13 +218,20 @@ func remapAPIKeyProfilesChannelIDs(profiles *objects.APIKeyProfiles, channelIDMa
 
 	for i := range profiles.Profiles {
 		profile := &profiles.Profiles[i]
-		if len(profile.ChannelIDs) == 0 {
-			continue
+
+		if profile.CachePrimaryChannelID != nil {
+			if newID, ok := channelIDMap[*profile.CachePrimaryChannelID]; ok {
+				profile.CachePrimaryChannelID = &newID
+			} else {
+				profile.CachePrimaryChannelID = nil
+			}
 		}
 
-		for j, oldID := range profile.ChannelIDs {
-			if newID, ok := channelIDMap[oldID]; ok {
-				profile.ChannelIDs[j] = newID
+		if len(profile.ChannelIDs) > 0 {
+			for j, oldID := range profile.ChannelIDs {
+				if newID, ok := channelIDMap[oldID]; ok {
+					profile.ChannelIDs[j] = newID
+				}
 			}
 		}
 	}
