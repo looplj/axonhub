@@ -44,19 +44,19 @@ const rateLimitFormSchema = z
       .optional()
       .nullable(),
     rpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-    rpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
+    rpmWindowAnchor: z.string().datetime({ offset: true, message: t('channels.dialogs.rateLimit.fields.windowAnchor.invalidDateTime', 'Invalid datetime format') }).optional().nullable(),
     tpm: z
       .union([z.number().int().positive(), z.literal('')])
       .optional()
       .nullable(),
     tpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-    tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
+    tpmWindowAnchor: z.string().datetime({ offset: true, message: t('channels.dialogs.rateLimit.fields.windowAnchor.invalidDateTime', 'Invalid datetime format') }).optional().nullable(),
     cost: z
       .union([z.number().positive(), z.literal('')])
       .optional()
       .nullable(),
     costDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-    costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
+    costWindowAnchor: z.string().datetime({ offset: true, message: t('channels.dialogs.rateLimit.fields.windowAnchor.invalidDateTime', 'Invalid datetime format') }).optional().nullable(),
     maxConcurrent: z
       .union([z.number().int().positive(), z.literal('')])
       .optional()

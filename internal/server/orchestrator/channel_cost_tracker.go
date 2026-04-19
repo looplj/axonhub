@@ -28,14 +28,13 @@ func WithEvictionInterval(d time.Duration) CostTrackerOption {
 }
 
 type ChannelCostTracker struct {
-	mu       sync.RWMutex
-	cache    map[int]costCacheEntry
-	ttl      time.Duration
-	clock    func() time.Time
-	stopCh   chan struct{}
-	evictInt time.Duration
-	started  sync.Once
-	stopped  sync.Once
+	mu           sync.RWMutex
+	cache        map[int]costCacheEntry
+	ttl          time.Duration
+	clock        func() time.Time
+	stopCh       chan struct{}
+	stoppedEarly bool
+	evictInt     time.Duration
 }
 
 func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
@@ -54,32 +53,51 @@ func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 // Start begins the background eviction goroutine. Safe to call multiple times;
 // only the first call launches the goroutine.
 func (t *ChannelCostTracker) Start() {
-	t.started.Do(func() {
-		t.stopCh = make(chan struct{})
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
-		go func() {
-			ticker := time.NewTicker(t.evictInt)
-			defer ticker.Stop()
+	if t.stopCh != nil {
+		// Already started
+		return
+	}
 
-			for {
-				select {
-				case <-ticker.C:
-					t.EvictExpired()
-				case <-t.stopCh:
-					return
-				}
+	if t.stoppedEarly {
+		// Stop was called before Start — don't start
+		return
+	}
+
+	t.stopCh = make(chan struct{})
+
+	go func() {
+		ticker := time.NewTicker(t.evictInt)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				t.EvictExpired()
+			case <-t.stopCh:
+				return
 			}
-		}()
-	})
+		}
+	}()
 }
 
 // Stop stops the background eviction goroutine. Safe to call multiple times.
 func (t *ChannelCostTracker) Stop() {
-	t.stopped.Do(func() {
-		if t.stopCh != nil {
-			close(t.stopCh)
-		}
-	})
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.stopCh == nil {
+		// Stop called before Start — record that we should not start
+		t.stoppedEarly = true
+		return
+	}
+
+	ch := t.stopCh
+	t.stopCh = nil // prevent double close
+
+	close(ch)
 }
 
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {
@@ -139,7 +157,9 @@ func (t *ChannelCostTracker) EvictExpired() {
 	now := t.clock()
 
 	for id, entry := range t.cache {
-		if now.After(entry.windowEnd) || now.Sub(entry.fetchedAt) > t.ttl {
+		// Only evict entries whose window has ended.
+		// TTL-expired entries within the active window are kept for stale reads (fail-closed).
+		if now.After(entry.windowEnd) {
 			delete(t.cache, id)
 		}
 	}

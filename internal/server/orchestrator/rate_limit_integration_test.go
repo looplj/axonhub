@@ -1389,7 +1389,7 @@ func TestIntegration_RateLimitTracking_MiddlewareWithNoChannel(t *testing.T) {
 
 // ========== Cost-based rate limiting with nil quota service ==========
 
-func TestIntegration_Cost_NilQuotaService_FailOpenBehavior(t *testing.T) {
+func TestIntegration_Cost_NilQuotaService_FailSafeBehavior(t *testing.T) {
 	// When quotaService is nil, cost-based rate limiting should be skipped
 	// (no enforcement, score returns maxScore)
 	tracker := NewChannelRequestTracker()
@@ -1407,11 +1407,11 @@ func TestIntegration_Cost_NilQuotaService_FailOpenBehavior(t *testing.T) {
 
 	ctx := context.Background()
 	score := strategy.Score(ctx, ch)
-	// With no quota service and no cached cost, cost limit is not enforced
-	// The max score (100.0) should be returned (fail-open behavior)
-	assert.Equal(t, 100.0, score, "With nil quota service and no cached cost, score should be max (fail-open)")
+	// With no quota service and no cached cost, a conservative half-score penalty is applied
+	// as a safety measure (fail-safe, not fail-open)
+	assert.Equal(t, 50.0, score, "With nil quota service and no cached cost, score should be half-score (fail-safe)")
 
-	// Verify that cost-based scoring returns max when there's no cost data
+	// Verify that cost-based scoring applies penalty when there's no cost data
 	_, debugInfo := strategy.ScoreWithDebug(ctx, ch)
 	assert.Equal(t, "RateLimitAware", debugInfo.StrategyName)
 }

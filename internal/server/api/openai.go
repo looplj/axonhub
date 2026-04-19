@@ -39,7 +39,9 @@ type OpenAIHandlersParams struct {
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
 	Client                      *ent.Client
-	// These trackers may be nil; the orchestrator creates defaults when nil.
+	// Trackers may be nil. NewChatCompletionOrchestrator creates defaults for
+	// RateLimitTracker, ModelConnectionTracker, and CostTracker when nil.
+	// ConnectionTracker remains nil when not provided (no default is created).
 	RateLimitTracker       *orchestrator.ChannelRequestTracker
 	ConnectionTracker      *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker *orchestrator.ModelConnectionTracker

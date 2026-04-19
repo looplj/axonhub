@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"sync"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
@@ -27,8 +28,11 @@ func withConnectionTracking(outbound *PersistentOutboundTransformer, tracker Con
 type connectionTracking struct {
 	pipeline.DummyMiddleware
 
-	outbound *PersistentOutboundTransformer
-	tracker  ConnectionTracker
+	outbound    *PersistentOutboundTransformer
+	tracker     ConnectionTracker
+	channelID   int
+	decremented bool
+	decrementMu sync.Mutex
 }
 
 func (m *connectionTracking) Name() string {
@@ -36,11 +40,15 @@ func (m *connectionTracking) Name() string {
 }
 
 func (m *connectionTracking) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-	// Increment connection count when starting a request
 	channel := m.outbound.GetCurrentChannel()
 	if channel == nil {
 		return request, nil
 	}
+
+	m.decrementMu.Lock()
+	m.channelID = channel.ID
+	m.decremented = false
+	m.decrementMu.Unlock()
 
 	m.tracker.IncrementConnection(channel.ID)
 
@@ -54,50 +62,38 @@ func (m *connectionTracking) OnOutboundRawRequest(ctx context.Context, request *
 }
 
 func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
-	// Decrement connection count after response completes
 	m.decrementConnection(ctx)
 	return response, nil
 }
 
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	outbound := m.outbound
-	tracker := m.tracker
-
 	return &onCloseStream{
 		stream: stream,
 		onClose: func() {
-			channel := outbound.GetCurrentChannel()
-			if channel == nil {
-				return
-			}
-
-			tracker.DecrementConnection(channel.ID)
-			log.Debug(ctx, "Decremented connection count (stream closed)",
-				log.Int("channel_id", channel.ID),
-				log.String("channel_name", channel.Name),
-				log.Int("active_connections", tracker.GetActiveConnections(channel.ID)),
-			)
+			m.decrementConnection(ctx)
 		},
 	}, nil
 }
 
 func (m *connectionTracking) OnOutboundRawError(ctx context.Context, err error) {
-	// Decrement connection count on error
 	m.decrementConnection(ctx)
 }
 
 func (m *connectionTracking) decrementConnection(ctx context.Context) {
-	channel := m.outbound.GetCurrentChannel()
-	if channel == nil {
+	m.decrementMu.Lock()
+	defer m.decrementMu.Unlock()
+
+	if m.decremented || m.channelID == 0 {
 		return
 	}
 
-	m.tracker.DecrementConnection(channel.ID)
+	m.decremented = true
+
+	m.tracker.DecrementConnection(m.channelID)
 
 	log.Debug(ctx, "Decremented connection count",
-		log.Int("channel_id", channel.ID),
-		log.String("channel_name", channel.Name),
-		log.Int("active_connections", m.tracker.GetActiveConnections(channel.ID)),
+		log.Int("channel_id", m.channelID),
+		log.Int("active_connections", m.tracker.GetActiveConnections(m.channelID)),
 	)
 }
 

@@ -3,16 +3,22 @@ package orchestrator
 import (
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/looplj/axonhub/internal/objects"
 )
 
 type ChannelRequestTracker struct {
-	mu        sync.RWMutex
-	counters  map[int]map[time.Duration]*rateLimitWindow
-	cooldowns map[int]time.Time
-	clock     func() time.Time
+	mu          sync.RWMutex
+	counters    map[int]map[time.Duration]*rateLimitWindow
+	cooldowns   map[int]time.Time
+	clock       func() time.Time
+	stopCh      chan struct{}
+	evictInt    time.Duration
+	stoppedEarly bool
+	ttl         time.Duration
+	readCount   int64 // atomic counter for periodic cleanup
 }
 
 type ClockOption func(*ChannelRequestTracker)
@@ -20,6 +26,12 @@ type ClockOption func(*ChannelRequestTracker)
 func WithClock(c func() time.Time) ClockOption {
 	return func(t *ChannelRequestTracker) {
 		t.clock = c
+	}
+}
+
+func WithTrackerTTL(d time.Duration) ClockOption {
+	return func(t *ChannelRequestTracker) {
+		t.ttl = d
 	}
 }
 
@@ -39,11 +51,62 @@ func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
 		counters:  make(map[int]map[time.Duration]*rateLimitWindow),
 		cooldowns: make(map[int]time.Time),
 		clock:     time.Now,
+		evictInt:  60 * time.Second,
+		ttl:       5 * time.Minute,
 	}
 	for _, opt := range opts {
 		opt(t)
 	}
 	return t
+}
+
+// Start begins the background eviction goroutine. Safe to call multiple times;
+// only the first call launches the goroutine. If Stop was called before Start,
+// Start is a no-op.
+func (t *ChannelRequestTracker) Start() {
+	t.mu.Lock()
+	if t.stopCh != nil {
+		// Already started.
+		t.mu.Unlock()
+		return
+	}
+	if t.stoppedEarly {
+		// Stop was called before Start — do not start the goroutine.
+		t.mu.Unlock()
+		return
+	}
+	t.stopCh = make(chan struct{})
+	t.mu.Unlock()
+
+	go func() {
+		ticker := time.NewTicker(t.evictInt)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				t.EvictExpired()
+			case <-t.stopCh:
+				return
+			}
+		}
+	}()
+}
+
+// Stop stops the background eviction goroutine. Safe to call multiple times.
+// If called before Start, subsequent Start calls are no-ops.
+func (t *ChannelRequestTracker) Stop() {
+	t.mu.Lock()
+	if t.stopCh == nil {
+		// Stop called before Start — record that we should not start.
+		t.stoppedEarly = true
+		t.mu.Unlock()
+		return
+	}
+	ch := t.stopCh
+	t.stopCh = nil
+	t.mu.Unlock()
+	close(ch)
 }
 
 func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration, anchor *time.Time) *rateLimitWindow {
@@ -59,7 +122,7 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 	for dur, w := range durationMap {
 		if d != dur {
 			windowEnd := w.windowStart.Add(dur)
-			if now.After(windowEnd.Add(dur)) {
+			if now.After(windowEnd.Add(t.ttl)) {
 				delete(durationMap, dur)
 			}
 		}
@@ -140,6 +203,8 @@ func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {
 }
 
 func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d time.Duration, anchor *time.Time) time.Time {
+	t.maybeCleanupOnRead()
+
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -162,6 +227,8 @@ func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d t
 }
 
 func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
+	t.maybeCleanupOnRead()
+
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -180,7 +247,12 @@ func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time
 		return 0
 	}
 
-	return w.requestSeed + w.requests
+	result := w.requestSeed + w.requests
+	if result < 0 {
+		result = math.MaxInt64
+	}
+
+	return result
 }
 
 func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
@@ -188,6 +260,8 @@ func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
 }
 
 func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
+	t.maybeCleanupOnRead()
+
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -206,7 +280,12 @@ func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.D
 		return 0
 	}
 
-	return w.tokenSeed + w.tokens
+	result := w.tokenSeed + w.tokens
+	if result < 0 {
+		result = math.MaxInt64
+	}
+
+	return result
 }
 
 func (t *ChannelRequestTracker) IsRequestWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) bool {
@@ -231,6 +310,10 @@ func (t *ChannelRequestTracker) IsRequestWindowDbQueried(channelID int, d time.D
 	return w.requestDbQueried
 }
 
+// MarkRequestWindowDbQueried marks that the request count for the given channel
+// and duration has been fetched from the database.
+// Note: This method creates a rateLimitWindow entry as a side effect if one does
+// not yet exist for the given channel/duration/anchor combination.
 func (t *ChannelRequestTracker) MarkRequestWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -261,6 +344,10 @@ func (t *ChannelRequestTracker) IsTokenWindowDbQueried(channelID int, d time.Dur
 	return w.tokenDbQueried
 }
 
+// MarkTokenWindowDbQueried marks that the token count for the given channel
+// and duration has been fetched from the database.
+// Note: This method creates a rateLimitWindow entry as a side effect if one does
+// not yet exist for the given channel/duration/anchor combination.
 func (t *ChannelRequestTracker) MarkTokenWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -282,6 +369,11 @@ func (t *ChannelRequestTracker) SeedRequestCountForDuration(channelID int, count
 	if seed < 0 {
 		seed = 0
 	}
+	// Clamp to prevent overflow when seed + requests exceeds MaxInt64
+	maxSeed := math.MaxInt64 - w.requests
+	if seed > maxSeed {
+		seed = maxSeed
+	}
 	w.requestSeed = seed
 }
 
@@ -297,6 +389,11 @@ func (t *ChannelRequestTracker) SeedTokenCountForDuration(channelID int, count i
 	seed := count - w.tokens
 	if seed < 0 {
 		seed = 0
+	}
+	// Clamp to prevent overflow when seed + tokens exceeds MaxInt64
+	maxSeed := math.MaxInt64 - w.tokens
+	if seed > maxSeed {
+		seed = maxSeed
 	}
 	w.tokenSeed = seed
 }
@@ -318,6 +415,8 @@ func (t *ChannelRequestTracker) IsCoolingDown(channelID int) bool {
 }
 
 func (t *ChannelRequestTracker) GetCooldownUntil(channelID int) (time.Time, bool) {
+	t.maybeCleanupOnRead()
+
 	t.mu.RLock()
 	until, ok := t.cooldowns[channelID]
 	t.mu.RUnlock()
@@ -346,5 +445,58 @@ func (t *ChannelRequestTracker) clearExpiredCooldown(channelID int, observedUnti
 
 	if currentUntil.Equal(observedUntil) && now.After(currentUntil) {
 		delete(t.cooldowns, channelID)
+	}
+}
+
+func (t *ChannelRequestTracker) maybeCleanupOnRead() {
+	count := atomic.AddInt64(&t.readCount, 1)
+	if count%1000 == 0 {
+		t.cleanupStaleEntries()
+	}
+}
+
+func (t *ChannelRequestTracker) cleanupStaleEntries() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	now := t.clock()
+	for channelID, durationMap := range t.counters {
+		for dur, w := range durationMap {
+			windowEnd := w.windowStart.Add(dur)
+			if now.After(windowEnd.Add(t.ttl)) {
+				delete(durationMap, dur)
+			}
+		}
+		if len(durationMap) == 0 {
+			delete(t.counters, channelID)
+		}
+	}
+}
+
+func (t *ChannelRequestTracker) EvictExpired() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	now := t.clock()
+
+	for channelID, durationMap := range t.counters {
+		for dur, w := range durationMap {
+			windowEnd := w.windowStart.Add(dur)
+
+			expired := now.After(windowEnd) && now.Sub(windowEnd) > t.ttl
+			if expired {
+				delete(durationMap, dur)
+			}
+		}
+
+		if len(durationMap) == 0 {
+			delete(t.counters, channelID)
+		}
+	}
+
+	for channelID, until := range t.cooldowns {
+		if now.After(until) {
+			delete(t.cooldowns, channelID)
+		}
 	}
 }

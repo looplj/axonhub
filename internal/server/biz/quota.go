@@ -343,6 +343,9 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 	}, nil
 }
 
+// GetChannelCost returns the total cost for a channel within the specified time window.
+// Note: This query should have a composite index on (channel_id, created_at) for optimal
+// performance. Without it, large tables may incur full table scans.
 func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-cost", func(bypassCtx context.Context) (float64, error) {
 		q := s.ent.UsageLog.Query().Where(

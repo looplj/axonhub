@@ -26,7 +26,9 @@ type AiSdkHandlersParams struct {
 	QuotaService                *biz.QuotaService
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
-	// These trackers may be nil; the orchestrator creates defaults when nil.
+	// Trackers may be nil. NewChatCompletionOrchestrator creates defaults for
+	// RateLimitTracker, ModelConnectionTracker, and CostTracker when nil.
+	// ConnectionTracker remains nil when not provided (no default is created).
 	RateLimitTracker       *orchestrator.ChannelRequestTracker
 	ConnectionTracker      *orchestrator.DefaultConnectionTracker
 	ModelConnectionTracker *orchestrator.ModelConnectionTracker

@@ -41,13 +41,13 @@ func TestIsRequestWindowDbQueried_DifferentDuration(t *testing.T) {
 
 func TestIsRequestWindowDbQueried_ResetsOnWindowRotation(t *testing.T) {
 	now := time.Now()
-	tracker := NewChannelRequestTracker(WithClock(func() time.Time { return now }))
+	tracker, clockPtr := newTrackerWithClock(now)
 
 	tracker.MarkRequestWindowDbQueried(1, time.Minute, nil)
 	assert.True(t, tracker.IsRequestWindowDbQueried(1, time.Minute, nil))
 
 	// Advance time past the window duration
-	tracker.clock = func() time.Time { return now.Add(2 * time.Minute) }
+	*clockPtr = now.Add(2 * time.Minute)
 
 	// Window rotated — dbQueried flag should be gone since the window was reset
 	assert.False(t, tracker.IsRequestWindowDbQueried(1, time.Minute, nil))
@@ -78,13 +78,13 @@ func TestIsTokenWindowDbQueried_DifferentChannel(t *testing.T) {
 
 func TestIsTokenWindowDbQueried_ResetsOnWindowRotation(t *testing.T) {
 	now := time.Now()
-	tracker := NewChannelRequestTracker(WithClock(func() time.Time { return now }))
+	tracker, clockPtr := newTrackerWithClock(now)
 
 	tracker.MarkTokenWindowDbQueried(1, time.Minute, nil)
 	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Minute, nil))
 
 	// Advance time past the window duration
-	tracker.clock = func() time.Time { return now.Add(2 * time.Minute) }
+	*clockPtr = now.Add(2 * time.Minute)
 
 	// Window rotated — dbQueried flag should be gone
 	assert.False(t, tracker.IsTokenWindowDbQueried(1, time.Minute, nil))

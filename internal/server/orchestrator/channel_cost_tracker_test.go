@@ -92,12 +92,26 @@ func TestChannelCostTracker_EvictExpired(t *testing.T) {
 	tracker.SetCachedCost(1, cost, windowEnd)
 	tracker.SetCachedCost(2, cost, windowEnd)
 
-	// Advance clock past TTL
+	// Advance clock past TTL but not past window end
 	*clockPtr = now.Add(31 * time.Second)
 
 	tracker.EvictExpired()
 
-	_, ok := tracker.GetCachedCost(1)
+	// TTL expired but window not ended - entries should be kept for stale reads
+	got, ok := tracker.GetCachedCost(1)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+	got, ok = tracker.GetCachedCost(2)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+
+	// Now advance past window end
+	*clockPtr = now.Add(2 * time.Hour)
+
+	tracker.EvictExpired()
+
+	// Window ended - entries should now be evicted
+	_, ok = tracker.GetCachedCost(1)
 	assert.False(t, ok)
 	_, ok = tracker.GetCachedCost(2)
 	assert.False(t, ok)

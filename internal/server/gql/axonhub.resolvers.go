@@ -76,12 +76,22 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
 }
 
-// RateLimitStatus is the resolver for the rateLimitStatus field.
+// RateLimitStatus resolves the rate limit status for a channel.
+//
 // NOTE: This field resolver is called per-channel, resulting in N+1 queries when
 // rateLimitStatus is requested for multiple channels in a single query.
 // Batch query methods exist in QuotaService (GetBatchChannelRequestCount, GetBatchChannelTokenCount,
 // GetBatchChannelCost) for future N+1 optimization via DataLoader pattern.
 // Uses all-sources methods to match RateLimitAwareStrategy in the load balancer.
+//
+// channelRateLimitStatus resolves individual rate limit status fields.
+// Note: Each field resolver independently acquires the tracker's read lock and
+// performs a map lookup. This is intentionally simple — the lookups are O(1)
+// in-memory operations. If profiling reveals contention, the fields can be
+// batched into a single snapshot struct acquired under one lock.
+//
+// Auth: Authentication is handled at the GraphQL server level via middleware.WithJWTAuth.
+// No additional per-resolver auth check is required.
 func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel) (*ChannelRateLimitStatus, error) {
 	channelID := obj.ID
 

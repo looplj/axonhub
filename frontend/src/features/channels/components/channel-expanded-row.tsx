@@ -171,7 +171,7 @@ function RateLimitStatusSection({
   const hasCost = status.costCurrent != null;
 
   return (
-    <div className='space-y-2'>
+    <div className='space-y-2' aria-label={t('channels.expandedRow.rateLimit.label', 'Rate limit details')} role='region'>
       {hasRpm && (
         <RateLimitMetric
           label={t('channels.expandedRow.rateLimit.requests')}

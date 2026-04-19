@@ -82,7 +82,7 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 	windowEnd := windowStart.Add(rpmDuration)
 
 	key := fmt.Sprintf("rpm:%d:%s:%s", channel.ID, rpmDuration.String(), anchorKey(rl.RPMWindowAnchor))
-	v, _, _ := s.provider.rpmFlight.Do(key, func() (any, error) {
+	v, sfErr, _ := s.provider.rpmFlight.Do(key, func() (any, error) {
 		dbCount, err := s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 
 		if err != nil {
@@ -98,6 +98,13 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 		s.provider.RequestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
 		return dbCount, nil
 	})
+
+	if sfErr != nil {
+		log.Warn(ctx, "failed to fetch channel RPM from quota service",
+			log.Int("channel_id", channel.ID),
+			log.Cause(sfErr),
+		)
+	}
 
 	if dbCount, ok := v.(int64); ok {
 		return dbCount
@@ -124,7 +131,7 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 	windowEnd := windowStart.Add(tpmDuration)
 
 	key := fmt.Sprintf("tpm:%d:%s:%s", channel.ID, tpmDuration.String(), anchorKey(rl.TPMWindowAnchor))
-	v, _, _ := s.provider.tpmFlight.Do(key, func() (any, error) {
+	v, sfErr, _ := s.provider.tpmFlight.Do(key, func() (any, error) {
 		dbCount, err := s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 
 		if err != nil {
@@ -141,6 +148,13 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 		return dbCount, nil
 	})
 
+	if sfErr != nil {
+		log.Warn(ctx, "failed to fetch channel TPM from quota service",
+			log.Int("channel_id", channel.ID),
+			log.Cause(sfErr),
+		)
+	}
+
 	if dbCount, ok := v.(int64); ok {
 		return dbCount
 	}
@@ -153,7 +167,7 @@ func (s *RateLimitAwareStrategy) Name() string {
 	return "RateLimitAware"
 }
 
-func (s *RateLimitAwareStrategy) resolveConcurrencyLimit(channel *biz.Channel) (limit int64, source string, configured bool) {
+func (s *RateLimitAwareStrategy) resolveConcurrencyLimit(ctx context.Context, channel *biz.Channel) (limit int64, source string, configured bool) {
 	if channel.Settings != nil && channel.Settings.RateLimit != nil {
 		if rl := channel.Settings.RateLimit; rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 {
 			return *rl.MaxConcurrent, "rate_limit_config", true
@@ -161,6 +175,9 @@ func (s *RateLimitAwareStrategy) resolveConcurrencyLimit(channel *biz.Channel) (
 	}
 
 	if s.provider.ConnectionTracker == nil {
+		log.Debug(ctx, "connection tracker is nil; skipping concurrency limit check",
+			log.Int("channel_id", channel.ID),
+		)
 		return 0, "", false
 	}
 
@@ -187,7 +204,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 	settings := channel.Settings
 	if settings == nil || settings.RateLimit == nil {
 		if s.provider.ConnectionTracker != nil {
-			if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
+			if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(ctx, channel); concurrencyLimit > 0 {
 				concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 				if int64(concurrent) >= concurrencyLimit {
 					return rateLimitExhaustedScore
@@ -244,6 +261,15 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			currentCost, costCached = s.provider.CostTracker.GetCachedCost(channel.ID)
 		}
 
+		if !costCached {
+			if s.provider.QuotaService == nil {
+				log.Warn(ctx, "cost limit configured but no cached cost data and no quota service for fallback",
+					log.Int("channel_id", channel.ID),
+				)
+				return s.maxScore * 0.5
+			}
+		}
+
 		if !costCached && s.provider.QuotaService != nil {
 			costDuration := rl.GetCostDuration()
 			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
@@ -289,7 +315,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 	}
 
 	if s.provider.ConnectionTracker != nil {
-		if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
+		if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(ctx, channel); concurrencyLimit > 0 {
 			concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 			if int64(concurrent) >= concurrencyLimit {
 				return rateLimitExhaustedScore
@@ -366,7 +392,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	settings := channel.Settings
 
 	if settings == nil || settings.RateLimit == nil {
-		if concurrencyLimit, source, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 && s.provider.ConnectionTracker != nil {
+		if concurrencyLimit, source, _ := s.resolveConcurrencyLimit(ctx, channel); concurrencyLimit > 0 && s.provider.ConnectionTracker != nil {
 			concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 			details["concurrent_limit"] = concurrencyLimit
 			details["concurrent_current"] = concurrent
@@ -441,7 +467,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	}
 
 	// Check TPM
-	if rl.TPM != nil && *rl.TPM > 0 {
+	if !exhausted && rl.TPM != nil && *rl.TPM > 0 {
 		tpm := s.resolveTPM(ctx, channel, rl)
 		details["tpm_limit"] = *rl.TPM
 		details["tpm_current"] = tpm
@@ -458,11 +484,28 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 		}
 	}
 
-	if rl.Cost != nil && rl.Cost.IsPositive() {
+	// Check Cost
+	if !exhausted && rl.Cost != nil && rl.Cost.IsPositive() {
 		currentCost, costCached := decimal.Zero, false
 
 		if s.provider.CostTracker != nil {
 			currentCost, costCached = s.provider.CostTracker.GetCachedCost(channel.ID)
+		}
+
+		if !costCached {
+			if s.provider.QuotaService == nil {
+				log.Warn(ctx, "cost limit configured but no cached cost data and no quota service for fallback",
+					log.Int("channel_id", channel.ID),
+				)
+				details["cost_check_skipped"] = true
+				score := s.maxScore * 0.5
+				return score, StrategyScore{
+					StrategyName: s.Name(),
+					Score:        score,
+					Details:      details,
+					Duration:     time.Since(startTime),
+				}
+			}
 		}
 
 		if !costCached && s.provider.QuotaService != nil {
@@ -513,8 +556,8 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	}
 
 	// Check concurrent requests using explicit MaxConcurrent first, then default tracker fallback.
-	if s.provider.ConnectionTracker != nil {
-		if concurrencyLimit, source, configured := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
+	if !exhausted && s.provider.ConnectionTracker != nil {
+		if concurrencyLimit, source, configured := s.resolveConcurrencyLimit(ctx, channel); concurrencyLimit > 0 {
 			concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 			details["concurrent_limit"] = concurrencyLimit
 			details["concurrent_current"] = concurrent
@@ -533,7 +576,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 		}
 	}
 
-	if s.provider.ModelConnTracker != nil && ctx != nil {
+	if !exhausted && s.provider.ModelConnTracker != nil && ctx != nil {
 		modelID := requestedModelFromContext(ctx)
 		if modelID != "" {
 			// Per-model concurrent limits are only enforced when explicitly configured in ModelConcurrent.

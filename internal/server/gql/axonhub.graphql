@@ -2,6 +2,8 @@ scalar JSONRawMessage
 scalar JSONRawMessageInput
 scalar Decimal
 scalar DecimalInput
+"""Int64 represents a 64-bit integer. JavaScript consumers should use String parsing
+for values exceeding Number.MAX_SAFE_INTEGER (2^53 - 1) to avoid precision loss."""
 scalar Int64
 
 type ModelMapping {

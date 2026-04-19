@@ -49,6 +49,7 @@ func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrches
 	} else {
 		rateLimitTracker = NewChannelRequestTracker()
 	}
+	rateLimitTracker.Start()
 
 	var modelConnectionTracker *ModelConnectionTracker
 	if cfg.ModelConnectionTracker != nil {
@@ -352,5 +353,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 func (processor *ChatCompletionOrchestrator) Close() {
 	if processor.costTracker != nil {
 		processor.costTracker.Stop()
+	}
+	if processor.rateLimitTracker != nil {
+		processor.rateLimitTracker.Stop()
 	}
 }

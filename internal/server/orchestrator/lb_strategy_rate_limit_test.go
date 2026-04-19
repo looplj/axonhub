@@ -701,7 +701,7 @@ func TestRateLimitAwareStrategy_Score_CostCacheMiss_NoQuotaService(t *testing.T)
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
 
-	assert.Equal(t, 100.0, score)
+	assert.Equal(t, 50.0, score, "cost limit configured but no tracker or service should apply half score penalty")
 }
 
 func TestRateLimitAwareStrategy_Score_CostNil_TrackerSkipped(t *testing.T) {
@@ -727,7 +727,7 @@ func TestRateLimitAwareStrategy_Score_CostNil_TrackerSkipped(t *testing.T) {
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
 
-	assert.Equal(t, 100.0, score)
+	assert.Equal(t, 50.0, score, "cost limit configured but no tracker or service should apply half score penalty")
 }
 
 func TestRateLimitAwareStrategy_Score_AnchorRPM(t *testing.T) {

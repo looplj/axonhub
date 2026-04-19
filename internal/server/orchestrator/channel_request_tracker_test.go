@@ -675,3 +675,153 @@ func TestChannelRequestTracker_ForDuration_Concurrent_MixedDurations(t *testing.
 	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Hour, nil))
 	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, time.Minute, nil))
 }
+
+func TestSeedRequestCountBasic(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.SeedRequestCountForDuration(1, 50, time.Minute, nil)
+
+	assert.Equal(t, int64(50), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedRequestCountAfterIncrement(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+
+	tracker.SeedRequestCountForDuration(1, 50, time.Minute, nil)
+
+	assert.Equal(t, int64(50), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedRequestCountBelowExisting(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	for range 10 {
+		tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	}
+
+	tracker.SeedRequestCountForDuration(1, 5, time.Minute, nil)
+
+	assert.Equal(t, int64(10), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedThenIncrement(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.SeedRequestCountForDuration(1, 50, time.Minute, nil)
+
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+
+	assert.Equal(t, int64(55), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedResetsOnWindowRotation(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
+	tracker.SeedRequestCountForDuration(1, 50, time.Minute, nil)
+	assert.Equal(t, int64(50), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+
+	*clockPtr = now.Add(2*time.Minute + time.Second)
+
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedTokenCountBasic(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.SeedTokenCountForDuration(1, 1000, time.Minute, nil)
+
+	assert.Equal(t, int64(1000), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedWithZeroOrNegativeCount(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	tracker.AddTokensForDuration(1, 100, time.Minute, nil)
+
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+	assert.Equal(t, int64(100), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+
+	tracker.SeedRequestCountForDuration(1, 0, time.Minute, nil)
+	tracker.SeedRequestCountForDuration(1, -5, time.Minute, nil)
+	tracker.SeedTokenCountForDuration(1, 0, time.Minute, nil)
+	tracker.SeedTokenCountForDuration(1, -5, time.Minute, nil)
+
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+	assert.Equal(t, int64(100), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+}
+
+func TestIsRequestWindowDbQueried(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	assert.False(t, tracker.IsRequestWindowDbQueried(1, time.Minute, nil))
+
+	tracker.MarkRequestWindowDbQueried(1, time.Minute, nil)
+
+	assert.True(t, tracker.IsRequestWindowDbQueried(1, time.Minute, nil))
+}
+
+func TestIsRequestWindowDbQueried_WindowRotation(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
+	tracker.MarkRequestWindowDbQueried(1, time.Minute, nil)
+	assert.True(t, tracker.IsRequestWindowDbQueried(1, time.Minute, nil))
+
+	*clockPtr = now.Add(2*time.Minute + time.Second)
+
+	assert.False(t, tracker.IsRequestWindowDbQueried(1, time.Minute, nil))
+}
+
+func TestIsTokenWindowDbQueried(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	assert.False(t, tracker.IsTokenWindowDbQueried(1, time.Minute, nil))
+
+	tracker.MarkTokenWindowDbQueried(1, time.Minute, nil)
+
+	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Minute, nil))
+}
+
+func TestDBFallbackPattern_Integration(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	RPMDur := time.Hour
+
+	RPM := int64(100)
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, RPMDur, nil))
+	assert.False(t, tracker.IsRequestWindowDbQueried(1, RPMDur, nil))
+
+	DBReturnedCount := int64(50)
+	tracker.SeedRequestCountForDuration(1, DBReturnedCount, RPMDur, nil)
+	tracker.MarkRequestWindowDbQueried(1, RPMDur, nil)
+
+	assert.Equal(t, DBReturnedCount, tracker.GetRequestCountForDuration(1, RPMDur, nil))
+	assert.True(t, tracker.IsRequestWindowDbQueried(1, RPMDur, nil))
+
+	RPMUsed := tracker.GetRequestCountForDuration(1, RPMDur, nil)
+	ratio := float64(RPMUsed) / float64(RPM)
+	expectedScore := 100.0 * (1 - ratio)
+	assert.Equal(t, 50.0, expectedScore)
+}

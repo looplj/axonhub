@@ -39,6 +39,7 @@ type TestChannelOrchestrator struct {
 	modelMapper                 *ModelMapper
 	loadBalancer                *LoadBalancer
 	connectionTracking          ConnectionTracker
+	rateLimitTracker            *ChannelRequestTracker
 }
 
 // NewTestChannelOrchestrator creates a new TestChannelOrchestrator.
@@ -50,6 +51,8 @@ func NewTestChannelOrchestrator(
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	httpClient *httpclient.HttpClient,
 ) *TestChannelOrchestrator {
+	rateLimitTracker := NewChannelRequestTracker()
+
 	return &TestChannelOrchestrator{
 		channelService:              channelService,
 		requestService:              requestService,
@@ -59,8 +62,16 @@ func NewTestChannelOrchestrator(
 		httpClient:                  httpClient,
 		modelCircuitBreaker:         biz.NewModelCircuitBreaker(),
 		modelMapper:                 NewModelMapper(),
-		loadBalancer:                NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
-		connectionTracking:          NewDefaultConnectionTracker(100),
+		loadBalancer: NewLoadBalancer(
+			systemService,
+			channelService,
+			NewRateLimitAwareStrategy(RateLimitProvider{
+				RequestTracker:    rateLimitTracker,
+				ConnectionTracker: NewDefaultConnectionTracker(100),
+			}),
+		),
+		connectionTracking: NewDefaultConnectionTracker(100),
+		rateLimitTracker:   rateLimitTracker,
 	}
 }
 
@@ -106,7 +117,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		failoverLoadBalancer:       processor.loadBalancer,
 		circuitBreakerLoadBalancer: processor.loadBalancer,
 		connectionTracker:          processor.connectionTracking,
-		rateLimitTracker:           NewChannelRequestTracker(),
+		rateLimitTracker:           processor.rateLimitTracker,
 		modelConnectionTracker:     NewModelConnectionTracker(),
 		costTracker:                NewChannelCostTracker(),
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
@@ -441,7 +452,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		failoverLoadBalancer:       processor.loadBalancer,
 		circuitBreakerLoadBalancer: processor.loadBalancer,
 		connectionTracker:          processor.connectionTracking,
-		rateLimitTracker:           NewChannelRequestTracker(),
+		rateLimitTracker:           processor.rateLimitTracker,
 		modelConnectionTracker:     NewModelConnectionTracker(),
 		costTracker:                NewChannelCostTracker(),
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
