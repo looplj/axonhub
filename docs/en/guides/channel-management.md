@@ -107,46 +107,6 @@ Before enabling a channel, test the connection:
 
 After testing passes, click **Enable**. The channel status changes to **Active** and can now receive requests.
 
-## Real-World Scenarios
-
-### Scenario 1: Claude Code with OpenRouter
-
-You want to use OpenRouter models in Claude Code:
-
-1. **Create OpenRouter Channel**:
-   - Type: `openai` (OpenRouter is OpenAI-compatible)
-   - Base URL: `https://openrouter.ai/api/v1`
-   - API Key: Your OpenRouter key
-   - Supported Models: `anthropic/claude-3.5-sonnet`, `anthropic/claude-3-opus`
-
-2. **Configure API Key Model Mapping** (in API Key management):
-   - From: `claude-sonnet-4-5` → To: `anthropic/claude-3.5-sonnet`
-   - From: `claude-opus-4-5` → To: `anthropic/claude-3-opus`
-
-3. **Claude Code Configuration**:
-   ```bash
-   export ANTHROPIC_AUTH_TOKEN="your-axonhub-api-key"
-   export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
-   ```
-
-### Scenario 2: Multi-Provider Backup
-
-Configure OpenAI as primary, DeepSeek as backup:
-
-1. **Create OpenAI Channel** (Weight: 10, Priority: 0)
-2. **Create DeepSeek Channel** (Weight: 5, Priority: 10)
-3. **Configure Model Association**:
-   - Set OpenAI as Priority 0 (primary)
-   - Set DeepSeek as Priority 10 (backup)
-
-### Scenario 3: Cost Optimization
-
-Route expensive model requests to cheaper alternatives:
-
-In API Key configuration:
-- From: `gpt-4` → To: `claude-3-sonnet`
-- From: `gpt-4-turbo` → To: `deepseek-reasoner`
-
 ## Base URL Special Configuration
 
 ### Default URLs

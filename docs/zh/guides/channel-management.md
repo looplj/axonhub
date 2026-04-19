@@ -105,56 +105,6 @@
 
 测试通过后，点击 **启用** 按钮，渠道状态变为 **活跃**，即可开始接收请求。
 
-## 实际使用场景示例
-
-### 场景 1：Claude Code 使用 OpenRouter
-
-你想在 Claude Code 中使用 OpenRouter 的模型：
-
-1. **创建 OpenRouter 渠道**：
-
-   | 字段 | 值 |
-   |------|-----|
-   | 名称 | OpenRouter |
-   | 类型 | openai（OpenRouter 兼容 OpenAI 格式） |
-   | Base URL | https://openrouter.ai/api/v1 |
-   | API Key | sk-or-your-openrouter-key |
-   | 支持模型 | anthropic/claude-3.5-sonnet, anthropic/claude-3-opus, deepseek/deepseek-chat |
-
-2. **配置 API Key 模型映射**（在 API Key 管理中）：
-
-   | 客户端请求的模型名 (from) | 映射后的模型名 (to) |
-   |--------------------------|---------------------|
-   | claude-sonnet-4-5 | anthropic/claude-3.5-sonnet |
-   | claude-opus-4-5 | anthropic/claude-3-opus |
-
-3. **Claude Code 配置**：
-   ```bash
-   export ANTHROPIC_AUTH_TOKEN="your-axonhub-api-key"
-   export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
-   ```
-
-### 场景 2：多服务商备份
-
-配置主用 OpenAI，备用 DeepSeek：
-
-1. **创建 OpenAI 渠道**（权重 10，优先级高）
-2. **创建 DeepSeek 渠道**（权重 5，优先级低）
-3. **在模型管理中配置关联**：
-   - 设置 OpenAI 渠道为优先级 0（优先使用）
-   - 设置 DeepSeek 渠道为优先级 1（备用）
-
-### 场景 3：成本优化
-
-把贵的模型请求转到便宜的替代模型：
-
-在 API Key Profile 中添加模型映射：
-
-| 客户端请求的模型名 (from) | 映射后的模型名 (to) |
-|--------------------------|---------------------|
-| gpt-4 | claude-3-sonnet |
-| gpt-4-turbo | deepseek-reasoner |
-
 ## Base URL 特殊配置
 
 ### 默认地址

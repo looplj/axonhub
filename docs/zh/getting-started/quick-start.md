@@ -390,7 +390,7 @@ log:
 ### 获取帮助
 
 - 查看 [GitHub Issues](https://github.com/looplj/axonhub/issues)
-- 查看 [架构文档](../architecture/erd.md)
+- 查看 [架构文档](../development/erd.md)
 - 加入社区讨论
 
 ## 下一步是什么？

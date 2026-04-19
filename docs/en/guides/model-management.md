@@ -133,45 +133,6 @@ Example configuration in Admin UI:
   - Type: Global Model Match
   - Model: gpt-4
 
-## Real-World Scenarios
-
-### Scenario 1: Primary-Backup Channel Setup
-
-**Need**: Prioritize OpenAI, automatically switch to DeepSeek on failure
-
-**Configuration:**
-1. Create OpenAI channel and DeepSeek channel
-2. In Model Management, for model "gpt-4", add associations:
-   - Priority 0: Specific Channel Model → OpenAI channel → gpt-4o
-   - Priority 10: Specific Channel Model → DeepSeek channel → deepseek-chat
-
-### Scenario 2: Multi-Version Compatibility
-
-**Need**: Client requests `gpt-4`, but any gpt-4 variant can be used
-
-**Configuration:**
-- Priority 0: Channel Regex Match → OpenAI channel → Pattern: `gpt-4.*`
-
-### Scenario 3: Environment Isolation
-
-**Need**: Production environment only uses production channels
-
-**Setup:**
-- Tag OpenAI channel: `production`
-- Tag test channel: `test`
-
-**Configuration:**
-- Priority 0: Tagged Channel Model → Tag: production → Model: gpt-4
-
-### Scenario 4: Exclude Specific Channels
-
-**Need**: Use gpt-4 from all channels, but exclude test and backup channels
-
-**Configuration:**
-- Priority 0: Global Regex Match
-  - Pattern: `gpt-4.*`
-  - Exclude Channel Tags: test, backup
-
 ## System Settings
 
 In **System Settings > Model Settings**, there are two important options:
