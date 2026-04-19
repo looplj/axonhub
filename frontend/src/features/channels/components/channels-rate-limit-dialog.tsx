@@ -344,10 +344,18 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                       className='text-muted-foreground hover:text-foreground h-8 w-8 shrink-0'
                       aria-label={t('channels.dialogs.rateLimit.config.reset')}
                       onClick={() => {
-                        const { modelConcurrent, ...rateLimitDefaults } = getRateLimitDefaults(currentRow);
                         form.reset({
                           ...form.getValues(),
-                          ...rateLimitDefaults,
+                          rpm: '',
+                          rpmDuration: 'ONE_MIN',
+                          rpmWindowAnchor: null,
+                          tpm: '',
+                          tpmDuration: 'ONE_MIN',
+                          tpmWindowAnchor: null,
+                          cost: '',
+                          costDuration: 'ONE_WEEK',
+                          costWindowAnchor: null,
+                          maxConcurrent: '',
                         });
                       }}
                     >
@@ -564,7 +572,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                       onClick={() => {
                         form.reset({
                           ...form.getValues(),
-                          modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
+                          modelConcurrent: [],
                         });
                       }}
                     >
