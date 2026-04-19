@@ -22,14 +22,14 @@ const rateLimitExhaustedScore = -10000
 type RateLimitAwareStrategy struct {
 	requestTracker    *ChannelRequestTracker
 	connectionTracker ConnectionTracker
-	modelConnTracker  *ModelConnectionTracker
+	modelConnTracker  ModelConnectionTrackerInterface
 	costTracker       *ChannelCostTracker
 	quotaService      *biz.QuotaService
 	maxScore          float64
 }
 
 // NewRateLimitAwareStrategy creates a new rate limit aware load balancing strategy.
-func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker, modelConnTracker *ModelConnectionTracker, costTracker *ChannelCostTracker, quotaService *biz.QuotaService) *RateLimitAwareStrategy {
+func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker, modelConnTracker ModelConnectionTrackerInterface, costTracker *ChannelCostTracker, quotaService *biz.QuotaService) *RateLimitAwareStrategy {
 	return &RateLimitAwareStrategy{
 		requestTracker:    tracker,
 		connectionTracker: connectionTracker,
@@ -183,7 +183,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			windowEnd := windowStart.Add(costDuration.Duration())
 
 			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
-				currentCost = decimal.NewFromFloat(fetchedCost)
+				currentCost = decimal.NewFromFloatWithExponent(fetchedCost, -12)
 				costCached = true
 
 				if s.costTracker != nil {
@@ -387,7 +387,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			windowEnd := windowStart.Add(costDuration.Duration())
 
 			if fetchedCost, err := s.quotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
-				currentCost = decimal.NewFromFloat(fetchedCost)
+				currentCost = decimal.NewFromFloatWithExponent(fetchedCost, -12)
 				costCached = true
 
 				if s.costTracker != nil {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { z } from 'zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -234,8 +234,10 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
     append({ model: '', limit: '' });
   }, [append]);
 
+  const lastResetRowId = useRef<string | null>(null);
+
   useEffect(() => {
-    if (open) {
+    if (open && currentRow.id !== lastResetRowId.current) {
       form.reset({
         rpm: currentRow.settings?.rateLimit?.rpm ?? '',
         rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
@@ -249,6 +251,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
         modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
       });
+      lastResetRowId.current = currentRow.id;
     }
   }, [open, currentRow, form]);
 

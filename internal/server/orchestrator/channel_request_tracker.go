@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -54,8 +55,11 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 	}
 
 	for dur, w := range durationMap {
-		if d != dur && now.Sub(w.windowStart) > dur*2 {
-			delete(durationMap, dur)
+		if d != dur {
+			windowEnd := w.windowStart.Add(dur)
+			if now.After(windowEnd.Add(dur)) {
+				delete(durationMap, dur)
+			}
 		}
 	}
 
@@ -66,7 +70,10 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 	}
 
 	w, ok := durationMap[d]
-	if !ok || w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
+	if !ok {
+		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
+		durationMap[d] = w
+	} else if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
 		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
 		durationMap[d] = w
 	}
@@ -101,7 +108,9 @@ func (t *ChannelRequestTracker) IncrementRequestForDuration(channelID int, d tim
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	w.requests++
+	if w.requests < math.MaxInt64 {
+		w.requests++
+	}
 }
 
 func (t *ChannelRequestTracker) AddTokens(channelID int, tokens int64) {
@@ -117,7 +126,11 @@ func (t *ChannelRequestTracker) AddTokensForDuration(channelID int, tokens int64
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	w.tokens += tokens
+	if w.tokens > math.MaxInt64-tokens {
+		w.tokens = math.MaxInt64
+	} else {
+		w.tokens += tokens
+	}
 }
 
 func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {

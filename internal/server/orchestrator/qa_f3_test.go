@@ -1,3 +1,9 @@
+// Package orchestrator contains tests for rate limiting, middleware, and integration scenarios.
+//
+// qa_f3_test.go contains acceptance tests organized by F3 task number.
+// Some tests overlap with rate_limit_integration_test.go which is organized by behavior.
+// Both are kept for now as qa_f3 tests serve as a verification checklist.
+
 package orchestrator
 
 import (

@@ -39,10 +39,11 @@ type OpenAIHandlersParams struct {
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
 	Client                      *ent.Client
-	RateLimitTracker            *orchestrator.ChannelRequestTracker
-	ConnectionTracker           *orchestrator.DefaultConnectionTracker
-	ModelConnectionTracker      *orchestrator.ModelConnectionTracker
-	CostTracker                 *orchestrator.ChannelCostTracker
+	// These trackers may be nil; the orchestrator creates defaults when nil.
+	RateLimitTracker       *orchestrator.ChannelRequestTracker
+	ConnectionTracker      *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker *orchestrator.ModelConnectionTracker
+	CostTracker            *orchestrator.ChannelCostTracker
 }
 
 type OpenAIHandlers struct {

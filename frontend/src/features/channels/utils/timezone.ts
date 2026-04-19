@@ -1,6 +1,11 @@
 import { parseISO } from 'date-fns';
 
 function normalizeUtcIso(iso: string): string {
+  // Basic ISO 8601 datetime format validation
+  // Must match at least YYYY-MM-DDTHH:MM
+  if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?/.test(iso)) {
+    return iso; // Return as-is for invalid input; callers handle gracefully
+  }
   if (!iso.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(iso)) {
     return iso + 'Z';
   }

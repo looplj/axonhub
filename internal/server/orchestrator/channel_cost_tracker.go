@@ -21,18 +21,28 @@ func WithCostTrackerClock(clock func() time.Time) CostTrackerOption {
 	}
 }
 
+func WithEvictionInterval(d time.Duration) CostTrackerOption {
+	return func(t *ChannelCostTracker) {
+		t.evictInt = d
+	}
+}
+
 type ChannelCostTracker struct {
-	mu    sync.RWMutex
-	cache map[int]costCacheEntry
-	ttl   time.Duration
-	clock func() time.Time
+	mu       sync.RWMutex
+	cache    map[int]costCacheEntry
+	ttl      time.Duration
+	clock    func() time.Time
+	stopCh   chan struct{}
+	evictInt time.Duration
 }
 
 func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 	t := &ChannelCostTracker{
-		cache: make(map[int]costCacheEntry),
-		ttl:   30 * time.Second,
-		clock: time.Now,
+		cache:    make(map[int]costCacheEntry),
+		ttl:      30 * time.Second,
+		clock:    time.Now,
+		evictInt: 60 * time.Second,
+		stopCh:   make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(t)
@@ -40,35 +50,60 @@ func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 	return t
 }
 
+// Start begins the background eviction goroutine.
+func (t *ChannelCostTracker) Start() {
+	if t.stopCh == nil {
+		t.stopCh = make(chan struct{})
+	}
+	go func() {
+		ticker := time.NewTicker(t.evictInt)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				t.EvictExpired()
+			case <-t.stopCh:
+				return
+			}
+		}
+	}()
+}
+
+// Stop stops the background eviction goroutine.
+func (t *ChannelCostTracker) Stop() {
+	if t.stopCh != nil {
+		close(t.stopCh)
+		t.stopCh = nil
+	}
+}
+
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {
 	t.mu.RLock()
 	entry, ok := t.cache[channelID]
+	now := t.clock()
 	t.mu.RUnlock()
 
 	if !ok {
 		return decimal.Zero, false
 	}
 
-	now := t.clock()
+	// Check if entry needs eviction
+	windowExpired := now.After(entry.windowEnd)
+	ttlExpired := now.Sub(entry.fetchedAt) > t.ttl
 
-	if now.After(entry.windowEnd) {
+	if windowExpired {
+		// Window ended - entry is invalid, remove it
 		t.mu.Lock()
 		if e, exists := t.cache[channelID]; exists && e.fetchedAt.Equal(entry.fetchedAt) {
 			delete(t.cache, channelID)
 		}
 		t.mu.Unlock()
-
 		return decimal.Zero, false
 	}
 
-	if now.Sub(entry.fetchedAt) > t.ttl {
-		t.mu.Lock()
-		if e, exists := t.cache[channelID]; exists && e.fetchedAt.Equal(entry.fetchedAt) {
-			delete(t.cache, channelID)
-		}
-		t.mu.Unlock()
-
-		return decimal.Zero, false
+	if ttlExpired {
+		// TTL expired but window not ended - return stale data (fail-closed)
+		return entry.cost, true
 	}
 
 	return entry.cost, true

@@ -106,9 +106,9 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		failoverLoadBalancer:       processor.loadBalancer,
 		circuitBreakerLoadBalancer: processor.loadBalancer,
 		connectionTracker:          processor.connectionTracking,
-		rateLimitTracker:           nil,
-		modelConnectionTracker:     nil,
-		costTracker:                nil,
+		rateLimitTracker:           NewChannelRequestTracker(),
+		modelConnectionTracker:     NewModelConnectionTracker(),
+		costTracker:                NewChannelCostTracker(),
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
@@ -441,9 +441,9 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		failoverLoadBalancer:       processor.loadBalancer,
 		circuitBreakerLoadBalancer: processor.loadBalancer,
 		connectionTracker:          processor.connectionTracking,
-		rateLimitTracker:           nil,
-		modelConnectionTracker:     nil,
-		costTracker:                nil,
+		rateLimitTracker:           NewChannelRequestTracker(),
+		modelConnectionTracker:     NewModelConnectionTracker(),
+		costTracker:                NewChannelCostTracker(),
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 

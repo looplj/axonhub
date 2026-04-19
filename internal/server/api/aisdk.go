@@ -26,10 +26,11 @@ type AiSdkHandlersParams struct {
 	QuotaService                *biz.QuotaService
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
-	RateLimitTracker            *orchestrator.ChannelRequestTracker
-	ConnectionTracker           *orchestrator.DefaultConnectionTracker
-	ModelConnectionTracker      *orchestrator.ModelConnectionTracker
-	CostTracker                 *orchestrator.ChannelCostTracker
+	// These trackers may be nil; the orchestrator creates defaults when nil.
+	RateLimitTracker       *orchestrator.ChannelRequestTracker
+	ConnectionTracker      *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker *orchestrator.ModelConnectionTracker
+	CostTracker            *orchestrator.ChannelCostTracker
 }
 
 type AiSDKHandlers struct {

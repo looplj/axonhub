@@ -13,21 +13,22 @@ import (
 type JinaHandlersParams struct {
 	fx.In
 
-	ChannelService  *biz.ChannelService
-	ModelService    *biz.ModelService
-	DefaultSelector *orchestrator.DefaultSelector
-	RequestService  *biz.RequestService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	PromptService   *biz.PromptService
-	PromptProtectionRuleService *biz.PromptProtectionRuleService
-	QuotaService    *biz.QuotaService
-	HttpClient      *httpclient.HttpClient
-	LiveStreamRegistry *biz.LiveStreamRegistry
-	RateLimitTracker         *orchestrator.ChannelRequestTracker
-	ConnectionTracker        *orchestrator.DefaultConnectionTracker
-	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
-	CostTracker              *orchestrator.ChannelCostTracker
+	ChannelService               *biz.ChannelService
+	ModelService                 *biz.ModelService
+	DefaultSelector              *orchestrator.DefaultSelector
+	RequestService               *biz.RequestService
+	SystemService                *biz.SystemService
+	UsageLogService              *biz.UsageLogService
+	PromptService                *biz.PromptService
+	PromptProtectionRuleService  *biz.PromptProtectionRuleService
+	QuotaService                 *biz.QuotaService
+	HttpClient                   *httpclient.HttpClient
+	LiveStreamRegistry           *biz.LiveStreamRegistry
+	// These trackers may be nil; the orchestrator creates defaults when nil.
+	RateLimitTracker       *orchestrator.ChannelRequestTracker
+	ConnectionTracker      *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker *orchestrator.ModelConnectionTracker
+	CostTracker            *orchestrator.ChannelCostTracker
 }
 
 func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {

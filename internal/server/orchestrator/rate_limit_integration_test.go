@@ -7,12 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // ========== Test 1: rpm=10, rpmDuration="5hr" ==========
@@ -1314,5 +1317,206 @@ func TestIntegration_AddTokensForDuration_OverflowIsDetectable(t *testing.T) {
 	tracker.AddTokensForDuration(1, math.MaxInt64, time.Minute, nil)
 	tracker.AddTokensForDuration(1, 1, time.Minute, nil)
 	count := tracker.GetTokenCountForDuration(1, time.Minute, nil)
-	assert.Less(t, count, int64(0), "int64 overflow should be detectable")
+	assert.Equal(t, int64(math.MaxInt64), count)
+}
+
+// ========== Rate limit tracking middleware with duration-aware paths ==========
+
+func TestIntegration_RateLimitTracking_MiddlewareWithCustomDuration(t *testing.T) {
+	// This test verifies that the middleware correctly tracks requests
+	// when a channel has a custom RPM duration (e.g., ONE_HOUR).
+	tracker := NewChannelRequestTracker()
+
+	// Create channel with hourly RPM duration
+	hourDuration := objects.RateLimitDurationOneHour
+	entCh := &ent.Channel{ID: 1, Name: "test-hourly-channel", Settings: &objects.ChannelSettings{
+		RateLimit: &objects.ChannelRateLimit{
+			RPM:         lo.ToPtr(int64(100)),
+			RPMDuration: &hourDuration,
+		},
+	}}
+	channel := &biz.Channel{Channel: entCh}
+
+	// Set up state with channel
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{
+			Channel: channel,
+			Models:  []biz.ChannelModelEntry{{ActualModel: "gpt-4"}},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	// Create middleware with tracker
+	middleware := withRateLimitTracking(outbound, tracker)
+
+	ctx := context.Background()
+	req := &httpclient.Request{}
+	_, err := middleware.OnOutboundRawRequest(ctx, req)
+	require.NoError(t, err)
+
+	// Verify count is tracked under hourly window
+	count := tracker.GetRequestCountForDuration(1, time.Hour, nil)
+	assert.Equal(t, int64(1), count, "Request should be tracked under hourly window")
+
+	// Verify count is NOT tracked under default 1-minute window
+	minuteCount := tracker.GetRequestCountForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(0), minuteCount, "Request should NOT be tracked under 1-minute window")
+}
+
+func TestIntegration_RateLimitTracking_MiddlewareWithNoChannel(t *testing.T) {
+	// Test that middleware handles nil channel gracefully
+	tracker := NewChannelRequestTracker()
+
+	// Set up state with no channel
+	state := &PersistenceState{
+		CurrentCandidate: nil,
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	// Create middleware with tracker
+	middleware := withRateLimitTracking(outbound, tracker)
+
+	ctx := context.Background()
+	req := &httpclient.Request{}
+	returnedReq, err := middleware.OnOutboundRawRequest(ctx, req)
+	require.NoError(t, err)
+	assert.Equal(t, req, returnedReq)
+
+	// Verify no requests were tracked
+	count := tracker.GetRequestCountForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(0), count)
+}
+
+// ========== Cost-based rate limiting with nil quota service ==========
+
+func TestIntegration_Cost_NilQuotaService_FailOpenBehavior(t *testing.T) {
+	// When quotaService is nil, cost-based rate limiting should be skipped
+	// (no enforcement, score returns maxScore)
+	tracker := NewChannelRequestTracker()
+	costTracker := NewChannelCostTracker()
+	// Note: quotaService is nil here - this is the key behavior being tested
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, costTracker, nil)
+
+	costLimit := decimal.NewFromFloat(100.0)
+	entCh := &ent.Channel{ID: 1, Name: "cost-limit-channel", Settings: &objects.ChannelSettings{
+		RateLimit: &objects.ChannelRateLimit{
+			Cost: &costLimit,
+		},
+	}}
+	ch := &biz.Channel{Channel: entCh}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, ch)
+	// With no quota service and no cached cost, cost limit is not enforced
+	// The max score (100.0) should be returned (fail-open behavior)
+	assert.Equal(t, 100.0, score, "With nil quota service and no cached cost, score should be max (fail-open)")
+
+	// Verify that cost-based scoring returns max when there's no cost data
+	_, debugInfo := strategy.ScoreWithDebug(ctx, ch)
+	assert.Equal(t, "RateLimitAware", debugInfo.StrategyName)
+}
+
+// ========== Cooldown tests with injectable clock ==========
+
+func TestIntegration_Cooldown_ChannelExhaustedDuringCooldown_WithClock(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(100)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "cooldown-test-clock",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm}},
+	}}
+
+	// Channel should score normally before cooldown
+	score := strategy.Score(context.Background(), ch)
+	assert.Equal(t, 100.0, score)
+
+	// Set cooldown using the injected clock time
+	*clockPtr = time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	until := clockPtr.Add(30 * time.Second)
+	tracker.SetCooldown(ch.ID, until)
+
+	// Channel should be exhausted during cooldown
+	score = strategy.Score(context.Background(), ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+
+	// IsCoolingDown should return true
+	assert.True(t, tracker.IsCoolingDown(ch.ID))
+
+	// GetCooldownUntil should return the set time
+	gotUntil, ok := tracker.GetCooldownUntil(ch.ID)
+	assert.True(t, ok)
+	assert.Equal(t, until, gotUntil)
+}
+
+func TestIntegration_Cooldown_CooldownExpiration_WithClock(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	rpm := int64(100)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "cooldown-expiry-clock",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm}},
+	}}
+
+	// Set cooldown that expires immediately (in the past relative to clock)
+	until := now.Add(-1 * time.Second)
+	tracker.SetCooldown(ch.ID, until)
+
+	// Channel should NOT be cooling down after expiration
+	assert.False(t, tracker.IsCoolingDown(ch.ID))
+
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+	score := strategy.Score(context.Background(), ch)
+	assert.Equal(t, 100.0, score, "Channel should score normally after cooldown expires")
+}
+
+func TestIntegration_Cooldown_SetCooldownMonotonic_WithClock(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
+	// Set a long cooldown
+	*clockPtr = time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	longUntil := clockPtr.Add(1 * time.Hour)
+	tracker.SetCooldown(1, longUntil)
+
+	// Try to set a shorter cooldown — should not overwrite
+	*clockPtr = time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	shortUntil := clockPtr.Add(30 * time.Second)
+	tracker.SetCooldown(1, shortUntil)
+
+	gotUntil, ok := tracker.GetCooldownUntil(1)
+	assert.True(t, ok)
+	assert.Equal(t, longUntil, gotUntil, "Shorter cooldown should not overwrite longer one")
+
+	// Set a longer cooldown — should overwrite
+	*clockPtr = time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	longerUntil := clockPtr.Add(2 * time.Hour)
+	tracker.SetCooldown(1, longerUntil)
+
+	gotUntil, ok = tracker.GetCooldownUntil(1)
+	assert.True(t, ok)
+	assert.Equal(t, longerUntil, gotUntil, "Longer cooldown should overwrite shorter one")
+}
+
+func TestIntegration_Cooldown_ScoreWithDebug_WithClock(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+	strategy := NewRateLimitAwareStrategy(tracker, nil, nil, nil, nil)
+
+	rpm := int64(100)
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID: 1, Name: "cooldown-debug-clock",
+		Settings: &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm}},
+	}}
+
+	*clockPtr = time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker.SetCooldown(ch.ID, clockPtr.Add(30*time.Second))
+
+	score, ss := strategy.ScoreWithDebug(context.Background(), ch)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+	assert.Equal(t, true, ss.Details["exhausted"])
+	assert.Equal(t, "channel_in_cooldown", ss.Details["reason"])
 }

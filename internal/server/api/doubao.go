@@ -19,22 +19,23 @@ import (
 type DoubaoHandlersParams struct {
 	fx.In
 
-	VideoService    *biz.VideoService
-	ChannelService  *biz.ChannelService
-	ModelService    *biz.ModelService
-	DefaultSelector *orchestrator.DefaultSelector
-	RequestService  *biz.RequestService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	PromptService   *biz.PromptService
+	VideoService                *biz.VideoService
+	ChannelService              *biz.ChannelService
+	ModelService                *biz.ModelService
+	DefaultSelector             *orchestrator.DefaultSelector
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
-	QuotaService    *biz.QuotaService
-	HttpClient      *httpclient.HttpClient
-	LiveStreamRegistry *biz.LiveStreamRegistry
-	RateLimitTracker         *orchestrator.ChannelRequestTracker
-	ConnectionTracker        *orchestrator.DefaultConnectionTracker
-	ModelConnectionTracker   *orchestrator.ModelConnectionTracker
-	CostTracker              *orchestrator.ChannelCostTracker
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+	LiveStreamRegistry          *biz.LiveStreamRegistry
+	// These trackers may be nil; the orchestrator creates defaults when nil.
+	RateLimitTracker       *orchestrator.ChannelRequestTracker
+	ConnectionTracker      *orchestrator.DefaultConnectionTracker
+	ModelConnectionTracker *orchestrator.ModelConnectionTracker
+	CostTracker            *orchestrator.ChannelCostTracker
 }
 
 type DoubaoHandlers struct {

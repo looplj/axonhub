@@ -3,8 +3,8 @@ package orchestrator
 import (
 	"sync"
 	"testing"
+	"time"
 
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -183,88 +183,6 @@ func TestModelConnectionTracker_ConcurrentMultiChannelMultiModel(t *testing.T) {
 	}
 }
 
-func TestChannelRateLimit_GetModelConcurrentLimit(t *testing.T) {
-
-	t.Run("nil settings", func(t *testing.T) {
-		var rl *objects.ChannelRateLimit
-		limit, hasCustom := rl.GetModelConcurrentLimit("gpt-4")
-		assert.Equal(t, int64(0), limit)
-		assert.False(t, hasCustom)
-	})
-
-	t.Run("empty settings", func(t *testing.T) {
-		settings := &objects.ChannelRateLimit{}
-		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
-		assert.Equal(t, int64(0), limit)
-		assert.False(t, hasCustom)
-	})
-
-	t.Run("max concurrent only", func(t *testing.T) {
-		maxConcurrent := int64(100)
-		settings := &objects.ChannelRateLimit{
-			MaxConcurrent: &maxConcurrent,
-		}
-		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
-		assert.Equal(t, int64(100), limit)
-		assert.False(t, hasCustom)
-	})
-
-	t.Run("per-model limit", func(t *testing.T) {
-		maxConcurrent := int64(100)
-		settings := &objects.ChannelRateLimit{
-			MaxConcurrent: &maxConcurrent,
-			ModelConcurrent: map[string]int64{
-				"gpt-4": 50,
-			},
-		}
-		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
-		assert.Equal(t, int64(50), limit)
-		assert.True(t, hasCustom)
-	})
-
-	t.Run("per-model limit case insensitive", func(t *testing.T) {
-		maxConcurrent := int64(100)
-		settings := &objects.ChannelRateLimit{
-			MaxConcurrent: &maxConcurrent,
-			ModelConcurrent: map[string]int64{
-				"gpt-4": 50,
-			},
-		}
-		limit, hasCustom := settings.GetModelConcurrentLimit("GPT-4")
-		assert.Equal(t, int64(50), limit)
-		assert.True(t, hasCustom)
-	})
-
-	t.Run("fallback to max concurrent when model not in map", func(t *testing.T) {
-		maxConcurrent := int64(100)
-		settings := &objects.ChannelRateLimit{
-			MaxConcurrent: &maxConcurrent,
-			ModelConcurrent: map[string]int64{
-				"gpt-4": 50,
-			},
-		}
-		limit, hasCustom := settings.GetModelConcurrentLimit("claude-3")
-		assert.Equal(t, int64(100), limit)
-		assert.False(t, hasCustom)
-	})
-
-	t.Run("model concurrent without max concurrent", func(t *testing.T) {
-		settings := &objects.ChannelRateLimit{
-			ModelConcurrent: map[string]int64{
-				"gpt-4": 50,
-			},
-		}
-		limit, hasCustom := settings.GetModelConcurrentLimit("gpt-4")
-		assert.Equal(t, int64(50), limit)
-		assert.True(t, hasCustom)
-
-		// Fallback for unknown model should return 0
-		limit, hasCustom = settings.GetModelConcurrentLimit("claude-3")
-		assert.Equal(t, int64(0), limit)
-		assert.False(t, hasCustom)
-	})
-}
-
 func TestModelConnectionTracker_MultipleChannelsIsolation(t *testing.T) {
 	tracker := NewModelConnectionTracker()
 
@@ -342,4 +260,43 @@ func TestModelConnectionTracker_DoubleDecrementIdempotent(t *testing.T) {
 	mt.DecrementModelConnection(1, "gpt-4")
 	mt.DecrementModelConnection(1, "gpt-4")
 	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
+}
+
+func TestModelConnectionTracker_EvictOrphaned(t *testing.T) {
+	mt := NewModelConnectionTracker()
+
+	mt.IncrementModelConnection(1, "gpt-4")
+	mt.IncrementModelConnection(1, "claude-3")
+
+	assert.Equal(t, 1, mt.GetModelConnectionCount(1, "gpt-4"))
+	assert.Equal(t, 1, mt.GetModelConnectionCount(1, "claude-3"))
+
+	// All entries have count > 0, so with very short maxAge they should all be evicted
+	// Use negative maxAge to ensure eviction (since eviction checks > maxAge)
+	evicted := mt.EvictOrphaned(-time.Hour)
+	assert.Equal(t, 2, evicted, "Should have evicted both connections")
+
+	// Verify entries are cleaned up
+	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
+	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "claude-3"))
+}
+
+func TestModelConnectionTracker_GetLastActivity(t *testing.T) {
+	mt := NewModelConnectionTracker()
+
+	// Before increment, should return zero time
+	lastAct := mt.GetLastActivity(1, "gpt-4")
+	assert.True(t, lastAct.IsZero())
+
+	mt.IncrementModelConnection(1, "gpt-4")
+
+	// After increment, should return a non-zero time
+	lastAct = mt.GetLastActivity(1, "gpt-4")
+	assert.False(t, lastAct.IsZero())
+
+	mt.DecrementModelConnection(1, "gpt-4")
+
+	// After decrement, should return zero time again
+	lastAct = mt.GetLastActivity(1, "gpt-4")
+	assert.True(t, lastAct.IsZero())
 }

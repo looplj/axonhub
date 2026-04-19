@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"reflect"
 	"sync"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -11,16 +12,13 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-// modelConnectionKey captures the channel+model at increment time.
 type modelConnectionKey struct {
 	channelID int
 	model     string
 }
 
-// withModelConnectionTracking creates a middleware that tracks active connections per channel+model.
-func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracker *ModelConnectionTracker) pipeline.Middleware {
-	if tracker == nil {
-		// If no tracker provided, return a no-op middleware
+func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracker ModelConnectionTrackerInterface) pipeline.Middleware {
+	if tracker == nil || reflect.ValueOf(tracker).IsNil() {
 		return &noopModelConnectionTracking{}
 	}
 
@@ -30,13 +28,14 @@ func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracke
 	}
 }
 
-// modelConnectionTracking is a middleware that increments/decrements model connection count.
 type modelConnectionTracking struct {
 	pipeline.DummyMiddleware
 
-	outbound *PersistentOutboundTransformer
-	tracker  *ModelConnectionTracker
-	incrKey  *modelConnectionKey // captured at increment time
+	outbound     *PersistentOutboundTransformer
+	tracker      ModelConnectionTrackerInterface
+	incrKey      *modelConnectionKey
+	decremented  bool
+	decrementMu  sync.Mutex
 }
 
 func (m *modelConnectionTracking) Name() string {
@@ -54,8 +53,14 @@ func (m *modelConnectionTracking) OnOutboundRawRequest(ctx context.Context, requ
 		return request, nil
 	}
 
+	if m.incrKey != nil {
+		m.tracker.DecrementModelConnection(m.incrKey.channelID, m.incrKey.model)
+	}
+
 	m.incrKey = &modelConnectionKey{channelID: channel.ID, model: model}
 	m.tracker.IncrementModelConnection(channel.ID, model)
+
+	m.decremented = false
 
 	log.Debug(ctx, "Incremented model connection count",
 		log.Int("channel_id", channel.ID),
@@ -68,7 +73,6 @@ func (m *modelConnectionTracking) OnOutboundRawRequest(ctx context.Context, requ
 }
 
 func (m *modelConnectionTracking) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
-	// Decrement model connection count after response completes
 	m.decrementConnection(ctx)
 	return response, nil
 }
@@ -83,15 +87,18 @@ func (m *modelConnectionTracking) OnOutboundLlmStream(ctx context.Context, strea
 }
 
 func (m *modelConnectionTracking) OnOutboundRawError(ctx context.Context, err error) {
-	// Decrement model connection count on error
 	m.decrementConnection(ctx)
 }
 
 func (m *modelConnectionTracking) decrementConnection(ctx context.Context) {
-	if m.incrKey == nil {
+	m.decrementMu.Lock()
+	defer m.decrementMu.Unlock()
+
+	if m.decremented || m.incrKey == nil {
 		return
 	}
 
+	m.decremented = true
 	m.tracker.DecrementModelConnection(m.incrKey.channelID, m.incrKey.model)
 
 	log.Debug(ctx, "Decremented model connection count",
@@ -101,13 +108,10 @@ func (m *modelConnectionTracking) decrementConnection(ctx context.Context) {
 	)
 }
 
-// modelConnectionTrackingStream wraps a stream to decrement model connection count when closed.
-//
-//nolint:containedctx // ctx is used for logging.
 type modelConnectionTrackingStream struct {
 	ctx       context.Context
 	stream    streams.Stream[*llm.Response]
-	tracker   *ModelConnectionTracker
+	tracker   ModelConnectionTrackerInterface
 	decrKey   *modelConnectionKey
 	closeOnce sync.Once
 }
@@ -152,7 +156,6 @@ func (s *modelConnectionTrackingStream) Err() error {
 	return s.stream.Err()
 }
 
-// noopModelConnectionTracking is a no-op middleware when model connection tracking is disabled.
 type noopModelConnectionTracking struct {
 	pipeline.DummyMiddleware
 }

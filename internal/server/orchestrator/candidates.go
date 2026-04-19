@@ -517,6 +517,10 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	if len(result) < requiredCount {
+		// Backfill with exhausted channels as last-resort fallback.
+		// When all channels in all priority groups are exhausted,
+		// we still attempt the request rather than failing immediately.
+		// The channel may recover by the time the request is actually sent.
 		remaining := requiredCount - len(result)
 		if len(exhaustedFallbacks) > remaining {
 			exhaustedFallbacks = exhaustedFallbacks[:remaining]

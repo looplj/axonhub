@@ -98,6 +98,9 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 }
 
 // RateLimitStatus is the resolver for the rateLimitStatus field.
+// NOTE: This field resolver is called per-channel, resulting in N+1 queries when
+// rateLimitStatus is requested for multiple channels in a single query.
+// A DataLoader pattern could batch these queries in a future optimization.
 func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel) (*ChannelRateLimitStatus, error) {
 	channelID := int(obj.ID)
 

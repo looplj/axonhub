@@ -12,5 +12,5 @@ var Module = fx.Module("orchestrator",
 )
 
 func NewDefaultConnectionTrackerForFx() *DefaultConnectionTracker {
-	return NewDefaultConnectionTracker(defaultMaxConnectionsPerChannel)
+	return NewDefaultConnectionTracker(DefaultMaxConnectionsPerChannel)
 }

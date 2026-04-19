@@ -17,7 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
-const defaultMaxConnectionsPerChannel = 256
+const DefaultMaxConnectionsPerChannel = 256
 
 func NewChatCompletionOrchestrator(
 	channelService *biz.ChannelService,
@@ -61,6 +61,7 @@ func NewChatCompletionOrchestrator(
 	} else {
 		costTracker = NewChannelCostTracker()
 	}
+	costTracker.Start()
 
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
@@ -337,4 +338,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ChatCompletion:       result.Response,
 		ChatCompletionStream: nil,
 	}, nil
+}
+
+// Close stops the orchestrator's background workers.
+func (processor *ChatCompletionOrchestrator) Close() {
+	if processor.costTracker != nil {
+		processor.costTracker.Stop()
+	}
 }

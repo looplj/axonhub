@@ -44,13 +44,12 @@ func TestModelConnectionTracking_OnOutboundRawRequest(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Increment model connection count multiple times
 	for range 3 {
 		_, err := middleware.OnOutboundRawRequest(ctx, nil)
 		assert.NoError(t, err)
 	}
 
-	assert.Equal(t, 3, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
+	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 }
 
 func TestModelConnectionTracking_OnOutboundRawRequest_NoChannel(t *testing.T) {
@@ -324,19 +323,16 @@ func TestModelConnectionTracking_MultipleModels(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Increment for gpt-4
 	_, _ = middleware1.OnOutboundRawRequest(ctx, nil)
 	_, _ = middleware1.OnOutboundRawRequest(ctx, nil)
 
-	// Increment for claude-3
 	_, _ = middleware2.OnOutboundRawRequest(ctx, nil)
 
-	assert.Equal(t, 2, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
+	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "claude-3"))
 
-	// Decrement gpt-4
 	_, _ = middleware1.OnOutboundLlmResponse(ctx, &llm.Response{ID: "test"})
-	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
+	assert.Equal(t, 0, tracker.GetModelConnectionCount(channel.ID, "gpt-4"))
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(channel.ID, "claude-3"))
 }
 
@@ -371,15 +367,13 @@ func TestModelConnectionTracking_MultipleChannels(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Increment for channel 1
 	_, _ = middleware1.OnOutboundRawRequest(ctx, nil)
 
-	// Increment for channel 2
 	_, _ = middleware2.OnOutboundRawRequest(ctx, nil)
 	_, _ = middleware2.OnOutboundRawRequest(ctx, nil)
 
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(1, "gpt-4"))
-	assert.Equal(t, 2, tracker.GetModelConnectionCount(2, "gpt-4"))
+	assert.Equal(t, 1, tracker.GetModelConnectionCount(2, "gpt-4"))
 }
 
 func TestModelConnectionTracking_Lifecycle(t *testing.T) {

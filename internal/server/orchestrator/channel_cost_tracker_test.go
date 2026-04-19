@@ -43,11 +43,12 @@ func TestChannelCostTracker_Invalidate(t *testing.T) {
 }
 
 func TestChannelCostTracker_TTLExpiry(t *testing.T) {
-	tracker := NewChannelCostTracker()
-	tracker.ttl = 50 * time.Millisecond
+	now := time.Now()
+	clockPtr := &now
+	tracker := NewChannelCostTracker(WithCostTrackerClock(func() time.Time { return *clockPtr }))
 
 	cost := decimal.NewFromFloat(10.0)
-	windowEnd := time.Now().Add(time.Hour)
+	windowEnd := now.Add(time.Hour)
 
 	tracker.SetCachedCost(1, cost, windowEnd)
 
@@ -55,11 +56,13 @@ func TestChannelCostTracker_TTLExpiry(t *testing.T) {
 	assert.True(t, ok)
 	assert.True(t, cost.Equal(got))
 
-	time.Sleep(60 * time.Millisecond)
+	// Advance clock past TTL
+	*clockPtr = now.Add(31 * time.Second)
 
 	got, ok = tracker.GetCachedCost(1)
-	assert.False(t, ok)
-	assert.True(t, got.IsZero())
+	// TTL expired but window not ended - returns stale data (fail-closed)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
 }
 
 func TestChannelCostTracker_WindowEndExpiry(t *testing.T) {
@@ -76,16 +79,21 @@ func TestChannelCostTracker_WindowEndExpiry(t *testing.T) {
 }
 
 func TestChannelCostTracker_EvictExpired(t *testing.T) {
-	tracker := NewChannelCostTracker()
-	tracker.ttl = 50 * time.Millisecond
+	now := time.Now()
+	clockPtr := &now
+	tracker := NewChannelCostTracker(
+		WithCostTrackerClock(func() time.Time { return *clockPtr }),
+		WithEvictionInterval(time.Second),
+	)
 
 	cost := decimal.NewFromFloat(10.0)
-	windowEnd := time.Now().Add(time.Hour)
+	windowEnd := now.Add(time.Hour)
 
 	tracker.SetCachedCost(1, cost, windowEnd)
 	tracker.SetCachedCost(2, cost, windowEnd)
 
-	time.Sleep(60 * time.Millisecond)
+	// Advance clock past TTL
+	*clockPtr = now.Add(31 * time.Second)
 
 	tracker.EvictExpired()
 
@@ -96,11 +104,14 @@ func TestChannelCostTracker_EvictExpired(t *testing.T) {
 }
 
 func TestChannelCostTracker_EvictExpired_KeepsFresh(t *testing.T) {
-	tracker := NewChannelCostTracker()
-	tracker.ttl = 200 * time.Millisecond
+	now := time.Now()
+	clockPtr := &now
+	tracker := NewChannelCostTracker(
+		WithCostTrackerClock(func() time.Time { return *clockPtr }),
+	)
 
 	cost := decimal.NewFromFloat(10.0)
-	windowEnd := time.Now().Add(time.Hour)
+	windowEnd := now.Add(time.Hour)
 
 	tracker.SetCachedCost(1, cost, windowEnd)
 

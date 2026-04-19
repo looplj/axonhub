@@ -79,7 +79,7 @@ NewErrorAwareStrategy(channelService)
 **Cons**:
 - Static; does not react to live performance or load unless weights are manually updated.
 
-### 3. WeightRoundRobinStrategy (Priority: 10-200 points)
+### 4. WeightRoundRobinStrategy (Priority: 10-200 points)
 
 **Purpose**: Blends historic request distribution with admin-defined weights.
 
@@ -97,7 +97,7 @@ NewErrorAwareStrategy(channelService)
 - Requires metrics storage similar to ErrorAwareStrategy.
 - Heavily skewed manual weights can still override fairness, so administrators must tune carefully.
 
-### 4. Connection Tracking and Concurrency Fallback
+### 5. Connection Tracking and Concurrency Fallback
 
 **Purpose**: Track in-flight requests and provide concurrency saturation signals for `RateLimitAwareStrategy`.
 
@@ -105,6 +105,12 @@ NewErrorAwareStrategy(channelService)
 1. The orchestrator increments and decrements active connections around each upstream request.
 2. `RateLimitAwareStrategy` first respects explicit `MaxConcurrent` configuration.
 3. If `MaxConcurrent` is not set, it falls back to the default `ConnectionTracker` capacity to penalize or exhaust saturated channels.
+
+**Cost-Based Rate Limiting**:
+- Channels can be configured with cost limits (e.g., $100/day) to control spending
+- The `RateLimitAwareStrategy` tracks cumulative costs per channel and penalizes channels approaching their limits
+- Cost tracking uses time windows similar to RPM/TPM, with configurable reset periods
+- When a channel exceeds its cost limit, it receives a negative score, deprioritizing it for new requests
 
 **Notes**:
 - Connection tracking remains part of the runtime path even though `ConnectionAwareStrategy` is no longer in the default strategy chain.
@@ -120,7 +126,7 @@ loadBalancer := NewLoadBalancer(
     NewErrorAwareStrategy(channelService),                         // Priority 2: Health
     NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Fairness + admin weight
     NewLatencyAwareStrategy(channelService),                       // Priority 4: Streaming FTTL/TPS or non-streaming latency
-    NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker, nil, costTracker, quotaService), // Priority 5: Rate limits + concurrency + cost
+    NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker, modelConnTracker, costTracker, quotaService), // Priority 5: Rate limits + concurrency + cost
 )
 ```
 

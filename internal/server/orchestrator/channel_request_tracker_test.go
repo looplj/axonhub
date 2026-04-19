@@ -185,8 +185,6 @@ func TestChannelRequestTracker_ConcurrentReadWrite(t *testing.T) {
 	assert.Equal(t, int64(1000), tracker.GetRequestCount(1))
 }
 
-// ========== Cooldown Tests ==========
-
 func TestChannelRequestTracker_SetCooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 
@@ -500,4 +498,180 @@ func TestChannelRequestTracker_Anchor_ZeroTimeAnchor(t *testing.T) {
 	tracker.IncrementRequestForDuration(1, time.Minute, &zeroTime)
 	count := tracker.GetRequestCountForDuration(1, time.Minute, &zeroTime)
 	assert.Equal(t, int64(1), count)
+}
+
+func TestChannelRequestTracker_GetWindowResetTimeForDuration_ActiveWindow(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+
+	resetTime := tracker.GetWindowResetTimeForDuration(1, time.Minute, nil)
+	expectedResetTime := now.Add(time.Minute)
+
+	assert.Equal(t, expectedResetTime, resetTime)
+}
+
+func TestChannelRequestTracker_GetWindowResetTimeForDuration_ExpiredWindow(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+
+	*clockPtr = now.Add(2*time.Minute + time.Second)
+
+	resetTime := tracker.GetWindowResetTimeForDuration(1, time.Minute, nil)
+
+	assert.True(t, resetTime.IsZero())
+}
+
+func TestChannelRequestTracker_GetWindowResetTimeForDuration_NoWindow(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	resetTime := tracker.GetWindowResetTimeForDuration(1, time.Minute, nil)
+
+	assert.True(t, resetTime.IsZero())
+}
+
+func TestChannelRequestTracker_GetWindowResetTimeForDuration_WithAnchor(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	tracker.IncrementRequestForDuration(1, time.Hour, &anchor)
+
+	resetTime := tracker.GetWindowResetTimeForDuration(1, time.Hour, &anchor)
+	windowStart := now.Truncate(time.Hour)
+	expectedResetTime := windowStart.Add(time.Hour)
+
+	assert.Equal(t, expectedResetTime, resetTime)
+}
+
+func TestChannelRequestTracker_GetWindowResetTimeForDuration_WrongAnchor(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	anchor1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	anchor2 := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
+
+	tracker.IncrementRequestForDuration(1, time.Hour, &anchor1)
+
+	resetTime := tracker.GetWindowResetTimeForDuration(1, time.Hour, &anchor2)
+
+	assert.True(t, resetTime.IsZero())
+}
+
+func TestChannelRequestTracker_ForDuration_Concurrent(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	const (
+		goroutines      = 50
+		opsPerGoroutine = 100
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 4)
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+
+			for range opsPerGoroutine {
+				tracker.IncrementRequestForDuration(1, time.Minute, nil)
+			}
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+
+			for range opsPerGoroutine {
+				tracker.AddTokensForDuration(1, 10, time.Minute, nil)
+			}
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+
+			for range opsPerGoroutine {
+				_ = tracker.GetRequestCountForDuration(1, time.Minute, nil)
+			}
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+
+			for range opsPerGoroutine {
+				_ = tracker.GetTokenCountForDuration(1, time.Minute, nil)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	requestCount := tracker.GetRequestCountForDuration(1, time.Minute, nil)
+	tokenCount := tracker.GetTokenCountForDuration(1, time.Minute, nil)
+
+	assert.Equal(t, int64(goroutines*opsPerGoroutine), requestCount)
+	assert.Equal(t, int64(goroutines*opsPerGoroutine*10), tokenCount)
+}
+
+func TestChannelRequestTracker_ForDuration_Concurrent_MixedDurations(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	const goroutines = 30
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 4)
+
+	durations := []time.Duration{time.Minute, 5 * time.Minute, time.Hour}
+
+	for range goroutines {
+		go func(d time.Duration) {
+			defer wg.Done()
+			for range 50 {
+				tracker.IncrementRequestForDuration(1, d, nil)
+			}
+		}(durations[0])
+	}
+
+	for range goroutines {
+		go func(d time.Duration) {
+			defer wg.Done()
+			for range 50 {
+				tracker.AddTokensForDuration(1, 100, d, nil)
+			}
+		}(durations[1])
+	}
+
+	for range goroutines {
+		go func(d time.Duration) {
+			defer wg.Done()
+			for range 50 {
+				_ = tracker.GetRequestCountForDuration(1, d, nil)
+			}
+		}(durations[2])
+	}
+
+	for range goroutines {
+		go func(d time.Duration) {
+			defer wg.Done()
+			for range 50 {
+				_ = tracker.GetTokenCountForDuration(1, d, nil)
+			}
+		}(durations[0])
+	}
+
+	wg.Wait()
+
+	assert.Equal(t, int64(goroutines*50), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+	assert.Equal(t, int64(goroutines*50*100), tracker.GetTokenCountForDuration(1, 5*time.Minute, nil))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Hour, nil))
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, time.Minute, nil))
 }

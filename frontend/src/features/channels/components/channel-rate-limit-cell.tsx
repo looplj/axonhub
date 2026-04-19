@@ -12,6 +12,7 @@ interface ChannelRateLimitCellProps {
 }
 
 function formatTooltipValue(value: number, isCost?: boolean): string {
+  if (!Number.isFinite(value)) return '-';
   if (isCost) return value.toFixed(2);
   if (value >= 100_000) return formatNumber(value, { digits: 1 });
   return value.toLocaleString();

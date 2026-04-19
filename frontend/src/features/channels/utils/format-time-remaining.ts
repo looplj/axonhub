@@ -11,7 +11,8 @@ export function formatTimeRemaining(
   const reset = new Date(resetAt).getTime();
   const now = Date.now();
   const diffMs = reset - now;
-  if (diffMs <= 0) return mode === 'detailed' ? '' : null;
+  if (diffMs < 0) return mode === 'detailed' ? '' : null;
+  if (diffMs === 0) return mode === 'detailed' ? '0s' : null;
 
   const totalSeconds = Math.floor(diffMs / 1000);
   const totalMinutes = Math.floor(totalSeconds / 60);
