@@ -186,11 +186,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
-	if lo.FromPtr(payload.PromptCacheKey) == "" {
-		if sessionID, ok := shared.GetSessionID(ctx); ok {
-			payload.PromptCacheKey = lo.ToPtr(sessionID)
-		}
-	}
+	identity := shared.DeriveOpenAIIdentity(ctx, llmReq)
+	payload.PromptCacheKey = identity.PromptCacheKey
+	payload.SafetyIdentifier = identity.SafetyIdentifier
+	payload.User = identity.User
 
 	// Clear `parallel_tool_calls` when no tools are sent (Responses API compatibility).
 	if len(payload.Tools) == 0 {

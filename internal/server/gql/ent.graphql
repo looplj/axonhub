@@ -1561,6 +1561,10 @@ input CreateRequestInput {
   Request headers
   """
   requestHeaders: JSONRawMessageInput
+  effectivePromptCacheKey: String
+  effectiveSafetyIdentifier: String
+  effectiveUser: String
+  effectiveSessionID: String
   requestBody: JSONRawMessageInput!
   responseBody: JSONRawMessageInput
   responseChunks: [JSONRawMessageInput!]
@@ -3890,6 +3894,10 @@ type Request implements Node {
   Request headers
   """
   requestHeaders: JSONRawMessage
+  effectivePromptCacheKey: String
+  effectiveSafetyIdentifier: String
+  effectiveUser: String
+  effectiveSessionID: String
   requestBody: JSONRawMessage! @goField(forceResolver: true)
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
@@ -4032,6 +4040,10 @@ type RequestExecution implements Node {
   externalID: String
   modelID: String!
   format: String!
+  effectivePromptCacheKey: String
+  effectiveSafetyIdentifier: String
+  effectiveUser: String
+  effectiveSessionID: String
   requestBody: JSONRawMessage! @goField(forceResolver: true)
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
@@ -4243,6 +4255,78 @@ input RequestExecutionWhereInput {
   formatHasSuffix: String
   formatEqualFold: String
   formatContainsFold: String
+  """
+  effective_prompt_cache_key field predicates
+  """
+  effectivePromptCacheKey: String
+  effectivePromptCacheKeyNEQ: String
+  effectivePromptCacheKeyIn: [String!]
+  effectivePromptCacheKeyNotIn: [String!]
+  effectivePromptCacheKeyGT: String
+  effectivePromptCacheKeyGTE: String
+  effectivePromptCacheKeyLT: String
+  effectivePromptCacheKeyLTE: String
+  effectivePromptCacheKeyContains: String
+  effectivePromptCacheKeyHasPrefix: String
+  effectivePromptCacheKeyHasSuffix: String
+  effectivePromptCacheKeyIsNil: Boolean
+  effectivePromptCacheKeyNotNil: Boolean
+  effectivePromptCacheKeyEqualFold: String
+  effectivePromptCacheKeyContainsFold: String
+  """
+  effective_safety_identifier field predicates
+  """
+  effectiveSafetyIdentifier: String
+  effectiveSafetyIdentifierNEQ: String
+  effectiveSafetyIdentifierIn: [String!]
+  effectiveSafetyIdentifierNotIn: [String!]
+  effectiveSafetyIdentifierGT: String
+  effectiveSafetyIdentifierGTE: String
+  effectiveSafetyIdentifierLT: String
+  effectiveSafetyIdentifierLTE: String
+  effectiveSafetyIdentifierContains: String
+  effectiveSafetyIdentifierHasPrefix: String
+  effectiveSafetyIdentifierHasSuffix: String
+  effectiveSafetyIdentifierIsNil: Boolean
+  effectiveSafetyIdentifierNotNil: Boolean
+  effectiveSafetyIdentifierEqualFold: String
+  effectiveSafetyIdentifierContainsFold: String
+  """
+  effective_user field predicates
+  """
+  effectiveUser: String
+  effectiveUserNEQ: String
+  effectiveUserIn: [String!]
+  effectiveUserNotIn: [String!]
+  effectiveUserGT: String
+  effectiveUserGTE: String
+  effectiveUserLT: String
+  effectiveUserLTE: String
+  effectiveUserContains: String
+  effectiveUserHasPrefix: String
+  effectiveUserHasSuffix: String
+  effectiveUserIsNil: Boolean
+  effectiveUserNotNil: Boolean
+  effectiveUserEqualFold: String
+  effectiveUserContainsFold: String
+  """
+  effective_session_id field predicates
+  """
+  effectiveSessionID: String
+  effectiveSessionIDNEQ: String
+  effectiveSessionIDIn: [String!]
+  effectiveSessionIDNotIn: [String!]
+  effectiveSessionIDGT: String
+  effectiveSessionIDGTE: String
+  effectiveSessionIDLT: String
+  effectiveSessionIDLTE: String
+  effectiveSessionIDContains: String
+  effectiveSessionIDHasPrefix: String
+  effectiveSessionIDHasSuffix: String
+  effectiveSessionIDIsNil: Boolean
+  effectiveSessionIDNotNil: Boolean
+  effectiveSessionIDEqualFold: String
+  effectiveSessionIDContainsFold: String
   """
   error_message field predicates
   """
@@ -4493,6 +4577,78 @@ input RequestWhereInput {
   formatHasSuffix: String
   formatEqualFold: String
   formatContainsFold: String
+  """
+  effective_prompt_cache_key field predicates
+  """
+  effectivePromptCacheKey: String
+  effectivePromptCacheKeyNEQ: String
+  effectivePromptCacheKeyIn: [String!]
+  effectivePromptCacheKeyNotIn: [String!]
+  effectivePromptCacheKeyGT: String
+  effectivePromptCacheKeyGTE: String
+  effectivePromptCacheKeyLT: String
+  effectivePromptCacheKeyLTE: String
+  effectivePromptCacheKeyContains: String
+  effectivePromptCacheKeyHasPrefix: String
+  effectivePromptCacheKeyHasSuffix: String
+  effectivePromptCacheKeyIsNil: Boolean
+  effectivePromptCacheKeyNotNil: Boolean
+  effectivePromptCacheKeyEqualFold: String
+  effectivePromptCacheKeyContainsFold: String
+  """
+  effective_safety_identifier field predicates
+  """
+  effectiveSafetyIdentifier: String
+  effectiveSafetyIdentifierNEQ: String
+  effectiveSafetyIdentifierIn: [String!]
+  effectiveSafetyIdentifierNotIn: [String!]
+  effectiveSafetyIdentifierGT: String
+  effectiveSafetyIdentifierGTE: String
+  effectiveSafetyIdentifierLT: String
+  effectiveSafetyIdentifierLTE: String
+  effectiveSafetyIdentifierContains: String
+  effectiveSafetyIdentifierHasPrefix: String
+  effectiveSafetyIdentifierHasSuffix: String
+  effectiveSafetyIdentifierIsNil: Boolean
+  effectiveSafetyIdentifierNotNil: Boolean
+  effectiveSafetyIdentifierEqualFold: String
+  effectiveSafetyIdentifierContainsFold: String
+  """
+  effective_user field predicates
+  """
+  effectiveUser: String
+  effectiveUserNEQ: String
+  effectiveUserIn: [String!]
+  effectiveUserNotIn: [String!]
+  effectiveUserGT: String
+  effectiveUserGTE: String
+  effectiveUserLT: String
+  effectiveUserLTE: String
+  effectiveUserContains: String
+  effectiveUserHasPrefix: String
+  effectiveUserHasSuffix: String
+  effectiveUserIsNil: Boolean
+  effectiveUserNotNil: Boolean
+  effectiveUserEqualFold: String
+  effectiveUserContainsFold: String
+  """
+  effective_session_id field predicates
+  """
+  effectiveSessionID: String
+  effectiveSessionIDNEQ: String
+  effectiveSessionIDIn: [String!]
+  effectiveSessionIDNotIn: [String!]
+  effectiveSessionIDGT: String
+  effectiveSessionIDGTE: String
+  effectiveSessionIDLT: String
+  effectiveSessionIDLTE: String
+  effectiveSessionIDContains: String
+  effectiveSessionIDHasPrefix: String
+  effectiveSessionIDHasSuffix: String
+  effectiveSessionIDIsNil: Boolean
+  effectiveSessionIDNotNil: Boolean
+  effectiveSessionIDEqualFold: String
+  effectiveSessionIDContainsFold: String
   """
   channel_id field predicates
   """
@@ -5594,6 +5750,14 @@ input UpdateRequestInput {
   requestHeaders: JSONRawMessageInput
   appendRequestHeaders: JSONRawMessageInput
   clearRequestHeaders: Boolean
+  effectivePromptCacheKey: String
+  clearEffectivePromptCacheKey: Boolean
+  effectiveSafetyIdentifier: String
+  clearEffectiveSafetyIdentifier: Boolean
+  effectiveUser: String
+  clearEffectiveUser: Boolean
+  effectiveSessionID: String
+  clearEffectiveSessionID: Boolean
   responseBody: JSONRawMessageInput
   appendResponseBody: JSONRawMessageInput
   clearResponseBody: Boolean

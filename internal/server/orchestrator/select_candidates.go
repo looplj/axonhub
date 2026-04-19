@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/samber/lo"
 
@@ -23,6 +24,8 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 		}
 
 		selector := inbound.state.CandidateSelector
+
+		var cachePrimaryChannelID *int
 
 		// Project-level profile filtering (upper boundary)
 		if inbound.state.APIKey != nil {
@@ -48,6 +51,8 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 			if len(profile.ChannelTags) > 0 {
 				selector = WithChannelTagsFilterSelector(selector, profile.ChannelTags, profile.ChannelTagsMatchMode)
 			}
+
+			cachePrimaryChannelID = profile.CachePrimaryChannelID
 		}
 
 		// Apply Google native tools filter (only for Gemini native API format)
@@ -94,6 +99,22 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 
 		if len(candidates) == 0 {
 			return nil, fmt.Errorf("%w: %s", biz.ErrInvalidModel, llmRequest.Model)
+		}
+
+		if cachePrimaryChannelID != nil {
+			slices.SortStableFunc(candidates, func(a, b *ChannelModelsCandidate) int {
+				aPrimary := a != nil && a.Channel != nil && a.Channel.ID == *cachePrimaryChannelID
+				bPrimary := b != nil && b.Channel != nil && b.Channel.ID == *cachePrimaryChannelID
+
+				switch {
+				case aPrimary && !bPrimary:
+					return -1
+				case !aPrimary && bPrimary:
+					return 1
+				default:
+					return 0
+				}
+			})
 		}
 
 		// Store candidates directly (no need to extract channels)

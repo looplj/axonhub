@@ -144,6 +144,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(llmReq)
+	identity := shared.DeriveOpenAIIdentity(ctx, llmReq)
+	oaiReq.PromptCacheKey = identity.PromptCacheKey
+	oaiReq.SafetyIdentifier = identity.SafetyIdentifier
+	oaiReq.User = identity.User
 	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformOpenAI:

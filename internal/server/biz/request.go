@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/store"
@@ -22,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // RequestService handles request and request execution operations.
@@ -111,6 +114,70 @@ func GenerateExecutionRequestDirKey(projectID, requestID, executionID int) strin
 	return fmt.Sprintf("/%d/requests/%d/executions/%d", projectID, requestID, executionID)
 }
 
+type requestEffectiveIdentity struct {
+	PromptCacheKey   string
+	SafetyIdentifier string
+	User             string
+	SessionID        string
+}
+
+func deriveInboundEffectiveIdentity(ctx context.Context, llmRequest *llm.Request) requestEffectiveIdentity {
+	identity := shared.DeriveOpenAIIdentity(ctx, llmRequest)
+
+	return requestEffectiveIdentity{
+		PromptCacheKey:   ptrValue(identity.PromptCacheKey),
+		SafetyIdentifier: ptrValue(identity.SafetyIdentifier),
+		User:             ptrValue(identity.User),
+		SessionID:        ptrValue(identity.SessionID),
+	}
+}
+
+func deriveExecutionEffectiveIdentity(channelRequest *httpclient.Request) requestEffectiveIdentity {
+	if channelRequest == nil {
+		return requestEffectiveIdentity{}
+	}
+
+	identity := requestEffectiveIdentity{}
+	identity.SessionID = strings.TrimSpace(headerValue(channelRequest.Headers, "Session_id"))
+
+	body := channelRequest.JSONBody
+	if len(body) == 0 {
+		body = channelRequest.Body
+	}
+
+	if len(body) > 0 {
+		var payload struct {
+			PromptCacheKey   *string `json:"prompt_cache_key"`
+			SafetyIdentifier *string `json:"safety_identifier"`
+			User             *string `json:"user"`
+		}
+
+		if err := json.Unmarshal(body, &payload); err == nil {
+			identity.PromptCacheKey = ptrValue(payload.PromptCacheKey)
+			identity.SafetyIdentifier = ptrValue(payload.SafetyIdentifier)
+			identity.User = ptrValue(payload.User)
+		}
+	}
+
+	return identity
+}
+
+func ptrValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(*value)
+}
+
+func headerValue(headers http.Header, key string) string {
+	if headers == nil {
+		return ""
+	}
+
+	return headers.Get(key)
+}
+
 // CreateRequest creates a new request record.
 func (s *RequestService) CreateRequest(
 	ctx context.Context,
@@ -167,6 +234,7 @@ func (s *RequestService) CreateRequest(
 	}
 
 	client := s.entFromContext(ctx)
+	effectiveIdentity := deriveInboundEffectiveIdentity(ctx, llmRequest)
 	mut := client.Request.Create().
 		SetProjectID(projectID).
 		SetModelID(llmRequest.Model).
@@ -174,7 +242,11 @@ func (s *RequestService) CreateRequest(
 		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
 		SetStatus(request.StatusProcessing).
 		SetStream(isStream).
-		SetRequestHeaders(requestHeadersBytes)
+		SetRequestHeaders(requestHeadersBytes).
+		SetEffectivePromptCacheKey(effectiveIdentity.PromptCacheKey).
+		SetEffectiveSafetyIdentifier(effectiveIdentity.SafetyIdentifier).
+		SetEffectiveUser(effectiveIdentity.User).
+		SetEffectiveSessionID(effectiveIdentity.SessionID)
 
 	if httpRequest != nil {
 		mut = mut.SetClientIP(httpRequest.ClientIP)
@@ -311,6 +383,13 @@ func (s *RequestService) CreateRequestExecution(
 		SetStatus(requestexecution.StatusProcessing).
 		SetStream(request.Stream).
 		SetRequestHeaders(requestHeadersBytes)
+
+	effectiveIdentity := deriveExecutionEffectiveIdentity(&channelRequest)
+	mut = mut.
+		SetEffectivePromptCacheKey(effectiveIdentity.PromptCacheKey).
+		SetEffectiveSafetyIdentifier(effectiveIdentity.SafetyIdentifier).
+		SetEffectiveUser(effectiveIdentity.User).
+		SetEffectiveSessionID(effectiveIdentity.SessionID)
 
 	// Use the same data storage as the request
 	if request.DataStorageID != 0 {

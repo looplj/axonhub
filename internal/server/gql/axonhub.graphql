@@ -289,6 +289,7 @@ input APIKeyProfileInput {
   modelIDs: [String!]
   quota: APIKeyQuotaInput
   loadBalanceStrategy: String
+  cachePrimaryChannelID: Int
 }
 
 input UpdateProjectProfilesInput {
@@ -333,6 +334,7 @@ type APIKeyProfile {
   modelIDs: [String!]
   quota: APIKeyQuota
   loadBalanceStrategy: String
+  cachePrimaryChannelID: Int
 }
 
 enum ChannelTagsMatchMode {

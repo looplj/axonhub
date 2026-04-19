@@ -58,6 +58,86 @@ func (_u *RequestUpdate) ClearRequestHeaders() *RequestUpdate {
 	return _u
 }
 
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (_u *RequestUpdate) SetEffectivePromptCacheKey(v string) *RequestUpdate {
+	_u.mutation.SetEffectivePromptCacheKey(v)
+	return _u
+}
+
+// SetNillableEffectivePromptCacheKey sets the "effective_prompt_cache_key" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableEffectivePromptCacheKey(v *string) *RequestUpdate {
+	if v != nil {
+		_u.SetEffectivePromptCacheKey(*v)
+	}
+	return _u
+}
+
+// ClearEffectivePromptCacheKey clears the value of the "effective_prompt_cache_key" field.
+func (_u *RequestUpdate) ClearEffectivePromptCacheKey() *RequestUpdate {
+	_u.mutation.ClearEffectivePromptCacheKey()
+	return _u
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (_u *RequestUpdate) SetEffectiveSafetyIdentifier(v string) *RequestUpdate {
+	_u.mutation.SetEffectiveSafetyIdentifier(v)
+	return _u
+}
+
+// SetNillableEffectiveSafetyIdentifier sets the "effective_safety_identifier" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableEffectiveSafetyIdentifier(v *string) *RequestUpdate {
+	if v != nil {
+		_u.SetEffectiveSafetyIdentifier(*v)
+	}
+	return _u
+}
+
+// ClearEffectiveSafetyIdentifier clears the value of the "effective_safety_identifier" field.
+func (_u *RequestUpdate) ClearEffectiveSafetyIdentifier() *RequestUpdate {
+	_u.mutation.ClearEffectiveSafetyIdentifier()
+	return _u
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (_u *RequestUpdate) SetEffectiveUser(v string) *RequestUpdate {
+	_u.mutation.SetEffectiveUser(v)
+	return _u
+}
+
+// SetNillableEffectiveUser sets the "effective_user" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableEffectiveUser(v *string) *RequestUpdate {
+	if v != nil {
+		_u.SetEffectiveUser(*v)
+	}
+	return _u
+}
+
+// ClearEffectiveUser clears the value of the "effective_user" field.
+func (_u *RequestUpdate) ClearEffectiveUser() *RequestUpdate {
+	_u.mutation.ClearEffectiveUser()
+	return _u
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (_u *RequestUpdate) SetEffectiveSessionID(v string) *RequestUpdate {
+	_u.mutation.SetEffectiveSessionID(v)
+	return _u
+}
+
+// SetNillableEffectiveSessionID sets the "effective_session_id" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableEffectiveSessionID(v *string) *RequestUpdate {
+	if v != nil {
+		_u.SetEffectiveSessionID(*v)
+	}
+	return _u
+}
+
+// ClearEffectiveSessionID clears the value of the "effective_session_id" field.
+func (_u *RequestUpdate) ClearEffectiveSessionID() *RequestUpdate {
+	_u.mutation.ClearEffectiveSessionID()
+	return _u
+}
+
 // SetResponseBody sets the "response_body" field.
 func (_u *RequestUpdate) SetResponseBody(v objects.JSONRawMessage) *RequestUpdate {
 	_u.mutation.SetResponseBody(v)
@@ -485,6 +565,30 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.RequestHeadersCleared() {
 		_spec.ClearField(request.FieldRequestHeaders, field.TypeJSON)
 	}
+	if value, ok := _u.mutation.EffectivePromptCacheKey(); ok {
+		_spec.SetField(request.FieldEffectivePromptCacheKey, field.TypeString, value)
+	}
+	if _u.mutation.EffectivePromptCacheKeyCleared() {
+		_spec.ClearField(request.FieldEffectivePromptCacheKey, field.TypeString)
+	}
+	if value, ok := _u.mutation.EffectiveSafetyIdentifier(); ok {
+		_spec.SetField(request.FieldEffectiveSafetyIdentifier, field.TypeString, value)
+	}
+	if _u.mutation.EffectiveSafetyIdentifierCleared() {
+		_spec.ClearField(request.FieldEffectiveSafetyIdentifier, field.TypeString)
+	}
+	if value, ok := _u.mutation.EffectiveUser(); ok {
+		_spec.SetField(request.FieldEffectiveUser, field.TypeString, value)
+	}
+	if _u.mutation.EffectiveUserCleared() {
+		_spec.ClearField(request.FieldEffectiveUser, field.TypeString)
+	}
+	if value, ok := _u.mutation.EffectiveSessionID(); ok {
+		_spec.SetField(request.FieldEffectiveSessionID, field.TypeString, value)
+	}
+	if _u.mutation.EffectiveSessionIDCleared() {
+		_spec.ClearField(request.FieldEffectiveSessionID, field.TypeString)
+	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 	}
@@ -729,6 +833,86 @@ func (_u *RequestUpdateOne) AppendRequestHeaders(v objects.JSONRawMessage) *Requ
 // ClearRequestHeaders clears the value of the "request_headers" field.
 func (_u *RequestUpdateOne) ClearRequestHeaders() *RequestUpdateOne {
 	_u.mutation.ClearRequestHeaders()
+	return _u
+}
+
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (_u *RequestUpdateOne) SetEffectivePromptCacheKey(v string) *RequestUpdateOne {
+	_u.mutation.SetEffectivePromptCacheKey(v)
+	return _u
+}
+
+// SetNillableEffectivePromptCacheKey sets the "effective_prompt_cache_key" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableEffectivePromptCacheKey(v *string) *RequestUpdateOne {
+	if v != nil {
+		_u.SetEffectivePromptCacheKey(*v)
+	}
+	return _u
+}
+
+// ClearEffectivePromptCacheKey clears the value of the "effective_prompt_cache_key" field.
+func (_u *RequestUpdateOne) ClearEffectivePromptCacheKey() *RequestUpdateOne {
+	_u.mutation.ClearEffectivePromptCacheKey()
+	return _u
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (_u *RequestUpdateOne) SetEffectiveSafetyIdentifier(v string) *RequestUpdateOne {
+	_u.mutation.SetEffectiveSafetyIdentifier(v)
+	return _u
+}
+
+// SetNillableEffectiveSafetyIdentifier sets the "effective_safety_identifier" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableEffectiveSafetyIdentifier(v *string) *RequestUpdateOne {
+	if v != nil {
+		_u.SetEffectiveSafetyIdentifier(*v)
+	}
+	return _u
+}
+
+// ClearEffectiveSafetyIdentifier clears the value of the "effective_safety_identifier" field.
+func (_u *RequestUpdateOne) ClearEffectiveSafetyIdentifier() *RequestUpdateOne {
+	_u.mutation.ClearEffectiveSafetyIdentifier()
+	return _u
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (_u *RequestUpdateOne) SetEffectiveUser(v string) *RequestUpdateOne {
+	_u.mutation.SetEffectiveUser(v)
+	return _u
+}
+
+// SetNillableEffectiveUser sets the "effective_user" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableEffectiveUser(v *string) *RequestUpdateOne {
+	if v != nil {
+		_u.SetEffectiveUser(*v)
+	}
+	return _u
+}
+
+// ClearEffectiveUser clears the value of the "effective_user" field.
+func (_u *RequestUpdateOne) ClearEffectiveUser() *RequestUpdateOne {
+	_u.mutation.ClearEffectiveUser()
+	return _u
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (_u *RequestUpdateOne) SetEffectiveSessionID(v string) *RequestUpdateOne {
+	_u.mutation.SetEffectiveSessionID(v)
+	return _u
+}
+
+// SetNillableEffectiveSessionID sets the "effective_session_id" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableEffectiveSessionID(v *string) *RequestUpdateOne {
+	if v != nil {
+		_u.SetEffectiveSessionID(*v)
+	}
+	return _u
+}
+
+// ClearEffectiveSessionID clears the value of the "effective_session_id" field.
+func (_u *RequestUpdateOne) ClearEffectiveSessionID() *RequestUpdateOne {
+	_u.mutation.ClearEffectiveSessionID()
 	return _u
 }
 
@@ -1188,6 +1372,30 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if _u.mutation.RequestHeadersCleared() {
 		_spec.ClearField(request.FieldRequestHeaders, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.EffectivePromptCacheKey(); ok {
+		_spec.SetField(request.FieldEffectivePromptCacheKey, field.TypeString, value)
+	}
+	if _u.mutation.EffectivePromptCacheKeyCleared() {
+		_spec.ClearField(request.FieldEffectivePromptCacheKey, field.TypeString)
+	}
+	if value, ok := _u.mutation.EffectiveSafetyIdentifier(); ok {
+		_spec.SetField(request.FieldEffectiveSafetyIdentifier, field.TypeString, value)
+	}
+	if _u.mutation.EffectiveSafetyIdentifierCleared() {
+		_spec.ClearField(request.FieldEffectiveSafetyIdentifier, field.TypeString)
+	}
+	if value, ok := _u.mutation.EffectiveUser(); ok {
+		_spec.SetField(request.FieldEffectiveUser, field.TypeString, value)
+	}
+	if _u.mutation.EffectiveUserCleared() {
+		_spec.ClearField(request.FieldEffectiveUser, field.TypeString)
+	}
+	if value, ok := _u.mutation.EffectiveSessionID(); ok {
+		_spec.SetField(request.FieldEffectiveSessionID, field.TypeString, value)
+	}
+	if _u.mutation.EffectiveSessionIDCleared() {
+		_spec.ClearField(request.FieldEffectiveSessionID, field.TypeString)
 	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)

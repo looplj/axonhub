@@ -136,6 +136,62 @@ func (_c *RequestExecutionCreate) SetNillableFormat(v *string) *RequestExecution
 	return _c
 }
 
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (_c *RequestExecutionCreate) SetEffectivePromptCacheKey(v string) *RequestExecutionCreate {
+	_c.mutation.SetEffectivePromptCacheKey(v)
+	return _c
+}
+
+// SetNillableEffectivePromptCacheKey sets the "effective_prompt_cache_key" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableEffectivePromptCacheKey(v *string) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetEffectivePromptCacheKey(*v)
+	}
+	return _c
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (_c *RequestExecutionCreate) SetEffectiveSafetyIdentifier(v string) *RequestExecutionCreate {
+	_c.mutation.SetEffectiveSafetyIdentifier(v)
+	return _c
+}
+
+// SetNillableEffectiveSafetyIdentifier sets the "effective_safety_identifier" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableEffectiveSafetyIdentifier(v *string) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetEffectiveSafetyIdentifier(*v)
+	}
+	return _c
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (_c *RequestExecutionCreate) SetEffectiveUser(v string) *RequestExecutionCreate {
+	_c.mutation.SetEffectiveUser(v)
+	return _c
+}
+
+// SetNillableEffectiveUser sets the "effective_user" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableEffectiveUser(v *string) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetEffectiveUser(*v)
+	}
+	return _c
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (_c *RequestExecutionCreate) SetEffectiveSessionID(v string) *RequestExecutionCreate {
+	_c.mutation.SetEffectiveSessionID(v)
+	return _c
+}
+
+// SetNillableEffectiveSessionID sets the "effective_session_id" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableEffectiveSessionID(v *string) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetEffectiveSessionID(*v)
+	}
+	return _c
+}
+
 // SetRequestBody sets the "request_body" field.
 func (_c *RequestExecutionCreate) SetRequestBody(v objects.JSONRawMessage) *RequestExecutionCreate {
 	_c.mutation.SetRequestBody(v)
@@ -404,6 +460,22 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 		_spec.SetField(requestexecution.FieldFormat, field.TypeString, value)
 		_node.Format = value
 	}
+	if value, ok := _c.mutation.EffectivePromptCacheKey(); ok {
+		_spec.SetField(requestexecution.FieldEffectivePromptCacheKey, field.TypeString, value)
+		_node.EffectivePromptCacheKey = value
+	}
+	if value, ok := _c.mutation.EffectiveSafetyIdentifier(); ok {
+		_spec.SetField(requestexecution.FieldEffectiveSafetyIdentifier, field.TypeString, value)
+		_node.EffectiveSafetyIdentifier = value
+	}
+	if value, ok := _c.mutation.EffectiveUser(); ok {
+		_spec.SetField(requestexecution.FieldEffectiveUser, field.TypeString, value)
+		_node.EffectiveUser = value
+	}
+	if value, ok := _c.mutation.EffectiveSessionID(); ok {
+		_spec.SetField(requestexecution.FieldEffectiveSessionID, field.TypeString, value)
+		_node.EffectiveSessionID = value
+	}
 	if value, ok := _c.mutation.RequestBody(); ok {
 		_spec.SetField(requestexecution.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
@@ -578,6 +650,78 @@ func (u *RequestExecutionUpsert) UpdateExternalID() *RequestExecutionUpsert {
 // ClearExternalID clears the value of the "external_id" field.
 func (u *RequestExecutionUpsert) ClearExternalID() *RequestExecutionUpsert {
 	u.SetNull(requestexecution.FieldExternalID)
+	return u
+}
+
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (u *RequestExecutionUpsert) SetEffectivePromptCacheKey(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldEffectivePromptCacheKey, v)
+	return u
+}
+
+// UpdateEffectivePromptCacheKey sets the "effective_prompt_cache_key" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateEffectivePromptCacheKey() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldEffectivePromptCacheKey)
+	return u
+}
+
+// ClearEffectivePromptCacheKey clears the value of the "effective_prompt_cache_key" field.
+func (u *RequestExecutionUpsert) ClearEffectivePromptCacheKey() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldEffectivePromptCacheKey)
+	return u
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (u *RequestExecutionUpsert) SetEffectiveSafetyIdentifier(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldEffectiveSafetyIdentifier, v)
+	return u
+}
+
+// UpdateEffectiveSafetyIdentifier sets the "effective_safety_identifier" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateEffectiveSafetyIdentifier() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldEffectiveSafetyIdentifier)
+	return u
+}
+
+// ClearEffectiveSafetyIdentifier clears the value of the "effective_safety_identifier" field.
+func (u *RequestExecutionUpsert) ClearEffectiveSafetyIdentifier() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldEffectiveSafetyIdentifier)
+	return u
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (u *RequestExecutionUpsert) SetEffectiveUser(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldEffectiveUser, v)
+	return u
+}
+
+// UpdateEffectiveUser sets the "effective_user" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateEffectiveUser() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldEffectiveUser)
+	return u
+}
+
+// ClearEffectiveUser clears the value of the "effective_user" field.
+func (u *RequestExecutionUpsert) ClearEffectiveUser() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldEffectiveUser)
+	return u
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (u *RequestExecutionUpsert) SetEffectiveSessionID(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldEffectiveSessionID, v)
+	return u
+}
+
+// UpdateEffectiveSessionID sets the "effective_session_id" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateEffectiveSessionID() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldEffectiveSessionID)
+	return u
+}
+
+// ClearEffectiveSessionID clears the value of the "effective_session_id" field.
+func (u *RequestExecutionUpsert) ClearEffectiveSessionID() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldEffectiveSessionID)
 	return u
 }
 
@@ -862,6 +1006,90 @@ func (u *RequestExecutionUpsertOne) UpdateExternalID() *RequestExecutionUpsertOn
 func (u *RequestExecutionUpsertOne) ClearExternalID() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearExternalID()
+	})
+}
+
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (u *RequestExecutionUpsertOne) SetEffectivePromptCacheKey(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectivePromptCacheKey(v)
+	})
+}
+
+// UpdateEffectivePromptCacheKey sets the "effective_prompt_cache_key" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateEffectivePromptCacheKey() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectivePromptCacheKey()
+	})
+}
+
+// ClearEffectivePromptCacheKey clears the value of the "effective_prompt_cache_key" field.
+func (u *RequestExecutionUpsertOne) ClearEffectivePromptCacheKey() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectivePromptCacheKey()
+	})
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (u *RequestExecutionUpsertOne) SetEffectiveSafetyIdentifier(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectiveSafetyIdentifier(v)
+	})
+}
+
+// UpdateEffectiveSafetyIdentifier sets the "effective_safety_identifier" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateEffectiveSafetyIdentifier() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectiveSafetyIdentifier()
+	})
+}
+
+// ClearEffectiveSafetyIdentifier clears the value of the "effective_safety_identifier" field.
+func (u *RequestExecutionUpsertOne) ClearEffectiveSafetyIdentifier() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectiveSafetyIdentifier()
+	})
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (u *RequestExecutionUpsertOne) SetEffectiveUser(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectiveUser(v)
+	})
+}
+
+// UpdateEffectiveUser sets the "effective_user" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateEffectiveUser() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectiveUser()
+	})
+}
+
+// ClearEffectiveUser clears the value of the "effective_user" field.
+func (u *RequestExecutionUpsertOne) ClearEffectiveUser() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectiveUser()
+	})
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (u *RequestExecutionUpsertOne) SetEffectiveSessionID(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectiveSessionID(v)
+	})
+}
+
+// UpdateEffectiveSessionID sets the "effective_session_id" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateEffectiveSessionID() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectiveSessionID()
+	})
+}
+
+// ClearEffectiveSessionID clears the value of the "effective_session_id" field.
+func (u *RequestExecutionUpsertOne) ClearEffectiveSessionID() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectiveSessionID()
 	})
 }
 
@@ -1342,6 +1570,90 @@ func (u *RequestExecutionUpsertBulk) UpdateExternalID() *RequestExecutionUpsertB
 func (u *RequestExecutionUpsertBulk) ClearExternalID() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearExternalID()
+	})
+}
+
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (u *RequestExecutionUpsertBulk) SetEffectivePromptCacheKey(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectivePromptCacheKey(v)
+	})
+}
+
+// UpdateEffectivePromptCacheKey sets the "effective_prompt_cache_key" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateEffectivePromptCacheKey() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectivePromptCacheKey()
+	})
+}
+
+// ClearEffectivePromptCacheKey clears the value of the "effective_prompt_cache_key" field.
+func (u *RequestExecutionUpsertBulk) ClearEffectivePromptCacheKey() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectivePromptCacheKey()
+	})
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (u *RequestExecutionUpsertBulk) SetEffectiveSafetyIdentifier(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectiveSafetyIdentifier(v)
+	})
+}
+
+// UpdateEffectiveSafetyIdentifier sets the "effective_safety_identifier" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateEffectiveSafetyIdentifier() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectiveSafetyIdentifier()
+	})
+}
+
+// ClearEffectiveSafetyIdentifier clears the value of the "effective_safety_identifier" field.
+func (u *RequestExecutionUpsertBulk) ClearEffectiveSafetyIdentifier() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectiveSafetyIdentifier()
+	})
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (u *RequestExecutionUpsertBulk) SetEffectiveUser(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectiveUser(v)
+	})
+}
+
+// UpdateEffectiveUser sets the "effective_user" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateEffectiveUser() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectiveUser()
+	})
+}
+
+// ClearEffectiveUser clears the value of the "effective_user" field.
+func (u *RequestExecutionUpsertBulk) ClearEffectiveUser() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectiveUser()
+	})
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (u *RequestExecutionUpsertBulk) SetEffectiveSessionID(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetEffectiveSessionID(v)
+	})
+}
+
+// UpdateEffectiveSessionID sets the "effective_session_id" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateEffectiveSessionID() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateEffectiveSessionID()
+	})
+}
+
+// ClearEffectiveSessionID clears the value of the "effective_session_id" field.
+func (u *RequestExecutionUpsertBulk) ClearEffectiveSessionID() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearEffectiveSessionID()
 	})
 }
 

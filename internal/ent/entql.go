@@ -335,6 +335,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldModelID:                    {Type: field.TypeString, Column: request.FieldModelID},
 			request.FieldFormat:                     {Type: field.TypeString, Column: request.FieldFormat},
 			request.FieldRequestHeaders:             {Type: field.TypeJSON, Column: request.FieldRequestHeaders},
+			request.FieldEffectivePromptCacheKey:    {Type: field.TypeString, Column: request.FieldEffectivePromptCacheKey},
+			request.FieldEffectiveSafetyIdentifier:  {Type: field.TypeString, Column: request.FieldEffectiveSafetyIdentifier},
+			request.FieldEffectiveUser:              {Type: field.TypeString, Column: request.FieldEffectiveUser},
+			request.FieldEffectiveSessionID:         {Type: field.TypeString, Column: request.FieldEffectiveSessionID},
 			request.FieldRequestBody:                {Type: field.TypeJSON, Column: request.FieldRequestBody},
 			request.FieldResponseBody:               {Type: field.TypeJSON, Column: request.FieldResponseBody},
 			request.FieldResponseChunks:             {Type: field.TypeJSON, Column: request.FieldResponseChunks},
@@ -372,6 +376,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldExternalID:                 {Type: field.TypeString, Column: requestexecution.FieldExternalID},
 			requestexecution.FieldModelID:                    {Type: field.TypeString, Column: requestexecution.FieldModelID},
 			requestexecution.FieldFormat:                     {Type: field.TypeString, Column: requestexecution.FieldFormat},
+			requestexecution.FieldEffectivePromptCacheKey:    {Type: field.TypeString, Column: requestexecution.FieldEffectivePromptCacheKey},
+			requestexecution.FieldEffectiveSafetyIdentifier:  {Type: field.TypeString, Column: requestexecution.FieldEffectiveSafetyIdentifier},
+			requestexecution.FieldEffectiveUser:              {Type: field.TypeString, Column: requestexecution.FieldEffectiveUser},
+			requestexecution.FieldEffectiveSessionID:         {Type: field.TypeString, Column: requestexecution.FieldEffectiveSessionID},
 			requestexecution.FieldRequestBody:                {Type: field.TypeJSON, Column: requestexecution.FieldRequestBody},
 			requestexecution.FieldResponseBody:               {Type: field.TypeJSON, Column: requestexecution.FieldResponseBody},
 			requestexecution.FieldResponseChunks:             {Type: field.TypeJSON, Column: requestexecution.FieldResponseChunks},
@@ -2819,6 +2827,26 @@ func (f *RequestFilter) WhereRequestHeaders(p entql.BytesP) {
 	f.Where(p.Field(request.FieldRequestHeaders))
 }
 
+// WhereEffectivePromptCacheKey applies the entql string predicate on the effective_prompt_cache_key field.
+func (f *RequestFilter) WhereEffectivePromptCacheKey(p entql.StringP) {
+	f.Where(p.Field(request.FieldEffectivePromptCacheKey))
+}
+
+// WhereEffectiveSafetyIdentifier applies the entql string predicate on the effective_safety_identifier field.
+func (f *RequestFilter) WhereEffectiveSafetyIdentifier(p entql.StringP) {
+	f.Where(p.Field(request.FieldEffectiveSafetyIdentifier))
+}
+
+// WhereEffectiveUser applies the entql string predicate on the effective_user field.
+func (f *RequestFilter) WhereEffectiveUser(p entql.StringP) {
+	f.Where(p.Field(request.FieldEffectiveUser))
+}
+
+// WhereEffectiveSessionID applies the entql string predicate on the effective_session_id field.
+func (f *RequestFilter) WhereEffectiveSessionID(p entql.StringP) {
+	f.Where(p.Field(request.FieldEffectiveSessionID))
+}
+
 // WhereRequestBody applies the entql json.RawMessage predicate on the request_body field.
 func (f *RequestFilter) WhereRequestBody(p entql.BytesP) {
 	f.Where(p.Field(request.FieldRequestBody))
@@ -3075,6 +3103,26 @@ func (f *RequestExecutionFilter) WhereModelID(p entql.StringP) {
 // WhereFormat applies the entql string predicate on the format field.
 func (f *RequestExecutionFilter) WhereFormat(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldFormat))
+}
+
+// WhereEffectivePromptCacheKey applies the entql string predicate on the effective_prompt_cache_key field.
+func (f *RequestExecutionFilter) WhereEffectivePromptCacheKey(p entql.StringP) {
+	f.Where(p.Field(requestexecution.FieldEffectivePromptCacheKey))
+}
+
+// WhereEffectiveSafetyIdentifier applies the entql string predicate on the effective_safety_identifier field.
+func (f *RequestExecutionFilter) WhereEffectiveSafetyIdentifier(p entql.StringP) {
+	f.Where(p.Field(requestexecution.FieldEffectiveSafetyIdentifier))
+}
+
+// WhereEffectiveUser applies the entql string predicate on the effective_user field.
+func (f *RequestExecutionFilter) WhereEffectiveUser(p entql.StringP) {
+	f.Where(p.Field(requestexecution.FieldEffectiveUser))
+}
+
+// WhereEffectiveSessionID applies the entql string predicate on the effective_session_id field.
+func (f *RequestExecutionFilter) WhereEffectiveSessionID(p entql.StringP) {
+	f.Where(p.Field(requestexecution.FieldEffectiveSessionID))
 }
 
 // WhereRequestBody applies the entql json.RawMessage predicate on the request_body field.

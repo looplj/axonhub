@@ -45,6 +45,10 @@ func (RequestExecution) Fields() []ent.Field {
 		field.String("model_id").Immutable(),
 		//  The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),
+		field.String("effective_prompt_cache_key").Optional(),
+		field.String("effective_safety_identifier").Optional(),
+		field.String("effective_user").Optional(),
+		field.String("effective_session_id").Optional(),
 		// The original request to the provider.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the Claude request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable().Annotations(

@@ -44,6 +44,14 @@ type Request struct {
 	Format string `json:"format,omitempty"`
 	// Request headers
 	RequestHeaders objects.JSONRawMessage `json:"request_headers,omitempty"`
+	// EffectivePromptCacheKey holds the value of the "effective_prompt_cache_key" field.
+	EffectivePromptCacheKey string `json:"effective_prompt_cache_key,omitempty"`
+	// EffectiveSafetyIdentifier holds the value of the "effective_safety_identifier" field.
+	EffectiveSafetyIdentifier string `json:"effective_safety_identifier,omitempty"`
+	// EffectiveUser holds the value of the "effective_user" field.
+	EffectiveUser string `json:"effective_user,omitempty"`
+	// EffectiveSessionID holds the value of the "effective_session_id" field.
+	EffectiveSessionID string `json:"effective_session_id,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -190,7 +198,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldMetricsReasoningDurationMs, request.FieldContentStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
+		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldEffectivePromptCacheKey, request.FieldEffectiveSafetyIdentifier, request.FieldEffectiveUser, request.FieldEffectiveSessionID, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldContentSavedAt:
 			values[i] = new(sql.NullTime)
@@ -276,6 +284,30 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.RequestHeaders); err != nil {
 					return fmt.Errorf("unmarshal field request_headers: %w", err)
 				}
+			}
+		case request.FieldEffectivePromptCacheKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_prompt_cache_key", values[i])
+			} else if value.Valid {
+				_m.EffectivePromptCacheKey = value.String
+			}
+		case request.FieldEffectiveSafetyIdentifier:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_safety_identifier", values[i])
+			} else if value.Valid {
+				_m.EffectiveSafetyIdentifier = value.String
+			}
+		case request.FieldEffectiveUser:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_user", values[i])
+			} else if value.Valid {
+				_m.EffectiveUser = value.String
+			}
+		case request.FieldEffectiveSessionID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_session_id", values[i])
+			} else if value.Valid {
+				_m.EffectiveSessionID = value.String
 			}
 		case request.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -479,6 +511,18 @@ func (_m *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("request_headers=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestHeaders))
+	builder.WriteString(", ")
+	builder.WriteString("effective_prompt_cache_key=")
+	builder.WriteString(_m.EffectivePromptCacheKey)
+	builder.WriteString(", ")
+	builder.WriteString("effective_safety_identifier=")
+	builder.WriteString(_m.EffectiveSafetyIdentifier)
+	builder.WriteString(", ")
+	builder.WriteString("effective_user=")
+	builder.WriteString(_m.EffectiveUser)
+	builder.WriteString(", ")
+	builder.WriteString("effective_session_id=")
+	builder.WriteString(_m.EffectiveSessionID)
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestBody))

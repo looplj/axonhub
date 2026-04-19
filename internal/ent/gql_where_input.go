@@ -5639,6 +5639,74 @@ type RequestWhereInput struct {
 	FormatEqualFold    *string  `json:"formatEqualFold,omitempty"`
 	FormatContainsFold *string  `json:"formatContainsFold,omitempty"`
 
+	// "effective_prompt_cache_key" field predicates.
+	EffectivePromptCacheKey             *string  `json:"effectivePromptCacheKey,omitempty"`
+	EffectivePromptCacheKeyNEQ          *string  `json:"effectivePromptCacheKeyNEQ,omitempty"`
+	EffectivePromptCacheKeyIn           []string `json:"effectivePromptCacheKeyIn,omitempty"`
+	EffectivePromptCacheKeyNotIn        []string `json:"effectivePromptCacheKeyNotIn,omitempty"`
+	EffectivePromptCacheKeyGT           *string  `json:"effectivePromptCacheKeyGT,omitempty"`
+	EffectivePromptCacheKeyGTE          *string  `json:"effectivePromptCacheKeyGTE,omitempty"`
+	EffectivePromptCacheKeyLT           *string  `json:"effectivePromptCacheKeyLT,omitempty"`
+	EffectivePromptCacheKeyLTE          *string  `json:"effectivePromptCacheKeyLTE,omitempty"`
+	EffectivePromptCacheKeyContains     *string  `json:"effectivePromptCacheKeyContains,omitempty"`
+	EffectivePromptCacheKeyHasPrefix    *string  `json:"effectivePromptCacheKeyHasPrefix,omitempty"`
+	EffectivePromptCacheKeyHasSuffix    *string  `json:"effectivePromptCacheKeyHasSuffix,omitempty"`
+	EffectivePromptCacheKeyIsNil        bool     `json:"effectivePromptCacheKeyIsNil,omitempty"`
+	EffectivePromptCacheKeyNotNil       bool     `json:"effectivePromptCacheKeyNotNil,omitempty"`
+	EffectivePromptCacheKeyEqualFold    *string  `json:"effectivePromptCacheKeyEqualFold,omitempty"`
+	EffectivePromptCacheKeyContainsFold *string  `json:"effectivePromptCacheKeyContainsFold,omitempty"`
+
+	// "effective_safety_identifier" field predicates.
+	EffectiveSafetyIdentifier             *string  `json:"effectiveSafetyIdentifier,omitempty"`
+	EffectiveSafetyIdentifierNEQ          *string  `json:"effectiveSafetyIdentifierNEQ,omitempty"`
+	EffectiveSafetyIdentifierIn           []string `json:"effectiveSafetyIdentifierIn,omitempty"`
+	EffectiveSafetyIdentifierNotIn        []string `json:"effectiveSafetyIdentifierNotIn,omitempty"`
+	EffectiveSafetyIdentifierGT           *string  `json:"effectiveSafetyIdentifierGT,omitempty"`
+	EffectiveSafetyIdentifierGTE          *string  `json:"effectiveSafetyIdentifierGTE,omitempty"`
+	EffectiveSafetyIdentifierLT           *string  `json:"effectiveSafetyIdentifierLT,omitempty"`
+	EffectiveSafetyIdentifierLTE          *string  `json:"effectiveSafetyIdentifierLTE,omitempty"`
+	EffectiveSafetyIdentifierContains     *string  `json:"effectiveSafetyIdentifierContains,omitempty"`
+	EffectiveSafetyIdentifierHasPrefix    *string  `json:"effectiveSafetyIdentifierHasPrefix,omitempty"`
+	EffectiveSafetyIdentifierHasSuffix    *string  `json:"effectiveSafetyIdentifierHasSuffix,omitempty"`
+	EffectiveSafetyIdentifierIsNil        bool     `json:"effectiveSafetyIdentifierIsNil,omitempty"`
+	EffectiveSafetyIdentifierNotNil       bool     `json:"effectiveSafetyIdentifierNotNil,omitempty"`
+	EffectiveSafetyIdentifierEqualFold    *string  `json:"effectiveSafetyIdentifierEqualFold,omitempty"`
+	EffectiveSafetyIdentifierContainsFold *string  `json:"effectiveSafetyIdentifierContainsFold,omitempty"`
+
+	// "effective_user" field predicates.
+	EffectiveUser             *string  `json:"effectiveUser,omitempty"`
+	EffectiveUserNEQ          *string  `json:"effectiveUserNEQ,omitempty"`
+	EffectiveUserIn           []string `json:"effectiveUserIn,omitempty"`
+	EffectiveUserNotIn        []string `json:"effectiveUserNotIn,omitempty"`
+	EffectiveUserGT           *string  `json:"effectiveUserGT,omitempty"`
+	EffectiveUserGTE          *string  `json:"effectiveUserGTE,omitempty"`
+	EffectiveUserLT           *string  `json:"effectiveUserLT,omitempty"`
+	EffectiveUserLTE          *string  `json:"effectiveUserLTE,omitempty"`
+	EffectiveUserContains     *string  `json:"effectiveUserContains,omitempty"`
+	EffectiveUserHasPrefix    *string  `json:"effectiveUserHasPrefix,omitempty"`
+	EffectiveUserHasSuffix    *string  `json:"effectiveUserHasSuffix,omitempty"`
+	EffectiveUserIsNil        bool     `json:"effectiveUserIsNil,omitempty"`
+	EffectiveUserNotNil       bool     `json:"effectiveUserNotNil,omitempty"`
+	EffectiveUserEqualFold    *string  `json:"effectiveUserEqualFold,omitempty"`
+	EffectiveUserContainsFold *string  `json:"effectiveUserContainsFold,omitempty"`
+
+	// "effective_session_id" field predicates.
+	EffectiveSessionID             *string  `json:"effectiveSessionID,omitempty"`
+	EffectiveSessionIDNEQ          *string  `json:"effectiveSessionIDNEQ,omitempty"`
+	EffectiveSessionIDIn           []string `json:"effectiveSessionIDIn,omitempty"`
+	EffectiveSessionIDNotIn        []string `json:"effectiveSessionIDNotIn,omitempty"`
+	EffectiveSessionIDGT           *string  `json:"effectiveSessionIDGT,omitempty"`
+	EffectiveSessionIDGTE          *string  `json:"effectiveSessionIDGTE,omitempty"`
+	EffectiveSessionIDLT           *string  `json:"effectiveSessionIDLT,omitempty"`
+	EffectiveSessionIDLTE          *string  `json:"effectiveSessionIDLTE,omitempty"`
+	EffectiveSessionIDContains     *string  `json:"effectiveSessionIDContains,omitempty"`
+	EffectiveSessionIDHasPrefix    *string  `json:"effectiveSessionIDHasPrefix,omitempty"`
+	EffectiveSessionIDHasSuffix    *string  `json:"effectiveSessionIDHasSuffix,omitempty"`
+	EffectiveSessionIDIsNil        bool     `json:"effectiveSessionIDIsNil,omitempty"`
+	EffectiveSessionIDNotNil       bool     `json:"effectiveSessionIDNotNil,omitempty"`
+	EffectiveSessionIDEqualFold    *string  `json:"effectiveSessionIDEqualFold,omitempty"`
+	EffectiveSessionIDContainsFold *string  `json:"effectiveSessionIDContainsFold,omitempty"`
+
 	// "channel_id" field predicates.
 	ChannelID       *int  `json:"channelID,omitempty"`
 	ChannelIDNEQ    *int  `json:"channelIDNEQ,omitempty"`
@@ -6097,6 +6165,186 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.FormatContainsFold != nil {
 		predicates = append(predicates, request.FormatContainsFold(*i.FormatContainsFold))
+	}
+	if i.EffectivePromptCacheKey != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyEQ(*i.EffectivePromptCacheKey))
+	}
+	if i.EffectivePromptCacheKeyNEQ != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyNEQ(*i.EffectivePromptCacheKeyNEQ))
+	}
+	if len(i.EffectivePromptCacheKeyIn) > 0 {
+		predicates = append(predicates, request.EffectivePromptCacheKeyIn(i.EffectivePromptCacheKeyIn...))
+	}
+	if len(i.EffectivePromptCacheKeyNotIn) > 0 {
+		predicates = append(predicates, request.EffectivePromptCacheKeyNotIn(i.EffectivePromptCacheKeyNotIn...))
+	}
+	if i.EffectivePromptCacheKeyGT != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyGT(*i.EffectivePromptCacheKeyGT))
+	}
+	if i.EffectivePromptCacheKeyGTE != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyGTE(*i.EffectivePromptCacheKeyGTE))
+	}
+	if i.EffectivePromptCacheKeyLT != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyLT(*i.EffectivePromptCacheKeyLT))
+	}
+	if i.EffectivePromptCacheKeyLTE != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyLTE(*i.EffectivePromptCacheKeyLTE))
+	}
+	if i.EffectivePromptCacheKeyContains != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyContains(*i.EffectivePromptCacheKeyContains))
+	}
+	if i.EffectivePromptCacheKeyHasPrefix != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyHasPrefix(*i.EffectivePromptCacheKeyHasPrefix))
+	}
+	if i.EffectivePromptCacheKeyHasSuffix != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyHasSuffix(*i.EffectivePromptCacheKeyHasSuffix))
+	}
+	if i.EffectivePromptCacheKeyIsNil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyIsNil())
+	}
+	if i.EffectivePromptCacheKeyNotNil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyNotNil())
+	}
+	if i.EffectivePromptCacheKeyEqualFold != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyEqualFold(*i.EffectivePromptCacheKeyEqualFold))
+	}
+	if i.EffectivePromptCacheKeyContainsFold != nil {
+		predicates = append(predicates, request.EffectivePromptCacheKeyContainsFold(*i.EffectivePromptCacheKeyContainsFold))
+	}
+	if i.EffectiveSafetyIdentifier != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierEQ(*i.EffectiveSafetyIdentifier))
+	}
+	if i.EffectiveSafetyIdentifierNEQ != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierNEQ(*i.EffectiveSafetyIdentifierNEQ))
+	}
+	if len(i.EffectiveSafetyIdentifierIn) > 0 {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierIn(i.EffectiveSafetyIdentifierIn...))
+	}
+	if len(i.EffectiveSafetyIdentifierNotIn) > 0 {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierNotIn(i.EffectiveSafetyIdentifierNotIn...))
+	}
+	if i.EffectiveSafetyIdentifierGT != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierGT(*i.EffectiveSafetyIdentifierGT))
+	}
+	if i.EffectiveSafetyIdentifierGTE != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierGTE(*i.EffectiveSafetyIdentifierGTE))
+	}
+	if i.EffectiveSafetyIdentifierLT != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierLT(*i.EffectiveSafetyIdentifierLT))
+	}
+	if i.EffectiveSafetyIdentifierLTE != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierLTE(*i.EffectiveSafetyIdentifierLTE))
+	}
+	if i.EffectiveSafetyIdentifierContains != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierContains(*i.EffectiveSafetyIdentifierContains))
+	}
+	if i.EffectiveSafetyIdentifierHasPrefix != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierHasPrefix(*i.EffectiveSafetyIdentifierHasPrefix))
+	}
+	if i.EffectiveSafetyIdentifierHasSuffix != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierHasSuffix(*i.EffectiveSafetyIdentifierHasSuffix))
+	}
+	if i.EffectiveSafetyIdentifierIsNil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierIsNil())
+	}
+	if i.EffectiveSafetyIdentifierNotNil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierNotNil())
+	}
+	if i.EffectiveSafetyIdentifierEqualFold != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierEqualFold(*i.EffectiveSafetyIdentifierEqualFold))
+	}
+	if i.EffectiveSafetyIdentifierContainsFold != nil {
+		predicates = append(predicates, request.EffectiveSafetyIdentifierContainsFold(*i.EffectiveSafetyIdentifierContainsFold))
+	}
+	if i.EffectiveUser != nil {
+		predicates = append(predicates, request.EffectiveUserEQ(*i.EffectiveUser))
+	}
+	if i.EffectiveUserNEQ != nil {
+		predicates = append(predicates, request.EffectiveUserNEQ(*i.EffectiveUserNEQ))
+	}
+	if len(i.EffectiveUserIn) > 0 {
+		predicates = append(predicates, request.EffectiveUserIn(i.EffectiveUserIn...))
+	}
+	if len(i.EffectiveUserNotIn) > 0 {
+		predicates = append(predicates, request.EffectiveUserNotIn(i.EffectiveUserNotIn...))
+	}
+	if i.EffectiveUserGT != nil {
+		predicates = append(predicates, request.EffectiveUserGT(*i.EffectiveUserGT))
+	}
+	if i.EffectiveUserGTE != nil {
+		predicates = append(predicates, request.EffectiveUserGTE(*i.EffectiveUserGTE))
+	}
+	if i.EffectiveUserLT != nil {
+		predicates = append(predicates, request.EffectiveUserLT(*i.EffectiveUserLT))
+	}
+	if i.EffectiveUserLTE != nil {
+		predicates = append(predicates, request.EffectiveUserLTE(*i.EffectiveUserLTE))
+	}
+	if i.EffectiveUserContains != nil {
+		predicates = append(predicates, request.EffectiveUserContains(*i.EffectiveUserContains))
+	}
+	if i.EffectiveUserHasPrefix != nil {
+		predicates = append(predicates, request.EffectiveUserHasPrefix(*i.EffectiveUserHasPrefix))
+	}
+	if i.EffectiveUserHasSuffix != nil {
+		predicates = append(predicates, request.EffectiveUserHasSuffix(*i.EffectiveUserHasSuffix))
+	}
+	if i.EffectiveUserIsNil {
+		predicates = append(predicates, request.EffectiveUserIsNil())
+	}
+	if i.EffectiveUserNotNil {
+		predicates = append(predicates, request.EffectiveUserNotNil())
+	}
+	if i.EffectiveUserEqualFold != nil {
+		predicates = append(predicates, request.EffectiveUserEqualFold(*i.EffectiveUserEqualFold))
+	}
+	if i.EffectiveUserContainsFold != nil {
+		predicates = append(predicates, request.EffectiveUserContainsFold(*i.EffectiveUserContainsFold))
+	}
+	if i.EffectiveSessionID != nil {
+		predicates = append(predicates, request.EffectiveSessionIDEQ(*i.EffectiveSessionID))
+	}
+	if i.EffectiveSessionIDNEQ != nil {
+		predicates = append(predicates, request.EffectiveSessionIDNEQ(*i.EffectiveSessionIDNEQ))
+	}
+	if len(i.EffectiveSessionIDIn) > 0 {
+		predicates = append(predicates, request.EffectiveSessionIDIn(i.EffectiveSessionIDIn...))
+	}
+	if len(i.EffectiveSessionIDNotIn) > 0 {
+		predicates = append(predicates, request.EffectiveSessionIDNotIn(i.EffectiveSessionIDNotIn...))
+	}
+	if i.EffectiveSessionIDGT != nil {
+		predicates = append(predicates, request.EffectiveSessionIDGT(*i.EffectiveSessionIDGT))
+	}
+	if i.EffectiveSessionIDGTE != nil {
+		predicates = append(predicates, request.EffectiveSessionIDGTE(*i.EffectiveSessionIDGTE))
+	}
+	if i.EffectiveSessionIDLT != nil {
+		predicates = append(predicates, request.EffectiveSessionIDLT(*i.EffectiveSessionIDLT))
+	}
+	if i.EffectiveSessionIDLTE != nil {
+		predicates = append(predicates, request.EffectiveSessionIDLTE(*i.EffectiveSessionIDLTE))
+	}
+	if i.EffectiveSessionIDContains != nil {
+		predicates = append(predicates, request.EffectiveSessionIDContains(*i.EffectiveSessionIDContains))
+	}
+	if i.EffectiveSessionIDHasPrefix != nil {
+		predicates = append(predicates, request.EffectiveSessionIDHasPrefix(*i.EffectiveSessionIDHasPrefix))
+	}
+	if i.EffectiveSessionIDHasSuffix != nil {
+		predicates = append(predicates, request.EffectiveSessionIDHasSuffix(*i.EffectiveSessionIDHasSuffix))
+	}
+	if i.EffectiveSessionIDIsNil {
+		predicates = append(predicates, request.EffectiveSessionIDIsNil())
+	}
+	if i.EffectiveSessionIDNotNil {
+		predicates = append(predicates, request.EffectiveSessionIDNotNil())
+	}
+	if i.EffectiveSessionIDEqualFold != nil {
+		predicates = append(predicates, request.EffectiveSessionIDEqualFold(*i.EffectiveSessionIDEqualFold))
+	}
+	if i.EffectiveSessionIDContainsFold != nil {
+		predicates = append(predicates, request.EffectiveSessionIDContainsFold(*i.EffectiveSessionIDContainsFold))
 	}
 	if i.ChannelID != nil {
 		predicates = append(predicates, request.ChannelIDEQ(*i.ChannelID))
@@ -6672,6 +6920,74 @@ type RequestExecutionWhereInput struct {
 	FormatEqualFold    *string  `json:"formatEqualFold,omitempty"`
 	FormatContainsFold *string  `json:"formatContainsFold,omitempty"`
 
+	// "effective_prompt_cache_key" field predicates.
+	EffectivePromptCacheKey             *string  `json:"effectivePromptCacheKey,omitempty"`
+	EffectivePromptCacheKeyNEQ          *string  `json:"effectivePromptCacheKeyNEQ,omitempty"`
+	EffectivePromptCacheKeyIn           []string `json:"effectivePromptCacheKeyIn,omitempty"`
+	EffectivePromptCacheKeyNotIn        []string `json:"effectivePromptCacheKeyNotIn,omitempty"`
+	EffectivePromptCacheKeyGT           *string  `json:"effectivePromptCacheKeyGT,omitempty"`
+	EffectivePromptCacheKeyGTE          *string  `json:"effectivePromptCacheKeyGTE,omitempty"`
+	EffectivePromptCacheKeyLT           *string  `json:"effectivePromptCacheKeyLT,omitempty"`
+	EffectivePromptCacheKeyLTE          *string  `json:"effectivePromptCacheKeyLTE,omitempty"`
+	EffectivePromptCacheKeyContains     *string  `json:"effectivePromptCacheKeyContains,omitempty"`
+	EffectivePromptCacheKeyHasPrefix    *string  `json:"effectivePromptCacheKeyHasPrefix,omitempty"`
+	EffectivePromptCacheKeyHasSuffix    *string  `json:"effectivePromptCacheKeyHasSuffix,omitempty"`
+	EffectivePromptCacheKeyIsNil        bool     `json:"effectivePromptCacheKeyIsNil,omitempty"`
+	EffectivePromptCacheKeyNotNil       bool     `json:"effectivePromptCacheKeyNotNil,omitempty"`
+	EffectivePromptCacheKeyEqualFold    *string  `json:"effectivePromptCacheKeyEqualFold,omitempty"`
+	EffectivePromptCacheKeyContainsFold *string  `json:"effectivePromptCacheKeyContainsFold,omitempty"`
+
+	// "effective_safety_identifier" field predicates.
+	EffectiveSafetyIdentifier             *string  `json:"effectiveSafetyIdentifier,omitempty"`
+	EffectiveSafetyIdentifierNEQ          *string  `json:"effectiveSafetyIdentifierNEQ,omitempty"`
+	EffectiveSafetyIdentifierIn           []string `json:"effectiveSafetyIdentifierIn,omitempty"`
+	EffectiveSafetyIdentifierNotIn        []string `json:"effectiveSafetyIdentifierNotIn,omitempty"`
+	EffectiveSafetyIdentifierGT           *string  `json:"effectiveSafetyIdentifierGT,omitempty"`
+	EffectiveSafetyIdentifierGTE          *string  `json:"effectiveSafetyIdentifierGTE,omitempty"`
+	EffectiveSafetyIdentifierLT           *string  `json:"effectiveSafetyIdentifierLT,omitempty"`
+	EffectiveSafetyIdentifierLTE          *string  `json:"effectiveSafetyIdentifierLTE,omitempty"`
+	EffectiveSafetyIdentifierContains     *string  `json:"effectiveSafetyIdentifierContains,omitempty"`
+	EffectiveSafetyIdentifierHasPrefix    *string  `json:"effectiveSafetyIdentifierHasPrefix,omitempty"`
+	EffectiveSafetyIdentifierHasSuffix    *string  `json:"effectiveSafetyIdentifierHasSuffix,omitempty"`
+	EffectiveSafetyIdentifierIsNil        bool     `json:"effectiveSafetyIdentifierIsNil,omitempty"`
+	EffectiveSafetyIdentifierNotNil       bool     `json:"effectiveSafetyIdentifierNotNil,omitempty"`
+	EffectiveSafetyIdentifierEqualFold    *string  `json:"effectiveSafetyIdentifierEqualFold,omitempty"`
+	EffectiveSafetyIdentifierContainsFold *string  `json:"effectiveSafetyIdentifierContainsFold,omitempty"`
+
+	// "effective_user" field predicates.
+	EffectiveUser             *string  `json:"effectiveUser,omitempty"`
+	EffectiveUserNEQ          *string  `json:"effectiveUserNEQ,omitempty"`
+	EffectiveUserIn           []string `json:"effectiveUserIn,omitempty"`
+	EffectiveUserNotIn        []string `json:"effectiveUserNotIn,omitempty"`
+	EffectiveUserGT           *string  `json:"effectiveUserGT,omitempty"`
+	EffectiveUserGTE          *string  `json:"effectiveUserGTE,omitempty"`
+	EffectiveUserLT           *string  `json:"effectiveUserLT,omitempty"`
+	EffectiveUserLTE          *string  `json:"effectiveUserLTE,omitempty"`
+	EffectiveUserContains     *string  `json:"effectiveUserContains,omitempty"`
+	EffectiveUserHasPrefix    *string  `json:"effectiveUserHasPrefix,omitempty"`
+	EffectiveUserHasSuffix    *string  `json:"effectiveUserHasSuffix,omitempty"`
+	EffectiveUserIsNil        bool     `json:"effectiveUserIsNil,omitempty"`
+	EffectiveUserNotNil       bool     `json:"effectiveUserNotNil,omitempty"`
+	EffectiveUserEqualFold    *string  `json:"effectiveUserEqualFold,omitempty"`
+	EffectiveUserContainsFold *string  `json:"effectiveUserContainsFold,omitempty"`
+
+	// "effective_session_id" field predicates.
+	EffectiveSessionID             *string  `json:"effectiveSessionID,omitempty"`
+	EffectiveSessionIDNEQ          *string  `json:"effectiveSessionIDNEQ,omitempty"`
+	EffectiveSessionIDIn           []string `json:"effectiveSessionIDIn,omitempty"`
+	EffectiveSessionIDNotIn        []string `json:"effectiveSessionIDNotIn,omitempty"`
+	EffectiveSessionIDGT           *string  `json:"effectiveSessionIDGT,omitempty"`
+	EffectiveSessionIDGTE          *string  `json:"effectiveSessionIDGTE,omitempty"`
+	EffectiveSessionIDLT           *string  `json:"effectiveSessionIDLT,omitempty"`
+	EffectiveSessionIDLTE          *string  `json:"effectiveSessionIDLTE,omitempty"`
+	EffectiveSessionIDContains     *string  `json:"effectiveSessionIDContains,omitempty"`
+	EffectiveSessionIDHasPrefix    *string  `json:"effectiveSessionIDHasPrefix,omitempty"`
+	EffectiveSessionIDHasSuffix    *string  `json:"effectiveSessionIDHasSuffix,omitempty"`
+	EffectiveSessionIDIsNil        bool     `json:"effectiveSessionIDIsNil,omitempty"`
+	EffectiveSessionIDNotNil       bool     `json:"effectiveSessionIDNotNil,omitempty"`
+	EffectiveSessionIDEqualFold    *string  `json:"effectiveSessionIDEqualFold,omitempty"`
+	EffectiveSessionIDContainsFold *string  `json:"effectiveSessionIDContainsFold,omitempty"`
+
 	// "error_message" field predicates.
 	ErrorMessage             *string  `json:"errorMessage,omitempty"`
 	ErrorMessageNEQ          *string  `json:"errorMessageNEQ,omitempty"`
@@ -7097,6 +7413,186 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.FormatContainsFold != nil {
 		predicates = append(predicates, requestexecution.FormatContainsFold(*i.FormatContainsFold))
+	}
+	if i.EffectivePromptCacheKey != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyEQ(*i.EffectivePromptCacheKey))
+	}
+	if i.EffectivePromptCacheKeyNEQ != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyNEQ(*i.EffectivePromptCacheKeyNEQ))
+	}
+	if len(i.EffectivePromptCacheKeyIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyIn(i.EffectivePromptCacheKeyIn...))
+	}
+	if len(i.EffectivePromptCacheKeyNotIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyNotIn(i.EffectivePromptCacheKeyNotIn...))
+	}
+	if i.EffectivePromptCacheKeyGT != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyGT(*i.EffectivePromptCacheKeyGT))
+	}
+	if i.EffectivePromptCacheKeyGTE != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyGTE(*i.EffectivePromptCacheKeyGTE))
+	}
+	if i.EffectivePromptCacheKeyLT != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyLT(*i.EffectivePromptCacheKeyLT))
+	}
+	if i.EffectivePromptCacheKeyLTE != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyLTE(*i.EffectivePromptCacheKeyLTE))
+	}
+	if i.EffectivePromptCacheKeyContains != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyContains(*i.EffectivePromptCacheKeyContains))
+	}
+	if i.EffectivePromptCacheKeyHasPrefix != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyHasPrefix(*i.EffectivePromptCacheKeyHasPrefix))
+	}
+	if i.EffectivePromptCacheKeyHasSuffix != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyHasSuffix(*i.EffectivePromptCacheKeyHasSuffix))
+	}
+	if i.EffectivePromptCacheKeyIsNil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyIsNil())
+	}
+	if i.EffectivePromptCacheKeyNotNil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyNotNil())
+	}
+	if i.EffectivePromptCacheKeyEqualFold != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyEqualFold(*i.EffectivePromptCacheKeyEqualFold))
+	}
+	if i.EffectivePromptCacheKeyContainsFold != nil {
+		predicates = append(predicates, requestexecution.EffectivePromptCacheKeyContainsFold(*i.EffectivePromptCacheKeyContainsFold))
+	}
+	if i.EffectiveSafetyIdentifier != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierEQ(*i.EffectiveSafetyIdentifier))
+	}
+	if i.EffectiveSafetyIdentifierNEQ != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierNEQ(*i.EffectiveSafetyIdentifierNEQ))
+	}
+	if len(i.EffectiveSafetyIdentifierIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierIn(i.EffectiveSafetyIdentifierIn...))
+	}
+	if len(i.EffectiveSafetyIdentifierNotIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierNotIn(i.EffectiveSafetyIdentifierNotIn...))
+	}
+	if i.EffectiveSafetyIdentifierGT != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierGT(*i.EffectiveSafetyIdentifierGT))
+	}
+	if i.EffectiveSafetyIdentifierGTE != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierGTE(*i.EffectiveSafetyIdentifierGTE))
+	}
+	if i.EffectiveSafetyIdentifierLT != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierLT(*i.EffectiveSafetyIdentifierLT))
+	}
+	if i.EffectiveSafetyIdentifierLTE != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierLTE(*i.EffectiveSafetyIdentifierLTE))
+	}
+	if i.EffectiveSafetyIdentifierContains != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierContains(*i.EffectiveSafetyIdentifierContains))
+	}
+	if i.EffectiveSafetyIdentifierHasPrefix != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierHasPrefix(*i.EffectiveSafetyIdentifierHasPrefix))
+	}
+	if i.EffectiveSafetyIdentifierHasSuffix != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierHasSuffix(*i.EffectiveSafetyIdentifierHasSuffix))
+	}
+	if i.EffectiveSafetyIdentifierIsNil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierIsNil())
+	}
+	if i.EffectiveSafetyIdentifierNotNil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierNotNil())
+	}
+	if i.EffectiveSafetyIdentifierEqualFold != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierEqualFold(*i.EffectiveSafetyIdentifierEqualFold))
+	}
+	if i.EffectiveSafetyIdentifierContainsFold != nil {
+		predicates = append(predicates, requestexecution.EffectiveSafetyIdentifierContainsFold(*i.EffectiveSafetyIdentifierContainsFold))
+	}
+	if i.EffectiveUser != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserEQ(*i.EffectiveUser))
+	}
+	if i.EffectiveUserNEQ != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserNEQ(*i.EffectiveUserNEQ))
+	}
+	if len(i.EffectiveUserIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectiveUserIn(i.EffectiveUserIn...))
+	}
+	if len(i.EffectiveUserNotIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectiveUserNotIn(i.EffectiveUserNotIn...))
+	}
+	if i.EffectiveUserGT != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserGT(*i.EffectiveUserGT))
+	}
+	if i.EffectiveUserGTE != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserGTE(*i.EffectiveUserGTE))
+	}
+	if i.EffectiveUserLT != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserLT(*i.EffectiveUserLT))
+	}
+	if i.EffectiveUserLTE != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserLTE(*i.EffectiveUserLTE))
+	}
+	if i.EffectiveUserContains != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserContains(*i.EffectiveUserContains))
+	}
+	if i.EffectiveUserHasPrefix != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserHasPrefix(*i.EffectiveUserHasPrefix))
+	}
+	if i.EffectiveUserHasSuffix != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserHasSuffix(*i.EffectiveUserHasSuffix))
+	}
+	if i.EffectiveUserIsNil {
+		predicates = append(predicates, requestexecution.EffectiveUserIsNil())
+	}
+	if i.EffectiveUserNotNil {
+		predicates = append(predicates, requestexecution.EffectiveUserNotNil())
+	}
+	if i.EffectiveUserEqualFold != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserEqualFold(*i.EffectiveUserEqualFold))
+	}
+	if i.EffectiveUserContainsFold != nil {
+		predicates = append(predicates, requestexecution.EffectiveUserContainsFold(*i.EffectiveUserContainsFold))
+	}
+	if i.EffectiveSessionID != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDEQ(*i.EffectiveSessionID))
+	}
+	if i.EffectiveSessionIDNEQ != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDNEQ(*i.EffectiveSessionIDNEQ))
+	}
+	if len(i.EffectiveSessionIDIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDIn(i.EffectiveSessionIDIn...))
+	}
+	if len(i.EffectiveSessionIDNotIn) > 0 {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDNotIn(i.EffectiveSessionIDNotIn...))
+	}
+	if i.EffectiveSessionIDGT != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDGT(*i.EffectiveSessionIDGT))
+	}
+	if i.EffectiveSessionIDGTE != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDGTE(*i.EffectiveSessionIDGTE))
+	}
+	if i.EffectiveSessionIDLT != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDLT(*i.EffectiveSessionIDLT))
+	}
+	if i.EffectiveSessionIDLTE != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDLTE(*i.EffectiveSessionIDLTE))
+	}
+	if i.EffectiveSessionIDContains != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDContains(*i.EffectiveSessionIDContains))
+	}
+	if i.EffectiveSessionIDHasPrefix != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDHasPrefix(*i.EffectiveSessionIDHasPrefix))
+	}
+	if i.EffectiveSessionIDHasSuffix != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDHasSuffix(*i.EffectiveSessionIDHasSuffix))
+	}
+	if i.EffectiveSessionIDIsNil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDIsNil())
+	}
+	if i.EffectiveSessionIDNotNil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDNotNil())
+	}
+	if i.EffectiveSessionIDEqualFold != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDEqualFold(*i.EffectiveSessionIDEqualFold))
+	}
+	if i.EffectiveSessionIDContainsFold != nil {
+		predicates = append(predicates, requestexecution.EffectiveSessionIDContainsFold(*i.EffectiveSessionIDContainsFold))
 	}
 	if i.ErrorMessage != nil {
 		predicates = append(predicates, requestexecution.ErrorMessageEQ(*i.ErrorMessage))

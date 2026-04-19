@@ -64,6 +64,10 @@ func (Request) Fields() []ent.Field {
 		field.JSON("request_headers", objects.JSONRawMessage{}).
 			Optional().
 			Comment("Request headers"),
+		field.String("effective_prompt_cache_key").Optional(),
+		field.String("effective_safety_identifier").Optional(),
+		field.String("effective_user").Optional(),
+		field.String("effective_session_id").Optional(),
 		// The original request from the user.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the OpenAI request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).

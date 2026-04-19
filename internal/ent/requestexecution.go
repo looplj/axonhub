@@ -40,6 +40,14 @@ type RequestExecution struct {
 	ModelID string `json:"model_id,omitempty"`
 	// Format holds the value of the "format" field.
 	Format string `json:"format,omitempty"`
+	// EffectivePromptCacheKey holds the value of the "effective_prompt_cache_key" field.
+	EffectivePromptCacheKey string `json:"effective_prompt_cache_key,omitempty"`
+	// EffectiveSafetyIdentifier holds the value of the "effective_safety_identifier" field.
+	EffectiveSafetyIdentifier string `json:"effective_safety_identifier,omitempty"`
+	// EffectiveUser holds the value of the "effective_user" field.
+	EffectiveUser string `json:"effective_user,omitempty"`
+	// EffectiveSessionID holds the value of the "effective_session_id" field.
+	EffectiveSessionID string `json:"effective_session_id,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -127,7 +135,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs, requestexecution.FieldMetricsReasoningDurationMs:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
+		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldEffectivePromptCacheKey, requestexecution.FieldEffectiveSafetyIdentifier, requestexecution.FieldEffectiveUser, requestexecution.FieldEffectiveSessionID, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -205,6 +213,30 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field format", values[i])
 			} else if value.Valid {
 				_m.Format = value.String
+			}
+		case requestexecution.FieldEffectivePromptCacheKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_prompt_cache_key", values[i])
+			} else if value.Valid {
+				_m.EffectivePromptCacheKey = value.String
+			}
+		case requestexecution.FieldEffectiveSafetyIdentifier:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_safety_identifier", values[i])
+			} else if value.Valid {
+				_m.EffectiveSafetyIdentifier = value.String
+			}
+		case requestexecution.FieldEffectiveUser:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_user", values[i])
+			} else if value.Valid {
+				_m.EffectiveUser = value.String
+			}
+		case requestexecution.FieldEffectiveSessionID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field effective_session_id", values[i])
+			} else if value.Valid {
+				_m.EffectiveSessionID = value.String
 			}
 		case requestexecution.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -361,6 +393,18 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("format=")
 	builder.WriteString(_m.Format)
+	builder.WriteString(", ")
+	builder.WriteString("effective_prompt_cache_key=")
+	builder.WriteString(_m.EffectivePromptCacheKey)
+	builder.WriteString(", ")
+	builder.WriteString("effective_safety_identifier=")
+	builder.WriteString(_m.EffectiveSafetyIdentifier)
+	builder.WriteString(", ")
+	builder.WriteString("effective_user=")
+	builder.WriteString(_m.EffectiveUser)
+	builder.WriteString(", ")
+	builder.WriteString("effective_session_id=")
+	builder.WriteString(_m.EffectiveSessionID)
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestBody))

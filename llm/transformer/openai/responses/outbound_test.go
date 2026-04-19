@@ -749,6 +749,73 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 	require.NoError(t, err)
 	require.NotNil(t, payload.PromptCacheKey)
 	require.Equal(t, "shared-session-123", *payload.PromptCacheKey)
+	require.NotNil(t, payload.SafetyIdentifier)
+	require.Equal(t, "shared-session-123", *payload.SafetyIdentifier)
+	require.NotNil(t, payload.User)
+	require.Equal(t, "shared-session-123", *payload.User)
+}
+
+func TestOutboundTransformer_TransformRequest_IdentityPrecedence(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.openai.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	require.NoError(t, err)
+
+	t.Run("explicit identity wins", func(t *testing.T) {
+		req := &llm.Request{
+			Model:             "gpt-5.4",
+			PromptCacheKey:    lo.ToPtr("explicit-cache"),
+			SafetyIdentifier:  lo.ToPtr("explicit-safety"),
+			User:              lo.ToPtr("explicit-user"),
+			Metadata:          map[string]string{"user_id": "metadata-user"},
+			TransformerMetadata: map[string]any{shared.TransformerMetadataKeyOpenAIIdentityOwner: "owner-user"},
+			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+		}
+
+		httpReq, err := transformer.TransformRequest(shared.WithSessionID(context.Background(), "session-123"), req)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.Equal(t, "explicit-cache", lo.FromPtr(payload.PromptCacheKey))
+		require.Equal(t, "explicit-safety", lo.FromPtr(payload.SafetyIdentifier))
+		require.Equal(t, "explicit-user", lo.FromPtr(payload.User))
+	})
+
+	t.Run("metadata user_id fills missing openai identity", func(t *testing.T) {
+		req := &llm.Request{
+			Model:    "gpt-5.4",
+			Metadata: map[string]string{"user_id": "metadata-user"},
+			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+		}
+
+		httpReq, err := transformer.TransformRequest(shared.WithSessionID(context.Background(), "session-123"), req)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.Equal(t, "session-123", lo.FromPtr(payload.PromptCacheKey))
+		require.Equal(t, "metadata-user", lo.FromPtr(payload.SafetyIdentifier))
+		require.Equal(t, "metadata-user", lo.FromPtr(payload.User))
+	})
+
+	t.Run("owner identity is last fallback after session", func(t *testing.T) {
+		req := &llm.Request{
+			Model: "gpt-5.4",
+			TransformerMetadata: map[string]any{shared.TransformerMetadataKeyOpenAIIdentityOwner: "owner-user"},
+			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+		}
+
+		httpReq, err := transformer.TransformRequest(context.Background(), req)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.Nil(t, payload.PromptCacheKey)
+		require.Equal(t, "owner-user", lo.FromPtr(payload.SafetyIdentifier))
+		require.Equal(t, "owner-user", lo.FromPtr(payload.User))
+	})
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {

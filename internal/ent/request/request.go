@@ -38,6 +38,14 @@ const (
 	FieldFormat = "format"
 	// FieldRequestHeaders holds the string denoting the request_headers field in the database.
 	FieldRequestHeaders = "request_headers"
+	// FieldEffectivePromptCacheKey holds the string denoting the effective_prompt_cache_key field in the database.
+	FieldEffectivePromptCacheKey = "effective_prompt_cache_key"
+	// FieldEffectiveSafetyIdentifier holds the string denoting the effective_safety_identifier field in the database.
+	FieldEffectiveSafetyIdentifier = "effective_safety_identifier"
+	// FieldEffectiveUser holds the string denoting the effective_user field in the database.
+	FieldEffectiveUser = "effective_user"
+	// FieldEffectiveSessionID holds the string denoting the effective_session_id field in the database.
+	FieldEffectiveSessionID = "effective_session_id"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
@@ -148,6 +156,10 @@ var Columns = []string{
 	FieldModelID,
 	FieldFormat,
 	FieldRequestHeaders,
+	FieldEffectivePromptCacheKey,
+	FieldEffectiveSafetyIdentifier,
+	FieldEffectiveUser,
+	FieldEffectiveSessionID,
 	FieldRequestBody,
 	FieldResponseBody,
 	FieldResponseChunks,
@@ -305,6 +317,26 @@ func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 // ByFormat orders the results by the format field.
 func ByFormat(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFormat, opts...).ToFunc()
+}
+
+// ByEffectivePromptCacheKey orders the results by the effective_prompt_cache_key field.
+func ByEffectivePromptCacheKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEffectivePromptCacheKey, opts...).ToFunc()
+}
+
+// ByEffectiveSafetyIdentifier orders the results by the effective_safety_identifier field.
+func ByEffectiveSafetyIdentifier(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEffectiveSafetyIdentifier, opts...).ToFunc()
+}
+
+// ByEffectiveUser orders the results by the effective_user field.
+func ByEffectiveUser(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEffectiveUser, opts...).ToFunc()
+}
+
+// ByEffectiveSessionID orders the results by the effective_session_id field.
+func ByEffectiveSessionID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEffectiveSessionID, opts...).ToFunc()
 }
 
 // ByChannelID orders the results by the channel_id field.

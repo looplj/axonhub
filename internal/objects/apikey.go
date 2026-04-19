@@ -16,6 +16,7 @@ type APIKeyProfile struct {
 	ModelMappings       []ModelMapping `json:"modelMappings"`
 	Quota               *APIKeyQuota   `json:"quota,omitempty"`
 	LoadBalanceStrategy *string        `json:"loadBalanceStrategy,omitempty"`
+	CachePrimaryChannelID *int         `json:"cachePrimaryChannelID,omitempty"`
 
 	ChannelIDs           []int                `json:"channelIDs,omitempty"`
 	ChannelTags          []string             `json:"channelTags,omitempty"`

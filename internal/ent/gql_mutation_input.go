@@ -765,6 +765,10 @@ type CreateRequestInput struct {
 	ModelID                    string
 	Format                     *string
 	RequestHeaders             objects.JSONRawMessage
+	EffectivePromptCacheKey    *string
+	EffectiveSafetyIdentifier  *string
+	EffectiveUser              *string
+	EffectiveSessionID         *string
 	RequestBody                objects.JSONRawMessage
 	ResponseBody               objects.JSONRawMessage
 	ResponseChunks             []objects.JSONRawMessage
@@ -797,6 +801,18 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.RequestHeaders; v != nil {
 		m.SetRequestHeaders(v)
+	}
+	if v := i.EffectivePromptCacheKey; v != nil {
+		m.SetEffectivePromptCacheKey(*v)
+	}
+	if v := i.EffectiveSafetyIdentifier; v != nil {
+		m.SetEffectiveSafetyIdentifier(*v)
+	}
+	if v := i.EffectiveUser; v != nil {
+		m.SetEffectiveUser(*v)
+	}
+	if v := i.EffectiveSessionID; v != nil {
+		m.SetEffectiveSessionID(*v)
 	}
 	if v := i.RequestBody; v != nil {
 		m.SetRequestBody(v)
@@ -864,6 +880,14 @@ type UpdateRequestInput struct {
 	ClearRequestHeaders             bool
 	RequestHeaders                  objects.JSONRawMessage
 	AppendRequestHeaders            objects.JSONRawMessage
+	ClearEffectivePromptCacheKey    bool
+	EffectivePromptCacheKey         *string
+	ClearEffectiveSafetyIdentifier  bool
+	EffectiveSafetyIdentifier       *string
+	ClearEffectiveUser              bool
+	EffectiveUser                   *string
+	ClearEffectiveSessionID         bool
+	EffectiveSessionID              *string
 	ClearResponseBody               bool
 	ResponseBody                    objects.JSONRawMessage
 	AppendResponseBody              objects.JSONRawMessage
@@ -900,6 +924,30 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if i.AppendRequestHeaders != nil {
 		m.AppendRequestHeaders(i.RequestHeaders)
+	}
+	if i.ClearEffectivePromptCacheKey {
+		m.ClearEffectivePromptCacheKey()
+	}
+	if v := i.EffectivePromptCacheKey; v != nil {
+		m.SetEffectivePromptCacheKey(*v)
+	}
+	if i.ClearEffectiveSafetyIdentifier {
+		m.ClearEffectiveSafetyIdentifier()
+	}
+	if v := i.EffectiveSafetyIdentifier; v != nil {
+		m.SetEffectiveSafetyIdentifier(*v)
+	}
+	if i.ClearEffectiveUser {
+		m.ClearEffectiveUser()
+	}
+	if v := i.EffectiveUser; v != nil {
+		m.SetEffectiveUser(*v)
+	}
+	if i.ClearEffectiveSessionID {
+		m.ClearEffectiveSessionID()
+	}
+	if v := i.EffectiveSessionID; v != nil {
+		m.SetEffectiveSessionID(*v)
 	}
 	if i.ClearResponseBody {
 		m.ClearResponseBody()

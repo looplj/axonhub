@@ -13226,6 +13226,10 @@ type RequestMutation struct {
 	format                            *string
 	request_headers                   *objects.JSONRawMessage
 	appendrequest_headers             objects.JSONRawMessage
+	effective_prompt_cache_key        *string
+	effective_safety_identifier       *string
+	effective_user                    *string
+	effective_session_id              *string
 	request_body                      *objects.JSONRawMessage
 	appendrequest_body                objects.JSONRawMessage
 	response_body                     *objects.JSONRawMessage
@@ -13793,6 +13797,202 @@ func (m *RequestMutation) ResetRequestHeaders() {
 	m.request_headers = nil
 	m.appendrequest_headers = nil
 	delete(m.clearedFields, request.FieldRequestHeaders)
+}
+
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (m *RequestMutation) SetEffectivePromptCacheKey(s string) {
+	m.effective_prompt_cache_key = &s
+}
+
+// EffectivePromptCacheKey returns the value of the "effective_prompt_cache_key" field in the mutation.
+func (m *RequestMutation) EffectivePromptCacheKey() (r string, exists bool) {
+	v := m.effective_prompt_cache_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectivePromptCacheKey returns the old "effective_prompt_cache_key" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldEffectivePromptCacheKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectivePromptCacheKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectivePromptCacheKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectivePromptCacheKey: %w", err)
+	}
+	return oldValue.EffectivePromptCacheKey, nil
+}
+
+// ClearEffectivePromptCacheKey clears the value of the "effective_prompt_cache_key" field.
+func (m *RequestMutation) ClearEffectivePromptCacheKey() {
+	m.effective_prompt_cache_key = nil
+	m.clearedFields[request.FieldEffectivePromptCacheKey] = struct{}{}
+}
+
+// EffectivePromptCacheKeyCleared returns if the "effective_prompt_cache_key" field was cleared in this mutation.
+func (m *RequestMutation) EffectivePromptCacheKeyCleared() bool {
+	_, ok := m.clearedFields[request.FieldEffectivePromptCacheKey]
+	return ok
+}
+
+// ResetEffectivePromptCacheKey resets all changes to the "effective_prompt_cache_key" field.
+func (m *RequestMutation) ResetEffectivePromptCacheKey() {
+	m.effective_prompt_cache_key = nil
+	delete(m.clearedFields, request.FieldEffectivePromptCacheKey)
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (m *RequestMutation) SetEffectiveSafetyIdentifier(s string) {
+	m.effective_safety_identifier = &s
+}
+
+// EffectiveSafetyIdentifier returns the value of the "effective_safety_identifier" field in the mutation.
+func (m *RequestMutation) EffectiveSafetyIdentifier() (r string, exists bool) {
+	v := m.effective_safety_identifier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveSafetyIdentifier returns the old "effective_safety_identifier" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldEffectiveSafetyIdentifier(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveSafetyIdentifier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveSafetyIdentifier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveSafetyIdentifier: %w", err)
+	}
+	return oldValue.EffectiveSafetyIdentifier, nil
+}
+
+// ClearEffectiveSafetyIdentifier clears the value of the "effective_safety_identifier" field.
+func (m *RequestMutation) ClearEffectiveSafetyIdentifier() {
+	m.effective_safety_identifier = nil
+	m.clearedFields[request.FieldEffectiveSafetyIdentifier] = struct{}{}
+}
+
+// EffectiveSafetyIdentifierCleared returns if the "effective_safety_identifier" field was cleared in this mutation.
+func (m *RequestMutation) EffectiveSafetyIdentifierCleared() bool {
+	_, ok := m.clearedFields[request.FieldEffectiveSafetyIdentifier]
+	return ok
+}
+
+// ResetEffectiveSafetyIdentifier resets all changes to the "effective_safety_identifier" field.
+func (m *RequestMutation) ResetEffectiveSafetyIdentifier() {
+	m.effective_safety_identifier = nil
+	delete(m.clearedFields, request.FieldEffectiveSafetyIdentifier)
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (m *RequestMutation) SetEffectiveUser(s string) {
+	m.effective_user = &s
+}
+
+// EffectiveUser returns the value of the "effective_user" field in the mutation.
+func (m *RequestMutation) EffectiveUser() (r string, exists bool) {
+	v := m.effective_user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveUser returns the old "effective_user" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldEffectiveUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveUser: %w", err)
+	}
+	return oldValue.EffectiveUser, nil
+}
+
+// ClearEffectiveUser clears the value of the "effective_user" field.
+func (m *RequestMutation) ClearEffectiveUser() {
+	m.effective_user = nil
+	m.clearedFields[request.FieldEffectiveUser] = struct{}{}
+}
+
+// EffectiveUserCleared returns if the "effective_user" field was cleared in this mutation.
+func (m *RequestMutation) EffectiveUserCleared() bool {
+	_, ok := m.clearedFields[request.FieldEffectiveUser]
+	return ok
+}
+
+// ResetEffectiveUser resets all changes to the "effective_user" field.
+func (m *RequestMutation) ResetEffectiveUser() {
+	m.effective_user = nil
+	delete(m.clearedFields, request.FieldEffectiveUser)
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (m *RequestMutation) SetEffectiveSessionID(s string) {
+	m.effective_session_id = &s
+}
+
+// EffectiveSessionID returns the value of the "effective_session_id" field in the mutation.
+func (m *RequestMutation) EffectiveSessionID() (r string, exists bool) {
+	v := m.effective_session_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveSessionID returns the old "effective_session_id" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldEffectiveSessionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveSessionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveSessionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveSessionID: %w", err)
+	}
+	return oldValue.EffectiveSessionID, nil
+}
+
+// ClearEffectiveSessionID clears the value of the "effective_session_id" field.
+func (m *RequestMutation) ClearEffectiveSessionID() {
+	m.effective_session_id = nil
+	m.clearedFields[request.FieldEffectiveSessionID] = struct{}{}
+}
+
+// EffectiveSessionIDCleared returns if the "effective_session_id" field was cleared in this mutation.
+func (m *RequestMutation) EffectiveSessionIDCleared() bool {
+	_, ok := m.clearedFields[request.FieldEffectiveSessionID]
+	return ok
+}
+
+// ResetEffectiveSessionID resets all changes to the "effective_session_id" field.
+func (m *RequestMutation) ResetEffectiveSessionID() {
+	m.effective_session_id = nil
+	delete(m.clearedFields, request.FieldEffectiveSessionID)
 }
 
 // SetRequestBody sets the "request_body" field.
@@ -14873,7 +15073,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 25)
+	fields := make([]string, 0, 29)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -14903,6 +15103,18 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.request_headers != nil {
 		fields = append(fields, request.FieldRequestHeaders)
+	}
+	if m.effective_prompt_cache_key != nil {
+		fields = append(fields, request.FieldEffectivePromptCacheKey)
+	}
+	if m.effective_safety_identifier != nil {
+		fields = append(fields, request.FieldEffectiveSafetyIdentifier)
+	}
+	if m.effective_user != nil {
+		fields = append(fields, request.FieldEffectiveUser)
+	}
+	if m.effective_session_id != nil {
+		fields = append(fields, request.FieldEffectiveSessionID)
 	}
 	if m.request_body != nil {
 		fields = append(fields, request.FieldRequestBody)
@@ -14977,6 +15189,14 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.Format()
 	case request.FieldRequestHeaders:
 		return m.RequestHeaders()
+	case request.FieldEffectivePromptCacheKey:
+		return m.EffectivePromptCacheKey()
+	case request.FieldEffectiveSafetyIdentifier:
+		return m.EffectiveSafetyIdentifier()
+	case request.FieldEffectiveUser:
+		return m.EffectiveUser()
+	case request.FieldEffectiveSessionID:
+		return m.EffectiveSessionID()
 	case request.FieldRequestBody:
 		return m.RequestBody()
 	case request.FieldResponseBody:
@@ -15036,6 +15256,14 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldFormat(ctx)
 	case request.FieldRequestHeaders:
 		return m.OldRequestHeaders(ctx)
+	case request.FieldEffectivePromptCacheKey:
+		return m.OldEffectivePromptCacheKey(ctx)
+	case request.FieldEffectiveSafetyIdentifier:
+		return m.OldEffectiveSafetyIdentifier(ctx)
+	case request.FieldEffectiveUser:
+		return m.OldEffectiveUser(ctx)
+	case request.FieldEffectiveSessionID:
+		return m.OldEffectiveSessionID(ctx)
 	case request.FieldRequestBody:
 		return m.OldRequestBody(ctx)
 	case request.FieldResponseBody:
@@ -15144,6 +15372,34 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestHeaders(v)
+		return nil
+	case request.FieldEffectivePromptCacheKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectivePromptCacheKey(v)
+		return nil
+	case request.FieldEffectiveSafetyIdentifier:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveSafetyIdentifier(v)
+		return nil
+	case request.FieldEffectiveUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveUser(v)
+		return nil
+	case request.FieldEffectiveSessionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveSessionID(v)
 		return nil
 	case request.FieldRequestBody:
 		v, ok := value.(objects.JSONRawMessage)
@@ -15343,6 +15599,18 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldRequestHeaders) {
 		fields = append(fields, request.FieldRequestHeaders)
 	}
+	if m.FieldCleared(request.FieldEffectivePromptCacheKey) {
+		fields = append(fields, request.FieldEffectivePromptCacheKey)
+	}
+	if m.FieldCleared(request.FieldEffectiveSafetyIdentifier) {
+		fields = append(fields, request.FieldEffectiveSafetyIdentifier)
+	}
+	if m.FieldCleared(request.FieldEffectiveUser) {
+		fields = append(fields, request.FieldEffectiveUser)
+	}
+	if m.FieldCleared(request.FieldEffectiveSessionID) {
+		fields = append(fields, request.FieldEffectiveSessionID)
+	}
 	if m.FieldCleared(request.FieldResponseBody) {
 		fields = append(fields, request.FieldResponseBody)
 	}
@@ -15398,6 +15666,18 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldRequestHeaders:
 		m.ClearRequestHeaders()
+		return nil
+	case request.FieldEffectivePromptCacheKey:
+		m.ClearEffectivePromptCacheKey()
+		return nil
+	case request.FieldEffectiveSafetyIdentifier:
+		m.ClearEffectiveSafetyIdentifier()
+		return nil
+	case request.FieldEffectiveUser:
+		m.ClearEffectiveUser()
+		return nil
+	case request.FieldEffectiveSessionID:
+		m.ClearEffectiveSessionID()
 		return nil
 	case request.FieldResponseBody:
 		m.ClearResponseBody()
@@ -15466,6 +15746,18 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldRequestHeaders:
 		m.ResetRequestHeaders()
+		return nil
+	case request.FieldEffectivePromptCacheKey:
+		m.ResetEffectivePromptCacheKey()
+		return nil
+	case request.FieldEffectiveSafetyIdentifier:
+		m.ResetEffectiveSafetyIdentifier()
+		return nil
+	case request.FieldEffectiveUser:
+		m.ResetEffectiveUser()
+		return nil
+	case request.FieldEffectiveSessionID:
+		m.ResetEffectiveSessionID()
 		return nil
 	case request.FieldRequestBody:
 		m.ResetRequestBody()
@@ -15729,6 +16021,10 @@ type RequestExecutionMutation struct {
 	external_id                       *string
 	model_id                          *string
 	format                            *string
+	effective_prompt_cache_key        *string
+	effective_safety_identifier       *string
+	effective_user                    *string
+	effective_session_id              *string
 	request_body                      *objects.JSONRawMessage
 	appendrequest_body                objects.JSONRawMessage
 	response_body                     *objects.JSONRawMessage
@@ -16239,6 +16535,202 @@ func (m *RequestExecutionMutation) OldFormat(ctx context.Context) (v string, err
 // ResetFormat resets all changes to the "format" field.
 func (m *RequestExecutionMutation) ResetFormat() {
 	m.format = nil
+}
+
+// SetEffectivePromptCacheKey sets the "effective_prompt_cache_key" field.
+func (m *RequestExecutionMutation) SetEffectivePromptCacheKey(s string) {
+	m.effective_prompt_cache_key = &s
+}
+
+// EffectivePromptCacheKey returns the value of the "effective_prompt_cache_key" field in the mutation.
+func (m *RequestExecutionMutation) EffectivePromptCacheKey() (r string, exists bool) {
+	v := m.effective_prompt_cache_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectivePromptCacheKey returns the old "effective_prompt_cache_key" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldEffectivePromptCacheKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectivePromptCacheKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectivePromptCacheKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectivePromptCacheKey: %w", err)
+	}
+	return oldValue.EffectivePromptCacheKey, nil
+}
+
+// ClearEffectivePromptCacheKey clears the value of the "effective_prompt_cache_key" field.
+func (m *RequestExecutionMutation) ClearEffectivePromptCacheKey() {
+	m.effective_prompt_cache_key = nil
+	m.clearedFields[requestexecution.FieldEffectivePromptCacheKey] = struct{}{}
+}
+
+// EffectivePromptCacheKeyCleared returns if the "effective_prompt_cache_key" field was cleared in this mutation.
+func (m *RequestExecutionMutation) EffectivePromptCacheKeyCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldEffectivePromptCacheKey]
+	return ok
+}
+
+// ResetEffectivePromptCacheKey resets all changes to the "effective_prompt_cache_key" field.
+func (m *RequestExecutionMutation) ResetEffectivePromptCacheKey() {
+	m.effective_prompt_cache_key = nil
+	delete(m.clearedFields, requestexecution.FieldEffectivePromptCacheKey)
+}
+
+// SetEffectiveSafetyIdentifier sets the "effective_safety_identifier" field.
+func (m *RequestExecutionMutation) SetEffectiveSafetyIdentifier(s string) {
+	m.effective_safety_identifier = &s
+}
+
+// EffectiveSafetyIdentifier returns the value of the "effective_safety_identifier" field in the mutation.
+func (m *RequestExecutionMutation) EffectiveSafetyIdentifier() (r string, exists bool) {
+	v := m.effective_safety_identifier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveSafetyIdentifier returns the old "effective_safety_identifier" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldEffectiveSafetyIdentifier(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveSafetyIdentifier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveSafetyIdentifier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveSafetyIdentifier: %w", err)
+	}
+	return oldValue.EffectiveSafetyIdentifier, nil
+}
+
+// ClearEffectiveSafetyIdentifier clears the value of the "effective_safety_identifier" field.
+func (m *RequestExecutionMutation) ClearEffectiveSafetyIdentifier() {
+	m.effective_safety_identifier = nil
+	m.clearedFields[requestexecution.FieldEffectiveSafetyIdentifier] = struct{}{}
+}
+
+// EffectiveSafetyIdentifierCleared returns if the "effective_safety_identifier" field was cleared in this mutation.
+func (m *RequestExecutionMutation) EffectiveSafetyIdentifierCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldEffectiveSafetyIdentifier]
+	return ok
+}
+
+// ResetEffectiveSafetyIdentifier resets all changes to the "effective_safety_identifier" field.
+func (m *RequestExecutionMutation) ResetEffectiveSafetyIdentifier() {
+	m.effective_safety_identifier = nil
+	delete(m.clearedFields, requestexecution.FieldEffectiveSafetyIdentifier)
+}
+
+// SetEffectiveUser sets the "effective_user" field.
+func (m *RequestExecutionMutation) SetEffectiveUser(s string) {
+	m.effective_user = &s
+}
+
+// EffectiveUser returns the value of the "effective_user" field in the mutation.
+func (m *RequestExecutionMutation) EffectiveUser() (r string, exists bool) {
+	v := m.effective_user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveUser returns the old "effective_user" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldEffectiveUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveUser: %w", err)
+	}
+	return oldValue.EffectiveUser, nil
+}
+
+// ClearEffectiveUser clears the value of the "effective_user" field.
+func (m *RequestExecutionMutation) ClearEffectiveUser() {
+	m.effective_user = nil
+	m.clearedFields[requestexecution.FieldEffectiveUser] = struct{}{}
+}
+
+// EffectiveUserCleared returns if the "effective_user" field was cleared in this mutation.
+func (m *RequestExecutionMutation) EffectiveUserCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldEffectiveUser]
+	return ok
+}
+
+// ResetEffectiveUser resets all changes to the "effective_user" field.
+func (m *RequestExecutionMutation) ResetEffectiveUser() {
+	m.effective_user = nil
+	delete(m.clearedFields, requestexecution.FieldEffectiveUser)
+}
+
+// SetEffectiveSessionID sets the "effective_session_id" field.
+func (m *RequestExecutionMutation) SetEffectiveSessionID(s string) {
+	m.effective_session_id = &s
+}
+
+// EffectiveSessionID returns the value of the "effective_session_id" field in the mutation.
+func (m *RequestExecutionMutation) EffectiveSessionID() (r string, exists bool) {
+	v := m.effective_session_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveSessionID returns the old "effective_session_id" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldEffectiveSessionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveSessionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveSessionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveSessionID: %w", err)
+	}
+	return oldValue.EffectiveSessionID, nil
+}
+
+// ClearEffectiveSessionID clears the value of the "effective_session_id" field.
+func (m *RequestExecutionMutation) ClearEffectiveSessionID() {
+	m.effective_session_id = nil
+	m.clearedFields[requestexecution.FieldEffectiveSessionID] = struct{}{}
+}
+
+// EffectiveSessionIDCleared returns if the "effective_session_id" field was cleared in this mutation.
+func (m *RequestExecutionMutation) EffectiveSessionIDCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldEffectiveSessionID]
+	return ok
+}
+
+// ResetEffectiveSessionID resets all changes to the "effective_session_id" field.
+func (m *RequestExecutionMutation) ResetEffectiveSessionID() {
+	m.effective_session_id = nil
+	delete(m.clearedFields, requestexecution.FieldEffectiveSessionID)
 }
 
 // SetRequestBody sets the "request_body" field.
@@ -17003,7 +17495,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -17030,6 +17522,18 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.format != nil {
 		fields = append(fields, requestexecution.FieldFormat)
+	}
+	if m.effective_prompt_cache_key != nil {
+		fields = append(fields, requestexecution.FieldEffectivePromptCacheKey)
+	}
+	if m.effective_safety_identifier != nil {
+		fields = append(fields, requestexecution.FieldEffectiveSafetyIdentifier)
+	}
+	if m.effective_user != nil {
+		fields = append(fields, requestexecution.FieldEffectiveUser)
+	}
+	if m.effective_session_id != nil {
+		fields = append(fields, requestexecution.FieldEffectiveSessionID)
 	}
 	if m.request_body != nil {
 		fields = append(fields, requestexecution.FieldRequestBody)
@@ -17090,6 +17594,14 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelID()
 	case requestexecution.FieldFormat:
 		return m.Format()
+	case requestexecution.FieldEffectivePromptCacheKey:
+		return m.EffectivePromptCacheKey()
+	case requestexecution.FieldEffectiveSafetyIdentifier:
+		return m.EffectiveSafetyIdentifier()
+	case requestexecution.FieldEffectiveUser:
+		return m.EffectiveUser()
+	case requestexecution.FieldEffectiveSessionID:
+		return m.EffectiveSessionID()
 	case requestexecution.FieldRequestBody:
 		return m.RequestBody()
 	case requestexecution.FieldResponseBody:
@@ -17139,6 +17651,14 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldModelID(ctx)
 	case requestexecution.FieldFormat:
 		return m.OldFormat(ctx)
+	case requestexecution.FieldEffectivePromptCacheKey:
+		return m.OldEffectivePromptCacheKey(ctx)
+	case requestexecution.FieldEffectiveSafetyIdentifier:
+		return m.OldEffectiveSafetyIdentifier(ctx)
+	case requestexecution.FieldEffectiveUser:
+		return m.OldEffectiveUser(ctx)
+	case requestexecution.FieldEffectiveSessionID:
+		return m.OldEffectiveSessionID(ctx)
 	case requestexecution.FieldRequestBody:
 		return m.OldRequestBody(ctx)
 	case requestexecution.FieldResponseBody:
@@ -17232,6 +17752,34 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFormat(v)
+		return nil
+	case requestexecution.FieldEffectivePromptCacheKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectivePromptCacheKey(v)
+		return nil
+	case requestexecution.FieldEffectiveSafetyIdentifier:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveSafetyIdentifier(v)
+		return nil
+	case requestexecution.FieldEffectiveUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveUser(v)
+		return nil
+	case requestexecution.FieldEffectiveSessionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveSessionID(v)
 		return nil
 	case requestexecution.FieldRequestBody:
 		v, ok := value.(objects.JSONRawMessage)
@@ -17412,6 +17960,18 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	if m.FieldCleared(requestexecution.FieldExternalID) {
 		fields = append(fields, requestexecution.FieldExternalID)
 	}
+	if m.FieldCleared(requestexecution.FieldEffectivePromptCacheKey) {
+		fields = append(fields, requestexecution.FieldEffectivePromptCacheKey)
+	}
+	if m.FieldCleared(requestexecution.FieldEffectiveSafetyIdentifier) {
+		fields = append(fields, requestexecution.FieldEffectiveSafetyIdentifier)
+	}
+	if m.FieldCleared(requestexecution.FieldEffectiveUser) {
+		fields = append(fields, requestexecution.FieldEffectiveUser)
+	}
+	if m.FieldCleared(requestexecution.FieldEffectiveSessionID) {
+		fields = append(fields, requestexecution.FieldEffectiveSessionID)
+	}
 	if m.FieldCleared(requestexecution.FieldResponseBody) {
 		fields = append(fields, requestexecution.FieldResponseBody)
 	}
@@ -17458,6 +18018,18 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 		return nil
 	case requestexecution.FieldExternalID:
 		m.ClearExternalID()
+		return nil
+	case requestexecution.FieldEffectivePromptCacheKey:
+		m.ClearEffectivePromptCacheKey()
+		return nil
+	case requestexecution.FieldEffectiveSafetyIdentifier:
+		m.ClearEffectiveSafetyIdentifier()
+		return nil
+	case requestexecution.FieldEffectiveUser:
+		m.ClearEffectiveUser()
+		return nil
+	case requestexecution.FieldEffectiveSessionID:
+		m.ClearEffectiveSessionID()
 		return nil
 	case requestexecution.FieldResponseBody:
 		m.ClearResponseBody()
@@ -17517,6 +18089,18 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldFormat:
 		m.ResetFormat()
+		return nil
+	case requestexecution.FieldEffectivePromptCacheKey:
+		m.ResetEffectivePromptCacheKey()
+		return nil
+	case requestexecution.FieldEffectiveSafetyIdentifier:
+		m.ResetEffectiveSafetyIdentifier()
+		return nil
+	case requestexecution.FieldEffectiveUser:
+		m.ResetEffectiveUser()
+		return nil
+	case requestexecution.FieldEffectiveSessionID:
+		m.ResetEffectiveSessionID()
 		return nil
 	case requestexecution.FieldRequestBody:
 		m.ResetRequestBody()

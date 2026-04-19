@@ -3485,6 +3485,26 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldRequestHeaders)
 				fieldSeen[request.FieldRequestHeaders] = struct{}{}
 			}
+		case "effectivePromptCacheKey":
+			if _, ok := fieldSeen[request.FieldEffectivePromptCacheKey]; !ok {
+				selectedFields = append(selectedFields, request.FieldEffectivePromptCacheKey)
+				fieldSeen[request.FieldEffectivePromptCacheKey] = struct{}{}
+			}
+		case "effectiveSafetyIdentifier":
+			if _, ok := fieldSeen[request.FieldEffectiveSafetyIdentifier]; !ok {
+				selectedFields = append(selectedFields, request.FieldEffectiveSafetyIdentifier)
+				fieldSeen[request.FieldEffectiveSafetyIdentifier] = struct{}{}
+			}
+		case "effectiveUser":
+			if _, ok := fieldSeen[request.FieldEffectiveUser]; !ok {
+				selectedFields = append(selectedFields, request.FieldEffectiveUser)
+				fieldSeen[request.FieldEffectiveUser] = struct{}{}
+			}
+		case "effectiveSessionID":
+			if _, ok := fieldSeen[request.FieldEffectiveSessionID]; !ok {
+				selectedFields = append(selectedFields, request.FieldEffectiveSessionID)
+				fieldSeen[request.FieldEffectiveSessionID] = struct{}{}
+			}
 		case "requestBody":
 			if _, ok := fieldSeen[request.FieldRequestBody]; !ok {
 				selectedFields = append(selectedFields, request.FieldRequestBody)
@@ -3733,6 +3753,26 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 			if _, ok := fieldSeen[requestexecution.FieldFormat]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldFormat)
 				fieldSeen[requestexecution.FieldFormat] = struct{}{}
+			}
+		case "effectivePromptCacheKey":
+			if _, ok := fieldSeen[requestexecution.FieldEffectivePromptCacheKey]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldEffectivePromptCacheKey)
+				fieldSeen[requestexecution.FieldEffectivePromptCacheKey] = struct{}{}
+			}
+		case "effectiveSafetyIdentifier":
+			if _, ok := fieldSeen[requestexecution.FieldEffectiveSafetyIdentifier]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldEffectiveSafetyIdentifier)
+				fieldSeen[requestexecution.FieldEffectiveSafetyIdentifier] = struct{}{}
+			}
+		case "effectiveUser":
+			if _, ok := fieldSeen[requestexecution.FieldEffectiveUser]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldEffectiveUser)
+				fieldSeen[requestexecution.FieldEffectiveUser] = struct{}{}
+			}
+		case "effectiveSessionID":
+			if _, ok := fieldSeen[requestexecution.FieldEffectiveSessionID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldEffectiveSessionID)
+				fieldSeen[requestexecution.FieldEffectiveSessionID] = struct{}{}
 			}
 		case "requestBody":
 			if _, ok := fieldSeen[requestexecution.FieldRequestBody]; !ok {

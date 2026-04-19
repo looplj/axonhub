@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -18,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // mockTransformer is a simple mock transformer for testing.
@@ -158,6 +161,38 @@ func TestPersistentOutboundTransformer_TransformRequest_OriginalModelRestoration
 			require.Equal(t, tt.expectedFinalModel, llmRequest.Model)
 		})
 	}
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_InjectsAPIKeyOwnerIdentity(t *testing.T) {
+	ctx := context.Background()
+	ctx = contexts.WithAPIKey(ctx, &ent.APIKey{ID: 77, UserID: 55})
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{ID: 1, Name: "test-channel", SupportedModels: []string{"gpt-4"}},
+		Outbound: &mockTransformer{},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{
+				Channel: channel,
+				Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+			}},
+			CurrentCandidateIndex: 0,
+			RequestExec:           &ent.RequestExecution{ID: 1},
+		},
+	}
+
+	llmRequest := &llm.Request{
+		Model: "gpt-4",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+	}
+
+	_, err := processor.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+	require.Equal(t, "user:55", llmRequest.TransformerMetadata[shared.TransformerMetadataKeyOpenAIIdentityOwner])
 }
 
 func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {

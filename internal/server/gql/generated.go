@@ -124,14 +124,15 @@ type ComplexityRoot struct {
 	}
 
 	APIKeyProfile struct {
-		ChannelIDs           func(childComplexity int) int
-		ChannelTags          func(childComplexity int) int
-		ChannelTagsMatchMode func(childComplexity int) int
-		LoadBalanceStrategy  func(childComplexity int) int
-		ModelIDs             func(childComplexity int) int
-		ModelMappings        func(childComplexity int) int
-		Name                 func(childComplexity int) int
-		Quota                func(childComplexity int) int
+		CachePrimaryChannelID func(childComplexity int) int
+		ChannelIDs            func(childComplexity int) int
+		ChannelTags           func(childComplexity int) int
+		ChannelTagsMatchMode  func(childComplexity int) int
+		LoadBalanceStrategy   func(childComplexity int) int
+		ModelIDs              func(childComplexity int) int
+		ModelMappings         func(childComplexity int) int
+		Name                  func(childComplexity int) int
+		Quota                 func(childComplexity int) int
 	}
 
 	APIKeyProfileQuotaUsage struct {
@@ -1171,6 +1172,10 @@ type ComplexityRoot struct {
 		CreatedAt                  func(childComplexity int) int
 		DataStorage                func(childComplexity int) int
 		DataStorageID              func(childComplexity int) int
+		EffectivePromptCacheKey    func(childComplexity int) int
+		EffectiveSafetyIdentifier  func(childComplexity int) int
+		EffectiveSessionID         func(childComplexity int) int
+		EffectiveUser              func(childComplexity int) int
 		Executions                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
 		ExternalID                 func(childComplexity int) int
 		Format                     func(childComplexity int) int
@@ -1211,6 +1216,10 @@ type ComplexityRoot struct {
 		CreatedAt                  func(childComplexity int) int
 		DataStorage                func(childComplexity int) int
 		DataStorageID              func(childComplexity int) int
+		EffectivePromptCacheKey    func(childComplexity int) int
+		EffectiveSafetyIdentifier  func(childComplexity int) int
+		EffectiveSessionID         func(childComplexity int) int
+		EffectiveUser              func(childComplexity int) int
 		ErrorMessage               func(childComplexity int) int
 		ExternalID                 func(childComplexity int) int
 		Format                     func(childComplexity int) int
@@ -2262,6 +2271,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyEdge.Node(childComplexity), true
 
+	case "APIKeyProfile.cachePrimaryChannelID":
+		if e.complexity.APIKeyProfile.CachePrimaryChannelID == nil {
+			break
+		}
+
+		return e.complexity.APIKeyProfile.CachePrimaryChannelID(childComplexity), true
 	case "APIKeyProfile.channelIDs":
 		if e.complexity.APIKeyProfile.ChannelIDs == nil {
 			break
@@ -7166,6 +7181,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.DataStorageID(childComplexity), true
+	case "Request.effectivePromptCacheKey":
+		if e.complexity.Request.EffectivePromptCacheKey == nil {
+			break
+		}
+
+		return e.complexity.Request.EffectivePromptCacheKey(childComplexity), true
+	case "Request.effectiveSafetyIdentifier":
+		if e.complexity.Request.EffectiveSafetyIdentifier == nil {
+			break
+		}
+
+		return e.complexity.Request.EffectiveSafetyIdentifier(childComplexity), true
+	case "Request.effectiveSessionID":
+		if e.complexity.Request.EffectiveSessionID == nil {
+			break
+		}
+
+		return e.complexity.Request.EffectiveSessionID(childComplexity), true
+	case "Request.effectiveUser":
+		if e.complexity.Request.EffectiveUser == nil {
+			break
+		}
+
+		return e.complexity.Request.EffectiveUser(childComplexity), true
 	case "Request.executions":
 		if e.complexity.Request.Executions == nil {
 			break
@@ -7365,6 +7404,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.DataStorageID(childComplexity), true
+	case "RequestExecution.effectivePromptCacheKey":
+		if e.complexity.RequestExecution.EffectivePromptCacheKey == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.EffectivePromptCacheKey(childComplexity), true
+	case "RequestExecution.effectiveSafetyIdentifier":
+		if e.complexity.RequestExecution.EffectiveSafetyIdentifier == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.EffectiveSafetyIdentifier(childComplexity), true
+	case "RequestExecution.effectiveSessionID":
+		if e.complexity.RequestExecution.EffectiveSessionID == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.EffectiveSessionID(childComplexity), true
+	case "RequestExecution.effectiveUser":
+		if e.complexity.RequestExecution.EffectiveUser == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.EffectiveUser(childComplexity), true
 	case "RequestExecution.errorMessage":
 		if e.complexity.RequestExecution.ErrorMessage == nil {
 			break
@@ -13728,6 +13791,35 @@ func (ec *executionContext) fieldContext_APIKeyProfile_loadBalanceStrategy(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKeyProfile_cachePrimaryChannelID(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyProfile_cachePrimaryChannelID,
+		func(ctx context.Context) (any, error) {
+			return obj.CachePrimaryChannelID, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyProfile_cachePrimaryChannelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKeyProfileQuotaUsage_profileName(ctx context.Context, field graphql.CollectedField, obj *APIKeyProfileQuotaUsage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13937,6 +14029,8 @@ func (ec *executionContext) fieldContext_APIKeyProfiles_profiles(_ context.Conte
 				return ec.fieldContext_APIKeyProfile_quota(ctx, field)
 			case "loadBalanceStrategy":
 				return ec.fieldContext_APIKeyProfile_loadBalanceStrategy(ctx, field)
+			case "cachePrimaryChannelID":
+				return ec.fieldContext_APIKeyProfile_cachePrimaryChannelID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKeyProfile", field.Name)
 		},
@@ -38396,6 +38490,122 @@ func (ec *executionContext) fieldContext_Request_requestHeaders(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_effectivePromptCacheKey(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_effectivePromptCacheKey,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectivePromptCacheKey, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_effectivePromptCacheKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Request_effectiveSafetyIdentifier(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_effectiveSafetyIdentifier,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveSafetyIdentifier, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_effectiveSafetyIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Request_effectiveUser(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_effectiveUser,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveUser, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_effectiveUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Request_effectiveSessionID(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_effectiveSessionID,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveSessionID, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_effectiveSessionID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_requestBody(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -39397,6 +39607,14 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
 				return ec.fieldContext_Request_requestHeaders(ctx, field)
+			case "effectivePromptCacheKey":
+				return ec.fieldContext_Request_effectivePromptCacheKey(ctx, field)
+			case "effectiveSafetyIdentifier":
+				return ec.fieldContext_Request_effectiveSafetyIdentifier(ctx, field)
+			case "effectiveUser":
+				return ec.fieldContext_Request_effectiveUser(ctx, field)
+			case "effectiveSessionID":
+				return ec.fieldContext_Request_effectiveSessionID(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -39755,6 +39973,122 @@ func (ec *executionContext) _RequestExecution_format(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_RequestExecution_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestExecution_effectivePromptCacheKey(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_effectivePromptCacheKey,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectivePromptCacheKey, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_effectivePromptCacheKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestExecution_effectiveSafetyIdentifier(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_effectiveSafetyIdentifier,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveSafetyIdentifier, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_effectiveSafetyIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestExecution_effectiveUser(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_effectiveUser,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveUser, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_effectiveUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestExecution_effectiveSessionID(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_effectiveSessionID,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveSessionID, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_effectiveSessionID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RequestExecution",
 		Field:      field,
@@ -40132,6 +40466,14 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
 				return ec.fieldContext_Request_requestHeaders(ctx, field)
+			case "effectivePromptCacheKey":
+				return ec.fieldContext_Request_effectivePromptCacheKey(ctx, field)
+			case "effectiveSafetyIdentifier":
+				return ec.fieldContext_Request_effectiveSafetyIdentifier(ctx, field)
+			case "effectiveUser":
+				return ec.fieldContext_Request_effectiveUser(ctx, field)
+			case "effectiveSessionID":
+				return ec.fieldContext_Request_effectiveSessionID(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -40468,6 +40810,14 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_RequestExecution_format(ctx, field)
+			case "effectivePromptCacheKey":
+				return ec.fieldContext_RequestExecution_effectivePromptCacheKey(ctx, field)
+			case "effectiveSafetyIdentifier":
+				return ec.fieldContext_RequestExecution_effectiveSafetyIdentifier(ctx, field)
+			case "effectiveUser":
+				return ec.fieldContext_RequestExecution_effectiveUser(ctx, field)
+			case "effectiveSessionID":
+				return ec.fieldContext_RequestExecution_effectiveSessionID(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_RequestExecution_requestBody(ctx, field)
 			case "responseBody":
@@ -48107,6 +48457,14 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
 				return ec.fieldContext_Request_requestHeaders(ctx, field)
+			case "effectivePromptCacheKey":
+				return ec.fieldContext_Request_effectivePromptCacheKey(ctx, field)
+			case "effectiveSafetyIdentifier":
+				return ec.fieldContext_Request_effectiveSafetyIdentifier(ctx, field)
+			case "effectiveUser":
+				return ec.fieldContext_Request_effectiveUser(ctx, field)
+			case "effectiveSessionID":
+				return ec.fieldContext_Request_effectiveSessionID(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
@@ -52775,7 +53133,7 @@ func (ec *executionContext) unmarshalInputAPIKeyProfileInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "modelMappings", "channelIDs", "channelTags", "channelTagsMatchMode", "modelIDs", "quota", "loadBalanceStrategy"}
+	fieldsInOrder := [...]string{"name", "modelMappings", "channelIDs", "channelTags", "channelTagsMatchMode", "modelIDs", "quota", "loadBalanceStrategy", "cachePrimaryChannelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -52838,6 +53196,13 @@ func (ec *executionContext) unmarshalInputAPIKeyProfileInput(ctx context.Context
 				return it, err
 			}
 			it.LoadBalanceStrategy = data
+		case "cachePrimaryChannelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cachePrimaryChannelID"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CachePrimaryChannelID = data
 		}
 	}
 
@@ -58741,7 +59106,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "effectivePromptCacheKey", "effectiveSafetyIdentifier", "effectiveUser", "effectiveSessionID", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -58776,6 +59141,34 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.RequestHeaders = data
+		case "effectivePromptCacheKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKey = data
+		case "effectiveSafetyIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifier"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifier = data
+		case "effectiveUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUser"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUser = data
+		case "effectiveSessionID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionID = data
 		case "requestBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBody"))
 			data, err := ec.unmarshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
@@ -65136,7 +65529,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "effectivePromptCacheKey", "effectivePromptCacheKeyNEQ", "effectivePromptCacheKeyIn", "effectivePromptCacheKeyNotIn", "effectivePromptCacheKeyGT", "effectivePromptCacheKeyGTE", "effectivePromptCacheKeyLT", "effectivePromptCacheKeyLTE", "effectivePromptCacheKeyContains", "effectivePromptCacheKeyHasPrefix", "effectivePromptCacheKeyHasSuffix", "effectivePromptCacheKeyIsNil", "effectivePromptCacheKeyNotNil", "effectivePromptCacheKeyEqualFold", "effectivePromptCacheKeyContainsFold", "effectiveSafetyIdentifier", "effectiveSafetyIdentifierNEQ", "effectiveSafetyIdentifierIn", "effectiveSafetyIdentifierNotIn", "effectiveSafetyIdentifierGT", "effectiveSafetyIdentifierGTE", "effectiveSafetyIdentifierLT", "effectiveSafetyIdentifierLTE", "effectiveSafetyIdentifierContains", "effectiveSafetyIdentifierHasPrefix", "effectiveSafetyIdentifierHasSuffix", "effectiveSafetyIdentifierIsNil", "effectiveSafetyIdentifierNotNil", "effectiveSafetyIdentifierEqualFold", "effectiveSafetyIdentifierContainsFold", "effectiveUser", "effectiveUserNEQ", "effectiveUserIn", "effectiveUserNotIn", "effectiveUserGT", "effectiveUserGTE", "effectiveUserLT", "effectiveUserLTE", "effectiveUserContains", "effectiveUserHasPrefix", "effectiveUserHasSuffix", "effectiveUserIsNil", "effectiveUserNotNil", "effectiveUserEqualFold", "effectiveUserContainsFold", "effectiveSessionID", "effectiveSessionIDNEQ", "effectiveSessionIDIn", "effectiveSessionIDNotIn", "effectiveSessionIDGT", "effectiveSessionIDGTE", "effectiveSessionIDLT", "effectiveSessionIDLTE", "effectiveSessionIDContains", "effectiveSessionIDHasPrefix", "effectiveSessionIDHasSuffix", "effectiveSessionIDIsNil", "effectiveSessionIDNotNil", "effectiveSessionIDEqualFold", "effectiveSessionIDContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65867,6 +66260,426 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 				return it, err
 			}
 			it.FormatContainsFold = data
+		case "effectivePromptCacheKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKey = data
+		case "effectivePromptCacheKeyNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyNEQ = data
+		case "effectivePromptCacheKeyIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyIn = data
+		case "effectivePromptCacheKeyNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyNotIn = data
+		case "effectivePromptCacheKeyGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyGT = data
+		case "effectivePromptCacheKeyGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyGTE = data
+		case "effectivePromptCacheKeyLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyLT = data
+		case "effectivePromptCacheKeyLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyLTE = data
+		case "effectivePromptCacheKeyContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyContains = data
+		case "effectivePromptCacheKeyHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyHasPrefix = data
+		case "effectivePromptCacheKeyHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyHasSuffix = data
+		case "effectivePromptCacheKeyIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyIsNil = data
+		case "effectivePromptCacheKeyNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyNotNil = data
+		case "effectivePromptCacheKeyEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyEqualFold = data
+		case "effectivePromptCacheKeyContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyContainsFold = data
+		case "effectiveSafetyIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifier"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifier = data
+		case "effectiveSafetyIdentifierNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierNEQ = data
+		case "effectiveSafetyIdentifierIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierIn = data
+		case "effectiveSafetyIdentifierNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierNotIn = data
+		case "effectiveSafetyIdentifierGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierGT = data
+		case "effectiveSafetyIdentifierGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierGTE = data
+		case "effectiveSafetyIdentifierLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierLT = data
+		case "effectiveSafetyIdentifierLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierLTE = data
+		case "effectiveSafetyIdentifierContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierContains = data
+		case "effectiveSafetyIdentifierHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierHasPrefix = data
+		case "effectiveSafetyIdentifierHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierHasSuffix = data
+		case "effectiveSafetyIdentifierIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierIsNil = data
+		case "effectiveSafetyIdentifierNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierNotNil = data
+		case "effectiveSafetyIdentifierEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierEqualFold = data
+		case "effectiveSafetyIdentifierContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierContainsFold = data
+		case "effectiveUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUser"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUser = data
+		case "effectiveUserNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserNEQ = data
+		case "effectiveUserIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserIn = data
+		case "effectiveUserNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserNotIn = data
+		case "effectiveUserGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserGT = data
+		case "effectiveUserGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserGTE = data
+		case "effectiveUserLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserLT = data
+		case "effectiveUserLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserLTE = data
+		case "effectiveUserContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserContains = data
+		case "effectiveUserHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserHasPrefix = data
+		case "effectiveUserHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserHasSuffix = data
+		case "effectiveUserIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserIsNil = data
+		case "effectiveUserNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserNotNil = data
+		case "effectiveUserEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserEqualFold = data
+		case "effectiveUserContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserContainsFold = data
+		case "effectiveSessionID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionID = data
+		case "effectiveSessionIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDNEQ = data
+		case "effectiveSessionIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDIn = data
+		case "effectiveSessionIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDNotIn = data
+		case "effectiveSessionIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDGT = data
+		case "effectiveSessionIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDGTE = data
+		case "effectiveSessionIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDLT = data
+		case "effectiveSessionIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDLTE = data
+		case "effectiveSessionIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDContains = data
+		case "effectiveSessionIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDHasPrefix = data
+		case "effectiveSessionIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDHasSuffix = data
+		case "effectiveSessionIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDIsNil = data
+		case "effectiveSessionIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDNotNil = data
+		case "effectiveSessionIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDEqualFold = data
+		case "effectiveSessionIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDContainsFold = data
 		case "errorMessage":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessage"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -66387,7 +67200,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "effectivePromptCacheKey", "effectivePromptCacheKeyNEQ", "effectivePromptCacheKeyIn", "effectivePromptCacheKeyNotIn", "effectivePromptCacheKeyGT", "effectivePromptCacheKeyGTE", "effectivePromptCacheKeyLT", "effectivePromptCacheKeyLTE", "effectivePromptCacheKeyContains", "effectivePromptCacheKeyHasPrefix", "effectivePromptCacheKeyHasSuffix", "effectivePromptCacheKeyIsNil", "effectivePromptCacheKeyNotNil", "effectivePromptCacheKeyEqualFold", "effectivePromptCacheKeyContainsFold", "effectiveSafetyIdentifier", "effectiveSafetyIdentifierNEQ", "effectiveSafetyIdentifierIn", "effectiveSafetyIdentifierNotIn", "effectiveSafetyIdentifierGT", "effectiveSafetyIdentifierGTE", "effectiveSafetyIdentifierLT", "effectiveSafetyIdentifierLTE", "effectiveSafetyIdentifierContains", "effectiveSafetyIdentifierHasPrefix", "effectiveSafetyIdentifierHasSuffix", "effectiveSafetyIdentifierIsNil", "effectiveSafetyIdentifierNotNil", "effectiveSafetyIdentifierEqualFold", "effectiveSafetyIdentifierContainsFold", "effectiveUser", "effectiveUserNEQ", "effectiveUserIn", "effectiveUserNotIn", "effectiveUserGT", "effectiveUserGTE", "effectiveUserLT", "effectiveUserLTE", "effectiveUserContains", "effectiveUserHasPrefix", "effectiveUserHasSuffix", "effectiveUserIsNil", "effectiveUserNotNil", "effectiveUserEqualFold", "effectiveUserContainsFold", "effectiveSessionID", "effectiveSessionIDNEQ", "effectiveSessionIDIn", "effectiveSessionIDNotIn", "effectiveSessionIDGT", "effectiveSessionIDGTE", "effectiveSessionIDLT", "effectiveSessionIDLTE", "effectiveSessionIDContains", "effectiveSessionIDHasPrefix", "effectiveSessionIDHasSuffix", "effectiveSessionIDIsNil", "effectiveSessionIDNotNil", "effectiveSessionIDEqualFold", "effectiveSessionIDContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67043,6 +67856,426 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.FormatContainsFold = data
+		case "effectivePromptCacheKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKey = data
+		case "effectivePromptCacheKeyNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyNEQ = data
+		case "effectivePromptCacheKeyIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyIn = data
+		case "effectivePromptCacheKeyNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyNotIn = data
+		case "effectivePromptCacheKeyGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyGT = data
+		case "effectivePromptCacheKeyGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyGTE = data
+		case "effectivePromptCacheKeyLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyLT = data
+		case "effectivePromptCacheKeyLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyLTE = data
+		case "effectivePromptCacheKeyContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyContains = data
+		case "effectivePromptCacheKeyHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyHasPrefix = data
+		case "effectivePromptCacheKeyHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyHasSuffix = data
+		case "effectivePromptCacheKeyIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyIsNil = data
+		case "effectivePromptCacheKeyNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyNotNil = data
+		case "effectivePromptCacheKeyEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyEqualFold = data
+		case "effectivePromptCacheKeyContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKeyContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKeyContainsFold = data
+		case "effectiveSafetyIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifier"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifier = data
+		case "effectiveSafetyIdentifierNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierNEQ = data
+		case "effectiveSafetyIdentifierIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierIn = data
+		case "effectiveSafetyIdentifierNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierNotIn = data
+		case "effectiveSafetyIdentifierGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierGT = data
+		case "effectiveSafetyIdentifierGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierGTE = data
+		case "effectiveSafetyIdentifierLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierLT = data
+		case "effectiveSafetyIdentifierLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierLTE = data
+		case "effectiveSafetyIdentifierContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierContains = data
+		case "effectiveSafetyIdentifierHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierHasPrefix = data
+		case "effectiveSafetyIdentifierHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierHasSuffix = data
+		case "effectiveSafetyIdentifierIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierIsNil = data
+		case "effectiveSafetyIdentifierNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierNotNil = data
+		case "effectiveSafetyIdentifierEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierEqualFold = data
+		case "effectiveSafetyIdentifierContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifierContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifierContainsFold = data
+		case "effectiveUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUser"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUser = data
+		case "effectiveUserNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserNEQ = data
+		case "effectiveUserIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserIn = data
+		case "effectiveUserNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserNotIn = data
+		case "effectiveUserGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserGT = data
+		case "effectiveUserGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserGTE = data
+		case "effectiveUserLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserLT = data
+		case "effectiveUserLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserLTE = data
+		case "effectiveUserContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserContains = data
+		case "effectiveUserHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserHasPrefix = data
+		case "effectiveUserHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserHasSuffix = data
+		case "effectiveUserIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserIsNil = data
+		case "effectiveUserNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserNotNil = data
+		case "effectiveUserEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserEqualFold = data
+		case "effectiveUserContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUserContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUserContainsFold = data
+		case "effectiveSessionID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionID = data
+		case "effectiveSessionIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDNEQ = data
+		case "effectiveSessionIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDIn = data
+		case "effectiveSessionIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDNotIn = data
+		case "effectiveSessionIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDGT = data
+		case "effectiveSessionIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDGTE = data
+		case "effectiveSessionIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDLT = data
+		case "effectiveSessionIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDLTE = data
+		case "effectiveSessionIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDContains = data
+		case "effectiveSessionIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDHasPrefix = data
+		case "effectiveSessionIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDHasSuffix = data
+		case "effectiveSessionIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDIsNil = data
+		case "effectiveSessionIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDNotNil = data
+		case "effectiveSessionIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDEqualFold = data
+		case "effectiveSessionIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionIDContainsFold = data
 		case "channelID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -71353,7 +72586,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "clearMetricsReasoningDurationMs", "contentSaved", "contentStorageID", "clearContentStorageID", "contentStorageKey", "clearContentStorageKey", "contentSavedAt", "clearContentSavedAt", "channelID", "clearChannel"}
+	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "effectivePromptCacheKey", "clearEffectivePromptCacheKey", "effectiveSafetyIdentifier", "clearEffectiveSafetyIdentifier", "effectiveUser", "clearEffectiveUser", "effectiveSessionID", "clearEffectiveSessionID", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "clearMetricsReasoningDurationMs", "contentSaved", "contentStorageID", "clearContentStorageID", "contentStorageKey", "clearContentStorageKey", "contentSavedAt", "clearContentSavedAt", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71381,6 +72614,62 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ClearRequestHeaders = data
+		case "effectivePromptCacheKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectivePromptCacheKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectivePromptCacheKey = data
+		case "clearEffectivePromptCacheKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearEffectivePromptCacheKey"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearEffectivePromptCacheKey = data
+		case "effectiveSafetyIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSafetyIdentifier"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSafetyIdentifier = data
+		case "clearEffectiveSafetyIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearEffectiveSafetyIdentifier"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearEffectiveSafetyIdentifier = data
+		case "effectiveUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveUser"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveUser = data
+		case "clearEffectiveUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearEffectiveUser"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearEffectiveUser = data
+		case "effectiveSessionID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveSessionID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveSessionID = data
+		case "clearEffectiveSessionID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearEffectiveSessionID"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearEffectiveSessionID = data
 		case "responseBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
 			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
@@ -76336,6 +77625,8 @@ func (ec *executionContext) _APIKeyProfile(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._APIKeyProfile_quota(ctx, field, obj)
 		case "loadBalanceStrategy":
 			out.Values[i] = ec._APIKeyProfile_loadBalanceStrategy(ctx, field, obj)
+		case "cachePrimaryChannelID":
+			out.Values[i] = ec._APIKeyProfile_cachePrimaryChannelID(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -86456,6 +87747,14 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "requestHeaders":
 			out.Values[i] = ec._Request_requestHeaders(ctx, field, obj)
+		case "effectivePromptCacheKey":
+			out.Values[i] = ec._Request_effectivePromptCacheKey(ctx, field, obj)
+		case "effectiveSafetyIdentifier":
+			out.Values[i] = ec._Request_effectiveSafetyIdentifier(ctx, field, obj)
+		case "effectiveUser":
+			out.Values[i] = ec._Request_effectiveUser(ctx, field, obj)
+		case "effectiveSessionID":
+			out.Values[i] = ec._Request_effectiveSessionID(ctx, field, obj)
 		case "requestBody":
 			field := field
 
@@ -87151,6 +88450,14 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "effectivePromptCacheKey":
+			out.Values[i] = ec._RequestExecution_effectivePromptCacheKey(ctx, field, obj)
+		case "effectiveSafetyIdentifier":
+			out.Values[i] = ec._RequestExecution_effectiveSafetyIdentifier(ctx, field, obj)
+		case "effectiveUser":
+			out.Values[i] = ec._RequestExecution_effectiveUser(ctx, field, obj)
+		case "effectiveSessionID":
+			out.Values[i] = ec._RequestExecution_effectiveSessionID(ctx, field, obj)
 		case "requestBody":
 			field := field
 

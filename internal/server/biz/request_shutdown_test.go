@@ -2,19 +2,26 @@ package biz
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"entgo.io/ent/dialect"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 	"github.com/zhenzou/executors"
 )
 
@@ -153,6 +160,62 @@ func TestRequestService_ClearStaleProcessingOnStartup(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, requestexecution.StatusProcessing, exec.Status)
 	}
+}
+
+func TestRequestService_PersistsEffectiveIdentity(t *testing.T) {
+	svc, client, ctx := setupTestRequestService(t)
+	defer client.Close()
+
+	proj, err := client.Project.Create().SetName("test-project").SetStatus(project.StatusActive).Save(ctx)
+	require.NoError(t, err)
+
+	user, err := client.User.Create().SetEmail("test@example.com").SetPassword("password").Save(ctx)
+	require.NoError(t, err)
+
+	apiKey, err := client.APIKey.Create().SetName("Test Key").SetKey("ah-test").SetProjectID(proj.ID).SetUserID(user.ID).Save(ctx)
+	require.NoError(t, err)
+
+	ctx = contexts.WithProjectID(ctx, proj.ID)
+	ctx = contexts.WithAPIKey(ctx, apiKey)
+	ctx = shared.WithSessionID(ctx, "session-123")
+
+	llmRequest := &llm.Request{
+		Model:    "gpt-5.4",
+		Metadata: map[string]string{"user_id": "metadata-user"},
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+		TransformerMetadata: map[string]any{shared.TransformerMetadataKeyOpenAIIdentityOwner: "user:1"},
+	}
+
+	rawRequest := &httpclient.Request{Headers: http.Header{"Session_id": []string{"session-123"}}, Body: []byte(`{"model":"gpt-5.4"}`)}
+
+	reqRecord, err := svc.CreateRequest(ctx, llmRequest, rawRequest, llm.APIFormatOpenAIResponse)
+	require.NoError(t, err)
+	require.Equal(t, "session-123", reqRecord.EffectivePromptCacheKey)
+	require.Equal(t, "metadata-user", reqRecord.EffectiveSafetyIdentifier)
+	require.Equal(t, "metadata-user", reqRecord.EffectiveUser)
+	require.Equal(t, "session-123", reqRecord.EffectiveSessionID)
+
+	channelEntity, err := client.Channel.Create().
+		SetType("openai").
+		SetName("test-channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-api-key"}).
+		SetSupportedModels([]string{"gpt-5.4"}).
+		SetDefaultTestModel("gpt-5.4").
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelReq := httpclient.Request{
+		Headers: http.Header{"Session_id": []string{"session-123"}},
+		Body: []byte(`{"model":"gpt-5.4","prompt_cache_key":"session-123","safety_identifier":"metadata-user","user":"metadata-user"}`),
+	}
+
+	execRecord, err := svc.CreateRequestExecution(ctx, &Channel{Channel: channelEntity}, "gpt-5.4", reqRecord, channelReq, llm.APIFormatOpenAIResponse)
+	require.NoError(t, err)
+	require.Equal(t, "session-123", execRecord.EffectivePromptCacheKey)
+	require.Equal(t, "metadata-user", execRecord.EffectiveSafetyIdentifier)
+	require.Equal(t, "metadata-user", execRecord.EffectiveUser)
+	require.Equal(t, "session-123", execRecord.EffectiveSessionID)
 }
 
 func TestRequestService_ClearStaleProcessingOnStartup_NoStaleRecords(t *testing.T) {

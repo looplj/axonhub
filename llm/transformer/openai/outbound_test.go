@@ -10,10 +10,12 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -188,6 +190,51 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_IdentityPrecedence(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+
+	transformer := transformerInterface.(*OutboundTransformer)
+
+	t.Run("session fills missing cache and identity", func(t *testing.T) {
+		req := &llm.Request{
+			Model: "gpt-5.4",
+			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+		}
+
+		httpReq, err := transformer.TransformRequest(shared.WithSessionID(context.Background(), "session-abc"), req)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.Equal(t, "session-abc", lo.FromPtr(payload.PromptCacheKey))
+		require.Equal(t, "session-abc", lo.FromPtr(payload.SafetyIdentifier))
+		require.Equal(t, "session-abc", lo.FromPtr(payload.User))
+	})
+
+	t.Run("metadata user_id outranks owner identity", func(t *testing.T) {
+		req := &llm.Request{
+			Model: "gpt-5.4",
+			Metadata: map[string]string{"user_id": "metadata-user"},
+			TransformerMetadata: map[string]any{shared.TransformerMetadataKeyOpenAIIdentityOwner: "owner-user"},
+			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+		}
+
+		httpReq, err := transformer.TransformRequest(context.Background(), req)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.Nil(t, payload.PromptCacheKey)
+		require.Equal(t, "metadata-user", lo.FromPtr(payload.SafetyIdentifier))
+		require.Equal(t, "metadata-user", lo.FromPtr(payload.User))
+	})
 }
 
 func TestOutboundTransformer_TransformRequest_StripsUnsupportedToolCallExtraContentForOpenAI(t *testing.T) {

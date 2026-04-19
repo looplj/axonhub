@@ -95,6 +95,26 @@ func Format(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldFormat, v))
 }
 
+// EffectivePromptCacheKey applies equality check predicate on the "effective_prompt_cache_key" field. It's identical to EffectivePromptCacheKeyEQ.
+func EffectivePromptCacheKey(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectiveSafetyIdentifier applies equality check predicate on the "effective_safety_identifier" field. It's identical to EffectiveSafetyIdentifierEQ.
+func EffectiveSafetyIdentifier(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveUser applies equality check predicate on the "effective_user" field. It's identical to EffectiveUserEQ.
+func EffectiveUser(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectiveUser, v))
+}
+
+// EffectiveSessionID applies equality check predicate on the "effective_session_id" field. It's identical to EffectiveSessionIDEQ.
+func EffectiveSessionID(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectiveSessionID, v))
+}
+
 // ChannelID applies equality check predicate on the "channel_id" field. It's identical to ChannelIDEQ.
 func ChannelID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldChannelID, v))
@@ -498,6 +518,306 @@ func RequestHeadersIsNil() predicate.Request {
 // RequestHeadersNotNil applies the NotNil predicate on the "request_headers" field.
 func RequestHeadersNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldRequestHeaders))
+}
+
+// EffectivePromptCacheKeyEQ applies the EQ predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyNEQ applies the NEQ predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyIn applies the In predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldEffectivePromptCacheKey, vs...))
+}
+
+// EffectivePromptCacheKeyNotIn applies the NotIn predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldEffectivePromptCacheKey, vs...))
+}
+
+// EffectivePromptCacheKeyGT applies the GT predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyGTE applies the GTE predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyLT applies the LT predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyLTE applies the LTE predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyContains applies the Contains predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyHasPrefix applies the HasPrefix predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyHasSuffix applies the HasSuffix predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyIsNil applies the IsNil predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldEffectivePromptCacheKey))
+}
+
+// EffectivePromptCacheKeyNotNil applies the NotNil predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldEffectivePromptCacheKey))
+}
+
+// EffectivePromptCacheKeyEqualFold applies the EqualFold predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectivePromptCacheKeyContainsFold applies the ContainsFold predicate on the "effective_prompt_cache_key" field.
+func EffectivePromptCacheKeyContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldEffectivePromptCacheKey, v))
+}
+
+// EffectiveSafetyIdentifierEQ applies the EQ predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierNEQ applies the NEQ predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierIn applies the In predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldEffectiveSafetyIdentifier, vs...))
+}
+
+// EffectiveSafetyIdentifierNotIn applies the NotIn predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldEffectiveSafetyIdentifier, vs...))
+}
+
+// EffectiveSafetyIdentifierGT applies the GT predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierGTE applies the GTE predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierLT applies the LT predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierLTE applies the LTE predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierContains applies the Contains predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierHasPrefix applies the HasPrefix predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierHasSuffix applies the HasSuffix predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierIsNil applies the IsNil predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldEffectiveSafetyIdentifier))
+}
+
+// EffectiveSafetyIdentifierNotNil applies the NotNil predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldEffectiveSafetyIdentifier))
+}
+
+// EffectiveSafetyIdentifierEqualFold applies the EqualFold predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveSafetyIdentifierContainsFold applies the ContainsFold predicate on the "effective_safety_identifier" field.
+func EffectiveSafetyIdentifierContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldEffectiveSafetyIdentifier, v))
+}
+
+// EffectiveUserEQ applies the EQ predicate on the "effective_user" field.
+func EffectiveUserEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectiveUser, v))
+}
+
+// EffectiveUserNEQ applies the NEQ predicate on the "effective_user" field.
+func EffectiveUserNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldEffectiveUser, v))
+}
+
+// EffectiveUserIn applies the In predicate on the "effective_user" field.
+func EffectiveUserIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldEffectiveUser, vs...))
+}
+
+// EffectiveUserNotIn applies the NotIn predicate on the "effective_user" field.
+func EffectiveUserNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldEffectiveUser, vs...))
+}
+
+// EffectiveUserGT applies the GT predicate on the "effective_user" field.
+func EffectiveUserGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldEffectiveUser, v))
+}
+
+// EffectiveUserGTE applies the GTE predicate on the "effective_user" field.
+func EffectiveUserGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldEffectiveUser, v))
+}
+
+// EffectiveUserLT applies the LT predicate on the "effective_user" field.
+func EffectiveUserLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldEffectiveUser, v))
+}
+
+// EffectiveUserLTE applies the LTE predicate on the "effective_user" field.
+func EffectiveUserLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldEffectiveUser, v))
+}
+
+// EffectiveUserContains applies the Contains predicate on the "effective_user" field.
+func EffectiveUserContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldEffectiveUser, v))
+}
+
+// EffectiveUserHasPrefix applies the HasPrefix predicate on the "effective_user" field.
+func EffectiveUserHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldEffectiveUser, v))
+}
+
+// EffectiveUserHasSuffix applies the HasSuffix predicate on the "effective_user" field.
+func EffectiveUserHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldEffectiveUser, v))
+}
+
+// EffectiveUserIsNil applies the IsNil predicate on the "effective_user" field.
+func EffectiveUserIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldEffectiveUser))
+}
+
+// EffectiveUserNotNil applies the NotNil predicate on the "effective_user" field.
+func EffectiveUserNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldEffectiveUser))
+}
+
+// EffectiveUserEqualFold applies the EqualFold predicate on the "effective_user" field.
+func EffectiveUserEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldEffectiveUser, v))
+}
+
+// EffectiveUserContainsFold applies the ContainsFold predicate on the "effective_user" field.
+func EffectiveUserContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldEffectiveUser, v))
+}
+
+// EffectiveSessionIDEQ applies the EQ predicate on the "effective_session_id" field.
+func EffectiveSessionIDEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDNEQ applies the NEQ predicate on the "effective_session_id" field.
+func EffectiveSessionIDNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDIn applies the In predicate on the "effective_session_id" field.
+func EffectiveSessionIDIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldEffectiveSessionID, vs...))
+}
+
+// EffectiveSessionIDNotIn applies the NotIn predicate on the "effective_session_id" field.
+func EffectiveSessionIDNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldEffectiveSessionID, vs...))
+}
+
+// EffectiveSessionIDGT applies the GT predicate on the "effective_session_id" field.
+func EffectiveSessionIDGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDGTE applies the GTE predicate on the "effective_session_id" field.
+func EffectiveSessionIDGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDLT applies the LT predicate on the "effective_session_id" field.
+func EffectiveSessionIDLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDLTE applies the LTE predicate on the "effective_session_id" field.
+func EffectiveSessionIDLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDContains applies the Contains predicate on the "effective_session_id" field.
+func EffectiveSessionIDContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDHasPrefix applies the HasPrefix predicate on the "effective_session_id" field.
+func EffectiveSessionIDHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDHasSuffix applies the HasSuffix predicate on the "effective_session_id" field.
+func EffectiveSessionIDHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDIsNil applies the IsNil predicate on the "effective_session_id" field.
+func EffectiveSessionIDIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldEffectiveSessionID))
+}
+
+// EffectiveSessionIDNotNil applies the NotNil predicate on the "effective_session_id" field.
+func EffectiveSessionIDNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldEffectiveSessionID))
+}
+
+// EffectiveSessionIDEqualFold applies the EqualFold predicate on the "effective_session_id" field.
+func EffectiveSessionIDEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldEffectiveSessionID, v))
+}
+
+// EffectiveSessionIDContainsFold applies the ContainsFold predicate on the "effective_session_id" field.
+func EffectiveSessionIDContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldEffectiveSessionID, v))
 }
 
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.
