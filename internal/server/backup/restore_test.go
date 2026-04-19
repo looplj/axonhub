@@ -251,20 +251,39 @@ func TestBackupService_Restore_RemapChannelIDsInModelSettingsAndAPIKeyProfiles(t
 }
 
 func TestRemapAPIKeyProfilesChannelIDs_ClearsMissingCachePrimaryChannelID(t *testing.T) {
-	oldChannelID := 123
-	profiles := &objects.APIKeyProfiles{
-		ActiveProfile: "default",
-		Profiles: []objects.APIKeyProfile{
-			{
-				Name:                  "default",
-				CachePrimaryChannelID: &oldChannelID,
+	t.Run("empty map", func(t *testing.T) {
+		oldChannelID := 123
+		profiles := &objects.APIKeyProfiles{
+			ActiveProfile: "default",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name:                  "default",
+					CachePrimaryChannelID: &oldChannelID,
+				},
 			},
-		},
-	}
+		}
 
-	remapAPIKeyProfilesChannelIDs(profiles, map[int]int{456: 789})
+		remapAPIKeyProfilesChannelIDs(profiles, map[int]int{})
 
-	require.Nil(t, profiles.Profiles[0].CachePrimaryChannelID)
+		require.Nil(t, profiles.Profiles[0].CachePrimaryChannelID)
+	})
+
+	t.Run("non-matching map", func(t *testing.T) {
+		oldChannelID := 123
+		profiles := &objects.APIKeyProfiles{
+			ActiveProfile: "default",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name:                  "default",
+					CachePrimaryChannelID: &oldChannelID,
+				},
+			},
+		}
+
+		remapAPIKeyProfilesChannelIDs(profiles, map[int]int{456: 789})
+
+		require.Nil(t, profiles.Profiles[0].CachePrimaryChannelID)
+	})
 }
 
 func TestBackupService_Restore_RemapChannelIDsInProjectProfiles(t *testing.T) {

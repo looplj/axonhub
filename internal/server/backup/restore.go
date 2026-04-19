@@ -212,7 +212,7 @@ func remapExcludeAssociationChannelIDs(exclude []*objects.ExcludeAssociation, ch
 }
 
 func remapAPIKeyProfilesChannelIDs(profiles *objects.APIKeyProfiles, channelIDMap map[int]int) {
-	if profiles == nil || len(channelIDMap) == 0 {
+	if profiles == nil {
 		return
 	}
 
