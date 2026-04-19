@@ -96,6 +96,9 @@ models:
   DecimalInput:
     model:
       - github.com/looplj/axonhub/internal/objects.Decimal
+  Int64:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int64
   ModelMapping:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelMapping
@@ -135,6 +138,13 @@ models:
   ChannelRateLimitInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
+    fields:
+      rpmWindowAnchor:
+        resolver: true
+      tpmWindowAnchor:
+        resolver: true
+      costWindowAnchor:
+        resolver: true
   ChannelCredentials:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials

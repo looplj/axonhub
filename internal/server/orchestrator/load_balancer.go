@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samber/lo"
 	"github.com/viterin/partial"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -134,56 +133,80 @@ func NewLoadBalancer(systemService RetryPolicyProvider, selectionTracker Channel
 
 // candidateScore holds a candidate and its calculated score.
 type candidateScore struct {
-	candidate *ChannelModelsCandidate
-	score     float64
+	candidate     *ChannelModelsCandidate
+	score         float64
+	hardExhausted bool
+}
+
+type ScoredCandidate struct {
+	Candidate     *ChannelModelsCandidate
+	Score         float64
+	HardExhausted bool
 }
 
 // Sort sorts candidates according to the configured strategies.
 // Returns a new slice with top k candidates sorted by descending priority.
 // The top k value is calculated internally based on the retry policy.
 func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool) []*ChannelModelsCandidate {
-	if len(candidates) <= 1 {
-		return candidates
+	scored := lb.SortWithScores(ctx, candidates, model, stream)
+	result := make([]*ChannelModelsCandidate, len(scored))
+	for i, sc := range scored {
+		result[i] = sc.Candidate
+	}
+	return result
+}
+
+func (lb *LoadBalancer) SortWithScores(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool) []ScoredCandidate {
+	if len(candidates) == 0 {
+		return nil
 	}
 
-	// Add model information to context for circuit-breaker strategy
 	ctx = contextWithRequestedModel(ctx, model)
 	ctx = contextWithRequestStream(ctx, stream)
 
-	// Calculate topK based on retry policy
-	topK := lb.calculateTopK(ctx, candidates)
-
-	// Use debug path if debug mode is enabled
-	debugEnabled := IsDebugEnabled(ctx)
-	if lb.debug || debugEnabled {
-		return lb.sortWithDebug(ctx, candidates, model, topK)
+	if len(candidates) == 1 {
+		totalScore := 0.0
+		hardExhausted := false
+		for _, strategy := range lb.strategies {
+			score := strategy.Score(ctx, candidates[0].Channel)
+			if _, ok := strategy.(*RateLimitAwareStrategy); ok && score == rateLimitExhaustedScore {
+				hardExhausted = true
+			}
+			totalScore += score
+		}
+		return []ScoredCandidate{{Candidate: candidates[0], Score: totalScore, HardExhausted: hardExhausted}}
 	}
 
-	// Production path - minimal overhead
-	return lb.sortProduction(ctx, candidates, topK)
+	topK := lb.calculateTopK(ctx, candidates)
+
+	debugEnabled := IsDebugEnabled(ctx)
+	if lb.debug || debugEnabled {
+		return lb.sortWithDebugScored(ctx, candidates, model, topK)
+	}
+
+	return lb.sortProductionScored(ctx, candidates, topK)
 }
 
-// sortProduction is the fast path without debug overhead.
-// Uses partial sorting to efficiently get only the top k candidates.
-func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*ChannelModelsCandidate, topK int) []*ChannelModelsCandidate {
+func (lb *LoadBalancer) sortProductionScored(ctx context.Context, candidates []*ChannelModelsCandidate, topK int) []ScoredCandidate {
 	scored := make([]candidateScore, len(candidates))
 	for i, c := range candidates {
 		totalScore := 0.0
-		// Apply all strategies
+		hardExhausted := false
 		for _, strategy := range lb.strategies {
-			totalScore += strategy.Score(ctx, c.Channel)
+			score := strategy.Score(ctx, c.Channel)
+			if _, ok := strategy.(*RateLimitAwareStrategy); ok && score == rateLimitExhaustedScore {
+				hardExhausted = true
+			}
+			totalScore += score
 		}
 
 		scored[i] = candidateScore{
-			candidate: c,
-			score:     totalScore,
+			candidate:     c,
+			score:         totalScore,
+			hardExhausted: hardExhausted,
 		}
 	}
 
-	// Use partial sort to efficiently get top k candidates
-	// Sort by total score descending (higher score = higher priority)
-	// When scores are equal, use OrderingWeight as tie-breaker (higher weight = higher priority)
-	// Do NOT use channel ID as tie-breaker to avoid deterministic ordering that causes uneven distribution
 	partial.SortFunc(scored, topK, func(a, b candidateScore) int {
 		if a.score > b.score {
 			return -1
@@ -199,34 +222,38 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*Channe
 			}
 		}
 
-		// When score and weight are equal, return 0 to preserve original order (non-deterministic)
 		return 0
 	})
 
-	// Extract top k sorted candidates
-	result := lo.Map(scored[:topK], func(ch candidateScore, _ int) *ChannelModelsCandidate { return ch.candidate })
+	result := make([]ScoredCandidate, topK)
+	for i, cs := range scored[:topK] {
+		result[i] = ScoredCandidate{Candidate: cs.candidate, Score: cs.score, HardExhausted: cs.hardExhausted}
+	}
 
-	// Increment selection count for the top candidate to ensure subsequent
-	// concurrent requests see the updated count and select different channels
-	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
-		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID)
+	if len(result) > 0 && result[0].Candidate != nil && result[0].Candidate.Channel != nil && lb.selectionTracker != nil {
+		lb.selectionTracker.IncrementChannelSelection(result[0].Candidate.Channel.ID)
 	}
 
 	return result
 }
 
-// sortWithDebug is the debug path with detailed logging.
-// Uses partial sorting to efficiently get only the top k candidates.
-func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*ChannelModelsCandidate, model string, topK int) []*ChannelModelsCandidate {
+func hasHardExhaustedStrategyScore(scores []StrategyScore) bool {
+	for _, ss := range scores {
+		if ss.Score == rateLimitExhaustedScore {
+			return true
+		}
+	}
+	return false
+}
+
+func (lb *LoadBalancer) sortWithDebugScored(ctx context.Context, candidates []*ChannelModelsCandidate, model string, topK int) []ScoredCandidate {
 	startTime := time.Now()
 
-	// Calculate detailed scores for each candidate
 	decisions := make([]ChannelDecision, len(candidates))
 	for i, c := range candidates {
 		totalScore := 0.0
 		strategyScores := make([]StrategyScore, 0, len(lb.strategies))
 
-		// Apply all strategies and collect detailed scores
 		for _, strategy := range lb.strategies {
 			scoreStart := time.Now()
 			score, strategyScore := strategy.ScoreWithDebug(ctx, c.Channel)
@@ -239,14 +266,10 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 			Channel:        c.Channel,
 			TotalScore:     totalScore,
 			StrategyScores: strategyScores,
-			FinalRank:      0, // Will be set after sorting
+			FinalRank:      0,
 		}
 	}
 
-	// Use partial sort to efficiently get top k candidates
-	// Sort by total score descending (higher score = higher priority)
-	// When scores are equal, use OrderingWeight as tie-breaker (higher weight = higher priority)
-	// Do NOT use channel ID as tie-breaker to avoid deterministic ordering that causes uneven distribution
 	partial.SortFunc(decisions, topK, func(a, b ChannelDecision) int {
 		if a.TotalScore > b.TotalScore {
 			return -1
@@ -262,33 +285,29 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 			}
 		}
 
-		// When score and weight are equal, return 0 to preserve original order (non-deterministic)
 		return 0
 	})
 
-	// Set final ranks for top k
 	for i := range topK {
 		decisions[i].FinalRank = i + 1
 	}
 
-	// Log the decision with all details (only top k)
 	lb.logDecision(ctx, candidates, model, decisions[:topK], topK, time.Since(startTime))
 
-	result := lo.Map(decisions[:topK], func(decision ChannelDecision, _ int) *ChannelModelsCandidate {
-		// Find the corresponding candidate by channel ID
+	result := make([]ScoredCandidate, topK)
+	for i, decision := range decisions[:topK] {
+		var candidate *ChannelModelsCandidate
 		for _, c := range candidates {
 			if c.Channel.ID == decision.Channel.ID {
-				return c
+				candidate = c
+				break
 			}
 		}
+		result[i] = ScoredCandidate{Candidate: candidate, Score: decision.TotalScore, HardExhausted: hasHardExhaustedStrategyScore(decision.StrategyScores)}
+	}
 
-		return nil
-	})
-
-	// Increment selection count for the top candidate to ensure subsequent
-	// concurrent requests see the updated count and select different channels
-	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
-		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID)
+	if len(result) > 0 && result[0].Candidate != nil && result[0].Candidate.Channel != nil && lb.selectionTracker != nil {
+		lb.selectionTracker.IncrementChannelSelection(result[0].Candidate.Channel.ID)
 	}
 
 	return result

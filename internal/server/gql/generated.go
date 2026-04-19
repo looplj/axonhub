@@ -2173,6 +2173,9 @@ type UserRoleResolver interface {
 type ChannelRateLimitInputResolver interface {
 	Cost(ctx context.Context, obj *objects.ChannelRateLimit, data *float64) error
 
+	RpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error
+	TpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error
+	CostWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error
 	ModelConcurrent(ctx context.Context, obj *objects.ChannelRateLimit, data []*ModelConcurrentInput) error
 }
 
@@ -20071,7 +20074,7 @@ func (ec *executionContext) _ChannelRateLimit_rpm(ctx context.Context, field gra
 			return obj.RPM, nil
 		},
 		nil,
-		ec.marshalOInt2ᚖint64,
+		ec.marshalOInt642ᚖint64,
 		true,
 		false,
 	)
@@ -20084,7 +20087,7 @@ func (ec *executionContext) fieldContext_ChannelRateLimit_rpm(_ context.Context,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20100,7 +20103,7 @@ func (ec *executionContext) _ChannelRateLimit_tpm(ctx context.Context, field gra
 			return obj.TPM, nil
 		},
 		nil,
-		ec.marshalOInt2ᚖint64,
+		ec.marshalOInt642ᚖint64,
 		true,
 		false,
 	)
@@ -20113,7 +20116,7 @@ func (ec *executionContext) fieldContext_ChannelRateLimit_tpm(_ context.Context,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20396,7 +20399,7 @@ func (ec *executionContext) _ChannelRateLimitStatus_rpmCurrent(ctx context.Conte
 			return obj.RpmCurrent, nil
 		},
 		nil,
-		ec.marshalOInt2ᚖint,
+		ec.marshalOInt642ᚖint64,
 		true,
 		false,
 	)
@@ -20409,7 +20412,7 @@ func (ec *executionContext) fieldContext_ChannelRateLimitStatus_rpmCurrent(_ con
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20425,7 +20428,7 @@ func (ec *executionContext) _ChannelRateLimitStatus_rpmLimit(ctx context.Context
 			return obj.RpmLimit, nil
 		},
 		nil,
-		ec.marshalOInt2ᚖint,
+		ec.marshalOInt642ᚖint64,
 		true,
 		false,
 	)
@@ -20438,7 +20441,7 @@ func (ec *executionContext) fieldContext_ChannelRateLimitStatus_rpmLimit(_ conte
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20512,7 +20515,7 @@ func (ec *executionContext) _ChannelRateLimitStatus_tpmCurrent(ctx context.Conte
 			return obj.TpmCurrent, nil
 		},
 		nil,
-		ec.marshalOInt2ᚖint,
+		ec.marshalOInt642ᚖint64,
 		true,
 		false,
 	)
@@ -20525,7 +20528,7 @@ func (ec *executionContext) fieldContext_ChannelRateLimitStatus_tpmCurrent(_ con
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20541,7 +20544,7 @@ func (ec *executionContext) _ChannelRateLimitStatus_tpmLimit(ctx context.Context
 			return obj.TpmLimit, nil
 		},
 		nil,
-		ec.marshalOInt2ᚖint,
+		ec.marshalOInt642ᚖint64,
 		true,
 		false,
 	)
@@ -20554,7 +20557,7 @@ func (ec *executionContext) fieldContext_ChannelRateLimitStatus_tpmLimit(_ conte
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -58017,14 +58020,14 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 		switch k {
 		case "rpm":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rpm"))
-			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			data, err := ec.unmarshalOInt642ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.RPM = data
 		case "tpm":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tpm"))
-			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			data, err := ec.unmarshalOInt642ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -58072,21 +58075,27 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 			if err != nil {
 				return it, err
 			}
-			it.RPMWindowAnchor = data
+			if err = ec.resolvers.ChannelRateLimitInput().RpmWindowAnchor(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "tpmWindowAnchor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tpmWindowAnchor"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TPMWindowAnchor = data
+			if err = ec.resolvers.ChannelRateLimitInput().TpmWindowAnchor(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "costWindowAnchor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costWindowAnchor"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.CostWindowAnchor = data
+			if err = ec.resolvers.ChannelRateLimitInput().CostWindowAnchor(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "modelConcurrent":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelConcurrent"))
 			data, err := ec.unmarshalOModelConcurrentInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrentInputᚄ(ctx, v)
@@ -102909,6 +102918,24 @@ func (ec *executionContext) unmarshalOInt2ᚖint64(ctx context.Context, v any) (
 }
 
 func (ec *executionContext) marshalOInt2ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt64(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOInt642ᚖint64(ctx context.Context, v any) (*int64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt64(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt642ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

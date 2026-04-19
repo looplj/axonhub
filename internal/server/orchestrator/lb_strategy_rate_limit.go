@@ -2,9 +2,11 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/shopspring/decimal"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -24,6 +26,9 @@ type RateLimitProvider struct {
 	ModelConnTracker  ModelConnectionTrackerInterface
 	CostTracker       *ChannelCostTracker
 	QuotaService      *biz.QuotaService
+	rpmFlight         *singleflight.Group
+	tpmFlight         *singleflight.Group
+	costFlight        *singleflight.Group
 }
 
 // RateLimitAwareStrategy adjusts channel scores based on configured RPM/TPM rate limits and concurrency limits.
@@ -35,6 +40,16 @@ type RateLimitAwareStrategy struct {
 
 // NewRateLimitAwareStrategy creates a new rate limit aware load balancing strategy.
 func NewRateLimitAwareStrategy(provider RateLimitProvider) *RateLimitAwareStrategy {
+	if provider.rpmFlight == nil {
+		provider.rpmFlight = &singleflight.Group{}
+	}
+	if provider.tpmFlight == nil {
+		provider.tpmFlight = &singleflight.Group{}
+	}
+	if provider.costFlight == nil {
+		provider.costFlight = &singleflight.Group{}
+	}
+
 	return &RateLimitAwareStrategy{
 		provider: provider,
 		maxScore: 100.0,
@@ -44,6 +59,13 @@ func NewRateLimitAwareStrategy(provider RateLimitProvider) *RateLimitAwareStrate
 // resolveRPM returns the current RPM count, falling back to DB when the in-memory counter returns 0
 // (e.g. after process restart or window rotation). When a DB fallback occurs, the in-memory counter
 // is seeded so subsequent requests use the fast path.
+
+func anchorKey(anchor *time.Time) string {
+	if anchor == nil {
+		return "nil"
+	}
+	return anchor.UTC().Format(time.RFC3339Nano)
+}
 func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	rpmDuration := rl.GetRPMDuration().Duration()
 
@@ -52,16 +74,36 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 		return rpm
 	}
 
-	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
-	windowEnd := windowStart.Add(rpmDuration)
-
-	dbCount, err := s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
-	if err != nil || dbCount <= 0 {
+	if s.provider.RequestTracker.IsRequestWindowDbQueried(channel.ID, rpmDuration, rl.RPMWindowAnchor) {
 		return rpm
 	}
 
-	s.provider.RequestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
-	return dbCount
+	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
+	windowEnd := windowStart.Add(rpmDuration)
+
+	key := fmt.Sprintf("rpm:%d:%s:%s", channel.ID, rpmDuration.String(), anchorKey(rl.RPMWindowAnchor))
+	v, _, _ := s.provider.rpmFlight.Do(key, func() (any, error) {
+		dbCount, err := s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+
+		if err != nil {
+			return nil, err
+		}
+
+		s.provider.RequestTracker.MarkRequestWindowDbQueried(channel.ID, rpmDuration, rl.RPMWindowAnchor)
+
+		if dbCount <= 0 {
+			return nil, nil
+		}
+
+		s.provider.RequestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
+		return dbCount, nil
+	})
+
+	if dbCount, ok := v.(int64); ok {
+		return dbCount
+	}
+
+	return rpm
 }
 
 // resolveTPM returns the current TPM count, falling back to DB when the in-memory counter returns 0.
@@ -74,16 +116,36 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 		return tpm
 	}
 
-	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
-	windowEnd := windowStart.Add(tpmDuration)
-
-	dbCount, err := s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
-	if err != nil || dbCount <= 0 {
+	if s.provider.RequestTracker.IsTokenWindowDbQueried(channel.ID, tpmDuration, rl.TPMWindowAnchor) {
 		return tpm
 	}
 
-	s.provider.RequestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
-	return dbCount
+	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
+	windowEnd := windowStart.Add(tpmDuration)
+
+	key := fmt.Sprintf("tpm:%d:%s:%s", channel.ID, tpmDuration.String(), anchorKey(rl.TPMWindowAnchor))
+	v, _, _ := s.provider.tpmFlight.Do(key, func() (any, error) {
+		dbCount, err := s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+
+		if err != nil {
+			return nil, err
+		}
+
+		s.provider.RequestTracker.MarkTokenWindowDbQueried(channel.ID, tpmDuration, rl.TPMWindowAnchor)
+
+		if dbCount <= 0 {
+			return nil, nil
+		}
+
+		s.provider.RequestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
+		return dbCount, nil
+	})
+
+	if dbCount, ok := v.(int64); ok {
+		return dbCount
+	}
+
+	return tpm
 }
 
 // Name returns the strategy name.
@@ -187,13 +249,30 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
-			if fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
-				currentCost = decimal.NewFromFloatWithExponent(fetchedCost, -12)
-				costCached = true
+			key := fmt.Sprintf("cost:%d:%s:%s", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor))
+			v, sfErr, _ := s.provider.costFlight.Do(key, func() (any, error) {
+				fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+				if err != nil {
+					return nil, err
+				}
+
+				cost := decimal.NewFromFloatWithExponent(fetchedCost, -12)
 
 				if s.provider.CostTracker != nil {
-					s.provider.CostTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
+					s.provider.CostTracker.SetCachedCost(channel.ID, cost, windowEnd)
 				}
+
+				return cost, nil
+			})
+
+			if cost, ok := v.(decimal.Decimal); ok {
+				currentCost = cost
+				costCached = true
+			} else if sfErr != nil {
+				log.Warn(ctx, "failed to fetch channel cost from quota service",
+					log.Int("channel_id", channel.ID),
+					log.Cause(sfErr),
+				)
 			}
 		}
 
@@ -391,17 +470,28 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
-			if fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd}); err == nil {
-				currentCost = decimal.NewFromFloatWithExponent(fetchedCost, -12)
-				costCached = true
-
-				if s.provider.CostTracker != nil {
-					s.provider.CostTracker.SetCachedCost(channel.ID, currentCost, windowEnd)
+			key := fmt.Sprintf("cost:%d:%s:%s", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor))
+			v, sfErr, _ := s.provider.costFlight.Do(key, func() (any, error) {
+				fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+				if err != nil {
+					return nil, err
 				}
 
+				cost := decimal.NewFromFloatWithExponent(fetchedCost, -12)
+
+				if s.provider.CostTracker != nil {
+					s.provider.CostTracker.SetCachedCost(channel.ID, cost, windowEnd)
+				}
+
+				return cost, nil
+			})
+
+			if cost, ok := v.(decimal.Decimal); ok {
+				currentCost = cost
+				costCached = true
 				details["cost_fetched_from_db"] = true
-			} else {
-				details["cost_fetch_error"] = err.Error()
+			} else if sfErr != nil {
+				details["cost_fetch_error"] = sfErr.Error()
 			}
 		}
 

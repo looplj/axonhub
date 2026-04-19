@@ -497,8 +497,8 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 
 	for _, p := range priorities {
 		group := priorityGroups[p]
-		sortedCandidates := s.loadBalancer.Sort(ctx, group, req.Model, useStream)
-		usable, exhausted := splitHardExhaustedCandidates(strategyCtx, sortedCandidates, s.loadBalancer)
+		sortedCandidates := s.loadBalancer.SortWithScores(ctx, group, req.Model, useStream)
+		usable, exhausted := splitHardExhaustedCandidates(sortedCandidates)
 
 		remaining := requiredCount - len(result)
 		if remaining <= 0 {
@@ -540,43 +540,24 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 }
 
 func splitHardExhaustedCandidates(
-	ctx context.Context,
-	candidates []*ChannelModelsCandidate,
-	lb *LoadBalancer,
+	scored []ScoredCandidate,
 ) (usable []*ChannelModelsCandidate, exhausted []*ChannelModelsCandidate) {
-	usable = make([]*ChannelModelsCandidate, 0, len(candidates))
+	usable = make([]*ChannelModelsCandidate, 0, len(scored))
 	exhausted = make([]*ChannelModelsCandidate, 0)
 
-	for _, candidate := range candidates {
-		if isHardExhaustedCandidate(ctx, candidate, lb) {
-			exhausted = append(exhausted, candidate)
+	for _, sc := range scored {
+		if sc.HardExhausted {
+			exhausted = append(exhausted, sc.Candidate)
 			continue
 		}
 
-		usable = append(usable, candidate)
+		usable = append(usable, sc.Candidate)
 	}
 
 	return usable, exhausted
 }
 
-func isHardExhaustedCandidate(ctx context.Context, candidate *ChannelModelsCandidate, lb *LoadBalancer) bool {
-	if candidate == nil || candidate.Channel == nil || lb == nil {
-		return false
-	}
 
-	for _, strategy := range lb.strategies {
-		rateLimitStrategy, ok := strategy.(*RateLimitAwareStrategy)
-		if !ok {
-			continue
-		}
-
-		if rateLimitStrategy.Score(ctx, candidate.Channel) == rateLimitExhaustedScore {
-			return true
-		}
-	}
-
-	return false
-}
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.
 type TagsFilterSelector struct {

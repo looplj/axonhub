@@ -121,12 +121,12 @@ type ChannelPerformanceStat struct {
 }
 
 type ChannelRateLimitStatus struct {
-	RpmCurrent        *int       `json:"rpmCurrent,omitempty"`
-	RpmLimit          *int       `json:"rpmLimit,omitempty"`
+	RpmCurrent        *int64     `json:"rpmCurrent,omitempty"`
+	RpmLimit          *int64     `json:"rpmLimit,omitempty"`
 	RpmResetAt        *time.Time `json:"rpmResetAt,omitempty"`
 	RpmWindowAnchor   *time.Time `json:"rpmWindowAnchor,omitempty"`
-	TpmCurrent        *int       `json:"tpmCurrent,omitempty"`
-	TpmLimit          *int       `json:"tpmLimit,omitempty"`
+	TpmCurrent        *int64     `json:"tpmCurrent,omitempty"`
+	TpmLimit          *int64     `json:"tpmLimit,omitempty"`
 	TpmResetAt        *time.Time `json:"tpmResetAt,omitempty"`
 	TpmWindowAnchor   *time.Time `json:"tpmWindowAnchor,omitempty"`
 	CostCurrent       *float64   `json:"costCurrent,omitempty"`

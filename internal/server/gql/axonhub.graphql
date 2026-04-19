@@ -2,6 +2,7 @@ scalar JSONRawMessage
 scalar JSONRawMessageInput
 scalar Decimal
 scalar DecimalInput
+scalar Int64
 
 type ModelMapping {
   from: String!
@@ -131,8 +132,8 @@ input ChannelSettingsInput {
 }
 
 input ChannelRateLimitInput {
-  rpm: Int
-  tpm: Int
+  rpm: Int64
+  tpm: Int64
   cost: Float
   maxConcurrent: Int
   rpmDuration: RateLimitDuration
@@ -145,8 +146,8 @@ input ChannelRateLimitInput {
 }
 
 type ChannelRateLimit {
-  rpm: Int
-  tpm: Int
+  rpm: Int64
+  tpm: Int64
   cost: Float
   maxConcurrent: Int
   rpmDuration: RateLimitDuration
@@ -612,12 +613,12 @@ extend type Channel {
 }
 
 type ChannelRateLimitStatus {
-  rpmCurrent: Int
-  rpmLimit: Int
+  rpmCurrent: Int64
+  rpmLimit: Int64
   rpmResetAt: Time
   rpmWindowAnchor: Time
-  tpmCurrent: Int
-  tpmLimit: Int
+  tpmCurrent: Int64
+  tpmLimit: Int64
   tpmResetAt: Time
   tpmWindowAnchor: Time
   costCurrent: Float

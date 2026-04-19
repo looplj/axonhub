@@ -24,12 +24,14 @@ func WithClock(c func() time.Time) ClockOption {
 }
 
 type rateLimitWindow struct {
-	requests    int64
-	tokens      int64
-	requestSeed int64
-	tokenSeed   int64
-	windowStart time.Time
-	anchor      *time.Time
+	requests         int64
+	tokens           int64
+	requestSeed      int64
+	tokenSeed        int64
+	requestDbQueried bool
+	tokenDbQueried   bool
+	windowStart      time.Time
+	anchor           *time.Time
 }
 
 func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
@@ -205,6 +207,66 @@ func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.D
 	}
 
 	return w.tokenSeed + w.tokens
+}
+
+func (t *ChannelRequestTracker) IsRequestWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	durationMap, ok := t.counters[channelID]
+	if !ok {
+		return false
+	}
+
+	w, ok := durationMap[d]
+	if !ok {
+		return false
+	}
+
+	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
+	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
+		return false
+	}
+
+	return w.requestDbQueried
+}
+
+func (t *ChannelRequestTracker) MarkRequestWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	w := t.getOrResetWindow(channelID, d, anchor)
+	w.requestDbQueried = true
+}
+
+func (t *ChannelRequestTracker) IsTokenWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	durationMap, ok := t.counters[channelID]
+	if !ok {
+		return false
+	}
+
+	w, ok := durationMap[d]
+	if !ok {
+		return false
+	}
+
+	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
+	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
+		return false
+	}
+
+	return w.tokenDbQueried
+}
+
+func (t *ChannelRequestTracker) MarkTokenWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	w := t.getOrResetWindow(channelID, d, anchor)
+	w.tokenDbQueried = true
 }
 
 func (t *ChannelRequestTracker) SeedRequestCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time) {
