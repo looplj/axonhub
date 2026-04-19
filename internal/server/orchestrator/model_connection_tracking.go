@@ -62,7 +62,7 @@ func (m *modelConnectionTracking) OnOutboundRawRequest(ctx context.Context, requ
 		return request, nil
 	}
 
-	if m.incrKey != nil {
+	if m.incrKey != nil && !m.decremented {
 		m.tracker.DecrementModelConnection(m.incrKey.channelID, m.incrKey.model)
 	}
 
@@ -87,20 +87,10 @@ func (m *modelConnectionTracking) OnOutboundLlmResponse(ctx context.Context, res
 }
 
 func (m *modelConnectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	tracker := m.tracker
-	decrKey := m.incrKey
-
 	return &onCloseStream{
 		stream: stream,
 		onClose: func() {
-			if decrKey != nil {
-				tracker.DecrementModelConnection(decrKey.channelID, decrKey.model)
-				log.Debug(ctx, "Decremented model connection count (stream closed)",
-					log.Int("channel_id", decrKey.channelID),
-					log.String("model", decrKey.model),
-					log.Int("active_connections", tracker.GetModelConnectionCount(decrKey.channelID, decrKey.model)),
-				)
-			}
+			m.decrementConnection(ctx)
 		},
 	}, nil
 }
