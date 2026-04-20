@@ -50,11 +50,11 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     //   },
     // },
     {
-      accessorKey: 'firstUserQuery',
+      accessorKey: 'userQuery',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.userQuery')} />,
       enableSorting: false,
       cell: ({ row }) => {
-        const query = row.getValue('firstUserQuery') as string | null | undefined;
+        const query = row.getValue('userQuery') as string | null | undefined;
         return (
           <div className='max-w-64 truncate text-xs' title={query || ''}>
             {query || '-'}

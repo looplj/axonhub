@@ -23,7 +23,7 @@ export const traceSchema = z.object({
   updatedAt: z.coerce.date(),
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
-  firstUserQuery: z.string().nullable().optional(),
+  userQuery: z.string().nullable().optional(),
   firstText: z.string().nullable().optional(),
 });
 

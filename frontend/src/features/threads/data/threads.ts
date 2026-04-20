@@ -43,7 +43,7 @@ function buildThreadsQuery() {
             tracesSummary: traces(first: 1) {
               totalCount
             }
-            firstUserQuery
+            userQuery: firstUserQuery
           }
           cursor
         }
@@ -106,7 +106,7 @@ function buildThreadDetailQuery() {
                 requests(where: { status: completed }) {
                   totalCount
                 }
-                firstUserQuery
+                userQuery: firstUserQuery
                 firstText
               }
               cursor

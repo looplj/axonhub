@@ -6,7 +6,7 @@
   "threads.columns.project": "项目",
   "threads.columns.unknownProject": "未知项目",
   "threads.columns.traceCount": "追踪数量",
-  "threads.columns.firstUserQuery": "用户查询",
+  "threads.columns.userQuery": "用户查询",
   "threads.columns.details": "详情",
   "threads.actions.viewDetails": "查看详情",
   "threads.detail.title": "线程详情",

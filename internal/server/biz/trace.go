@@ -209,11 +209,18 @@ func (s *Segment) FirstUserQuery() *string {
 		return nil
 	}
 
-	// Search in request spans first
+	// Prefer the latest user query in the current segment.
+	// The first request of a trace may carry prior thread context as prefix,
+	// so the current turn's user prompt is typically the last user_query span.
+	var latestQuery *string
 	for _, span := range s.RequestSpans {
 		if span.Type == "user_query" && span.Value != nil && span.Value.UserQuery != nil {
-			return lo.ToPtr(span.Value.UserQuery.Text)
+			latestQuery = lo.ToPtr(span.Value.UserQuery.Text)
 		}
+	}
+
+	if latestQuery != nil {
+		return latestQuery
 	}
 
 	// If not found in current segment, search in children
