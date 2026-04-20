@@ -101,9 +101,10 @@ export function tzDatetimeToUtc(localValue: string, timezone: string): string | 
       normalized = `${localValue}T00:00`;
     }
     const [datePart, timePart] = normalized.split('T');
-    if (!datePart || !timePart) return null;
+    if (!datePart) return null;
+    const time = timePart || '00:00';
     const [year, month, day] = datePart.split('-').map(Number);
-    const timeSegments = timePart.split(':').map(Number);
+    const timeSegments = time.split(':').map(Number);
     const hour = timeSegments[0];
     const minute = timeSegments[1] || 0;
     const second = timeSegments[2] || 0;

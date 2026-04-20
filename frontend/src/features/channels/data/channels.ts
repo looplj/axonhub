@@ -61,6 +61,48 @@ const channelNamesConnectionSchema = z.object({
   }),
 });
 
+function assignDefined<T extends object>(target: T, patch: Partial<T>): T {
+  const next = { ...target };
+
+  for (const key of Object.keys(patch) as Array<keyof T>) {
+    const value = patch[key];
+    if (value !== undefined) {
+      next[key] = value;
+    }
+  }
+
+  return next;
+}
+
+function mergeChannelSettingsInCache(
+  previous: ChannelSettings | null | undefined,
+  patch: ChannelSettings | null | undefined
+): ChannelSettings | null | undefined {
+  if (patch === undefined) {
+    return previous;
+  }
+
+  if (patch === null || previous == null) {
+    return patch;
+  }
+
+  return assignDefined(previous, patch);
+}
+
+function mergeChannelInCache(previous: Channel, patch: Channel): Channel {
+  const next = assignDefined(previous, patch);
+  next.settings = mergeChannelSettingsInCache(previous.settings, patch.settings);
+  return next;
+}
+
+function isChannelConnectionCache(value: unknown): value is ChannelConnection {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return Array.isArray((value as { edges?: unknown }).edges);
+}
+
 const CREATE_CHANNEL_MUTATION = `
   mutation CreateChannel($input: CreateChannelInput!) {
     createChannel(input: $input) {
@@ -186,6 +228,22 @@ const UPDATE_CHANNEL_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
+          bodyOverrideOperations {
+            op
+            path
+            from
+            to
+            value
+            condition
+          }
+          headerOverrideOperations {
+            op
+            path
+            from
+            to
+            value
+            condition
+          }
           proxy {
             type
             url
@@ -199,6 +257,22 @@ const UPDATE_CHANNEL_MUTATION = `
           }
           passThroughUserAgent
           passThroughBody
+          rateLimit {
+            rpm
+            tpm
+            cost
+            maxConcurrent
+            rpmDuration
+            tpmDuration
+            costDuration
+            rpmWindowAnchor
+            tpmWindowAnchor
+            costWindowAnchor
+            modelConcurrent {
+              model
+              limit
+            }
+          }
         }
       orderingWeight
       errorMessage
@@ -877,6 +951,19 @@ export function useUpdateChannel() {
       return channelSchema.parse(data.updateChannel);
     },
     onSuccess: (data) => {
+      queryClient.setQueriesData({ queryKey: ['channels'] }, (old) => {
+        if (!isChannelConnectionCache(old)) {
+          return old;
+        }
+
+        return {
+          ...old,
+          edges: old.edges.map((edge) => {
+            if (edge.node.id !== data.id) return edge;
+            return { ...edge, node: mergeChannelInCache(edge.node, data) };
+          }),
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['channel', data.id] });
       toast.success(t('channels.messages.updateSuccess'));

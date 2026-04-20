@@ -306,7 +306,6 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
           settings: nextSettings,
         },
       });
-      toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch (_error) {
       toast.error(t('common.errors.internalServerError'));
