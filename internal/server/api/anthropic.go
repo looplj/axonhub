@@ -52,6 +52,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				nil, // cacheIdentityResolver: not needed for Anthropic
 			),
 		},
 		ChannelService: params.ChannelService,

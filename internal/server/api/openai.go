@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/cacheidentity"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -39,6 +40,7 @@ type OpenAIHandlersParams struct {
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
 	Client                      *ent.Client
+	CacheIdentityResolver       *cacheidentity.Resolver
 }
 
 type OpenAIHandlers struct {
@@ -75,6 +77,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -90,6 +93,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -105,6 +109,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -120,6 +125,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -135,6 +141,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -150,6 +157,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -165,6 +173,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -180,6 +189,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.CacheIdentityResolver,
 			),
 		},
 		VideoInboundTransformer: videoInbound,

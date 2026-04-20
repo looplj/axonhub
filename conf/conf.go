@@ -143,6 +143,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.trace.claude_code_trace_enabled", false)
 	v.SetDefault("server.trace.codex_trace_enabled", false)
 
+	// OpenAI cache identity defaults
+	v.SetDefault("server.openai_cache_identity.enabled", true)
+	v.SetDefault("server.openai_cache_identity.extra_session_headers", []string{})
+	v.SetDefault("server.openai_cache_identity.extra_session_body_fields", []string{})
+	v.SetDefault("server.openai_cache_identity.derive_from_conversation_anchor", true)
+	v.SetDefault("server.openai_cache_identity.anchor_max_bytes", 32768)
+
 	// Dashboard defaults
 	v.SetDefault("server.dashboard.all_time_token_stats_soft_ttl", "1h")
 	v.SetDefault("server.dashboard.all_time_token_stats_hard_ttl", "24h")

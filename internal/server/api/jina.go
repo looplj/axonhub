@@ -41,6 +41,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				nil, // cacheIdentityResolver
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -56,6 +57,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				nil, // cacheIdentityResolver
 			),
 		},
 	}

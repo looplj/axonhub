@@ -65,6 +65,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			params.QuotaService,
 			params.PromptProtectionRuleService,
 			params.LiveStreamRegistry,
+				nil, // cacheIdentityResolver
 		),
 	}
 }

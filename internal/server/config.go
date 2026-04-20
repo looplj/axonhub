@@ -26,6 +26,40 @@ type Config struct {
 	DisableSSLVerify bool `conf:"disable_ssl_verify" yaml:"disable_ssl_verify" json:"disable_ssl_verify"`
 	CORS             CORS `conf:"cors" yaml:"cors" json:"cors"`
 	API              API  `conf:"api" yaml:"api" json:"api"`
+
+	OpenAICacheIdentity OpenAICacheIdentity `conf:"openai_cache_identity" yaml:"openai_cache_identity" json:"openai_cache_identity"`
+}
+
+// OpenAICacheIdentity configures upstream-native cache identity resolution
+// for OpenAI-compatible traffic. When enabled, AxonHub derives stable
+// session IDs and prompt cache keys for clients that do not send explicit
+// session identifiers.
+type OpenAICacheIdentity struct {
+	// Enabled controls whether cache identity resolution runs.
+	// Default: true.
+	Enabled bool `conf:"enabled" yaml:"enabled" json:"enabled"`
+
+	// ExtraSessionHeaders lists additional HTTP headers to inspect for
+	// stable session identifiers beyond the built-in candidates
+	// (Session_id, X-Codex-Turn-Metadata, AH-Thread-Id, Conversation_id).
+	ExtraSessionHeaders []string `conf:"extra_session_headers" yaml:"extra_session_headers" json:"extra_session_headers"`
+
+	// ExtraSessionBodyFields lists additional JSON body fields (gjson paths)
+	// to inspect for stable session identifiers beyond the built-in candidates
+	// (metadata.session_id, metadata.conversation_id).
+	ExtraSessionBodyFields []string `conf:"extra_session_body_fields" yaml:"extra_session_body_fields" json:"extra_session_body_fields"`
+
+	// DeriveFromConversationAnchor controls whether a deterministic
+	// conversation-anchor fingerprint is derived when no explicit session
+	// identity is available.
+	// Default: true.
+	DeriveFromConversationAnchor bool `conf:"derive_from_conversation_anchor" yaml:"derive_from_conversation_anchor" json:"derive_from_conversation_anchor"`
+
+	// AnchorMaxBytes is the maximum number of bytes of the canonicalized
+	// anchor content fed to the hash function. Larger values improve
+	// uniqueness for long system prompts at a negligible CPU cost.
+	// Default: 32768.
+	AnchorMaxBytes int `conf:"anchor_max_bytes" yaml:"anchor_max_bytes" json:"anchor_max_bytes"`
 }
 
 // Dashboard holds configuration for the dashboard cache settings.
