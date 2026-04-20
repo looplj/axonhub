@@ -27,8 +27,8 @@ func ChannelAllowsPromptCacheKey(channelType channel.Type, baseURL string) bool 
 // isOfficialOpenAIHost checks if the base URL points to api.openai.com.
 func isOfficialOpenAIHost(baseURL string) bool {
 	if baseURL == "" {
-		// Empty base URL typically means "use default", which is api.openai.com.
-		return true
+		// Default-deny: only explicit official OpenAI hosts are allowlisted.
+		return false
 	}
 
 	parsed, err := url.Parse(baseURL)
