@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"math"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/looplj/axonhub/internal/objects"
@@ -18,7 +17,6 @@ type ChannelRequestTracker struct {
 	evictInt    time.Duration
 	stoppedEarly bool
 	ttl         time.Duration
-	readCount   int64 // atomic counter for periodic cleanup
 }
 
 type ClockOption func(*ChannelRequestTracker)
@@ -203,8 +201,6 @@ func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {
 }
 
 func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d time.Duration, anchor *time.Time) time.Time {
-	t.maybeCleanupOnRead()
-
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -227,8 +223,6 @@ func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d t
 }
 
 func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
-	t.maybeCleanupOnRead()
-
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -260,8 +254,6 @@ func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
 }
 
 func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
-	t.maybeCleanupOnRead()
-
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -415,8 +407,6 @@ func (t *ChannelRequestTracker) IsCoolingDown(channelID int) bool {
 }
 
 func (t *ChannelRequestTracker) GetCooldownUntil(channelID int) (time.Time, bool) {
-	t.maybeCleanupOnRead()
-
 	t.mu.RLock()
 	until, ok := t.cooldowns[channelID]
 	t.mu.RUnlock()
@@ -445,31 +435,6 @@ func (t *ChannelRequestTracker) clearExpiredCooldown(channelID int, observedUnti
 
 	if currentUntil.Equal(observedUntil) && now.After(currentUntil) {
 		delete(t.cooldowns, channelID)
-	}
-}
-
-func (t *ChannelRequestTracker) maybeCleanupOnRead() {
-	count := atomic.AddInt64(&t.readCount, 1)
-	if count%1000 == 0 {
-		t.cleanupStaleEntries()
-	}
-}
-
-func (t *ChannelRequestTracker) cleanupStaleEntries() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	now := t.clock()
-	for channelID, durationMap := range t.counters {
-		for dur, w := range durationMap {
-			windowEnd := w.windowStart.Add(dur)
-			if now.After(windowEnd.Add(t.ttl)) {
-				delete(durationMap, dur)
-			}
-		}
-		if len(durationMap) == 0 {
-			delete(t.counters, channelID)
-		}
 	}
 }
 

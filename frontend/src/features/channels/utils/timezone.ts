@@ -96,7 +96,11 @@ export function utcToTzDatetime(iso: string | null | undefined, timezone: string
 export function tzDatetimeToUtc(localValue: string, timezone: string): string | null {
   if (!localValue) return null;
   try {
-    const [datePart, timePart] = localValue.split('T');
+    let normalized = localValue;
+    if (!localValue.includes('T')) {
+      normalized = `${localValue}T00:00`;
+    }
+    const [datePart, timePart] = normalized.split('T');
     if (!datePart || !timePart) return null;
     const [year, month, day] = datePart.split('-').map(Number);
     const timeSegments = timePart.split(':').map(Number);

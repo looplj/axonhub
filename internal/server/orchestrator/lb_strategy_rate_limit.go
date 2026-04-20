@@ -69,19 +69,20 @@ func anchorKey(anchor *time.Time) string {
 func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	rpmDuration := rl.GetRPMDuration().Duration()
 
-	rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
-	if rpm > 0 || s.provider.QuotaService == nil {
+	if s.provider.QuotaService == nil {
+		rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
 		return rpm
 	}
 
 	if s.provider.RequestTracker.IsRequestWindowDbQueried(channel.ID, rpmDuration, rl.RPMWindowAnchor) {
+		rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
 		return rpm
 	}
 
 	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
 	windowEnd := windowStart.Add(rpmDuration)
 
-	key := fmt.Sprintf("rpm:%d:%s:%s", channel.ID, rpmDuration.String(), anchorKey(rl.RPMWindowAnchor))
+	key := fmt.Sprintf("rpm:%d:%s:%s:%d", channel.ID, rpmDuration.String(), anchorKey(rl.RPMWindowAnchor), windowStart.Unix())
 	v, sfErr, _ := s.provider.rpmFlight.Do(key, func() (any, error) {
 		dbCount, err := s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 
@@ -110,6 +111,7 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 		return dbCount
 	}
 
+	rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
 	return rpm
 }
 
@@ -118,19 +120,20 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	tpmDuration := rl.GetTPMDuration().Duration()
 
-	tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
-	if tpm > 0 || s.provider.QuotaService == nil {
+	if s.provider.QuotaService == nil {
+		tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
 		return tpm
 	}
 
 	if s.provider.RequestTracker.IsTokenWindowDbQueried(channel.ID, tpmDuration, rl.TPMWindowAnchor) {
+		tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
 		return tpm
 	}
 
 	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
 	windowEnd := windowStart.Add(tpmDuration)
 
-	key := fmt.Sprintf("tpm:%d:%s:%s", channel.ID, tpmDuration.String(), anchorKey(rl.TPMWindowAnchor))
+	key := fmt.Sprintf("tpm:%d:%s:%s:%d", channel.ID, tpmDuration.String(), anchorKey(rl.TPMWindowAnchor), windowStart.Unix())
 	v, sfErr, _ := s.provider.tpmFlight.Do(key, func() (any, error) {
 		dbCount, err := s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 
@@ -159,6 +162,7 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 		return dbCount
 	}
 
+	tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
 	return tpm
 }
 
@@ -275,14 +279,14 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
-			key := fmt.Sprintf("cost:%d:%s:%s", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor))
+			key := fmt.Sprintf("cost:%d:%s:%s:%d", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor), windowStart.Unix())
 			v, sfErr, _ := s.provider.costFlight.Do(key, func() (any, error) {
 				fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 				if err != nil {
 					return nil, err
 				}
 
-				cost := decimal.NewFromFloatWithExponent(fetchedCost, -12)
+				cost := decimal.NewFromFloat(fetchedCost)
 
 				if s.provider.CostTracker != nil {
 					s.provider.CostTracker.SetCachedCost(channel.ID, cost, windowEnd)
@@ -513,14 +517,14 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
-			key := fmt.Sprintf("cost:%d:%s:%s", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor))
+			key := fmt.Sprintf("cost:%d:%s:%s:%d", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor), windowStart.Unix())
 			v, sfErr, _ := s.provider.costFlight.Do(key, func() (any, error) {
 				fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 				if err != nil {
 					return nil, err
 				}
 
-				cost := decimal.NewFromFloatWithExponent(fetchedCost, -12)
+				cost := decimal.NewFromFloat(fetchedCost)
 
 				if s.provider.CostTracker != nil {
 					s.provider.CostTracker.SetCachedCost(channel.ID, cost, windowEnd)

@@ -238,13 +238,13 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
     append({ model: '', limit: '' });
   }, [append]);
 
-  const lastResetRowId = useRef<string | null>(null);
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    if (open && currentRow.id !== lastResetRowId.current) {
+    if (open && !prevOpenRef.current) {
       form.reset(getRateLimitDefaults(currentRow));
-      lastResetRowId.current = currentRow.id;
     }
+    prevOpenRef.current = open;
   }, [open, currentRow, form]);
 
   const onSubmit = async (values: RateLimitFormValues) => {
