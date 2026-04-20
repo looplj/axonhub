@@ -144,6 +144,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	reqCopy.Metadata = nil
 
+	reqCopy.TransformOptions.ArrayInputs = lo.ToPtr(true)
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
