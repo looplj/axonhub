@@ -36,10 +36,10 @@ func (m *cacheIdentityMiddleware) OnInboundLlmRequest(ctx context.Context, llmRe
 	// Store resolved values on TransformerMetadata for later use.
 	cacheidentity.StoreOnRequest(llmRequest, result)
 
-	// Inject session ID into context so downstream components can access it.
-	// This does NOT overwrite a session ID already set by the trace middleware
-	// (e.g., from Codex Session_id header).
-	ctx = cacheidentity.InjectSessionIDToContext(ctx, result)
+	// Note: Session ID is stored on TransformerMetadata above. Context-level
+	// injection happens later in applyCacheIdentityGating, which correctly
+	// returns the updated context. We cannot inject here because
+	// OnInboundLlmRequest does not return context.
 
 	if log.DebugEnabled(ctx) {
 		redactedKey := result.PromptCacheKey

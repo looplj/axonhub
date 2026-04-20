@@ -40,8 +40,11 @@ type OpenAICacheIdentity struct {
 	Enabled bool `conf:"enabled" yaml:"enabled" json:"enabled"`
 
 	// ExtraSessionHeaders lists additional HTTP headers to inspect for
-	// stable session identifiers beyond the built-in candidates
-	// (Session_id, X-Codex-Turn-Metadata, AH-Thread-Id, Conversation_id).
+	// stable session identifiers beyond the built-in candidates:
+	//   - Session_id (Codex direct header)
+	//   - X-Codex-Turn-Metadata (session_id extracted via codex.GetSessionIDFromHeaders)
+	//   - AH-Thread-Id (configurable thread header)
+	//   - Conversation_id
 	ExtraSessionHeaders []string `conf:"extra_session_headers" yaml:"extra_session_headers" json:"extra_session_headers"`
 
 	// ExtraSessionBodyFields lists additional JSON body fields (gjson paths)

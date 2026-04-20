@@ -43,14 +43,14 @@ func DeriveAnchor(messages []llm.Message, projectID int, apiKeyID int, maxBytes 
 		case "system", "developer":
 			if seenUser {
 				// system/developer after first user → stop
-				break
+				goto done
 			}
 
 			parts = append(parts, canonicalizeMessage(msg))
 		case "user":
 			if seenUser {
 				// second user message → stop
-				break
+				goto done
 			}
 
 			parts = append(parts, canonicalizeMessage(msg))
