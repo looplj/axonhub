@@ -9,4 +9,5 @@ type Config struct {
 	ExtraSessionBodyFields       []string `conf:"extra_session_body_fields" yaml:"extra_session_body_fields" json:"extra_session_body_fields"`
 	DeriveFromConversationAnchor bool     `conf:"derive_from_conversation_anchor" yaml:"derive_from_conversation_anchor" json:"derive_from_conversation_anchor"`
 	AnchorMaxBytes               int      `conf:"anchor_max_bytes" yaml:"anchor_max_bytes" json:"anchor_max_bytes"`
+	TrustedPromptCacheKeyHosts   []string `conf:"trusted_prompt_cache_key_hosts" yaml:"trusted_prompt_cache_key_hosts" json:"trusted_prompt_cache_key_hosts"`
 }

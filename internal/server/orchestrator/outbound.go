@@ -310,8 +310,9 @@ var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit bre
 
 // PersistentOutboundTransformer wraps an outbound transformer with shared persistence state.
 type PersistentOutboundTransformer struct {
-	wrapped transformer.Outbound
-	state   *PersistenceState
+	wrapped              transformer.Outbound
+	state                *PersistenceState
+	trustedCacheKeyHosts []string
 }
 
 // APIFormat returns the API format of the transformer.
@@ -430,7 +431,7 @@ func (p *PersistentOutboundTransformer) applyCacheIdentityGating(
 	}
 
 	ch := candidate.Channel
-	allowed := cacheidentity.ChannelAllowsPromptCacheKey(ch.Type, ch.BaseURL)
+	allowed := cacheidentity.ChannelAllowsPromptCacheKey(ch.Type, ch.BaseURL, p.trustedCacheKeyHosts)
 
 	if allowed {
 		// Inject resolved prompt_cache_key if the request doesn't already have one.
@@ -452,6 +453,14 @@ func (p *PersistentOutboundTransformer) applyCacheIdentityGating(
 		}
 
 		cacheidentity.SetPromptCacheKeyEmitAllowed(&cloned, false)
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "prompt_cache_key emission denied",
+				log.String("channel", ch.Name),
+				log.String("host", ch.BaseURL),
+				log.String("source", source),
+			)
+		}
 	}
 
 	return ctx, &cloned

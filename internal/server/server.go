@@ -105,6 +105,7 @@ func Run(opts ...fx.Option) {
 					ExtraSessionBodyFields:       ci.ExtraSessionBodyFields,
 					DeriveFromConversationAnchor: ci.DeriveFromConversationAnchor,
 					AnchorMaxBytes:               ci.AnchorMaxBytes,
+					TrustedPromptCacheKeyHosts:   ci.TrustedPromptCacheKeyHosts,
 				}, cfg.Trace.ThreadHeader)
 			}),
 			backup.Module,

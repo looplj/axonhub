@@ -60,6 +60,13 @@ func NewResolver(config Config, threadHeader string) *Resolver {
 	}
 }
 
+// TrustedHosts returns the configured trusted proxy hostnames for
+// prompt_cache_key emission. This is used by the orchestrator to
+// thread the list into outbound gating without exposing the full config.
+func (r *Resolver) TrustedHosts() []string {
+	return r.config.TrustedPromptCacheKeyHosts
+}
+
 // Resolve runs the full resolution precedence and returns the result.
 // It reads from:
 //   - headers on llmReq.RawRequest
@@ -134,6 +141,12 @@ func (r *Resolver) resolveSessionIdentity(ctx context.Context, llmReq *llm.Reque
 		return sid, SourceSessionHeader
 	}
 
+	// Built-in: OpenCode X-Session-Affinity header.
+	if headers != nil {
+		if v := strings.TrimSpace(headers.Get("X-Session-Affinity")); v != "" {
+			return v, SourceSessionHeader
+		}
+	}
 	// Built-in: configured thread header (e.g. AH-Thread-Id).
 	if headers != nil {
 		if v := strings.TrimSpace(headers.Get(r.threadHeader)); v != "" {

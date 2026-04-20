@@ -149,6 +149,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.openai_cache_identity.extra_session_body_fields", []string{})
 	v.SetDefault("server.openai_cache_identity.derive_from_conversation_anchor", true)
 	v.SetDefault("server.openai_cache_identity.anchor_max_bytes", 32768)
+	v.SetDefault("server.openai_cache_identity.trusted_prompt_cache_key_hosts", []string{})
 
 	// Dashboard defaults
 	v.SetDefault("server.dashboard.all_time_token_stats_soft_ttl", "1h")

@@ -43,6 +43,7 @@ type OpenAICacheIdentity struct {
 	// stable session identifiers beyond the built-in candidates:
 	//   - Session_id (Codex direct header)
 	//   - X-Codex-Turn-Metadata (session_id extracted via codex.GetSessionIDFromHeaders)
+	//   - X-Session-Affinity (OpenCode session header)
 	//   - AH-Thread-Id (configurable thread header)
 	//   - Conversation_id
 	ExtraSessionHeaders []string `conf:"extra_session_headers" yaml:"extra_session_headers" json:"extra_session_headers"`
@@ -63,6 +64,13 @@ type OpenAICacheIdentity struct {
 	// uniqueness for long system prompts at a negligible CPU cost.
 	// Default: 32768.
 	AnchorMaxBytes int `conf:"anchor_max_bytes" yaml:"anchor_max_bytes" json:"anchor_max_bytes"`
+
+	// TrustedPromptCacheKeyHosts lists additional hostnames that are trusted
+	// to receive derived prompt_cache_key values. Official api.openai.com is
+	// always trusted regardless of this list. Host matching is case-insensitive
+	// and ignores scheme, port, and path.
+	// Default: [] (empty — only api.openai.com trusted).
+	TrustedPromptCacheKeyHosts []string `conf:"trusted_prompt_cache_key_hosts" yaml:"trusted_prompt_cache_key_hosts" json:"trusted_prompt_cache_key_hosts"`
 }
 
 // Dashboard holds configuration for the dashboard cache settings.
