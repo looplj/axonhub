@@ -52,6 +52,7 @@ func NewTestChannelOrchestrator(
 	httpClient *httpclient.HttpClient,
 ) *TestChannelOrchestrator {
 	rateLimitTracker := NewChannelRequestTracker()
+	connTracker := NewDefaultConnectionTracker(100)
 
 	return &TestChannelOrchestrator{
 		channelService:              channelService,
@@ -67,10 +68,10 @@ func NewTestChannelOrchestrator(
 			channelService,
 			NewRateLimitAwareStrategy(RateLimitProvider{
 				RequestTracker:    rateLimitTracker,
-				ConnectionTracker: NewDefaultConnectionTracker(100),
+				ConnectionTracker: connTracker,
 			}),
 		),
-		connectionTracking: NewDefaultConnectionTracker(100),
+		connectionTracking: connTracker,
 		rateLimitTracker:   rateLimitTracker,
 	}
 }

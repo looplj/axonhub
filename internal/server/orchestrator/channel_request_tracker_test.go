@@ -419,7 +419,8 @@ func TestChannelRequestTracker_ForDuration_BackwardCompat(t *testing.T) {
 }
 
 func TestChannelRequestTracker_Anchor_NonNilAnchor(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	tracker.IncrementRequestForDuration(1, time.Hour, &anchor)
@@ -430,7 +431,8 @@ func TestChannelRequestTracker_Anchor_NonNilAnchor(t *testing.T) {
 }
 
 func TestChannelRequestTracker_Anchor_NilAndNonNilAreSeparate(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 
 	tracker.IncrementRequestForDuration(1, time.Hour, nil)
 	tracker.IncrementRequestForDuration(1, time.Hour, nil)
@@ -446,7 +448,8 @@ func TestChannelRequestTracker_Anchor_NilAndNonNilAreSeparate(t *testing.T) {
 }
 
 func TestChannelRequestTracker_Anchor_AnchorChangeResetsWindow(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 	anchor1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 	anchor2 := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
 
@@ -461,7 +464,8 @@ func TestChannelRequestTracker_Anchor_AnchorChangeResetsWindow(t *testing.T) {
 }
 
 func TestChannelRequestTracker_Anchor_TokensWithAnchor(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 	anchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	tracker.AddTokensForDuration(1, 500, time.Hour, &anchor)
@@ -472,7 +476,8 @@ func TestChannelRequestTracker_Anchor_TokensWithAnchor(t *testing.T) {
 }
 
 func TestChannelRequestTracker_Anchor_ReadPathRejectsDifferentAnchor(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 	anchor1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 	anchor2 := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
 
@@ -483,8 +488,9 @@ func TestChannelRequestTracker_Anchor_ReadPathRejectsDifferentAnchor(t *testing.
 }
 
 func TestChannelRequestTracker_Anchor_FutureAnchor(t *testing.T) {
-	tracker := NewChannelRequestTracker()
-	futureAnchor := time.Now().Add(1 * time.Hour)
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+	futureAnchor := now.Add(1 * time.Hour)
 
 	tracker.IncrementRequestForDuration(1, time.Minute, &futureAnchor)
 	count := tracker.GetRequestCountForDuration(1, time.Minute, &futureAnchor)
@@ -492,7 +498,8 @@ func TestChannelRequestTracker_Anchor_FutureAnchor(t *testing.T) {
 }
 
 func TestChannelRequestTracker_Anchor_ZeroTimeAnchor(t *testing.T) {
-	tracker := NewChannelRequestTracker()
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
 	zeroTime := time.Time{}
 
 	tracker.IncrementRequestForDuration(1, time.Minute, &zeroTime)

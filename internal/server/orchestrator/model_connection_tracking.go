@@ -69,9 +69,8 @@ func (m *modelConnectionTracking) OnOutboundRawRequest(ctx context.Context, requ
 
 	m.incrKey = &modelConnectionKey{channelID: channel.ID, model: model}
 	m.decremented = false
-	m.decrementMu.Unlock()
-
 	m.tracker.IncrementModelConnection(channel.ID, model)
+	m.decrementMu.Unlock()
 
 	log.Debug(ctx, "Incremented model connection count",
 		log.Int("channel_id", channel.ID),

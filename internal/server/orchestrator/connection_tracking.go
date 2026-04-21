@@ -70,7 +70,7 @@ func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream str
 	return &onCloseStream{
 		stream: stream,
 		onClose: func() {
-			m.decrementConnection(ctx)
+			m.decrementConnection(context.WithoutCancel(ctx))
 		},
 	}, nil
 }

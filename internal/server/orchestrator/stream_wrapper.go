@@ -21,7 +21,10 @@ func (s *onCloseStream) Current() *llm.Response {
 
 func (s *onCloseStream) Next() bool {
 	if !s.stream.Next() {
-		s.closed.Do(s.onClose)
+		s.closed.Do(func() {
+			s.onClose()
+			_ = s.stream.Close()
+		})
 		return false
 	}
 

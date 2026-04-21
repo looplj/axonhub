@@ -49,7 +49,11 @@ func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrches
 	} else {
 		rateLimitTracker = NewChannelRequestTracker()
 	}
-	rateLimitTracker.Start()
+	// Only start default (non-fx) trackers. When trackers are provided via fx,
+	// the fx lifecycle hook handles Start/Stop.
+	if cfg.RateLimitTracker == nil {
+		rateLimitTracker.Start()
+	}
 
 	var modelConnectionTracker *ModelConnectionTracker
 	if cfg.ModelConnectionTracker != nil {
@@ -64,7 +68,9 @@ func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrches
 	} else {
 		costTracker = NewChannelCostTracker()
 	}
-	costTracker.Start()
+	if cfg.CostTracker == nil {
+		costTracker.Start()
+	}
 
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()

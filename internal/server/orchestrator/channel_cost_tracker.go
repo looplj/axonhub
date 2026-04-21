@@ -67,6 +67,7 @@ func (t *ChannelCostTracker) Start() {
 	}
 
 	t.stopCh = make(chan struct{})
+	stopCh := t.stopCh
 
 	go func() {
 		ticker := time.NewTicker(t.evictInt)
@@ -76,7 +77,7 @@ func (t *ChannelCostTracker) Start() {
 			select {
 			case <-ticker.C:
 				t.EvictExpired()
-			case <-t.stopCh:
+			case <-stopCh:
 				return
 			}
 		}
@@ -125,7 +126,8 @@ func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool
 	}
 
 	if ttlExpired {
-		// TTL expired but window not ended - return stale data (fail-closed)
+		// TTL expired but window not ended - return stale data (fail-open for rate limiting:
+// stale/low cost data makes the limiter think more budget is available).
 		return entry.cost, true
 	}
 
@@ -158,7 +160,7 @@ func (t *ChannelCostTracker) EvictExpired() {
 
 	for id, entry := range t.cache {
 		// Only evict entries whose window has ended.
-		// TTL-expired entries within the active window are kept for stale reads (fail-closed).
+		// TTL-expired entries within the active window are kept for stale reads (fail-open for rate limiting).
 		if now.After(entry.windowEnd) {
 			delete(t.cache, id)
 		}

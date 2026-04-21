@@ -159,11 +159,11 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 //
 //nolint:containedctx // ctx is used for logging.
 type rateLimitTrackingStream struct {
-	ctx         context.Context
-	stream      streams.Stream[*llm.Response]
-	tracker     *ChannelRequestTracker
-	outbound    *PersistentOutboundTransformer
-	tokensAdded bool
+	ctx            context.Context
+	stream         streams.Stream[*llm.Response]
+	tracker        *ChannelRequestTracker
+	outbound       *PersistentOutboundTransformer
+	lastTotalTokens int64
 }
 
 func (s *rateLimitTrackingStream) Current() *llm.Response {
@@ -172,19 +172,20 @@ func (s *rateLimitTrackingStream) Current() *llm.Response {
 		return event
 	}
 
-	if !s.tokensAdded && event.Usage != nil && event.Usage.TotalTokens > 0 {
+	if event.Usage != nil && event.Usage.TotalTokens > 0 && event.Usage.TotalTokens > s.lastTotalTokens {
 		channel := s.outbound.GetCurrentChannel()
 		if channel != nil {
+			delta := event.Usage.TotalTokens - s.lastTotalTokens
+			s.lastTotalTokens = event.Usage.TotalTokens
 			duration := getTPMDuration(channel)
 			anchor := getTPMAnchor(channel)
-			s.tracker.AddTokensForDuration(channel.ID, event.Usage.TotalTokens, duration, anchor)
-			s.tokensAdded = true
+			s.tracker.AddTokensForDuration(channel.ID, delta, duration, anchor)
 
 			if log.DebugEnabled(s.ctx) {
 				log.Debug(s.ctx, "Incremented rate limit token count from stream",
 					log.Int("channel_id", channel.ID),
 					log.String("channel_name", channel.Name),
-					log.Int64("tokens", event.Usage.TotalTokens),
+					log.Int64("tokens", delta),
 					log.Duration("window", duration),
 					log.Int64("current_tpm", s.tracker.GetTokenCountForDuration(channel.ID, duration, anchor)),
 				)
@@ -196,7 +197,6 @@ func (s *rateLimitTrackingStream) Current() *llm.Response {
 }
 
 func (s *rateLimitTrackingStream) Next() bool {
-	s.tokensAdded = false
 	return s.stream.Next()
 }
 

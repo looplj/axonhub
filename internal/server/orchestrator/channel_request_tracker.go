@@ -74,6 +74,7 @@ func (t *ChannelRequestTracker) Start() {
 		return
 	}
 	t.stopCh = make(chan struct{})
+	stopCh := t.stopCh
 	t.mu.Unlock()
 
 	go func() {
@@ -84,7 +85,7 @@ func (t *ChannelRequestTracker) Start() {
 			select {
 			case <-ticker.C:
 				t.EvictExpired()
-			case <-t.stopCh:
+			case <-stopCh:
 				return
 			}
 		}
@@ -117,15 +118,6 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 		t.counters[channelID] = durationMap
 	}
 
-	for dur, w := range durationMap {
-		if d != dur {
-			windowEnd := w.windowStart.Add(dur)
-			if now.After(windowEnd.Add(t.ttl)) {
-				delete(durationMap, dur)
-			}
-		}
-	}
-
 	w, ok := durationMap[d]
 	if !ok {
 		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
@@ -139,10 +131,12 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 }
 
 func anchorEqual(a, b *time.Time) bool {
-	if a == nil && b == nil {
+	aIsZero := a == nil || a.IsZero()
+	bIsZero := b == nil || b.IsZero()
+	if aIsZero && bIsZero {
 		return true
 	}
-	if a == nil || b == nil {
+	if aIsZero || bIsZero {
 		return false
 	}
 	return a.Equal(*b)
@@ -165,7 +159,7 @@ func (t *ChannelRequestTracker) IncrementRequestForDuration(channelID int, d tim
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	if w.requests < math.MaxInt64 {
+	if w.requestSeed+w.requests < math.MaxInt64 {
 		w.requests++
 	}
 }

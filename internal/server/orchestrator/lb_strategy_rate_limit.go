@@ -90,13 +90,11 @@ func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Ch
 			return nil, err
 		}
 
-		s.provider.RequestTracker.MarkRequestWindowDbQueried(channel.ID, rpmDuration, rl.RPMWindowAnchor)
-
-		if dbCount <= 0 {
-			return nil, nil
+		if dbCount > 0 {
+			s.provider.RequestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
 		}
 
-		s.provider.RequestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
+		s.provider.RequestTracker.MarkRequestWindowDbQueried(channel.ID, rpmDuration, rl.RPMWindowAnchor)
 		return dbCount, nil
 	})
 
@@ -141,13 +139,11 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 			return nil, err
 		}
 
-		s.provider.RequestTracker.MarkTokenWindowDbQueried(channel.ID, tpmDuration, rl.TPMWindowAnchor)
-
-		if dbCount <= 0 {
-			return nil, nil
+		if dbCount > 0 {
+			s.provider.RequestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
 		}
 
-		s.provider.RequestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
+		s.provider.RequestTracker.MarkTokenWindowDbQueried(channel.ID, tpmDuration, rl.TPMWindowAnchor)
 		return dbCount, nil
 	})
 
@@ -169,6 +165,11 @@ func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Ch
 // Name returns the strategy name.
 func (s *RateLimitAwareStrategy) Name() string {
 	return "RateLimitAware"
+}
+
+// IsHardExhausted implements HardExhaustibleStrategy.
+func (s *RateLimitAwareStrategy) IsHardExhausted(score float64) bool {
+	return score == rateLimitExhaustedScore
 }
 
 func (s *RateLimitAwareStrategy) resolveConcurrencyLimit(ctx context.Context, channel *biz.Channel) (limit int64, source string, configured bool) {
@@ -207,6 +208,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	settings := channel.Settings
 	if settings == nil || settings.RateLimit == nil {
+		// No rate limit configured — fall back to connection-based scoring
 		if s.provider.ConnectionTracker != nil {
 			if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(ctx, channel); concurrencyLimit > 0 {
 				concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
@@ -231,34 +233,36 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 	rl := settings.RateLimit
 
 	var maxRatio float64
+	exhausted := false
 
 	// Check RPM (Requests Per Minute)
 	if rl.RPM != nil && *rl.RPM > 0 {
 		rpm := s.resolveRPM(ctx, channel, rl)
 		if rpm >= *rl.RPM {
-			return rateLimitExhaustedScore
-		}
-
-		ratio := float64(rpm) / float64(*rl.RPM)
-		if ratio > maxRatio {
-			maxRatio = ratio
+			exhausted = true
+		} else {
+			ratio := float64(rpm) / float64(*rl.RPM)
+			if ratio > maxRatio {
+				maxRatio = ratio
+			}
 		}
 	}
 
 	// Check TPM (Tokens Per Minute)
-	if rl.TPM != nil && *rl.TPM > 0 {
+	if !exhausted && rl.TPM != nil && *rl.TPM > 0 {
 		tpm := s.resolveTPM(ctx, channel, rl)
 		if tpm >= *rl.TPM {
-			return rateLimitExhaustedScore
-		}
-
-		ratio := float64(tpm) / float64(*rl.TPM)
-		if ratio > maxRatio {
-			maxRatio = ratio
+			exhausted = true
+		} else {
+			ratio := float64(tpm) / float64(*rl.TPM)
+			if ratio > maxRatio {
+				maxRatio = ratio
+			}
 		}
 	}
 
-	if rl.Cost != nil && rl.Cost.IsPositive() {
+	// Check Cost
+	if !exhausted && rl.Cost != nil && rl.Cost.IsPositive() {
 		currentCost, costCached := decimal.Zero, false
 
 		if s.provider.CostTracker != nil {
@@ -270,7 +274,12 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 				log.Warn(ctx, "cost limit configured but no cached cost data and no quota service for fallback",
 					log.Int("channel_id", channel.ID),
 				)
-				return s.maxScore * 0.5
+				// Apply a conservative penalty but continue checking other limits
+				// (Connection, ModelConn) before returning.
+				penaltyRatio := 0.5
+				if penaltyRatio > maxRatio {
+					maxRatio = penaltyRatio
+				}
 			}
 		}
 
@@ -306,11 +315,19 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			}
 		}
 
-		if costCached && currentCost.GreaterThanOrEqual(*rl.Cost) {
-			return rateLimitExhaustedScore
+		// DB fetch failed and no cached data — apply conservative penalty
+		if !costCached {
+			penaltyRatio := 0.5
+			if penaltyRatio > maxRatio {
+				maxRatio = penaltyRatio
+			}
 		}
 
-		if costCached {
+		if !exhausted && costCached && currentCost.GreaterThanOrEqual(*rl.Cost) {
+			exhausted = true
+		}
+
+		if !exhausted && costCached {
 			ratio := currentCost.Div(*rl.Cost).InexactFloat64()
 			if ratio > maxRatio {
 				maxRatio = ratio
@@ -318,21 +335,23 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 		}
 	}
 
-	if s.provider.ConnectionTracker != nil {
+	// Check Connection
+	if !exhausted && s.provider.ConnectionTracker != nil {
 		if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(ctx, channel); concurrencyLimit > 0 {
 			concurrent := s.provider.ConnectionTracker.GetActiveConnections(channel.ID)
 			if int64(concurrent) >= concurrencyLimit {
-				return rateLimitExhaustedScore
-			}
-
-			ratio := float64(concurrent) / float64(concurrencyLimit)
-			if ratio > maxRatio {
-				maxRatio = ratio
+				exhausted = true
+			} else {
+				ratio := float64(concurrent) / float64(concurrencyLimit)
+				if ratio > maxRatio {
+					maxRatio = ratio
+				}
 			}
 		}
 	}
 
-	if s.provider.ModelConnTracker != nil && ctx != nil {
+	// Check ModelConn
+	if !exhausted && s.provider.ModelConnTracker != nil && ctx != nil {
 		modelID := requestedModelFromContext(ctx)
 		if modelID != "" {
 			// Per-model concurrent limits are only enforced when explicitly configured in ModelConcurrent.
@@ -343,15 +362,19 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 			if modelLimit, hasCustom := rl.GetModelConcurrentLimit(modelID); hasCustom && modelLimit > 0 {
 				modelConcurrent := int64(s.provider.ModelConnTracker.GetModelConnectionCount(channel.ID, modelID))
 				if modelConcurrent >= modelLimit {
-					return rateLimitExhaustedScore
-				}
-
-				ratio := float64(modelConcurrent) / float64(modelLimit)
-				if ratio > maxRatio {
-					maxRatio = ratio
+					exhausted = true
+				} else {
+					ratio := float64(modelConcurrent) / float64(modelLimit)
+					if ratio > maxRatio {
+						maxRatio = ratio
+					}
 				}
 			}
 		}
+	}
+
+	if exhausted {
+		return rateLimitExhaustedScore
 	}
 
 	score := s.maxScore * (1 - maxRatio)
@@ -502,12 +525,11 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 					log.Int("channel_id", channel.ID),
 				)
 				details["cost_check_skipped"] = true
-				score := s.maxScore * 0.5
-				return score, StrategyScore{
-					StrategyName: s.Name(),
-					Score:        score,
-					Details:      details,
-					Duration:     time.Since(startTime),
+				// Apply a conservative penalty but continue checking other limits
+				// (Connection, ModelConn) before returning.
+				penaltyRatio := 0.5
+				if penaltyRatio > maxRatio {
+					maxRatio = penaltyRatio
 				}
 			}
 		}
@@ -542,7 +564,15 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			}
 		}
 
-		if costCached {
+		// DB fetch failed and no cached data — apply conservative penalty
+		if !costCached {
+			penaltyRatio := 0.5
+			if penaltyRatio > maxRatio {
+				maxRatio = penaltyRatio
+			}
+		}
+
+		if !exhausted && costCached {
 			details["cost_limit"] = rl.Cost.String()
 			details["cost_current"] = currentCost.String()
 			details["cost_duration"] = string(rl.GetCostDuration())

@@ -60,7 +60,7 @@ func TestChannelCostTracker_TTLExpiry(t *testing.T) {
 	*clockPtr = now.Add(31 * time.Second)
 
 	got, ok = tracker.GetCachedCost(1)
-	// TTL expired but window not ended - returns stale data (fail-closed)
+	// TTL expired but window not ended - returns stale data (fail-open)
 	assert.True(t, ok)
 	assert.True(t, cost.Equal(got))
 }
@@ -213,4 +213,38 @@ func TestChannelCostTracker_ConcurrentInvalidate(t *testing.T) {
 
 	_, ok := tracker.GetCachedCost(1)
 	assert.False(t, ok)
+}
+
+func TestChannelCostTracker_StartStop(t *testing.T) {
+	tracker := NewChannelCostTracker()
+	tracker.Start()
+	// Verify Start is idempotent
+	tracker.Start() // should not panic or leak goroutines
+	tracker.Stop()
+	// Verify Stop is idempotent
+	tracker.Stop() // should not panic
+}
+
+func TestChannelCostTracker_StopBeforeStart(t *testing.T) {
+	tracker := NewChannelCostTracker()
+	tracker.Stop() // should not panic
+	// Subsequent Start should be a no-op
+	tracker.Start()
+	// Verify the tracker does not start a goroutine by checking that the cost tracker
+	// still functions (set/get) but the background eviction never ran
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := time.Now().Add(time.Hour)
+	tracker.SetCachedCost(1, cost, windowEnd)
+	got, ok := tracker.GetCachedCost(1)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+}
+
+func TestChannelCostTracker_StartStopMultiple(t *testing.T) {
+	tracker := NewChannelCostTracker()
+	tracker.Start()
+	tracker.Stop()
+	// Starting again after stop should be a no-op (stoppedEarly flag prevents restart)
+	tracker.Start()
+	tracker.Stop() // should not panic on double stop
 }

@@ -24,6 +24,13 @@ type ChannelSelectionTracker interface {
 	IncrementChannelSelection(channelID int)
 }
 
+// HardExhaustibleStrategy is an optional interface that strategies can implement
+// to indicate when they have hard-exhausted a channel (score == rateLimitExhaustedScore).
+type HardExhaustibleStrategy interface {
+	LoadBalanceStrategy
+	IsHardExhausted(score float64) bool
+}
+
 // LoadBalanceStrategy defines the interface for load balancing strategies.
 // Each strategy can score and sort channels based on different criteria.
 type LoadBalanceStrategy interface {
@@ -169,7 +176,7 @@ func (lb *LoadBalancer) SortWithScores(ctx context.Context, candidates []*Channe
 		hardExhausted := false
 		for _, strategy := range lb.strategies {
 			score := strategy.Score(ctx, candidates[0].Channel)
-			if _, ok := strategy.(*RateLimitAwareStrategy); ok && score == rateLimitExhaustedScore {
+			if hs, ok := strategy.(HardExhaustibleStrategy); ok && hs.IsHardExhausted(score) {
 				hardExhausted = true
 			}
 			totalScore += score
@@ -194,7 +201,7 @@ func (lb *LoadBalancer) sortProductionScored(ctx context.Context, candidates []*
 		hardExhausted := false
 		for _, strategy := range lb.strategies {
 			score := strategy.Score(ctx, c.Channel)
-			if _, ok := strategy.(*RateLimitAwareStrategy); ok && score == rateLimitExhaustedScore {
+			if hs, ok := strategy.(HardExhaustibleStrategy); ok && hs.IsHardExhausted(score) {
 				hardExhausted = true
 			}
 			totalScore += score

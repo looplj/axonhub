@@ -122,17 +122,19 @@ The `DefaultChannelSelector` uses these strategies in order:
 
 ```go
 loadBalancer := NewLoadBalancer(
+    systemService,
+    channelService,
     NewTraceAwareStrategy(requestService),                         // Priority 1: Trace consistency
     NewErrorAwareStrategy(channelService),                         // Priority 2: Health
     NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Fairness + admin weight
     NewLatencyAwareStrategy(channelService),                       // Priority 4: Streaming FTTL/TPS or non-streaming latency
     NewRateLimitAwareStrategy(RateLimitProvider{
-    RequestTracker:    rateLimitTracker,
-    ConnectionTracker: connectionTracker,
-    ModelConnTracker:  modelConnTracker,
-    CostTracker:       costTracker,
-    QuotaService:      quotaService,
-}), // Priority 5: Rate limits + concurrency + cost
+        RequestTracker:    rateLimitTracker,
+        ConnectionTracker: connectionTracker,
+        ModelConnTracker:  modelConnTracker,
+        CostTracker:       costTracker,
+        QuotaService:      quotaService,
+    }), // Priority 5: Rate limits + concurrency + cost
 )
 ```
 
