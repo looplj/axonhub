@@ -358,14 +358,13 @@ func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 }
 
 func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerIdentifier string, baseURL string) (string, string, error) {
-	p, providerID, ok := s.getProviderByIdentifier(providerIdentifier)
+	p, _, ok := s.getProviderByIdentifier(providerIdentifier)
 	if !ok {
 		log.Error(ctx, "OIDC provider not found in map", log.String("provider", providerIdentifier))
-		cfgProvider, resolvedProviderID, found := findOIDCProviderConfig(s.cfg.Providers, providerIdentifier)
+		cfgProvider, providerID, found := findOIDCProviderConfig(s.cfg.Providers, providerIdentifier)
 		if !found {
 			return "", "", fmt.Errorf("Provider not found")
 		}
-		providerID = resolvedProviderID
 
 		now := time.Now().Unix()
 		lastCheck := s.markProviderCheck(providerID, now)
