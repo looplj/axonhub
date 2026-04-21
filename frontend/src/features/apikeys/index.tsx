@@ -119,7 +119,7 @@ function ApiKeysContent() {
   const columns = React.useMemo(() => createColumns(t, apiKeyPermissions.canWrite), [t, apiKeyPermissions.canWrite]);
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
+    <div className='flex flex-1 flex-col'>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
         <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-3 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>
@@ -133,7 +133,7 @@ function ApiKeysContent() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <div className='mt-6 flex-1 overflow-y-auto'>
+      <div className='mt-6 flex-1'>
         <ApiKeysTable
           data={tableData}
           loading={isLoading}
@@ -175,7 +175,7 @@ export default function ApiKeysManagement() {
         </div>
       </Header>
 
-      <Main fixed>
+      <Main>
         <ApiKeysContent />
       </Main>
       <ApiKeysDialogs />

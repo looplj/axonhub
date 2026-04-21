@@ -134,6 +134,11 @@ type ChannelSettings struct {
 	// When set to true/false, it overrides the global setting.
 	PassThroughUserAgent *bool `json:"passThroughUserAgent,omitempty"`
 
+	// PassThroughBody controls whether to forward the original request body directly
+	// to the upstream provider without re-serialization.
+	// Only effective when the inbound and outbound API formats are identical.
+	PassThroughBody bool `json:"passThroughBody,omitempty"`
+
 	// RateLimit configures the upstream rate limit for the channel.
 	// When configured, the load balancer will skip channels that have exceeded their rate limits.
 	RateLimit *ChannelRateLimit `json:"rateLimit,omitempty"`

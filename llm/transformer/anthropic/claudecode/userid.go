@@ -3,6 +3,7 @@ package claudecode
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"regexp"
@@ -71,10 +72,23 @@ func BuildUserID(uid UserID) string {
 	return string(data)
 }
 
-// GenerateUserID creates a random user_id in v2 JSON format.
-func GenerateUserID(ctx context.Context) string {
-	hexBytes := make([]byte, 32)
-	_, _ = rand.Read(hexBytes)
+// GenerateUserID creates a user_id in v2 JSON format.
+// When accountIdentity is provided, DeviceID and AccountUUID are derived
+// deterministically so the same channel always produces the same identity.
+// When accountIdentity is empty, random values are used as a fallback.
+func GenerateUserID(ctx context.Context, accountIdentity string) string {
+	var deviceID string
+	var accountUUID string
+
+	if accountIdentity != "" {
+		h := sha256.Sum256([]byte(accountIdentity))
+		deviceID = hex.EncodeToString(h[:])
+		accountUUID = uuid.NewSHA1(uuid.NameSpaceURL, []byte(accountIdentity)).String()
+	} else {
+		hexBytes := make([]byte, 32)
+		_, _ = rand.Read(hexBytes)
+		deviceID = hex.EncodeToString(hexBytes)
+	}
 
 	sessionID, ok := shared.GetSessionID(ctx)
 	if !ok || strings.TrimSpace(sessionID) == "" {
@@ -82,8 +96,8 @@ func GenerateUserID(ctx context.Context) string {
 	}
 
 	return BuildUserID(UserID{
-		DeviceID:    hex.EncodeToString(hexBytes),
-		AccountUUID: "",
+		DeviceID:    deviceID,
+		AccountUUID: accountUUID,
 		SessionID:   sessionID,
 	})
 }

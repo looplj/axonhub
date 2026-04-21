@@ -174,6 +174,7 @@
   "models.developers.mistral": "Mistral",
   "models.developers.moonshot": "Moonshot",
   "models.developers.openai": "OpenAI",
+  "models.developers.stepfun": "StepFun",
   "models.developers.xai": "xAI",
   "models.developers.xiaomi": "Xiaomi",
   "models.developers.zai": "Z.ai",

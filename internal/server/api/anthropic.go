@@ -27,6 +27,7 @@ type AnthropicHandlersParams struct {
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
+	LiveStreamRegistry *biz.LiveStreamRegistry
 }
 
 type AnthropicHandlers struct {
@@ -50,6 +51,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
 			),
 		},
 		ChannelService: params.ChannelService,

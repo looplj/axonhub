@@ -328,7 +328,7 @@
   "channels.dialogs.fields.transformOptions.forceArrayInputs.label": "强制数组输入",
   "channels.dialogs.fields.transformOptions.forceArrayInputs.description": "强制渠道接受数组格式的输入",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label": "将 developer 角色替换为 system",
-  "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "发送请求前把 developer 角色替换为 system（仅百炼）",
+  "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "用于不支持 developer 角色的渠道，发送请求前将 developer 角色替换为 system",
   "channels.dialogs.buttons.add": "添加",
   "channels.dialogs.buttons.batchAdd": "批量添加",
   "channels.dialogs.buttons.batchAddTooltip": "输入多个模型，用逗号分隔，例如：gpt-4, gpt-3.5-turbo, claude-3-opus",
@@ -596,5 +596,8 @@
   "channels.dialogs.userAgentPassThrough.label": "User-Agent 穿透",
   "channels.dialogs.userAgentPassThrough.inherit": "继承系统设置",
   "channels.dialogs.userAgentPassThrough.enabled": "已启用",
-  "channels.dialogs.userAgentPassThrough.disabled": "已禁用"
+  "channels.dialogs.userAgentPassThrough.disabled": "已禁用",
+  "channels.dialogs.bodyPassThrough.label": "请求体透传",
+  "channels.dialogs.bodyPassThrough.enabled": "启用请求体透传",
+  "channels.dialogs.bodyPassThrough.warning": "启用后，提示词注入和提示词保护将不会生效。"
 }

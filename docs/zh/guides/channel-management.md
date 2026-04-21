@@ -1,344 +1,211 @@
 # 渠道配置指南
 
-本指南介绍如何在 AxonHub 中配置 AI 提供商渠道。渠道是您的应用程序与 AI 模型提供商之间的桥梁。
+本指南介绍如何在 AxonHub 中配置 AI 服务提供商（如 OpenAI、Anthropic、DeepSeek 等）。
 
-## 概述
+## 什么是渠道？
 
-每个渠道代表与 AI 提供商（OpenAI、Anthropic、Gemini 等）的连接。通过渠道，您可以：
+**渠道**是 AxonHub 连接 AI 提供商的通道。你可以把渠道理解为"供应商连接线"——每个渠道对应一个 AI 服务商（如 OpenAI、Claude、DeepSeek）。
 
-- 同时连接多个 AI 提供商
-- 配置模型映射和请求参数覆盖
-- 动态启用/禁用渠道
-- 在启用前测试连接
+通过渠道，你可以：
+- 同时连接多个 AI 服务商
+- 设置模型名称转换规则
+- 启用或暂停某个服务商
 - 配置多个 API Key 实现负载均衡
 
-## 渠道配置
+## 渠道模型映射在请求流程中的位置
 
-### 基本配置
+渠道模型映射是三层流水线中的**最后一步**。完整说明请参阅 [请求处理流程](../getting-started/request-processing.md#核心概念三层模型设置)。
 
-在管理界面中配置 AI 提供商渠道：
+简单来说：**API Key Profile 改模型名 → 模型关联选渠道 → 渠道改模型名 → 发给上游**
 
-```yaml
-# OpenAI 渠道示例
-name: "openai"
-type: "openai"
-base_url: "https://api.openai.com/v1"
-credentials:
-  api_keys:
-    - "sk-your-openai-key-1"
-    - "sk-your-openai-key-2"
-    - "sk-your-openai-key-3"
-supported_models: ["gpt-5", "gpt-4o"]
-```
+## 创建渠道
 
-### 配置字段
+### 基本步骤
 
-| 字段 | 类型 | 必需 | 描述 |
-|-------|------|------|------|
-| `name` | string | 是 | 渠道的唯一标识符 |
-| `type` | string | 是 | 提供商类型（openai、anthropic、gemini 等） |
-| `base_url` | string | 是 | API 端点 URL |
-| `credentials` | object | 是 | 认证凭据（支持多 API Key） |
-| `supported_models` | array | 是 | 该渠道支持的模型列表 |
-| `settings` | object | 否 | 高级设置（映射、覆盖等） |
-
-## 多 API Key 配置
-
-AxonHub 支持为单个渠道配置多个 API Key，实现自动负载均衡和故障转移。
-
-### 配置方式
-
-```yaml
-# 多 API Key 配置示例
-credentials:
-  api_keys:
-    - "sk-your-key-1"
-    - "sk-your-key-2"
-    - "sk-your-key-3"
-```
-
-### 负载均衡策略
-
-当配置多个 API Key 时，AxonHub 使用以下策略：
-
-| 场景 | 策略 | 说明 |
-| :--- | :--- | :--- |
-| 有 Trace ID | 一致性哈希 | 相同 Trace ID 的请求始终使用相同的 Key |
-| 无 Trace ID | 随机选择 | 从可用 Key 中随机选择 |
-
-### API Key 管理
-
-#### 禁用 API Key
-
-当某个 API Key 出现错误（如额度耗尽、被封禁）时，系统会自动或手动将其禁用：
-
-- 被禁用的 Key 将不再被用于新请求
-- 系统会自动切换到其他可用 Key
-- 禁用信息包括错误代码和原因
-
-#### 启用 API Key
-
-可以手动重新启用之前被禁用的 API Key：
-
-- 从禁用列表中移除该 Key
-- 该 Key 将重新参与负载均衡
-
-#### 删除 API Key
-
-可以彻底删除不再使用的 API Key：
-
-- 从禁用列表和凭据中同时删除
-- 至少保留一个可用的 API Key
-
-### 向后兼容
-
-AxonHub 仍支持单 API Key 配置（旧格式），系统会自动兼容：
-
-```yaml
-# 单 API Key（旧格式，仍支持）
-credentials:
-  api_key: "sk-your-single-key"
-
-# 等效于
-credentials:
-  api_keys:
-    - "sk-your-single-key"
-```
-
-## 测试连接
-
-在启用渠道之前，测试连接以确保凭据正确：
-
-1. 在管理界面中导航到 **渠道管理**
-2. 点击渠道旁边的 **测试** 按钮
-3. 等待测试结果
-4. 如果测试成功，继续启用渠道
-
-## 启用渠道
-
-测试成功后，启用渠道：
-
-1. 点击 **启用** 按钮
-2. 渠道状态将变为 **活跃**
-3. 该渠道现在可用于路由请求
-
-## 模型映射
-
-当请求中的模型名称与上游提供商支持的名称不一致时，可以通过模型映射在网关侧自动重写模型。
-
-### 使用场景
-
-- 将不支持或旧版本的模型 ID 映射到可用的替代模型
-- 为多渠道场景设置回退逻辑（不同渠道对应不同提供商）
-- 为应用程序简化模型名称
-
-### 配置
-
-```yaml
-# 示例：将产品自定义别名映射到上游模型
-settings:
-  modelMappings:
-    - from: "gpt-4o-mini"
-      to: "gpt-4o"
-    - from: "claude-3-sonnet"
-      to: "claude-3.5-sonnet"
-```
-
-### 规则
-
-- AxonHub 仅接受映射到 `supported_models` 中已声明的模型
-- 映射按顺序应用，使用第一个匹配的映射
-- 如果没有匹配的映射，则使用原始模型名称
-
-## 请求覆盖 (Request Override)
-
-请求覆盖允许您为渠道强制设置默认参数，或使用模板动态修改请求。支持以下操作类型：
-
-| 操作类型 | 描述 |
-| :--- | :--- |
-| `set` | 设置字段值 |
-| `delete` | 删除字段 |
-| `rename` | 重命名字段 |
-| `copy` | 复制字段 |
-
-### 请求体覆盖示例
-
-```json
-[
-  {
-    "op": "set",
-    "path": "temperature",
-    "value": "0.7"
-  },
-  {
-    "op": "set",
-    "path": "max_tokens",
-    "value": "2000"
-  },
-  {
-    "op": "delete",
-    "path": "frequency_penalty"
-  }
-]
-```
-
-### 请求头覆盖示例
-
-```json
-[
-  {
-    "op": "set",
-    "path": "X-Custom-Header",
-    "value": "{{.Model}}"
-  }
-]
-```
-
-有关如何使用模板、条件逻辑和更多高级功能的详细信息，请参阅 [请求覆盖指南](request-override.md)。
-
-## 最佳实践
-
-1. **启用前测试**：在启用渠道之前始终测试连接
-2. **使用有意义的名称**：使用描述性的渠道名称以便识别
-3. **配置多 API Key**：为生产渠道配置多个 API Key 以提高可用性
-4. **监控 Key 状态**：定期检查 API Key 的使用情况和禁用状态
-5. **记录映射**：记录模型映射以便维护
-6. **监控使用情况**：定期检查渠道使用情况和性能
-7. **备份凭据**：安全存储凭据并制定备份计划
-
-## 故障排除
-
-### 连接测试失败
-
-- 验证 API 密钥是否正确且有效
-- 检查 API 端点是否可访问
-- 确保账户有足够的额度/配额
-
-### 模型未找到
-
-- 验证模型是否在 `supported_models` 中列出
-- 检查模型映射是否正确配置
-- 确认模型在提供商的目录中可用
-
-### 覆盖参数不生效
-
-- 确保 JSON 有效（使用 JSON 验证器）
-- 检查字段名称是否与提供商的 API 规范匹配
-- 验证嵌套字段使用正确的点分写法
-
-### API Key 频繁被禁用
-
-- 检查 API Key 的额度是否充足
-- 查看禁用原因和错误代码
-- 考虑增加 API Key 数量以分散负载
-
-## Base URL 配置
-
-### 概述
-
-`base_url` 是渠道配置中的必需字段，用于指定 AI 提供商的 API 端点地址。AxonHub 支持灵活的 URL 配置方式，以适应不同的部署场景。
-
-### 默认 Base URL
-
-每种渠道类型都有预设的默认 Base URL，当您创建渠道时会自动填充：
-
-| 渠道类型 | 默认 Base URL |
-|---------|--------------|
-| openai | `https://api.openai.com/v1` |
-| anthropic | `https://api.anthropic.com` |
-| gemini | `https://generativelanguage.googleapis.com/v1beta` |
-| deepseek | `https://api.deepseek.com/v1` |
-| moonshot | `https://api.moonshot.cn/v1` |
-| ... | 其他类型详见配置界面 |
-
-### 自定义 Base URL
-
-您可以配置自定义 Base URL 以支持：
-
-- **第三方代理服务**：通过兼容 OpenAI/Anthropic 协议的代理服务访问模型
-- **私有化部署**：连接企业内部部署的 AI 服务
-- **多区域部署**：使用不同区域的 API 端点
-
-### 特殊后缀
-
-AxonHub 支持在 Base URL 末尾添加特殊后缀来控制 URL 标准化行为：
-
-#### `#` 后缀 - 禁用版本自动追加
-
-在 Base URL 末尾添加 `#`，系统将**不会**自动追加 API 版本号：
-
-```yaml
-# Anthropic 渠道示例 - 使用原始 URL，不自动追加 /v1
-base_url: "https://custom-api.example.com/anthropic#"
-
-# 实际请求 URL: https://custom-api.example.com/anthropic/messages
-# 而不是: https://custom-api.example.com/anthropic/v1/messages
-```
-
-**适用场景**：
-- 使用自定义代理服务，URL 路径已包含版本信息
-- 提供商使用非标准的 URL 结构
-- 需要完全控制请求路径
-
-#### `##` 后缀 - 完全原始模式（OpenAI 格式）
-
-在 Base URL 末尾添加 `##`，系统将：
-1. 禁用版本自动追加
-2. 禁用端点自动追加（如 `/chat/completions`）
-
-```yaml
-# OpenAI 渠道示例 - 完全原始模式
-base_url: "https://custom-gateway.example.com/api/v2##"
-
-# 实际请求 URL: https://custom-gateway.example.com/api/v2
-# 而不是: https://custom-gateway.example.com/api/v2/v1/chat/completions
-```
-
-**适用场景**：
-- 使用完全自定义的 API 网关
-- 需要精确控制完整的请求 URL
-- 兼容特殊的代理服务或中转服务
-
-### 自动版本追加规则
-
-当不使用 `#` 或 `##` 后缀时，系统会根据渠道类型自动追加 API 版本：
-
-| 渠道类型 | 自动追加的版本 |
-|---------|--------------|
-| openai, deepseek, moonshot, xai 等 | `/v1` |
-| gemini | `/v1beta` |
-| doubao | `/v3` |
-| zai, zhipu | `/v4` |
-| anthropic | `/v1` |
-| anthropic_aws (Bedrock) | 不追加 |
-| anthropic_gcp (Vertex) | 不追加 |
+1. 进入 AxonHub 管理界面 → **渠道管理**
+2. 点击 **新建渠道**
+3. 填写基本信息：
+   - **名称**：给渠道起个名字（如"OpenAI 主账号"、"DeepSeek 国内"）
+   - **类型**：选择服务商类型（OpenAI、Anthropic、DeepSeek 等）
+   - **Base URL**：API 地址（一般使用默认值即可）
+   - **API Key**：服务商提供的密钥
 
 ### 配置示例
 
-```yaml
-# 标准配置 - 使用默认行为
-name: "openai-standard"
-type: "openai"
-base_url: "https://api.openai.com"
-# 实际请求: https://api.openai.com/v1/chat/completions
+**OpenAI 渠道：**
 
-# 禁用版本追加 - Anthropic
-name: "anthropic-custom"
-type: "anthropic"
-base_url: "https://api.anthropic.com#"
-# 实际请求: https://api.anthropic.com/messages
+| 字段 | 值 |
+|------|-----|
+| 名称 | OpenAI 主账号 |
+| 类型 | openai |
+| Base URL | https://api.openai.com/v1 |
+| API Key | sk-your-openai-key |
+| 支持模型 | gpt-4o, gpt-4o-mini, gpt-5 |
 
-# 完全原始模式 - OpenAI
-name: "openai-raw"
-type: "openai"
-base_url: "https://gateway.example.com/proxy##"
-# 实际请求: https://gateway.example.com/proxy
+**DeepSeek 渠道：**
+
+| 字段 | 值 |
+|------|-----|
+| 名称 | DeepSeek 国内 |
+| 类型 | deepseek |
+| Base URL | https://api.deepseek.com/v1 |
+| API Key | sk-your-deepseek-key |
+| 支持模型 | deepseek-chat, deepseek-reasoner |
+
+## 配置多个 API Key
+
+当一个账号有多个 API Key 时，可以都配置到同一个渠道中，AxonHub 会自动轮流使用，提高稳定性。
+
+在渠道编辑界面的 **API Key** 区域，逐行添加多个 Key 即可，例如：
+- `sk-key-1`
+- `sk-key-2`
+- `sk-key-3`
+
+### 负载均衡说明
+
+- 相同的 Trace ID 会始终使用同一个 Key（保证会话一致性）
+- 不同请求会随机选择可用的 Key
+- 某个 Key 出错时，系统会自动切换到其他 Key
+
+## 模型映射配置
+
+**什么时候需要模型映射？**
+
+当你想让客户端用一个名称请求，但实际发给上游的是另一个名称时。
+
+**常见场景：**
+
+1. **客户端用简化的名称**：客户端请求 `gpt-4`，实际发给 OpenAI 的是 `gpt-4o`
+2. **统一不同渠道的模型名**：让 `claude-sonnet` 和 `gpt-4` 都指向同一个实际模型
+3. **旧版兼容**：客户端请求旧版模型名，自动映射到新版
+
+### 配置方法
+
+在渠道的 **Settings** 中的模型映射区域添加：
+
+| 客户端请求的模型名 (from) | 实际发给上游的模型名 (to) |
+|--------------------------|--------------------------|
+| gpt-4o-mini | gpt-4o |
+| claude-3-sonnet | claude-3.5-sonnet |
+
+**注意**：目标模型（to）必须在 `supported_models` 列表中。
+
+## 测试和启用渠道
+
+### 测试连接
+
+在启用渠道前，建议先测试连接：
+
+1. 在渠道列表中找到刚创建的渠道
+2. 点击 **测试** 按钮
+3. 等待测试结果
+4. 如果显示成功，说明配置正确
+
+### 启用渠道
+
+测试通过后，点击 **启用** 按钮，渠道状态变为 **活跃**，即可开始接收请求。
+
+## 实际使用场景示例
+
+### 场景 1：Claude Code 使用 OpenRouter
+
+你想在 Claude Code 中使用 OpenRouter 的模型：
+
+1. **创建 OpenRouter 渠道**：
+
+   | 字段 | 值 |
+   |------|-----|
+   | 名称 | OpenRouter |
+   | 类型 | openai（OpenRouter 兼容 OpenAI 格式） |
+   | Base URL | https://openrouter.ai/api/v1 |
+   | API Key | sk-or-your-openrouter-key |
+   | 支持模型 | anthropic/claude-3.5-sonnet, anthropic/claude-3-opus, deepseek/deepseek-chat |
+
+2. **配置 API Key 模型映射**（在 API Key 管理中）：
+
+   | 客户端请求的模型名 (from) | 映射后的模型名 (to) |
+   |--------------------------|---------------------|
+   | claude-sonnet-4-5 | anthropic/claude-3.5-sonnet |
+   | claude-opus-4-5 | anthropic/claude-3-opus |
+
+3. **Claude Code 配置**：
+   ```bash
+   export ANTHROPIC_AUTH_TOKEN="your-axonhub-api-key"
+   export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
+   ```
+
+### 场景 2：多服务商备份
+
+配置主用 OpenAI，备用 DeepSeek：
+
+1. **创建 OpenAI 渠道**（权重 10，优先级高）
+2. **创建 DeepSeek 渠道**（权重 5，优先级低）
+3. **在模型管理中配置关联**：
+   - 设置 OpenAI 渠道为优先级 0（优先使用）
+   - 设置 DeepSeek 渠道为优先级 1（备用）
+
+### 场景 3：成本优化
+
+把贵的模型请求转到便宜的替代模型：
+
+在 API Key Profile 中添加模型映射：
+
+| 客户端请求的模型名 (from) | 映射后的模型名 (to) |
+|--------------------------|---------------------|
+| gpt-4 | claude-3-sonnet |
+| gpt-4-turbo | deepseek-reasoner |
+
+## Base URL 特殊配置
+
+### 默认地址
+
+| 服务商 | 默认 Base URL |
+|-------|--------------|
+| OpenAI | `https://api.openai.com/v1` |
+| Anthropic | `https://api.anthropic.com` |
+| DeepSeek | `https://api.deepseek.com/v1` |
+| Gemini | `https://generativelanguage.googleapis.com/v1beta` |
+
+### 自定义地址
+
+如果使用代理或私有化部署，可以修改 Base URL。
+
+**禁用版本号自动追加**：在 URL 末尾加 `#`
 ```
+https://custom-proxy.example.com/api#
+# 实际请求: /api/messages（不会自动加 /v1）
+```
+
+**完全原始模式**：在 URL 末尾加 `##`
+```
+https://custom-gateway.example.com/api##
+# 实际请求: /api（不会加版本号和端点路径）
+```
+
+## 常见问题
+
+### Q: 测试连接失败怎么办？
+
+- 检查 API Key 是否正确（复制时是否有多余空格）
+- 确认 Base URL 是否可访问
+- 检查服务商账户是否有余额/额度
+
+### Q: 请求时提示"模型未找到"？
+
+- 确认模型已在渠道的 `supported_models` 中
+- 检查模型映射配置是否正确
+- 确认渠道已启用
+
+### Q: 如何设置多个 API Key？
+
+在 `credentials.api_keys` 中列出所有 Key，系统会自动轮询使用。
+
+### Q: API Key 被禁用了怎么恢复？
+
+进入渠道详情，在 **禁用列表** 中找到该 Key，点击 **恢复**。
 
 ## 相关文档
 
-- [请求处理流程指南](request-processing.md) - 从请求入口到上游执行的完整链路
-- [请求重写指南](request-override.md) - 使用模板进行高级请求修改
-- [模型管理指南](model-management.md) - 跨渠道管理模型
-- [负载均衡指南](load-balance.md) - 在多个渠道间分发请求
-- [API 密钥配置指南](api-key-profiles.md) - 组织 API 密钥和权限
+- [模型管理指南](model-management.md) - 配置模型与渠道的关联关系
+- [API Key Profile 指南](api-key-profiles.md) - 配置模型映射和访问权限
+- [请求处理流程](../getting-started/request-processing.md) - 了解完整请求链路

@@ -131,6 +131,7 @@ func (t *OutboundTransformer) TransformRequest(
 		Body:        body,
 		Auth:        auth,
 		ContentType: "application/json",
+		APIFormat:   string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
 

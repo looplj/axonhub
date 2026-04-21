@@ -23,6 +23,7 @@ export function RetrySettings() {
     maxSingleChannelRetries: 2,
     retryDelayMs: 1000,
     loadBalancerStrategy: 'adaptive',
+    emptyResponseDetection: false,
     autoDisableChannel: {
       enabled: false,
       statuses: [],
@@ -37,6 +38,7 @@ export function RetrySettings() {
         maxSingleChannelRetries: retryPolicy.maxSingleChannelRetries,
         retryDelayMs: retryPolicy.retryDelayMs,
         loadBalancerStrategy: retryPolicy.loadBalancerStrategy,
+        emptyResponseDetection: retryPolicy.emptyResponseDetection,
         autoDisableChannel: {
           enabled: retryPolicy.autoDisableChannel?.enabled || false,
           statuses: retryPolicy.autoDisableChannel?.statuses || [],
@@ -206,6 +208,21 @@ export function RetrySettings() {
                   />
                   <span className='text-muted-foreground text-sm'>ms</span>
                 </div>
+              </div>
+
+              {/* Empty Response Detection */}
+              <div className='flex items-center justify-between'>
+                <div className='space-y-0.5'>
+                  <Label htmlFor='empty-response-detection' className='text-base'>
+                    {t('system.retry.emptyResponseDetection.label')}
+                  </Label>
+                  <div className='text-muted-foreground text-sm'>{t('system.retry.emptyResponseDetection.description')}</div>
+                </div>
+                <Switch
+                  id='empty-response-detection'
+                  checked={formData.emptyResponseDetection || false}
+                  onCheckedChange={(checked) => handleInputChange('emptyResponseDetection', checked)}
+                />
               </div>
 
               <Separator />

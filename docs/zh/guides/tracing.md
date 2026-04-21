@@ -228,5 +228,5 @@ Thread (用户会话)
 - **追踪 ID 异常** – 检查上游代理是否覆盖了相关请求头。
 
 ### 相关文档
-- [请求处理流程指南](request-processing.md)
+- [请求处理流程指南](../getting-started/request-processing.md)
 - [负载均衡指南](load-balance.md)

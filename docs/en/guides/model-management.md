@@ -1,383 +1,227 @@
 # Model Management Guide
 
-AxonHub provides a flexible model management system that supports mapping abstract models to specific channels and model implementations through Model Associations, enabling a unified model interface and intelligent channel selection.
+This guide explains how to manage AI models in AxonHub and use "Model Associations" for intelligent routing.
 
-## 🎯 Core Concepts
+## Core Concepts: Models and Channels
 
-### Model
-A Model in AxonHub is an abstract model definition containing:
-- **ModelID** - Unique model identifier (e.g., `gpt-4`, `claude-3-opus`)
-- **Developer** - Model developer (e.g., `openai`, `anthropic`)
-- **Settings** - Model settings, including association rules
-- **ModelCard** - Model metadata (capabilities, costs, limits, etc.)
+### Simple Analogy
 
-### Channel
-A Channel is a specific AI service provider connection containing:
-- List of supported models
-- API configuration and authentication
-- Channel weight and tags
+Imagine you're sending a package:
+- **Model** = The type of item you want to send (e.g., "document", "package")
+- **Channel** = Different courier companies (e.g., "SF Express", "YTO")
+- **Model Association** = Your rule: "Documents go via SF Express, packages via YTO; if SF fails, use YTO"
 
-### Model Association
-Model Associations define the mapping relationships between abstract models and channels, supporting multiple matching strategies.
-
-## 🔗 Model-Channel Relationship
-
-### Relationship Diagram
-
-```
-┌─────────────────┐
-│   AxonHub Model │ (Abstract Model)
-│   ID: gpt-4     │
-└────────┬────────┘
-         │
-         │ Associations (Association Rules)
-         │
-         ▼
-┌─────────────────────────────────────────────────┐
-│          ModelChannelConnection                 │
-│  ┌──────────────┐  ┌──────────────┐           │
-│  │ Channel A    │  │ Channel B    │           │
-│  │ gpt-4-turbo  │  │ gpt-4        │           │
-│  │ Priority: 0   │  │ Priority: 1  │           │
-│  └──────────────┘  └──────────────┘           │
-└─────────────────────────────────────────────────┘
-         │
-         │ Load Balancer
-         │
-         ▼
-┌─────────────────┐
-│   Selected     │ (Selected Candidate)
-│   Candidate     │
-└─────────────────┘
-```
+In AxonHub:
+- **Model**: An abstract name you expose, like `gpt-4` or `claude-sonnet`
+- **Channel**: An actual AI provider connection
+- **Model Association**: Determines which channel and actual model to use when a client requests a model
 
 ### Request Flow
 
-1. **Request Arrives** - Client requests to use model `gpt-4`
-2. **Model Query** - System looks up the Model entity with ModelID `gpt-4`
-3. **Association Resolution** - Resolves matching channels and models based on model's Associations
-4. **Candidate Generation** - Generates `ChannelModelCandidate` list
-5. **Load Balancing** - Applies load balancing strategies to sort candidates
-6. **Request Execution** - Executes request using the first candidate
-7. **Failure Retry** - Switches to next candidate on failure
-
-## 📋 Model Association Types
-
-### 1. channel_model - Specific Channel, Specific Model
-
-Precisely matches a specific model in a specific channel.
-
-```json
-{
-  "type": "channel_model",
-  "priority": 0,
-  "channelModel": {
-    "channelId": 1,
-    "modelId": "gpt-4-turbo"
-  }
-}
+```
+Client Request: "Please answer using gpt-4"
+        ↓
+System Lookup: What associations does gpt-4 have?
+        ↓
+Association Resolution: Priority 0 → OpenAI channel's gpt-4-turbo
+                       Priority 1 → DeepSeek channel's deepseek-chat
+        ↓
+Load Balancing: Select best channel to execute request
 ```
 
-**Use Cases**:
-- Need precise control over which channel a model uses
-- Primary channel with highest priority
+## Where Model Association Fits in the Request Flow
 
-### 2. channel_regex - Specific Channel, Regex Match
+Model Association is the **middle** step in a three-layer pipeline. For the full picture, see [Request Processing Guide](../getting-started/request-processing.md#core-concept-three-layers-of-model-settings).
 
-Matches all models matching the regex pattern in a specific channel.
+In short: **API Key Profile renames → Model Association selects channel → Channel renames → Send upstream**
 
-```json
-{
-  "type": "channel_regex",
-  "priority": 1,
-  "channelRegex": {
-    "channelId": 2,
-    "pattern": "gpt-4.*"
-  }
-}
-```
+## Model Association Types
 
-**Pattern Syntax**: Patterns are automatically anchored with `^` and `$` to match the entire model string. Use `.*` for flexible matching:
-- `gpt-4.*` - Matches `gpt-4`, `gpt-4-turbo`, `gpt-4-vision-preview`
-- `.*flash.*` - Matches `gemini-2.5-flash-preview`, `gemini-flash-2.0`
-- `claude-3-.*-sonnet` - Matches `claude-3-5-sonnet`, `claude-3-opus-sonnet`
+Model associations are "routing rules." AxonHub supports 6 rule types:
 
-**Use Cases**:
-- Channel supports multiple model variants
-- Need flexible model name matching
+### 1. Specific Channel, Specific Model (Most Precise)
 
-### 3. regex - All Channels, Regex Match
+**Purpose**: Precise control over which model version goes through which channel
 
-Matches models matching the regex pattern across all enabled channels.
+**Configuration in Admin UI:**
+- Association Type: "Specific Channel Model"
+- Priority: 0
+- Channel: OpenAI (ID: 1)
+- Model: gpt-4-turbo
 
-```json
-{
-  "type": "regex",
-  "priority": 2,
-  "regex": {
-    "pattern": "gpt-4.*",
-    "exclude": [
-      {
-        "channelNamePattern": ".*test.*",
-        "channelIds": [5, 6],
-        "channelTags": ["beta"]
-      }
-    ]
-  }
-}
-```
+**Scenario**: "When user wants gpt-4, prioritize using OpenAI channel's gpt-4-turbo"
 
-**Exclusion Rules**:
-- `channelNamePattern` - Exclude channels with matching names
-- `channelIds` - Exclude channels with specific IDs
-- `channelTags` - Exclude channels with specific tags
+### 2. Specific Channel, Regex Match (More Flexible)
 
-**Use Cases**:
-- Broadly match models across multiple channels
-- Need to exclude specific channels
+**Purpose**: Match a batch of models in a specific channel
 
-### 4. model - All Channels, Specific Model
+**Configuration in Admin UI:**
+- Association Type: "Channel Regex Match"
+- Priority: 1
+- Channel: DeepSeek (ID: 2)
+- Pattern: `gpt-4.*`
 
-Matches a specific model across all enabled channels.
+**Scenario**: "All models starting with gpt-4 in the DeepSeek channel are acceptable"
 
-```json
-{
-  "type": "model",
-  "priority": 3,
-  "modelId": {
-    "modelId": "gpt-4",
-    "exclude": [
-      {
-        "channelNamePattern": ".*backup.*",
-        "channelIds": [10],
-        "channelTags": ["low-priority"]
-      }
-    ]
-  }
-}
-```
+**Common Patterns:**
+- `gpt-4.*` — Matches `gpt-4`, `gpt-4-turbo`, `gpt-4-vision`
+- `claude-3-.*-sonnet` — Matches `claude-3-5-sonnet`, `claude-3-opus-sonnet`
+- `.*` — Matches all models
 
-**Use Cases**:
-- All channels supporting the model can be candidates
-- Need to exclude specific channels
+### 3. All Channels, Regex Match (Most Flexible)
 
-### 5. channel_tags_model - Tagged Channels, Specific Model
+**Purpose**: Find matching models across all enabled channels
 
-Matches a specific model in channels with specified tags (OR logic).
+**Configuration in Admin UI:**
+- Association Type: "Global Regex Match"
+- Priority: 2
+- Pattern: `gpt-4.*`
+- Exclude Channels with Tags: `test`
 
-```json
-{
-  "type": "channel_tags_model",
-  "priority": 4,
-  "channelTagsModel": {
-    "channelTags": ["production", "high-performance"],
-    "modelId": "gpt-4"
-  }
-}
-```
+**Scenario**: "Any gpt-4 series model from any channel, but exclude test channels"
 
-**Use Cases**:
-- Select candidates based on channel tags
-- Environment isolation (production/test)
+### 4. All Channels, Specific Model
 
-### 6. channel_tags_regex - Tagged Channels, Regex Match
+**Purpose**: Don't specify channel; any channel supporting this model can be used
 
-Matches models matching the regex pattern in channels with specified tags (OR logic).
+**Configuration in Admin UI:**
+- Association Type: "Global Model Match"
+- Priority: 3
+- Model: gpt-4
 
-```json
-{
-  "type": "channel_tags_regex",
-  "priority": 5,
-  "channelTagsRegex": {
-    "channelTags": ["openai", "azure"],
-    "pattern": "gpt-4.*"
-  }
-}
-```
+**Scenario**: "Any channel supporting gpt-4 can be a backup"
 
-**Use Cases**:
-- Select based on provider tags
-- Flexible matching of model variants
+### 5. Tagged Channels, Specific Model
 
-## 🚀 Quick Start
+**Purpose**: Select based on channel tags (e.g., only production environment channels)
 
-### 1. Create a Model
+**Configuration in Admin UI:**
+- Association Type: "Tagged Channel Model"
+- Priority: 4
+- Channel Tags: production, high-performance
+- Model: gpt-4
 
-Models are created and managed via the Admin UI.
+**Scenario**: "Only look for gpt-4 in channels tagged as production or high-performance"
 
-### 2. Configure Channels
+### 6. Tagged Channels, Regex Match
 
-Ensure channels are configured and support the corresponding models via the Admin UI.
+**Purpose**: Tag + regex combination
 
-### 3. Use the Model
+**Configuration in Admin UI:**
+- Association Type: "Tagged Channel Regex"
+- Priority: 5
+- Channel Tags: openai, azure
+- Pattern: `gpt-4.*`
 
-Clients use the abstract ModelID for requests:
+**Scenario**: "Find gpt-4 series models in OpenAI or Azure channels"
 
-```python
-from openai import OpenAI
+## Priority Settings
 
-client = OpenAI(
-    api_key="your-axonhub-api-key",
-    base_url="http://localhost:8090/v1"
-)
+**Smaller priority value = Higher priority**
 
-response = client.chat.completions.create(
-    model="gpt-4",  # Use abstract ModelID
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-```
+Recommended settings:
+- **Primary channels**: Priority 0-10
+- **Backup channels**: Priority 10-50
+- **Emergency channels**: Priority 50-100
 
-The system will automatically:
-1. Look up the `gpt-4` model entity
-2. Resolve association rules
-3. Select the optimal channel
-4. Map to the actual model (e.g., `gpt-4-turbo`)
+Example configuration in Admin UI:
+- Association 1: Priority 0 (Highest priority: Primary)
+  - Type: Specific Channel Model
+  - Channel: OpenAI
+  - Model: gpt-4o
+- Association 2: Priority 10 (Lower priority: Backup)
+  - Type: Global Model Match
+  - Model: gpt-4
 
-## 🎛️ Advanced Configuration
+## Real-World Scenarios
 
-### Priority Control
+### Scenario 1: Primary-Backup Channel Setup
 
-Associations are processed in priority order, with smaller priority values being higher priority. When multiple candidates have the same priority, the system uses the channel's **weight** to perform load balancing.
+**Need**: Prioritize OpenAI, automatically switch to DeepSeek on failure
 
-For detailed load balancing logic and weight-based distribution, see the [Weight Round Robin Strategy](load-balance.md#weight-round-robin-strategy) in the Adaptive Load Balancing Guide.
+**Configuration:**
+1. Create OpenAI channel and DeepSeek channel
+2. In Model Management, for model "gpt-4", add associations:
+   - Priority 0: Specific Channel Model → OpenAI channel → gpt-4o
+   - Priority 10: Specific Channel Model → DeepSeek channel → deepseek-chat
 
-```json
-{
-  "settings": {
-    "associations": [
-      {
-        "type": "channel_model",
-        "priority": 0,  // Highest priority
-        "channelModel": {
-          "channelId": 1,
-          "modelId": "gpt-4-turbo"
-        }
-      },
-      {
-        "type": "regex",
-        "priority": 10,  // Lower priority
-        "regex": {
-          "pattern": "gpt-4.*"
-        }
-      }
-    ]
-  }
-}
-```
+### Scenario 2: Multi-Version Compatibility
 
-### Deduplication
+**Need**: Client requests `gpt-4`, but any gpt-4 variant can be used
 
-The system automatically deduplicates, so the same (channel, model) combination will only appear once.
+**Configuration:**
+- Priority 0: Channel Regex Match → OpenAI channel → Pattern: `gpt-4.*`
 
-### Cache Optimization
+### Scenario 3: Environment Isolation
 
-Association resolution results are cached. Cache invalidation conditions:
-- Channel count changes
-- Channel update time changes
-- Model update time changes
-- Cache expires (5 minutes)
+**Need**: Production environment only uses production channels
 
-### System Model Settings
+**Setup:**
+- Tag OpenAI channel: `production`
+- Tag test channel: `test`
 
-These settings are configured in the Admin UI under **System Settings > Model Settings**, and control the global behavior of model discovery and request routing.
+**Configuration:**
+- Priority 0: Tagged Channel Model → Tag: production → Model: gpt-4
+
+### Scenario 4: Exclude Specific Channels
+
+**Need**: Use gpt-4 from all channels, but exclude test and backup channels
+
+**Configuration:**
+- Priority 0: Global Regex Match
+  - Pattern: `gpt-4.*`
+  - Exclude Channel Tags: test, backup
+
+## System Settings
+
+In **System Settings > Model Settings**, there are two important options:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `queryAllChannelModels` | `true` | Controls the response of the `/v1/models` API. When **enabled**, returns all models from enabled channels merged with configured Model entities (configured models take priority). When **disabled**, only returns models that have an explicit Model entity configuration. |
-| `fallbackToChannelsOnModelNotFound` | `true` | Controls request routing fallback. When **enabled**, if the requested ModelID has no matching Model entity, the system falls back to legacy channel selection (directly matching enabled channels that support the model). When **disabled**, requests for unconfigured model IDs return an error. |
+| Query All Channel Models | Enabled | When enabled, `/v1/models` API returns all models from enabled channels + configured models |
+| Fallback to Channels on Model Not Found | Enabled | When enabled, if requested model has no associations, system automatically finds channels supporting it |
 
-> **💡 Tip**: When both settings are enabled (default), the system behaves similarly to a traditional API gateway — all channel models are visible and routable. If you want strict control where only explicitly configured models are accessible, disable both settings.
+**Recommendations:**
+- For beginners: Keep both enabled, system handles most cases automatically
+- For strict control: Disable both to only allow explicitly configured models
 
-## 📊 Monitoring and Debugging
+## FAQ
 
-### Debug Logs
+### Q: Why does the request say "Model not found"?
 
-```bash
-# View model selection logs
-tail -f axonhub.log | grep "selected model candidates"
+Check in order:
+1. Is the model created?
+2. Are model associations configured with correct channels?
+3. Are channels enabled?
+4. Do channels support the models specified in associations?
 
-# View association resolution logs
-tail -f axonhub.log | grep "association resolution"
+### Q: How to verify associations are working?
 
-# View candidate selection logs
-tail -f axonhub.log | grep "Load balanced candidates"
-```
+1. Send a test request
+2. Check the Trace in the console to see which channel the request actually went through
+3. Check logs for candidate selection records
 
-## 🔧 Best Practices
+### Q: Will too many associations affect performance?
 
-### 1. Model Design
-
-- **Use Standardized ModelIDs** - e.g., `gpt-4`, `claude-3-opus`
-- **Reasonable Priority Settings** - Primary channels 0-10, backup channels 10-100
-- **Flexible Regex Usage** - Avoid overly broad patterns
-
-### 2. Channel Organization
-
-- **Use Tags for Classification** - e.g., `production`, `test`, `backup`
-- **Set Reasonable Weights** - Use in conjunction with load balancing
-- **Regular Cleanup** - Remove unused channels
-
-### 3. Association Strategies
-
-- **Precision First** - Use `channel_model` for primary channels
-- **Flexible Backup** - Use `regex` or `model` for backup
-- **Environment Isolation** - Use tag associations to separate production/test environments
-
-### 4. Performance Optimization
-
-- **Leverage Caching** - Association resolution results are cached
-- **Avoid Frequent Updates** - Minimize update frequency for models and channels
-- **Monitor Candidate Count** - Too many candidates can impact performance
-
-## 🐛 Common Issues
-
-### Q: Why did the request fail?
-
-A: Check the following:
-1. Does the model exist and is it enabled?
-2. Are association rules correctly configured?
-3. Are channels enabled and support the corresponding models?
-4. Check logs for specific errors
-
-### Q: How do I verify associations are working?
-
-A:
-1. Use the Admin UI to verify association results
-2. Enable debug logs to view the candidate selection process
-3. Send test requests to verify routing
-
-### Q: How many association rules are supported?
-
-A: Theoretically unlimited, but recommended:
-- No more than 10 associations per model
-- Total associations not exceeding 100
+Generally no significant impact, but recommended:
+- No more than 10 association rules per model
 - Avoid overly complex regex patterns
 
-### Q: How to exclude specific channels?
+### Q: Will the same (channel, model) combination be duplicated?
 
-A: Use the `exclude` field:
+No, the system automatically deduplicates.
 
-```json
-{
-  "type": "regex",
-  "regex": {
-    "pattern": "gpt-4.*",
-    "exclude": [
-      {
-        "channelNamePattern": ".*test.*",
-        "channelIds": [5, 6],
-        "channelTags": ["beta"]
-      }
-    ]
-  }
-}
-```
+## Best Practices
 
-## 🔗 Related Documentation
+1. **Naming Convention**: Use standardized model names like `gpt-4`, `claude-3-opus`
+2. **Priority Planning**: Primary 0-10, backup 10-50, emergency 50-100
+3. **Use Tags**: Tag channels (e.g., production, test) for batch management
+4. **Test Before Enabling**: Verify request routing in the console after configuration
+5. **Regular Review**: Clean up unused models and association rules
 
-- [Adaptive Load Balancing Guide](load-balance.md)
-- [API Key Profiles Guide](api-key-profiles.md)
-- [OpenAI API](../api-reference/openai-api.md)
-- [Anthropic API](../api-reference/anthropic-api.md)
-- [Gemini API](../api-reference/gemini-api.md)
-- [Tracing and Debugging](tracing.md)
+## Related Documentation
+
+- [Channel Management Guide](channel-management.md) - Configure AI provider channels
+- [API Key Profiles Guide](api-key-profiles.md) - Configure model mappings
+- [Load Balancing Guide](load-balance.md) - Learn about channel selection and failover
+- [Request Processing Guide](../getting-started/request-processing.md) - Complete request flow explanation

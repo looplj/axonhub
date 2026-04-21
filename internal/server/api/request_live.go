@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/chunkbuffer"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -26,12 +27,14 @@ import (
 type RequestPreviewHandlersParams struct {
 	fx.In
 
-	RequestService *biz.RequestService
+	RequestService     *biz.RequestService
+	LiveStreamRegistry *biz.LiveStreamRegistry
 }
 
 type RequestPreviewHandlers struct {
-	RequestService *biz.RequestService
-	StreamWriter   StreamWriter
+	RequestService     *biz.RequestService
+	LiveStreamRegistry *biz.LiveStreamRegistry
+	StreamWriter       StreamWriter
 }
 
 type RequestPreviewFallbackResponse struct {
@@ -85,8 +88,9 @@ func RequestDetailSSEContract() RequestDetailPreviewContract {
 
 func NewRequestPreviewHandlers(params RequestPreviewHandlersParams) *RequestPreviewHandlers {
 	return &RequestPreviewHandlers{
-		RequestService: params.RequestService,
-		StreamWriter:   WriteSSEStream,
+		RequestService:     params.RequestService,
+		LiveStreamRegistry: params.LiveStreamRegistry,
+		StreamWriter:       WriteSSEStream,
 	}
 }
 
@@ -125,10 +129,10 @@ func (h *RequestPreviewHandlers) PreviewRequest(c *gin.Context) {
 		return
 	}
 
-	buffer := biz.DefaultStreamPreviewRegistry.GetBuffer(biz.RequestKey(req.ID))
+	buffer := h.LiveStreamRegistry.GetRequestBuffer(req.ID)
 	if buffer == nil {
-		buffer = biz.NewChunkBuffer()
-		biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(req.ID), buffer)
+		h.writeStaticPreview(c, req)
+		return
 	}
 
 	stream := newRequestPreviewStream(ctx, buffer)
@@ -160,7 +164,7 @@ func (h *RequestPreviewHandlers) writeStaticPreview(c *gin.Context, req *ent.Req
 
 type requestPreviewStream struct {
 	done        <-chan struct{}
-	buffer      *biz.ChunkBuffer
+	buffer      *chunkbuffer.Buffer
 	notifyCh    <-chan struct{}
 	unsubscribe func()
 	index       int
@@ -171,14 +175,14 @@ type requestPreviewStream struct {
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*requestPreviewStream)(nil)
 
-func newRequestPreviewStream(ctx context.Context, buffer *biz.ChunkBuffer) *requestPreviewStream {
-	notifyCh, unsubscribe := buffer.Subscribe()
+func newRequestPreviewStream(ctx context.Context, buffer *chunkbuffer.Buffer) *requestPreviewStream {
+	notifyCh, replayUntil, unsubscribe := buffer.SubscribeFromCurrent()
 	return &requestPreviewStream{
 		done:        ctx.Done(),
 		buffer:      buffer,
 		notifyCh:    notifyCh,
 		unsubscribe: unsubscribe,
-		replayUntil: buffer.SnapshotLen(),
+		replayUntil: replayUntil,
 	}
 }
 
@@ -186,9 +190,50 @@ const previewIdleTimeout = 3 * time.Minute
 
 func (s *requestPreviewStream) Next() bool {
 	for {
-		if event, ok := s.nextAvailableEvent(); ok {
-			s.current = event
+		bufferClosed := false
+
+		for {
+			chunkIndex := s.index
+
+			chunk, nextIndex, closed, ok := s.buffer.Read(s.index)
+			bufferClosed = closed
+
+			if !ok {
+				break
+			}
+
+			s.index = nextIndex
+
+			if chunk == nil || isPreviewTerminalChunk(chunk) {
+				continue
+			}
+
+			eventType := "preview.chunk"
+			if chunkIndex < s.replayUntil {
+				eventType = "preview.replay"
+			}
+
+			s.current = &httpclient.StreamEvent{
+				Type: eventType,
+				Data: json.RawMessage(chunk.Data),
+			}
+
 			return true
+		}
+
+		if bufferClosed && !s.completed {
+			s.completed = true
+			s.current = &httpclient.StreamEvent{
+				Type: "preview.completed",
+				Data: previewCompletedEventData,
+			}
+
+			return true
+		}
+
+		if s.completed {
+			s.current = nil
+			return false
 		}
 
 		idleTimer := time.NewTimer(previewIdleTimeout)
@@ -205,38 +250,6 @@ func (s *requestPreviewStream) Next() bool {
 			return false
 		}
 	}
-}
-
-func (s *requestPreviewStream) nextAvailableEvent() (*httpclient.StreamEvent, bool) {
-	chunks := s.buffer.Slice()
-	for s.index < len(chunks) {
-		chunkIndex := s.index
-		chunk := chunks[s.index]
-		s.index++
-		if chunk == nil || isPreviewTerminalChunk(chunk) {
-			continue
-		}
-
-		eventType := "preview.chunk"
-		if chunkIndex < s.replayUntil {
-			eventType = "preview.replay"
-		}
-
-		return &httpclient.StreamEvent{
-			Type: eventType,
-			Data: json.RawMessage(chunk.Data),
-		}, true
-	}
-
-	if s.buffer.IsClosed() && !s.completed {
-		s.completed = true
-		return &httpclient.StreamEvent{
-			Type: "preview.completed",
-			Data: previewCompletedEventData,
-		}, true
-	}
-
-	return nil, false
 }
 
 func (s *requestPreviewStream) Current() *httpclient.StreamEvent {

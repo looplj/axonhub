@@ -359,12 +359,12 @@ export function WebhookSettings() {
             </div>
           </div>
 
-          <div className='flex items-center justify-between'>
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
             <div className='space-y-0.5'>
               <div className='text-sm font-medium'>{t('system.webhook.targets.title')}</div>
               <div className='text-muted-foreground text-sm'>{t('system.webhook.targets.description')}</div>
             </div>
-            <Button type='button' variant='outline' size='sm' onClick={addTarget}>
+            <Button type='button' variant='outline' size='sm' onClick={addTarget} className='w-full sm:w-auto'>
               <Plus className='mr-1 h-4 w-4' />
               {t('system.webhook.targets.add')}
             </Button>
@@ -381,19 +381,19 @@ export function WebhookSettings() {
                 const proxyType = target.proxy?.type || proxyTypeSchema.enum.disabled;
 
                 return (
-                  <div key={targetIndex} className='space-y-4 rounded-md border p-4'>
-                    <div className='flex items-start justify-between gap-4'>
-                      <div className='space-y-1'>
+                  <div key={targetIndex} className='space-y-4 rounded-md border p-3 sm:p-4'>
+                    <div className='flex items-start justify-between gap-2'>
+                      <div className='space-y-1 min-w-0 flex-1'>
                         <div className='text-sm font-medium'>{t('system.webhook.target.title', { index: targetIndex + 1 })}</div>
                         <div className='text-muted-foreground text-sm'>{t('system.webhook.target.description')}</div>
                       </div>
-                      <Button type='button' variant='ghost' size='icon' onClick={() => removeTarget(targetIndex)}>
+                      <Button type='button' variant='ghost' size='icon' onClick={() => removeTarget(targetIndex)} className='shrink-0'>
                         <Trash2 className='h-4 w-4' />
                       </Button>
                     </div>
 
-                    <div className='flex items-center justify-between rounded-md border p-3'>
-                      <div className='space-y-0.5'>
+                    <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border p-3'>
+                      <div className='space-y-0.5 min-w-0'>
                         <Label htmlFor={`webhook-enabled-${targetIndex}`} className='text-sm font-medium'>
                           {t('system.webhook.enabled.label')}
                         </Label>
@@ -403,10 +403,11 @@ export function WebhookSettings() {
                         id={`webhook-enabled-${targetIndex}`}
                         checked={target.enabled}
                         onCheckedChange={(checked) => handleTargetChange(targetIndex, 'enabled', checked)}
+                        className='shrink-0'
                       />
                     </div>
 
-                    <div className='grid gap-4 md:grid-cols-2'>
+                    <div className='grid gap-4 sm:grid-cols-2'>
                       <div className='space-y-2'>
                         <Label htmlFor={`webhook-name-${targetIndex}`}>{t('system.webhook.name')}</Label>
                         <Input
@@ -443,7 +444,7 @@ export function WebhookSettings() {
                       {target.enabled && !target.url.trim() && <div className='text-destructive text-xs'>{t('system.webhook.validation.urlRequired')}</div>}
                     </div>
 
-                    <div className='space-y-4 rounded-md border p-3'>
+                    <div className='space-y-4 rounded-md border p-3 sm:p-4'>
                       <div className='space-y-1'>
                         <div className='text-sm font-medium'>{t('system.webhook.proxy.title')}</div>
                         <div className='text-muted-foreground text-sm'>{t('system.webhook.proxy.description')}</div>
@@ -500,8 +501,8 @@ export function WebhookSettings() {
                       )}
 
                       {proxyType === proxyTypeSchema.enum.url && (
-                        <div className='grid gap-4 md:grid-cols-3'>
-                          <div className='space-y-2 md:col-span-3'>
+                        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                          <div className='space-y-2 sm:col-span-2 lg:col-span-3'>
                             <Label htmlFor={`webhook-proxy-url-${targetIndex}`}>{t('system.webhook.proxy.url')}</Label>
                             <Input
                               id={`webhook-proxy-url-${targetIndex}`}
@@ -517,7 +518,7 @@ export function WebhookSettings() {
                               onChange={(e) => handleTargetProxyFieldChange(targetIndex, 'username', e.target.value)}
                             />
                           </div>
-                          <div className='space-y-2 md:col-span-2'>
+                          <div className='space-y-2 sm:col-span-2 lg:col-span-2'>
                             <Label htmlFor={`webhook-proxy-password-${targetIndex}`}>{t('system.webhook.proxy.password')}</Label>
                             <Input
                               id={`webhook-proxy-password-${targetIndex}`}
@@ -530,7 +531,7 @@ export function WebhookSettings() {
                       )}
                     </div>
 
-                    <div className='space-y-3 rounded-md border p-3'>
+                    <div className='space-y-3 rounded-md border p-3 sm:p-4'>
                       <div className='space-y-1'>
                         <div className='text-sm font-medium'>{t('system.webhook.subscription')}</div>
                         <div className='text-muted-foreground text-sm'>{t('system.webhook.subscriptionHelp')}</div>
@@ -540,27 +541,28 @@ export function WebhookSettings() {
                           checked={targetSubscribed}
                           onCheckedChange={(checked) => handleSubscriptionChange(target.name.trim(), checked === true)}
                           disabled={!target.name.trim()}
+                          className='shrink-0 mt-0.5'
                         />
-                        <div className='space-y-1'>
-                          <div className='font-mono text-xs'>{AUTO_DISABLED_EVENT}</div>
+                        <div className='space-y-1 min-w-0 flex-1'>
+                          <div className='font-mono text-xs break-all'>{AUTO_DISABLED_EVENT}</div>
                           <div className='text-muted-foreground text-sm'>{t('system.webhook.events.channelAutoDisabled')}</div>
                         </div>
                       </label>
                     </div>
 
                     <div className='space-y-3'>
-                      <div className='flex items-center justify-between'>
+                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
                         <Label className='text-sm font-medium'>{t('system.webhook.headers')}</Label>
-                        <Button type='button' variant='outline' size='sm' onClick={() => addHeader(targetIndex)}>
+                        <Button type='button' variant='outline' size='sm' onClick={() => addHeader(targetIndex)} className='w-full sm:w-auto'>
                           <Plus className='mr-1 h-4 w-4' />
                           {t('system.webhook.addHeader')}
                         </Button>
                       </div>
                       {(target.headers || []).map((header, headerIndex) => (
-                        <div key={headerIndex} className='flex items-center space-x-2'>
-                          <Input value={header.key} placeholder='Header' onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'key', e.target.value)} />
-                          <Input value={header.value} placeholder='Value' onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'value', e.target.value)} />
-                          <Button type='button' variant='ghost' size='icon' onClick={() => removeHeader(targetIndex, headerIndex)}>
+                        <div key={headerIndex} className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
+                          <Input value={header.key} placeholder='Header' onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'key', e.target.value)} className='w-full' />
+                          <Input value={header.value} placeholder='Value' onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'value', e.target.value)} className='w-full' />
+                          <Button type='button' variant='ghost' size='icon' onClick={() => removeHeader(targetIndex, headerIndex)} className='shrink-0'>
                             <Trash2 className='h-4 w-4' />
                           </Button>
                         </div>
@@ -584,7 +586,7 @@ export function WebhookSettings() {
           )}
 
           <div className='flex justify-end'>
-            <Button type='submit' disabled={updateWebhookNotifierConfig.isPending} className='min-w-24'>
+            <Button type='submit' disabled={updateWebhookNotifierConfig.isPending} className='w-full sm:w-auto sm:min-w-24'>
               {updateWebhookNotifierConfig.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : t('common.buttons.save')}
             </Button>
           </div>

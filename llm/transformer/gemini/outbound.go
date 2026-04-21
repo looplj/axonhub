@@ -179,6 +179,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Headers:               headers,
 		Body:                  body,
 		Auth:                  authConfig,
+		APIFormat:             string(llm.APIFormatGeminiContents),
 		SkipInboundQueryMerge: true,
 		Metadata:              scope.Metadata(),
 	}, nil

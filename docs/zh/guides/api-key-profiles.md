@@ -1,503 +1,134 @@
 # API Key Profile 指南
 
-## 概述
-
-API Key Profile 是一个强大的配置系统，允许为每个 API Key 定义多个配置文件。每个配置文件包含模型映射、渠道限制和模型访问控制。通过切换激活配置，可以改变请求的处理方式，而无需修改 API Key 本身。
+本文介绍如何配置 API Key Profile，实现模型映射、访问控制和多 Profile 切换。
 
 ## 什么是 API Key Profile？
 
-API Key Profile 使您能够：
+**API Key Profile** 让你可以：
+- **模型映射**：把客户端请求的模型名改成另一个模型
+- **渠道限制**：限制 API Key 只能使用特定渠道
+- **模型限制**：限制 API Key 只能访问特定模型
+- **多 Profile 切换**：为同一个 API Key 创建多个 Profile，并选择当前生效的 Profile
 
-- **映射模型**：使用精确匹配或正则表达式将用户请求的模型转换为实际可用的模型
-- **限制渠道**：通过渠道 ID 或标签限制配置文件可以使用的渠道
-- **过滤模型**：控制特定配置文件可访问的模型
-- **切换配置**：通过激活不同的配置文件即时更改行为
+通俗地说：API Key Profile 是在请求**入口处**决定“这个请求先按什么模型处理”。
 
-### 核心概念
+## API Key Profile 在请求流程中的位置
 
-| 组件 | 描述 |
-|------|------|
-| **配置文件 (Profile)** | 包含模型映射和访问规则的命名配置 |
-| **激活配置 (Active Profile)** | 当前处理请求的已启用配置 |
-| **模型映射 (Model Mapping)** | 将源模型转换为目标模型的规则 |
-| **渠道限制 (Channel Restrictions)** | 配置文件可使用渠道的限制 |
+API Key Profile 的模型映射是三层流水线中的**第一步**。完整说明请参阅 [请求处理流程](../getting-started/request-processing.md#核心概念三层模型设置)。
 
-## 为什么使用 API Key Profile？
+简单来说：**API Key Profile 改模型名 → 模型关联选渠道 → 渠道改模型名 → 发给上游**
 
-### 1. 模型转换
+## 模型映射的使用场景
 
-将面向用户的模型名称转换为内部模型标识符或替代提供商：
+### 场景 1：客户端工具使用固定模型名
 
-```json
-{
-  "profiles": [
-    {
-      "name": "production",
-      "modelMappings": [
-        {
-          "from": "gpt-4",
-          "to": "claude-3-opus"
-        },
-        {
-          "from": "gpt-3.5-turbo",
-          "to": "claude-3-haiku"
-        }
-      ]
-    }
-  ]
-}
-```
-
-### 2. 环境隔离
-
-为开发、测试和生产环境维护独立的配置：
-
-```json
-{
-  "profiles": [
-    {
-      "name": "development",
-      "channelTags": ["dev"],
-      "modelMappings": [
-        {"from": ".*", "to": "gpt-3.5-turbo"}
-      ]
-    },
-    {
-      "name": "production",
-      "channelTags": ["prod"],
-      "modelMappings": [
-        {"from": ".*", "to": "gpt-4"}
-      ]
-    }
-  ],
-  "activeProfile": "development"
-}
-```
-
-### 3. 访问控制
-
-限制 API Key 只能使用特定渠道或模型：
-
-```json
-{
-  "profiles": [
-    {
-      "name": "restricted",
-      "channelIDs": [1, 2, 3],
-      "modelIDs": ["gpt-4", "claude-3-opus"]
-    }
-  ]
-}
-```
-
-### 4. A/B 测试
-
-通过切换配置文件测试不同的模型或提供商：
-
-```json
-{
-  "profiles": [
-    {
-      "name": "group-a",
-      "modelMappings": [
-        {"from": ".*", "to": "gpt-4"}
-      ]
-    },
-    {
-      "name": "group-b",
-      "modelMappings": [
-        {"from": ".*", "to": "claude-3-opus"}
-      ]
-    }
-  ]
-}
-```
-
-## 如何使用 API Key Profile
-
-### 步骤 1：访问配置文件管理
-
-1. 导航到管理界面中的 **API Keys** 页面
-2. 找到要配置的 API Key
-3. 点击右侧的 **操作** 菜单（三个点）
-4. 从下拉菜单中选择 **Profiles** 或 **配置**
-
-### 步骤 2：创建配置文件
-
-配置文件对话框允许您：
-
-- **添加配置**：点击"新增配置"创建新的配置
-- **设置配置名称**：为每个配置文件提供描述性名称
-- **配置模型映射**：添加转换模型的规则
-- **设置渠道限制**：通过 ID 或标签选择允许的渠道
-- **设置模型限制**：指定可访问的模型
-
-### 步骤 3：配置模型映射
-
-每个模型映射包含：
-
-- **源模型 (From)**：用户请求中的模型名称
-  - 支持精确匹配：`"gpt-4"`
-  - 支持正则表达式：`"gpt-.*"`、`".*"`（通配符）
-- **目标模型 (To)**：实际使用的模型
-
-**映射示例：**
+很多 AI 工具会在内部使用固定模型名。如果你想让它们实际走别的模型，就需要 API Key Profile 模型映射。
 
 ```json
 {
   "modelMappings": [
-    {"from": "gpt-4", "to": "claude-3-opus"},
-    {"from": "gpt-3.5-turbo", "to": "claude-3-haiku"},
-    {"from": "gpt-.*", "to": "claude-3-sonnet"}
+    {"from": "claude-sonnet-4-5", "to": "anthropic/claude-3.5-sonnet"}
   ]
 }
 ```
 
-### 步骤 4：设置激活配置
+### 场景 2：统一不同客户端的模型名称
 
-选择应该激活的配置文件：
+```json
+{
+  "modelMappings": [
+    {"from": "gpt4", "to": "gpt-4o"},
+    {"from": "gpt-4-turbo", "to": "gpt-4o"}
+  ]
+}
+```
 
-1. 从"生效配置"下拉菜单中选择配置文件名称
-2. 选中的配置文件将处理所有传入请求
-3. 您可以随时更改激活配置
+### 场景 3：限制 Profile 的可用范围
 
-### 步骤 5：保存配置
+```json
+{
+  "channelTags": ["production"],
+  "modelIDs": ["gpt-4o", "claude-3-sonnet"]
+}
+```
 
-点击 **保存** 应用更改。API Key 将立即开始使用新配置。
+## 配置步骤
 
-## 模型映射详解
+### 步骤 1：进入配置界面
 
-### 精确匹配
+1. 登录 AxonHub 管理界面
+2. 进入 **API Keys** 页面
+3. 找到要配置的 API Key
+4. 点击右侧的 **操作** 菜单
+5. 选择 **Profiles** 或 **配置**
 
-映射特定的模型名称：
+### 步骤 2：创建 Profile
+
+1. 点击 **新增配置**
+2. 输入 Profile 名称
+3. 配置模型映射、渠道限制或模型限制
+
+### 步骤 3：配置模型映射
+
+每个映射包含：
+- **From（源模型）**：客户端请求的模型名称
+- **To（目标模型）**：实际使用的模型名称
+
+支持两种匹配方式：
+
+#### 精确匹配
 
 ```json
 {"from": "gpt-4", "to": "claude-3-opus"}
 ```
 
-这只会将 `gpt-4` 的请求转换为 `claude-3-opus`。
-
-### 正则表达式模式
-
-使用正则表达式匹配多个模型：
+#### 正则匹配
 
 ```json
 {"from": "gpt-.*", "to": "claude-3-sonnet"}
 ```
 
-这将把任何以 `gpt-` 开头的模型转换为 `claude-3-sonnet`。
+### 步骤 4：设置生效 Profile
 
-### 通配符
+1. 在 **生效配置** 下拉菜单中选择要使用的 Profile
+2. 点击 **保存**
+3. 配置立即生效
 
-匹配所有模型：
+## 规则匹配顺序
 
-```json
-{"from": ".*", "to": "gpt-4"}
-```
+模型映射按顺序匹配，**第一个匹配的规则会生效**。
 
-这将把所有请求转换为使用 `gpt-4`。
+建议把更具体的规则放前面，把更通用的规则放后面。
 
-### 评估顺序
+## 常见问题
 
-模型映射按顺序评估，第一个匹配的规则将被应用：
+### Q: 模型映射不生效？
 
-```json
-{
-  "modelMappings": [
-    {"from": "gpt-4", "to": "claude-3-opus"},
-    {"from": "gpt-.*", "to": "claude-3-sonnet"}
-  ]
-}
-```
+检查：
+1. 是否选择了正确的生效 Profile
+2. 模型名称是否匹配
+3. 正则表达式是否正确
 
-在此示例中：
-- `gpt-4` → `claude-3-opus`（精确匹配优先）
-- `gpt-3.5-turbo` → `claude-3-sonnet`（正则匹配）
+### Q: Profile 名称有什么要求？
 
-## 渠道和模型限制
+- 在同一个 API Key 内必须唯一
+- 不能为空
+- 建议使用有意义的名称
 
-### 渠道限制
+### Q: 可以创建多少个 Profile？
 
-控制配置文件可以使用的渠道：
-
-**按渠道 ID：**
-
-```json
-{
-  "channelIDs": [1, 2, 3]
-}
-```
-
-**按渠道标签：**
-
-```json
-{
-  "channelTags": ["production", "high-priority"]
-}
-```
-
-**组合使用：**
-
-```json
-{
-  "channelIDs": [1, 2],
-  "channelTags": ["production"]
-}
-```
-
-如果同时指定两者，渠道必须匹配任一条件。
-
-### 模型限制
-
-限制可访问的模型：
-
-```json
-{
-  "modelIDs": ["gpt-4", "claude-3-opus", "claude-3-sonnet"]
-}
-```
-
-只有此列表中的模型才能通过此配置文件访问。
-
-## 验证规则
-
-### 配置名称
-
-- 在 API Key 内必须唯一（不区分大小写）
-- 不能为空或仅包含空格
-- 示例：`"production"`、`"staging"`、`"development"`
-
-### 激活配置
-
-- 必须引用现有的配置文件名称
-- 不能设置为不存在的配置文件
-
-### 模型映射
-
-- 源模型不能为空
-- 目标模型不能为空
-- 模式将作为有效的正则表达式进行验证
-
-## API 使用示例
-
-### 使用 OpenAI SDK 的配置文件
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="your-axonhub-api-key",
-    base_url="http://localhost:8090/v1"
-)
-
-# 请求使用 gpt-4，但将根据激活配置进行映射
-response = client.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-```
-
-### 使用 cURL 的配置文件
-
-```bash
-curl -X POST http://localhost:8090/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-axonhub-api-key" \
-  -d '{
-    "model": "gpt-4",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
-
-实际使用的模型取决于激活配置的模型映射。
+没有硬性限制，但建议保持简洁，便于管理。
 
 ## 最佳实践
 
-### 1. 使用描述性配置名称
-
-选择清楚表明配置文件用途的名称：
-
-- ✅ `"production-gpt4"`、`"staging-claude"`、`"dev-low-cost"`
-- ❌ `"profile1"`、`"test"`、`"config"`
-
-### 2. 策略性地排序模型映射
-
-将更具体的模式放在通用模式之前：
-
-```json
-{
-  "modelMappings": [
-    {"from": "gpt-4-turbo", "to": "claude-3-opus"},
-    {"from": "gpt-4", "to": "claude-3-sonnet"},
-    {"from": "gpt-.*", "to": "claude-3-haiku"}
-  ]
-}
-```
-
-### 3. 在生产前测试配置
-
-1. 创建测试 API Key
-2. 使用相同设置配置配置文件
-3. 使用示例请求进行测试
-4. 验证模型映射按预期工作
-5. 应用于生产 API Key
-
-### 4. 记录配置更改
-
-维护配置文件配置的文档：
-
-```markdown
-## API Key: production-service
-
-### 配置文件: production
-- 用途：生产流量
-- 激活：是
-- 模型映射：
-  - gpt-4 → claude-3-opus
-  - gpt-3.5-turbo → claude-3-haiku
-- 渠道标签：["production"]
-```
-
-### 5. 使用渠道标签提高灵活性
-
-不要硬编码渠道 ID，而是使用标签：
-
-```json
-{
-  "channelTags": ["production", "high-availability"]
-}
-```
-
-这允许您添加/删除渠道而无需更新配置文件。
-
-## 故障排查
-
-### 模型未映射
-
-**问题**：请求使用原始模型而不是映射的模型。
-
-**解决方案**：
-- 验证激活配置设置正确
-- 检查模型映射是否包含请求的模型
-- 确保正则表达式模式匹配模型名称
-- 检查日志中的映射应用消息
-
-### 配置文件未找到
-
-**问题**：错误消息"激活配置 'xxx' 不存在于配置文件列表中"
-
-**解决方案**：
-- 确保激活配置名称与现有配置匹配
-- 检查配置名称是否有拼写错误
-- 验证配置已成功保存
-
-### 渠道访问被拒绝
-
-**问题**：请求因渠道访问错误而失败。
-
-**解决方案**：
-- 验证渠道 ID 正确
-- 检查渠道标签是否匹配现有渠道
-- 确保渠道已启用且健康
-- 查看渠道权限
-
-### 模型不可用
-
-**问题**：请求失败，因为映射的模型不存在。
-
-**解决方案**：
-- 验证目标模型存在于系统中
-- 检查模型在渠道中是否已启用
-- 确保模型 ID 完全匹配（区分大小写）
-- 查看模型映射是否有拼写错误
-
-## 高级用例
-
-### 多环境设置
-
-为每个环境配置不同的配置文件：
-
-```json
-{
-  "profiles": [
-    {
-      "name": "development",
-      "channelTags": ["dev"],
-      "modelMappings": [
-        {"from": ".*", "to": "gpt-3.5-turbo"}
-      ]
-    },
-    {
-      "name": "staging",
-      "channelTags": ["staging"],
-      "modelMappings": [
-        {"from": ".*", "to": "gpt-4"}
-      ]
-    },
-    {
-      "name": "production",
-      "channelTags": ["production"],
-      "modelMappings": [
-        {"from": ".*", "to": "claude-3-opus"}
-      ]
-    }
-  ],
-  "activeProfile": "development"
-}
-```
-
-### 成本优化
-
-将不同模型路由到具有成本效益的替代方案：
-
-```json
-{
-  "profiles": [
-    {
-      "name": "cost-optimized",
-      "modelMappings": [
-        {"from": "gpt-4-turbo", "to": "claude-3-sonnet"},
-        {"from": "gpt-4", "to": "claude-3-opus"},
-        {"from": "gpt-3.5-turbo", "to": "claude-3-haiku"}
-      ]
-    }
-  ]
-}
-```
-
-### 提供商迁移
-
-逐步从一个提供商迁移到另一个提供商：
-
-```json
-{
-  "profiles": [
-    {
-      "name": "openai",
-      "modelMappings": [
-        {"from": ".*", "to": "gpt-4"}
-      ],
-      "channelTags": ["openai"]
-    },
-    {
-      "name": "anthropic",
-      "modelMappings": [
-        {"from": ".*", "to": "claude-3-opus"}
-      ],
-      "channelTags": ["anthropic"]
-    }
-  ],
-  "activeProfile": "openai"
-}
-```
-
-准备好完成迁移时，切换到 `"anthropic"` 配置文件。
+1. **使用描述性名称**：如 `production`、`openrouter-mapping`
+2. **具体规则在前**：把精确映射放前面，通用映射放后面
+3. **先测试再启用**：先验证映射结果是否符合预期
+4. **优先使用渠道标签**：比硬编码渠道 ID 更灵活
 
 ## 相关文档
 
-- [OpenAI API](../api-reference/openai-api.md)
-- [Anthropic API](../api-reference/anthropic-api.md)
-- [Gemini API](../api-reference/gemini-api.md)
-- [负载均衡指南](load-balance.md)
-- [细粒度权限](permissions.md)
-- [快速入门指南](../getting-started/quick-start.md)
+- [模型管理指南](model-management.md) - 配置模型关联
+- [渠道配置指南](channel-management.md) - 配置上游渠道
+- [负载均衡指南](load-balance.md) - 了解渠道选择和故障转移
+- [请求处理流程](../getting-started/request-processing.md) - 了解完整请求链路

@@ -171,10 +171,10 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='flex max-h-[90vh] flex-col sm:max-w-2xl'>
+      <DialogContent className='flex max-h-[90vh] flex-col w-full max-w-full sm:max-w-2xl'>
         <DialogHeader>
-          <DialogTitle>{t('channels.dialogs.test.title')}</DialogTitle>
-          <DialogDescription>{t('channels.dialogs.test.description', { name: channel.name })}</DialogDescription>
+          <DialogTitle className='text-lg sm:text-xl'>{t('channels.dialogs.test.title')}</DialogTitle>
+          <DialogDescription className='text-sm sm:text-base'>{t('channels.dialogs.test.description', { name: channel.name })}</DialogDescription>
         </DialogHeader>
 
         <div className='min-h-0 flex-1 space-y-4'>
@@ -185,7 +185,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
               placeholder={t('channels.dialogs.test.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className='pl-10'
+              className='pl-10 h-10 sm:h-9'
             />
           </div>
 
@@ -195,7 +195,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className='w-12'>
+                    <TableHead className='w-14 sm:w-12'>
                       <Checkbox
                         checked={isAllSelected}
                         onCheckedChange={handleSelectAll}
@@ -207,11 +207,12 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                             }
                           }
                         }}
+                        className='scale-100 sm:scale-75'
                       />
                     </TableHead>
                     <TableHead>{t('channels.dialogs.test.modelNameColumn')}</TableHead>
-                    <TableHead className='w-40'>{t('channels.dialogs.test.statusColumn')}</TableHead>
-                    <TableHead className='w-24'></TableHead>
+                    <TableHead className='w-32 sm:w-40'>{t('channels.dialogs.test.statusColumn')}</TableHead>
+                    <TableHead className='w-28 sm:w-24'></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -223,17 +224,18 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                           <Checkbox
                             checked={selectedModels.includes(model)}
                             onCheckedChange={(checked) => handleModelSelect(model, !!checked)}
+                            className='scale-100 sm:scale-75'
                           />
                         </TableCell>
-                        <TableCell className='pr-8 font-medium'>
+                        <TableCell className='pr-4 sm:pr-8 font-medium'>
                           <div>{model}</div>
                           {result?.error && (
-                            <div className='mt-2 max-w-[320px]'>
+                            <div className='mt-2 max-w-full sm:max-w-[320px]'>
                               <ErrorDisplay error={result.error} messageClassName='text-xs font-medium text-red-600' />
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className='min-w-[140px] align-top'>
+                        <TableCell className='min-w-[120px] sm:min-w-[140px] align-top'>
                           <div className='pt-0.5'>{getStatusBadge(result?.status || 'not_started')}</div>
                           {result?.latency && <div className='text-muted-foreground mt-2 text-xs'>{result.latency.toFixed(2)}s</div>}
                         </TableCell>
@@ -244,8 +246,9 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                               variant='outline'
                               onClick={() => testModel(model)}
                               disabled={result?.status === 'testing' || testChannel.isPending}
+                              className='h-9 sm:h-8'
                             >
-                              <IconPlayerPlay className='mr-1 h-3 w-3' />
+                              <IconPlayerPlay className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
                               {result?.status === 'testing' ? t('channels.dialogs.test.testingModel') : t('channels.dialogs.test.testModel')}
                             </Button>
                           </div>
@@ -259,19 +262,19 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
           </div>
         </div>
 
-        <DialogFooter className='flex items-center justify-between'>
-          <div className='flex gap-2'>
-            <Button variant='outline' onClick={() => onOpenChange(false)}>
+        <DialogFooter className='flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-2'>
+          <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
+            <Button variant='outline' onClick={() => onOpenChange(false)} className='w-full sm:w-auto'>
               {t('common.buttons.cancel')}
             </Button>
             {failedModels.length > 0 && (
               <Popover open={isRemovePopoverOpen} onOpenChange={setIsRemovePopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant='destructive' size='sm'>
+                  <Button variant='destructive' size='sm' className='h-10 sm:h-8'>
                     {t('channels.dialogs.test.removeFailed')} ({failedModels.length})
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className='w-80'>
+                <PopoverContent className='w-full sm:w-80'>
                   <div className='grid gap-4'>
                     <div className='space-y-2'>
                       <p className='text-muted-foreground text-sm'>{t('channels.dialogs.test.removeFailedConfirm')}</p>
@@ -282,6 +285,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                         variant='destructive'
                         onClick={handleRemoveFailed}
                         disabled={updateChannel.isPending}
+                        className='h-9 sm:h-8'
                       >
                         {updateChannel.isPending ? t('common.buttons.saving') : t('common.buttons.confirm')}
                       </Button>
@@ -291,7 +295,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
               </Popover>
             )}
           </div>
-          <Button onClick={handleTestSelected} disabled={selectedModels.length === 0 || isTesting}>
+          <Button onClick={handleTestSelected} disabled={selectedModels.length === 0 || isTesting} className='h-10 sm:h-9'>
             <IconPlayerPlay className='mr-2 h-4 w-4' />
             {t('channels.dialogs.test.testAllButton', { count: selectedModels.length })}
           </Button>

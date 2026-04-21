@@ -4,81 +4,86 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
-
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/chunkbuffer"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-// StreamPreviewRegistry provides read access to in-flight stream chunks
-// without duplicating data. It holds references to ChunkBuffer instances
+// LiveStreamRegistry provides read access to in-flight stream chunks
+// without duplicating data. It holds references to chunkbuffer.Buffer instances
 // owned by InboundPersistentStream / OutboundPersistentStream.
-//
-// Key format: "request:{id}" for request-level chunks,
-// "execution:{id}" for execution-level chunks.
-type StreamPreviewRegistry struct {
-	entries sync.Map // map[string]*previewEntry
+type LiveStreamRegistry struct {
+	requests   sync.Map // map[int]*chunkbuffer.Buffer
+	executions sync.Map // map[int]*chunkbuffer.Buffer
 }
 
-type previewEntry struct {
-	buffer *ChunkBuffer // reference to the stream's chunk buffer
+// NewLiveStreamRegistry creates a new LiveStreamRegistry.
+func NewLiveStreamRegistry() *LiveStreamRegistry {
+	return &LiveStreamRegistry{}
 }
 
-// NewStreamPreviewRegistry creates a new StreamPreviewRegistry.
-func NewStreamPreviewRegistry() *StreamPreviewRegistry {
-	return &StreamPreviewRegistry{}
+func (r *LiveStreamRegistry) RegisterRequest(requestID int, buffer *chunkbuffer.Buffer) {
+	r.requests.Store(requestID, buffer)
 }
 
-// DefaultStreamPreviewRegistry is the package-level global registry.
-var DefaultStreamPreviewRegistry = NewStreamPreviewRegistry()
-
-// RequestKey returns the registry key for a request.
-func RequestKey(requestID int) string {
-	return fmt.Sprintf("request:%d", requestID)
+func (r *LiveStreamRegistry) RegisterExecution(executionID int, buffer *chunkbuffer.Buffer) {
+	r.executions.Store(executionID, buffer)
 }
 
-// ExecutionKey returns the registry key for a request execution.
-func ExecutionKey(executionID int) string {
-	return fmt.Sprintf("execution:%d", executionID)
+func (r *LiveStreamRegistry) UnregisterRequest(requestID int) {
+	r.requests.Delete(requestID)
 }
 
-// RegisterBuffer registers a ChunkBuffer for preview access.
-// Called when the persistent stream is created.
-func (r *StreamPreviewRegistry) RegisterBuffer(key string, buffer *ChunkBuffer) {
-	entry := &previewEntry{buffer: buffer}
-	r.entries.Store(key, entry)
+func (r *LiveStreamRegistry) UnregisterExecution(executionID int) {
+	r.executions.Delete(executionID)
 }
 
-// Register registers the stream's chunk slice for preview access.
-// Deprecated: Use RegisterBuffer instead. This method is kept for backward compatibility.
-// Called when the persistent stream is created.
-func (r *StreamPreviewRegistry) Register(key string, chunks *[]*httpclient.StreamEvent) {
-	r.entries.Store(key, &previewEntry{
-		buffer: &ChunkBuffer{chunks: *chunks},
-	})
-}
-
-// GetChunks returns the current live chunks as JSON in the same format
-// as SaveRequestChunks (jsonStreamEvent marshaling). Returns nil if no
-// entry is registered for the key.
-func (r *StreamPreviewRegistry) GetChunks(key string) []objects.JSONRawMessage {
-	v, ok := r.entries.Load(key)
+func (r *LiveStreamRegistry) GetRequestBuffer(requestID int) *chunkbuffer.Buffer {
+	v, ok := r.requests.Load(requestID)
 	if !ok {
 		return nil
 	}
 
-	entry, ok := v.(*previewEntry)
+	buffer, ok := v.(*chunkbuffer.Buffer)
 	if !ok {
 		return nil
 	}
 
-	buffer := entry.buffer
+	return buffer
+}
+
+func (r *LiveStreamRegistry) GetExecutionBuffer(executionID int) *chunkbuffer.Buffer {
+	v, ok := r.executions.Load(executionID)
+	if !ok {
+		return nil
+	}
+
+	buffer, ok := v.(*chunkbuffer.Buffer)
+	if !ok {
+		return nil
+	}
+
+	return buffer
+}
+
+// GetRequestChunks returns the current live request chunks as JSON in the same format
+// as SaveRequestChunks.
+func (r *LiveStreamRegistry) GetRequestChunks(requestID int) []objects.JSONRawMessage {
+	return marshalPreviewChunks(r.GetRequestBuffer(requestID))
+}
+
+// GetExecutionChunks returns the current live request execution chunks as JSON in the same format
+// as SaveRequestExecutionChunks.
+func (r *LiveStreamRegistry) GetExecutionChunks(executionID int) []objects.JSONRawMessage {
+	return marshalPreviewChunks(r.GetExecutionBuffer(executionID))
+}
+
+func marshalPreviewChunks(buffer *chunkbuffer.Buffer) []objects.JSONRawMessage {
 	if buffer == nil {
 		return nil
 	}
@@ -89,8 +94,6 @@ func (r *StreamPreviewRegistry) GetChunks(key string) []objects.JSONRawMessage {
 		return nil
 	}
 
-	// Read up to the snapshot length — safe because the streaming goroutine
-	// only appends beyond this index, and existing elements are never moved.
 	var result []objects.JSONRawMessage
 	for _, chunk := range chunks {
 		// Skip terminal DONE events
@@ -117,29 +120,8 @@ func (r *StreamPreviewRegistry) GetChunks(key string) []objects.JSONRawMessage {
 	return result
 }
 
-// Unregister removes the entry for the given key.
-// Called from Close() in the streaming goroutine after persistence.
-func (r *StreamPreviewRegistry) Unregister(key string) {
-	r.entries.Delete(key)
-}
-
-// GetBuffer returns the ChunkBuffer for the given key, or nil if not found.
-func (r *StreamPreviewRegistry) GetBuffer(key string) *ChunkBuffer {
-	v, ok := r.entries.Load(key)
-	if !ok {
-		return nil
-	}
-
-	entry, ok := v.(*previewEntry)
-	if !ok {
-		return nil
-	}
-
-	return entry.buffer
-}
-
 // StartSweeper starts a background worker that periodically cleans up stale chunk buffers.
-func (r *StreamPreviewRegistry) StartSweeper(ctx context.Context) {
+func (r *LiveStreamRegistry) StartSweeper(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Minute)
 	go func() {
 		defer ticker.Stop()
@@ -155,34 +137,44 @@ func (r *StreamPreviewRegistry) StartSweeper(ctx context.Context) {
 }
 
 // sweepStaleEntries iterates over the registry and removes closed or long-idle buffers.
-func (r *StreamPreviewRegistry) sweepStaleEntries(ctx context.Context) {
+func (r *LiveStreamRegistry) sweepStaleEntries(ctx context.Context) {
 	threshold := 10 * time.Minute
 	now := time.Now()
 	evictedCount := 0
 
-	r.entries.Range(func(key, value any) bool {
-		entry, ok := value.(*previewEntry)
-		if !ok || entry.buffer == nil {
-			r.entries.Delete(key)
+	sweepMap := func(scope string, entries *sync.Map) {
+		entries.Range(func(key, value any) bool {
+			buffer, ok := value.(*chunkbuffer.Buffer)
+			if !ok || buffer == nil {
+				entries.Delete(key)
+				return true
+			}
+
+			if buffer.IsClosed() {
+				entries.Delete(key)
+
+				evictedCount++
+
+				return true
+			}
+
+			if now.Sub(buffer.LastAppendedAt()) > threshold {
+				log.Warn(ctx, "Preview registry sweeper force-closing an idle zombie stream buffer",
+					log.String("scope", scope),
+					log.Any("id", key),
+					log.Duration("idle_time", now.Sub(buffer.LastAppendedAt())),
+				)
+				buffer.Close()
+				entries.Delete(key)
+
+				evictedCount++
+			}
 			return true
-		}
+		})
+	}
 
-		buffer := entry.buffer
-
-		if buffer.IsClosed() {
-			r.entries.Delete(key)
-			evictedCount++
-			return true
-		}
-
-		if now.Sub(buffer.LastAppendedAt()) > threshold {
-			log.Warn(ctx, "Preview registry sweeper force-closing an idle zombie stream buffer", log.Any("key", key), log.Duration("idle_time", now.Sub(buffer.LastAppendedAt())))
-			buffer.Close()        // Detach any dangling subscribers
-			r.entries.Delete(key) // Evict from registry
-			evictedCount++
-		}
-		return true
-	})
+	sweepMap("request", &r.requests)
+	sweepMap("execution", &r.executions)
 
 	if evictedCount > 0 {
 		log.Debug(ctx, "Preview registry swept stale entries", log.Int("evicted", evictedCount))

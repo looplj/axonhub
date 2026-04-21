@@ -225,6 +225,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			Type:   "bearer",
 			APIKey: apiKey,
 		},
+		APIFormat:             string(llm.APIFormatOpenAIResponse),
 		TransformerMetadata:   llmReq.TransformerMetadata,
 		SkipInboundQueryMerge: true,
 		Metadata:              scope.Metadata(),

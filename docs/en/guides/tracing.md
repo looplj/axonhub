@@ -228,5 +228,5 @@ Thread (User Session)
 - **Unexpected trace IDs** – Check for upstream reverse proxies overriding headers.
 
 ### Related Documentation
-- [Request Processing Guide](request-processing.md)
+- [Request Processing Guide](../getting-started/request-processing.md)
 - [Load Balancing Guide](load-balance.md)

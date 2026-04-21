@@ -376,6 +376,7 @@ func (t *OutboundTransformer) TransformRequest(
 		Auth:                  auth,
 		SkipInboundQueryMerge: true,
 		Metadata:              scope.Metadata(),
+		APIFormat:             string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
 

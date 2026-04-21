@@ -17,3 +17,5 @@ globs: "frontend/**/*.ts, frontend/**/*.tsx"
    Project-level pages must explicitly pass project context such as `projectId` or `X-Project-ID`.
    Admin-level pages must not implicitly inherit the current project unless the feature is intentionally project-scoped.
 10. The app is client-side only; SSR compatibility is not required unless the code already depends on it.
+11. For any field used by a create/edit form, update both write operations and read operations in the same change:
+    mutations must send the field, and the queries used for edit echo, backfill, list refresh, or detail refresh must also return it when the UI depends on that value.
