@@ -79,7 +79,7 @@ function RateLimitMetric({
                   <div className='flex justify-between gap-3'>
                     <span className='opacity-70'>{t('channels.expandedRow.rateLimit.nextResetAt')}:</span>
                     <span className='font-mono'>
-                      {formatInTz(resetAt, timezone, 'yyyy-MM-dd HH')} {tzAbbr}
+                      {formatInTz(resetAt, timezone, 'yyyy-MM-dd HH:mm')} {tzAbbr}
                     </span>
                   </div>
                   {anchor && (
