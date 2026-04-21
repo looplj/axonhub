@@ -61,6 +61,15 @@ type OIDCProvider struct {
 	IconURL      string `conf:"icon_url" yaml:"icon_url" json:"icon_url"`
 	ButtonColor  string `conf:"button_color" yaml:"button_color" json:"button_color"`
 	SyncUserInfo bool   `conf:"sync_user_info" yaml:"sync_user_info" json:"sync_user_info"`
+	// Manual configuration (if discovery is not used)
+	Issuer      string `conf:"issuer" yaml:"issuer" json:"issuer"`
+	AuthURL     string `conf:"auth_url" yaml:"auth_url" json:"auth_url"`
+	TokenURL    string `conf:"token_url" yaml:"token_url" json:"token_url"`
+	UserInfoURL string `conf:"user_info_url" yaml:"user_info_url" json:"user_info_url"`
+	JWKSURL     string `conf:"jwks_url" yaml:"jwks_url" json:"jwks_url"`
+	// Behavior
+	OIDCLoginOnly bool   `conf:"oidc_login_only" yaml:"oidc_login_only" json:"oidc_login_only"`
+	GroupClaim    string `conf:"group_claim" yaml:"group_claim" json:"group_claim"`
 }
 
 func (p OIDCProvider) normalize() OIDCProvider {
@@ -93,6 +102,13 @@ func (p OIDCProvider) providerID() string {
 
 func (p OIDCProvider) providerDisplayName() string {
 	return p.normalize().DisplayName
+}
+
+func (p OIDCProvider) issuer() string {
+	if p.Issuer != "" {
+		return p.Issuer
+	}
+	return p.IssuerURL
 }
 
 func normalizeOIDCProviderIdentifier(value string) string {
@@ -131,8 +147,9 @@ type OIDCService struct {
 type oidcProvider struct {
 	config OIDCProvider
 
-	oauth2 oauth2.Config
-	oidc   *oidc.Provider
+	oauth2   oauth2.Config
+	oidc     *oidc.Provider // optional, may be nil if manual config is used
+	verifier *oidc.IDTokenVerifier
 }
 
 type OIDCServiceParams struct {
@@ -171,9 +188,44 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 
 		svc.cfg.Providers[i] = p
 		svc.lastCheck[providerID] = time.Now().Unix()
-		provider, err := oidc.NewProvider(ctx, p.IssuerURL)
-		if err != nil {
-			log.Error(ctx, "Failed to initialize OIDC provider", log.String("provider", providerID), zap.Error(err))
+
+		var (
+			provider     *oidc.Provider
+			oauth2Config oauth2.Config
+			verifier     *oidc.IDTokenVerifier
+		)
+
+		// 1. Try Discovery if IssuerURL is provided
+		if p.IssuerURL != "" {
+			provider, err = oidc.NewProvider(ctx, p.IssuerURL)
+			if err != nil {
+				log.Warn(ctx, "OIDC discovery failed", log.String("provider", providerID), log.String("issuer", p.IssuerURL), zap.Error(err))
+			} else {
+				oauth2Config.Endpoint = provider.Endpoint()
+				verifier = provider.Verifier(&oidc.Config{ClientID: p.ClientID})
+			}
+		}
+
+		// 2. Manual Overrides / Configuration
+		if p.AuthURL != "" && p.TokenURL != "" {
+			oauth2Config.Endpoint = oauth2.Endpoint{
+				AuthURL:  p.AuthURL,
+				TokenURL: p.TokenURL,
+			}
+		}
+
+		if p.JWKSURL != "" {
+			issuer := p.Issuer
+			if issuer == "" {
+				issuer = p.IssuerURL
+			}
+			keySet := oidc.NewRemoteKeySet(ctx, p.JWKSURL)
+			verifier = oidc.NewVerifier(issuer, keySet, &oidc.Config{ClientID: p.ClientID})
+		}
+
+		// Validation: Ensure we have enough to proceed
+		if oauth2Config.Endpoint.AuthURL == "" || oauth2Config.Endpoint.TokenURL == "" {
+			log.Error(ctx, "OIDC provider missing required endpoints (discovery failed and no manual endpoints provided)", log.String("provider", providerID))
 			continue
 		}
 
@@ -198,18 +250,16 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 			scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 		}
 
-		oauth2Config := oauth2.Config{
-			ClientID:     p.ClientID,
-			ClientSecret: p.ClientSecret,
-			Endpoint:     provider.Endpoint(),
-			RedirectURL:  redirectURL,
-			Scopes:       scopes,
-		}
+		oauth2Config.ClientID = p.ClientID
+		oauth2Config.ClientSecret = p.ClientSecret
+		oauth2Config.RedirectURL = redirectURL
+		oauth2Config.Scopes = scopes
 
 		svc.providers[providerID] = &oidcProvider{
-			config: p,
-			oauth2: oauth2Config,
-			oidc:   provider,
+			config:   p,
+			oauth2:   oauth2Config,
+			oidc:     provider,
+			verifier: verifier,
 		}
 	}
 
@@ -476,28 +526,78 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 		return "", "", fmt.Errorf("failed to exchange authorization code: %w", err)
 	}
 
-	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
-	if !ok {
-		return "", "", fmt.Errorf("No id_token field in oauth2 token")
+	var (
+		subject string
+		claims  oidcClaims
+	)
+
+	rawIDToken, _ := oauth2Token.Extra("id_token").(string)
+	if rawIDToken != "" {
+		if p.verifier == nil {
+			return "", "", fmt.Errorf("OIDC verifier not initialized for provider %s", providerIdentifier)
+		}
+
+		idToken, err := p.verifier.Verify(ctx, rawIDToken)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to verify ID token: %w", err)
+		}
+
+		subject = idToken.Subject
+
+		var rawClaims map[string]any
+		if err := idToken.Claims(&rawClaims); err != nil {
+			return "", "", fmt.Errorf("failed to parse claims: %w", err)
+		}
+
+		_ = mapstructure.Decode(rawClaims, &claims)
+
+		groupClaim := p.config.GroupClaim
+		if groupClaim == "" {
+			groupClaim = "groups"
+		}
+		claims.Groups = parseGroups(rawClaims[groupClaim])
 	}
 
-	verifier := p.oidc.Verifier(&oidc.Config{ClientID: p.config.ClientID})
-	idToken, err := verifier.Verify(ctx, rawIDToken)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to verify ID token: %w", err)
+	// If id_token is missing OR UserInfoURL is provided, fetch extra claims
+	if rawIDToken == "" || p.config.UserInfoURL != "" {
+		if rawIDToken == "" && p.config.UserInfoURL == "" {
+			return "", "", fmt.Errorf("no id_token and no user_info_url provided for provider %s", providerIdentifier)
+		}
+
+		userInfoClaims, err := s.fetchUserInfo(ctx, p, oauth2Token)
+		if err != nil {
+			if rawIDToken == "" {
+				return "", "", fmt.Errorf("failed to fetch user info for OAuth2-only provider: %w", err)
+			}
+			log.Warn(ctx, "Failed to fetch UserInfo", log.String("provider", providerIdentifier), zap.Error(err))
+		} else {
+			if subject == "" {
+				subject = userInfoClaims.Sub
+			}
+			// Merge claims (UserInfo usually has more up-to-date data)
+			if userInfoClaims.Email != "" {
+				claims.Email = userInfoClaims.Email
+			}
+			if userInfoClaims.Name != "" {
+				claims.Name = userInfoClaims.Name
+			}
+			if userInfoClaims.Picture != "" {
+				claims.Picture = userInfoClaims.Picture
+			}
+			if userInfoClaims.GivenName != "" {
+				claims.GivenName = userInfoClaims.GivenName
+			}
+			if userInfoClaims.FamilyName != "" {
+				claims.FamilyName = userInfoClaims.FamilyName
+			}
+			if len(userInfoClaims.Groups) > 0 {
+				claims.Groups = userInfoClaims.Groups
+			}
+		}
 	}
 
-	var claims struct {
-		Email             string `json:"email"`
-		EmailVerified     bool   `json:"email_verified"`
-		Name              string `json:"name"`
-		GivenName         string `json:"given_name"`
-		FamilyName        string `json:"family_name"`
-		PreferredUsername string `json:"preferred_username"`
-		Picture           string `json:"picture"`
-	}
-	if err := idToken.Claims(&claims); err != nil {
-		return "", "", fmt.Errorf("failed to parse claims: %w", err)
+	if subject == "" {
+		return "", "", fmt.Errorf("failed to resolve subject from id_token or user_info")
 	}
 
 	// Check if this is a linking flow
@@ -507,7 +607,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 		_ = s.cache.Delete(ctx, "oidc_link_state:"+state)
 		userID, err := strconv.Atoi(string(linkUserIDBytes))
 		if err == nil {
-			err = s.createIdentity(ctx, userID, p.config.IssuerURL, idToken.Subject, claims.Email, p.config.providerDisplayName())
+			err = s.createIdentity(ctx, userID, p.config.issuer(), subject, claims.Email, p.config.providerDisplayName())
 			if err != nil {
 				return "", "", fmt.Errorf("failed to link identity: %w", err)
 			}
@@ -516,7 +616,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 		}
 	}
 
-	userEntity, err := s.resolveUser(ctx, p, idToken.Subject, claims.Email, claims.EmailVerified, claims.Name, claims.GivenName, claims.FamilyName, claims.Picture)
+	userEntity, err := s.resolveUser(ctx, p, subject, claims.Email, claims.EmailVerified, claims.Name, claims.GivenName, claims.FamilyName, claims.Picture, claims.Groups)
 	if err != nil {
 		return "", "", err
 	}
@@ -539,11 +639,107 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 	return exchangeCode, "login", nil
 }
 
-func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject, email string, emailVerified bool, name, givenName, familyName, picture string) (*ent.User, error) {
+type oidcClaims struct {
+	Sub               string   `json:"sub"`
+	Email             string   `json:"email"`
+	EmailVerified     bool     `json:"email_verified"`
+	Name              string   `json:"name"`
+	GivenName         string   `json:"given_name"`
+	FamilyName        string   `json:"family_name"`
+	PreferredUsername string   `json:"preferred_username"`
+	Picture           string   `json:"picture"`
+	Groups            []string `json:"-"` // Filled manually from GroupClaim
+}
+
+func (s *OIDCService) fetchUserInfo(ctx context.Context, p *oidcProvider, token *oauth2.Token) (*oidcClaims, error) {
+	groupClaim := p.config.GroupClaim
+	if groupClaim == "" {
+		groupClaim = "groups"
+	}
+
+	if p.oidc != nil {
+		userInfo, err := p.oidc.UserInfo(ctx, oauth2.StaticTokenSource(token))
+		if err != nil {
+			return nil, err
+		}
+		var claims oidcClaims
+		if err := userInfo.Claims(&claims); err != nil {
+			return nil, err
+		}
+
+		// Fetch groups from custom claim
+		var raw map[string]any
+		if err := userInfo.Claims(&raw); err == nil {
+			claims.Groups = parseGroups(raw[groupClaim])
+		}
+
+		return &claims, nil
+	}
+
+	// Manual fetch via UserInfoURL
+	req, err := http.NewRequestWithContext(ctx, "GET", p.config.UserInfoURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	token.SetAuthHeader(req)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("userinfo request failed with status: %d", resp.StatusCode)
+	}
+
+	var raw map[string]any
+	if err := xjson.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+
+	var claims oidcClaims
+	_ = mapstructure.Decode(raw, &claims)
+	claims.Groups = parseGroups(raw[groupClaim])
+
+	// GitHub fallback: 'sub' might be called 'id' or 'login'
+	if claims.Sub == "" {
+		if id, ok := raw["id"].(float64); ok {
+			claims.Sub = fmt.Sprintf("%.0f", id)
+		} else if login, ok := raw["login"].(string); ok {
+			claims.Sub = login
+		}
+	}
+
+	return &claims, nil
+}
+
+func parseGroups(v any) []string {
+	if v == nil {
+		return nil
+	}
+	switch val := v.(type) {
+	case string:
+		return []string{val}
+	case []any:
+		res := make([]string, 0, len(val))
+		for _, item := range val {
+			if s, ok := item.(string); ok {
+				res = append(res, s)
+			}
+		}
+		return res
+	case []string:
+		return val
+	}
+	return nil
+}
+
+func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject, email string, emailVerified bool, name, givenName, familyName, picture string, groups []string) (*ent.User, error) {
 	// 1. Try to find existing OIDC identity by issuer and subject
 	identity, err := s.db.OIDCIdentity.Query().
 		Where(
-			oidcidentity.Issuer(p.config.IssuerURL),
+			oidcidentity.Issuer(p.config.issuer()),
 			oidcidentity.Subject(subject),
 		).
 		WithUser().
@@ -555,7 +751,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 
 		// Sync user info if enabled
 		if p.config.SyncUserInfo && identity.Edges.User != nil {
-			updatedUser, err := s.syncUserInfo(ctx, identity.Edges.User, name, givenName, familyName, picture)
+			updatedUser, err := s.syncUserInfo(ctx, identity.Edges.User, name, givenName, familyName, picture, groups, p.config)
 			if err != nil {
 				log.Warn(ctx, "Failed to sync user info during OIDC login", zap.Error(err), log.Int("user_id", identity.UserID))
 			} else {
@@ -578,14 +774,14 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		existingUser, err := s.db.User.Query().Where(user.Email(email)).Only(ctx)
 		if err == nil {
 			// Found user by email, link this OIDC identity to them.
-			err = s.createIdentity(ctx, existingUser.ID, p.config.IssuerURL, subject, email, p.config.Name)
+			err = s.createIdentity(ctx, existingUser.ID, p.config.issuer(), subject, email, p.config.Name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to link OIDC identity: %w", err)
 			}
 
 			// Sync user info if enabled
 			if p.config.SyncUserInfo {
-				updatedUser, err := s.syncUserInfo(ctx, existingUser, name, givenName, familyName, picture)
+				updatedUser, err := s.syncUserInfo(ctx, existingUser, name, givenName, familyName, picture, groups, p.config)
 				if err != nil {
 					log.Warn(ctx, "Failed to sync user info during OIDC link", zap.Error(err), log.Int("user_id", existingUser.ID))
 				} else {
@@ -615,7 +811,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 
 	// Set a magic password indicating this user must login via OIDC only.
-	randPassword := OIDC_ONLY_PLACEHOLDER
+	password := OIDC_ONLY_PLACEHOLDER
 
 	firstName := givenName
 	lastName := familyName
@@ -628,11 +824,14 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		SetEmail(email).
 		SetFirstName(firstName).
 		SetLastName(lastName).
-		SetPassword(randPassword)
+		SetPassword(password)
 
 	if picture != "" {
 		userCreate.SetAvatar(picture)
 	}
+
+	// Apply role mappings to new user
+	s.applyRoleMappings(userCreate.Mutation, groups, p.config)
 
 	newUser, err := userCreate.Save(ctx)
 	if err != nil {
@@ -640,7 +839,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 
 	// Create the Identity record SECOND
-	err = s.createIdentity(ctx, newUser.ID, p.config.IssuerURL, subject, email, p.config.providerDisplayName())
+	err = s.createIdentity(ctx, newUser.ID, p.config.issuer(), subject, email, p.config.providerDisplayName())
 	if err != nil {
 		// Note: Since this is a newly created user, failing here leaves an orphaned user.
 		// However, with SoftDelete and unique email, re-trying will either hit step 2 or fail.
@@ -650,7 +849,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	return newUser, nil
 }
 
-func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, givenName, familyName, picture string) (*ent.User, error) {
+func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, givenName, familyName, picture string, groups []string, cfg OIDCProvider) (*ent.User, error) {
 	firstName := givenName
 	lastName := familyName
 	if firstName == "" && lastName == "" {
@@ -665,7 +864,52 @@ func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, given
 		update.SetAvatar(picture)
 	}
 
+	// Enforce OIDC Only if configured
+	if cfg.OIDCLoginOnly {
+		update.SetPassword(OIDC_ONLY_PLACEHOLDER)
+	}
+
+	// Sync roles/scopes
+	s.applyRoleMappings(update.Mutation, groups, cfg)
+
 	return update.Save(ctx)
+}
+
+func (s *OIDCService) applyRoleMappings(m ent.Mutation, groups []string, cfg OIDCProvider) {
+	if len(cfg.RoleMappings) == 0 {
+		return
+	}
+
+	var (
+		isOwner bool
+		scopes  []string
+		// roles  []string // TODO: handle database roles if needed
+	)
+
+	for _, group := range groups {
+		if mapping, ok := cfg.RoleMappings[group]; ok {
+			parts := strings.Split(mapping, ",")
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				switch {
+				case p == "system:owner":
+					isOwner = true
+				case strings.HasPrefix(p, "scope:"):
+					scopes = append(scopes, strings.TrimPrefix(p, "scope:"))
+				}
+			}
+		}
+	}
+
+	if isOwner {
+		m.SetField("is_owner", true)
+	}
+	if len(scopes) > 0 {
+		// Merger logic? Or overwrite? For simplicity, we'll append for now.
+		// Use reflect/mutation to set field safely
+		// Note: User.scopes is a strings field.
+		m.SetField("scopes", scopes)
+	}
 }
 
 func (s *OIDCService) createIdentity(ctx context.Context, userID int, issuer, subject, email, idpName string) error {

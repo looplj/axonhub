@@ -3,6 +3,7 @@ package conf
 import (
 	"context"
 	"encoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -124,6 +125,18 @@ func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) 
 			return time.Duration(0), nil
 		}
 		return time.ParseDuration(str)
+
+	case dstType.Kind() == reflect.Slice || dstType.Kind() == reflect.Map || dstType.Kind() == reflect.Struct:
+		// Attempt to parse as JSON for environment variable support
+		text := strings.TrimSpace(str)
+		if strings.HasPrefix(text, "[") || strings.HasPrefix(text, "{") {
+			var decoded any
+			if err := json.Unmarshal([]byte(text), &decoded); err == nil {
+				return decoded, nil
+			}
+		}
+		return data, nil
+
 	default:
 		return data, nil
 	}

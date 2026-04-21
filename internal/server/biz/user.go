@@ -312,7 +312,7 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 		Roles:          userRoles,
 		Projects:       userProjects,
 		OIDCIdentities: oidcIdentities,
-		HasPassword:    u.Password != OIDC_ONLY_PLACEHOLDER && u.Password != "214f4944435f53534f5f4f4e4c59",
+		HasPassword:    u.Password != OIDC_ONLY_PLACEHOLDER,
 	}
 }
 
