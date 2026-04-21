@@ -65,7 +65,7 @@ function RateLimitMetric({
             {t('channels.expandedRow.rateLimit.window')}: {windowDuration || '?'}
           </span>
           <div className='flex items-center gap-1.5'>
-            <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.resetsIn')}:</span>
+            <span className='text-muted-foreground'>{t('channels.expandedRow.rateLimit.nextResetIn')}:</span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
@@ -77,7 +77,7 @@ function RateLimitMetric({
               <TooltipContent>
                 <div className='space-y-1 text-xs'>
                   <div className='flex justify-between gap-3'>
-                    <span className='opacity-70'>{t('channels.expandedRow.rateLimit.resetsAt')}:</span>
+                    <span className='opacity-70'>{t('channels.expandedRow.rateLimit.nextResetAt')}:</span>
                     <span className='font-mono'>
                       {formatInTz(resetAt, timezone, 'yyyy-MM-dd HH')} {tzAbbr}
                     </span>

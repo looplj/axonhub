@@ -969,17 +969,29 @@ func (r *channelRateLimitInputResolver) Cost(ctx context.Context, obj *objects.C
 
 // RpmWindowAnchor is the resolver for the rpmWindowAnchor field.
 func (r *channelRateLimitInputResolver) RpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error {
-	return validateWindowAnchor(data, "rpmWindowAnchor")
+	if err := validateWindowAnchor(data, "rpmWindowAnchor"); err != nil {
+		return err
+	}
+	obj.RPMWindowAnchor = data
+	return nil
 }
 
 // TpmWindowAnchor is the resolver for the tpmWindowAnchor field.
 func (r *channelRateLimitInputResolver) TpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error {
-	return validateWindowAnchor(data, "tpmWindowAnchor")
+	if err := validateWindowAnchor(data, "tpmWindowAnchor"); err != nil {
+		return err
+	}
+	obj.TPMWindowAnchor = data
+	return nil
 }
 
 // CostWindowAnchor is the resolver for the costWindowAnchor field.
 func (r *channelRateLimitInputResolver) CostWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error {
-	return validateWindowAnchor(data, "costWindowAnchor")
+	if err := validateWindowAnchor(data, "costWindowAnchor"); err != nil {
+		return err
+	}
+	obj.CostWindowAnchor = data
+	return nil
 }
 
 // ModelConcurrent is the resolver for the modelConcurrent field.

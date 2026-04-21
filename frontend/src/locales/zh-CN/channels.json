@@ -566,6 +566,8 @@
   "channels.expandedRow.rateLimit.resets": "重置",
   "channels.expandedRow.rateLimit.resetsIn": "剩余时间",
   "channels.expandedRow.rateLimit.resetsAt": "重置于",
+  "channels.expandedRow.rateLimit.nextResetIn": "下次重置剩余时间",
+  "channels.expandedRow.rateLimit.nextResetAt": "下次重置于",
   "channels.expandedRow.rateLimit.window": "窗口",
   "channels.expandedRow.rateLimit.anchor": "锚点",
   "channels.templates.section.description": "加载已保存的覆盖配置或将当前设置保存为模板以供重复使用",
@@ -653,9 +655,10 @@
   "channels.dialogs.rateLimit.fields.cost.label": "费用",
   "channels.dialogs.rateLimit.fields.cost.placeholder": "不限制",
   "channels.dialogs.rateLimit.fields.cost.description": "在所选时间窗口内的最大费用。留空表示不限制。",
+  "channels.dialogs.rateLimit.fields.windowAnchor.startDate": "开始日期",
   "channels.dialogs.rateLimit.fields.windowAnchor.startTime": "开始时间",
-  "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "每天重置速率限制窗口的时间（服务器时区）。请求从此时间开始计算。",
-  "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "速率限制窗口开始的精确日期和时间（服务器时区）。请求从此时间点开始计算。",
+  "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "每天重置速率限制窗口的时间（服务器时区）。请求从该时间开始计算。",
+  "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "速率限制窗口开始的日期和时间（服务器时区）。这是锚点，下一次重置将在此时间后满一个完整窗口后发生。",
   "channels.dialogs.rateLimit.durations.1wk": "1 周",
   "channels.expandedRow.rateLimit.cost": "费用"
 }

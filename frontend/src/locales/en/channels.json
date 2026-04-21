@@ -569,6 +569,8 @@
   "channels.expandedRow.rateLimit.resets": "resets",
   "channels.expandedRow.rateLimit.resetsIn": "Resets in",
   "channels.expandedRow.rateLimit.resetsAt": "Resets at",
+  "channels.expandedRow.rateLimit.nextResetIn": "Next reset in",
+  "channels.expandedRow.rateLimit.nextResetAt": "Next reset at",
   "channels.expandedRow.rateLimit.window": "Window",
   "channels.expandedRow.rateLimit.anchor": "Anchor",
   "channels.templates.section.description": "Load saved override configurations or save current settings as a template for reuse",
@@ -653,9 +655,10 @@
   "channels.dialogs.rateLimit.fields.cost.label": "Cost",
   "channels.dialogs.rateLimit.fields.cost.placeholder": "Unlimited",
   "channels.dialogs.rateLimit.fields.cost.description": "Maximum cost in the selected time window. Leave empty for unlimited.",
+  "channels.dialogs.rateLimit.fields.windowAnchor.startDate": "Start Date",
   "channels.dialogs.rateLimit.fields.windowAnchor.startTime": "Start Time",
-  "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "The time of day (in server timezone) when the rate limit window resets. Requests are counted from this time each period.",
-  "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "The exact date and time (in server timezone) when the rate limit window starts. Requests are counted from this point forward.",
+  "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "The time of day (in server timezone) when the rate limit window resets each period. Requests are counted starting from this time.",
+  "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "The date and time (in server timezone) when the rate limit window starts. This is the anchor point—the next reset occurs one full window after this time.",
   "channels.dialogs.rateLimit.durations.1wk": "1 week",
   "channels.expandedRow.rateLimit.cost": "Cost"
 }

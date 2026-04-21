@@ -118,6 +118,12 @@ function durationUsesAnchor(duration: RateLimitDuration | null | undefined): boo
   return durationUsesTimeOnlyAnchor(duration) || durationUsesDatetimeAnchor(duration);
 }
 
+function getLocalDateValue(localDatetime: string | null | undefined): string {
+  if (!localDatetime) return '';
+  const datePart = localDatetime.split('T')[0] ?? '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : '';
+}
+
 function getLocalTimeValue(localDatetime: string | null | undefined): string {
   if (!localDatetime) return '';
   const timePart = localDatetime.split('T')[1] ?? '';
@@ -134,6 +140,18 @@ function mergeLocalDateAndTime(localDatetime: string | null | undefined, timeVal
   }
 
   return `${datePart}T${timeValue}`;
+}
+
+// For date-based durations: when date is selected but no time exists yet, default to 00:00
+function mergeLocalDateAndTimeForDateInput(
+  localDatetime: string | null | undefined,
+  dateValue: string,
+  timeValue?: string
+): string | null {
+  if (!dateValue) return null;
+
+  const timePart = timeValue && /^\d{2}:\d{2}$/.test(timeValue) ? timeValue : '00:00';
+  return `${dateValue}T${timePart}`;
 }
 
 function getRateLimitDefaults(currentRow: Channel, timezone: string): RateLimitFormValues {
@@ -209,29 +227,48 @@ function WindowAnchorField({
           );
         }
 
+        const dateValue = getLocalDateValue(anchorValue);
+        const timeValue = getLocalTimeValue(anchorValue);
+
         return (
-          <FormItem className='w-[220px]'>
-            <FormLabel className='flex items-center gap-1'>
-              {t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className='text-muted-foreground h-3.5 w-3.5 shrink-0 cursor-help' />
-                </TooltipTrigger>
-                <TooltipContent side='top' className='max-w-[260px]'>
-                  {t('channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip')}
-                </TooltipContent>
-              </Tooltip>
-            </FormLabel>
-            <FormControl>
-              <Input
-                type='datetime-local'
-                value={anchorValue ?? ''}
-                onChange={(e) => {
-                  field.onChange(e.target.value || null);
-                }}
-                placeholder={t('channels.dialogs.rateLimit.fields.windowAnchor.placeholder')}
-              />
-            </FormControl>
+          <FormItem className='flex gap-2 items-end'>
+            <div>
+              <FormLabel className='flex items-center gap-1'>
+                {t('channels.dialogs.rateLimit.fields.windowAnchor.startDate')}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className='text-muted-foreground h-3.5 w-3.5 shrink-0 cursor-help' />
+                  </TooltipTrigger>
+                  <TooltipContent side='top' className='max-w-[260px]'>
+                    {t('channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip')}
+                  </TooltipContent>
+                </Tooltip>
+              </FormLabel>
+              <FormControl>
+                <Input
+                  type='date'
+                  value={dateValue}
+                  onChange={(e) => {
+                    field.onChange(mergeLocalDateAndTimeForDateInput(anchorValue, e.target.value, timeValue || undefined));
+                  }}
+                />
+              </FormControl>
+            </div>
+            <div>
+              <FormLabel className='flex items-center gap-1'>
+                {t('channels.dialogs.rateLimit.fields.windowAnchor.startTime')}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  type='time'
+                  disabled={!dateValue}
+                  value={timeValue}
+                  onChange={(e) => {
+                    field.onChange(mergeLocalDateAndTimeForDateInput(anchorValue, dateValue, e.target.value));
+                  }}
+                />
+              </FormControl>
+            </div>
             <FormMessage />
           </FormItem>
         );
