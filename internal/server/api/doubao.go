@@ -47,26 +47,27 @@ type DoubaoHandlers struct {
 func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 	inbound := doubao.NewVideoInboundTransformer()
 
+	baseConfig := orchestrator.OrchestratorConfig{
+		ChannelService:              params.ChannelService,
+		DefaultSelector:             params.DefaultSelector,
+		RequestService:              params.RequestService,
+		HttpClient:                  params.HttpClient,
+		SystemService:               params.SystemService,
+		UsageLogService:             params.UsageLogService,
+		PromptService:               params.PromptService,
+		QuotaService:                params.QuotaService,
+		PromptProtectionRuleService: params.PromptProtectionRuleService,
+		LiveStreamRegistry:          params.LiveStreamRegistry,
+		RateLimitTracker:            params.RateLimitTracker,
+		ConnectionTracker:           params.ConnectionTracker,
+		ModelConnectionTracker:      params.ModelConnectionTracker,
+		CostTracker:                 params.CostTracker,
+	}
+
 	return &DoubaoHandlers{
 		VideoService: params.VideoService,
 		CreateOrchestrator: orchestrator.NewChatCompletionOrchestrator(
-			orchestrator.OrchestratorConfig{
-				ChannelService:              params.ChannelService,
-				DefaultSelector:             params.DefaultSelector,
-				RequestService:              params.RequestService,
-				HttpClient:                  params.HttpClient,
-				Inbound:                     inbound,
-				SystemService:               params.SystemService,
-				UsageLogService:             params.UsageLogService,
-				PromptService:               params.PromptService,
-				QuotaService:                params.QuotaService,
-				PromptProtectionRuleService: params.PromptProtectionRuleService,
-				LiveStreamRegistry:          params.LiveStreamRegistry,
-				RateLimitTracker:            params.RateLimitTracker,
-				ConnectionTracker:           params.ConnectionTracker,
-				ModelConnectionTracker:      params.ModelConnectionTracker,
-				CostTracker:                 params.CostTracker,
-			},
+			baseConfig.WithInbound(inbound),
 		),
 		InboundTransformer: inbound,
 	}

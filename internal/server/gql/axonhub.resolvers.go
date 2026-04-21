@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +27,8 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/samber/lo"
-	"github.com/shopspring/decimal"
+
+	"github.com/looplj/axonhub/internal/pkg/xdecimal"
 )
 
 // AllModelEntries is the resolver for the allModelEntries field.
@@ -113,7 +113,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 	if rl.RPM != nil && *rl.RPM > 0 {
 		rpmDuration := rl.GetRPMDuration().Duration()
 		rpmLimit := *rl.RPM
-		rpmWindowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
+		rpmWindowStart := objects.ComputeWindowStart(r.Clock(), rpmDuration, rl.RPMWindowAnchor)
 		rpmWindowEnd := rpmWindowStart.Add(rpmDuration)
 
 		var rpmCurrentInt int64
@@ -137,18 +137,20 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 					log.Int64("limit", rpmLimit),
 				)
 			}
-
-			status.RpmCurrent = &rpmCurrentInt
-			status.RpmLimit = &rpmLimit
-			status.RpmResetAt = &rpmWindowEnd
-			status.RpmWindowAnchor = copyTimePtr(rl.RPMWindowAnchor)
+		} else {
+			rpmCurrentInt = r.rateLimitTracker.GetRequestCountForDuration(channelID, rpmDuration, rl.RPMWindowAnchor)
 		}
+
+		status.RpmCurrent = &rpmCurrentInt
+		status.RpmLimit = &rpmLimit
+		status.RpmResetAt = &rpmWindowEnd
+		status.RpmWindowAnchor = copyTimePtr(rl.RPMWindowAnchor)
 	}
 
 	if rl.TPM != nil && *rl.TPM > 0 {
 		tpmDuration := rl.GetTPMDuration().Duration()
 		tpmLimit := *rl.TPM
-		tpmWindowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
+		tpmWindowStart := objects.ComputeWindowStart(r.Clock(), tpmDuration, rl.TPMWindowAnchor)
 		tpmWindowEnd := tpmWindowStart.Add(tpmDuration)
 
 		var tpmCurrentInt int64
@@ -172,12 +174,14 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 					log.Int64("limit", tpmLimit),
 				)
 			}
-
-			status.TpmCurrent = &tpmCurrentInt
-			status.TpmLimit = &tpmLimit
-			status.TpmResetAt = &tpmWindowEnd
-			status.TpmWindowAnchor = copyTimePtr(rl.TPMWindowAnchor)
+		} else {
+			tpmCurrentInt = r.rateLimitTracker.GetTokenCountForDuration(channelID, tpmDuration, rl.TPMWindowAnchor)
 		}
+
+		status.TpmCurrent = &tpmCurrentInt
+		status.TpmLimit = &tpmLimit
+		status.TpmResetAt = &tpmWindowEnd
+		status.TpmWindowAnchor = copyTimePtr(rl.TPMWindowAnchor)
 	}
 
 	if rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 {
@@ -189,7 +193,7 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 	if rl.Cost != nil && rl.Cost.IsPositive() && r.quotaService != nil {
 		costDuration := rl.GetCostDuration()
-		windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
+		windowStart := objects.ComputeWindowStart(r.Clock(), costDuration.Duration(), rl.CostWindowAnchor)
 		windowEnd := windowStart.Add(costDuration.Duration())
 
 		currentCost, err := r.quotaService.GetChannelCostAllSources(ctx, channelID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
@@ -217,13 +221,6 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 	return status, nil
 }
 
-// float64ToExactDecimal converts a float64 to decimal.Decimal via string
-// formatting to avoid binary floating-point representation artifacts.
-func float64ToExactDecimal(f float64) decimal.Decimal {
-	s := strconv.FormatFloat(f, 'f', -1, 64)
-	d, _ := decimal.NewFromString(s)
-	return d
-}
 
 // Cost is the resolver for the cost field.
 func (r *channelRateLimitResolver) Cost(ctx context.Context, obj *objects.ChannelRateLimit) (*float64, error) {
@@ -972,7 +969,7 @@ func (r *channelRateLimitInputResolver) Cost(ctx context.Context, obj *objects.C
 		return nil
 	}
 
-	obj.Cost = lo.ToPtr(float64ToExactDecimal(*data))
+	obj.Cost = lo.ToPtr(xdecimal.Float64ToDecimal(*data))
 	return nil
 }
 

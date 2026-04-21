@@ -43,26 +43,27 @@ type GeminiHandlers struct {
 }
 
 func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
+	baseConfig := orchestrator.OrchestratorConfig{
+		ChannelService:              params.ChannelService,
+		DefaultSelector:             params.DefaultSelector,
+		RequestService:              params.RequestService,
+		HttpClient:                  params.HttpClient,
+		SystemService:               params.SystemService,
+		UsageLogService:             params.UsageLogService,
+		PromptService:               params.PromptService,
+		QuotaService:                params.QuotaService,
+		PromptProtectionRuleService: params.PromptProtectionRuleService,
+		LiveStreamRegistry:          params.LiveStreamRegistry,
+		RateLimitTracker:            params.RateLimitTracker,
+		ConnectionTracker:           params.ConnectionTracker,
+		ModelConnectionTracker:      params.ModelConnectionTracker,
+		CostTracker:                 params.CostTracker,
+	}
+
 	return &GeminiHandlers{
 		ChatCompletionHandlers: NewChatCompletionHandlers(
 			orchestrator.NewChatCompletionOrchestrator(
-				orchestrator.OrchestratorConfig{
-					ChannelService:              params.ChannelService,
-					DefaultSelector:             params.DefaultSelector,
-					RequestService:              params.RequestService,
-					HttpClient:                  params.HttpClient,
-					Inbound:                     gemini.NewInboundTransformer(),
-					SystemService:               params.SystemService,
-					UsageLogService:             params.UsageLogService,
-					PromptService:               params.PromptService,
-					QuotaService:                params.QuotaService,
-					PromptProtectionRuleService: params.PromptProtectionRuleService,
-					LiveStreamRegistry:          params.LiveStreamRegistry,
-					RateLimitTracker:            params.RateLimitTracker,
-					ConnectionTracker:           params.ConnectionTracker,
-					ModelConnectionTracker:      params.ModelConnectionTracker,
-					CostTracker:                 params.CostTracker,
-				},
+				baseConfig.WithInbound(gemini.NewInboundTransformer()),
 			),
 		),
 		ChannelService: params.ChannelService,

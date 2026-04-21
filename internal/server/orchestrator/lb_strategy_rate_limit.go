@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xdecimal"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -19,6 +19,18 @@ import (
 // (currently ~1530: Trace=1000 + Error=200 + WeightRR=150 + Latency=80 + RateLimit=100)
 // so that exhausted channels always rank last, while still remaining as fallback candidates.
 const rateLimitExhaustedScore = -10000
+
+type countKind struct {
+	name          string
+	duration      time.Duration
+	anchor        *time.Time
+	flight        *singleflight.Group
+	getCount      func(channelID int) int64
+	isDbQueried   func(channelID int) bool
+	markDbQueried func(channelID int)
+	seedCount     func(channelID int, count int64)
+	dbQueryCount  func(ctx context.Context, channelID int, window biz.QuotaWindow) (int64, error)
+}
 
 // RateLimitProvider bundles the dependencies needed by RateLimitAwareStrategy.
 type RateLimitProvider struct {
@@ -61,118 +73,103 @@ func NewRateLimitAwareStrategy(provider RateLimitProvider) *RateLimitAwareStrate
 // (e.g. after process restart or window rotation). When a DB fallback occurs, the in-memory counter
 // is seeded so subsequent requests use the fast path.
 
-// float64ToDecimal converts a float64 to decimal.Decimal without float64
-// representation artifacts. decimal.NewFromFloat(f) preserves the exact
-// binary representation of f (e.g. 0.1 → 0.1000000000000000055…), which
-// causes incorrect comparisons when the cost limit was deserialized from
-// exact JSON decimal. Formatting via strconv.FormatFloat with 'f' notation
-// and re-parsing as decimal produces an exact match for the intended value.
-func float64ToDecimal(f float64) decimal.Decimal {
-	s := strconv.FormatFloat(f, 'f', -1, 64)
-	d, _ := decimal.NewFromString(s)
-	return d
-}
-
 func anchorKey(anchor *time.Time) string {
 	if anchor == nil {
 		return "nil"
 	}
 	return anchor.UTC().Format(time.RFC3339Nano)
 }
+
+func (s *RateLimitAwareStrategy) resolveCount(ctx context.Context, channel *biz.Channel, kind countKind) int64 {
+	if s.provider.QuotaService == nil {
+		return kind.getCount(channel.ID)
+	}
+
+	if kind.isDbQueried(channel.ID) {
+		return kind.getCount(channel.ID)
+	}
+
+	windowStart := objects.ComputeWindowStart(time.Now(), kind.duration, kind.anchor)
+	windowEnd := windowStart.Add(kind.duration)
+
+	key := fmt.Sprintf("%s:%d:%s:%s:%d", kind.name, channel.ID, kind.duration.String(), anchorKey(kind.anchor), windowStart.Unix())
+	v, sfErr, _ := kind.flight.Do(key, func() (any, error) {
+		defer kind.markDbQueried(channel.ID)
+
+		dbCount, err := kind.dbQueryCount(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+		if err != nil {
+			return nil, err
+		}
+
+		if dbCount > 0 {
+			kind.seedCount(channel.ID, dbCount)
+		}
+
+		return dbCount, nil
+	})
+
+	if sfErr != nil {
+		log.Warn(ctx, fmt.Sprintf("failed to fetch channel %s from quota service", kind.name),
+			log.Int("channel_id", channel.ID),
+			log.Cause(sfErr),
+		)
+	}
+
+	if dbCount, ok := v.(int64); ok {
+		return dbCount
+	}
+
+	return kind.getCount(channel.ID)
+}
+
 func (s *RateLimitAwareStrategy) resolveRPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	rpmDuration := rl.GetRPMDuration().Duration()
 
-	if s.provider.QuotaService == nil {
-		rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
-		return rpm
-	}
-
-	if s.provider.RequestTracker.IsRequestWindowDbQueried(channel.ID, rpmDuration, rl.RPMWindowAnchor) {
-		rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
-		return rpm
-	}
-
-	windowStart := objects.ComputeWindowStart(time.Now(), rpmDuration, rl.RPMWindowAnchor)
-	windowEnd := windowStart.Add(rpmDuration)
-
-	key := fmt.Sprintf("rpm:%d:%s:%s:%d", channel.ID, rpmDuration.String(), anchorKey(rl.RPMWindowAnchor), windowStart.Unix())
-	v, sfErr, _ := s.provider.rpmFlight.Do(key, func() (any, error) {
-		defer s.provider.RequestTracker.MarkRequestWindowDbQueried(channel.ID, rpmDuration, rl.RPMWindowAnchor)
-
-		dbCount, err := s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
-		if err != nil {
-			return nil, err
-		}
-
-		if dbCount > 0 {
-			s.provider.RequestTracker.SeedRequestCountForDuration(channel.ID, dbCount, rpmDuration, rl.RPMWindowAnchor)
-		}
-
-		return dbCount, nil
+	return s.resolveCount(ctx, channel, countKind{
+		name:     "rpm",
+		duration: rpmDuration,
+		anchor:   rl.RPMWindowAnchor,
+		flight:   s.provider.rpmFlight,
+		getCount: func(id int) int64 {
+			return s.provider.RequestTracker.GetRequestCountForDuration(id, rpmDuration, rl.RPMWindowAnchor)
+		},
+		isDbQueried: func(id int) bool {
+			return s.provider.RequestTracker.IsRequestWindowDbQueried(id, rpmDuration, rl.RPMWindowAnchor)
+		},
+		markDbQueried: func(id int) {
+			s.provider.RequestTracker.MarkRequestWindowDbQueried(id, rpmDuration, rl.RPMWindowAnchor)
+		},
+		seedCount: func(id int, count int64) {
+			s.provider.RequestTracker.SeedRequestCountForDuration(id, count, rpmDuration, rl.RPMWindowAnchor)
+		},
+		dbQueryCount: func(ctx context.Context, id int, w biz.QuotaWindow) (int64, error) {
+			return s.provider.QuotaService.GetChannelRequestCountAllSources(ctx, id, w)
+		},
 	})
-
-	if sfErr != nil {
-		log.Warn(ctx, "failed to fetch channel RPM from quota service",
-			log.Int("channel_id", channel.ID),
-			log.Cause(sfErr),
-		)
-	}
-
-	if dbCount, ok := v.(int64); ok {
-		return dbCount
-	}
-
-	rpm := s.provider.RequestTracker.GetRequestCountForDuration(channel.ID, rpmDuration, rl.RPMWindowAnchor)
-	return rpm
 }
 
-// resolveTPM returns the current TPM count, falling back to DB when the in-memory counter returns 0.
-// Same seeding logic as resolveRPM.
 func (s *RateLimitAwareStrategy) resolveTPM(ctx context.Context, channel *biz.Channel, rl *objects.ChannelRateLimit) int64 {
 	tpmDuration := rl.GetTPMDuration().Duration()
 
-	if s.provider.QuotaService == nil {
-		tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
-		return tpm
-	}
-
-	if s.provider.RequestTracker.IsTokenWindowDbQueried(channel.ID, tpmDuration, rl.TPMWindowAnchor) {
-		tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
-		return tpm
-	}
-
-	windowStart := objects.ComputeWindowStart(time.Now(), tpmDuration, rl.TPMWindowAnchor)
-	windowEnd := windowStart.Add(tpmDuration)
-
-	key := fmt.Sprintf("tpm:%d:%s:%s:%d", channel.ID, tpmDuration.String(), anchorKey(rl.TPMWindowAnchor), windowStart.Unix())
-	v, sfErr, _ := s.provider.tpmFlight.Do(key, func() (any, error) {
-		defer s.provider.RequestTracker.MarkTokenWindowDbQueried(channel.ID, tpmDuration, rl.TPMWindowAnchor)
-
-		dbCount, err := s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
-		if err != nil {
-			return nil, err
-		}
-
-		if dbCount > 0 {
-			s.provider.RequestTracker.SeedTokenCountForDuration(channel.ID, dbCount, tpmDuration, rl.TPMWindowAnchor)
-		}
-
-		return dbCount, nil
+	return s.resolveCount(ctx, channel, countKind{
+		name:     "tpm",
+		duration: tpmDuration,
+		anchor:   rl.TPMWindowAnchor,
+		flight:   s.provider.tpmFlight,
+		getCount: func(id int) int64 {
+			return s.provider.RequestTracker.GetTokenCountForDuration(id, tpmDuration, rl.TPMWindowAnchor)
+		},
+		isDbQueried: func(id int) bool {
+			return s.provider.RequestTracker.IsTokenWindowDbQueried(id, tpmDuration, rl.TPMWindowAnchor)
+		},
+		markDbQueried: func(id int) { s.provider.RequestTracker.MarkTokenWindowDbQueried(id, tpmDuration, rl.TPMWindowAnchor) },
+		seedCount: func(id int, count int64) {
+			s.provider.RequestTracker.SeedTokenCountForDuration(id, count, tpmDuration, rl.TPMWindowAnchor)
+		},
+		dbQueryCount: func(ctx context.Context, id int, w biz.QuotaWindow) (int64, error) {
+			return s.provider.QuotaService.GetChannelTokenCountAllSources(ctx, id, w)
+		},
 	})
-
-	if sfErr != nil {
-		log.Warn(ctx, "failed to fetch channel TPM from quota service",
-			log.Int("channel_id", channel.ID),
-			log.Cause(sfErr),
-		)
-	}
-
-	if dbCount, ok := v.(int64); ok {
-		return dbCount
-	}
-
-	tpm := s.provider.RequestTracker.GetTokenCountForDuration(channel.ID, tpmDuration, rl.TPMWindowAnchor)
-	return tpm
 }
 
 // Name returns the strategy name.
@@ -375,7 +372,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 					return nil, err
 				}
 
-				cost := float64ToDecimal(fetchedCost)
+				cost := xdecimal.Float64ToDecimal(fetchedCost)
 
 				if s.provider.CostTracker != nil {
 					s.provider.CostTracker.SetCachedCost(channel.ID, cost, windowEnd)

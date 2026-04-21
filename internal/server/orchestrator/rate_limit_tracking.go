@@ -113,9 +113,19 @@ func (m *rateLimitTracking) OnOutboundLlmResponse(ctx context.Context, response 
 }
 
 func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
+	wrapped := &onCloseStream{
+		stream:  stream,
+		onClose: func() {}, // rate limit tracking doesn't need decrement on close
+	}
+
+	go func() {
+		<-ctx.Done()
+		wrapped.Close()
+	}()
+
 	return &rateLimitTrackingStream{
 		ctx:      ctx,
-		stream:   stream,
+		stream:   wrapped,
 		tracker:  m.tracker,
 		outbound: m.outbound,
 	}, nil

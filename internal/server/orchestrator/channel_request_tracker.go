@@ -11,15 +11,13 @@ import (
 )
 
 type ChannelRequestTracker struct {
-	mu           sync.RWMutex
-	counters     map[int]map[time.Duration]*rateLimitWindow
-	cooldowns    map[int]time.Time
-	clock        func() time.Time
-	stopCh       chan struct{}
-	evictInt     time.Duration
-	stoppedEarly bool
-	everStarted  bool
-	ttl          time.Duration
+	mu        sync.RWMutex
+	counters  map[int]map[time.Duration]*rateLimitWindow
+	cooldowns map[int]time.Time
+	clock     func() time.Time
+	evictInt  time.Duration
+	ttl       time.Duration
+	worker    BackgroundWorker
 }
 
 type ClockOption func(*ChannelRequestTracker)
@@ -61,26 +59,8 @@ func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
 	return t
 }
 
-// Start begins the background eviction goroutine. Safe to call multiple times;
-// only the first call launches the goroutine. If Stop was called before Start
-// (i.e. Start was never called), Start is a no-op.
 func (t *ChannelRequestTracker) Start() {
-	t.mu.Lock()
-	if t.stopCh != nil {
-		t.mu.Unlock()
-		return
-	}
-	if t.stoppedEarly && !t.everStarted {
-		t.mu.Unlock()
-		return
-	}
-	t.stoppedEarly = false
-	t.everStarted = true
-	t.stopCh = make(chan struct{})
-	stopCh := t.stopCh
-	t.mu.Unlock()
-
-	go func() {
+	t.worker.Start(func(stopCh <-chan struct{}) {
 		ticker := time.NewTicker(t.evictInt)
 		defer ticker.Stop()
 
@@ -92,25 +72,11 @@ func (t *ChannelRequestTracker) Start() {
 				return
 			}
 		}
-	}()
+	})
 }
 
-// Stop stops the background eviction goroutine. Safe to call multiple times.
-// If called before Start has ever been called, subsequent Start calls are no-ops.
-// If called after a running goroutine has already been stopped, it is a no-op.
 func (t *ChannelRequestTracker) Stop() {
-	t.mu.Lock()
-	if t.stopCh == nil {
-		if !t.everStarted {
-			t.stoppedEarly = true
-		}
-		t.mu.Unlock()
-		return
-	}
-	ch := t.stopCh
-	t.stopCh = nil
-	t.mu.Unlock()
-	close(ch)
+	t.worker.Stop()
 }
 
 func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration, anchor *time.Time) *rateLimitWindow {
@@ -155,11 +121,13 @@ func anchorEqual(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
+// copyAnchor creates a deep copy of a *time.Time, normalizing to UTC.
 func copyAnchor(a *time.Time) *time.Time {
 	if a == nil {
 		return nil
 	}
-	cp := *a
+
+	cp := a.UTC()
 	return &cp
 }
 

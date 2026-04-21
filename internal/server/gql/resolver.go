@@ -2,6 +2,7 @@ package gql
 
 import (
 	"errors"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 
@@ -49,6 +50,7 @@ type Resolver struct {
 	quotaService                   *biz.QuotaService
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
 	gcWorker                       *gc.Worker
+	clock                          func() time.Time
 }
 
 // NewSchema creates a graphql executable schema.
@@ -112,6 +114,15 @@ func NewSchema(
 			quotaService:                   quotaService,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
 			gcWorker:                       gcWorker,
+			clock:                          time.Now,
 		},
 	})
+}
+
+// Clock returns the current time, using an injectable clock for testing.
+func (r *Resolver) Clock() time.Time {
+	if r.clock != nil {
+		return r.clock()
+	}
+	return time.Now()
 }

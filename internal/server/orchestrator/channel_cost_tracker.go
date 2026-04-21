@@ -28,14 +28,12 @@ func WithEvictionInterval(d time.Duration) CostTrackerOption {
 }
 
 type ChannelCostTracker struct {
-	mu           sync.RWMutex
-	cache        map[int]costCacheEntry
-	ttl          time.Duration
-	clock        func() time.Time
-	stopCh       chan struct{}
-	stoppedEarly bool
-	everStarted  bool
-	evictInt     time.Duration
+	mu       sync.RWMutex
+	cache    map[int]costCacheEntry
+	ttl      time.Duration
+	clock    func() time.Time
+	evictInt time.Duration
+	worker   BackgroundWorker
 }
 
 func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
@@ -52,23 +50,7 @@ func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 }
 
 func (t *ChannelCostTracker) Start() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if t.stopCh != nil {
-		return
-	}
-
-	if t.stoppedEarly && !t.everStarted {
-		return
-	}
-
-	t.stoppedEarly = false
-	t.everStarted = true
-	t.stopCh = make(chan struct{})
-	stopCh := t.stopCh
-
-	go func() {
+	t.worker.Start(func(stopCh <-chan struct{}) {
 		ticker := time.NewTicker(t.evictInt)
 		defer ticker.Stop()
 
@@ -80,24 +62,11 @@ func (t *ChannelCostTracker) Start() {
 				return
 			}
 		}
-	}()
+	})
 }
 
 func (t *ChannelCostTracker) Stop() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if t.stopCh == nil {
-		if !t.everStarted {
-			t.stoppedEarly = true
-		}
-		return
-	}
-
-	ch := t.stopCh
-	t.stopCh = nil
-
-	close(ch)
+	t.worker.Stop()
 }
 
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {

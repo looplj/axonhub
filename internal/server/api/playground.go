@@ -56,26 +56,27 @@ type PlaygroundHandlers struct {
 }
 
 func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers {
+	baseConfig := orchestrator.OrchestratorConfig{
+		ChannelService:              params.ChannelService,
+		DefaultSelector:             params.DefaultSelector,
+		RequestService:              params.RequestService,
+		HttpClient:                  params.HttpClient,
+		SystemService:               params.SystemService,
+		UsageLogService:             params.UsageLogService,
+		PromptService:               params.PromptService,
+		QuotaService:                params.QuotaService,
+		PromptProtectionRuleService: params.PromptProtectionRuleService,
+		LiveStreamRegistry:          params.LiveStreamRegistry,
+		RateLimitTracker:            params.RateLimitTracker,
+		ConnectionTracker:           params.ConnectionTracker,
+		ModelConnectionTracker:      params.ModelConnectionTracker,
+		CostTracker:                 params.CostTracker,
+	}
+
 	return &PlaygroundHandlers{
 		ChannelService: params.ChannelService,
 		ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
-			orchestrator.OrchestratorConfig{
-				ChannelService:              params.ChannelService,
-				DefaultSelector:             params.DefaultSelector,
-				RequestService:              params.RequestService,
-				HttpClient:                  params.HttpClient,
-				Inbound:                     aisdk.NewDataStreamTransformer(),
-				SystemService:               params.SystemService,
-				UsageLogService:             params.UsageLogService,
-				PromptService:               params.PromptService,
-				QuotaService:                params.QuotaService,
-				PromptProtectionRuleService: params.PromptProtectionRuleService,
-				LiveStreamRegistry:          params.LiveStreamRegistry,
-				RateLimitTracker:            params.RateLimitTracker,
-				ConnectionTracker:           params.ConnectionTracker,
-				ModelConnectionTracker:      params.ModelConnectionTracker,
-				CostTracker:                 params.CostTracker,
-			},
+			baseConfig.WithInbound(aisdk.NewDataStreamTransformer()),
 		),
 	}
 }

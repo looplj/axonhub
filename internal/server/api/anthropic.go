@@ -43,26 +43,27 @@ type AnthropicHandlers struct {
 }
 
 func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
+	baseConfig := orchestrator.OrchestratorConfig{
+		ChannelService:              params.ChannelService,
+		DefaultSelector:             params.DefaultSelector,
+		RequestService:              params.RequestService,
+		HttpClient:                  params.HttpClient,
+		SystemService:               params.SystemService,
+		UsageLogService:             params.UsageLogService,
+		PromptService:               params.PromptService,
+		QuotaService:                params.QuotaService,
+		PromptProtectionRuleService: params.PromptProtectionRuleService,
+		LiveStreamRegistry:          params.LiveStreamRegistry,
+		RateLimitTracker:            params.RateLimitTracker,
+		ConnectionTracker:           params.ConnectionTracker,
+		ModelConnectionTracker:      params.ModelConnectionTracker,
+		CostTracker:                 params.CostTracker,
+	}
+
 	return &AnthropicHandlers{
 		ChatCompletionHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
-				orchestrator.OrchestratorConfig{
-					ChannelService:              params.ChannelService,
-					DefaultSelector:             params.DefaultSelector,
-					RequestService:              params.RequestService,
-					HttpClient:                  params.HttpClient,
-					Inbound:                     anthropic.NewInboundTransformer(),
-					SystemService:               params.SystemService,
-					UsageLogService:             params.UsageLogService,
-					PromptService:               params.PromptService,
-					QuotaService:                params.QuotaService,
-					PromptProtectionRuleService: params.PromptProtectionRuleService,
-					LiveStreamRegistry:          params.LiveStreamRegistry,
-					RateLimitTracker:            params.RateLimitTracker,
-					ConnectionTracker:           params.ConnectionTracker,
-					ModelConnectionTracker:      params.ModelConnectionTracker,
-					CostTracker:                 params.CostTracker,
-				},
+				baseConfig.WithInbound(anthropic.NewInboundTransformer()),
 			),
 		},
 		ChannelService: params.ChannelService,

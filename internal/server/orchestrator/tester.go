@@ -40,6 +40,8 @@ type TestChannelOrchestrator struct {
 	loadBalancer                *LoadBalancer
 	connectionTracking          ConnectionTracker
 	rateLimitTracker            *ChannelRequestTracker
+	modelConnectionTracker      *ModelConnectionTracker
+	costTracker                 *ChannelCostTracker
 }
 
 // NewTestChannelOrchestrator creates a new TestChannelOrchestrator.
@@ -53,6 +55,9 @@ func NewTestChannelOrchestrator(
 ) *TestChannelOrchestrator {
 	rateLimitTracker := NewChannelRequestTracker()
 	connTracker := NewDefaultConnectionTracker(100)
+	modelConnTracker := NewModelConnectionTracker()
+	costTracker := NewChannelCostTracker()
+	costTracker.Start()
 
 	return &TestChannelOrchestrator{
 		channelService:              channelService,
@@ -71,8 +76,10 @@ func NewTestChannelOrchestrator(
 				ConnectionTracker: connTracker,
 			}),
 		),
-		connectionTracking: connTracker,
-		rateLimitTracker:   rateLimitTracker,
+		connectionTracking:     connTracker,
+		rateLimitTracker:       rateLimitTracker,
+		modelConnectionTracker: modelConnTracker,
+		costTracker:            costTracker,
 	}
 }
 
@@ -119,8 +126,8 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		circuitBreakerLoadBalancer: processor.loadBalancer,
 		connectionTracker:          processor.connectionTracking,
 		rateLimitTracker:           processor.rateLimitTracker,
-		modelConnectionTracker:     NewModelConnectionTracker(),
-		costTracker:                NewChannelCostTracker(),
+		modelConnectionTracker:     processor.modelConnectionTracker,
+		costTracker:                processor.costTracker,
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
@@ -454,8 +461,8 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		circuitBreakerLoadBalancer: processor.loadBalancer,
 		connectionTracker:          processor.connectionTracking,
 		rateLimitTracker:           processor.rateLimitTracker,
-		modelConnectionTracker:     NewModelConnectionTracker(),
-		costTracker:                NewChannelCostTracker(),
+		modelConnectionTracker:     processor.modelConnectionTracker,
+		costTracker:                processor.costTracker,
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 

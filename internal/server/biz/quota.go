@@ -346,39 +346,7 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 // GetChannelCost returns the total cost for a channel within the specified time window.
 func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-cost", func(bypassCtx context.Context) (float64, error) {
-		q := s.ent.UsageLog.Query().Where(
-			usagelog.ChannelIDEQ(channelID),
-			usagelog.SourceEQ(usagelog.SourceAPI),
-		)
-
-		if window.Start != nil {
-			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
-		}
-
-		if window.End != nil {
-			q = q.Where(usagelog.CreatedAtLT(*window.End))
-		}
-
-		type row struct {
-			TotalCost float64 `json:"total_cost"`
-		}
-
-		var rows []row
-
-		err := q.Modify(func(sel *sql.Selector) {
-			sel.Select(
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalCost)), "total_cost"),
-			)
-		}).Scan(bypassCtx, &rows)
-		if err != nil {
-			return 0, err
-		}
-
-		if len(rows) == 0 {
-			return 0, nil
-		}
-
-		return rows[0].TotalCost, nil
+		return s.channelCost(bypassCtx, channelID, window, usagelog.SourceAPI)
 	})
 }
 
@@ -386,38 +354,7 @@ func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window
 // This matches the RateLimitAwareStrategy behavior in the load balancer.
 func (s *QuotaService) GetChannelCostAllSources(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-cost-all", func(bypassCtx context.Context) (float64, error) {
-		q := s.ent.UsageLog.Query().Where(
-			usagelog.ChannelIDEQ(channelID),
-		)
-
-		if window.Start != nil {
-			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
-		}
-
-		if window.End != nil {
-			q = q.Where(usagelog.CreatedAtLT(*window.End))
-		}
-
-		type row struct {
-			TotalCost float64 `json:"total_cost"`
-		}
-
-		var rows []row
-
-		err := q.Modify(func(sel *sql.Selector) {
-			sel.Select(
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalCost)), "total_cost"),
-			)
-		}).Scan(bypassCtx, &rows)
-		if err != nil {
-			return 0, err
-		}
-
-		if len(rows) == 0 {
-			return 0, nil
-		}
-
-		return rows[0].TotalCost, nil
+		return s.channelCost(bypassCtx, channelID, window, "")
 	})
 }
 
@@ -519,6 +456,44 @@ func (s *QuotaService) channelTokenCount(ctx context.Context, channelID int, win
 	}
 
 	return rows[0].TotalTokens, nil
+}
+
+func (s *QuotaService) channelCost(ctx context.Context, channelID int, window QuotaWindow, source usagelog.Source) (float64, error) {
+	q := s.ent.UsageLog.Query().Where(
+		usagelog.ChannelIDEQ(channelID),
+	)
+	if source != "" {
+		q = q.Where(usagelog.SourceEQ(source))
+	}
+
+	if window.Start != nil {
+		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
+	}
+
+	if window.End != nil {
+		q = q.Where(usagelog.CreatedAtLT(*window.End))
+	}
+
+	type row struct {
+		TotalCost float64 `json:"total_cost"`
+	}
+
+	var rows []row
+
+	err := q.Modify(func(sel *sql.Selector) {
+		sel.Select(
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", sel.C(usagelog.FieldTotalCost)), "total_cost"),
+		)
+	}).Scan(ctx, &rows)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(rows) == 0 {
+		return 0, nil
+	}
+
+	return rows[0].TotalCost, nil
 }
 
 // GetBatchChannelRequestCount returns request counts for multiple channels in a single query.

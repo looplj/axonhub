@@ -555,8 +555,6 @@ func splitHardExhaustedCandidates(
 	return usable, exhausted
 }
 
-
-
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.
 type TagsFilterSelector struct {
 	wrapped   CandidateSelector

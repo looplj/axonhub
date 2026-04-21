@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// copyTimePtr creates a deep copy of a *time.Time, normalizing to UTC.
 func copyTimePtr(t *time.Time) *time.Time {
 	if t == nil {
 		return nil

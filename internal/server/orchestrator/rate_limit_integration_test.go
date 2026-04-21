@@ -735,7 +735,7 @@ func TestIntegration_ConcurrentAccess_ModelConnectionTracker(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range opsPerGoroutine / 2 {
-				modelTracker.DecrementModelConnection(1, "gpt-4")
+				modelTracker.DecrementModelConnection(context.Background(), 1, "gpt-4")
 			}
 		}()
 	}
@@ -1208,7 +1208,7 @@ func TestIntegration_ScoreRecoveryAfterDecrement(t *testing.T) {
 	score := strategy.Score(ctx, ch)
 	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 
-	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	score = strategy.Score(ctx, ch)
 	assert.Greater(t, score, float64(rateLimitExhaustedScore))
 

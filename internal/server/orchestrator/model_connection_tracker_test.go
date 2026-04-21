@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -38,18 +39,18 @@ func TestModelConnectionTracker_Decrement(t *testing.T) {
 	tracker.IncrementModelConnection(1, "gpt-4")
 
 	// Test decrement
-	tracker.DecrementModelConnection(1, "gpt-4")
+	tracker.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 2, tracker.GetModelConnectionCount(1, "gpt-4"))
 
-	tracker.DecrementModelConnection(1, "gpt-4")
+	tracker.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(1, "gpt-4"))
 
 	// Test decrement to zero (cleanup)
-	tracker.DecrementModelConnection(1, "gpt-4")
+	tracker.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(1, "gpt-4"))
 
 	// Test decrement below zero (should stay at 0)
-	tracker.DecrementModelConnection(1, "gpt-4")
+	tracker.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(1, "gpt-4"))
 }
 
@@ -65,12 +66,12 @@ func TestModelConnectionTracker_Cleanup(t *testing.T) {
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(1, "claude-3"))
 
 	// Decrement one model to zero - should clean up model entry but keep channel
-	tracker.DecrementModelConnection(1, "gpt-4")
+	tracker.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(1, "gpt-4"))
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(1, "claude-3"))
 
 	// Decrement last model - should clean up channel entry
-	tracker.DecrementModelConnection(1, "claude-3")
+	tracker.DecrementModelConnection(context.Background(), 1, "claude-3")
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(1, "claude-3"))
 
 	// Verify internal cleanup by checking non-existent model returns 0
@@ -89,7 +90,7 @@ func TestModelConnectionTracker_CaseInsensitive(t *testing.T) {
 	tracker.IncrementModelConnection(1, "gpt-4")
 	assert.Equal(t, 2, tracker.GetModelConnectionCount(1, "GPT-4"))
 
-	tracker.DecrementModelConnection(1, "Gpt-4")
+	tracker.DecrementModelConnection(context.Background(), 1, "Gpt-4")
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(1, "gpt-4"))
 }
 
@@ -124,7 +125,7 @@ func TestModelConnectionTracker_ConcurrentAccess(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < incrementsPerGoroutine; j++ {
-				tracker.DecrementModelConnection(channelID, model)
+				tracker.DecrementModelConnection(context.Background(), channelID, model)
 			}
 		}()
 	}
@@ -166,7 +167,7 @@ func TestModelConnectionTracker_ConcurrentMultiChannelMultiModel(t *testing.T) {
 			go func(channelID int, modelName string) {
 				defer decWg.Done()
 				for i := 0; i < decrementsPerModel; i++ {
-					tracker.DecrementModelConnection(channelID, modelName)
+					tracker.DecrementModelConnection(context.Background(), channelID, modelName)
 				}
 			}(c, model)
 		}
@@ -197,7 +198,7 @@ func TestModelConnectionTracker_MultipleChannelsIsolation(t *testing.T) {
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(3, "gpt-4"))
 
 	// Decrement from one channel shouldn't affect others
-	tracker.DecrementModelConnection(1, "gpt-4")
+	tracker.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(1, "gpt-4"))
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(2, "gpt-4"))
 	assert.Equal(t, 1, tracker.GetModelConnectionCount(3, "gpt-4"))
@@ -207,7 +208,7 @@ func TestModelConnectionTracker_DecrementNonExistent(t *testing.T) {
 	tracker := NewModelConnectionTracker()
 
 	// Should not panic when decrementing non-existent channel/model
-	tracker.DecrementModelConnection(999, "non-existent")
+	tracker.DecrementModelConnection(context.Background(), 999, "non-existent")
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(999, "non-existent"))
 }
 
@@ -220,12 +221,12 @@ func TestModelConnectionTracker_GetCountNonExistent(t *testing.T) {
 
 func TestModelConnectionTracker_DecrementBelowZero(t *testing.T) {
 	mt := NewModelConnectionTracker()
-	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
 
 	mt.IncrementModelConnection(1, "gpt-4")
-	mt.DecrementModelConnection(1, "gpt-4")
-	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
 }
 
@@ -234,7 +235,7 @@ func TestModelConnectionTracker_CleanupOnZero(t *testing.T) {
 
 	mt.IncrementModelConnection(1, "gpt-4")
 	assert.Equal(t, 1, mt.GetModelConnectionCount(1, "gpt-4"))
-	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
 
 	mt.mu.RLock()
@@ -244,7 +245,7 @@ func TestModelConnectionTracker_CleanupOnZero(t *testing.T) {
 	assert.False(t, exists, "Model entry should be cleaned up when count reaches 0")
 
 	mt.IncrementModelConnection(2, "claude-3")
-	mt.DecrementModelConnection(2, "claude-3")
+	mt.DecrementModelConnection(context.Background(), 2, "claude-3")
 	mt.mu.RLock()
 	_, channelExists := mt.connections[2]
 	mt.mu.RUnlock()
@@ -255,9 +256,9 @@ func TestModelConnectionTracker_DoubleDecrementIdempotent(t *testing.T) {
 	mt := NewModelConnectionTracker()
 	mt.IncrementModelConnection(1, "gpt-4")
 
-	mt.DecrementModelConnection(1, "gpt-4")
-	mt.DecrementModelConnection(1, "gpt-4")
-	mt.DecrementModelConnection(1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
+	mt.DecrementModelConnection(context.Background(), 1, "gpt-4")
 	assert.Equal(t, 0, mt.GetModelConnectionCount(1, "gpt-4"))
 }
 

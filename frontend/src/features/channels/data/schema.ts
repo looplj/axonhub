@@ -179,22 +179,22 @@ export const channelRateLimitStatusSchema = z.object({
   // Number.MAX_SAFE_INTEGER (2^53 - 1) may lose precision in JavaScript.
   // This is acceptable for current usage levels but should be revisited
   // if channel volumes exceed ~9 quadrillion requests/tokens per window.
-  rpmCurrent: z.number().nullable().optional(),
-  rpmLimit: z.number().nullable().optional(),
-  rpmResetAt: z.string().nullable().optional(),
-  rpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).nullable().optional(),
-  tpmCurrent: z.number().nullable().optional(),
-  tpmLimit: z.number().nullable().optional(),
-  tpmResetAt: z.string().nullable().optional(),
-  tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).nullable().optional(),
-  costCurrent: z.number().nullable().optional(),
-  costLimit: z.number().nullable().optional(),
-  costResetAt: z.string().nullable().optional(),
-  costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).nullable().optional(),
-  concurrentCurrent: z.number().nullable().optional(),
-  concurrentLimit: z.number().nullable().optional(),
+  rpmCurrent: z.number().nullable(),
+  rpmLimit: z.number().nullable(),
+  rpmResetAt: z.string().nullable(),
+  rpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).nullable(),
+  tpmCurrent: z.number().nullable(),
+  tpmLimit: z.number().nullable(),
+  tpmResetAt: z.string().nullable(),
+  tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).nullable(),
+  costCurrent: z.number().nullable(),
+  costLimit: z.number().nullable(),
+  costResetAt: z.string().nullable(),
+  costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).nullable(),
+  concurrentCurrent: z.number().nullable(),
+  concurrentLimit: z.number().nullable(),
   isCoolingDown: z.boolean(),
-  cooldownUntil: z.string().nullable().optional(),
+  cooldownUntil: z.string().nullable(),
 });
 export type ChannelRateLimitStatus = z.infer<typeof channelRateLimitStatusSchema>;
 

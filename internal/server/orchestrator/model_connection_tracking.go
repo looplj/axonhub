@@ -62,7 +62,7 @@ func (m *modelConnectionTracking) OnOutboundRawRequest(ctx context.Context, requ
 
 	m.decrementMu.Lock()
 	if m.incrKey != nil && !m.decremented {
-		m.tracker.DecrementModelConnection(m.incrKey.channelID, m.incrKey.model)
+		m.tracker.DecrementModelConnection(ctx, m.incrKey.channelID, m.incrKey.model)
 	}
 
 	m.incrKey = &modelConnectionKey{channelID: channel.ID, model: model}
@@ -114,7 +114,7 @@ func (m *modelConnectionTracking) decrementConnection(ctx context.Context) {
 	}
 
 	m.decremented = true
-	m.tracker.DecrementModelConnection(m.incrKey.channelID, m.incrKey.model)
+	m.tracker.DecrementModelConnection(ctx, m.incrKey.channelID, m.incrKey.model)
 
 	log.Debug(ctx, "Decremented model connection count",
 		log.Int("channel_id", m.incrKey.channelID),

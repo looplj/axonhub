@@ -32,47 +32,32 @@ type JinaHandlersParams struct {
 }
 
 func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
+	baseConfig := orchestrator.OrchestratorConfig{
+		ChannelService:              params.ChannelService,
+		DefaultSelector:             params.DefaultSelector,
+		RequestService:              params.RequestService,
+		HttpClient:                  params.HttpClient,
+		SystemService:               params.SystemService,
+		UsageLogService:             params.UsageLogService,
+		PromptService:               params.PromptService,
+		QuotaService:                params.QuotaService,
+		PromptProtectionRuleService: params.PromptProtectionRuleService,
+		LiveStreamRegistry:          params.LiveStreamRegistry,
+		RateLimitTracker:            params.RateLimitTracker,
+		ConnectionTracker:           params.ConnectionTracker,
+		ModelConnectionTracker:      params.ModelConnectionTracker,
+		CostTracker:                 params.CostTracker,
+	}
+
 	return &JinaHandlers{
 		RerankHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
-				orchestrator.OrchestratorConfig{
-					ChannelService:              params.ChannelService,
-					DefaultSelector:             params.DefaultSelector,
-					RequestService:              params.RequestService,
-					HttpClient:                  params.HttpClient,
-					Inbound:                     jina.NewRerankInboundTransformer(),
-					SystemService:               params.SystemService,
-					UsageLogService:             params.UsageLogService,
-					PromptService:               params.PromptService,
-					QuotaService:                params.QuotaService,
-					PromptProtectionRuleService: params.PromptProtectionRuleService,
-					LiveStreamRegistry:          params.LiveStreamRegistry,
-					RateLimitTracker:            params.RateLimitTracker,
-					ConnectionTracker:           params.ConnectionTracker,
-					ModelConnectionTracker:      params.ModelConnectionTracker,
-					CostTracker:                 params.CostTracker,
-				},
+				baseConfig.WithInbound(jina.NewRerankInboundTransformer()),
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
-				orchestrator.OrchestratorConfig{
-					ChannelService:              params.ChannelService,
-					DefaultSelector:             params.DefaultSelector,
-					RequestService:              params.RequestService,
-					HttpClient:                  params.HttpClient,
-					Inbound:                     jina.NewEmbeddingInboundTransformer(),
-					SystemService:               params.SystemService,
-					UsageLogService:             params.UsageLogService,
-					PromptService:               params.PromptService,
-					QuotaService:                params.QuotaService,
-					PromptProtectionRuleService: params.PromptProtectionRuleService,
-					LiveStreamRegistry:          params.LiveStreamRegistry,
-					RateLimitTracker:            params.RateLimitTracker,
-					ConnectionTracker:           params.ConnectionTracker,
-					ModelConnectionTracker:      params.ModelConnectionTracker,
-					CostTracker:                 params.CostTracker,
-				},
+				baseConfig.WithInbound(jina.NewEmbeddingInboundTransformer()),
 			),
 		},
 	}

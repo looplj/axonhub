@@ -12,7 +12,7 @@ import (
 // This allows for dependency injection and easier testing.
 type ModelConnectionTrackerInterface interface {
 	IncrementModelConnection(channelID int, model string)
-	DecrementModelConnection(channelID int, model string)
+	DecrementModelConnection(ctx context.Context, channelID int, model string)
 	GetModelConnectionCount(channelID int, model string) int
 }
 
@@ -52,7 +52,7 @@ func (t *ModelConnectionTracker) IncrementModelConnection(channelID int, model s
 // DecrementModelConnection decrements the active connection count for a channel+model.
 // Cleans up the model entry when count reaches 0, and the channel entry when no models remain.
 // Model names are normalized to lowercase for case-insensitive matching.
-func (t *ModelConnectionTracker) DecrementModelConnection(channelID int, model string) {
+func (t *ModelConnectionTracker) DecrementModelConnection(ctx context.Context, channelID int, model string) {
 	model = strings.ToLower(model)
 
 	t.mu.Lock()
@@ -61,7 +61,7 @@ func (t *ModelConnectionTracker) DecrementModelConnection(channelID int, model s
 	// Check if channel exists
 	models, ok := t.connections[channelID]
 	if !ok {
-		log.Debug(context.Background(), "DecrementModelConnection called for unknown channel",
+		log.Debug(ctx, "DecrementModelConnection called for unknown channel",
 			log.Int("channel_id", channelID),
 			log.String("model", model),
 		)
@@ -71,7 +71,7 @@ func (t *ModelConnectionTracker) DecrementModelConnection(channelID int, model s
 	// Check if model exists in channel
 	count, ok := models[model]
 	if !ok {
-		log.Debug(context.Background(), "DecrementModelConnection called for unknown model",
+		log.Debug(ctx, "DecrementModelConnection called for unknown model",
 			log.Int("channel_id", channelID),
 			log.String("model", model),
 		)
@@ -80,7 +80,7 @@ func (t *ModelConnectionTracker) DecrementModelConnection(channelID int, model s
 
 	// Check if count is already zero (double decrement)
 	if count <= 0 {
-		log.Debug(context.Background(), "DecrementModelConnection called for model with zero count",
+		log.Debug(ctx, "DecrementModelConnection called for model with zero count",
 			log.Int("channel_id", channelID),
 			log.String("model", model),
 			log.Int("current_count", count),

@@ -37,6 +37,14 @@ type OrchestratorConfig struct {
 	CostTracker                 *ChannelCostTracker
 }
 
+// WithInbound returns a copy of the config with the Inbound field replaced.
+func (c OrchestratorConfig) WithInbound(inbound transformer.Inbound) OrchestratorConfig {
+	cfg := c
+	cfg.Inbound = inbound
+
+	return cfg
+}
+
 func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrchestrator {
 	var connectionTracker ConnectionTracker
 	if cfg.ConnectionTracker != nil {
