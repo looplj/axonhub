@@ -103,8 +103,8 @@ function modelConcurrentToArray(
   });
 }
 
-const TIME_ONLY_DURATIONS: RateLimitDuration[] = ['ONE_HOUR'];
-const DATE_DURATIONS: RateLimitDuration[] = ['FIVE_HOUR', 'ONE_WEEK', 'ONE_MONTH'];
+const TIME_ONLY_DURATIONS: RateLimitDuration[] = ['ONE_HOUR', 'FIVE_HOUR'];
+const DATE_DURATIONS: RateLimitDuration[] = ['ONE_WEEK', 'ONE_MONTH'];
 
 function durationUsesTimeOnlyAnchor(duration: RateLimitDuration | null | undefined): boolean {
   return !!duration && TIME_ONLY_DURATIONS.includes(duration);
