@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"mime"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/eko/gocache/lib/v4/store"
+	"github.com/go-viper/mapstructure/v2"
 	"go.uber.org/fx"
 	"golang.org/x/oauth2"
 
@@ -193,6 +195,7 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 			provider     *oidc.Provider
 			oauth2Config oauth2.Config
 			verifier     *oidc.IDTokenVerifier
+			err          error
 		)
 
 		// 1. Try Discovery if IssuerURL is provided
@@ -694,7 +697,7 @@ func (s *OIDCService) fetchUserInfo(ctx context.Context, p *oidcProvider, token 
 	}
 
 	var raw map[string]any
-	if err := xjson.NewDecoder(resp.Body).Decode(&raw); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, err
 	}
 
@@ -831,7 +834,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 
 	// Apply role mappings to new user
-	s.applyRoleMappings(userCreate.Mutation, groups, p.config)
+	s.applyRoleMappings(userCreate.Mutation(), groups, p.config)
 
 	newUser, err := userCreate.Save(ctx)
 	if err != nil {
@@ -870,7 +873,7 @@ func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, given
 	}
 
 	// Sync roles/scopes
-	s.applyRoleMappings(update.Mutation, groups, cfg)
+	s.applyRoleMappings(update.Mutation(), groups, cfg)
 
 	return update.Save(ctx)
 }
