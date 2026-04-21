@@ -8,11 +8,13 @@ import (
 )
 
 // onCloseStream wraps a streams.Stream and calls onClose exactly once when the stream
-// is exhausted (Next returns false) or explicitly closed.
+// is exhausted (Next returns false) or explicitly closed. The underlying stream is
+// closed exactly once — inside the sync.Once block — to prevent double-close.
 type onCloseStream struct {
-	stream  streams.Stream[*llm.Response]
-	onClose func()
-	closed  sync.Once
+	stream     streams.Stream[*llm.Response]
+	onClose    func()
+	closed     sync.Once
+	closeErr   error
 }
 
 func (s *onCloseStream) Current() *llm.Response {
@@ -23,7 +25,7 @@ func (s *onCloseStream) Next() bool {
 	if !s.stream.Next() {
 		s.closed.Do(func() {
 			s.onClose()
-			_ = s.stream.Close()
+			s.closeErr = s.stream.Close()
 		})
 		return false
 	}
@@ -32,8 +34,11 @@ func (s *onCloseStream) Next() bool {
 }
 
 func (s *onCloseStream) Close() error {
-	s.closed.Do(s.onClose)
-	return s.stream.Close()
+	s.closed.Do(func() {
+		s.onClose()
+		s.closeErr = s.stream.Close()
+	})
+	return s.closeErr
 }
 
 func (s *onCloseStream) Err() error {

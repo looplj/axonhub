@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -214,6 +215,14 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 	}
 
 	return status, nil
+}
+
+// float64ToExactDecimal converts a float64 to decimal.Decimal via string
+// formatting to avoid binary floating-point representation artifacts.
+func float64ToExactDecimal(f float64) decimal.Decimal {
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	d, _ := decimal.NewFromString(s)
+	return d
 }
 
 // Cost is the resolver for the cost field.
@@ -963,7 +972,7 @@ func (r *channelRateLimitInputResolver) Cost(ctx context.Context, obj *objects.C
 		return nil
 	}
 
-	obj.Cost = lo.ToPtr(decimal.NewFromFloat(*data))
+	obj.Cost = lo.ToPtr(float64ToExactDecimal(*data))
 	return nil
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
@@ -853,4 +854,17 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_AnchorRPM(t *testing.T) {
 	assert.Equal(t, 50.0, score)
 	assert.Equal(t, int64(10), strategyScore.Details["rpm_limit"])
 	assert.Equal(t, int64(5), strategyScore.Details["rpm_current"])
+}
+
+func TestRateLimitAwareStrategy_IsHardExhausted(t *testing.T) {
+	provider := RateLimitProvider{
+		RequestTracker: NewChannelRequestTracker(),
+	}
+	s := NewRateLimitAwareStrategy(provider)
+
+	require.False(t, s.IsHardExhausted(0))
+	require.False(t, s.IsHardExhausted(50))
+	require.False(t, s.IsHardExhausted(100))
+	require.True(t, s.IsHardExhausted(rateLimitExhaustedScore))
+	require.True(t, s.IsHardExhausted(float64(rateLimitExhaustedScore)))
 }

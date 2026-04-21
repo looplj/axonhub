@@ -114,8 +114,12 @@ export function tzDatetimeToUtc(localValue: string, timezone: string): string | 
 
     const seedMs = Date.UTC(year, month - 1, day, hour, minute, second);
     let utcMs = seedMs - getTimezoneOffsetMs(timezone, new Date(seedMs));
-    for (let i = 0; i < 2; i++) {
-      utcMs = seedMs - getTimezoneOffsetMs(timezone, new Date(utcMs));
+    let prevUtcMs = 0;
+    for (let i = 0; i < 4; i++) {
+      const newUtcMs = seedMs - getTimezoneOffsetMs(timezone, new Date(utcMs));
+      if (newUtcMs === prevUtcMs) break;
+      prevUtcMs = newUtcMs;
+      utcMs = newUtcMs;
     }
     return new Date(utcMs).toISOString();
   } catch {

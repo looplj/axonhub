@@ -832,3 +832,135 @@ func TestDBFallbackPattern_Integration(t *testing.T) {
 	expectedScore := 100.0 * (1 - ratio)
 	assert.Equal(t, 50.0, expectedScore)
 }
+
+func TestChannelRequestTracker_StartStopLifecycle(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
+	// Create tracker with custom TTL
+	tracker = NewChannelRequestTracker(WithClock(func() time.Time { return *clockPtr }), WithTrackerTTL(time.Minute))
+
+	// Start the tracker
+	tracker.Start()
+
+	// Verify it's running by adding data and waiting for eviction
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+
+	// Advance clock past TTL to trigger eviction
+	*clockPtr = now.Add(2 * time.Minute)
+
+	// Call EvictExpired to verify the eviction mechanism works
+	tracker.EvictExpired()
+
+	// Verify data is gone
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+
+	// Stop the tracker
+	tracker.Stop()
+
+	// Start again - should work (the everStarted fix)
+	tracker.Start()
+
+	// Verify it works again
+	tracker.IncrementRequestForDuration(2, time.Minute, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(2, time.Minute, nil))
+
+	// Stop again
+	tracker.Stop()
+}
+
+func TestChannelRequestTracker_StopBeforeStartPreventsStart(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// Call Stop before Start
+	tracker.Stop()
+
+	// Call Start - should be a no-op (stoppedEarly flag)
+	tracker.Start()
+
+	// Verify no goroutine is running by adding data and checking it doesn't get evicted
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+}
+
+func TestChannelRequestTracker_DoubleStopDoesNotBreakStart(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// Start the tracker
+	tracker.Start()
+
+	// Stop it the first time
+	tracker.Stop()
+
+	// Stop it again - stopCh is nil, but everStarted is true so stoppedEarly is NOT set
+	tracker.Stop()
+
+	// Start should work (everStarted is true)
+	tracker.Start()
+
+	// Verify it works
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+
+	tracker.Stop()
+}
+
+func TestChannelRequestTracker_EvictExpired_RemovesExpiredEntries(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	clockPtr := &now
+	tracker := NewChannelRequestTracker(WithClock(func() time.Time { return *clockPtr }), WithTrackerTTL(time.Minute))
+
+	// Add data for channel 1 with 1 minute duration
+	tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+
+	// Advance clock past window + TTL
+	*clockPtr = now.Add(3 * time.Minute)
+
+	// Call EvictExpired
+	tracker.EvictExpired()
+
+	// Verify channel 1 data is gone
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Minute, nil))
+
+	// Add data for channel 2
+	tracker.IncrementRequestForDuration(2, time.Minute, nil)
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(2, time.Minute, nil))
+
+	// Call EvictExpired - channel 2 still within window so should remain
+	tracker.EvictExpired()
+
+	// Verify channel 2 data remains
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(2, time.Minute, nil))
+}
+
+func TestChannelRequestTracker_EvictExpired_CleansUpCooldowns(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	clockPtr := &now
+	tracker := NewChannelRequestTracker(WithClock(func() time.Time { return *clockPtr }))
+
+	// Set cooldown for channel 1 that is already expired
+	tracker.SetCooldown(1, now.Add(-10*time.Second))
+	assert.False(t, tracker.IsCoolingDown(1))
+
+	// Set cooldown for channel 2 that is still active
+	tracker.SetCooldown(2, now.Add(30*time.Second))
+	assert.True(t, tracker.IsCoolingDown(2))
+
+	// Call EvictExpired
+	tracker.EvictExpired()
+
+	// Channel 1 was already not in cooldown (expired), channel 2 should still be active
+	assert.False(t, tracker.IsCoolingDown(1))
+	assert.True(t, tracker.IsCoolingDown(2))
+
+	// Advance clock past the cooldown for channel 2
+	*clockPtr = now.Add(60 * time.Second)
+
+	// Call EvictExpired
+	tracker.EvictExpired()
+
+	// Verify channel 2 cooldown is now cleaned up
+	assert.False(t, tracker.IsCoolingDown(2))
+}

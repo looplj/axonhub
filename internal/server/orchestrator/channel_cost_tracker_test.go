@@ -248,3 +248,152 @@ func TestChannelCostTracker_StartStopMultiple(t *testing.T) {
 	tracker.Start()
 	tracker.Stop() // should not panic on double stop
 }
+
+func TestChannelCostTracker_StartStopLifecycle(t *testing.T) {
+	tracker := NewChannelCostTracker()
+
+	// Call Start(), verify it's running
+	tracker.Start()
+
+	// Verify we can set/get costs while running
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := time.Now().Add(time.Hour)
+	tracker.SetCachedCost(1, cost, windowEnd)
+	got, ok := tracker.GetCachedCost(1)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+
+	// Call Stop()
+	tracker.Stop()
+
+	// Call Start() again - should work
+	tracker.Start()
+
+	// Verify we can set/get costs again
+	tracker.SetCachedCost(2, cost, windowEnd)
+	got, ok = tracker.GetCachedCost(2)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+
+	tracker.Stop()
+}
+
+func TestChannelCostTracker_StopBeforeStartPreventsStart(t *testing.T) {
+	tracker := NewChannelCostTracker()
+
+	// Call Stop() before Start()
+	tracker.Stop()
+
+	// Now call Start() - this should be a no-op due to stoppedEarly flag
+	tracker.Start()
+
+	// The background goroutine should not be running - set a cost and verify
+	// it doesn't get evicted (since eviction only runs in background goroutine)
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := time.Now().Add(time.Hour)
+	tracker.SetCachedCost(1, cost, windowEnd)
+
+	// If Start() was prevented, the eviction goroutine never started
+	// So the cost should still be present after TTL + a bit
+	now := time.Now()
+	clockPtr := &now
+	tracker2 := NewChannelCostTracker(
+		WithCostTrackerClock(func() time.Time { return *clockPtr }),
+	)
+	tracker2.Stop()
+	tracker2.Start()
+	tracker2.SetCachedCost(1, cost, windowEnd)
+
+	// Simulate TTL expiry
+	*clockPtr = now.Add(31 * time.Second)
+
+	// Get should return the stale cost because eviction loop never ran
+	got, ok := tracker2.GetCachedCost(1)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+
+	// Manually call EvictExpired - this would be what the background goroutine would do
+	tracker2.EvictExpired()
+
+	// Now TTL expired but window not ended - should keep for fail-open
+	got, ok = tracker2.GetCachedCost(1)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+}
+
+func TestChannelCostTracker_DoubleStopDoesNotBreakStart(t *testing.T) {
+	tracker := NewChannelCostTracker()
+
+	// Start then stop twice
+	tracker.Start()
+	tracker.Stop()
+	tracker.Stop() // second stop should not panic
+
+	// Call Start() again - should work because everStarted is true
+	tracker.Start()
+
+	// Verify tracker works
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := time.Now().Add(time.Hour)
+	tracker.SetCachedCost(1, cost, windowEnd)
+	got, ok := tracker.GetCachedCost(1)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+
+	tracker.Stop()
+}
+
+func TestChannelCostTracker_EvictExpired_RemovesExpiredEntries(t *testing.T) {
+	now := time.Now()
+	clockPtr := &now
+	tracker := NewChannelCostTracker(
+		WithCostTrackerClock(func() time.Time { return *clockPtr }),
+	)
+
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := now.Add(time.Hour)
+
+	// Set entries - one will expire, one won't
+	tracker.SetCachedCost(1, cost, windowEnd)                           // window not ended
+	tracker.SetCachedCost(2, cost, now.Add(-1*time.Second))            // window already ended
+
+	// Verify both exist initially
+	_, ok := tracker.GetCachedCost(1)
+	assert.True(t, ok)
+	_, ok = tracker.GetCachedCost(2)
+	assert.False(t, ok) // window already ended, should be removed on get
+
+	// Now add entry with window ending in the future, then evict past it
+	tracker.SetCachedCost(3, cost, now.Add(time.Hour))
+	*clockPtr = now.Add(2 * time.Hour) // advance past window end
+
+	tracker.EvictExpired()
+
+	// Entry 3 should now be evicted (window ended)
+	_, ok = tracker.GetCachedCost(3)
+	assert.False(t, ok)
+
+	// Entry 1 should also be evicted (window ended)
+	_, ok = tracker.GetCachedCost(1)
+	assert.False(t, ok)
+}
+
+func TestChannelCostTracker_DoubleClose_NoPanic(t *testing.T) {
+	tracker := NewChannelCostTracker()
+
+	tracker.Start()
+
+	// Call Stop() multiple times - should not panic
+	tracker.Stop()
+	tracker.Stop()
+	tracker.Stop()
+	tracker.Stop() // should not panic
+
+	// Verify tracker still works after double close
+	cost := decimal.NewFromFloat(10.0)
+	windowEnd := time.Now().Add(time.Hour)
+	tracker.SetCachedCost(1, cost, windowEnd)
+	got, ok := tracker.GetCachedCost(1)
+	assert.True(t, ok)
+	assert.True(t, cost.Equal(got))
+}

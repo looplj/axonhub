@@ -67,12 +67,19 @@ func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response
 }
 
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	return &onCloseStream{
+	wrapped := &onCloseStream{
 		stream: stream,
 		onClose: func() {
 			m.decrementConnection(context.WithoutCancel(ctx))
 		},
-	}, nil
+	}
+
+	go func() {
+		<-ctx.Done()
+		wrapped.Close()
+	}()
+
+	return wrapped, nil
 }
 
 func (m *connectionTracking) OnOutboundRawError(ctx context.Context, err error) {

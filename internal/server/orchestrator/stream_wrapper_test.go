@@ -12,6 +12,15 @@ import (
 )
 
 type mockResponseStream struct {
+	items       []*llm.Response
+	idx         int
+	err         error
+	closeErr    error
+	closed      bool
+	closeCount  int32
+}
+
+type mockResponseStreamWithErr struct {
 	items  []*llm.Response
 	idx    int
 	err    error
@@ -37,12 +46,37 @@ func (m *mockResponseStream) Next() bool {
 }
 
 func (m *mockResponseStream) Close() error {
+	atomic.AddInt32(&m.closeCount, 1)
 	m.closed = true
-	return m.err
+	return m.closeErr
 }
 
 func (m *mockResponseStream) Err() error {
 	return nil
+}
+
+func (m *mockResponseStreamWithErr) Current() *llm.Response {
+	if m.idx > 0 && m.idx <= len(m.items) {
+		return m.items[m.idx-1]
+	}
+	return nil
+}
+
+func (m *mockResponseStreamWithErr) Next() bool {
+	if m.idx >= len(m.items) {
+		return false
+	}
+	m.idx++
+	return true
+}
+
+func (m *mockResponseStreamWithErr) Close() error {
+	m.closed = true
+	return nil
+}
+
+func (m *mockResponseStreamWithErr) Err() error {
+	return m.err
 }
 
 func TestOnCloseStream_ExhaustionTriggersOnClose(t *testing.T) {
@@ -121,7 +155,7 @@ func TestOnCloseStream_CloseClosesUnderlyingStream(t *testing.T) {
 
 func TestOnCloseStream_CloseReturnsStreamError(t *testing.T) {
 	expectedErr := errors.New("stream error")
-	ms := &mockResponseStream{items: []*llm.Response{{}}, err: expectedErr}
+	ms := &mockResponseStream{items: []*llm.Response{{}}, closeErr: expectedErr}
 	s := &onCloseStream{
 		stream:  ms,
 		onClose: func() {},
@@ -129,4 +163,39 @@ func TestOnCloseStream_CloseReturnsStreamError(t *testing.T) {
 
 	err := s.Close()
 	assert.ErrorIs(t, err, expectedErr, "Close should return the underlying stream error")
+}
+
+func TestOnCloseStream_ExhaustThenCloseDoesNotDoubleCloseUnderlyingStream(t *testing.T) {
+	ms := &mockResponseStream{items: []*llm.Response{{}}}
+	s := &onCloseStream{
+		stream:  ms,
+		onClose: func() {},
+	}
+
+	s.Next()
+	streamExhausted := !s.Next()
+	assert.True(t, streamExhausted)
+	assert.True(t, ms.closed, "underlying stream should be closed after exhaustion")
+
+	err := s.Close()
+	require.NoError(t, err)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&ms.closeCount), "underlying stream Close() should be called exactly once")
+}
+
+func TestOnCloseStream_NextExhaustWithStreamError(t *testing.T) {
+	streamErr := errors.New("network error")
+	ms := &mockResponseStreamWithErr{items: []*llm.Response{{}}, err: streamErr}
+	var onCloseCount int32
+	s := &onCloseStream{
+		stream: ms,
+		onClose: func() {
+			atomic.AddInt32(&onCloseCount, 1)
+		},
+	}
+
+	s.Next()
+	streamExhausted := !s.Next()
+	assert.True(t, streamExhausted)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&onCloseCount), "onClose should fire even when stream has an error")
+	assert.ErrorIs(t, s.Err(), streamErr, "Err() should propagate the underlying stream error")
 }

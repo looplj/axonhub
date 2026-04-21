@@ -34,6 +34,7 @@ type ChannelCostTracker struct {
 	clock        func() time.Time
 	stopCh       chan struct{}
 	stoppedEarly bool
+	everStarted  bool
 	evictInt     time.Duration
 }
 
@@ -50,22 +51,20 @@ func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 	return t
 }
 
-// Start begins the background eviction goroutine. Safe to call multiple times;
-// only the first call launches the goroutine.
 func (t *ChannelCostTracker) Start() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if t.stopCh != nil {
-		// Already started
 		return
 	}
 
-	if t.stoppedEarly {
-		// Stop was called before Start — don't start
+	if t.stoppedEarly && !t.everStarted {
 		return
 	}
 
+	t.stoppedEarly = false
+	t.everStarted = true
 	t.stopCh = make(chan struct{})
 	stopCh := t.stopCh
 
@@ -84,19 +83,19 @@ func (t *ChannelCostTracker) Start() {
 	}()
 }
 
-// Stop stops the background eviction goroutine. Safe to call multiple times.
 func (t *ChannelCostTracker) Stop() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if t.stopCh == nil {
-		// Stop called before Start — record that we should not start
-		t.stoppedEarly = true
+		if !t.everStarted {
+			t.stoppedEarly = true
+		}
 		return
 	}
 
 	ch := t.stopCh
-	t.stopCh = nil // prevent double close
+	t.stopCh = nil
 
 	close(ch)
 }

@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"reflect"
 	"sync"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -20,10 +21,7 @@ func isNilModelConnectionTracker(tracker ModelConnectionTrackerInterface) bool {
 	if tracker == nil {
 		return true
 	}
-
-	concrete, ok := tracker.(*ModelConnectionTracker)
-
-	return ok && concrete == nil
+	return reflect.ValueOf(tracker).IsNil()
 }
 
 func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracker ModelConnectionTrackerInterface) pipeline.Middleware {
@@ -88,12 +86,19 @@ func (m *modelConnectionTracking) OnOutboundLlmResponse(ctx context.Context, res
 }
 
 func (m *modelConnectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	return &onCloseStream{
+	wrapped := &onCloseStream{
 		stream: stream,
 		onClose: func() {
-			m.decrementConnection(ctx)
+			m.decrementConnection(context.WithoutCancel(ctx))
 		},
-	}, nil
+	}
+
+	go func() {
+		<-ctx.Done()
+		wrapped.Close()
+	}()
+
+	return wrapped, nil
 }
 
 func (m *modelConnectionTracking) OnOutboundRawError(ctx context.Context, err error) {

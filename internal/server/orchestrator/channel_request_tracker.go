@@ -1,10 +1,12 @@
 package orchestrator
 
 import (
+	"context"
 	"math"
 	"sync"
 	"time"
 
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -16,6 +18,7 @@ type ChannelRequestTracker struct {
 	stopCh       chan struct{}
 	evictInt     time.Duration
 	stoppedEarly bool
+	everStarted  bool
 	ttl          time.Duration
 }
 
@@ -59,20 +62,20 @@ func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
 }
 
 // Start begins the background eviction goroutine. Safe to call multiple times;
-// only the first call launches the goroutine. If Stop was called before Start,
-// Start is a no-op.
+// only the first call launches the goroutine. If Stop was called before Start
+// (i.e. Start was never called), Start is a no-op.
 func (t *ChannelRequestTracker) Start() {
 	t.mu.Lock()
 	if t.stopCh != nil {
-		// Already started.
 		t.mu.Unlock()
 		return
 	}
-	if t.stoppedEarly {
-		// Stop was called before Start — do not start the goroutine.
+	if t.stoppedEarly && !t.everStarted {
 		t.mu.Unlock()
 		return
 	}
+	t.stoppedEarly = false
+	t.everStarted = true
 	t.stopCh = make(chan struct{})
 	stopCh := t.stopCh
 	t.mu.Unlock()
@@ -93,12 +96,14 @@ func (t *ChannelRequestTracker) Start() {
 }
 
 // Stop stops the background eviction goroutine. Safe to call multiple times.
-// If called before Start, subsequent Start calls are no-ops.
+// If called before Start has ever been called, subsequent Start calls are no-ops.
+// If called after a running goroutine has already been stopped, it is a no-op.
 func (t *ChannelRequestTracker) Stop() {
 	t.mu.Lock()
 	if t.stopCh == nil {
-		// Stop called before Start — record that we should not start.
-		t.stoppedEarly = true
+		if !t.everStarted {
+			t.stoppedEarly = true
+		}
 		t.mu.Unlock()
 		return
 	}
@@ -123,6 +128,14 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
 		durationMap[d] = w
 	} else if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
+		if w.requests > 0 || w.tokens > 0 {
+			log.Warn(context.Background(), "rate limit window data discarded due to anchor or window change",
+				log.Int("channel_id", channelID),
+				log.Duration("duration", d),
+				log.Int64("discarded_requests", w.requestSeed+w.requests),
+				log.Int64("discarded_tokens", w.tokenSeed+w.tokens),
+			)
+		}
 		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
 		durationMap[d] = w
 	}
@@ -159,7 +172,7 @@ func (t *ChannelRequestTracker) IncrementRequestForDuration(channelID int, d tim
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	if w.requestSeed+w.requests < math.MaxInt64 {
+	if w.requests < math.MaxInt64-w.requestSeed {
 		w.requests++
 	}
 }

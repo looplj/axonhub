@@ -175,6 +175,10 @@ export const channelRateLimitSchema = z.object({
 export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
 
 export const channelRateLimitStatusSchema = z.object({
+  // Note: These fields use the Int64 GraphQL scalar. Values exceeding
+  // Number.MAX_SAFE_INTEGER (2^53 - 1) may lose precision in JavaScript.
+  // This is acceptable for current usage levels but should be revisited
+  // if channel volumes exceed ~9 quadrillion requests/tokens per window.
   rpmCurrent: z.number().nullable().optional(),
   rpmLimit: z.number().nullable().optional(),
   rpmResetAt: z.string().nullable().optional(),

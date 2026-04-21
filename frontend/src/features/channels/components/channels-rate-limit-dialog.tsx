@@ -39,7 +39,20 @@ const DURATION_I18N_KEYS: Record<RateLimitDuration, string> = {
 
 const localDatetimeSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Invalid datetime format');
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Invalid datetime format')
+  .superRefine((val, ctx) => {
+    const [datePart, timePart] = val.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid date or time value' });
+      return;
+    }
+    const d = new Date(year, month - 1, day, hour, minute);
+    if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid date or time value' });
+    }
+  });
 
 const rateLimitFormSchema = z
   .object({
