@@ -9,14 +9,14 @@ import (
 )
 
 type ChannelRequestTracker struct {
-	mu          sync.RWMutex
-	counters    map[int]map[time.Duration]*rateLimitWindow
-	cooldowns   map[int]time.Time
-	clock       func() time.Time
-	stopCh      chan struct{}
-	evictInt    time.Duration
+	mu           sync.RWMutex
+	counters     map[int]map[time.Duration]*rateLimitWindow
+	cooldowns    map[int]time.Time
+	clock        func() time.Time
+	stopCh       chan struct{}
+	evictInt     time.Duration
 	stoppedEarly bool
-	ttl         time.Duration
+	ttl          time.Duration
 }
 
 type ClockOption func(*ChannelRequestTracker)
@@ -124,12 +124,6 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 				delete(durationMap, dur)
 			}
 		}
-	}
-
-	if len(durationMap) == 0 {
-		delete(t.counters, channelID)
-		durationMap = make(map[time.Duration]*rateLimitWindow)
-		t.counters[channelID] = durationMap
 	}
 
 	w, ok := durationMap[d]
@@ -438,30 +432,87 @@ func (t *ChannelRequestTracker) clearExpiredCooldown(channelID int, observedUnti
 	}
 }
 
-func (t *ChannelRequestTracker) EvictExpired() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+type expiredDurationEntry struct {
+	channelID int
+	dur       time.Duration
+}
 
-	now := t.clock()
+type evictionCandidates struct {
+	now              time.Time
+	expiredDurations []expiredDurationEntry
+	emptyChannels    []int
+	expiredCooldowns []int
+}
+
+func (t *ChannelRequestTracker) collectEvictionCandidates() evictionCandidates {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	c := evictionCandidates{now: t.clock()}
 
 	for channelID, durationMap := range t.counters {
+		if len(durationMap) == 0 {
+			c.emptyChannels = append(c.emptyChannels, channelID)
+			continue
+		}
+
+		allExpired := true
 		for dur, w := range durationMap {
 			windowEnd := w.windowStart.Add(dur)
-
-			expired := now.After(windowEnd) && now.Sub(windowEnd) > t.ttl
-			if expired {
-				delete(durationMap, dur)
+			if c.now.After(windowEnd) && c.now.Sub(windowEnd) > t.ttl {
+				c.expiredDurations = append(c.expiredDurations, expiredDurationEntry{channelID, dur})
+			} else {
+				allExpired = false
 			}
 		}
 
-		if len(durationMap) == 0 {
-			delete(t.counters, channelID)
+		if allExpired {
+			c.emptyChannels = append(c.emptyChannels, channelID)
 		}
 	}
 
 	for channelID, until := range t.cooldowns {
-		if now.After(until) {
-			delete(t.cooldowns, channelID)
+		if c.now.After(until) {
+			c.expiredCooldowns = append(c.expiredCooldowns, channelID)
 		}
 	}
+
+	return c
+}
+
+func (t *ChannelRequestTracker) deleteEvictionCandidates(c evictionCandidates) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for _, ed := range c.expiredDurations {
+		if dm, ok := t.counters[ed.channelID]; ok {
+			if w, exists := dm[ed.dur]; exists {
+				windowEnd := w.windowStart.Add(ed.dur)
+				if c.now.After(windowEnd) && c.now.Sub(windowEnd) > t.ttl {
+					delete(dm, ed.dur)
+				}
+			}
+		}
+	}
+
+	for _, cid := range c.emptyChannels {
+		if dm, ok := t.counters[cid]; ok && len(dm) == 0 {
+			delete(t.counters, cid)
+		}
+	}
+
+	for _, cid := range c.expiredCooldowns {
+		if until, ok := t.cooldowns[cid]; ok && c.now.After(until) {
+			delete(t.cooldowns, cid)
+		}
+	}
+}
+
+func (t *ChannelRequestTracker) EvictExpired() {
+	candidates := t.collectEvictionCandidates()
+	if len(candidates.expiredDurations) == 0 && len(candidates.expiredCooldowns) == 0 {
+		return
+	}
+
+	t.deleteEvictionCandidates(candidates)
 }

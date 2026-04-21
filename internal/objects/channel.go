@@ -162,6 +162,28 @@ type ChannelRateLimit struct {
 	ModelConcurrent  map[string]int64   `json:"modelConcurrent,omitempty"`
 }
 
+func (c *ChannelRateLimit) UnmarshalJSON(data []byte) error {
+	type alias ChannelRateLimit
+
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+
+	*c = ChannelRateLimit(a)
+
+	if c.ModelConcurrent != nil {
+		normalized := make(map[string]int64, len(c.ModelConcurrent))
+		for k, v := range c.ModelConcurrent {
+			normalized[strings.ToLower(k)] = v
+		}
+
+		c.ModelConcurrent = normalized
+	}
+
+	return nil
+}
+
 // GetModelConcurrentLimit returns the concurrent limit for a specific model.
 // If a per-model limit is configured, it returns that limit and true.
 // Otherwise, it falls back to MaxConcurrent and returns false for the second value.
@@ -173,10 +195,8 @@ func (c *ChannelRateLimit) GetModelConcurrentLimit(model string) (int64, bool) {
 	model = strings.ToLower(model)
 
 	if c.ModelConcurrent != nil {
-		for k, v := range c.ModelConcurrent {
-			if strings.ToLower(k) == model {
-				return v, true
-			}
+		if v, ok := c.ModelConcurrent[model]; ok {
+			return v, true
 		}
 	}
 

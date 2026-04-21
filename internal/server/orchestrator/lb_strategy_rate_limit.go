@@ -281,7 +281,7 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 			key := fmt.Sprintf("cost:%d:%s:%s:%d", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor), windowStart.Unix())
 			v, sfErr, _ := s.provider.costFlight.Do(key, func() (any, error) {
-				fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+				fetchedCost, err := s.provider.QuotaService.GetChannelCostAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 				if err != nil {
 					return nil, err
 				}
@@ -519,7 +519,7 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 
 			key := fmt.Sprintf("cost:%d:%s:%s:%d", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor), windowStart.Unix())
 			v, sfErr, _ := s.provider.costFlight.Do(key, func() (any, error) {
-				fetchedCost, err := s.provider.QuotaService.GetChannelCost(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
+				fetchedCost, err := s.provider.QuotaService.GetChannelCostAllSources(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 				if err != nil {
 					return nil, err
 				}
