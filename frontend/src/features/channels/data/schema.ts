@@ -14,6 +14,7 @@ export const apiFormatSchema = z.enum([
   'aisdk/datastream',
   'jina/rerank',
   'jina/embeddings',
+  'ollama/chat',
 ]);
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
@@ -66,6 +67,7 @@ export const channelTypeSchema = z.enum([
   'nanogpt',
   'nanogpt_responses',
   'fireworks',
+  'ollama',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 

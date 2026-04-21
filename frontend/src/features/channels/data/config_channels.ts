@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { OpenAI, Anthropic, Google, DeepSeek, Doubao, Moonshot, Zhipu, OpenRouter, XAI, Volcengine, SiliconCloud, PPIO, ZAI, LongCat, Minimax, BurnCloud, Vercel, ModelScope, Bailian, Jina, DeepInfra, Github, Claude, Cerebras, XiaomiMiMo, Fireworks } from '@lobehub/icons';
+import { OpenAI, Anthropic, Google, DeepSeek, Doubao, Moonshot, Zhipu, OpenRouter, XAI, Volcengine, SiliconCloud, PPIO, ZAI, LongCat, Minimax, BurnCloud, Vercel, ModelScope, Bailian, Jina, DeepInfra, Github, Claude, Cerebras, XiaomiMiMo, Fireworks, Ollama } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -523,6 +523,22 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: Fireworks,
   },
+  ollama: {
+    channelType: 'ollama',
+    baseURL: 'https://api.ollama.cloud',
+    defaultModels: [
+      'llama3.2',
+      'llama3.1',
+      'llama3',
+      'mistral',
+      'codellama',
+      'gemma2',
+      'qwen2.5',
+    ],
+    apiFormat: 'ollama/chat' as ApiFormat,
+    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    icon: Ollama,
+  },
 };
 
 /**
@@ -573,7 +589,8 @@ export type Provider =
   | 'codex'
   | 'antigravity'
   | 'nanogpt'
-  | 'fireworks';
+  | 'fireworks'
+  | 'ollama';
 
 /**
  * Map channel type to provider
@@ -625,6 +642,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   nanogpt: 'nanogpt',
   nanogpt_responses: 'nanogpt',
   fireworks: 'fireworks',
+  ollama: 'ollama',
 };
 
 /**
