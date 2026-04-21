@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useProviderQuotaStatuses, ProviderQuotaChannel, checkProviderQuotas } from '@/features/system/data/quotas';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 
 const STATUS_COLORS = {
@@ -193,6 +194,12 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                 )}
               </>
+            )}
+            {quotaData.rate_limit?.secondary_window?.reset_at && (
+              <div className="flex justify-between items-center text-muted-foreground">
+                <span>{t('quota.label.resets_at')}</span>
+                <span>{format(new Date(quotaData.rate_limit.secondary_window.reset_at * 1000), 'yyyy-MM-dd HH:mm')}</span>
+              </div>
             )}
           </div>
         </div>
