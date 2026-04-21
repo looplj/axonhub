@@ -424,8 +424,8 @@ func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerIdentifier st
 		_, _ = rand.Read(pkceVerifierBytes)
 		pkceVerifier = base64.URLEncoding.EncodeToString(pkceVerifierBytes)
 
-		// Store PKCE verifier in cache mapped to state
-		err := s.cache.Set(ctx, "oidc_pkce:"+state, []byte(pkceVerifier))
+		// Store PKCE verifier in cache mapped to state (valid for 10 minutes)
+		err := s.cache.Set(ctx, "oidc_pkce:"+state, []byte(pkceVerifier), store.WithExpiration(10*time.Minute))
 		if err != nil {
 			return "", "", fmt.Errorf("failed to cache PKCE verifier: %w", err)
 		}
