@@ -36,6 +36,7 @@ const (
 	APIFormatJinaRerank    APIFormat = "jina/rerank"
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
 
+	APIFormatOllamaChat    APIFormat = "ollama/chat"
 	APIFormatSeedanceVideo APIFormat = "seedance/video"
 )
 
