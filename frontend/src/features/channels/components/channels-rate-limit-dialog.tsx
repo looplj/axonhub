@@ -18,7 +18,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
-import { utcToTzDatetime, tzDatetimeToUtc, getTzTimeValue, getTzDateParts } from '../utils/timezone';
+import { utcToTzDatetime, tzDatetimeToUtc, getTzDateParts } from '../utils/timezone';
 
 interface Props {
   open: boolean;
@@ -37,6 +37,10 @@ const DURATION_I18N_KEYS: Record<RateLimitDuration, string> = {
   ONE_MONTH: 'channels.dialogs.rateLimit.durations.1mo',
 };
 
+const localDatetimeSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Invalid datetime format');
+
 const rateLimitFormSchema = z
   .object({
     rpm: z
@@ -44,19 +48,19 @@ const rateLimitFormSchema = z
       .optional()
       .nullable(),
     rpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-    rpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid datetime format' }).optional().nullable(),
+    rpmWindowAnchor: localDatetimeSchema.optional().nullable(),
     tpm: z
       .union([z.number().int().positive(), z.literal('')])
       .optional()
       .nullable(),
     tpmDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-    tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid datetime format' }).optional().nullable(),
+    tpmWindowAnchor: localDatetimeSchema.optional().nullable(),
     cost: z
       .union([z.number().positive(), z.literal('')])
       .optional()
       .nullable(),
     costDuration: z.enum(RATE_LIMIT_DURATIONS).optional().nullable(),
-    costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid datetime format' }).optional().nullable(),
+    costWindowAnchor: localDatetimeSchema.optional().nullable(),
     maxConcurrent: z
       .union([z.number().int().positive(), z.literal('')])
       .optional()
@@ -99,27 +103,53 @@ function modelConcurrentToArray(
   });
 }
 
-const HOUR_DURATIONS: RateLimitDuration[] = ['ONE_HOUR', 'FIVE_HOUR'];
-const DATE_DURATIONS: RateLimitDuration[] = ['ONE_WEEK', 'ONE_MONTH'];
+const TIME_ONLY_DURATIONS: RateLimitDuration[] = ['ONE_HOUR'];
+const DATE_DURATIONS: RateLimitDuration[] = ['FIVE_HOUR', 'ONE_WEEK', 'ONE_MONTH'];
 
-function getRateLimitDefaults(currentRow: Channel): RateLimitFormValues {
+function durationUsesTimeOnlyAnchor(duration: RateLimitDuration | null | undefined): boolean {
+  return !!duration && TIME_ONLY_DURATIONS.includes(duration);
+}
+
+function durationUsesDatetimeAnchor(duration: RateLimitDuration | null | undefined): boolean {
+  return !!duration && DATE_DURATIONS.includes(duration);
+}
+
+function durationUsesAnchor(duration: RateLimitDuration | null | undefined): boolean {
+  return durationUsesTimeOnlyAnchor(duration) || durationUsesDatetimeAnchor(duration);
+}
+
+function getLocalTimeValue(localDatetime: string | null | undefined): string {
+  if (!localDatetime) return '';
+  const timePart = localDatetime.split('T')[1] ?? '';
+  return /^\d{2}:\d{2}$/.test(timePart) ? timePart : '';
+}
+
+function mergeLocalDateAndTime(localDatetime: string | null | undefined, timeValue: string, timezone: string): string | null {
+  if (!timeValue) return null;
+
+  let datePart = localDatetime?.split('T')[0];
+  if (!datePart || !/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    const { year, month, day } = getTzDateParts(timezone);
+    datePart = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  return `${datePart}T${timeValue}`;
+}
+
+function getRateLimitDefaults(currentRow: Channel, timezone: string): RateLimitFormValues {
   return {
     rpm: currentRow.settings?.rateLimit?.rpm ?? '',
     rpmDuration: currentRow.settings?.rateLimit?.rpmDuration ?? 'ONE_MIN',
-    rpmWindowAnchor: currentRow.settings?.rateLimit?.rpmWindowAnchor ?? null,
+    rpmWindowAnchor: utcToTzDatetime(currentRow.settings?.rateLimit?.rpmWindowAnchor, timezone) || null,
     tpm: currentRow.settings?.rateLimit?.tpm ?? '',
     tpmDuration: currentRow.settings?.rateLimit?.tpmDuration ?? 'ONE_MIN',
-    tpmWindowAnchor: currentRow.settings?.rateLimit?.tpmWindowAnchor ?? null,
+    tpmWindowAnchor: utcToTzDatetime(currentRow.settings?.rateLimit?.tpmWindowAnchor, timezone) || null,
     cost: currentRow.settings?.rateLimit?.cost ?? '',
     costDuration: currentRow.settings?.rateLimit?.costDuration ?? 'ONE_WEEK',
-    costWindowAnchor: currentRow.settings?.rateLimit?.costWindowAnchor ?? null,
+    costWindowAnchor: utcToTzDatetime(currentRow.settings?.rateLimit?.costWindowAnchor, timezone) || null,
     maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
     modelConcurrent: modelConcurrentToArray(currentRow.settings?.rateLimit, currentRow.supportedModels),
   };
-}
-
-function isHourBasedDuration(d: RateLimitDuration | null | undefined): boolean {
-  return !!d && HOUR_DURATIONS.includes(d);
 }
 
 function WindowAnchorField({
@@ -135,10 +165,10 @@ function WindowAnchorField({
 }) {
   const { t } = useTranslation();
 
-  const isHourBased = isHourBasedDuration(duration);
-  const isDateBased = !!duration && DATE_DURATIONS.includes(duration);
+  const isTimeOnly = durationUsesTimeOnlyAnchor(duration);
+  const isDateBased = durationUsesDatetimeAnchor(duration);
 
-  if (!isHourBased && !isDateBased) {
+  if (!isTimeOnly && !isDateBased) {
     return null;
   }
 
@@ -149,8 +179,8 @@ function WindowAnchorField({
       render={({ field }) => {
         const anchorValue = field.value;
 
-        if (isHourBased) {
-          const tzTimeValue = getTzTimeValue(anchorValue, timezone);
+        if (isTimeOnly) {
+          const timeValue = getLocalTimeValue(anchorValue);
 
           return (
             <FormItem className='w-[220px]'>
@@ -168,17 +198,9 @@ function WindowAnchorField({
               <FormControl>
                 <Input
                   type='time'
-                  value={tzTimeValue}
+                  value={timeValue}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val) {
-                      field.onChange(null);
-                      return;
-                    }
-                    const { year, month, day } = getTzDateParts(timezone);
-                    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    const tzDatetime = `${dateStr}T${val}`;
-                    field.onChange(tzDatetimeToUtc(tzDatetime, timezone));
+                    field.onChange(mergeLocalDateAndTime(anchorValue, e.target.value, timezone));
                   }}
                 />
               </FormControl>
@@ -203,9 +225,9 @@ function WindowAnchorField({
             <FormControl>
               <Input
                 type='datetime-local'
-                value={utcToTzDatetime(anchorValue, timezone)}
+                value={anchorValue ?? ''}
                 onChange={(e) => {
-                  field.onChange(tzDatetimeToUtc(e.target.value, timezone));
+                  field.onChange(e.target.value || null);
                 }}
                 placeholder={t('channels.dialogs.rateLimit.fields.windowAnchor.placeholder')}
               />
@@ -226,7 +248,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
 
   const form = useForm<RateLimitFormValues>({
     resolver: zodResolver(rateLimitFormSchema),
-    defaultValues: getRateLimitDefaults(currentRow),
+    defaultValues: getRateLimitDefaults(currentRow, timezone),
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -239,13 +261,19 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
   }, [append]);
 
   const prevOpenRef = useRef(false);
+  const prevTimezoneRef = useRef(timezone);
 
   useEffect(() => {
-    if (open && !prevOpenRef.current) {
-      form.reset(getRateLimitDefaults(currentRow));
+    const isOpening = open && !prevOpenRef.current;
+    const timezoneChanged = open && prevTimezoneRef.current !== timezone && !form.formState.isDirty;
+
+    if (isOpening || timezoneChanged) {
+      form.reset(getRateLimitDefaults(currentRow, timezone));
     }
+
     prevOpenRef.current = open;
-  }, [open, currentRow, form]);
+    prevTimezoneRef.current = timezone;
+  }, [open, currentRow, timezone, form, form.formState.isDirty]);
 
   const onSubmit = async (values: RateLimitFormValues) => {
     try {
@@ -256,13 +284,13 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       const rateLimit: Record<string, unknown> = {
         rpm: finalRpm,
         rpmDuration: finalRpm != null ? values.rpmDuration : null,
-        rpmWindowAnchor: finalRpm != null ? values.rpmWindowAnchor : null,
+        rpmWindowAnchor: finalRpm != null && durationUsesAnchor(values.rpmDuration) ? tzDatetimeToUtc(values.rpmWindowAnchor, timezone) : null,
         tpm: finalTpm,
         tpmDuration: finalTpm != null ? values.tpmDuration : null,
-        tpmWindowAnchor: finalTpm != null ? values.tpmWindowAnchor : null,
+        tpmWindowAnchor: finalTpm != null && durationUsesAnchor(values.tpmDuration) ? tzDatetimeToUtc(values.tpmWindowAnchor, timezone) : null,
         cost: finalCost,
         costDuration: finalCost != null ? values.costDuration : null,
-        costWindowAnchor: finalCost != null ? values.costWindowAnchor : null,
+        costWindowAnchor: finalCost != null && durationUsesAnchor(values.costDuration) ? tzDatetimeToUtc(values.costWindowAnchor, timezone) : null,
         maxConcurrent: values.maxConcurrent === '' || values.maxConcurrent == null ? null : values.maxConcurrent,
       };
 

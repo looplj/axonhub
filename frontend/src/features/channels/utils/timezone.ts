@@ -121,18 +121,6 @@ export function tzDatetimeToUtc(localValue: string, timezone: string): string | 
   }
 }
 
-export function getTzTimeValue(iso: string | null | undefined, timezone: string): string {
-  if (!iso) return '';
-  try {
-    const d = parseUtcIso(iso);
-    const p = getTzParts(d, timezone, false);
-    if (!p) return '';
-    return `${p.hour}:${p.minute}`;
-  } catch {
-    return '';
-  }
-}
-
 export function getTzDateParts(timezone: string): { year: number; month: number; day: number } {
   const now = new Date();
   const p = getTzParts(now, timezone, false);

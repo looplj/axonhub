@@ -654,8 +654,8 @@
   "channels.dialogs.rateLimit.fields.cost.placeholder": "不限制",
   "channels.dialogs.rateLimit.fields.cost.description": "在所选时间窗口内的最大费用。留空表示不限制。",
   "channels.dialogs.rateLimit.fields.windowAnchor.startTime": "开始时间",
-  "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "每天重置速率限制窗口的时间（本地时区）。请求从此时间开始计算。",
-  "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "速率限制窗口开始的精确日期和时间（本地时区）。请求从此时间点开始计算。",
+  "channels.dialogs.rateLimit.fields.windowAnchor.hourTooltip": "每天重置速率限制窗口的时间（服务器时区）。请求从此时间开始计算。",
+  "channels.dialogs.rateLimit.fields.windowAnchor.dateTooltip": "速率限制窗口开始的精确日期和时间（服务器时区）。请求从此时间点开始计算。",
   "channels.dialogs.rateLimit.durations.1wk": "1 周",
   "channels.expandedRow.rateLimit.cost": "费用"
 }
