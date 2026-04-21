@@ -377,6 +377,43 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, "function", req.Tools[0].Type)
 				require.Equal(t, "get_weather", req.Tools[0].Name)
 				require.Equal(t, "Get weather information", req.Tools[0].Description)
+				require.Nil(t, req.Tools[0].DeferLoading)
+			},
+		},
+		{
+			name: "request with deferred function tool",
+			chatReq: &llm.Request{
+				Model: "gpt-5.4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Find the shipping ETA tool first."),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type:         "function",
+						DeferLoading: lo.ToPtr(true),
+						Function: llm.Function{
+							Name:        "get_shipping_eta",
+							Description: "Look up shipping ETA details for an order.",
+							Parameters:  []byte(`{"type":"object","properties":{"order_id":{"type":"string"}}}`),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Len(t, req.Tools, 1)
+				require.Equal(t, "function", req.Tools[0].Type)
+				require.NotNil(t, req.Tools[0].DeferLoading)
+				require.True(t, *req.Tools[0].DeferLoading)
 			},
 		},
 		{
@@ -411,6 +448,50 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.Len(t, req.Tools, 1)
 				require.Equal(t, "object", req.Tools[0].Parameters["type"])
 				require.Equal(t, map[string]any{}, req.Tools[0].Parameters["properties"])
+			},
+		},
+		{
+			name: "request with tool search tool",
+			chatReq: &llm.Request{
+				Model: "gpt-5.4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Find the shipping ETA tool first."),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeToolSearch,
+						ToolSearch: &llm.ToolSearchTool{
+							Execution:   "client",
+							Description: "Find the project-specific tools needed to continue the task.",
+							Parameters:  []byte(`{"type":"object","properties":{"goal":{"type":"string"}},"required":["goal"],"additionalProperties":false}`),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Len(t, req.Tools, 1)
+				require.Equal(t, "tool_search", req.Tools[0].Type)
+				require.Equal(t, "client", req.Tools[0].Execution)
+				require.Equal(t, "Find the project-specific tools needed to continue the task.", req.Tools[0].Description)
+				require.Nil(t, req.Tools[0].DeferLoading)
+				require.Equal(t, map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"goal": map[string]any{"type": "string"},
+					},
+					"required":             []any{"goal"},
+					"additionalProperties": false,
+				}, req.Tools[0].Parameters)
 			},
 		},
 		{

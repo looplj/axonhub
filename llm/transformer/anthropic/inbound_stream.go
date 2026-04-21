@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -18,9 +19,10 @@ func (t *InboundTransformer) TransformStream(
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Create a custom stream that handles the stateful transformation
 	return &anthropicInboundStream{
-		source:    stream,
-		ctx:       ctx,
-		toolCalls: make(map[int]*llm.ToolCall),
+		source:       stream,
+		ctx:          ctx,
+		toolCalls:    make(map[int]*llm.ToolCall),
+		serverBlocks: make(map[int64]*MessageContentBlock),
 	}, nil
 }
 
@@ -51,6 +53,7 @@ type anthropicInboundStream struct {
 	// Buffered signature: when signature arrives before thinking starts,
 	// we hold it until thinking finishes.
 	pendingSignature *string
+	serverBlocks     map[int64]*MessageContentBlock
 }
 
 // closeThinkingBlock ensures any open or implied thinking block is properly
@@ -175,6 +178,36 @@ func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
 		Type: ev.Type,
 		Data: eventData,
 	})
+
+	return nil
+}
+
+func (s *anthropicInboundStream) closeOpenContentBlock() error {
+	if s.hasToolContentStarted {
+		s.hasToolContentStarted = false
+
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_stop",
+			Index: &s.contentIndex,
+		}); err != nil {
+			return err
+		}
+
+		s.contentIndex += 1
+	}
+
+	if s.hasTextContentStarted {
+		s.hasTextContentStarted = false
+
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_stop",
+			Index: &s.contentIndex,
+		}); err != nil {
+			return err
+		}
+
+		s.contentIndex += 1
+	}
 
 	return nil
 }
@@ -461,6 +494,80 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 		}
 
+		if choice.Delta != nil && len(choice.Delta.Content.MultipleContent) > 0 {
+			if err := s.closeThinkingBlock(); err != nil {
+				s.err = fmt.Errorf("failed to close thinking block: %w", err)
+				return false
+			}
+
+			for _, part := range choice.Delta.Content.MultipleContent {
+				if part.Type != "server_tool_use" && part.Type != "tool_search_tool_result" {
+					continue
+				}
+
+				if err := s.closeOpenContentBlock(); err != nil {
+					s.err = fmt.Errorf("failed to close open content block: %w", err)
+					return false
+				}
+
+				if len(part.ServerBlock) == 0 {
+					continue
+				}
+
+				var block MessageContentBlock
+				if err := json.Unmarshal(part.ServerBlock, &block); err != nil {
+					continue
+				}
+
+				s.serverBlocks[s.contentIndex] = &block
+				s.hasToolContentStarted = true
+
+				startBlock := block
+				switch block.Type {
+				case "server_tool_use":
+					startBlock.Input = nil
+				case "tool_search_tool_result":
+					startBlock.ServerContent = nil
+				}
+
+				if err := s.enqueEvent(&StreamEvent{
+					Type:         "content_block_start",
+					Index:        &s.contentIndex,
+					ContentBlock: &startBlock,
+				}); err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
+					return false
+				}
+
+				var partial string
+				switch block.Type {
+				case "server_tool_use":
+					partial = string(block.Input)
+				case "tool_search_tool_result":
+					var payload struct {
+						Content json.RawMessage `json:"content"`
+					}
+					if err := json.Unmarshal(part.ServerBlock, &payload); err == nil && len(payload.Content) > 0 {
+						partial = string(payload.Content)
+					}
+				}
+
+				if partial != "" && partial != "{}" {
+					if err := s.enqueEvent(&StreamEvent{
+						Type:  "content_block_delta",
+						Index: &s.contentIndex,
+						Delta: &StreamDelta{
+							Type:        lo.ToPtr("input_json_delta"),
+							PartialJSON: lo.ToPtr(partial),
+						},
+					}); err != nil {
+						s.err = fmt.Errorf("failed to enqueue content_block_delta event: %w", err)
+						return false
+					}
+				}
+			}
+		}
+
 		// Handle tool calls
 		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
 			if err := s.closeThinkingBlock(); err != nil {
@@ -468,7 +575,9 @@ func (s *anthropicInboundStream) Next() bool {
 				return false
 			}
 
-			// If the text content has started before the tool content, we need to stop it
+			// If the text content has started before the tool content, we need to stop it.
+			// Do not stop an already-open tool_use block here, otherwise continued tool
+			// argument deltas produce an extra content_block_stop/content_block_delta sequence.
 			if s.hasTextContentStarted {
 				s.hasTextContentStarted = false
 
@@ -525,7 +634,7 @@ func (s *anthropicInboundStream) Next() bool {
 							Type:  "tool_use",
 							ID:    deltaToolCall.ID,
 							Name:  &deltaToolCall.Function.Name,
-							Input: json.RawMessage("{}"),
+							Input: xjson.SafeJSONRawMessage(""),
 						},
 					}
 
@@ -590,14 +699,8 @@ func (s *anthropicInboundStream) Next() bool {
 				return false
 			}
 
-			streamEvent := StreamEvent{
-				Type:  "content_block_stop",
-				Index: &s.contentIndex,
-			}
-
-			err := s.enqueEvent(&streamEvent)
-			if err != nil {
-				s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+			if err := s.closeOpenContentBlock(); err != nil {
+				s.err = fmt.Errorf("failed to close open content block: %w", err)
 				return false
 			}
 

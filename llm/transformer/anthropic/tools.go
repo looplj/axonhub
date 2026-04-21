@@ -14,6 +14,18 @@ const (
 	// WebSearchFunctionName is the standard function name that triggers
 	// native Anthropic web search tool transformation.
 	WebSearchFunctionName = "web_search"
+
+	// ToolTypeToolSearchRegex is the regex variant of the tool search tool.
+	ToolTypeToolSearchRegex = "tool_search_tool_regex_20251119"
+
+	// ToolTypeToolSearchBM25 is the BM25 variant of the tool search tool.
+	ToolTypeToolSearchBM25 = "tool_search_tool_bm25_20251119"
+
+	// ToolSearchVariantRegex is the variant identifier for regex tool search.
+	ToolSearchVariantRegex = "regex"
+
+	// ToolSearchVariantBM25 is the variant identifier for BM25 tool search.
+	ToolSearchVariantBM25 = "bm25"
 )
 
 // ContainsAnthropicNativeTools checks if the tools slice contains any Anthropic native tools.
@@ -25,15 +37,16 @@ func ContainsAnthropicNativeTools(tools []llm.Tool) bool {
 
 // IsAnthropicNativeTool checks if a single tool is an Anthropic native tool.
 // A tool is considered Anthropic native if:
-// 1. It's a function tool with name "web_search" (OpenAI format input), OR
-// 2. It's already transformed to type "web_search_20250305" (Anthropic native format).
+// 1. It's already transformed to type "web_search_20250305" (Anthropic native format), OR
+// 2. It's a unified web_search or tool_search type.
 func IsAnthropicNativeTool(tool llm.Tool) bool {
-	// Match already-transformed Anthropic native tool type
-	if tool.Type == llm.ToolTypeWebSearch || tool.Type == ToolTypeWebSearch20250305 {
+	switch tool.Type {
+	case llm.ToolTypeWebSearch, ToolTypeWebSearch20250305,
+		llm.ToolTypeToolSearch, ToolTypeToolSearchRegex, ToolTypeToolSearchBM25:
 		return true
+	default:
+		return false
 	}
-
-	return false
 }
 
 // FilterOutAnthropicNativeTools removes Anthropic native tools from the tools slice.

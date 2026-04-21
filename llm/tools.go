@@ -10,7 +10,7 @@ import (
 // Tool represents a function tool.
 type Tool struct {
 	// Type is the type of the tool.
-	// Any of "function", "image_generation", "web_search", or "google" (for Google-specific tools).
+	// Any of "function", "image_generation", "web_search", "tool_search", or "google" (for Google-specific tools).
 	Type string `json:"type"`
 
 	// Function is the function definition, will be used when Type is "function".
@@ -21,6 +21,9 @@ type Tool struct {
 
 	// WebSearch is the web search definition, will be used when Type is "web_search".
 	WebSearch *WebSearch `json:"web_search,omitempty"`
+
+	// ToolSearch is the tool search definition, will be used when Type is "tool_search".
+	ToolSearch *ToolSearchTool `json:"tool_search,omitempty"`
 
 	// Google contains Google/Gemini-specific grounding tools.
 	// This namespace isolates Google's tools from other providers.
@@ -33,6 +36,10 @@ type Tool struct {
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
+	// DeferLoading marks a tool for on-demand loading with tool search.
+	// When true, the tool definition is not loaded into context upfront.
+	DeferLoading *bool `json:"defer_loading,omitempty"`
 }
 
 // Function represents a function definition.
@@ -223,6 +230,24 @@ type WebSearch struct {
 	AllowedDomains []string                  `json:"allowed_domains,omitzero"`
 	BlockedDomains []string                  `json:"blocked_domains,omitzero"`
 	UserLocation   WebSearchToolUserLocation `json:"user_location,omitzero"`
+}
+
+// ToolSearchTool is the unified passthrough shape for provider-specific tool search config.
+// Current support is intentionally limited to request-field passthrough and provider-local
+// response item round-tripping. Cross-provider semantic conversion is not guaranteed.
+type ToolSearchTool struct {
+	// Variant is the Anthropic-oriented tool search variant, e.g. "regex" or "bm25".
+	// For OpenAI Responses requests we currently normalize to "bm25".
+	Variant string `json:"variant,omitempty"`
+
+	// Execution is the Responses API tool search execution mode, e.g. "client" or "server".
+	Execution string `json:"execution,omitempty"`
+
+	// Description is an optional tool description for Responses API tool search.
+	Description string `json:"description,omitempty"`
+
+	// Parameters is the optional JSON schema for client-executed Responses API tool search arguments.
+	Parameters json.RawMessage `json:"parameters,omitempty"`
 }
 
 type WebSearchToolUserLocation struct {

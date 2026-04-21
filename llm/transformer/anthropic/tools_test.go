@@ -70,6 +70,21 @@ func TestContainsAnthropicNativeTools(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "contains tool_search_tool_regex type",
+			tools: []llm.Tool{
+				{Type: "function", Function: llm.Function{Name: "get_weather"}},
+				{Type: ToolTypeToolSearchRegex},
+			},
+			want: true,
+		},
+		{
+			name: "contains tool_search_tool_bm25 type",
+			tools: []llm.Tool{
+				{Type: ToolTypeToolSearchBM25},
+			},
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -119,6 +134,21 @@ func TestIsAnthropicNativeTool(t *testing.T) {
 		{
 			name: "native web_search_20250305 type with name",
 			tool: llm.Tool{Type: ToolTypeWebSearch20250305, Function: llm.Function{Name: "web_search"}},
+			want: true,
+		},
+		{
+			name: "tool_search type",
+			tool: llm.Tool{Type: llm.ToolTypeToolSearch},
+			want: true,
+		},
+		{
+			name: "tool_search_tool_regex_20251119 type",
+			tool: llm.Tool{Type: ToolTypeToolSearchRegex},
+			want: true,
+		},
+		{
+			name: "tool_search_tool_bm25_20251119 type",
+			tool: llm.Tool{Type: ToolTypeToolSearchBM25},
 			want: true,
 		},
 	}
@@ -194,6 +224,26 @@ func TestFilterOutAnthropicNativeTools(t *testing.T) {
 			},
 			wantLen:  1,
 			wantType: []string{"function"},
+		},
+		{
+			name: "filter tool_search_tool_regex type",
+			tools: []llm.Tool{
+				{Type: "function", Function: llm.Function{Name: "fn1"}},
+				{Type: ToolTypeToolSearchRegex},
+			},
+			wantLen:  1,
+			wantType: []string{"function"},
+		},
+		{
+			name: "filter tool_search and web_search together",
+			tools: []llm.Tool{
+				{Type: "function", Function: llm.Function{Name: "fn1"}},
+				{Type: ToolTypeToolSearchBM25},
+				{Type: ToolTypeWebSearch20250305},
+				{Type: "function", Function: llm.Function{Name: "fn2"}},
+			},
+			wantLen:  2,
+			wantType: []string{"function", "function"},
 		},
 	}
 

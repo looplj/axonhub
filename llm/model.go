@@ -453,6 +453,11 @@ type MessageContentPart struct {
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
 
+	// ServerBlock stores raw JSON for server-managed content blocks that should be
+	// passed through transparently (e.g., Anthropic's server_tool_use, tool_search_tool_result).
+	// The Type field indicates the block type.
+	ServerBlock json.RawMessage `json:"server_block,omitempty"`
+
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`

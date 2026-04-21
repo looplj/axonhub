@@ -580,6 +580,24 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		// This case should not be reached in normal flow, but return nil to skip if it does
 		return nil, nil
 
+	case "tool_search_call", "tool_search_output":
+		rawItem, err := json.Marshal(item)
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to marshal %s item: %v", transformer.ErrInvalidRequest, item.Type, err)
+		}
+
+		return &llm.Message{
+			Role: "assistant",
+			Content: llm.MessageContent{
+				MultipleContent: []llm.MessageContentPart{
+					{
+						Type:        item.Type,
+						ServerBlock: rawItem,
+					},
+				},
+			},
+		}, nil
+
 	case "compaction", "compaction_summary":
 		return compactionMessageFromItem(item, item.Type), nil
 
@@ -714,6 +732,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 					Parameters:  params,
 					Strict:      tool.Strict,
 				},
+				DeferLoading: tool.DeferLoading,
 			})
 
 		case "image_generation":
@@ -746,6 +765,26 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 			result = append(result, llm.Tool{
 				Type:               llm.ToolTypeResponsesCustomTool,
 				ResponseCustomTool: customTool,
+			})
+
+		case "tool_search":
+			var params json.RawMessage
+			if tool.Parameters != nil {
+				raw, err := json.Marshal(tool.Parameters)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal tool search parameters: %w", err)
+				}
+				params = raw
+			}
+
+			result = append(result, llm.Tool{
+				Type: llm.ToolTypeToolSearch,
+				ToolSearch: &llm.ToolSearchTool{
+					Variant:     "bm25",
+					Execution:   tool.Execution,
+					Description: tool.Description,
+					Parameters:  params,
+				},
 			})
 
 		default:
@@ -871,6 +910,15 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				case "compaction", "compaction_summary":
 					if part.Compact != nil {
 						resp.Output = append(resp.Output, compactionItemFromPart(part, part.Type))
+					}
+				case "tool_search_call", "tool_search_output":
+					if len(part.ServerBlock) == 0 {
+						continue
+					}
+
+					var item Item
+					if err := json.Unmarshal(part.ServerBlock, &item); err == nil {
+						contentItems = append(contentItems, item)
 					}
 				}
 			}

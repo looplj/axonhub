@@ -279,6 +279,28 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				},
 			}
 
+		case "tool_search_call", "tool_search_output":
+			rawItem, err := json.Marshal(item)
+			if err != nil {
+				return fmt.Errorf("failed to marshal %s item: %w", item.Type, err)
+			}
+
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type:        item.Type,
+									ServerBlock: rawItem,
+								},
+							},
+						},
+					},
+				},
+			}
+
 		default:
 			// For other item types (e.g., message), skip - no meaningful content to emit
 			return nil // Intentionally skip this event

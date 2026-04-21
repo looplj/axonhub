@@ -14,6 +14,22 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
+func serverContentPartFromBlock(block *MessageContentBlock) (llm.MessageContentPart, bool) {
+	if block == nil {
+		return llm.MessageContentPart{}, false
+	}
+
+	rawBlock, err := json.Marshal(block)
+	if err != nil {
+		return llm.MessageContentPart{}, false
+	}
+
+	return llm.MessageContentPart{
+		Type:        block.Type,
+		ServerBlock: rawBlock,
+	}, true
+}
+
 func (t *OutboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*httpclient.StreamEvent],
@@ -59,6 +75,7 @@ type streamState struct {
 	// Tool call tracking
 	toolIndex int
 	toolCalls map[int]*llm.ToolCall // index -> tool call
+	serverBlocks map[int64]*MessageContentBlock
 }
 
 // outboundStream wraps a stream and maintains state during processing.
@@ -74,6 +91,7 @@ func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent], platformT
 		stream: stream,
 		state: &streamState{
 			toolCalls:    make(map[int]*llm.ToolCall),
+			serverBlocks: make(map[int64]*MessageContentBlock),
 			toolIndex:    -1,
 			platformType: platformType,
 			scope:        scope,
@@ -166,7 +184,6 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		}
 
 	case "content_block_start":
-		// Only process tool_use content blocks, skip text content blocks
 		if streamEvent.ContentBlock != nil && streamEvent.ContentBlock.Type == "tool_use" {
 			// Initialize a new tool call
 			state.toolIndex++
@@ -189,6 +206,34 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				},
 			}
 			resp.Choices = []llm.Choice{choice}
+		} else if streamEvent.ContentBlock != nil && (streamEvent.ContentBlock.Type == "server_tool_use" || streamEvent.ContentBlock.Type == "tool_search_tool_result") {
+			if streamEvent.Index != nil {
+				blockCopy := *streamEvent.ContentBlock
+				if blockCopy.Type == "server_tool_use" && len(blockCopy.Input) == 0 {
+					blockCopy.Input = json.RawMessage("{}")
+				}
+				if blockCopy.Type == "server_tool_use" {
+					blockCopy.Input = nil
+				}
+				state.serverBlocks[*streamEvent.Index] = &blockCopy
+			}
+
+			part, ok := serverContentPartFromBlock(streamEvent.ContentBlock)
+			if !ok {
+				return nil, nil
+			}
+
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{part},
+						},
+					},
+				},
+			}
 		} else {
 			//nolint:nilnil // It is expected.
 			return nil, nil
@@ -206,6 +251,68 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			switch *streamEvent.Delta.Type {
 			case "input_json_delta":
 				if streamEvent.Delta.PartialJSON != nil {
+					if streamEvent.Index != nil {
+						if block, ok := state.serverBlocks[*streamEvent.Index]; ok {
+							switch block.Type {
+							case "server_tool_use":
+								block.Input = append(block.Input, []byte(*streamEvent.Delta.PartialJSON)...)
+							case "tool_search_tool_result":
+								var payload map[string]any
+								if len(block.ServerContent) > 0 {
+									_ = json.Unmarshal(block.ServerContent, &payload)
+								}
+								if payload == nil {
+									payload = map[string]any{
+										"type":       "tool_search_tool_result",
+										"tool_use_id": lo.FromPtr(block.ToolUseID),
+									}
+								}
+
+								contentRaw, ok := payload["content"].(map[string]any)
+								if !ok || contentRaw == nil {
+									contentRaw = map[string]any{}
+								}
+
+								contentJSON, err := json.Marshal(contentRaw)
+								if err == nil {
+									merged := append(contentJSON[:0:0], contentJSON...)
+									if string(contentJSON) == "{}" {
+										merged = []byte(*streamEvent.Delta.PartialJSON)
+									} else {
+										merged = append(contentJSON, []byte(*streamEvent.Delta.PartialJSON)...)
+									}
+									payload["content"] = json.RawMessage(merged)
+								}
+
+								rawPayload, err := json.Marshal(payload)
+								if err == nil {
+									block.ServerContent = rawPayload
+								}
+							}
+
+							part, ok := serverContentPartFromBlock(block)
+							if ok {
+								resp.Choices = []llm.Choice{
+									{
+										Index: 0,
+										Delta: &llm.Message{
+											Role: "assistant",
+											Content: llm.MessageContent{
+												MultipleContent: []llm.MessageContentPart{part},
+											},
+										},
+									},
+								}
+
+								return resp, nil
+							}
+						}
+					}
+
+					if state.toolCalls[state.toolIndex] == nil {
+						return nil, nil
+					}
+
 					choice := llm.Choice{
 						Index: 0,
 						Delta: &llm.Message{

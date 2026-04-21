@@ -1,6 +1,8 @@
 package anthropic
 
 import (
+	"encoding/json"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -131,8 +133,8 @@ func buildThinking(chatReq *llm.Request, config *Config) *Thinking {
 }
 
 // convertToolsAnthropic converts LLM tools to Anthropic tools.
-// If the platform is not direct Anthropic API or Bedrock, anthropic native tools (like web_search) are filtered out.
-// Only web_search tool is supported as native tool, other native tools (image_generation, google_*, etc.) are ignored.
+// If the platform is not direct Anthropic API or Bedrock, anthropic native tools (like web_search, tool_search) are filtered out.
+// Only web_search and tool_search tools are supported as native tools, other native tools (image_generation, google_*, etc.) are ignored.
 func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	if len(tools) == 0 {
 		return nil
@@ -145,12 +147,14 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	for _, tool := range tools {
 		switch tool.Type {
 		case llm.ToolTypeFunction:
-			anthropicTools = append(anthropicTools, Tool{
+			t := Tool{
 				Name:         tool.Function.Name,
 				Description:  tool.Function.Description,
 				InputSchema:  tool.Function.Parameters,
 				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
-			})
+				DeferLoading: tool.DeferLoading,
+			}
+			anthropicTools = append(anthropicTools, t)
 		case llm.ToolTypeWebSearch:
 			// Already transformed Anthropic native tool type
 			// If platform doesn't support native tools, skip this tool
@@ -178,6 +182,27 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			}
 
 			anthropicTools = append(anthropicTools, anthropicTool)
+		case llm.ToolTypeToolSearch:
+			if !supportsNativeTools {
+				continue
+			}
+
+			variant := ToolSearchVariantRegex
+			if tool.ToolSearch != nil && tool.ToolSearch.Variant != "" {
+				variant = tool.ToolSearch.Variant
+			}
+
+			toolType := ToolTypeToolSearchRegex
+			toolName := "tool_search_tool_regex"
+			if variant == ToolSearchVariantBM25 {
+				toolType = ToolTypeToolSearchBM25
+				toolName = "tool_search_tool_bm25"
+			}
+
+			anthropicTools = append(anthropicTools, Tool{
+				Type: toolType,
+				Name: toolName,
+			})
 		default:
 			// Ignore other native tools (image_generation, google_*, etc.)
 			continue
@@ -811,6 +836,13 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 					blocks = append(blocks, block)
 				}
 			}
+		case "server_tool_use", "tool_search_tool_result":
+			if len(part.ServerBlock) > 0 {
+				var block MessageContentBlock
+				if err := json.Unmarshal(part.ServerBlock, &block); err == nil {
+					blocks = append(blocks, block)
+				}
+			}
 		}
 	}
 
@@ -897,6 +929,14 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType, sco
 					},
 				}
 				toolCalls = append(toolCalls, toolCall)
+			}
+		case "server_tool_use", "tool_search_tool_result":
+			rawBlock, err := json.Marshal(block)
+			if err == nil {
+				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
+					Type:        block.Type,
+					ServerBlock: rawBlock,
+				})
 			}
 		case "thinking":
 			if block.Thinking != nil {

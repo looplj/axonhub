@@ -215,6 +215,15 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 						CacheControl: convertToLLMCacheControl(block.CacheControl),
 					})
 					hasContent = true
+				case "server_tool_use", "tool_search_tool_result":
+					rawBlock, err := json.Marshal(block)
+					if err == nil {
+						contentParts = append(contentParts, llm.MessageContentPart{
+							Type:        block.Type,
+							ServerBlock: rawBlock,
+						})
+						hasContent = true
+					}
 				}
 			}
 
@@ -458,6 +467,13 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 								})
 							}
 						}
+					case "server_tool_use", "tool_search_tool_result":
+						if len(part.ServerBlock) > 0 {
+							var block MessageContentBlock
+							if err := json.Unmarshal(part.ServerBlock, &block); err == nil {
+								contentBlocks = append(contentBlocks, block)
+							}
+						}
 					}
 				}
 			}
@@ -513,6 +529,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 
 // convertToolToLLM converts an Anthropic Tool to llm.Tool.
 // For web_search_20250305 native tools, it converts to llm.ToolTypeWebSearch type.
+// For tool_search_tool_* native tools, it converts to llm.ToolTypeToolSearch type.
 // For regular function tools, it converts to llm.ToolTypeFunction type.
 func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 	switch tool.Type {
@@ -534,8 +551,20 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 				},
 			},
 		}, true
-	case "", "custom":
+	case ToolTypeToolSearchRegex:
 		return llm.Tool{
+			Type:         llm.ToolTypeToolSearch,
+			CacheControl: convertToLLMCacheControl(tool.CacheControl),
+			ToolSearch:   &llm.ToolSearchTool{Variant: ToolSearchVariantRegex},
+		}, true
+	case ToolTypeToolSearchBM25:
+		return llm.Tool{
+			Type:         llm.ToolTypeToolSearch,
+			CacheControl: convertToLLMCacheControl(tool.CacheControl),
+			ToolSearch:   &llm.ToolSearchTool{Variant: ToolSearchVariantBM25},
+		}, true
+	case "", "custom":
+		llmTool := llm.Tool{
 			Type: llm.ToolTypeFunction,
 			Function: llm.Function{
 				Name:        tool.Name,
@@ -543,7 +572,10 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 				Parameters:  tool.InputSchema,
 			},
 			CacheControl: convertToLLMCacheControl(tool.CacheControl),
-		}, true
+			DeferLoading: tool.DeferLoading,
+		}
+
+		return llmTool, true
 	default:
 		// Ignore other native tools (image_generation, google_*, etc.)
 		return llm.Tool{}, false

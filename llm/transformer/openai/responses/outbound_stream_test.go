@@ -2,6 +2,7 @@ package responses
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -186,4 +187,114 @@ func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *test
 	require.NotNil(t, actual[2].PreviousResponseID)
 	require.Equal(t, "resp_prev_123", *actual[2].PreviousResponseID)
 	require.Equal(t, llm.DoneResponse, actual[3])
+}
+
+func TestOutboundTransformer_TransformStream_PreservesToolSearchItems(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type":"response.created",
+				"response":{
+					"id":"resp_tool_search",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-5.4",
+					"status":"in_progress",
+					"output":[]
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: []byte(`{
+				"type":"response.output_item.added",
+				"output_index":0,
+				"item":{
+					"id":"tsc_123",
+					"type":"tool_search_call",
+					"call_id":"call_abc123",
+					"execution":"client",
+					"status":"completed",
+					"arguments":{"goal":"Find the shipping ETA tool for order_42."}
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: []byte(`{
+				"type":"response.output_item.added",
+				"output_index":1,
+				"item":{
+					"id":"tso_123",
+					"type":"tool_search_output",
+					"call_id":"call_abc123",
+					"execution":"client",
+					"status":"completed",
+					"tools":[{
+						"type":"function",
+						"name":"get_shipping_eta",
+						"description":"Look up shipping ETA details for an order.",
+						"parameters":{"type":"object"}
+					}]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type":"response.completed",
+				"response":{
+					"id":"resp_tool_search",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-5.4",
+					"status":"completed",
+					"output":[],
+					"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}
+				}
+			}`),
+		},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), streams.SliceStream(events))
+	require.NoError(t, err)
+
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(actual), 5)
+
+	var toolSearchChunks []*llm.Response
+	for _, resp := range actual {
+		if resp == nil || resp == llm.DoneResponse || len(resp.Choices) == 0 || resp.Choices[0].Delta == nil {
+			continue
+		}
+
+		if len(resp.Choices[0].Delta.Content.MultipleContent) > 0 {
+			partType := resp.Choices[0].Delta.Content.MultipleContent[0].Type
+			if partType == "tool_search_call" || partType == "tool_search_output" {
+				toolSearchChunks = append(toolSearchChunks, resp)
+			}
+		}
+	}
+
+	require.Len(t, toolSearchChunks, 2)
+
+	var callItem Item
+	err = json.Unmarshal(toolSearchChunks[0].Choices[0].Delta.Content.MultipleContent[0].ServerBlock, &callItem)
+	require.NoError(t, err)
+	require.Equal(t, "tool_search_call", callItem.Type)
+	require.Equal(t, "call_abc123", callItem.CallID)
+	require.JSONEq(t, `{"goal":"Find the shipping ETA tool for order_42."}`, callItem.Arguments)
+
+	var outputItem Item
+	err = json.Unmarshal(toolSearchChunks[1].Choices[0].Delta.Content.MultipleContent[0].ServerBlock, &outputItem)
+	require.NoError(t, err)
+	require.Equal(t, "tool_search_output", outputItem.Type)
+	require.Equal(t, "call_abc123", outputItem.CallID)
+	require.Len(t, outputItem.Tools, 1)
+	require.Equal(t, "get_shipping_eta", outputItem.Tools[0].Name)
 }

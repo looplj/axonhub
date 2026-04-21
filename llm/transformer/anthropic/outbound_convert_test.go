@@ -1062,3 +1062,257 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToolsAnthropic_ToolSearch(t *testing.T) {
+	t.Run("regex tool search converts correctly", func(t *testing.T) {
+		tools := []llm.Tool{
+			{
+				Type:       llm.ToolTypeToolSearch,
+				ToolSearch: &llm.ToolSearchTool{Variant: ToolSearchVariantRegex},
+			},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:        "get_weather",
+					Description: "Get weather",
+					Parameters:  json.RawMessage(`{"type":"object"}`),
+				},
+				DeferLoading: lo.ToPtr(true),
+			},
+		}
+
+		result := convertToolsAnthropic(tools, nil)
+		require.Len(t, result, 2)
+
+		require.Equal(t, ToolTypeToolSearchRegex, result[0].Type)
+		require.Equal(t, "tool_search_tool_regex", result[0].Name)
+		require.Nil(t, result[0].DeferLoading)
+
+		require.Equal(t, "get_weather", result[1].Name)
+		require.Equal(t, "Get weather", result[1].Description)
+		require.NotNil(t, result[1].DeferLoading)
+		require.True(t, *result[1].DeferLoading)
+	})
+
+	t.Run("bm25 tool search converts correctly", func(t *testing.T) {
+		tools := []llm.Tool{
+			{
+				Type:       llm.ToolTypeToolSearch,
+				ToolSearch: &llm.ToolSearchTool{Variant: ToolSearchVariantBM25},
+			},
+		}
+
+		result := convertToolsAnthropic(tools, nil)
+		require.Len(t, result, 1)
+		require.Equal(t, ToolTypeToolSearchBM25, result[0].Type)
+		require.Equal(t, "tool_search_tool_bm25", result[0].Name)
+	})
+
+	t.Run("tool search defaults to regex when variant is empty", func(t *testing.T) {
+		tools := []llm.Tool{
+			{
+				Type:       llm.ToolTypeToolSearch,
+				ToolSearch: &llm.ToolSearchTool{},
+			},
+		}
+
+		result := convertToolsAnthropic(tools, nil)
+		require.Len(t, result, 1)
+		require.Equal(t, ToolTypeToolSearchRegex, result[0].Type)
+	})
+
+	t.Run("tool search filtered on unsupported platform", func(t *testing.T) {
+		tools := []llm.Tool{
+			{
+				Type:       llm.ToolTypeToolSearch,
+				ToolSearch: &llm.ToolSearchTool{Variant: ToolSearchVariantRegex},
+			},
+			{
+				Type:     llm.ToolTypeFunction,
+				Function: llm.Function{Name: "fn1"},
+			},
+		}
+
+		config := &Config{Type: PlatformType("openai_compatible")}
+		result := convertToolsAnthropic(tools, config)
+		require.Len(t, result, 1)
+		require.Equal(t, "fn1", result[0].Name)
+	})
+}
+
+func TestConvertToolToLLM_ToolSearch(t *testing.T) {
+	t.Run("regex tool search", func(t *testing.T) {
+		tool := Tool{
+			Type: ToolTypeToolSearchRegex,
+			Name: "tool_search_tool_regex",
+		}
+
+		result, ok := convertToolToLLM(tool)
+		require.True(t, ok)
+		require.Equal(t, llm.ToolTypeToolSearch, result.Type)
+		require.NotNil(t, result.ToolSearch)
+		require.Equal(t, ToolSearchVariantRegex, result.ToolSearch.Variant)
+	})
+
+	t.Run("bm25 tool search", func(t *testing.T) {
+		tool := Tool{
+			Type: ToolTypeToolSearchBM25,
+			Name: "tool_search_tool_bm25",
+		}
+
+		result, ok := convertToolToLLM(tool)
+		require.True(t, ok)
+		require.Equal(t, llm.ToolTypeToolSearch, result.Type)
+		require.NotNil(t, result.ToolSearch)
+		require.Equal(t, ToolSearchVariantBM25, result.ToolSearch.Variant)
+	})
+
+	t.Run("function tool with defer_loading", func(t *testing.T) {
+		tool := Tool{
+			Name:         "get_weather",
+			Description:  "Get weather",
+			InputSchema:  json.RawMessage(`{"type":"object"}`),
+			DeferLoading: lo.ToPtr(true),
+		}
+
+		result, ok := convertToolToLLM(tool)
+		require.True(t, ok)
+		require.Equal(t, llm.ToolTypeFunction, result.Type)
+		require.Equal(t, "get_weather", result.Function.Name)
+		require.NotNil(t, result.DeferLoading)
+		require.True(t, *result.DeferLoading)
+	})
+}
+
+func TestMessageContentBlock_ToolSearchToolResult_JSON(t *testing.T) {
+	t.Run("unmarshal tool_search_tool_result", func(t *testing.T) {
+		raw := `{
+			"type": "tool_search_tool_result",
+			"tool_use_id": "srvtoolu_01ABC123",
+			"content": {
+				"type": "tool_search_tool_search_result",
+				"tool_references": [{"type": "tool_reference", "tool_name": "get_weather"}]
+			}
+		}`
+
+		var block MessageContentBlock
+		err := json.Unmarshal([]byte(raw), &block)
+		require.NoError(t, err)
+		require.Equal(t, "tool_search_tool_result", block.Type)
+		require.NotNil(t, block.ToolUseID)
+		require.Equal(t, "srvtoolu_01ABC123", *block.ToolUseID)
+		require.NotEmpty(t, block.ServerContent)
+	})
+
+	t.Run("marshal tool_search_tool_result round-trips", func(t *testing.T) {
+		raw := `{"type":"tool_search_tool_result","tool_use_id":"srvtoolu_01ABC123","content":{"type":"tool_search_tool_search_result","tool_references":[{"type":"tool_reference","tool_name":"get_weather"}]}}`
+
+		var block MessageContentBlock
+		err := json.Unmarshal([]byte(raw), &block)
+		require.NoError(t, err)
+
+		marshaled, err := json.Marshal(block)
+		require.NoError(t, err)
+		require.JSONEq(t, raw, string(marshaled))
+	})
+
+	t.Run("unmarshal server_tool_use", func(t *testing.T) {
+		raw := `{
+			"type": "server_tool_use",
+			"id": "srvtoolu_01ABC123",
+			"name": "tool_search_tool_regex",
+			"input": {"query": "weather"}
+		}`
+
+		var block MessageContentBlock
+		err := json.Unmarshal([]byte(raw), &block)
+		require.NoError(t, err)
+		require.Equal(t, "server_tool_use", block.Type)
+		require.Equal(t, "srvtoolu_01ABC123", block.ID)
+		require.Equal(t, "tool_search_tool_regex", *block.Name)
+		require.JSONEq(t, `{"query":"weather"}`, string(block.Input))
+	})
+
+	t.Run("unmarshal regular tool_use unchanged", func(t *testing.T) {
+		raw := `{"type":"tool_use","id":"toolu_123","name":"calc","input":{"x":1}}`
+
+		var block MessageContentBlock
+		err := json.Unmarshal([]byte(raw), &block)
+		require.NoError(t, err)
+		require.Equal(t, "tool_use", block.Type)
+		require.Equal(t, "toolu_123", block.ID)
+		require.Empty(t, block.ServerContent)
+	})
+
+	t.Run("unmarshal text block unchanged", func(t *testing.T) {
+		raw := `{"type":"text","text":"hello"}`
+
+		var block MessageContentBlock
+		err := json.Unmarshal([]byte(raw), &block)
+		require.NoError(t, err)
+		require.Equal(t, "text", block.Type)
+		require.Equal(t, "hello", *block.Text)
+		require.Empty(t, block.ServerContent)
+	})
+}
+
+func TestConvertToLlmResponse_ToolSearch(t *testing.T) {
+	t.Run("response with server_tool_use and tool_search_tool_result", func(t *testing.T) {
+		toolSearchResultRaw := json.RawMessage(`{"type":"tool_search_tool_result","tool_use_id":"srvtoolu_01ABC123","content":{"type":"tool_search_tool_search_result","tool_references":[{"type":"tool_reference","tool_name":"get_weather"}]}}`)
+
+		var toolSearchBlock MessageContentBlock
+		err := json.Unmarshal(toolSearchResultRaw, &toolSearchBlock)
+		require.NoError(t, err)
+
+		resp := &Message{
+			ID:   "msg_123",
+			Type: "message",
+			Role: "assistant",
+			Content: []MessageContentBlock{
+				{Type: "text", Text: lo.ToPtr("Let me search for tools.")},
+				{
+					Type:  "server_tool_use",
+					ID:    "srvtoolu_01ABC123",
+					Name:  lo.ToPtr("tool_search_tool_regex"),
+					Input: json.RawMessage(`{"query":"weather"}`),
+				},
+				toolSearchBlock,
+				{Type: "text", Text: lo.ToPtr("Found it!")},
+				{
+					Type:  "tool_use",
+					ID:    "toolu_01XYZ",
+					Name:  lo.ToPtr("get_weather"),
+					Input: json.RawMessage(`{"location":"SF"}`),
+				},
+			},
+			Model:      "claude-opus-4-7",
+			StopReason: lo.ToPtr("tool_use"),
+		}
+
+		result := convertToLlmResponse(resp, PlatformDirect, shared.TransportScope{})
+		require.NotNil(t, result)
+		require.Equal(t, "msg_123", result.ID)
+		require.Len(t, result.Choices, 1)
+
+		msg := result.Choices[0].Message
+		require.NotNil(t, msg)
+
+		// Should have tool calls for tool_use
+		require.Len(t, msg.ToolCalls, 1)
+		require.Equal(t, "get_weather", msg.ToolCalls[0].Function.Name)
+
+		// Should have MultipleContent with text + server blocks
+		require.NotNil(t, msg.Content.MultipleContent)
+
+		var serverBlockTypes []string
+		for _, part := range msg.Content.MultipleContent {
+			if part.Type == "server_tool_use" || part.Type == "tool_search_tool_result" {
+				serverBlockTypes = append(serverBlockTypes, part.Type)
+				require.NotEmpty(t, part.ServerBlock)
+			}
+		}
+		require.Equal(t, []string{"server_tool_use", "tool_search_tool_result"}, serverBlockTypes)
+
+		require.Equal(t, "tool_calls", *result.Choices[0].FinishReason)
+	})
+}

@@ -276,6 +276,59 @@ func TestConvertStreamOptions(t *testing.T) {
 	}
 }
 
+func TestConvertOutputToMessage_PreservesToolSearchItems(t *testing.T) {
+	output := []Item{
+		{
+			Type:      "tool_search_call",
+			CallID:    "call_abc123",
+			Execution: "client",
+			Status:    lo.ToPtr("completed"),
+			Arguments: `{"goal":"Find the shipping ETA tool for order_42."}`,
+		},
+		{
+			Type:      "tool_search_output",
+			CallID:    "call_abc123",
+			Execution: "client",
+			Status:    lo.ToPtr("completed"),
+			Tools: []Tool{
+				{
+					Type:        "function",
+					Name:        "get_shipping_eta",
+					Description: "Look up shipping ETA details for an order.",
+					Parameters: map[string]any{
+						"type": "object",
+					},
+				},
+			},
+		},
+	}
+
+	msg := convertOutputToMessage(output, shared.TransportScope{}, nil)
+	require.Equal(t, "assistant", msg.Role)
+	require.Len(t, msg.Content.MultipleContent, 2)
+	require.Equal(t, "tool_search_call", msg.Content.MultipleContent[0].Type)
+	require.Equal(t, "tool_search_output", msg.Content.MultipleContent[1].Type)
+	require.NotEmpty(t, msg.Content.MultipleContent[0].ServerBlock)
+	require.NotEmpty(t, msg.Content.MultipleContent[1].ServerBlock)
+
+	var callItem Item
+	err := json.Unmarshal(msg.Content.MultipleContent[0].ServerBlock, &callItem)
+	require.NoError(t, err)
+	require.Equal(t, "tool_search_call", callItem.Type)
+	require.Equal(t, "call_abc123", callItem.CallID)
+	require.Equal(t, "client", callItem.Execution)
+	require.JSONEq(t, `{"goal":"Find the shipping ETA tool for order_42."}`, callItem.Arguments)
+
+	var outputItem Item
+	err = json.Unmarshal(msg.Content.MultipleContent[1].ServerBlock, &outputItem)
+	require.NoError(t, err)
+	require.Equal(t, "tool_search_output", outputItem.Type)
+	require.Equal(t, "call_abc123", outputItem.CallID)
+	require.Equal(t, "client", outputItem.Execution)
+	require.Len(t, outputItem.Tools, 1)
+	require.Equal(t, "get_shipping_eta", outputItem.Tools[0].Name)
+}
+
 func TestConvertToTextOptions(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -112,6 +112,38 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 							} else {
 								contentBlocks[index].Input = append(contentBlocks[index].Input, []byte(*event.Delta.PartialJSON)...)
 							}
+						case "server_tool_use":
+							if contentBlocks[index].Input == nil {
+								contentBlocks[index].Input = []byte(*event.Delta.PartialJSON)
+							} else {
+								contentBlocks[index].Input = append(contentBlocks[index].Input, []byte(*event.Delta.PartialJSON)...)
+							}
+						case "tool_search_tool_result":
+							var payload map[string]any
+							if len(contentBlocks[index].ServerContent) > 0 {
+								_ = json.Unmarshal(contentBlocks[index].ServerContent, &payload)
+							}
+							if payload == nil {
+								payload = map[string]any{
+									"type": "tool_search_tool_result",
+								}
+								if contentBlocks[index].ToolUseID != nil {
+									payload["tool_use_id"] = *contentBlocks[index].ToolUseID
+								}
+							}
+
+							if rawContent, ok := payload["content"].(json.RawMessage); ok {
+								payload["content"] = append(rawContent, []byte(*event.Delta.PartialJSON)...)
+							} else if rawContent, ok := payload["content"].([]byte); ok {
+								payload["content"] = append(rawContent, []byte(*event.Delta.PartialJSON)...)
+							} else {
+								payload["content"] = json.RawMessage(*event.Delta.PartialJSON)
+							}
+
+							rawPayload, err := json.Marshal(payload)
+							if err == nil {
+								contentBlocks[index].ServerContent = rawPayload
+							}
 						case "text":
 							if contentBlocks[index].Text == nil {
 								contentBlocks[index].Text = lo.ToPtr("")
@@ -159,13 +191,32 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				index := int(*event.Index)
 
 				block := contentBlocks[index]
-				if block.Type == "tool_use" {
+				if block.Type == "tool_use" || block.Type == "server_tool_use" {
 					if !json.Valid(block.Input) {
 						slog.WarnContext(ctx, "invalid tool use input", slog.String("input", string(block.Input)))
 
 						repaired, err := jsonrepair.JSONRepair(string(block.Input))
 						if err == nil {
 							block.Input = []byte(repaired)
+						}
+					}
+				}
+
+				if block.Type == "tool_search_tool_result" && len(block.ServerContent) > 0 {
+					var payload struct {
+						Content json.RawMessage `json:"content"`
+					}
+					if err := json.Unmarshal(block.ServerContent, &payload); err == nil && len(payload.Content) > 0 && !json.Valid(payload.Content) {
+						repaired, err := jsonrepair.JSONRepair(string(payload.Content))
+						if err == nil && json.Valid([]byte(repaired)) {
+							var raw map[string]json.RawMessage
+							if err := json.Unmarshal(block.ServerContent, &raw); err == nil {
+								raw["content"] = json.RawMessage(repaired)
+								if rebuilt, err := json.Marshal(raw); err == nil {
+									block.ServerContent = rebuilt
+									contentBlocks[index] = block
+								}
+							}
 						}
 					}
 				}

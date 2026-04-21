@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
@@ -136,4 +138,131 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInboundTransformer_StreamTransformation_PreservesToolSearchItems(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	callItem := Item{
+		ID:        "tsc_123",
+		Type:      "tool_search_call",
+		CallID:    "call_abc123",
+		Execution: "client",
+		Status:    lo.ToPtr("completed"),
+		Arguments: `{"goal":"Find the shipping ETA tool for order_42."}`,
+	}
+	outputItem := Item{
+		ID:        "tso_123",
+		Type:      "tool_search_output",
+		CallID:    "call_abc123",
+		Execution: "client",
+		Status:    lo.ToPtr("completed"),
+		Tools: []Tool{
+			{
+				Type:        "function",
+				Name:        "get_shipping_eta",
+				Description: "Look up shipping ETA details for an order.",
+				Parameters: map[string]any{
+					"type": "object",
+				},
+			},
+		},
+	}
+
+	callRaw, err := json.Marshal(callItem)
+	require.NoError(t, err)
+
+	outputRaw, err := json.Marshal(outputItem)
+	require.NoError(t, err)
+
+	mockStream := streams.SliceStream([]*llm.Response{
+		{
+			ID:      "resp_tool_search",
+			Model:   "gpt-5.4",
+			Created: 1700000000,
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type:        "tool_search_call",
+									ServerBlock: callRaw,
+								},
+								{
+									Type:        "tool_search_output",
+									ServerBlock: outputRaw,
+								},
+							},
+						},
+					},
+					FinishReason: lo.ToPtr("tool_calls"),
+				},
+			},
+			Usage: &llm.Usage{
+				PromptTokens:     1,
+				CompletionTokens: 1,
+				TotalTokens:      2,
+			},
+		},
+	})
+
+	transformedStream, err := trans.TransformStream(t.Context(), mockStream)
+	require.NoError(t, err)
+
+	var actualEvents []StreamEvent
+	for transformedStream.Next() {
+		event := transformedStream.Current()
+
+		var ev StreamEvent
+		err := json.Unmarshal(event.Data, &ev)
+		require.NoError(t, err)
+
+		actualEvents = append(actualEvents, ev)
+	}
+	require.NoError(t, transformedStream.Err())
+
+	var toolSearchEvents []StreamEvent
+	for _, ev := range actualEvents {
+		if ev.Type != StreamEventTypeOutputItemAdded && ev.Type != StreamEventTypeOutputItemDone {
+			continue
+		}
+		if ev.Item == nil {
+			continue
+		}
+		if ev.Item.Type == "tool_search_call" || ev.Item.Type == "tool_search_output" {
+			toolSearchEvents = append(toolSearchEvents, ev)
+		}
+	}
+
+	require.Len(t, toolSearchEvents, 4)
+	require.Equal(t, StreamEventTypeOutputItemAdded, toolSearchEvents[0].Type)
+	require.Equal(t, "tool_search_call", toolSearchEvents[0].Item.Type)
+	require.Equal(t, "in_progress", *toolSearchEvents[0].Item.Status)
+	require.Equal(t, StreamEventTypeOutputItemDone, toolSearchEvents[1].Type)
+	require.Equal(t, "tool_search_call", toolSearchEvents[1].Item.Type)
+	require.Equal(t, "completed", *toolSearchEvents[1].Item.Status)
+	require.JSONEq(t, callItem.Arguments, toolSearchEvents[1].Item.Arguments)
+
+	require.Equal(t, StreamEventTypeOutputItemAdded, toolSearchEvents[2].Type)
+	require.Equal(t, "tool_search_output", toolSearchEvents[2].Item.Type)
+	require.Equal(t, "in_progress", *toolSearchEvents[2].Item.Status)
+	require.Equal(t, StreamEventTypeOutputItemDone, toolSearchEvents[3].Type)
+	require.Equal(t, "tool_search_output", toolSearchEvents[3].Item.Type)
+	require.Equal(t, "completed", *toolSearchEvents[3].Item.Status)
+	require.Len(t, toolSearchEvents[3].Item.Tools, 1)
+	require.Equal(t, "get_shipping_eta", toolSearchEvents[3].Item.Tools[0].Name)
+
+	lastEvent := actualEvents[len(actualEvents)-1]
+	require.Equal(t, StreamEventTypeResponseCompleted, lastEvent.Type)
+	require.NotNil(t, lastEvent.Response)
+
+	var outputTypes []string
+	for _, item := range lastEvent.Response.Output {
+		if item.Type == "tool_search_call" || item.Type == "tool_search_output" {
+			outputTypes = append(outputTypes, item.Type)
+		}
+	}
+	require.Equal(t, []string{"tool_search_call", "tool_search_output"}, outputTypes)
 }

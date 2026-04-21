@@ -242,3 +242,32 @@ func TestResponseToolChoiceUnmarshalJSON_ClearsConflictingRepresentation(t *test
 	require.NotNil(t, choice.ObjectValue.Name)
 	require.Equal(t, "get_weather", *choice.ObjectValue.Name)
 }
+
+func TestItemUnmarshalJSON_ToolSearchCallArgumentsObject(t *testing.T) {
+	var item Item
+
+	err := json.Unmarshal([]byte(`{
+		"type":"tool_search_call",
+		"call_id":"call_abc123",
+		"execution":"client",
+		"status":"completed",
+		"arguments":{"goal":"Find the shipping ETA tool for order_42."}
+	}`), &item)
+	require.NoError(t, err)
+	require.Equal(t, "tool_search_call", item.Type)
+	require.Equal(t, "call_abc123", item.CallID)
+	require.Equal(t, "client", item.Execution)
+	require.JSONEq(t, `{"goal":"Find the shipping ETA tool for order_42."}`, item.Arguments)
+
+	data, err := json.Marshal(item)
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"type":"tool_search_call"`)
+	require.Contains(t, string(data), `"execution":"client"`)
+	require.JSONEq(t, `{
+		"type":"tool_search_call",
+		"call_id":"call_abc123",
+		"execution":"client",
+		"status":"completed",
+		"arguments":{"goal":"Find the shipping ETA tool for order_42."}
+	}`, string(data))
+}

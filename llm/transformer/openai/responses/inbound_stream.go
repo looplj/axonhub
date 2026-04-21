@@ -213,6 +213,14 @@ func (s *responsesInboundStream) Next() bool {
 			}
 		}
 
+		// Handle server-backed content items such as tool_search_call/tool_search_output.
+		if choice.Delta != nil && len(choice.Delta.Content.MultipleContent) > 0 {
+			if err := s.handleServerContentParts(choice.Delta.Content.MultipleContent); err != nil {
+				s.err = err
+				return false
+			}
+		}
+
 		// Handle tool calls
 		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
 			if err := s.handleToolCalls(choice.Delta.ToolCalls); err != nil {
@@ -297,6 +305,64 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to enqueue reasoning_summary_text.delta event: %w", err)
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) handleServerContentParts(parts []llm.MessageContentPart) error {
+	var items []Item
+	for _, part := range parts {
+		if part.Type != "tool_search_call" && part.Type != "tool_search_output" {
+			continue
+		}
+		if len(part.ServerBlock) == 0 {
+			continue
+		}
+
+		var item Item
+		if err := json.Unmarshal(part.ServerBlock, &item); err != nil {
+			continue
+		}
+		items = append(items, item)
+	}
+
+	if len(items) == 0 {
+		return nil
+	}
+
+	if err := s.closeCurrentContentPart(); err != nil {
+		return err
+	}
+
+	if err := s.closeCurrentOutputItem(); err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		addedItem := item
+		addedItem.Status = lo.ToPtr("in_progress")
+
+		if err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeOutputItemAdded,
+			OutputIndex: s.outputIndex,
+			Item:        &addedItem,
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
+		}
+
+		doneItem := item
+		doneItem.Status = lo.ToPtr("completed")
+
+		if err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeOutputItemDone,
+			OutputIndex: s.outputIndex,
+			Item:        &doneItem,
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue output_item.done event: %w", err)
+		}
+
+		s.outputIndex++
 	}
 
 	return nil

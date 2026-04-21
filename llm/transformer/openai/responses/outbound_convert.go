@@ -11,6 +11,20 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
+func serverItemContentPart(item Item) llm.MessageContentPart {
+	rawItem, err := json.Marshal(item)
+	if err != nil {
+		return llm.MessageContentPart{
+			Type: item.Type,
+		}
+	}
+
+	return llm.MessageContentPart{
+		Type:        item.Type,
+		ServerBlock: rawItem,
+	}
+}
+
 func convertToTextOptions(chatReq *llm.Request) *TextOptions {
 	if chatReq == nil {
 		return nil
@@ -266,6 +280,15 @@ func convertAssistantMessage(msg llm.Message, scope shared.TransportScope) []Ite
 						Text: p.Text,
 					})
 				}
+			case "tool_search_call", "tool_search_output":
+				if len(p.ServerBlock) > 0 {
+					flushMessage()
+
+					var item Item
+					if err := json.Unmarshal(p.ServerBlock, &item); err == nil {
+						items = append(items, item)
+					}
+				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {
 					flushMessage()
@@ -352,13 +375,37 @@ func convertCustomToTool(src llm.Tool) Tool {
 	return tool
 }
 
+// convertToolSearchToTool converts an llm.Tool tool_search to Responses API Tool format.
+func convertToolSearchToTool(src llm.Tool) Tool {
+	tool := Tool{
+		Type: "tool_search",
+	}
+
+	if src.ToolSearch == nil {
+		return tool
+	}
+
+	tool.Execution = src.ToolSearch.Execution
+	tool.Description = src.ToolSearch.Description
+
+	if len(src.ToolSearch.Parameters) > 0 {
+		var params map[string]any
+		if err := json.Unmarshal(src.ToolSearch.Parameters, &params); err == nil {
+			tool.Parameters = params
+		}
+	}
+
+	return tool
+}
+
 // convertFunctionToTool converts an llm.Tool function to Responses API Tool format.
 func convertFunctionToTool(src llm.Tool) Tool {
 	tool := Tool{
-		Type:        "function",
-		Name:        src.Function.Name,
-		Description: src.Function.Description,
-		Strict:      src.Function.Strict,
+		Type:         "function",
+		Name:         src.Function.Name,
+		Description:  src.Function.Description,
+		Strict:       src.Function.Strict,
+		DeferLoading: src.DeferLoading,
 	}
 
 	// Convert parameters from json.RawMessage to map[string]any
@@ -606,6 +653,9 @@ func convertOutputToMessage(output []Item, scope shared.TransportScope, transfor
 					},
 				})
 			}
+		case "tool_search_call", "tool_search_output":
+			flushText()
+			contentParts = append(contentParts, serverItemContentPart(outputItem))
 		}
 	}
 

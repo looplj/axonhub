@@ -6,13 +6,106 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+func TestInboundTransformer_StreamTransformation_ToolSearchServerBlocks(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	serverToolUseRaw := json.RawMessage(`{"type":"server_tool_use","id":"srvtoolu_01ABC123","name":"tool_search_tool_regex","input":{"query":"weather"}}`)
+	toolSearchResultRaw := json.RawMessage(`{"type":"tool_search_tool_result","tool_use_id":"srvtoolu_01ABC123","content":{"type":"tool_search_tool_search_result","tool_references":[{"type":"tool_reference","tool_name":"get_weather"}]}}`)
+
+	mockStream := streams.SliceStream([]*llm.Response{
+		{
+			ID:    "msg_tool_search",
+			Model: "claude-opus-4-7",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type:        "server_tool_use",
+									ServerBlock: serverToolUseRaw,
+								},
+								{
+									Type:        "tool_search_tool_result",
+									ServerBlock: toolSearchResultRaw,
+								},
+							},
+						},
+					},
+					FinishReason: lo.ToPtr("tool_calls"),
+				},
+			},
+			Usage: &llm.Usage{
+				PromptTokens:     12,
+				CompletionTokens: 4,
+				TotalTokens:      16,
+			},
+		},
+	})
+
+	transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+	require.NoError(t, err)
+
+	var actualEvents []*httpclient.StreamEvent
+	for transformedStream.Next() {
+		actualEvents = append(actualEvents, transformedStream.Current())
+	}
+	require.NoError(t, transformedStream.Err())
+
+	var contentStarts []*StreamEvent
+	var contentDeltas []*StreamEvent
+	for _, event := range actualEvents {
+		var streamEvent StreamEvent
+		err := json.Unmarshal(event.Data, &streamEvent)
+		require.NoError(t, err)
+
+		switch streamEvent.Type {
+		case "content_block_start":
+			contentStarts = append(contentStarts, &streamEvent)
+		case "content_block_delta":
+			contentDeltas = append(contentDeltas, &streamEvent)
+		}
+	}
+
+	require.Len(t, contentStarts, 2)
+	require.Equal(t, "server_tool_use", contentStarts[0].ContentBlock.Type)
+	require.Equal(t, "tool_search_tool_result", contentStarts[1].ContentBlock.Type)
+
+	require.Len(t, contentDeltas, 2)
+	require.Equal(t, "input_json_delta", *contentDeltas[0].Delta.Type)
+	require.JSONEq(t, `{"query":"weather"}`, *contentDeltas[0].Delta.PartialJSON)
+	require.Equal(t, "input_json_delta", *contentDeltas[1].Delta.Type)
+	require.JSONEq(t, `{"type":"tool_search_tool_search_result","tool_references":[{"type":"tool_reference","tool_name":"get_weather"}]}`, *contentDeltas[1].Delta.PartialJSON)
+
+	aggregatedBytes, _, err := transformer.AggregateStreamChunks(t.Context(), actualEvents)
+	require.NoError(t, err)
+
+	var aggregatedResp Message
+	err = json.Unmarshal(aggregatedBytes, &aggregatedResp)
+	require.NoError(t, err)
+
+	require.Len(t, aggregatedResp.Content, 2)
+	require.Equal(t, "server_tool_use", aggregatedResp.Content[0].Type)
+	require.Equal(t, "tool_search_tool_result", aggregatedResp.Content[1].Type)
+	require.JSONEq(t, `{"query":"weather"}`, string(aggregatedResp.Content[0].Input))
+
+	var toolSearchPayload map[string]json.RawMessage
+	err = json.Unmarshal(aggregatedResp.Content[1].ServerContent, &toolSearchPayload)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"tool_search_tool_search_result","tool_references":[{"type":"tool_reference","tool_name":"get_weather"}]}`, string(toolSearchPayload["content"]))
+}
 
 func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	transformer := NewInboundTransformer()
