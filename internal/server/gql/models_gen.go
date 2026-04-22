@@ -121,22 +121,22 @@ type ChannelPerformanceStat struct {
 }
 
 type ChannelRateLimitStatus struct {
-	RpmCurrent        *int64     `json:"rpmCurrent,omitempty"`
-	RpmLimit          *int64     `json:"rpmLimit,omitempty"`
-	RpmResetAt        *time.Time `json:"rpmResetAt,omitempty"`
-	RpmWindowAnchor   *time.Time `json:"rpmWindowAnchor,omitempty"`
-	TpmCurrent        *int64     `json:"tpmCurrent,omitempty"`
-	TpmLimit          *int64     `json:"tpmLimit,omitempty"`
-	TpmResetAt        *time.Time `json:"tpmResetAt,omitempty"`
-	TpmWindowAnchor   *time.Time `json:"tpmWindowAnchor,omitempty"`
-	CostCurrent       *float64   `json:"costCurrent,omitempty"`
-	CostLimit         *float64   `json:"costLimit,omitempty"`
-	CostResetAt       *time.Time `json:"costResetAt,omitempty"`
-	CostWindowAnchor  *time.Time `json:"costWindowAnchor,omitempty"`
-	ConcurrentCurrent *int       `json:"concurrentCurrent,omitempty"`
-	ConcurrentLimit   *int       `json:"concurrentLimit,omitempty"`
-	IsCoolingDown     bool       `json:"isCoolingDown"`
-	CooldownUntil     *time.Time `json:"cooldownUntil,omitempty"`
+	RpmCurrent        *Int64Scalar `json:"rpmCurrent,omitempty"`
+	RpmLimit          *Int64Scalar `json:"rpmLimit,omitempty"`
+	RpmResetAt        *time.Time   `json:"rpmResetAt,omitempty"`
+	RpmWindowAnchor   *time.Time   `json:"rpmWindowAnchor,omitempty"`
+	TpmCurrent        *Int64Scalar `json:"tpmCurrent,omitempty"`
+	TpmLimit          *Int64Scalar `json:"tpmLimit,omitempty"`
+	TpmResetAt        *time.Time   `json:"tpmResetAt,omitempty"`
+	TpmWindowAnchor   *time.Time   `json:"tpmWindowAnchor,omitempty"`
+	CostCurrent       *float64     `json:"costCurrent,omitempty"`
+	CostLimit         *float64     `json:"costLimit,omitempty"`
+	CostResetAt       *time.Time   `json:"costResetAt,omitempty"`
+	CostWindowAnchor  *time.Time   `json:"costWindowAnchor,omitempty"`
+	ConcurrentCurrent *int         `json:"concurrentCurrent,omitempty"`
+	ConcurrentLimit   *int         `json:"concurrentLimit,omitempty"`
+	IsCoolingDown     bool         `json:"isCoolingDown"`
+	CooldownUntil     *time.Time   `json:"cooldownUntil,omitempty"`
 }
 
 type ChannelSuccessRate struct {

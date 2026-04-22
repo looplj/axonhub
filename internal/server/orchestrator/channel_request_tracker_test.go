@@ -1050,7 +1050,7 @@ func TestChannelRequestTracker_ConcurrentEvictionWithMutations(t *testing.T) {
 	assert.Equal(t, int64(goroutines), count)
 }
 
-func TestChannelRequestTracker_AnchorChangePreservesDbQueriedFlags(t *testing.T) {
+func TestChannelRequestTracker_AnchorChangeResetsDbQueriedFlags(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	tracker, _ := newTrackerWithClock(now)
 	anchor1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -1065,10 +1065,10 @@ func TestChannelRequestTracker_AnchorChangePreservesDbQueriedFlags(t *testing.T)
 	anchor2 := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
 	tracker.IncrementRequestForDuration(1, time.Hour, &anchor2)
 
-	assert.True(t, tracker.IsRequestWindowDbQueried(1, time.Hour, &anchor2),
-		"requestDbQueried should be preserved after anchor change")
-	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Hour, &anchor2),
-		"tokenDbQueried should be preserved after anchor change")
+	assert.False(t, tracker.IsRequestWindowDbQueried(1, time.Hour, &anchor2),
+		"requestDbQueried should be reset after anchor change because the window has moved")
+	assert.False(t, tracker.IsTokenWindowDbQueried(1, time.Hour, &anchor2),
+		"tokenDbQueried should be reset after anchor change because the window has moved")
 }
 
 func TestIncrementRequestForDuration_OverflowClamp(t *testing.T) {

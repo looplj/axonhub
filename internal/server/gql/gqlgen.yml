@@ -98,7 +98,7 @@ models:
       - github.com/looplj/axonhub/internal/objects.Decimal
   Int64:
     model:
-      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/looplj/axonhub/internal/server/gql.Int64Scalar
   ModelMapping:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelMapping

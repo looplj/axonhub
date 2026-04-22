@@ -303,7 +303,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
 
 		// Rate limit tracking middleware for load balancing.
-		withRateLimitTracking(outbound, processor.rateLimitTracker),
+		withRateLimitTracking(outbound, processor.rateLimitTracker, time.Now),
 		// Connection tracking middleware for load balancing.
 		withConnectionTracking(outbound, processor.connectionTracker),
 		// Model connection tracking middleware for per-model concurrency tracking.

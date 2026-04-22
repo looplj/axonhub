@@ -41,14 +41,18 @@ func getTPMAnchor(channel *biz.Channel) *time.Time {
 }
 
 // withRateLimitTracking creates a middleware that tracks request counts per channel for rate limiting.
-func withRateLimitTracking(outbound *PersistentOutboundTransformer, tracker *ChannelRequestTracker) pipeline.Middleware {
+func withRateLimitTracking(outbound *PersistentOutboundTransformer, tracker *ChannelRequestTracker, clock func() time.Time) pipeline.Middleware {
 	if tracker == nil {
 		return &noopRateLimitTracking{}
+	}
+	if clock == nil {
+		clock = time.Now
 	}
 
 	return &rateLimitTracking{
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    clock,
 	}
 }
 
@@ -58,6 +62,7 @@ type rateLimitTracking struct {
 
 	outbound *PersistentOutboundTransformer
 	tracker  *ChannelRequestTracker
+	clock    func() time.Time
 }
 
 func (m *rateLimitTracking) Name() string {
@@ -113,19 +118,9 @@ func (m *rateLimitTracking) OnOutboundLlmResponse(ctx context.Context, response 
 }
 
 func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	wrapped := newOnCloseStream(stream, func() {}) // rate limit tracking doesn't need decrement on close
-
-	go func() {
-		select {
-		case <-ctx.Done():
-			wrapped.Close()
-		case <-wrapped.Done():
-		}
-	}()
-
 	return &rateLimitTrackingStream{
 		ctx:      ctx,
-		stream:   wrapped,
+		stream:   stream,
 		tracker:  m.tracker,
 		outbound: m.outbound,
 	}, nil
@@ -156,7 +151,7 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 	}
 
 	// Set cooldown for this channel
-	m.tracker.SetCooldown(channel.ID, time.Now().Add(cooldown))
+	m.tracker.SetCooldown(channel.ID, m.clock().Add(cooldown))
 
 	log.Warn(ctx, "channel cooling down due to 429",
 		log.Int("channel_id", channel.ID),

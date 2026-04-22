@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -34,9 +35,10 @@ func TestRateLimitTracking_OnOutboundLlmResponse(t *testing.T) {
 		state: state,
 	}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	tests := []struct {
@@ -141,9 +143,10 @@ func TestRateLimitTracking_OnOutboundLlmStream(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	// Create mock stream with usage in last chunk
@@ -185,9 +188,10 @@ func TestRateLimitTracking_OnOutboundRawRequest(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	ctx := context.Background()
@@ -212,9 +216,10 @@ func TestRateLimitTracking_Combined(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	ctx := context.Background()
@@ -273,9 +278,10 @@ func TestRateLimitTracking_OnOutboundRawError_429(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	ctx := context.Background()
@@ -303,9 +309,10 @@ func TestRateLimitTracking_OnOutboundRawError_429WithoutRetryAfter(t *testing.T)
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	ctx := context.Background()
@@ -331,9 +338,10 @@ func TestRateLimitTracking_OnOutboundRawError_Not429(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	ctx := context.Background()
@@ -358,9 +366,10 @@ func TestRateLimitTracking_OnOutboundRawError_NoChannel(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	ctx := context.Background()
@@ -380,9 +389,10 @@ func TestRateLimitTracking_OnOutboundRawError_NilChannel(t *testing.T) {
 
 	outbound := &PersistentOutboundTransformer{}
 
-	middleware := &rateLimitTracking{
+	middleware := &rateLimitTracking {
 		outbound: outbound,
 		tracker:  tracker,
+		clock:    time.Now,
 	}
 
 	ctx := context.Background()

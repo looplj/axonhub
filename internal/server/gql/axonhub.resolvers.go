@@ -141,8 +141,10 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 			rpmCurrentInt = r.rateLimitTracker.GetRequestCountForDuration(channelID, rpmDuration, rl.RPMWindowAnchor)
 		}
 
-		status.RpmCurrent = &rpmCurrentInt
-		status.RpmLimit = &rpmLimit
+		rpmCurrentVal := Int64Scalar(rpmCurrentInt)
+		rpmLimitVal := Int64Scalar(rpmLimit)
+		status.RpmCurrent = &rpmCurrentVal
+		status.RpmLimit = &rpmLimitVal
 		status.RpmResetAt = &rpmWindowEnd
 		status.RpmWindowAnchor = copyTimePtr(rl.RPMWindowAnchor)
 	}
@@ -178,8 +180,10 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 			tpmCurrentInt = r.rateLimitTracker.GetTokenCountForDuration(channelID, tpmDuration, rl.TPMWindowAnchor)
 		}
 
-		status.TpmCurrent = &tpmCurrentInt
-		status.TpmLimit = &tpmLimit
+		tpmCurrentVal := Int64Scalar(tpmCurrentInt)
+		tpmLimitVal := Int64Scalar(tpmLimit)
+		status.TpmCurrent = &tpmCurrentVal
+		status.TpmLimit = &tpmLimitVal
 		status.TpmResetAt = &tpmWindowEnd
 		status.TpmWindowAnchor = copyTimePtr(rl.TPMWindowAnchor)
 	}
@@ -254,7 +258,7 @@ func (r *channelRateLimitResolver) ModelConcurrent(ctx context.Context, obj *obj
 	}
 
 	// Sort by model name for deterministic ordering
-	sort.Slice(result, func(i, j int) bool {
+	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Model < result[j].Model
 	})
 

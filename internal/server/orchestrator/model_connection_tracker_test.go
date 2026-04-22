@@ -135,6 +135,32 @@ func TestModelConnectionTracker_ConcurrentAccess(t *testing.T) {
 	assert.Equal(t, 0, tracker.GetModelConnectionCount(channelID, model))
 }
 
+func TestModelConnectionTracker_ConcurrentInterleavedIncrementDecrement(t *testing.T) {
+	tracker := NewModelConnectionTracker()
+	const goroutines = 20
+	const opsPerGoroutine = 100
+	var wg sync.WaitGroup
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < opsPerGoroutine; j++ {
+				if j%2 == 0 {
+					tracker.IncrementModelConnection(1, "model-a")
+				} else {
+					tracker.DecrementModelConnection(context.Background(), 1, "model-a")
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	// After all operations, the count should be 0 (equal increments and decrements)
+	count := tracker.GetModelConnectionCount(1, "model-a")
+	assert.Equal(t, 0, count)
+}
+
 func TestModelConnectionTracker_ConcurrentMultiChannelMultiModel(t *testing.T) {
 	tracker := NewModelConnectionTracker()
 	numChannels := 10

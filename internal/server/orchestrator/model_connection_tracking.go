@@ -21,13 +21,9 @@ func isNilModelConnectionTracker(tracker ModelConnectionTrackerInterface) bool {
 	if tracker == nil {
 		return true
 	}
+	// Handle typed-nil pointers that implement the interface
 	v := reflect.ValueOf(tracker)
-	switch v.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return v.IsNil()
-	default:
-		return false
-	}
+	return v.Kind() == reflect.Pointer && v.IsNil()
 }
 
 func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracker ModelConnectionTrackerInterface) pipeline.Middleware {

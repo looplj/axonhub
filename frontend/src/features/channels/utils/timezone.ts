@@ -9,6 +9,13 @@ function normalizeUtcIso(iso: string): string {
     return iso; // Return as-is for invalid input; callers handle gracefully
   }
   if (!iso.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(iso)) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[timezone] normalizeUtcIso: assuming UTC for ISO string without timezone info:',
+        iso,
+        'Pass UTC strings or include explicit offset.'
+      );
+    }
     return iso + 'Z';
   }
   return iso;

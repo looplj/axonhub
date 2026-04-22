@@ -30,21 +30,17 @@ type mockResponseStreamWithErr struct {
 }
 
 func (m *mockResponseStream) Current() *llm.Response {
-	if m.idx > 0 && m.idx <= len(m.items) {
-		return m.items[m.idx-1]
+	if m.idx < len(m.items) {
+		item := m.items[m.idx]
+		m.idx++
+		return item
 	}
 
 	return nil
 }
 
 func (m *mockResponseStream) Next() bool {
-	if m.idx >= len(m.items) {
-		return false
-	}
-
-	m.idx++
-
-	return true
+	return m.idx < len(m.items)
 }
 
 func (m *mockResponseStream) Close() error {
@@ -58,18 +54,16 @@ func (m *mockResponseStream) Err() error {
 }
 
 func (m *mockResponseStreamWithErr) Current() *llm.Response {
-	if m.idx > 0 && m.idx <= len(m.items) {
-		return m.items[m.idx-1]
+	if m.idx < len(m.items) {
+		item := m.items[m.idx]
+		m.idx++
+		return item
 	}
 	return nil
 }
 
 func (m *mockResponseStreamWithErr) Next() bool {
-	if m.idx >= len(m.items) {
-		return false
-	}
-	m.idx++
-	return true
+	return m.idx < len(m.items)
 }
 
 func (m *mockResponseStreamWithErr) Close() error {
@@ -89,6 +83,7 @@ func TestOnCloseStream_ExhaustionTriggersOnClose(t *testing.T) {
 	})
 
 	assert.True(t, s.Next())
+	_ = s.Current()
 	assert.False(t, s.Next())
 	assert.Equal(t, int32(1), atomic.LoadInt32(&onCloseCount), "onClose should fire once when stream is exhausted")
 }
@@ -113,6 +108,7 @@ func TestOnCloseStream_CloseThenNextDoesNotDoubleFire(t *testing.T) {
 	})
 
 	s.Next()
+	_ = s.Current()
 	s.Close()
 	assert.Equal(t, int32(1), atomic.LoadInt32(&onCloseCount), "onClose should not double-fire after Close following Next")
 }
@@ -125,6 +121,7 @@ func TestOnCloseStream_NextExhaustionThenCloseDoesNotDoubleFire(t *testing.T) {
 	})
 
 	s.Next()
+	_ = s.Current()
 	streamExhausted := !s.Next()
 	assert.True(t, streamExhausted, "stream should be exhausted")
 	s.Close()
@@ -154,6 +151,7 @@ func TestOnCloseStream_ExhaustThenCloseDoesNotDoubleCloseUnderlyingStream(t *tes
 	s := newOnCloseStream(ms, func() {})
 
 	s.Next()
+	_ = s.Current()
 	streamExhausted := !s.Next()
 	assert.True(t, streamExhausted)
 	assert.True(t, ms.closed, "underlying stream should be closed after exhaustion")
@@ -172,6 +170,7 @@ func TestOnCloseStream_NextExhaustWithStreamError(t *testing.T) {
 	})
 
 	s.Next()
+	_ = s.Current()
 	streamExhausted := !s.Next()
 	assert.True(t, streamExhausted)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&onCloseCount), "onClose should fire even when stream has an error")

@@ -113,17 +113,11 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 			)
 		}
 
-		var preservedRequestDbQueried, preservedTokenDbQueried bool
-		if anchorChanged {
-			preservedRequestDbQueried = w.requestDbQueried
-			preservedTokenDbQueried = w.tokenDbQueried
-		}
-
 		w = &rateLimitWindow{
 			windowStart:      windowStart,
 			anchor:           copyAnchor(anchor),
-			requestDbQueried: preservedRequestDbQueried,
-			tokenDbQueried:   preservedTokenDbQueried,
+			requestDbQueried: false,
+			tokenDbQueried:   false,
 		}
 		durationMap[d] = w
 	}

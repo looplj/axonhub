@@ -344,6 +344,7 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 }
 
 // GetChannelCost returns the total cost for a channel within the specified time window.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-cost", func(bypassCtx context.Context) (float64, error) {
 		return s.channelCost(bypassCtx, channelID, window, usagelog.SourceAPI)
@@ -352,6 +353,7 @@ func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window
 
 // GetChannelCostAllSources returns the total cost for a channel across all sources (not just API).
 // This matches the RateLimitAwareStrategy behavior in the load balancer.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelCostAllSources(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-cost-all", func(bypassCtx context.Context) (float64, error) {
 		return s.channelCost(bypassCtx, channelID, window, "")
@@ -364,6 +366,8 @@ func (s *QuotaService) GetChannelRequestCount(ctx context.Context, channelID int
 	})
 }
 
+// GetChannelRequestCountAllSources returns the request count for a channel across all sources.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelRequestCountAllSources(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-request-count-all", func(bypassCtx context.Context) (int64, error) {
 		return s.channelRequestCount(bypassCtx, channelID, window, "")
@@ -414,6 +418,8 @@ func (s *QuotaService) GetChannelTokenCount(ctx context.Context, channelID int, 
 	})
 }
 
+// GetChannelTokenCountAllSources returns the token count for a channel across all sources.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelTokenCountAllSources(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-token-count-all", func(bypassCtx context.Context) (int64, error) {
 		return s.channelTokenCount(bypassCtx, channelID, window, "")
@@ -498,6 +504,7 @@ func (s *QuotaService) channelCost(ctx context.Context, channelID int, window Qu
 
 // GetBatchChannelRequestCount returns request counts for multiple channels in a single query.
 // Uses GROUP BY channel_id to fetch all counts at once. Returns a map of channelID to count.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and grouping.
 func (s *QuotaService) GetBatchChannelRequestCount(ctx context.Context, channelIDs []int, window QuotaWindow) (map[int]int64, error) {
 	if len(channelIDs) == 0 {
 		return map[int]int64{}, nil
@@ -545,6 +552,7 @@ func (s *QuotaService) GetBatchChannelRequestCount(ctx context.Context, channelI
 
 // GetBatchChannelTokenCount returns token counts for multiple channels in a single query.
 // Uses GROUP BY channel_id to fetch all counts at once. Returns a map of channelID to token count.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and grouping.
 func (s *QuotaService) GetBatchChannelTokenCount(ctx context.Context, channelIDs []int, window QuotaWindow) (map[int]int64, error) {
 	if len(channelIDs) == 0 {
 		return map[int]int64{}, nil
@@ -592,6 +600,7 @@ func (s *QuotaService) GetBatchChannelTokenCount(ctx context.Context, channelIDs
 
 // GetBatchChannelCost returns cost totals for multiple channels in a single query.
 // Uses GROUP BY channel_id to fetch all costs at once. Returns a map of channelID to cost.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and grouping.
 func (s *QuotaService) GetBatchChannelCost(ctx context.Context, channelIDs []int, window QuotaWindow) (map[int]float64, error) {
 	if len(channelIDs) == 0 {
 		return map[int]float64{}, nil

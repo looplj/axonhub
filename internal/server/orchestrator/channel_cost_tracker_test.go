@@ -60,9 +60,8 @@ func TestChannelCostTracker_TTLExpiry(t *testing.T) {
 	*clockPtr = now.Add(31 * time.Second)
 
 	got, ok = tracker.GetCachedCost(1)
-	// TTL expired but window not ended - returns stale data (fail-open)
-	assert.True(t, ok)
-	assert.True(t, cost.Equal(got))
+	assert.False(t, ok)
+	assert.True(t, got.IsZero())
 }
 
 func TestChannelCostTracker_WindowEndExpiry(t *testing.T) {
@@ -97,13 +96,12 @@ func TestChannelCostTracker_EvictExpired(t *testing.T) {
 
 	tracker.EvictExpired()
 
-	// TTL expired but window not ended - entries should be kept for stale reads
 	got, ok := tracker.GetCachedCost(1)
-	assert.True(t, ok)
-	assert.True(t, cost.Equal(got))
+	assert.False(t, ok)
+	assert.True(t, got.IsZero())
 	got, ok = tracker.GetCachedCost(2)
-	assert.True(t, ok)
-	assert.True(t, cost.Equal(got))
+	assert.False(t, ok)
+	assert.True(t, got.IsZero())
 
 	// Now advance past window end
 	*clockPtr = now.Add(2 * time.Hour)
@@ -307,18 +305,16 @@ func TestChannelCostTracker_StopBeforeStartPreventsStart(t *testing.T) {
 	// Simulate TTL expiry
 	*clockPtr = now.Add(31 * time.Second)
 
-	// Get should return the stale cost because eviction loop never ran
 	got, ok := tracker2.GetCachedCost(1)
-	assert.True(t, ok)
-	assert.True(t, cost.Equal(got))
+	assert.False(t, ok)
+	assert.True(t, got.IsZero())
 
 	// Manually call EvictExpired - this would be what the background goroutine would do
 	tracker2.EvictExpired()
 
-	// Now TTL expired but window not ended - should keep for fail-open
 	got, ok = tracker2.GetCachedCost(1)
-	assert.True(t, ok)
-	assert.True(t, cost.Equal(got))
+	assert.False(t, ok)
+	assert.True(t, got.IsZero())
 }
 
 func TestChannelCostTracker_DoubleStopDoesNotBreakStart(t *testing.T) {

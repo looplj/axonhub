@@ -63,7 +63,7 @@ The load balancing system uses the Strategy pattern to make the prioritization l
 NewErrorAwareStrategy(channelService)
 ```
 
-### 3. WeightStrategy (Priority: 0-100 points)
+### WeightStrategy (Priority: 0-100 points) [Optional - Not in Default Selector]
 
 **Purpose**: Respects admin-configured channel priorities.
 
@@ -78,6 +78,26 @@ NewErrorAwareStrategy(channelService)
 
 **Cons**:
 - Static; does not react to live performance or load unless weights are manually updated.
+
+**Note**: This strategy is available but not included in the default `DefaultChannelSelector`. Use it in custom configurations when you want static weight-based routing without dynamic load balancing.
+
+### 3. WeightRoundRobinStrategy (Priority: 10-150 points)
+
+**Purpose**: Blends historic request distribution with admin-defined weights.
+
+**Algorithm**:
+1. Fetches `AggregatedMetrics` for each channel.
+2. Uses exponential decay on request counts to compute a round-robin component (0-150). Idle channels decay quickly back toward the maximum.
+3. Normalizes `OrderingWeight` (0-100) to a weight component (0-50).
+4. Sums both components, clamping to a minimum of 10 points to keep every healthy channel in contention.
+
+**Pros**:
+- Prevents hot channels from monopolizing requests while still honoring business priorities.
+- Built-in inactivity decay means new channels warm up quickly even if they start empty.
+
+**Cons**:
+- Requires metrics storage similar to ErrorAwareStrategy.
+- Heavily skewed manual weights can still override fairness, so administrators must tune carefully.
 
 ### 4. LatencyAwareStrategy (Priority: 0-80 points)
 
@@ -97,32 +117,15 @@ NewErrorAwareStrategy(channelService)
 - Requires metrics storage; channels with no history receive a neutral score.
 - Short-term latency spikes can cause over-reaction if the decay window is too short.
 
-### 5. WeightRoundRobinStrategy (Priority: 10-200 points)
+### 5. RateLimitAwareStrategy (Priority: -10000-100 points)
 
-**Purpose**: Blends historic request distribution with admin-defined weights.
-
-**Algorithm**:
-1. Fetches `AggregatedMetrics` for each channel.
-2. Uses exponential decay on request counts to compute a round-robin component (0-150). Idle channels decay quickly back toward the maximum.
-3. Normalizes `OrderingWeight` (0-100) to a weight component (0-50).
-4. Sums both components, clamping to a minimum of 10 points to keep every healthy channel in contention.
-
-**Pros**:
-- Prevents hot channels from monopolizing requests while still honoring business priorities.
-- Built-in inactivity decay means new channels warm up quickly even if they start empty.
-
-**Cons**:
-- Requires metrics storage similar to ErrorAwareStrategy.
-- Heavily skewed manual weights can still override fairness, so administrators must tune carefully.
-
-### 6. Connection Tracking and Concurrency Fallback
-
-**Purpose**: Track in-flight requests and provide concurrency saturation signals for `RateLimitAwareStrategy`.
+**Purpose**: Adjusts channel scores based on RPM/TPM rate limits, concurrency limits, and cost tracking.
 
 **Algorithm**:
-1. The orchestrator increments and decrements active connections around each upstream request.
-2. `RateLimitAwareStrategy` first respects explicit `MaxConcurrent` configuration.
-3. If `MaxConcurrent` is not set, it falls back to the default `ConnectionTracker` capacity to penalize or exhaust saturated channels.
+1. Tracks requests per minute (RPM) and tokens per minute (TPM) against channel quotas
+2. Respects explicit `MaxConcurrent` configuration or falls back to `ConnectionTracker` capacity
+3. Tracks cumulative costs per channel and penalizes channels approaching their limits
+4. Returns negative score (-10000) for channels that have exhausted their rate limits or are in cooldown
 
 **Cost-Based Rate Limiting**:
 - Channels can be configured with cost limits (e.g., $100/day) to control spending
@@ -131,8 +134,8 @@ NewErrorAwareStrategy(channelService)
 - When a channel exceeds its cost limit, it receives a negative score, deprioritizing it for new requests
 
 **Notes**:
-- Connection tracking remains part of the runtime path even though `ConnectionAwareStrategy` is no longer in the default strategy chain.
-- This makes concurrency protection part of rate-limit scoring instead of a standalone production strategy.
+- Connection tracking remains part of the runtime path even though `ConnectionAwareStrategy` is no longer in the default strategy chain
+- This makes concurrency protection part of rate-limit scoring instead of a standalone production strategy
 
 ## Default Configuration
 
@@ -156,7 +159,15 @@ loadBalancer := NewLoadBalancer(
 )
 ```
 
-**Total Score Range**: ~-9790-1530 points per channel (Trace 0-1000 + Error 0-200 + WeightRoundRobin 10-150 + Latency 0-80 + RateLimit -10000-100)
+**Total Score Range**: ~-9990 to 1530 points per channel
+- TraceAware: 0-1000
+- ErrorAware: 0-200 (can go negative with consecutive failure penalties)
+- WeightRoundRobin: 10-150
+- LatencyAware: 0-80
+- RateLimitAware: -10000-100
+
+Minimum: 0 + 0 + 10 + 0 + (-10000) = -9990
+Maximum: 1000 + 200 + 150 + 80 + 100 = 1530
 
 ### Default Strategy Mix Analysis
 

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"math"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -944,6 +945,84 @@ func TestIntegration_ModelConcurrent_WithChannelWideLimit(t *testing.T) {
 
 // ========== Cooldown / 429 integration tests ==========
 
+func TestIntegration_Cooldown_429WithRetryAfter_SetsCooldown(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
+	entChannel := &ent.Channel{ID: 1, Name: "429-cooldown-test"}
+	channel := &biz.Channel{Channel: entChannel}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+		clock:    func() time.Time { return *clockPtr },
+	}
+
+	ctx := context.Background()
+
+	httpErr := &httpclient.Error{
+		Method:     "POST",
+		URL:        "https://api.example.com/v1/chat/completions",
+		StatusCode: http.StatusTooManyRequests,
+		Status:     "429 Too Many Requests",
+		Headers:    http.Header{"Retry-After": []string{"30"}},
+	}
+
+	middleware.OnOutboundRawError(ctx, httpErr)
+
+	assert.True(t, tracker.IsCoolingDown(channel.ID), "Channel should be cooling down after 429")
+
+	gotUntil, ok := tracker.GetCooldownUntil(channel.ID)
+	assert.True(t, ok, "Should have cooldown time set")
+	expectedUntil := now.Add(30 * time.Second)
+	assert.Equal(t, expectedUntil, gotUntil, "Cooldown should be set to now + 30 seconds")
+}
+
+func TestIntegration_Cooldown_429CooldownExpiration_WithClock(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, clockPtr := newTrackerWithClock(now)
+
+	entChannel := &ent.Channel{ID: 1, Name: "429-expiry-test"}
+	channel := &biz.Channel{Channel: entChannel}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+		clock:    func() time.Time { return *clockPtr },
+	}
+
+	ctx := context.Background()
+
+	httpErr := &httpclient.Error{
+		Method:     "POST",
+		URL:        "https://api.example.com/v1/chat/completions",
+		StatusCode: http.StatusTooManyRequests,
+		Status:     "429 Too Many Requests",
+		Headers:    http.Header{"Retry-After": []string{"30"}},
+	}
+
+	middleware.OnOutboundRawError(ctx, httpErr)
+	assert.True(t, tracker.IsCoolingDown(channel.ID), "Channel should be cooling down initially")
+
+	// Advance clock past cooldown period
+	*clockPtr = now.Add(31 * time.Second)
+
+	assert.False(t, tracker.IsCoolingDown(channel.ID), "Channel should not be cooling down after cooldown expires")
+
+	_, ok := tracker.GetCooldownUntil(channel.ID)
+	assert.False(t, ok, "Should not have cooldown time after expiration")
+}
+
 // ========== Model-in-context Score() integration tests ==========
 
 func TestIntegration_ModelConcurrent_ScoreWithModelContext(t *testing.T) {
@@ -1257,7 +1336,7 @@ func TestIntegration_RateLimitTracking_MiddlewareWithCustomDuration(t *testing.T
 	outbound := &PersistentOutboundTransformer{state: state}
 
 	// Create middleware with tracker
-	middleware := withRateLimitTracking(outbound, tracker)
+	middleware := withRateLimitTracking(outbound, tracker, time.Now)
 
 	ctx := context.Background()
 	req := &httpclient.Request{}
@@ -1284,7 +1363,7 @@ func TestIntegration_RateLimitTracking_MiddlewareWithNoChannel(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{state: state}
 
 	// Create middleware with tracker
-	middleware := withRateLimitTracking(outbound, tracker)
+	middleware := withRateLimitTracking(outbound, tracker, time.Now)
 
 	ctx := context.Background()
 	req := &httpclient.Request{}

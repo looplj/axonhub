@@ -64,9 +64,9 @@ const channelNamesConnectionSchema = z.object({
 function assignDefined<T extends object>(target: T, patch: Partial<T>): T {
   const next = { ...target };
 
-  for (const key of Object.keys(patch) as Array<keyof T>) {
+  for (const key of Object.keys(patch) as Array<keyof T & string>) {
     const value = patch[key];
-    if (value !== undefined) {
+    if (value !== undefined && key in target) {
       next[key] = value;
     }
   }

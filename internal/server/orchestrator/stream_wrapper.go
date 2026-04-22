@@ -1,8 +1,10 @@
 package orchestrator
 
 import (
+	"context"
 	"sync"
 
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/streams"
 )
@@ -70,6 +72,11 @@ func (s *onCloseStream) Done() <-chan struct{} {
 func (s *onCloseStream) closeOnce() {
 	s.closed.Do(func() {
 		defer func() {
+			if r := recover(); r != nil {
+				log.Debug(context.Background(), "onClose callback panicked",
+					log.Any("panic", r),
+				)
+			}
 			s.closeErr = s.stream.Close()
 			close(s.done)
 		}()

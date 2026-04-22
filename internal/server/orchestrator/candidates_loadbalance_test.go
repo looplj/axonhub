@@ -563,7 +563,7 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 	require.Equal(t, ch.ID, result[0].Channel.ID)
 }
 
-func TestLoadBalancedSelector_Select_PriorityGroupExhaustionBackfill(t *testing.T) {
+func TestLoadBalancedSelector_Select_RateLimitExhaustionReordering(t *testing.T) {
 	ctx, client := setupTest(t)
 
 	chHighPriority, err := client.Channel.Create().

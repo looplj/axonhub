@@ -27,21 +27,29 @@ func WithEvictionInterval(d time.Duration) CostTrackerOption {
 	}
 }
 
+func WithMaxEntries(n int) CostTrackerOption {
+	return func(t *ChannelCostTracker) {
+		t.maxEntries = n
+	}
+}
+
 type ChannelCostTracker struct {
-	mu       sync.RWMutex
-	cache    map[int]costCacheEntry
-	ttl      time.Duration
-	clock    func() time.Time
-	evictInt time.Duration
-	worker   BackgroundWorker
+	mu         sync.RWMutex
+	cache      map[int]costCacheEntry
+	ttl        time.Duration
+	clock      func() time.Time
+	evictInt   time.Duration
+	maxEntries int
+	worker     BackgroundWorker
 }
 
 func NewChannelCostTracker(opts ...CostTrackerOption) *ChannelCostTracker {
 	t := &ChannelCostTracker{
-		cache:    make(map[int]costCacheEntry),
-		ttl:      30 * time.Second,
-		clock:    time.Now,
-		evictInt: 60 * time.Second,
+		cache:      make(map[int]costCacheEntry),
+		ttl:        30 * time.Second,
+		clock:      time.Now,
+		evictInt:   60 * time.Second,
+		maxEntries: 10000,
 	}
 	for _, opt := range opts {
 		opt(t)
@@ -70,21 +78,34 @@ func (t *ChannelCostTracker) Stop() {
 }
 
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
+	t.mu.RLock()
 	entry, ok := t.cache[channelID]
 	if !ok {
+		t.mu.RUnlock()
 		return decimal.Zero, false
 	}
 
 	now := t.clock()
 
+	// Window expired — need to delete (write operation)
 	if now.After(entry.windowEnd) {
-		delete(t.cache, channelID)
+		t.mu.RUnlock()
+		t.mu.Lock()
+		// Recheck after upgrading lock
+		if entry, ok = t.cache[channelID]; ok && now.After(entry.windowEnd) {
+			delete(t.cache, channelID)
+		}
+		t.mu.Unlock()
 		return decimal.Zero, false
 	}
 
+	// Stale entry — cache miss but don't delete (might still be useful as fallback)
+	if now.Sub(entry.fetchedAt) > t.ttl {
+		t.mu.RUnlock()
+		return decimal.Zero, false
+	}
+
+	t.mu.RUnlock()
 	return entry.cost, true
 }
 
@@ -92,10 +113,31 @@ func (t *ChannelCostTracker) SetCachedCost(channelID int, cost decimal.Decimal, 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
+	now := t.clock()
+
+	// Reject past windowEnd values
+	if !windowEnd.After(now) {
+		return
+	}
+
+	// Enforce max entries bound
+	if _, exists := t.cache[channelID]; !exists && len(t.cache) >= t.maxEntries {
+		// Evict one expired entry if possible, otherwise skip caching
+		for id, e := range t.cache {
+			if now.After(e.windowEnd) {
+				delete(t.cache, id)
+				break
+			}
+		}
+		if len(t.cache) >= t.maxEntries {
+			return
+		}
+	}
+
 	t.cache[channelID] = costCacheEntry{
 		cost:      cost,
 		windowEnd: windowEnd,
-		fetchedAt: t.clock(),
+		fetchedAt: now,
 	}
 }
 
@@ -107,16 +149,27 @@ func (t *ChannelCostTracker) Invalidate(channelID int) {
 }
 
 func (t *ChannelCostTracker) EvictExpired() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
+	// Two-phase: collect under RLock, delete under Lock
+	t.mu.RLock()
 	now := t.clock()
-
+	var expired []int
 	for id, entry := range t.cache {
-		// Only evict entries whose window has ended.
-		// TTL-expired entries within the active window are kept for stale reads (fail-open for rate limiting).
 		if now.After(entry.windowEnd) {
+			expired = append(expired, id)
+		}
+	}
+	t.mu.RUnlock()
+
+	if len(expired) == 0 {
+		return
+	}
+
+	t.mu.Lock()
+	for _, id := range expired {
+		// Recheck in case entry was updated between phases
+		if entry, ok := t.cache[id]; ok && now.After(entry.windowEnd) {
 			delete(t.cache, id)
 		}
 	}
+	t.mu.Unlock()
 }

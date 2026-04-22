@@ -28,11 +28,13 @@ func withConnectionTracking(outbound *PersistentOutboundTransformer, tracker Con
 type connectionTracking struct {
 	pipeline.DummyMiddleware
 
-	outbound    *PersistentOutboundTransformer
-	tracker     ConnectionTracker
-	channelID   int
-	decremented bool
-	decrementMu sync.Mutex
+	outbound     *PersistentOutboundTransformer
+	tracker      ConnectionTracker
+	channelID    int
+	channelName  string
+	hasIncrement bool
+	decremented  bool
+	decrementMu  sync.Mutex
 }
 
 func (m *connectionTracking) Name() string {
@@ -46,10 +48,12 @@ func (m *connectionTracking) OnOutboundRawRequest(ctx context.Context, request *
 	}
 
 	m.decrementMu.Lock()
-	if m.channelID != 0 && !m.decremented {
+	if m.hasIncrement && !m.decremented {
 		m.tracker.DecrementConnection(m.channelID)
 	}
 	m.channelID = channel.ID
+	m.channelName = channel.Name
+	m.hasIncrement = true
 	m.decremented = false
 	m.tracker.IncrementConnection(channel.ID)
 	m.decrementMu.Unlock()
@@ -71,29 +75,34 @@ func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	m.decrementMu.Lock()
 	captureChannelID := m.channelID
+	captureChannelName := m.channelName
+	captureHasIncrement := m.hasIncrement
 	captureDecremented := m.decremented
 	m.decremented = true
 	m.decrementMu.Unlock()
 
 	wrapped := newOnCloseStream(stream, func() {
-		if captureDecremented || captureChannelID == 0 {
+		if captureDecremented || !captureHasIncrement {
 			return
 		}
 		m.tracker.DecrementConnection(captureChannelID)
 
 		log.Debug(context.WithoutCancel(ctx), "Decremented connection count (stream close)",
 			log.Int("channel_id", captureChannelID),
+			log.String("channel_name", captureChannelName),
 			log.Int("active_connections", m.tracker.GetActiveConnections(captureChannelID)),
 		)
 	})
 
-	go func() {
-		select {
-		case <-ctx.Done():
-			wrapped.Close()
-		case <-wrapped.Done():
-		}
-	}()
+	if captureHasIncrement {
+		go func() {
+			select {
+			case <-ctx.Done():
+				wrapped.Close()
+			case <-wrapped.Done():
+			}
+		}()
+	}
 
 	return wrapped, nil
 }
@@ -106,7 +115,7 @@ func (m *connectionTracking) decrementConnection(ctx context.Context) {
 	m.decrementMu.Lock()
 	defer m.decrementMu.Unlock()
 
-	if m.decremented || m.channelID == 0 {
+	if m.decremented || !m.hasIncrement {
 		return
 	}
 
@@ -116,6 +125,7 @@ func (m *connectionTracking) decrementConnection(ctx context.Context) {
 
 	log.Debug(ctx, "Decremented connection count",
 		log.Int("channel_id", m.channelID),
+		log.String("channel_name", m.channelName),
 		log.Int("active_connections", m.tracker.GetActiveConnections(m.channelID)),
 	)
 }
