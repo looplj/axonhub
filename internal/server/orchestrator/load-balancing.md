@@ -79,7 +79,25 @@ NewErrorAwareStrategy(channelService)
 **Cons**:
 - Static; does not react to live performance or load unless weights are manually updated.
 
-### 4. WeightRoundRobinStrategy (Priority: 10-200 points)
+### 4. LatencyAwareStrategy (Priority: 0-80 points)
+
+**Purpose**: Favors channels with lower first-token-time (FTTL) for streaming or lower end-to-end latency for non-streaming requests.
+
+**Algorithm**:
+1. For streaming requests, reads the channel's recent FTTL (first token latency) from `AggregatedMetrics`.
+2. For non-streaming requests, reads the channel's recent end-to-end latency.
+3. Normalizes latency to a score in the 0–80 range: lower latency → higher score.
+4. If no metrics are available, returns a neutral score (40).
+
+**Pros**:
+- Reacts to real-time performance, automatically deprioritizing slow channels.
+- Differentiates between streaming and non-streaming workloads.
+
+**Cons**:
+- Requires metrics storage; channels with no history receive a neutral score.
+- Short-term latency spikes can cause over-reaction if the decay window is too short.
+
+### 5. WeightRoundRobinStrategy (Priority: 10-200 points)
 
 **Purpose**: Blends historic request distribution with admin-defined weights.
 
@@ -97,7 +115,7 @@ NewErrorAwareStrategy(channelService)
 - Requires metrics storage similar to ErrorAwareStrategy.
 - Heavily skewed manual weights can still override fairness, so administrators must tune carefully.
 
-### 5. Connection Tracking and Concurrency Fallback
+### 6. Connection Tracking and Concurrency Fallback
 
 **Purpose**: Track in-flight requests and provide concurrency saturation signals for `RateLimitAwareStrategy`.
 

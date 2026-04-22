@@ -83,9 +83,16 @@ func TestIsTokenWindowDbQueried_ResetsOnWindowRotation(t *testing.T) {
 	tracker.MarkTokenWindowDbQueried(1, time.Minute, nil)
 	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Minute, nil))
 
-	// Advance time past the window duration
 	*clockPtr = now.Add(2 * time.Minute)
 
-	// Window rotated — dbQueried flag should be gone
 	assert.False(t, tracker.IsTokenWindowDbQueried(1, time.Minute, nil))
+}
+
+func TestIsTokenWindowDbQueried_DifferentDuration(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	tracker.MarkTokenWindowDbQueried(1, time.Minute, nil)
+
+	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Minute, nil))
+	assert.False(t, tracker.IsTokenWindowDbQueried(1, time.Hour, nil))
 }

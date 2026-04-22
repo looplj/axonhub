@@ -46,11 +46,13 @@ func (m *connectionTracking) OnOutboundRawRequest(ctx context.Context, request *
 	}
 
 	m.decrementMu.Lock()
+	if m.channelID != 0 && !m.decremented {
+		m.tracker.DecrementConnection(m.channelID)
+	}
 	m.channelID = channel.ID
 	m.decremented = false
-	m.decrementMu.Unlock()
-
 	m.tracker.IncrementConnection(channel.ID)
+	m.decrementMu.Unlock()
 
 	log.Debug(ctx, "Incremented connection count",
 		log.Int("channel_id", channel.ID),
@@ -67,16 +69,30 @@ func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response
 }
 
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	wrapped := &onCloseStream{
-		stream: stream,
-		onClose: func() {
-			m.decrementConnection(context.WithoutCancel(ctx))
-		},
-	}
+	m.decrementMu.Lock()
+	captureChannelID := m.channelID
+	captureDecremented := m.decremented
+	m.decremented = true
+	m.decrementMu.Unlock()
+
+	wrapped := newOnCloseStream(stream, func() {
+		if captureDecremented || captureChannelID == 0 {
+			return
+		}
+		m.tracker.DecrementConnection(captureChannelID)
+
+		log.Debug(context.WithoutCancel(ctx), "Decremented connection count (stream close)",
+			log.Int("channel_id", captureChannelID),
+			log.Int("active_connections", m.tracker.GetActiveConnections(captureChannelID)),
+		)
+	})
 
 	go func() {
-		<-ctx.Done()
-		wrapped.Close()
+		select {
+		case <-ctx.Done():
+			wrapped.Close()
+		case <-wrapped.Done():
+		}
 	}()
 
 	return wrapped, nil

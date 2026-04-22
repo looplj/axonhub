@@ -21,7 +21,13 @@ func isNilModelConnectionTracker(tracker ModelConnectionTrackerInterface) bool {
 	if tracker == nil {
 		return true
 	}
-	return reflect.ValueOf(tracker).IsNil()
+	v := reflect.ValueOf(tracker)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return v.IsNil()
+	default:
+		return false
+	}
 }
 
 func withModelConnectionTracking(outbound *PersistentOutboundTransformer, tracker ModelConnectionTrackerInterface) pipeline.Middleware {
@@ -86,16 +92,31 @@ func (m *modelConnectionTracking) OnOutboundLlmResponse(ctx context.Context, res
 }
 
 func (m *modelConnectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	wrapped := &onCloseStream{
-		stream: stream,
-		onClose: func() {
-			m.decrementConnection(context.WithoutCancel(ctx))
-		},
-	}
+	m.decrementMu.Lock()
+	captureKey := m.incrKey
+	captureDecremented := m.decremented
+	m.decremented = true
+	m.decrementMu.Unlock()
+
+	wrapped := newOnCloseStream(stream, func() {
+		if captureDecremented || captureKey == nil {
+			return
+		}
+		m.tracker.DecrementModelConnection(context.WithoutCancel(ctx), captureKey.channelID, captureKey.model)
+
+		log.Debug(context.WithoutCancel(ctx), "Decremented model connection count (stream close)",
+			log.Int("channel_id", captureKey.channelID),
+			log.String("model", captureKey.model),
+			log.Int("active_connections", m.tracker.GetModelConnectionCount(captureKey.channelID, captureKey.model)),
+		)
+	})
 
 	go func() {
-		<-ctx.Done()
-		wrapped.Close()
+		select {
+		case <-ctx.Done():
+			wrapped.Close()
+		case <-wrapped.Done():
+		}
 	}()
 
 	return wrapped, nil

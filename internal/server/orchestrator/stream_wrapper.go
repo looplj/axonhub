@@ -7,26 +7,38 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-// onCloseStream wraps a streams.Stream and calls onClose exactly once when the stream
-// is exhausted (Next returns false) or explicitly closed. The underlying stream is
-// closed exactly once — inside the sync.Once block — to prevent double-close.
+// onCloseStream wraps a streams.Stream, calling onClose exactly once on exhaustion
+// or explicit close. The onClose callback MUST NOT re-enter any onCloseStream method
+// (deadlock). The underlying stream.Close runs even if onClose panics.
 type onCloseStream struct {
-	stream     streams.Stream[*llm.Response]
-	onClose    func()
-	closed     sync.Once
-	closeErr   error
+	stream   streams.Stream[*llm.Response]
+	onClose  func()
+	closed   sync.Once
+	closeErr error
+	mu       sync.Mutex
+	done     chan struct{}
+}
+
+func newOnCloseStream(stream streams.Stream[*llm.Response], onClose func()) *onCloseStream {
+	return &onCloseStream{
+		stream:  stream,
+		onClose: onClose,
+		done:    make(chan struct{}),
+	}
 }
 
 func (s *onCloseStream) Current() *llm.Response {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.stream.Current()
 }
 
 func (s *onCloseStream) Next() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if !s.stream.Next() {
-		s.closed.Do(func() {
-			s.onClose()
-			s.closeErr = s.stream.Close()
-		})
+		s.closeOnce()
 		return false
 	}
 
@@ -34,13 +46,33 @@ func (s *onCloseStream) Next() bool {
 }
 
 func (s *onCloseStream) Close() error {
-	s.closed.Do(func() {
-		s.onClose()
-		s.closeErr = s.stream.Close()
-	})
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.closeOnce()
 	return s.closeErr
 }
 
 func (s *onCloseStream) Err() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.stream.Err()
+}
+
+// Done returns a channel that is closed when the stream has been fully consumed
+// or explicitly closed. Callers can select on this to detect stream termination
+// without blocking indefinitely.
+func (s *onCloseStream) Done() <-chan struct{} {
+	return s.done
+}
+
+//nolint:unused // called from Next and Close while holding s.mu
+func (s *onCloseStream) closeOnce() {
+	s.closed.Do(func() {
+		defer func() {
+			s.closeErr = s.stream.Close()
+			close(s.done)
+		}()
+		s.onClose()
+	})
 }

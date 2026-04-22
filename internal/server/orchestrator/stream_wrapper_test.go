@@ -1,9 +1,11 @@
 package orchestrator
 
 import (
+	"context"
 	"errors"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,12 +14,12 @@ import (
 )
 
 type mockResponseStream struct {
-	items       []*llm.Response
-	idx         int
-	err         error
-	closeErr    error
-	closed      bool
-	closeCount  int32
+	items      []*llm.Response
+	idx        int
+	err        error
+	closeErr   error
+	closed     bool
+	closeCount int32
 }
 
 type mockResponseStreamWithErr struct {
@@ -82,12 +84,9 @@ func (m *mockResponseStreamWithErr) Err() error {
 func TestOnCloseStream_ExhaustionTriggersOnClose(t *testing.T) {
 	var onCloseCount int32
 
-	s := &onCloseStream{
-		stream: &mockResponseStream{items: []*llm.Response{{}}},
-		onClose: func() {
-			atomic.AddInt32(&onCloseCount, 1)
-		},
-	}
+	s := newOnCloseStream(&mockResponseStream{items: []*llm.Response{{}}}, func() {
+		atomic.AddInt32(&onCloseCount, 1)
+	})
 
 	assert.True(t, s.Next())
 	assert.False(t, s.Next())
@@ -97,12 +96,9 @@ func TestOnCloseStream_ExhaustionTriggersOnClose(t *testing.T) {
 func TestOnCloseStream_ExplicitCloseTriggersOnClose(t *testing.T) {
 	var onCloseCount int32
 
-	s := &onCloseStream{
-		stream: &mockResponseStream{items: []*llm.Response{{}, {}}},
-		onClose: func() {
-			atomic.AddInt32(&onCloseCount, 1)
-		},
-	}
+	s := newOnCloseStream(&mockResponseStream{items: []*llm.Response{{}, {}}}, func() {
+		atomic.AddInt32(&onCloseCount, 1)
+	})
 
 	err := s.Close()
 	require.NoError(t, err)
@@ -112,12 +108,9 @@ func TestOnCloseStream_ExplicitCloseTriggersOnClose(t *testing.T) {
 func TestOnCloseStream_CloseThenNextDoesNotDoubleFire(t *testing.T) {
 	var onCloseCount int32
 
-	s := &onCloseStream{
-		stream: &mockResponseStream{items: []*llm.Response{{}}},
-		onClose: func() {
-			atomic.AddInt32(&onCloseCount, 1)
-		},
-	}
+	s := newOnCloseStream(&mockResponseStream{items: []*llm.Response{{}}}, func() {
+		atomic.AddInt32(&onCloseCount, 1)
+	})
 
 	s.Next()
 	s.Close()
@@ -127,12 +120,9 @@ func TestOnCloseStream_CloseThenNextDoesNotDoubleFire(t *testing.T) {
 func TestOnCloseStream_NextExhaustionThenCloseDoesNotDoubleFire(t *testing.T) {
 	var onCloseCount int32
 
-	s := &onCloseStream{
-		stream: &mockResponseStream{items: []*llm.Response{{}}},
-		onClose: func() {
-			atomic.AddInt32(&onCloseCount, 1)
-		},
-	}
+	s := newOnCloseStream(&mockResponseStream{items: []*llm.Response{{}}}, func() {
+		atomic.AddInt32(&onCloseCount, 1)
+	})
 
 	s.Next()
 	streamExhausted := !s.Next()
@@ -143,10 +133,7 @@ func TestOnCloseStream_NextExhaustionThenCloseDoesNotDoubleFire(t *testing.T) {
 
 func TestOnCloseStream_CloseClosesUnderlyingStream(t *testing.T) {
 	ms := &mockResponseStream{items: []*llm.Response{{}}}
-	s := &onCloseStream{
-		stream:  ms,
-		onClose: func() {},
-	}
+	s := newOnCloseStream(ms, func() {})
 
 	err := s.Close()
 	require.NoError(t, err)
@@ -156,10 +143,7 @@ func TestOnCloseStream_CloseClosesUnderlyingStream(t *testing.T) {
 func TestOnCloseStream_CloseReturnsStreamError(t *testing.T) {
 	expectedErr := errors.New("stream error")
 	ms := &mockResponseStream{items: []*llm.Response{{}}, closeErr: expectedErr}
-	s := &onCloseStream{
-		stream:  ms,
-		onClose: func() {},
-	}
+	s := newOnCloseStream(ms, func() {})
 
 	err := s.Close()
 	assert.ErrorIs(t, err, expectedErr, "Close should return the underlying stream error")
@@ -167,10 +151,7 @@ func TestOnCloseStream_CloseReturnsStreamError(t *testing.T) {
 
 func TestOnCloseStream_ExhaustThenCloseDoesNotDoubleCloseUnderlyingStream(t *testing.T) {
 	ms := &mockResponseStream{items: []*llm.Response{{}}}
-	s := &onCloseStream{
-		stream:  ms,
-		onClose: func() {},
-	}
+	s := newOnCloseStream(ms, func() {})
 
 	s.Next()
 	streamExhausted := !s.Next()
@@ -186,16 +167,48 @@ func TestOnCloseStream_NextExhaustWithStreamError(t *testing.T) {
 	streamErr := errors.New("network error")
 	ms := &mockResponseStreamWithErr{items: []*llm.Response{{}}, err: streamErr}
 	var onCloseCount int32
-	s := &onCloseStream{
-		stream: ms,
-		onClose: func() {
-			atomic.AddInt32(&onCloseCount, 1)
-		},
-	}
+	s := newOnCloseStream(ms, func() {
+		atomic.AddInt32(&onCloseCount, 1)
+	})
 
 	s.Next()
 	streamExhausted := !s.Next()
 	assert.True(t, streamExhausted)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&onCloseCount), "onClose should fire even when stream has an error")
 	assert.ErrorIs(t, s.Err(), streamErr, "Err() should propagate the underlying stream error")
+}
+
+func TestOnCloseStream_ConcurrentCloseAndNext(t *testing.T) {
+	var onCloseCount int32
+
+	ms := &mockResponseStream{items: []*llm.Response{{}, {}, {}}}
+	s := newOnCloseStream(ms, func() {
+		atomic.AddInt32(&onCloseCount, 1)
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for s.Next() {
+			_ = s.Current()
+		}
+	}()
+
+	time.Sleep(10 * time.Millisecond)
+	cancel()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.Close()
+		case <-done:
+		}
+	}()
+
+	<-done
+
+	assert.Equal(t, int32(1), atomic.LoadInt32(&onCloseCount), "onClose should fire exactly once under concurrent access")
+	assert.Equal(t, int32(1), atomic.LoadInt32(&ms.closeCount), "underlying stream Close should be called exactly once")
 }

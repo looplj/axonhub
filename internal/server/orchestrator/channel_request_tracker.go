@@ -94,15 +94,37 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration,
 		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
 		durationMap[d] = w
 	} else if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
-		if w.requests > 0 || w.tokens > 0 {
-			log.Warn(context.Background(), "rate limit window data discarded due to anchor or window change",
+		anchorChanged := !anchorEqual(w.anchor, anchor)
+
+		if anchorChanged && (w.requests > 0 || w.tokens > 0) {
+			reqTotal := w.requestSeed + w.requests
+			tokTotal := w.tokenSeed + w.tokens
+			if reqTotal < 0 {
+				reqTotal = -1 // overflow sentinel
+			}
+			if tokTotal < 0 {
+				tokTotal = -1
+			}
+			log.Warn(context.Background(), "rate limit window reset due to anchor change, counts discarded",
 				log.Int("channel_id", channelID),
 				log.Duration("duration", d),
-				log.Int64("discarded_requests", w.requestSeed+w.requests),
-				log.Int64("discarded_tokens", w.tokenSeed+w.tokens),
+				log.Int64("discarded_requests", reqTotal),
+				log.Int64("discarded_tokens", tokTotal),
 			)
 		}
-		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
+
+		var preservedRequestDbQueried, preservedTokenDbQueried bool
+		if anchorChanged {
+			preservedRequestDbQueried = w.requestDbQueried
+			preservedTokenDbQueried = w.tokenDbQueried
+		}
+
+		w = &rateLimitWindow{
+			windowStart:      windowStart,
+			anchor:           copyAnchor(anchor),
+			requestDbQueried: preservedRequestDbQueried,
+			tokenDbQueried:   preservedTokenDbQueried,
+		}
 		durationMap[d] = w
 	}
 
@@ -140,7 +162,13 @@ func (t *ChannelRequestTracker) IncrementRequestForDuration(channelID int, d tim
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	if w.requests < math.MaxInt64-w.requestSeed {
+	if w.requests >= math.MaxInt64-w.requestSeed {
+		w.requests = math.MaxInt64 - w.requestSeed
+		log.Warn(context.Background(), "request counter overflow clamped",
+			log.Int("channel_id", channelID),
+			log.Duration("duration", d),
+		)
+	} else {
 		w.requests++
 	}
 }

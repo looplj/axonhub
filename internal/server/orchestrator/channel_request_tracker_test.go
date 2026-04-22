@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -430,7 +431,7 @@ func TestChannelRequestTracker_Anchor_NonNilAnchor(t *testing.T) {
 	assert.Equal(t, int64(2), count)
 }
 
-func TestChannelRequestTracker_Anchor_NilAndNonNilAreSeparate(t *testing.T) {
+func TestChannelRequestTracker_Anchor_AnchorChangeOverwritesPreviousWindow(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	tracker, _ := newTrackerWithClock(now)
 
@@ -757,6 +758,43 @@ func TestSeedTokenCountBasic(t *testing.T) {
 	assert.Equal(t, int64(1000), tracker.GetTokenCountForDuration(1, time.Minute, nil))
 }
 
+func TestSeedTokenCountAfterIncrement(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.AddTokensForDuration(1, 100, time.Minute, nil)
+	tracker.AddTokensForDuration(1, 200, time.Minute, nil)
+
+	tracker.SeedTokenCountForDuration(1, 500, time.Minute, nil)
+
+	assert.Equal(t, int64(500), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedTokenCountBelowExisting(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	for range 10 {
+		tracker.AddTokensForDuration(1, 100, time.Minute, nil)
+	}
+
+	tracker.SeedTokenCountForDuration(1, 500, time.Minute, nil)
+
+	assert.Equal(t, int64(1000), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+}
+
+func TestSeedThenAddTokens(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.SeedTokenCountForDuration(1, 1000, time.Minute, nil)
+
+	tracker.AddTokensForDuration(1, 100, time.Minute, nil)
+	tracker.AddTokensForDuration(1, 200, time.Minute, nil)
+
+	assert.Equal(t, int64(1300), tracker.GetTokenCountForDuration(1, time.Minute, nil))
+}
+
 func TestSeedWithZeroOrNegativeCount(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	tracker, _ := newTrackerWithClock(now)
@@ -961,6 +999,88 @@ func TestChannelRequestTracker_EvictExpired_CleansUpCooldowns(t *testing.T) {
 	// Call EvictExpired
 	tracker.EvictExpired()
 
-	// Verify channel 2 cooldown is now cleaned up
 	assert.False(t, tracker.IsCoolingDown(2))
+}
+
+func TestChannelRequestTracker_ConcurrentEvictionWithMutations(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 5)
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			tracker.IncrementRequestForDuration(1, time.Minute, nil)
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			tracker.AddTokensForDuration(1, 10, time.Minute, nil)
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			tracker.SetCooldown(1, time.Now().Add(30*time.Second))
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			_ = tracker.GetRequestCountForDuration(1, time.Minute, nil)
+		}()
+	}
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			tracker.EvictExpired()
+		}()
+	}
+
+	wg.Wait()
+
+	count := tracker.GetRequestCountForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(goroutines), count)
+}
+
+func TestChannelRequestTracker_AnchorChangePreservesDbQueriedFlags(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+	anchor1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	tracker.IncrementRequestForDuration(1, time.Hour, &anchor1)
+	tracker.MarkRequestWindowDbQueried(1, time.Hour, &anchor1)
+	tracker.MarkTokenWindowDbQueried(1, time.Hour, &anchor1)
+
+	assert.True(t, tracker.IsRequestWindowDbQueried(1, time.Hour, &anchor1))
+	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Hour, &anchor1))
+
+	anchor2 := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
+	tracker.IncrementRequestForDuration(1, time.Hour, &anchor2)
+
+	assert.True(t, tracker.IsRequestWindowDbQueried(1, time.Hour, &anchor2),
+		"requestDbQueried should be preserved after anchor change")
+	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Hour, &anchor2),
+		"tokenDbQueried should be preserved after anchor change")
+}
+
+func TestIncrementRequestForDuration_OverflowClamp(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.SeedRequestCountForDuration(1, math.MaxInt64-5, time.Minute, nil)
+
+	for range 6 {
+		tracker.IncrementRequestForDuration(1, time.Minute, nil)
+	}
+
+	count := tracker.GetRequestCountForDuration(1, time.Minute, nil)
+	assert.Equal(t, int64(math.MaxInt64), count, "overflow should be clamped to MaxInt64")
 }

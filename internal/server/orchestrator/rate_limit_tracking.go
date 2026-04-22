@@ -113,14 +113,14 @@ func (m *rateLimitTracking) OnOutboundLlmResponse(ctx context.Context, response 
 }
 
 func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	wrapped := &onCloseStream{
-		stream:  stream,
-		onClose: func() {}, // rate limit tracking doesn't need decrement on close
-	}
+	wrapped := newOnCloseStream(stream, func() {}) // rate limit tracking doesn't need decrement on close
 
 	go func() {
-		<-ctx.Done()
-		wrapped.Close()
+		select {
+		case <-ctx.Done():
+			wrapped.Close()
+		case <-wrapped.Done():
+		}
 	}()
 
 	return &rateLimitTrackingStream{
@@ -169,10 +169,10 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 //
 //nolint:containedctx // ctx is used for logging.
 type rateLimitTrackingStream struct {
-	ctx            context.Context
-	stream         streams.Stream[*llm.Response]
-	tracker        *ChannelRequestTracker
-	outbound       *PersistentOutboundTransformer
+	ctx             context.Context
+	stream          streams.Stream[*llm.Response]
+	tracker         *ChannelRequestTracker
+	outbound        *PersistentOutboundTransformer
 	lastTotalTokens int64
 }
 

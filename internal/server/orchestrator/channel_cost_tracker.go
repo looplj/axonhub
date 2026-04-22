@@ -70,33 +70,19 @@ func (t *ChannelCostTracker) Stop() {
 }
 
 func (t *ChannelCostTracker) GetCachedCost(channelID int) (decimal.Decimal, bool) {
-	t.mu.RLock()
-	entry, ok := t.cache[channelID]
-	now := t.clock()
-	t.mu.RUnlock()
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
+	entry, ok := t.cache[channelID]
 	if !ok {
 		return decimal.Zero, false
 	}
 
-	// Check if entry needs eviction
-	windowExpired := now.After(entry.windowEnd)
-	ttlExpired := now.Sub(entry.fetchedAt) > t.ttl
+	now := t.clock()
 
-	if windowExpired {
-		// Window ended - entry is invalid, remove it
-		t.mu.Lock()
-		if e, exists := t.cache[channelID]; exists && e.fetchedAt.Equal(entry.fetchedAt) {
-			delete(t.cache, channelID)
-		}
-		t.mu.Unlock()
+	if now.After(entry.windowEnd) {
+		delete(t.cache, channelID)
 		return decimal.Zero, false
-	}
-
-	if ttlExpired {
-		// TTL expired but window not ended - return stale data (fail-open for rate limiting:
-// stale/low cost data makes the limiter think more budget is available).
-		return entry.cost, true
 	}
 
 	return entry.cost, true

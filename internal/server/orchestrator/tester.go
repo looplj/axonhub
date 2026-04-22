@@ -54,6 +54,7 @@ func NewTestChannelOrchestrator(
 	httpClient *httpclient.HttpClient,
 ) *TestChannelOrchestrator {
 	rateLimitTracker := NewChannelRequestTracker()
+	rateLimitTracker.Start()
 	connTracker := NewDefaultConnectionTracker(100)
 	modelConnTracker := NewModelConnectionTracker()
 	costTracker := NewChannelCostTracker()
@@ -80,6 +81,15 @@ func NewTestChannelOrchestrator(
 		rateLimitTracker:       rateLimitTracker,
 		modelConnectionTracker: modelConnTracker,
 		costTracker:            costTracker,
+	}
+}
+
+func (processor *TestChannelOrchestrator) Close() {
+	if processor.costTracker != nil {
+		processor.costTracker.Stop()
+	}
+	if processor.rateLimitTracker != nil {
+		processor.rateLimitTracker.Stop()
 	}
 }
 

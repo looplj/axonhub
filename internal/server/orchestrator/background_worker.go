@@ -2,21 +2,20 @@ package orchestrator
 
 import "sync"
 
-// BackgroundWorker manages the lifecycle of a background goroutine with
-// safe Start/Stop semantics. It prevents double-start, supports
-// stop-before-start (making subsequent starts no-ops), and ensures the
-// stop channel is closed exactly once.
+// BackgroundWorker manages a background goroutine with safe Start/Stop semantics.
+// It prevents double-start, supports stop-before-start (subsequent starts become
+// no-ops), and ensures Stop blocks until the goroutine exits.
 type BackgroundWorker struct {
 	mu           sync.Mutex
 	stopCh       chan struct{}
 	stoppedEarly bool
 	everStarted  bool
+	wg           sync.WaitGroup
 }
 
-// Start begins the background goroutine. The work function receives the stop
-// channel; it should select on it to detect shutdown.
-// Safe to call multiple times — only the first call launches the goroutine.
-// If Stop was called before Start, subsequent Start calls are no-ops.
+// Start launches the background goroutine. Only the first call launches;
+// subsequent calls are no-ops. If Stop was called before Start, subsequent
+// Start calls are also no-ops.
 func (w *BackgroundWorker) Start(work func(stopCh <-chan struct{})) {
 	w.mu.Lock()
 	if w.stopCh != nil {
@@ -33,14 +32,16 @@ func (w *BackgroundWorker) Start(work func(stopCh <-chan struct{})) {
 	w.everStarted = true
 	w.stopCh = make(chan struct{})
 	stopCh := w.stopCh
+	w.wg.Add(1)
 	w.mu.Unlock()
-
-	go work(stopCh)
+	go func() {
+		defer w.wg.Done()
+		work(stopCh)
+	}()
 }
 
-// Stop signals the background goroutine to shut down by closing the stop channel.
-// Safe to call multiple times. If called before Start has ever been called,
-// subsequent Start calls become no-ops.
+// Stop signals the goroutine to shut down by closing the stop channel,
+// then blocks until the goroutine has exited. Safe to call multiple times.
 func (w *BackgroundWorker) Stop() {
 	w.mu.Lock()
 	if w.stopCh == nil {
@@ -48,7 +49,6 @@ func (w *BackgroundWorker) Stop() {
 			w.stoppedEarly = true
 		}
 		w.mu.Unlock()
-
 		return
 	}
 
@@ -56,4 +56,5 @@ func (w *BackgroundWorker) Stop() {
 	w.stopCh = nil
 	w.mu.Unlock()
 	close(ch)
+	w.wg.Wait()
 }
