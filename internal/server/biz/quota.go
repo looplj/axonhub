@@ -344,7 +344,6 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 }
 
 // GetChannelCost returns the total cost for a channel within the specified time window.
-// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-cost", func(bypassCtx context.Context) (float64, error) {
 		return s.channelCost(bypassCtx, channelID, window, usagelog.SourceAPI)
@@ -353,7 +352,6 @@ func (s *QuotaService) GetChannelCost(ctx context.Context, channelID int, window
 
 // GetChannelCostAllSources returns the total cost for a channel across all sources (not just API).
 // This matches the RateLimitAwareStrategy behavior in the load balancer.
-// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelCostAllSources(ctx context.Context, channelID int, window QuotaWindow) (float64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-cost-all", func(bypassCtx context.Context) (float64, error) {
 		return s.channelCost(bypassCtx, channelID, window, "")
@@ -367,28 +365,32 @@ func (s *QuotaService) GetChannelRequestCount(ctx context.Context, channelID int
 }
 
 // GetChannelRequestCountAllSources returns the request count for a channel across all sources.
-// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelRequestCountAllSources(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-request-count-all", func(bypassCtx context.Context) (int64, error) {
 		return s.channelRequestCount(bypassCtx, channelID, window, "")
 	})
 }
 
-func (s *QuotaService) channelRequestCount(ctx context.Context, channelID int, window QuotaWindow, source usagelog.Source) (int64, error) {
+// channelUsageQuery builds a base query for usage log aggregations by channel.
+// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
+func (s *QuotaService) channelUsageQuery(channelID int, window QuotaWindow, source usagelog.Source) *ent.UsageLogQuery {
 	q := s.ent.UsageLog.Query().Where(
 		usagelog.ChannelIDEQ(channelID),
 	)
 	if source != "" {
 		q = q.Where(usagelog.SourceEQ(source))
 	}
-
 	if window.Start != nil {
 		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
 	}
-
 	if window.End != nil {
 		q = q.Where(usagelog.CreatedAtLT(*window.End))
 	}
+	return q
+}
+
+func (s *QuotaService) channelRequestCount(ctx context.Context, channelID int, window QuotaWindow, source usagelog.Source) (int64, error) {
+	q := s.channelUsageQuery(channelID, window, source)
 
 	type row struct {
 		Count int64 `json:"count"`
@@ -419,7 +421,6 @@ func (s *QuotaService) GetChannelTokenCount(ctx context.Context, channelID int, 
 }
 
 // GetChannelTokenCountAllSources returns the token count for a channel across all sources.
-// Performance: relies on database index on (channel_id, created_at) for efficient filtering and aggregation.
 func (s *QuotaService) GetChannelTokenCountAllSources(ctx context.Context, channelID int, window QuotaWindow) (int64, error) {
 	return authz.RunWithSystemBypass(ctx, "channel-token-count-all", func(bypassCtx context.Context) (int64, error) {
 		return s.channelTokenCount(bypassCtx, channelID, window, "")
@@ -427,20 +428,7 @@ func (s *QuotaService) GetChannelTokenCountAllSources(ctx context.Context, chann
 }
 
 func (s *QuotaService) channelTokenCount(ctx context.Context, channelID int, window QuotaWindow, source usagelog.Source) (int64, error) {
-	q := s.ent.UsageLog.Query().Where(
-		usagelog.ChannelIDEQ(channelID),
-	)
-	if source != "" {
-		q = q.Where(usagelog.SourceEQ(source))
-	}
-
-	if window.Start != nil {
-		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
-	}
-
-	if window.End != nil {
-		q = q.Where(usagelog.CreatedAtLT(*window.End))
-	}
+	q := s.channelUsageQuery(channelID, window, source)
 
 	type row struct {
 		TotalTokens int64 `json:"total_tokens"`
@@ -465,20 +453,7 @@ func (s *QuotaService) channelTokenCount(ctx context.Context, channelID int, win
 }
 
 func (s *QuotaService) channelCost(ctx context.Context, channelID int, window QuotaWindow, source usagelog.Source) (float64, error) {
-	q := s.ent.UsageLog.Query().Where(
-		usagelog.ChannelIDEQ(channelID),
-	)
-	if source != "" {
-		q = q.Where(usagelog.SourceEQ(source))
-	}
-
-	if window.Start != nil {
-		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
-	}
-
-	if window.End != nil {
-		q = q.Where(usagelog.CreatedAtLT(*window.End))
-	}
+	q := s.channelUsageQuery(channelID, window, source)
 
 	type row struct {
 		TotalCost float64 `json:"total_cost"`

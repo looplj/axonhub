@@ -894,18 +894,13 @@ func TestChannelRequestTracker_StartStopLifecycle(t *testing.T) {
 	// Verify data is gone
 	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Minute, nil))
 
-	// Stop the tracker
+	// Stop the tracker - this permanently disables the background eviction goroutine
 	tracker.Stop()
 
-	// Start again - should work (the everStarted fix)
-	tracker.Start()
-
-	// Verify it works again
+	// Verify data operations still work without the goroutine
+	// Start() after Stop() is a permanent no-op (stopped=true), but Increment/Get operations don't need the goroutine
 	tracker.IncrementRequestForDuration(2, time.Minute, nil)
 	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(2, time.Minute, nil))
-
-	// Stop again
-	tracker.Stop()
 }
 
 func TestChannelRequestTracker_StopBeforeStartPreventsStart(t *testing.T) {
@@ -914,7 +909,7 @@ func TestChannelRequestTracker_StopBeforeStartPreventsStart(t *testing.T) {
 	// Call Stop before Start
 	tracker.Stop()
 
-	// Call Start - should be a no-op (stoppedEarly flag)
+	// Call Start - should be a no-op (stopped flag is permanently set)
 	tracker.Start()
 
 	// Verify no goroutine is running by adding data and checking it doesn't get evicted
@@ -922,7 +917,7 @@ func TestChannelRequestTracker_StopBeforeStartPreventsStart(t *testing.T) {
 	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, nil))
 }
 
-func TestChannelRequestTracker_DoubleStopDoesNotBreakStart(t *testing.T) {
+func TestChannelRequestTracker_DoubleStopThenStart_Noop(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 
 	// Start the tracker
@@ -931,10 +926,11 @@ func TestChannelRequestTracker_DoubleStopDoesNotBreakStart(t *testing.T) {
 	// Stop it the first time
 	tracker.Stop()
 
-	// Stop it again - stopCh is nil, but everStarted is true so stoppedEarly is NOT set
+	// Stop it again - stopCh is already nil, so this is a no-op
+	// After the first Stop(), stopped=true permanently
 	tracker.Stop()
 
-	// Start should work (everStarted is true)
+	// Start() after Stop() is a permanent no-op (stopped=true)
 	tracker.Start()
 
 	// Verify it works

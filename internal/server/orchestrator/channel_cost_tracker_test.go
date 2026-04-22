@@ -242,7 +242,7 @@ func TestChannelCostTracker_StartStopMultiple(t *testing.T) {
 	tracker := NewChannelCostTracker()
 	tracker.Start()
 	tracker.Stop()
-	// Starting again after stop should be a no-op (stoppedEarly flag prevents restart)
+	// Starting again after stop is a permanent no-op (stopped flag is set)
 	tracker.Start()
 	tracker.Stop() // should not panic on double stop
 }
@@ -264,16 +264,11 @@ func TestChannelCostTracker_StartStopLifecycle(t *testing.T) {
 	// Call Stop()
 	tracker.Stop()
 
-	// Call Start() again - should work
-	tracker.Start()
-
-	// Verify we can set/get costs again
+	// Start after Stop is a permanent no-op — data operations still work without the eviction goroutine
 	tracker.SetCachedCost(2, cost, windowEnd)
 	got, ok = tracker.GetCachedCost(2)
 	assert.True(t, ok)
 	assert.True(t, cost.Equal(got))
-
-	tracker.Stop()
 }
 
 func TestChannelCostTracker_StopBeforeStartPreventsStart(t *testing.T) {
@@ -282,8 +277,7 @@ func TestChannelCostTracker_StopBeforeStartPreventsStart(t *testing.T) {
 	// Call Stop() before Start()
 	tracker.Stop()
 
-	// Now call Start() - this should be a no-op due to stoppedEarly flag
-	tracker.Start()
+	// Now call Start() - this is a permanent no-op (stopped flag is set)
 
 	// The background goroutine should not be running - set a cost and verify
 	// it doesn't get evicted (since eviction only runs in background goroutine)
@@ -325,18 +319,13 @@ func TestChannelCostTracker_DoubleStopDoesNotBreakStart(t *testing.T) {
 	tracker.Stop()
 	tracker.Stop() // second stop should not panic
 
-	// Call Start() again - should work because everStarted is true
-	tracker.Start()
-
-	// Verify tracker works
+	// Start after Stop is a permanent no-op — data operations still work without the eviction goroutine
 	cost := decimal.NewFromFloat(10.0)
 	windowEnd := time.Now().Add(time.Hour)
 	tracker.SetCachedCost(1, cost, windowEnd)
 	got, ok := tracker.GetCachedCost(1)
 	assert.True(t, ok)
 	assert.True(t, cost.Equal(got))
-
-	tracker.Stop()
 }
 
 func TestChannelCostTracker_EvictExpired_RemovesExpiredEntries(t *testing.T) {

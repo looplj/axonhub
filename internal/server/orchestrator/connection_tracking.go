@@ -31,7 +31,6 @@ type connectionTracking struct {
 	outbound     *PersistentOutboundTransformer
 	tracker      ConnectionTracker
 	channelID    int
-	channelName  string
 	hasIncrement bool
 	decremented  bool
 	decrementMu  sync.Mutex
@@ -52,7 +51,6 @@ func (m *connectionTracking) OnOutboundRawRequest(ctx context.Context, request *
 		m.tracker.DecrementConnection(m.channelID)
 	}
 	m.channelID = channel.ID
-	m.channelName = channel.Name
 	m.hasIncrement = true
 	m.decremented = false
 	m.tracker.IncrementConnection(channel.ID)
@@ -75,11 +73,15 @@ func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	m.decrementMu.Lock()
 	captureChannelID := m.channelID
-	captureChannelName := m.channelName
 	captureHasIncrement := m.hasIncrement
 	captureDecremented := m.decremented
 	m.decremented = true
 	m.decrementMu.Unlock()
+
+	captureChannelName := ""
+	if ch := m.outbound.GetCurrentChannel(); ch != nil {
+		captureChannelName = ch.Name
+	}
 
 	wrapped := newOnCloseStream(stream, func() {
 		if captureDecremented || !captureHasIncrement {
@@ -123,9 +125,14 @@ func (m *connectionTracking) decrementConnection(ctx context.Context) {
 
 	m.tracker.DecrementConnection(m.channelID)
 
+	channelName := ""
+	if ch := m.outbound.GetCurrentChannel(); ch != nil {
+		channelName = ch.Name
+	}
+
 	log.Debug(ctx, "Decremented connection count",
 		log.Int("channel_id", m.channelID),
-		log.String("channel_name", m.channelName),
+		log.String("channel_name", channelName),
 		log.Int("active_connections", m.tracker.GetActiveConnections(m.channelID)),
 	)
 }

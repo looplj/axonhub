@@ -107,13 +107,15 @@ func (m *modelConnectionTracking) OnOutboundLlmStream(ctx context.Context, strea
 		)
 	})
 
-	go func() {
-		select {
-		case <-ctx.Done():
-			wrapped.Close()
-		case <-wrapped.Done():
-		}
-	}()
+	if captureKey != nil {
+		go func() {
+			select {
+			case <-ctx.Done():
+				wrapped.Close()
+			case <-wrapped.Done():
+			}
+		}()
+	}
 
 	return wrapped, nil
 }

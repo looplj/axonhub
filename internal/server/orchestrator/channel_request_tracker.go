@@ -45,6 +45,41 @@ type rateLimitWindow struct {
 	anchor           *time.Time
 }
 
+// countField selects which counter field to read/write within a rateLimitWindow.
+type countField int
+
+const (
+	requestField countField = iota
+	tokenField
+)
+
+func (f countField) seed(w *rateLimitWindow) *int64 {
+	switch f {
+	case requestField:
+		return &w.requestSeed
+	default:
+		return &w.tokenSeed
+	}
+}
+
+func (f countField) delta(w *rateLimitWindow) *int64 {
+	switch f {
+	case requestField:
+		return &w.requests
+	default:
+		return &w.tokens
+	}
+}
+
+func (f countField) dbQueried(w *rateLimitWindow) *bool {
+	switch f {
+	case requestField:
+		return &w.requestDbQueried
+	default:
+		return &w.tokenDbQueried
+	}
+}
+
 func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
 	t := &ChannelRequestTracker{
 		counters:  make(map[int]map[time.Duration]*rateLimitWindow),
@@ -213,7 +248,7 @@ func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d t
 	return w.windowStart.Add(d)
 }
 
-func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
+func (t *ChannelRequestTracker) getCountForDuration(channelID int, d time.Duration, anchor *time.Time, field countField) int64 {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -232,65 +267,64 @@ func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time
 		return 0
 	}
 
-	result := w.requestSeed + w.requests
+	result := *field.seed(w) + *field.delta(w)
 	if result < 0 {
 		result = math.MaxInt64
 	}
 
 	return result
+}
+
+func (t *ChannelRequestTracker) GetRequestCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
+	return t.getCountForDuration(channelID, d, anchor, requestField)
+}
+
+func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
+	return t.getCountForDuration(channelID, d, anchor, tokenField)
 }
 
 func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
 	return t.GetTokenCountForDuration(channelID, time.Minute, nil)
 }
 
-func (t *ChannelRequestTracker) GetTokenCountForDuration(channelID int, d time.Duration, anchor *time.Time) int64 {
+
+
+func (t *ChannelRequestTracker) isWindowDbQueried(channelID int, d time.Duration, anchor *time.Time, field countField) bool {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	durationMap, ok := t.counters[channelID]
 	if !ok {
-		return 0
+		return false
 	}
 
 	w, ok := durationMap[d]
 	if !ok {
-		return 0
+		return false
 	}
 
 	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
 	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
-		return 0
+		return false
 	}
 
-	result := w.tokenSeed + w.tokens
-	if result < 0 {
-		result = math.MaxInt64
-	}
-
-	return result
+	return *field.dbQueried(w)
 }
 
 func (t *ChannelRequestTracker) IsRequestWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+	return t.isWindowDbQueried(channelID, d, anchor, requestField)
+}
 
-	durationMap, ok := t.counters[channelID]
-	if !ok {
-		return false
-	}
+func (t *ChannelRequestTracker) IsTokenWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) bool {
+	return t.isWindowDbQueried(channelID, d, anchor, tokenField)
+}
 
-	w, ok := durationMap[d]
-	if !ok {
-		return false
-	}
+func (t *ChannelRequestTracker) markWindowDbQueried(channelID int, d time.Duration, anchor *time.Time, field countField) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
-	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
-	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
-		return false
-	}
-
-	return w.requestDbQueried
+	w := t.getOrResetWindow(channelID, d, anchor)
+	*field.dbQueried(w) = true
 }
 
 // MarkRequestWindowDbQueried marks that the request count for the given channel
@@ -298,89 +332,52 @@ func (t *ChannelRequestTracker) IsRequestWindowDbQueried(channelID int, d time.D
 // Note: This method creates a rateLimitWindow entry as a side effect if one does
 // not yet exist for the given channel/duration/anchor combination.
 func (t *ChannelRequestTracker) MarkRequestWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	w := t.getOrResetWindow(channelID, d, anchor)
-	w.requestDbQueried = true
+	t.markWindowDbQueried(channelID, d, anchor, requestField)
 }
 
-func (t *ChannelRequestTracker) IsTokenWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 
-	durationMap, ok := t.counters[channelID]
-	if !ok {
-		return false
-	}
-
-	w, ok := durationMap[d]
-	if !ok {
-		return false
-	}
-
-	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
-	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
-		return false
-	}
-
-	return w.tokenDbQueried
-}
 
 // MarkTokenWindowDbQueried marks that the token count for the given channel
 // and duration has been fetched from the database.
 // Note: This method creates a rateLimitWindow entry as a side effect if one does
 // not yet exist for the given channel/duration/anchor combination.
 func (t *ChannelRequestTracker) MarkTokenWindowDbQueried(channelID int, d time.Duration, anchor *time.Time) {
+	t.markWindowDbQueried(channelID, d, anchor, tokenField)
+}
+
+func (t *ChannelRequestTracker) seedCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time, field countField) {
+	if count <= 0 {
+		return
+	}
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID, d, anchor)
-	w.tokenDbQueried = true
+	deltaPtr := field.delta(w)
+	seed := count - *deltaPtr
+	if seed < 0 {
+		seed = 0
+	}
+	maxSeed := math.MaxInt64 - *deltaPtr
+	if seed > maxSeed {
+		seed = maxSeed
+	}
+	*field.seed(w) = seed
 }
 
 func (t *ChannelRequestTracker) SeedRequestCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time) {
-	if count <= 0 {
-		return
-	}
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	w := t.getOrResetWindow(channelID, d, anchor)
-	seed := count - w.requests
-	if seed < 0 {
-		seed = 0
-	}
-	// Clamp to prevent overflow when seed + requests exceeds MaxInt64
-	maxSeed := math.MaxInt64 - w.requests
-	if seed > maxSeed {
-		seed = maxSeed
-	}
-	w.requestSeed = seed
+	t.seedCountForDuration(channelID, count, d, anchor, requestField)
 }
 
 func (t *ChannelRequestTracker) SeedTokenCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time) {
-	if count <= 0 {
-		return
-	}
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	w := t.getOrResetWindow(channelID, d, anchor)
-	seed := count - w.tokens
-	if seed < 0 {
-		seed = 0
-	}
-	// Clamp to prevent overflow when seed + tokens exceeds MaxInt64
-	maxSeed := math.MaxInt64 - w.tokens
-	if seed > maxSeed {
-		seed = maxSeed
-	}
-	w.tokenSeed = seed
+	t.seedCountForDuration(channelID, count, d, anchor, tokenField)
 }
 
+
+
+// SetCooldown sets a cooldown period for a channel until the specified time.
+// It only extends the cooldown; a shorter value will not overwrite an existing longer one.
 func (t *ChannelRequestTracker) SetCooldown(channelID int, until time.Time) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -392,11 +389,14 @@ func (t *ChannelRequestTracker) SetCooldown(channelID int, until time.Time) {
 	t.cooldowns[channelID] = until
 }
 
+// IsCoolingDown checks if a channel is currently in a cooldown period.
 func (t *ChannelRequestTracker) IsCoolingDown(channelID int) bool {
 	_, ok := t.GetCooldownUntil(channelID)
 	return ok
 }
 
+// GetCooldownUntil returns the cooldown expiration time for a channel.
+// Returns false if the channel is not in cooldown or the cooldown has expired.
 func (t *ChannelRequestTracker) GetCooldownUntil(channelID int) (time.Time, bool) {
 	t.mu.RLock()
 	until, ok := t.cooldowns[channelID]
@@ -415,6 +415,8 @@ func (t *ChannelRequestTracker) GetCooldownUntil(channelID int) (time.Time, bool
 	return until, true
 }
 
+// clearExpiredCooldown removes an expired cooldown entry only if it still matches
+// the value observed by the caller, preventing races with newer SetCooldown writes.
 func (t *ChannelRequestTracker) clearExpiredCooldown(channelID int, observedUntil, now time.Time) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
