@@ -47,6 +47,21 @@ func TestHasResponseContent(t *testing.T) {
 			}},
 		}))
 	})
+
+	t.Run("embedding response data", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Embedding: &llm.EmbeddingResponse{
+				Object: "list",
+				Data: []llm.EmbeddingData{{
+					Object: "embedding",
+					Embedding: llm.Embedding{
+						Embedding: []float64{0.1, 0.2, 0.3},
+					},
+					Index: 0,
+				}},
+			},
+		}))
+	})
 }
 
 func TestPipeline_Process_StreamEmptyResponseDetection(t *testing.T) {
@@ -235,5 +250,45 @@ func TestPipeline_Process_NonStreamEmptyResponseDetection(t *testing.T) {
 		res, err := p.Process(context.Background(), &httpclient.Request{})
 		require.NoError(t, err)
 		require.NotNil(t, res)
+	})
+
+	t.Run("accepts non-stream embedding response", func(t *testing.T) {
+		execCalls := 0
+		executor := &mockExecutor{
+			do: func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+				execCalls++
+				return &httpclient.Response{}, nil
+			},
+		}
+
+		outbound := &mockOutbound{
+			transformResponse: func(ctx context.Context, resp *httpclient.Response) (*llm.Response, error) {
+				return &llm.Response{
+					RequestType: llm.RequestTypeEmbedding,
+					Embedding: &llm.EmbeddingResponse{
+						Object: "list",
+						Data: []llm.EmbeddingData{{
+							Object: "embedding",
+							Embedding: llm.Embedding{
+								Embedding: []float64{0.1, 0.2, 0.3},
+							},
+							Index: 0,
+						}},
+					},
+				}, nil
+			},
+		}
+
+		p := &pipeline{
+			Executor:               executor,
+			Inbound:                &mockInbound{},
+			Outbound:               outbound,
+			emptyResponseDetection: true,
+		}
+
+		res, err := p.Process(context.Background(), &httpclient.Request{})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, 1, execCalls)
 	})
 }
