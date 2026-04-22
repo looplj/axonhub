@@ -57,27 +57,33 @@ func (f countField) seed(w *rateLimitWindow) *int64 {
 	switch f {
 	case requestField:
 		return &w.requestSeed
-	default:
+	case tokenField:
 		return &w.tokenSeed
 	}
+
+	return &w.tokenSeed
 }
 
 func (f countField) delta(w *rateLimitWindow) *int64 {
 	switch f {
 	case requestField:
 		return &w.requests
-	default:
+	case tokenField:
 		return &w.tokens
 	}
+
+	return &w.tokens
 }
 
 func (f countField) dbQueried(w *rateLimitWindow) *bool {
 	switch f {
 	case requestField:
 		return &w.requestDbQueried
-	default:
+	case tokenField:
 		return &w.tokenDbQueried
 	}
+
+	return &w.tokenDbQueried
 }
 
 func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
@@ -287,8 +293,6 @@ func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
 	return t.GetTokenCountForDuration(channelID, time.Minute, nil)
 }
 
-
-
 func (t *ChannelRequestTracker) isWindowDbQueried(channelID int, d time.Duration, anchor *time.Time, field countField) bool {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -335,8 +339,6 @@ func (t *ChannelRequestTracker) MarkRequestWindowDbQueried(channelID int, d time
 	t.markWindowDbQueried(channelID, d, anchor, requestField)
 }
 
-
-
 // MarkTokenWindowDbQueried marks that the token count for the given channel
 // and duration has been fetched from the database.
 // Note: This method creates a rateLimitWindow entry as a side effect if one does
@@ -373,8 +375,6 @@ func (t *ChannelRequestTracker) SeedRequestCountForDuration(channelID int, count
 func (t *ChannelRequestTracker) SeedTokenCountForDuration(channelID int, count int64, d time.Duration, anchor *time.Time) {
 	t.seedCountForDuration(channelID, count, d, anchor, tokenField)
 }
-
-
 
 // SetCooldown sets a cooldown period for a channel until the specified time.
 // It only extends the cooldown; a shorter value will not overwrite an existing longer one.
