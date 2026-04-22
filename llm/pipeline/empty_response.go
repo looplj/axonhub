@@ -52,6 +52,27 @@ func hasResponseContent(resp *llm.Response) bool {
 		return false
 	}
 
+	if resp.Embedding != nil && len(resp.Embedding.Data) > 0 {
+		return true
+	}
+
+	if resp.Rerank != nil && len(resp.Rerank.Results) > 0 {
+		return true
+	}
+
+	if resp.Image != nil && len(resp.Image.Data) > 0 {
+		return true
+	}
+
+	if resp.Video != nil &&
+		(resp.Video.ID != "" || resp.Video.Status != "" || resp.Video.VideoURL != "" || resp.Video.Error != nil) {
+		return true
+	}
+
+	if resp.Compact != nil && len(resp.Compact.Output) > 0 {
+		return true
+	}
+
 	for _, choice := range resp.Choices {
 		if hasMessageContent(choice.Delta) || hasMessageContent(choice.Message) {
 			return true
