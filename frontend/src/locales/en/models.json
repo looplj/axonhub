@@ -170,6 +170,7 @@
   "models.developers.deepseek": "DeepSeek",
   "models.developers.google": "Google",
   "models.developers.kwaipilot": "KwaiPilot",
+  "models.developers.meta": "Meta",
   "models.developers.minimax": "MiniMax",
   "models.developers.mistral": "Mistral",
   "models.developers.moonshot": "Moonshot",
