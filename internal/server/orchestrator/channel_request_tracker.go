@@ -485,7 +485,7 @@ func (t *ChannelRequestTracker) deleteEvictionCandidates(c evictionCandidates) {
 
 func (t *ChannelRequestTracker) EvictExpired() {
 	candidates := t.collectEvictionCandidates()
-	if len(candidates.expiredDurations) == 0 && len(candidates.expiredCooldowns) == 0 {
+	if len(candidates.expiredDurations) == 0 && len(candidates.expiredCooldowns) == 0 && len(candidates.emptyChannels) == 0 {
 		return
 	}
 

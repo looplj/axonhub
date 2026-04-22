@@ -42,6 +42,7 @@ type RateLimitProvider struct {
 	rpmFlight         *singleflight.Group
 	tpmFlight         *singleflight.Group
 	costFlight        *singleflight.Group
+	now               func() time.Time
 }
 
 // RateLimitAwareStrategy adjusts channel scores based on configured RPM/TPM rate limits and concurrency limits.
@@ -61,6 +62,10 @@ func NewRateLimitAwareStrategy(provider RateLimitProvider) *RateLimitAwareStrate
 	}
 	if provider.costFlight == nil {
 		provider.costFlight = &singleflight.Group{}
+	}
+
+	if provider.now == nil {
+		provider.now = time.Now
 	}
 
 	return &RateLimitAwareStrategy{
@@ -89,17 +94,19 @@ func (s *RateLimitAwareStrategy) resolveCount(ctx context.Context, channel *biz.
 		return kind.getCount(channel.ID)
 	}
 
-	windowStart := objects.ComputeWindowStart(time.Now(), kind.duration, kind.anchor)
+	windowStart := objects.ComputeWindowStart(s.provider.now(), kind.duration, kind.anchor)
 	windowEnd := windowStart.Add(kind.duration)
 
 	key := fmt.Sprintf("%s:%d:%s:%s:%d", kind.name, channel.ID, kind.duration.String(), anchorKey(kind.anchor), windowStart.Unix())
 	v, sfErr, _ := kind.flight.Do(key, func() (any, error) {
-		defer kind.markDbQueried(channel.ID)
-
 		dbCount, err := kind.dbQueryCount(ctx, channel.ID, biz.QuotaWindow{Start: &windowStart, End: &windowEnd})
 		if err != nil {
 			return nil, err
 		}
+
+		// Only mark as DB-queried on success so that a transient DB failure
+		// allows the next request in the same window to retry.
+		kind.markDbQueried(channel.ID)
 
 		if dbCount > 0 {
 			kind.seedCount(channel.ID, dbCount)
@@ -345,24 +352,16 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			currentCost, costCached = s.provider.CostTracker.GetCachedCost(channel.ID)
 		}
 
-		if !costCached {
-			if s.provider.QuotaService == nil {
-				log.Warn(ctx, "cost limit configured but no cached cost data and no quota service for fallback",
-					log.Int("channel_id", channel.ID),
-				)
-				details["cost_check_skipped"] = true
-				// Apply a conservative penalty but continue checking other limits
-				// (Connection, ModelConn) before returning.
-				penaltyRatio := 0.5
-				if penaltyRatio > maxRatio {
-					maxRatio = penaltyRatio
-				}
-			}
+		if !costCached && s.provider.QuotaService == nil {
+			log.Warn(ctx, "cost limit configured but no cached cost data and no quota service for fallback",
+				log.Int("channel_id", channel.ID),
+			)
+			details["cost_check_degraded"] = true
 		}
 
 		if !costCached && s.provider.QuotaService != nil {
 			costDuration := rl.GetCostDuration()
-			windowStart := objects.ComputeWindowStart(time.Now(), costDuration.Duration(), rl.CostWindowAnchor)
+			windowStart := objects.ComputeWindowStart(s.provider.now(), costDuration.Duration(), rl.CostWindowAnchor)
 			windowEnd := windowStart.Add(costDuration.Duration())
 
 			key := fmt.Sprintf("cost:%d:%s:%s:%d", channel.ID, costDuration.Duration().String(), anchorKey(rl.CostWindowAnchor), windowStart.Unix())
@@ -390,8 +389,10 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			}
 		}
 
-		// DB fetch failed and no cached data — apply conservative penalty
+		// No cost data available (QuotaService absent or DB fetch failed) — apply
+		// conservative penalty so the channel is deprioritized without being fully exhausted.
 		if !costCached {
+			details["cost_check_degraded"] = true
 			penaltyRatio := 0.5
 			if penaltyRatio > maxRatio {
 				maxRatio = penaltyRatio
