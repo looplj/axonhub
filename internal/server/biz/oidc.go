@@ -14,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"regexp"
+	"sort"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -56,8 +59,6 @@ type OIDCProvider struct {
 	JITEnabled            bool              `conf:"jit_enabled" yaml:"jit_enabled" json:"jit_enabled"`
 	AutoLinkByEmail       bool              `conf:"auto_link_by_email" yaml:"auto_link_by_email" json:"auto_link_by_email"`
 	RequireEmailVerified  bool              `conf:"require_email_verified" yaml:"require_email_verified" json:"require_email_verified"`
-	RoleMappings          map[string]string `conf:"role_mappings" yaml:"role_mappings" json:"role_mappings"`
-	RoleMappingPrecedence string            `conf:"role_mapping_precedence" yaml:"role_mapping_precedence" json:"role_mapping_precedence"`
 	EnablePKCE            bool              `conf:"enable_pkce" yaml:"enable_pkce" json:"enable_pkce"`
 	// UI customization
 	IconURL      string `conf:"icon_url" yaml:"icon_url" json:"icon_url"`
@@ -70,8 +71,27 @@ type OIDCProvider struct {
 	UserInfoURL string `conf:"user_info_url" yaml:"user_info_url" json:"user_info_url"`
 	JWKSURL     string `conf:"jwks_url" yaml:"jwks_url" json:"jwks_url"`
 	// Behavior
-	OIDCLoginOnly bool   `conf:"oidc_login_only" yaml:"oidc_login_only" json:"oidc_login_only"`
-	GroupClaim    string `conf:"group_claim" yaml:"group_claim" json:"group_claim"`
+	OIDCLoginOnly      bool              `conf:"oidc_login_only" yaml:"oidc_login_only" json:"oidc_login_only"`
+	GroupClaims        []string          `conf:"group_claims" yaml:"group_claims" json:"group_claims"`
+	GroupParser        GroupParserConfig `conf:"group_parser" yaml:"group_parser" json:"group_parser"`
+	RoleMappingRules   []RoleMappingRule `conf:"role_mappings" yaml:"role_mappings" json:"role_mappings"`
+	DefaultRoles       []string          `conf:"default_roles" yaml:"default_roles" json:"default_roles"`
+	DefaultScopes      []string          `conf:"default_scopes" yaml:"default_scopes" json:"default_scopes"`
+	SyncRoleStrategy   string            `conf:"sync_role_strategy" yaml:"sync_role_strategy" json:"sync_role_strategy"` // "always", "create_only", "merge", "manual_first"
+	RolePrecedenceMode string            `conf:"role_precedence_mode" yaml:"role_precedence_mode" json:"role_precedence_mode"` // "merge", "highest"
+}
+
+type RoleMappingRule struct {
+	MatchGroup string `conf:"match_group" yaml:"match_group" json:"match_group"`
+	IsRegex    bool   `conf:"is_regex" yaml:"is_regex" json:"is_regex"`
+	DBRole     string `conf:"db_role" yaml:"db_role" json:"db_role"`
+	Priority   int    `conf:"priority" yaml:"priority" json:"priority"`
+}
+
+type GroupParserConfig struct {
+	RegexReplacePattern string `conf:"regex_replace_pattern" yaml:"regex_replace_pattern" json:"regex_replace_pattern"`
+	RegexReplaceWith    string `conf:"regex_replace_with" yaml:"regex_replace_with" json:"regex_replace_with"`
+	CaseSensitive       bool   `conf:"case_sensitive" yaml:"case_sensitive" json:"case_sensitive"`
 }
 
 func (p OIDCProvider) normalize() OIDCProvider {
@@ -554,11 +574,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 
 		_ = mapstructure.Decode(rawClaims, &claims)
 
-		groupClaim := p.config.GroupClaim
-		if groupClaim == "" {
-			groupClaim = "groups"
-		}
-		claims.Groups = parseGroups(rawClaims[groupClaim])
+		claims.Groups = s.extractGroups(rawClaims, p)
 	}
 
 	// If id_token is missing OR UserInfoURL is provided, fetch extra claims
@@ -655,11 +671,6 @@ type oidcClaims struct {
 }
 
 func (s *OIDCService) fetchUserInfo(ctx context.Context, p *oidcProvider, token *oauth2.Token) (*oidcClaims, error) {
-	groupClaim := p.config.GroupClaim
-	if groupClaim == "" {
-		groupClaim = "groups"
-	}
-
 	if p.oidc != nil {
 		userInfo, err := p.oidc.UserInfo(ctx, oauth2.StaticTokenSource(token))
 		if err != nil {
@@ -670,10 +681,10 @@ func (s *OIDCService) fetchUserInfo(ctx context.Context, p *oidcProvider, token 
 			return nil, err
 		}
 
-		// Fetch groups from custom claim
+		// Fetch groups from claims
 		var raw map[string]any
 		if err := userInfo.Claims(&raw); err == nil {
-			claims.Groups = parseGroups(raw[groupClaim])
+			claims.Groups = s.extractGroups(raw, p)
 		}
 
 		return &claims, nil
@@ -703,7 +714,7 @@ func (s *OIDCService) fetchUserInfo(ctx context.Context, p *oidcProvider, token 
 
 	var claims oidcClaims
 	_ = mapstructure.Decode(raw, &claims)
-	claims.Groups = parseGroups(raw[groupClaim])
+	claims.Groups = s.extractGroups(raw, p)
 
 	// GitHub fallback: 'sub' might be called 'id' or 'login'
 	if claims.Sub == "" {
@@ -715,6 +726,50 @@ func (s *OIDCService) fetchUserInfo(ctx context.Context, p *oidcProvider, token 
 	}
 
 	return &claims, nil
+}
+
+
+func (s *OIDCService) extractGroups(raw map[string]any, p *oidcProvider) []string {
+	var claims []string
+	if len(p.config.GroupClaims) > 0 {
+		claims = p.config.GroupClaims
+	} else {
+		claims = []string{"groups", "roles"} // fallback defaults
+	}
+
+	var allGroups []string
+	for _, c := range claims {
+		if grps := parseGroups(raw[c]); len(grps) > 0 {
+			allGroups = append(allGroups, grps...)
+		}
+	}
+
+	if len(allGroups) == 0 {
+		return nil
+	}
+
+	var re *regexp.Regexp
+	if p.config.GroupParser.RegexReplacePattern != "" {
+		compiled, err := regexp.Compile(p.config.GroupParser.RegexReplacePattern)
+		if err == nil {
+			re = compiled
+		} else {
+			log.Warn(context.Background(), "Invalid GroupParser regex", zap.Error(err))
+		}
+	}
+
+	results := make([]string, 0, len(allGroups))
+	for _, g := range allGroups {
+		if re != nil {
+			g = re.ReplaceAllString(g, p.config.GroupParser.RegexReplaceWith)
+		}
+		if !p.config.GroupParser.CaseSensitive {
+			g = strings.ToLower(g)
+		}
+		results = append(results, g)
+	}
+
+	return results
 }
 
 func parseGroups(v any) []string {
@@ -834,7 +889,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 
 	// Apply role mappings to new user
-	s.applyRoleMappings(userCreate.Mutation(), groups, p.config)
+	s.applyRoleMappings(ctx, userCreate.Mutation(), groups, p.config, true)
 
 	newUser, err := userCreate.Save(ctx)
 	if err != nil {
@@ -873,46 +928,134 @@ func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, given
 	}
 
 	// Sync roles/scopes
-	s.applyRoleMappings(update.Mutation(), groups, cfg)
+	if cfg.SyncRoleStrategy != "create_only" {
+		s.applyRoleMappings(ctx, update.Mutation(), groups, cfg, false)
+	}
 
 	return update.Save(ctx)
 }
 
-func (s *OIDCService) applyRoleMappings(m ent.Mutation, groups []string, cfg OIDCProvider) {
-	if len(cfg.RoleMappings) == 0 {
-		return
+func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, groups []string, cfg OIDCProvider, isCreate bool) error {
+	um, ok := m.(*ent.UserMutation)
+	if !ok {
+		return fmt.Errorf("expected UserMutation")
 	}
 
 	var (
 		isOwner bool
 		scopes  []string
-		// roles  []string // TODO: handle database roles if needed
 	)
 
+	matchedRules := make([]RoleMappingRule, 0)
+	matchedAnyGroup := false
+
+	// Flatten matching groups
 	for _, group := range groups {
-		if mapping, ok := cfg.RoleMappings[group]; ok {
-			parts := strings.Split(mapping, ",")
-			for _, p := range parts {
-				p = strings.TrimSpace(p)
-				switch {
-				case p == "system:owner":
-					isOwner = true
-				case strings.HasPrefix(p, "scope:"):
-					scopes = append(scopes, strings.TrimPrefix(p, "scope:"))
+		for _, rule := range cfg.RoleMappingRules {
+			matched := false
+			if rule.IsRegex {
+				matched, _ = regexp.MatchString(rule.MatchGroup, group)
+			} else {
+				matched, _ = filepath.Match(rule.MatchGroup, group)
+				if !matched && rule.MatchGroup == group {
+					// Fallback to strict string match if glob syntax fails
+					matched = true
 				}
+			}
+			
+			if matched {
+				matchedAnyGroup = true
+				matchedRules = append(matchedRules, rule)
 			}
 		}
 	}
 
+	// Calculate roles and scopes
+	if !matchedAnyGroup {
+		// Apply defaults
+		scopes = append(scopes, cfg.DefaultScopes...)
+		for _, dr := range cfg.DefaultRoles {
+            matchedRules = append(matchedRules, RoleMappingRule{DBRole: dr, Priority: 0})
+        }
+	} else {
+		// Precedence logic on matched rules
+		if cfg.RolePrecedenceMode == "highest" && len(matchedRules) > 0 {
+			sort.Slice(matchedRules, func(i, j int) bool {
+				return matchedRules[i].Priority > matchedRules[j].Priority
+			})
+			matchedRules = []RoleMappingRule{matchedRules[0]}
+		}
+	}
+
+	var dbRolesToCompile []string
+	for _, rule := range matchedRules {
+		db_role := strings.TrimSpace(rule.DBRole)
+		if db_role == "system:owner" {
+			isOwner = true
+		} else if strings.HasPrefix(db_role, "scope:") {
+			scopes = append(scopes, strings.TrimPrefix(db_role, "scope:"))
+		} else {
+			dbRolesToCompile = append(dbRolesToCompile, db_role)
+		}
+	}
+
 	if isOwner {
-		m.SetField("is_owner", true)
-	}
+		um.SetIsOwner(true)
+	} else {
+        um.SetIsOwner(false)
+    }
+
 	if len(scopes) > 0 {
-		// Merger logic? Or overwrite? For simplicity, we'll append for now.
-		// Use reflect/mutation to set field safely
-		// Note: User.scopes is a strings field.
-		m.SetField("scopes", scopes)
+		um.SetScopes(scopes)
+	} else {
+        um.ClearScopes()
+    }
+
+	// Roles logic depending on strategy
+	if len(dbRolesToCompile) > 0 {
+		roleEntities, err := s.db.Role.Query().Where(role.LevelEQ(role.LevelSystem), role.NameIn(dbRolesToCompile...)).All(ctx)
+		if err == nil && len(roleEntities) > 0 {
+			var roleIDs []int
+			for _, r := range roleEntities {
+				roleIDs = append(roleIDs, r.ID)
+			}
+
+			// Apply strategy logic depending on isCreate or SyncRoleStrategy
+			strategy := cfg.SyncRoleStrategy
+			if strategy == "" {
+				strategy = "always"
+			}
+			
+			if isCreate {
+				um.AddRoleIDs(roleIDs...)
+			} else {
+				switch strategy {
+				case "always":
+					um.ClearRoles()
+					um.AddRoleIDs(roleIDs...)
+				case "merge":
+					um.AddRoleIDs(roleIDs...)
+				case "manual_first":
+					// Manual first approach: we check if user has existing project-based roles or something, but realistically we would need to inspect existing manually set roles.
+					// Since we can't easily differentiate manual vs provider here without complex schema, we will treat it as a skip if they have any roles.
+					userID, exists := um.ID()
+                    if exists {
+                        existingRolesCount, _ := s.db.Role.Query().Where(role.HasUsersWith(user.IDEQ(userID))).Count(ctx)
+                        if existingRolesCount == 0 {
+                            um.AddRoleIDs(roleIDs...)
+                        }
+                    }
+				}
+			}
+		}
+	} else {
+		// No DB roles to map, if strategy is always, clear existing roles
+		if !isCreate && cfg.SyncRoleStrategy == "always" {
+			um.ClearRoles()
+		}
 	}
+
+	return nil
 }
 
 func (s *OIDCService) createIdentity(ctx context.Context, userID int, issuer, subject, email, idpName string) error {
