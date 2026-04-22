@@ -217,10 +217,9 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
 				s.C(usagelog.FieldPromptTokens),
 				s.C(usagelog.FieldCompletionTokens),
-				s.C(usagelog.FieldPromptCachedTokens),
 				s.C(usagelog.FieldCompletionReasoningTokens)), "total_tokens"),
 		).GroupBy(s.C(usagelog.FieldAPIKeyID), s.C(usagelog.FieldModelID)).
 			OrderBy(sql.Desc("total_tokens"))

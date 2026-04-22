@@ -633,6 +633,100 @@ func TestComputeAllChannelProbeStats_MultipleRequests(t *testing.T) {
 	assert.InDelta(t, 450.0, *channelStats.avgTimeToFirstTokenMs, 0.01)
 }
 
+func TestComputeAllChannelProbeStats_StrictFailureRateExcludesCanceledAndProcessing(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := ent.NewContext(t.Context(), client)
+	ctx = authz.WithTestBypass(ctx)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("strict-failure-rate-channel").
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	endTime := time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC)
+	startTime := endTime.Add(-time.Minute)
+
+	requestTimes := []time.Time{
+		startTime.Add(10 * time.Second),
+		startTime.Add(20 * time.Second),
+		startTime.Add(30 * time.Second),
+		startTime.Add(40 * time.Second),
+	}
+	statuses := []requestexecution.Status{
+		requestexecution.StatusCompleted,
+		requestexecution.StatusFailed,
+		requestexecution.StatusCanceled,
+		requestexecution.StatusProcessing,
+	}
+	requestStatuses := []request.Status{
+		request.StatusCompleted,
+		request.StatusFailed,
+		request.StatusCanceled,
+		request.StatusProcessing,
+	}
+
+	for i, execStatus := range statuses {
+		req, err := client.Request.Create().
+			SetModelID("gpt-4").
+			SetRequestBody(objects.JSONRawMessage(`{}`)).
+			SetStatus(requestStatuses[i]).
+			SetChannelID(ch.ID).
+			SetStream(false).
+			SetCreatedAt(requestTimes[i]).
+			SetUpdatedAt(requestTimes[i]).
+			Save(ctx)
+		require.NoError(t, err)
+
+		_, err = client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4").
+			SetRequestBody(objects.JSONRawMessage(`{}`)).
+			SetStatus(execStatus).
+			SetStream(false).
+			SetMetricsLatencyMs(1000).
+			SetCreatedAt(requestTimes[i]).
+			SetUpdatedAt(requestTimes[i]).
+			Save(ctx)
+		require.NoError(t, err)
+
+		if execStatus == requestexecution.StatusCompleted {
+			_, err = client.UsageLog.Create().
+				SetRequestID(req.ID).
+				SetChannelID(ch.ID).
+				SetModelID("gpt-4").
+				SetCompletionTokens(100).
+				SetTotalTokens(100).
+				SetCreatedAt(requestTimes[i]).
+				SetUpdatedAt(requestTimes[i]).
+				Save(ctx)
+			require.NoError(t, err)
+		}
+	}
+
+	svc := &ChannelProbeService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	stats, err := svc.computeAllChannelProbeStats(ctx, []int{ch.ID}, startTime, endTime)
+	require.NoError(t, err)
+	require.Contains(t, stats, ch.ID)
+
+	channelStats := stats[ch.ID]
+	require.NotNil(t, channelStats)
+	assert.Equal(t, 2, channelStats.total, "only completed and failed executions should count toward strict failure rate")
+	assert.Equal(t, 1, channelStats.success)
+}
+
 // TestComputeAllChannelProbeStats_EmptyChannel tests with a channel that has no data
 func TestComputeAllChannelProbeStats_EmptyChannel(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
