@@ -10,6 +10,7 @@ function normalizeUtcIso(iso: string): string {
   }
   if (!iso.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(iso)) {
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.warn(
         '[timezone] normalizeUtcIso: assuming UTC for ISO string without timezone info:',
         iso,

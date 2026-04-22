@@ -1399,7 +1399,7 @@ export function useFetchModels() {
         throw error;
       }
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data) => {
       if (data.error) {
         toast.error(t('common.errors.internalServerError'));
       } else {
