@@ -165,6 +165,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("db.dialect", "sqlite3")
 	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)")
 	v.SetDefault("db.debug", false)
+	v.SetDefault("db.max_open_conns", 20)
+	v.SetDefault("db.max_idle_conns", 10)
+	v.SetDefault("db.conn_max_lifetime", "30m")
+	v.SetDefault("db.conn_max_idle_time", "10m")
 
 	// Log defaults
 	v.SetDefault("log.name", "axonhub")
