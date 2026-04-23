@@ -390,7 +390,7 @@ log:
 ### Getting Help
 
 - Check the [GitHub Issues](https://github.com/looplj/axonhub/issues)
-- Review the [Architecture Documentation](../architecture/erd.md)
+- Review the [Architecture Documentation](../development/erd.md)
 - Join the community discussions
 
 ## What's Next?

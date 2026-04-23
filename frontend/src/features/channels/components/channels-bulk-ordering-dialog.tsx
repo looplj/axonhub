@@ -17,62 +17,24 @@ const WEIGHT_PRECISION = 0;
 const MIN_WEIGHT = 0;
 const MAX_WEIGHT = 100;
 
-const formatWeight = (value: number) => Number(value.toFixed(WEIGHT_PRECISION));
+const formatWeight = (value: number) => Math.round(value);
 
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
 
-// Weight 0 = highest priority (sorts to top), otherwise ascending by weight
-const weightSort = (a: { orderingWeight: number }, b: { orderingWeight: number }) =>
-  a.orderingWeight - b.orderingWeight;
-
-// Normalize ranks to sequential 1..N with 0 preserved for highest-priority items
-const normalizeRanks = (items: Array<{ channel: ChannelSummary; orderingWeight: number }>) => {
-  const sorted = [...items].sort(weightSort);
-  let nextRank = 1;
-  return sorted.map((item) => {
-    if (item.orderingWeight === 0) return item;
-    return { ...item, orderingWeight: nextRank++ };
-  });
-};
-
-// Initialize channels from GraphQL edges
-const initializeOrderedChannels = (edges: Array<{ node: ChannelSummary }>) => {
-  const items = edges.map((edge) => ({
-    channel: edge.node,
-    orderingWeight: edge.node.orderingWeight ?? 0,
-  }));
-  return normalizeRanks(items);
-};
-
-const reassignWeightsFromPosition = (
-  items: Array<{ channel: ChannelSummary; orderingWeight: number }>,
-  movedItemIndex: number,
-) => {
-  if (items.length <= 1) return items.map((item) => ({ ...item }));
-
-  const result = items.map((item) => ({ ...item }));
-  const prevWeight = result[movedItemIndex - 1]?.orderingWeight;
-  const nextWeight = result[movedItemIndex + 1]?.orderingWeight;
-
-  if (prevWeight != null && nextWeight != null && prevWeight === nextWeight) {
-    result[movedItemIndex].orderingWeight = prevWeight;
-  } else if (prevWeight == null && nextWeight != null) {
-    result[movedItemIndex].orderingWeight = clampWeight(Math.max(nextWeight - 1, 0));
-  } else if (nextWeight == null && prevWeight != null) {
-    result[movedItemIndex].orderingWeight = clampWeight(prevWeight + 1);
-  } else if (prevWeight != null && nextWeight != null) {
-    const gap = nextWeight - prevWeight;
-    if (gap <= 1) {
-      for (let i = movedItemIndex + 1; i < result.length; i++) {
-        result[i].orderingWeight = clampWeight(result[i].orderingWeight + 1);
-      }
-      result[movedItemIndex].orderingWeight = clampWeight(prevWeight + 1);
-    } else {
-      result[movedItemIndex].orderingWeight = clampWeight(prevWeight + Math.floor(gap / 2));
-    }
+const calculateRelativeWeight = (prev?: number, next?: number) => {
+  if (prev == null && next == null) {
+    return clampWeight(1);
   }
-
-  return result;
+  if (prev == null) {
+    return clampWeight((next ?? 0) + 1);
+  }
+  if (next == null) {
+    return clampWeight(prev - 1);
+  }
+  if (prev === next) {
+    return clampWeight(prev);
+  }
+  return clampWeight(Math.floor((prev + next) / 2));
 };
 
 interface ChannelOrderingItemProps {
@@ -198,7 +160,7 @@ const ChannelOrderingItemComponent = memo(function ChannelOrderingItemComponent(
             inputMode='decimal'
             step='any'
             min={MIN_WEIGHT}
-            max={total}
+            max={MAX_WEIGHT}
             className='h-6 w-16 px-1 text-center text-xs'
             value={localWeight}
             onChange={(e) => setLocalWeight(e.target.value)}
@@ -257,9 +219,16 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
   const [orderedChannels, setOrderedChannels] = useState<Array<{ channel: ChannelSummary; orderingWeight: number }>>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Initialize ordered channels when data loads
   useEffect(() => {
     if (channelsData?.edges) {
-      setOrderedChannels(initializeOrderedChannels(channelsData.edges));
+      const channels = channelsData.edges.map((edge, index) => ({
+        channel: edge.node,
+        orderingWeight: clampWeight(edge.node.orderingWeight ?? channelsData.edges.length - index),
+      }));
+      // Sort by orderingWeight DESC (higher weight first)
+      channels.sort((a, b) => b.orderingWeight - a.orderingWeight);
+      setOrderedChannels(channels);
       setHasChanges(false);
     }
   }, [channelsData]);
@@ -287,23 +256,28 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       }
 
       const newItems = arrayMove(items, oldIndex, newIndex);
-      const withWeights = reassignWeightsFromPosition(newItems, newIndex);
+      const prevWeight = newItems[newIndex - 1]?.orderingWeight;
+      const nextWeight = newItems[newIndex + 1]?.orderingWeight;
+
+      newItems[newIndex] = {
+        ...newItems[newIndex],
+        orderingWeight: calculateRelativeWeight(prevWeight, nextWeight),
+      };
+
       setHasChanges(true);
-      return normalizeRanks(withWeights);
+      return newItems;
     });
   }, []);
 
   const handleWeightChange = useCallback((id: string, weight: number) => {
+    const normalizedWeight = clampWeight(weight);
     setOrderedChannels((items) => {
-      const channelCount = items.length;
-      // Clamp manual weight to valid rank range [0, channelCount]
-      // 0 = highest priority, 1..channelCount = valid rank positions
-      const clampedWeight = Math.min(Math.max(weight, 0), channelCount);
-      const normalizedWeight = clampWeight(clampedWeight);
       const newItems = items.map((item) => (item.channel.id === id ? { ...item, orderingWeight: normalizedWeight } : item));
-      newItems.sort(weightSort);
+      // Sort by orderingWeight DESC (higher weight first)
+      // Maintain stable sort for equal weights? Javascript sort is stable.
+      newItems.sort((a, b) => b.orderingWeight - a.orderingWeight);
       setHasChanges(true);
-      return normalizeRanks(newItems);
+      return newItems;
     });
   }, []);
 
@@ -314,9 +288,15 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
       }
 
       const newItems = arrayMove(items, index, 0);
-      const withWeights = reassignWeightsFromPosition(newItems, 0);
+      const nextWeight = newItems[1]?.orderingWeight;
+
+      newItems[0] = {
+        ...newItems[0],
+        orderingWeight: calculateRelativeWeight(undefined, nextWeight),
+      };
+
       setHasChanges(true);
-      return normalizeRanks(withWeights);
+      return newItems;
     });
   }, []);
 
@@ -328,9 +308,15 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
 
       const targetIndex = items.length - 1;
       const newItems = arrayMove(items, index, targetIndex);
-      const withWeights = reassignWeightsFromPosition(newItems, targetIndex);
+      const prevWeight = newItems[targetIndex - 1]?.orderingWeight;
+
+      newItems[targetIndex] = {
+        ...newItems[targetIndex],
+        orderingWeight: calculateRelativeWeight(prevWeight, undefined),
+      };
+
       setHasChanges(true);
-      return normalizeRanks(withWeights);
+      return newItems;
     });
   }, []);
 
@@ -353,8 +339,14 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
   };
 
   const handleCancel = () => {
+    // Reset to original order
     if (channelsData?.edges) {
-      setOrderedChannels(initializeOrderedChannels(channelsData.edges));
+      const channels = channelsData.edges.map((edge, index) => ({
+        channel: edge.node,
+        orderingWeight: clampWeight(edge.node.orderingWeight ?? channelsData.edges.length - index),
+      }));
+      channels.sort((a, b) => b.orderingWeight - a.orderingWeight);
+      setOrderedChannels(channels);
       setHasChanges(false);
     }
     onOpenChange(false);

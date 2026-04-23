@@ -1140,6 +1140,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   antigravity
   nanogpt
   nanogpt_responses
+  ollama
 }
 """
 ChannelWhereInput is used for filtering Channel objects.

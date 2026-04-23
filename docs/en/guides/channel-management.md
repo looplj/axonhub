@@ -69,9 +69,20 @@ sk-key-3
 - Different requests randomly select from available Keys
 - If one Key fails, the system automatically switches to another
 
-## Model Mapping
+## Model Renaming
 
-**When do you need model mapping?**
+AxonHub provides multiple mechanisms to rename or alias models at the channel level. When a request arrives, the channel resolves the request model to the actual upstream model through the following priority chain:
+
+1. **Direct match** — the request model is directly in the Supported Models list
+2. **Extra Model Prefix** — adds a prefix alias for all supported models
+3. **Auto-Trimmed Model Prefixes** — strips known prefixes from supported models to create trimmed aliases
+4. **Model Mappings** — explicit `from → to` alias pairs
+
+> **Note**: If multiple mechanisms produce the same request model name, the first match wins (based on the order above).
+
+### Model Mappings
+
+**When do you need model mappings?**
 
 When you want the client to use one name, but send a different name to the upstream provider.
 
@@ -81,16 +92,73 @@ When you want the client to use one name, but send a different name to the upstr
 2. **Unify model names across channels**: Both `claude-sonnet` and `gpt-4` point to the same actual model
 3. **Legacy compatibility**: Old model names automatically map to newer versions
 
-### How to Configure
+**How to Configure:**
 
-In the channel's **Settings** → **Model Mappings**:
+In the channel's **Settings** → **Model Mappings**, add `from → to` pairs:
 
 | From (Client Requests) | To (Sent to Provider) |
 |------------------------|----------------------|
 | gpt-4o-mini | gpt-4o |
 | claude-3-sonnet | claude-3.5-sonnet |
 
-**Note**: The target model (To) must be in the Supported Models list.
+**Note**: The target model (`to`) must be in the Supported Models list. If the target model is not supported, the mapping is silently ignored.
+
+### Extra Model Prefix
+
+Adds a **prefixed alias** for every model in the Supported Models list, allowing clients to request models with or without the prefix.
+
+**Use case**: You want to namespace all models in a channel under a common prefix (e.g., `deepseek/`).
+
+**Example:**
+- Supported Models: `deepseek-chat`, `deepseek-reasoner`
+- Extra Model Prefix: `deepseek`
+
+The channel now accepts **both** of the following request formats:
+- `deepseek-chat` → sends `deepseek-chat` upstream
+- `deepseek/deepseek-chat` → sends `deepseek-chat` upstream
+
+This is useful when you want to differentiate models from different channels that share the same name — clients can prefix the model with the channel's namespace.
+
+### Auto-Trimmed Model Prefixes
+
+Automatically **strips specified prefixes** from model names in the Supported Models list, creating trimmed aliases. This is the inverse of Extra Model Prefix.
+
+**Use case**: Providers like OpenRouter or SiliconFlow add vendor prefixes to model names (e.g., `openai/gpt-5.4`). You want clients to request using the short name `gpt-5.4` without manually creating mappings for every model.
+
+**Example:**
+- Supported Models: `openai/gpt-5.4`, `anthropic/claude-sonnet-4`, `deepseek-ai/deepseek-chat`
+- Auto-Trimmed Model Prefixes: `openai`, `anthropic`, `deepseek-ai`
+
+The channel now accepts both the original and trimmed names:
+- `gpt-5.4` → sends `openai/gpt-5.4` upstream
+- `claude-sonnet-4` → sends `anthropic/claude-sonnet-4` upstream
+- `deepseek-chat` → sends `deepseek-ai/deepseek-chat` upstream
+- `openai/gpt-5.4` → still works as a direct match
+
+> **Tip**: This is the recommended approach for providers that use vendor-prefixed model IDs. It enables batch model ID rewriting without having to create individual model mappings.
+
+### Visibility Controls
+
+Two options control which model names are exposed in the model list (e.g., when clients call the `/v1/models` endpoint):
+
+| Option | Effect |
+|--------|--------|
+| **Hide Original Models** | Hides the original (direct) model names. Only transformed names (from prefix, auto-trim, or mapping) are shown. |
+| **Hide Mapped Models** | Hides the `from` names of model mappings. Only the original model names are shown. |
+
+**Example — Hide Original Models:**
+- Supported Models: `openai/gpt-5.4`
+- Auto-Trimmed Prefixes: `openai`
+- Hide Original Models: enabled
+
+The `/v1/models` response only shows `gpt-5.4`, not `openai/gpt-5.4`. Both names still work for requests.
+
+**Example — Hide Mapped Models:**
+- Supported Models: `gpt-4o`
+- Model Mapping: `gpt-4` → `gpt-4o`
+- Hide Mapped Models: enabled
+
+The `/v1/models` response shows `gpt-4o` but hides `gpt-4`. Both names still work for requests.
 
 ## Testing and Enabling Channels
 
@@ -106,46 +174,6 @@ Before enabling a channel, test the connection:
 ### Enable Channel
 
 After testing passes, click **Enable**. The channel status changes to **Active** and can now receive requests.
-
-## Real-World Scenarios
-
-### Scenario 1: Claude Code with OpenRouter
-
-You want to use OpenRouter models in Claude Code:
-
-1. **Create OpenRouter Channel**:
-   - Type: `openai` (OpenRouter is OpenAI-compatible)
-   - Base URL: `https://openrouter.ai/api/v1`
-   - API Key: Your OpenRouter key
-   - Supported Models: `anthropic/claude-3.5-sonnet`, `anthropic/claude-3-opus`
-
-2. **Configure API Key Model Mapping** (in API Key management):
-   - From: `claude-sonnet-4-5` → To: `anthropic/claude-3.5-sonnet`
-   - From: `claude-opus-4-5` → To: `anthropic/claude-3-opus`
-
-3. **Claude Code Configuration**:
-   ```bash
-   export ANTHROPIC_AUTH_TOKEN="your-axonhub-api-key"
-   export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
-   ```
-
-### Scenario 2: Multi-Provider Backup
-
-Configure OpenAI as primary, DeepSeek as backup:
-
-1. **Create OpenAI Channel** (Weight: 10, Priority: 0)
-2. **Create DeepSeek Channel** (Weight: 5, Priority: 10)
-3. **Configure Model Association**:
-   - Set OpenAI as Priority 0 (primary)
-   - Set DeepSeek as Priority 10 (backup)
-
-### Scenario 3: Cost Optimization
-
-Route expensive model requests to cheaper alternatives:
-
-In API Key configuration:
-- From: `gpt-4` → To: `claude-3-sonnet`
-- From: `gpt-4-turbo` → To: `deepseek-reasoner`
 
 ## Base URL Special Configuration
 
