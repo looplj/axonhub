@@ -25,3 +25,17 @@ export async function codexOAuthExchange(
     requireAuth: true,
   })
 }
+
+export async function codexDecodeAuthJSON(
+  input: {
+    auth_json: string
+  },
+  headers?: Record<string, string>
+): Promise<{ credentials: string }> {
+  return apiRequest('/admin/codex/auth/decode', {
+    method: 'POST',
+    body: input,
+    headers,
+    requireAuth: true,
+  })
+}
