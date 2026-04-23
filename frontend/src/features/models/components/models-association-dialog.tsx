@@ -4,8 +4,7 @@ import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { useQueryModels } from '@/gql/models';
@@ -289,10 +288,20 @@ export function ModelsAssociationDialog() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, move, remove } = useFieldArray({
     control: form.control,
     name: 'associations',
   });
+
+  const syncAssociationPriorities = useCallback(() => {
+    const currentAssociations = form.getValues('associations');
+
+    currentAssociations.forEach((association, index) => {
+      if (association.priority !== index) {
+        form.setValue(`associations.${index}.priority`, index, { shouldDirty: true });
+      }
+    });
+  }, [form]);
 
   // Watch associations for debounced preview - useWatch triggers re-renders
   const watchedAssociations = useWatch({
@@ -641,15 +650,15 @@ export function ModelsAssociationDialog() {
   }, [append, fields.length]);
 
   const handleRemove = useCallback(
-    (index: number) => {
-      const currentAssociations = [...form.getValues('associations')];
-      currentAssociations.splice(index, 1);
-      currentAssociations.forEach((assoc, idx) => {
-        assoc.priority = idx;
-      });
-      form.setValue('associations', currentAssociations, { shouldDirty: true });
+    (id: string) => {
+      const index = fields.findIndex((field) => field.id === id);
+
+      if (index === -1) return;
+
+      remove(index);
+      syncAssociationPriorities();
     },
-    [form]
+    [fields, remove, syncAssociationPriorities]
   );
 
   const handleDragEnd = useCallback(
@@ -662,16 +671,10 @@ export function ModelsAssociationDialog() {
 
       if (oldIndex === -1 || newIndex === -1) return;
 
-      const currentAssociations = [...form.getValues('associations')];
-      const movedAssociations = arrayMove(currentAssociations, oldIndex, newIndex);
-
-      movedAssociations.forEach((assoc, idx) => {
-        assoc.priority = idx;
-      });
-
-      form.setValue('associations', movedAssociations, { shouldDirty: true });
+      move(oldIndex, newIndex);
+      syncAssociationPriorities();
     },
-    [fields, form]
+    [fields, move, syncAssociationPriorities]
   );
 
   // Filter connections by channel name
@@ -721,7 +724,7 @@ export function ModelsAssociationDialog() {
                           channelOptions={channelOptions}
                           allModelOptions={allModelOptions}
                           allTags={allTags}
-                          onRemove={() => handleRemove(index)}
+                          onRemove={() => handleRemove(field.id)}
                           portalContainer={dialogContentRef.current}
                         />
                       ))}
