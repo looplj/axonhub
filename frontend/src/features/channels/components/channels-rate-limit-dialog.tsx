@@ -81,7 +81,7 @@ const rateLimitFormSchema = z
     modelConcurrent: z
       .array(
         z.object({
-          model: z.string(),
+          model: z.string().trim().min(1, 'Model name is required'),
           limit: z.union([z.number().int().positive(), z.literal('')]),
         })
       )

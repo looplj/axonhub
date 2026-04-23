@@ -37,9 +37,10 @@ func (s *onCloseStream) Current() *llm.Response {
 
 func (s *onCloseStream) Next() bool {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	next := s.stream.Next()
+	s.mu.Unlock()
 
-	if !s.stream.Next() {
+	if !next {
 		s.closeOnce()
 		return false
 	}
@@ -48,9 +49,6 @@ func (s *onCloseStream) Next() bool {
 }
 
 func (s *onCloseStream) Close() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.closeOnce()
 	return s.closeErr
 }
@@ -68,18 +66,22 @@ func (s *onCloseStream) Done() <-chan struct{} {
 	return s.done
 }
 
-//nolint:unused // called from Next and Close while holding s.mu
+//nolint:unused // called from Next and Close
 func (s *onCloseStream) closeOnce() {
 	s.closed.Do(func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Debug(context.Background(), "onClose callback panicked",
-					log.Any("panic", r),
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Debug(context.Background(), "onClose callback panicked",
+						log.Any("panic", r),
 				)
-			}
-			s.closeErr = s.stream.Close()
-			close(s.done)
+				}
+			}()
+			s.onClose()
 		}()
-		s.onClose()
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.closeErr = s.stream.Close()
+		close(s.done)
 	})
 }
