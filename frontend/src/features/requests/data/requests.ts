@@ -310,6 +310,7 @@ export function useRequests(variables?: {
       }
     },
     enabled,
+    refetchOnWindowFocus: false,
   });
 }
 

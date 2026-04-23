@@ -59,6 +59,22 @@ func NewEntClient(cfg Config) *ent.Client {
 		panic(fmt.Errorf("invalid dialect: %s", cfg.Dialect))
 	}
 
+	if cfg.MaxOpenConns > 0 {
+		sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
+	}
+
+	if cfg.MaxIdleConns > 0 {
+		sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
+	}
+
+	if cfg.ConnMaxLifetime > 0 {
+		sqlDB.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+	}
+
+	if cfg.ConnMaxIdleTime > 0 {
+		sqlDB.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
+	}
+
 	drv := entsql.OpenDB(dbDialect, sqlDB)
 	opts = append(opts, ent.Driver(drv))
 	client := ent.NewClient(opts...)
