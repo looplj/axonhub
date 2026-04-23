@@ -42,7 +42,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
-	github.com/jackc/pgx/v5 v5.9.1
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/kaptinlin/jsonrepair v0.2.4
 	github.com/looplj/afero-s3 v0.1.0
 	github.com/looplj/afero-webdav v0.0.0-20260128073818-3f60e732e991
