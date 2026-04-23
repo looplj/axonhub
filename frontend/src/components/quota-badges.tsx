@@ -6,12 +6,6 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 
-const STATUS_COLORS = {
-  available: 'bg-green-500 hover:bg-green-600 text-white',
-  warning: 'bg-yellow-500 hover:bg-yellow-600 text-white',
-  exhausted: 'bg-red-500 hover:bg-red-600 text-white',
-  unknown: 'bg-gray-500 hover:bg-gray-600 text-white',
-} as const;
 
 const STATUS_LABELS = {
   available: 'quota.status.available',
@@ -85,14 +79,44 @@ function getChannelPercentage(channel: ProviderQuotaChannel, quotaData: QuotaDat
 
 import { Badge } from '@/components/ui/badge';
 
-function ProgressBar({ percentage }: { percentage: number }) {
-  let colorClass = 'bg-green-500';
-  if (percentage >= 90) colorClass = 'bg-red-500';
-  else if (percentage >= 75) colorClass = 'bg-yellow-500';
+function ProgressBar({ percentage, type = 'usage', durationPercentage }: { percentage: number; type?: 'usage' | 'duration'; durationPercentage?: number }) {
+  const clamped = Math.min(Math.max(percentage || 0, 0), 100);
+  
+  let bgStyle = {};
+  if (type === 'duration') {
+    bgStyle = { backgroundColor: '#71717a' }; // zinc-500
+  } else {
+    let u = clamped / 100;
+    let severity = u;
+    if (durationPercentage !== undefined && durationPercentage > 0) {
+      let d = Math.max(durationPercentage / 100, 0.01);
+      severity = u * (u / d);
+    }
+    severity = Math.min(1, Math.max(0, severity));
+    
+    // Tailwind 500 colors approximation for a modern, theme-friendly gradient:
+    // Green (142, 71%, 45%), Yellow (45, 93%, 47%), Red (0, 84%, 60%)
+    let h, s, l;
+    if (severity < 0.5) {
+      const n = severity * 2; // 0 to 1
+      h = 142 - n * (142 - 45);
+      s = 71 + n * (93 - 71);
+      l = 45 + n * (47 - 45);
+    } else {
+      const n = (severity - 0.5) * 2; // 0 to 1
+      h = 45 - n * 45;
+      s = 93 - n * (93 - 84);
+      l = 47 + n * (60 - 47);
+    }
+    bgStyle = { backgroundColor: `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)` };
+  }
   
   return (
-    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-      <div className={`h-full ${colorClass} transition-all duration-500`} style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }} />
+    <div className="h-1.5 w-full bg-muted/60 rounded-full overflow-hidden">
+      <div 
+        className="h-full transition-all duration-500" 
+        style={{ width: `${clamped}%`, ...bgStyle }} 
+      />
     </div>
   );
 }
@@ -117,6 +141,12 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
     if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
     return `${Math.floor(seconds / 60)} min`;
+  };
+
+  const calcDurationPercent = (limit?: number, resetAfter?: number) => {
+    if (!limit || resetAfter === undefined) return 0;
+    const elapsed = limit - resetAfter;
+    return Math.max(0, Math.min(100, (elapsed / limit) * 100));
   };
 
   const formatTimeToReset = (resetAtOrSeconds?: string | number | null) => {
@@ -185,9 +215,9 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
       )}
 
       {channel.type === 'claudecode' && (
-        <div className="ml-6 space-y-3">
+        <div className="mt-4 space-y-4">
           {quotaData.windows?.['5h'] && (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-medium text-muted-foreground">{t('quota.window.5h')}</span>
                 <span className="font-medium text-foreground">{Math.round((quotaData.windows['5h'].utilization || 0) * 100)}%</span>
@@ -196,7 +226,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             </div>
           )}
           {quotaData.windows?.['7d'] && (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-medium text-muted-foreground">{t('quota.window.7d')}</span>
                 <span className="font-medium text-foreground">{Math.round((quotaData.windows['7d'].utilization || 0) * 100)}%</span>
@@ -206,7 +236,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
           )}
           
           {(quota.nextResetAt || quotaData.representative_claim) && (
-             <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-0.5">
+             <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1">
                 <span>{quotaData.representative_claim === 'five_hour' ? '5h limiting' : quotaData.representative_claim === 'seven_day' ? '7d limiting' : ''}</span>
                 {quota.nextResetAt && (
                   <span>Resets in {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
@@ -217,14 +247,35 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
       )}
 
       {channel.type === 'codex' && (
-        <div className="ml-6 space-y-3">
+        <div className="mt-4 space-y-4">
           {quotaData.rate_limit?.primary_window && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-muted-foreground">{t('quota.label.primary_window')} {formatWindowDuration(quotaData.rate_limit.primary_window.limit_window_seconds) ? `(${formatWindowDuration(quotaData.rate_limit.primary_window.limit_window_seconds)})` : ''}</span>
-                <span className="font-medium text-foreground">{Math.round(quotaData.rate_limit.primary_window.used_percent || 0)}%</span>
+            <div className="space-y-2.5">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-muted-foreground">{t('quota.label.primary_window')}</span>
+                  <span className="font-medium text-foreground">{Math.round(quotaData.rate_limit.primary_window.used_percent || 0)}%</span>
+                </div>
+                <ProgressBar 
+                  percentage={quotaData.rate_limit.primary_window.used_percent || 0} 
+                  durationPercentage={quotaData.rate_limit.primary_window.limit_window_seconds ? calcDurationPercent(quotaData.rate_limit.primary_window.limit_window_seconds, quotaData.rate_limit.primary_window.reset_after_seconds) : undefined}
+                />
               </div>
-              <ProgressBar percentage={quotaData.rate_limit.primary_window.used_percent || 0} />
+
+              {quotaData.rate_limit.primary_window.limit_window_seconds ? (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">
+                      {t('quota.label.primary_duration')} ({formatWindowDuration(quotaData.rate_limit.primary_window.limit_window_seconds)})
+                    </span>
+                    <span className="font-medium text-foreground">{Math.round(calcDurationPercent(quotaData.rate_limit.primary_window.limit_window_seconds, quotaData.rate_limit.primary_window.reset_after_seconds))}%</span>
+                  </div>
+                  <ProgressBar 
+                    type="duration"
+                    percentage={calcDurationPercent(quotaData.rate_limit.primary_window.limit_window_seconds, quotaData.rate_limit.primary_window.reset_after_seconds)} 
+                  />
+                </div>
+              ) : null}
+
               {quotaData.rate_limit.primary_window.reset_at && (
                 <div className="text-[11px] text-muted-foreground text-right pt-0.5">
                   Resets in {formatTimeToReset(quotaData.rate_limit.primary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.primary_window.reset_at)})
@@ -234,12 +285,33 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
           )}
 
           {quotaData.rate_limit?.secondary_window?.used_percent !== undefined && (
-            <div className="space-y-1.5 pt-1 border-t border-dashed border-border/50">
-              <div className="flex justify-between items-center text-xs pt-1.5">
-                <span className="font-medium text-muted-foreground">{t('quota.label.secondary_window')} {formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds) ? `(${formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds)})` : ''}</span>
-                <span className="font-medium text-foreground">{Math.round(quotaData.rate_limit.secondary_window.used_percent)}%</span>
+            <div className="space-y-2.5 pt-3 mt-3 border-t border-dashed border-border/60">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-muted-foreground">{t('quota.label.secondary_window')}</span>
+                  <span className="font-medium text-foreground">{Math.round(quotaData.rate_limit.secondary_window.used_percent)}%</span>
+                </div>
+                <ProgressBar 
+                  percentage={quotaData.rate_limit.secondary_window.used_percent} 
+                  durationPercentage={quotaData.rate_limit.secondary_window.limit_window_seconds ? calcDurationPercent(quotaData.rate_limit.secondary_window.limit_window_seconds, quotaData.rate_limit.secondary_window.reset_after_seconds) : undefined}
+                />
               </div>
-              <ProgressBar percentage={quotaData.rate_limit.secondary_window.used_percent} />
+
+              {quotaData.rate_limit.secondary_window.limit_window_seconds ? (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">
+                      {t('quota.label.secondary_duration')} ({formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds)})
+                    </span>
+                    <span className="font-medium text-foreground">{Math.round(calcDurationPercent(quotaData.rate_limit.secondary_window.limit_window_seconds, quotaData.rate_limit.secondary_window.reset_after_seconds))}%</span>
+                  </div>
+                  <ProgressBar 
+                    type="duration"
+                    percentage={calcDurationPercent(quotaData.rate_limit.secondary_window.limit_window_seconds, quotaData.rate_limit.secondary_window.reset_after_seconds)} 
+                  />
+                </div>
+              ) : null}
+
               {quotaData.rate_limit.secondary_window.reset_at && (
                 <div className="text-[11px] text-muted-foreground text-right pt-0.5">
                   Resets in {formatTimeToReset(quotaData.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.secondary_window.reset_at)})
