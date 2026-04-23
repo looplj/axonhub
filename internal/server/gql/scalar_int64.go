@@ -15,8 +15,12 @@ func (Int64Scalar) ImplementsGraphQLType(name string) bool {
 	return name == "Int64"
 }
 
-func (i Int64Scalar) MarshalGQL(w io.Writer) {
-	v := int64(i)
+func (i *Int64Scalar) MarshalGQL(w io.Writer) {
+	if i == nil {
+		w.Write([]byte("null"))
+		return
+	}
+	v := int64(*i)
 	if v > jsMaxSafeInteger || v < -jsMaxSafeInteger {
 		fmt.Fprintf(w, `"%d"`, v)
 	} else {
