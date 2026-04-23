@@ -261,7 +261,7 @@ func BuildProbeStatsQuery(useDollarPlaceholders bool, channelIDFilter string, mo
 		return fmt.Sprintf(`
 SELECT
     se.channel_id,
-    COUNT(*) as total_count,
+    SUM(CASE WHEN se.status IN ('completed', 'failed') THEN 1 ELSE 0 END) as total_count,
     SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
     SUM(COALESCE(ul.completion_tokens, 0) + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
     SUM(CASE WHEN se.status = 'completed' THEN
@@ -304,7 +304,7 @@ WITH latest_execs AS (
 )
 SELECT
     se.channel_id,
-    COUNT(*) as total_count,
+    SUM(CASE WHEN se.status IN ('completed', 'failed') THEN 1 ELSE 0 END) as total_count,
     SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
     SUM(COALESCE(ul.completion_tokens, 0) + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
     SUM(CASE WHEN se.status = 'completed' THEN

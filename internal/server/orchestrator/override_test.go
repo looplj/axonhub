@@ -326,6 +326,84 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
 }
 
+func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-jina-rerank-model-mapping",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "Qwen/Qwen3-Reranker-8B",
+				APIFormat: llm.APIFormatJinaRerank,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatJinaRerank),
+					Body:      []byte(`{"model":"Qwen-3-Rerank-8B","query":"what is ai","documents":["a","b"],"top_n":2}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatJinaRerank),
+		Body:      []byte(`{"model":"Qwen/Qwen3-Reranker-8B","query":"what is ai","documents":["a","b"]}`),
+	}
+
+	processed, err := applyPassThroughBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "Qwen/Qwen3-Reranker-8B", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, float64(2), gjson.GetBytes(processed.Body, "top_n").Float())
+	require.Equal(t, "Qwen-3-Rerank-8B", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
+}
+
+func TestApplyPassThroughBodyPreservesMappedModelForJinaEmbedding(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-jina-embedding-model-mapping",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "jina-embeddings-v3",
+				APIFormat: llm.APIFormatJinaEmbedding,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatJinaEmbedding),
+					Body:      []byte(`{"model":"my-embedding-alias","input":"hello","task":"retrieval.query"}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatJinaEmbedding),
+		Body:      []byte(`{"model":"jina-embeddings-v3","input":"hello"}`),
+	}
+
+	processed, err := applyPassThroughBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "jina-embeddings-v3", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, "retrieval.query", gjson.GetBytes(processed.Body, "task").String())
+	require.Equal(t, "my-embedding-alias", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
+}
+
 func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
 	rawBody := []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`)
 

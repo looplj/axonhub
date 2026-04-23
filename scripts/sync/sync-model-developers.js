@@ -285,6 +285,26 @@ function filterProviders(data, allowedIds) {
 		}
 	}
 
+	// Map llama channel's llama models to meta developer
+	if (allowedIds.includes("meta") && data.providers.llama) {
+		const llamaProvider = data.providers.llama;
+		const llamaModels = (llamaProvider.models || []).filter((m) =>
+			m.id?.toLowerCase().startsWith("llama"),
+		);
+		if (llamaModels.length > 0) {
+			filtered.meta = {
+				...llamaProvider,
+				id: "meta",
+				name: "Meta",
+				display_name: "Meta",
+				models: llamaModels,
+			};
+			console.log(
+				`Mapped ${llamaModels.length} llama models to meta developer`,
+			);
+		}
+	}
+
 	// Map doubao channel's doubao models to bytedance developer
 	if (allowedIds.includes("bytedance") && data.providers.doubao) {
 		const doubaoProvider = data.providers.doubao;

@@ -383,10 +383,8 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context, timeWindow *stri
 
 	// Sort by total tokens (descending) and limit to top 3
 	sort.Slice(results, func(i, j int) bool {
-		totalI := results[i].InputTokens + results[i].OutputTokens +
-			results[i].CachedTokens + results[i].ReasoningTokens
-		totalJ := results[j].InputTokens + results[j].OutputTokens +
-			results[j].CachedTokens + results[j].ReasoningTokens
+		totalI := results[i].InputTokens + results[i].OutputTokens + results[i].ReasoningTokens
+		totalJ := results[j].InputTokens + results[j].OutputTokens + results[j].ReasoningTokens
 
 		return totalI > totalJ
 	})
@@ -418,8 +416,7 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context, timeWindow *stri
 
 	for _, result := range results {
 		if ak, exists := apiKeyMap[result.APIKeyID]; exists {
-			totalTokens := result.InputTokens + result.OutputTokens +
-				result.CachedTokens + result.ReasoningTokens
+			totalTokens := result.InputTokens + result.OutputTokens + result.ReasoningTokens
 
 			response = append(response, &TokenStatsByAPIKey{
 				APIKeyID:        objects.GUID{Type: "APIKey", ID: result.APIKeyID},
@@ -1484,7 +1481,10 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 			)
 
-			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens))))
+			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
+				s.C(usagelog.FieldPromptTokens),
+				s.C(usagelog.FieldCompletionTokens),
+				s.C(usagelog.FieldCompletionReasoningTokens))))
 			s.Limit(10)
 		}).
 		Scan(ctx, &results)
@@ -1493,7 +1493,7 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 	}
 
 	return lo.Map(results, func(item channelTokenStats, _ int) *TokenStatsByChannel {
-		totalTokens := item.InputTokens + item.OutputTokens + item.CachedTokens + item.ReasoningTokens
+		totalTokens := item.InputTokens + item.OutputTokens + item.ReasoningTokens
 
 		return &TokenStatsByChannel{
 			ChannelName:     item.ChannelName,
@@ -1539,7 +1539,10 @@ func (r *queryResolver) TokenStatsByModel(ctx context.Context, timeWindow *strin
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 			)
 
-			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens))))
+			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
+				s.C(usagelog.FieldPromptTokens),
+				s.C(usagelog.FieldCompletionTokens),
+				s.C(usagelog.FieldCompletionReasoningTokens))))
 			s.Limit(10)
 		}).
 		Scan(ctx, &results)
@@ -1548,7 +1551,7 @@ func (r *queryResolver) TokenStatsByModel(ctx context.Context, timeWindow *strin
 	}
 
 	return lo.Map(results, func(item modelTokenStats, _ int) *TokenStatsByModel {
-		totalTokens := item.InputTokens + item.OutputTokens + item.CachedTokens + item.ReasoningTokens
+		totalTokens := item.InputTokens + item.OutputTokens + item.ReasoningTokens
 
 		return &TokenStatsByModel{
 			ModelID:         item.ModelID,
