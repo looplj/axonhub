@@ -74,7 +74,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'moonshot',
     icon: Moonshot,
     color: 'bg-black-100 text-black-800 border-black-200',
-    channelTypes: ['moonshot_anthropic', 'moonshot'],
+    channelTypes: ['moonshot_anthropic', 'moonshot', 'moonshot_coding'],
   },
   zhipu: {
     provider: 'zhipu',
@@ -188,7 +188,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'bailian',
     icon: Bailian,
     color: 'bg-green-100 text-green-800 border-green-200',
-    channelTypes: ['bailian'],
+    channelTypes: ['bailian', 'bailian_anthropic'],
   },
   openrouter: {
     provider: 'openrouter',
