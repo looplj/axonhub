@@ -1532,7 +1532,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 >
                                   <Checkbox
                                     checked={useKimiCoding}
-                                    onCheckedChange={handleKimiCodingChange}
+                                    onCheckedChange={(checked) => handleKimiCodingChange(checked === true)}
                                     disabled={!!isOAuthChannel}
                                   />
                                   <span>{t('channels.dialogs.fields.apiFormat.kimiCoding.label')}</span>
