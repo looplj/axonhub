@@ -83,23 +83,35 @@ function getChannelPercentage(channel: ProviderQuotaChannel, quotaData: QuotaDat
   return percentage;
 }
 
+import { Badge } from '@/components/ui/badge';
+
+function ProgressBar({ percentage }: { percentage: number }) {
+  let colorClass = 'bg-green-500';
+  if (percentage >= 90) colorClass = 'bg-red-500';
+  else if (percentage >= 75) colorClass = 'bg-yellow-500';
+  
+  return (
+    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+      <div className={`h-full ${colorClass} transition-all duration-500`} style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }} />
+    </div>
+  );
+}
+
 function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
   const { t } = useTranslation();
   const quota = channel.quotaStatus;
   if (!quota) return null;
 
   const status = quota.status || 'unknown';
-  const colorClass = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.unknown;
   const statusLabel = t(STATUS_LABELS[status as keyof typeof STATUS_LABELS]);
   const quotaData = quota.quotaData as QuotaData;
 
   const percentage = getChannelPercentage(channel, quotaData);
   const batteryLevel = getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
-  const displayPercentage = status === 'unknown' ? '?' : Math.round(percentage);
 
   const formatWindowDuration = (seconds?: number) => {
-    if (!seconds) return t('quota.unknown');
+    if (!seconds) return '';
     const hours = Math.floor(seconds / 3600);
     const days = hours >= 24 ? Math.floor(hours / 24) : 0;
     if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
@@ -108,7 +120,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
   };
 
   const formatTimeToReset = (resetAtOrSeconds?: string | number | null) => {
-    if (!resetAtOrSeconds) return t('quota.unknown');
+    if (!resetAtOrSeconds) return '';
     
     let resetTimeMs: number;
     if (typeof resetAtOrSeconds === 'number') {
@@ -131,121 +143,110 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
   };
 
   const formatDate = (timestamp?: number) => {
-    if (!timestamp) return t('quota.unknown');
+    if (!timestamp) return '';
     const date = new Date(timestamp * 1000);
     const now = new Date();
     
-    // If it's today, only show time
     if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     }
     
-    // If it's this year, show month/day time
     if (date.getFullYear() === now.getFullYear()) {
-      return format(date, 'MM-dd HH:mm');
+      return format(date, 'MMM dd, HH:mm');
     }
     
-    return format(date, 'yyyy-MM-dd HH:mm');
+    return format(date, 'MMM dd yyyy, HH:mm');
   };
 
   return (
-    <div className="space-y-2 text-sm py-3 first:pt-0 border-b last:border-0 last:pb-0 pb-3">
+    <div className="space-y-3 py-3 first:pt-1 border-b last:border-0 last:pb-1">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BatteryIcon className={`w-4 h-4 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`} />
-          <span className="font-medium">{channel.name}</span>
+          <span className="font-medium text-foreground">{channel.name}</span>
+          {quotaData.plan_type && (
+            <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              {quotaData.plan_type}
+            </Badge>
+          )}
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded ${colorClass}`}>{statusLabel}</span>
+        <Badge 
+          variant={status === 'available' ? 'outline' : status === 'warning' ? 'secondary' : status === 'exhausted' ? 'destructive' : 'outline'} 
+          className={status === 'available' ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' : ''}
+        >
+          {statusLabel}
+        </Badge>
       </div>
 
       {quotaData.error && (
-        <div className="ml-6 text-xs text-red-500 break-words">
+        <div className="ml-6 text-xs text-red-500 break-words bg-red-500/10 p-2 rounded">
           <span className="font-medium">{t('quota.label.error')}:</span> {quotaData.error}
         </div>
       )}
 
       {channel.type === 'claudecode' && (
-        <div className="ml-6 mt-2">
-          <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.label.used')}</span>
-              <span className={`font-medium ${batteryLevel === 'warning' || batteryLevel === 'low' ? 'text-red-500' : 'text-foreground'}`}>{displayPercentage}%</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.window.5h')}</span>
-              <span className="font-medium">{Math.round((quotaData.windows?.['5h']?.utilization || 0) * 100)}%</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.window.7d')}</span>
-              <span className="font-medium">{Math.round((quotaData.windows?.['7d']?.utilization || 0) * 100)}%</span>
-            </div>
-            {quotaData.representative_claim && (
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>{t('quota.label.limiting_bucket')}</span>
-                <span>{quotaData.representative_claim === 'five_hour' ? '5h' : '7d'}</span>
+        <div className="ml-6 space-y-3">
+          {quotaData.windows?.['5h'] && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-medium text-muted-foreground">{t('quota.window.5h')}</span>
+                <span className="font-medium text-foreground">{Math.round((quotaData.windows['5h'].utilization || 0) * 100)}%</span>
               </div>
-            )}
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.label.reset_in')}</span>
-              <span>{formatTimeToReset(quota.nextResetAt)}</span>
+              <ProgressBar percentage={(quotaData.windows['5h'].utilization || 0) * 100} />
             </div>
-          </div>
+          )}
+          {quotaData.windows?.['7d'] && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-medium text-muted-foreground">{t('quota.window.7d')}</span>
+                <span className="font-medium text-foreground">{Math.round((quotaData.windows['7d'].utilization || 0) * 100)}%</span>
+              </div>
+              <ProgressBar percentage={(quotaData.windows['7d'].utilization || 0) * 100} />
+            </div>
+          )}
+          
+          {(quota.nextResetAt || quotaData.representative_claim) && (
+             <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-0.5">
+                <span>{quotaData.representative_claim === 'five_hour' ? '5h limiting' : quotaData.representative_claim === 'seven_day' ? '7d limiting' : ''}</span>
+                {quota.nextResetAt && (
+                  <span>Resets in {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
+                )}
+             </div>
+          )}
         </div>
       )}
 
       {channel.type === 'codex' && (
-        <div className="ml-6 mt-2">
-          <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.label.used')}</span>
-              <span className={`font-medium ${batteryLevel === 'warning' || batteryLevel === 'low' ? 'text-red-500' : 'text-foreground'}`}>{displayPercentage}%</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.label.primary_window')}</span>
-              <span className="font-medium">{Math.round(quotaData.rate_limit?.primary_window?.used_percent || 0)}%</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.label.primary_duration')}</span>
-              <span>{formatWindowDuration(quotaData.rate_limit?.primary_window?.limit_window_seconds)}</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.label.reset_in')}</span>
-              <span>{formatTimeToReset(quotaData.rate_limit?.primary_window?.reset_after_seconds)}</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>{t('quota.label.resets_at')}</span>
-              <span>{formatDate(quotaData.rate_limit?.primary_window?.reset_at)}</span>
-            </div>
-            {quotaData.plan_type && (
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>{t('quota.label.plan')}</span>
-                <span>{quotaData.plan_type}</span>
+        <div className="ml-6 space-y-3">
+          {quotaData.rate_limit?.primary_window && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-medium text-muted-foreground">{t('quota.label.primary_window')} {formatWindowDuration(quotaData.rate_limit.primary_window.limit_window_seconds) ? `(${formatWindowDuration(quotaData.rate_limit.primary_window.limit_window_seconds)})` : ''}</span>
+                <span className="font-medium text-foreground">{Math.round(quotaData.rate_limit.primary_window.used_percent || 0)}%</span>
               </div>
-            )}
-            {quotaData.rate_limit?.secondary_window?.used_percent !== undefined && (
-              <>
-                <div className="border-t border-dashed my-1.5" />
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>{t('quota.label.secondary_window')}</span>
-                  <span className="font-medium">{Math.round(quotaData.rate_limit.secondary_window.used_percent)}%</span>
+              <ProgressBar percentage={quotaData.rate_limit.primary_window.used_percent || 0} />
+              {quotaData.rate_limit.primary_window.reset_at && (
+                <div className="text-[11px] text-muted-foreground text-right pt-0.5">
+                  Resets in {formatTimeToReset(quotaData.rate_limit.primary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.primary_window.reset_at)})
                 </div>
-                {quotaData.rate_limit?.secondary_window?.limit_window_seconds && (
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span>{t('quota.label.secondary_duration')}</span>
-                    <span>{formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>{t('quota.label.reset_in')}</span>
-                  <span>{formatTimeToReset(quotaData.rate_limit.secondary_window.reset_after_seconds)}</span>
+              )}
+            </div>
+          )}
+
+          {quotaData.rate_limit?.secondary_window?.used_percent !== undefined && (
+            <div className="space-y-1.5 pt-1 border-t border-dashed border-border/50">
+              <div className="flex justify-between items-center text-xs pt-1.5">
+                <span className="font-medium text-muted-foreground">{t('quota.label.secondary_window')} {formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds) ? `(${formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds)})` : ''}</span>
+                <span className="font-medium text-foreground">{Math.round(quotaData.rate_limit.secondary_window.used_percent)}%</span>
+              </div>
+              <ProgressBar percentage={quotaData.rate_limit.secondary_window.used_percent} />
+              {quotaData.rate_limit.secondary_window.reset_at && (
+                <div className="text-[11px] text-muted-foreground text-right pt-0.5">
+                  Resets in {formatTimeToReset(quotaData.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.secondary_window.reset_at)})
                 </div>
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>{t('quota.label.resets_at')}</span>
-                  <span>{formatDate(quotaData.rate_limit.secondary_window.reset_at)}</span>
-                </div>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
