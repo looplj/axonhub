@@ -29,8 +29,18 @@ type QuotaData = {
   representative_claim?: string;
   plan_type?: string;
   rate_limit?: {
-    primary_window?: { used_percent?: number; reset_at?: number; limit_window_seconds?: number };
-    secondary_window?: { used_percent?: number; reset_at?: number; limit_window_seconds?: number };
+    primary_window?: {
+      used_percent?: number;
+      reset_at?: number;
+      reset_after_seconds?: number;
+      limit_window_seconds?: number;
+    };
+    secondary_window?: {
+      used_percent?: number;
+      reset_at?: number;
+      reset_after_seconds?: number;
+      limit_window_seconds?: number;
+    };
   };
   error?: string;
 };
@@ -97,16 +107,45 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     return `${Math.floor(seconds / 60)} min`;
   };
 
-  const formatTimeToReset = (resetAt?: string | null) => {
-    if (!resetAt) return t('quota.unknown');
+  const formatTimeToReset = (resetAtOrSeconds?: string | number | null) => {
+    if (!resetAtOrSeconds) return t('quota.unknown');
+    
+    let resetTimeMs: number;
+    if (typeof resetAtOrSeconds === 'number') {
+      resetTimeMs = Date.now() + resetAtOrSeconds * 1000;
+    } else {
+      resetTimeMs = new Date(resetAtOrSeconds).getTime();
+    }
+
     const now = Date.now();
-    const reset = new Date(resetAt).getTime();
-    const diffMs = reset - now;
+    const diffMs = resetTimeMs - now;
     if (diffMs < 0) return 'Reset now';
+    
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) return `${diffDays}d ${diffHours % 24}h`;
     if (diffHours > 0) return `${diffHours}h ${diffMins % 60}m`;
     return `${diffMins}m`;
+  };
+
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp) return t('quota.unknown');
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    
+    // If it's today, only show time
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // If it's this year, show month/day time
+    if (date.getFullYear() === now.getFullYear()) {
+      return format(date, 'MM-dd HH:mm');
+    }
+    
+    return format(date, 'yyyy-MM-dd HH:mm');
   };
 
   return (
@@ -169,12 +208,14 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
               <span>{t('quota.label.primary_duration')}</span>
               <span>{formatWindowDuration(quotaData.rate_limit?.primary_window?.limit_window_seconds)}</span>
             </div>
-            {quotaData.rate_limit?.primary_window?.reset_at && (
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>{t('quota.label.resets_at')}</span>
-                <span>{new Date(quotaData.rate_limit.primary_window.reset_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            )}
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span>{t('quota.label.reset_in')}</span>
+              <span>{formatTimeToReset(quotaData.rate_limit?.primary_window?.reset_after_seconds)}</span>
+            </div>
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span>{t('quota.label.resets_at')}</span>
+              <span>{formatDate(quotaData.rate_limit?.primary_window?.reset_at)}</span>
+            </div>
             {quotaData.plan_type && (
               <div className="flex justify-between items-center text-muted-foreground">
                 <span>{t('quota.label.plan')}</span>
@@ -183,6 +224,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             )}
             {quotaData.rate_limit?.secondary_window?.used_percent !== undefined && (
               <>
+                <div className="border-t border-dashed my-1.5" />
                 <div className="flex justify-between items-center text-muted-foreground">
                   <span>{t('quota.label.secondary_window')}</span>
                   <span className="font-medium">{Math.round(quotaData.rate_limit.secondary_window.used_percent)}%</span>
@@ -193,13 +235,15 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                     <span>{formatWindowDuration(quotaData.rate_limit.secondary_window.limit_window_seconds)}</span>
                   </div>
                 )}
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>{t('quota.label.reset_in')}</span>
+                  <span>{formatTimeToReset(quotaData.rate_limit.secondary_window.reset_after_seconds)}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>{t('quota.label.resets_at')}</span>
+                  <span>{formatDate(quotaData.rate_limit.secondary_window.reset_at)}</span>
+                </div>
               </>
-            )}
-            {quotaData.rate_limit?.secondary_window?.reset_at && (
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>{t('quota.label.resets_at')}</span>
-                <span>{format(new Date(quotaData.rate_limit.secondary_window.reset_at * 1000), 'yyyy-MM-dd HH:mm')}</span>
-              </div>
             )}
           </div>
         </div>
