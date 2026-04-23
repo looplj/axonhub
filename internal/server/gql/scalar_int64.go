@@ -17,7 +17,7 @@ func (Int64Scalar) ImplementsGraphQLType(name string) bool {
 
 func (i *Int64Scalar) MarshalGQL(w io.Writer) {
 	if i == nil {
-		w.Write([]byte("null"))
+		fmt.Fprintf(w, "null")
 		return
 	}
 	v := int64(*i)
