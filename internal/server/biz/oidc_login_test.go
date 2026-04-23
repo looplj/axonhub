@@ -206,6 +206,14 @@ func TestOIDC_ApplyRoleMappings_SyncStrategies(t *testing.T) {
 	uUpdated2, _ := u2.Save(ctx)
 	roles2, _ := uUpdated2.QueryRoles().All(ctx)
 	require.Len(t, roles2, 2) // Should have both admin and user
+	var foundUser bool
+	for _, r := range roles2 {
+		if r.ID == rUser.ID {
+			foundUser = true
+			break
+		}
+	}
+	require.True(t, foundUser)
 
 	// 3. always (clear and replace)
 	cfg.SyncRoleStrategy = "always"
@@ -233,4 +241,72 @@ func TestOIDC_ApplyRoleMappings_SyncStrategies(t *testing.T) {
 	roles5, _ := uUpdated5.QueryRoles().All(ctx)
 	require.Len(t, roles5, 1)
 	require.Equal(t, rAdmin.ID, roles5[0].ID) // admin has priority 10
+
+	// 6. create_only
+	cfg.SyncRoleStrategy = "create_only"
+	u6 := uUpdated5.Update()
+	err = svc.applyRoleMappings(ctx, u6.Mutation(), []string{"ops"}, cfg, false) // should skip since it's not creation
+	require.NoError(t, err)
+	uUpdated6, _ := u6.Save(ctx)
+	roles6, _ := uUpdated6.QueryRoles().All(ctx)
+	require.Len(t, roles6, 1)
+	require.Equal(t, rAdmin.ID, roles6[0].ID) // remains admin
+
+	// 7. manual_first
+	cfg.SyncRoleStrategy = "manual_first"
+	u7 := uUpdated6.Update()
+	err = svc.applyRoleMappings(ctx, u7.Mutation(), []string{"user"}, cfg, false) // should skip since user already has roles
+	require.NoError(t, err)
+	uUpdated7, _ := u7.Save(ctx)
+	roles7, _ := uUpdated7.QueryRoles().All(ctx)
+	require.Len(t, roles7, 1)
+	require.Equal(t, rAdmin.ID, roles7[0].ID) // remains admin
+}
+
+func TestOIDC_ApplyRoleMappings_DefaultsAndRegex(t *testing.T) {
+	svc, client := setupTestOIDCService(t)
+	defer client.Close()
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Create roles
+	rDefault, _ := client.Role.Create().SetName("default-role").SetLevel(role.LevelSystem).Save(ctx)
+	rRegex, _ := client.Role.Create().SetName("regex-role").SetLevel(role.LevelSystem).Save(ctx)
+
+	cfg := OIDCProvider{
+		DefaultRoles:  []string{"default-role"},
+		DefaultScopes: []string{"read:all"},
+		RoleMappingRules: []RoleMappingRule{
+			{MatchGroup: `^dev-.*$`, IsRegex: true, DBRole: "regex-role", Priority: 5},
+		},
+	}
+
+	// 1. Defaults (no groups match or provided)
+	u1, _ := client.User.Create().SetEmail("default@test.com").SetPassword("pw").Save(ctx)
+	upd1 := u1.Update()
+	err := svc.applyRoleMappings(ctx, upd1.Mutation(), nil, cfg, true)
+	require.NoError(t, err)
+	_, err = upd1.Save(ctx)
+	require.NoError(t, err)
+
+	uUpdated1, _ := client.User.Get(ctx, u1.ID)
+	roles1, _ := uUpdated1.QueryRoles().All(ctx)
+	require.Len(t, roles1, 1)
+	require.Equal(t, rDefault.ID, roles1[0].ID)
+	require.Contains(t, uUpdated1.Scopes, "read:all")
+
+	// 2. Regex match
+	u2, _ := client.User.Create().SetEmail("regex@test.com").SetPassword("pw").Save(ctx)
+	upd2 := u2.Update()
+	err = svc.applyRoleMappings(ctx, upd2.Mutation(), []string{"dev-backend"}, cfg, true)
+	require.NoError(t, err)
+	_, err = upd2.Save(ctx)
+	require.NoError(t, err)
+
+	uUpdated2, _ := client.User.Get(ctx, u2.ID)
+	roles2, _ := uUpdated2.QueryRoles().All(ctx)
+	require.Len(t, roles2, 1)
+	require.Equal(t, rRegex.ID, roles2[0].ID)
+	require.NotContains(t, uUpdated2.Scopes, "read:all") // Defaults should not apply if matched
 }
