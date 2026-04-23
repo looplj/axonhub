@@ -10,9 +10,24 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
+type windowKey struct {
+	duration   time.Duration
+	anchorUnix int64
+}
+
+const noAnchorSentinel int64 = -1
+
+func makeWindowKey(d time.Duration, anchor *time.Time) windowKey {
+	if anchor == nil || anchor.IsZero() {
+		return windowKey{duration: d, anchorUnix: noAnchorSentinel}
+	}
+
+	return windowKey{duration: d, anchorUnix: anchor.UnixNano()}
+}
+
 type ChannelRequestTracker struct {
 	mu        sync.RWMutex
-	counters  map[int]map[time.Duration]*rateLimitWindow
+	counters  map[int]map[windowKey]*rateLimitWindow
 	cooldowns map[int]time.Time
 	clock     func() time.Time
 	evictInt  time.Duration
@@ -42,7 +57,6 @@ type rateLimitWindow struct {
 	requestDbQueried bool
 	tokenDbQueried   bool
 	windowStart      time.Time
-	anchor           *time.Time
 }
 
 // countField selects which counter field to read/write within a rateLimitWindow.
@@ -88,7 +102,7 @@ func (f countField) dbQueried(w *rateLimitWindow) *bool {
 
 func NewChannelRequestTracker(opts ...ClockOption) *ChannelRequestTracker {
 	t := &ChannelRequestTracker{
-		counters:  make(map[int]map[time.Duration]*rateLimitWindow),
+		counters:  make(map[int]map[windowKey]*rateLimitWindow),
 		cooldowns: make(map[int]time.Time),
 		clock:     time.Now,
 		evictInt:  60 * time.Second,
@@ -123,69 +137,28 @@ func (t *ChannelRequestTracker) Stop() {
 func (t *ChannelRequestTracker) getOrResetWindow(channelID int, d time.Duration, anchor *time.Time) *rateLimitWindow {
 	now := t.clock()
 	windowStart := objects.ComputeWindowStart(now, d, anchor)
+	wk := makeWindowKey(d, anchor)
 
 	durationMap, ok := t.counters[channelID]
 	if !ok {
-		durationMap = make(map[time.Duration]*rateLimitWindow)
+		durationMap = make(map[windowKey]*rateLimitWindow)
 		t.counters[channelID] = durationMap
 	}
 
-	w, ok := durationMap[d]
+	w, ok := durationMap[wk]
 	if !ok {
-		w = &rateLimitWindow{windowStart: windowStart, anchor: copyAnchor(anchor)}
-		durationMap[d] = w
-	} else if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
-		anchorChanged := !anchorEqual(w.anchor, anchor)
-
-		if anchorChanged && (w.requests > 0 || w.tokens > 0) {
-			reqTotal := w.requestSeed + w.requests
-			tokTotal := w.tokenSeed + w.tokens
-			if reqTotal < 0 {
-				reqTotal = -1 // overflow sentinel
-			}
-			if tokTotal < 0 {
-				tokTotal = -1
-			}
-			log.Warn(context.Background(), "rate limit window reset due to anchor change, counts discarded",
-				log.Int("channel_id", channelID),
-				log.Duration("duration", d),
-				log.Int64("discarded_requests", reqTotal),
-				log.Int64("discarded_tokens", tokTotal),
-			)
-		}
-
+		w = &rateLimitWindow{windowStart: windowStart}
+		durationMap[wk] = w
+	} else if w.windowStart != windowStart {
 		w = &rateLimitWindow{
 			windowStart:      windowStart,
-			anchor:           copyAnchor(anchor),
 			requestDbQueried: false,
 			tokenDbQueried:   false,
 		}
-		durationMap[d] = w
+		durationMap[wk] = w
 	}
 
 	return w
-}
-
-func anchorEqual(a, b *time.Time) bool {
-	aIsZero := a == nil || a.IsZero()
-	bIsZero := b == nil || b.IsZero()
-	if aIsZero && bIsZero {
-		return true
-	}
-	if aIsZero || bIsZero {
-		return false
-	}
-	return a.Equal(*b)
-}
-
-// copyAnchor creates a deep copy of a *time.Time, normalizing to UTC.
-func copyAnchor(a *time.Time) *time.Time {
-	if a == nil {
-		return nil
-	}
-
-	cp := a.UTC()
-	return &cp
 }
 
 func (t *ChannelRequestTracker) IncrementRequest(channelID int) {
@@ -236,18 +209,20 @@ func (t *ChannelRequestTracker) GetWindowResetTimeForDuration(channelID int, d t
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	wk := makeWindowKey(d, anchor)
+
 	durationMap, ok := t.counters[channelID]
 	if !ok {
 		return time.Time{}
 	}
 
-	w, ok := durationMap[d]
+	w, ok := durationMap[wk]
 	if !ok {
 		return time.Time{}
 	}
 
 	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
-	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
+	if w.windowStart != windowStart {
 		return time.Time{}
 	}
 
@@ -258,18 +233,20 @@ func (t *ChannelRequestTracker) getCountForDuration(channelID int, d time.Durati
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	wk := makeWindowKey(d, anchor)
+
 	durationMap, ok := t.counters[channelID]
 	if !ok {
 		return 0
 	}
 
-	w, ok := durationMap[d]
+	w, ok := durationMap[wk]
 	if !ok {
 		return 0
 	}
 
 	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
-	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
+	if w.windowStart != windowStart {
 		return 0
 	}
 
@@ -297,18 +274,20 @@ func (t *ChannelRequestTracker) isWindowDbQueried(channelID int, d time.Duration
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	wk := makeWindowKey(d, anchor)
+
 	durationMap, ok := t.counters[channelID]
 	if !ok {
 		return false
 	}
 
-	w, ok := durationMap[d]
+	w, ok := durationMap[wk]
 	if !ok {
 		return false
 	}
 
 	windowStart := objects.ComputeWindowStart(t.clock(), d, anchor)
-	if w.windowStart != windowStart || !anchorEqual(w.anchor, anchor) {
+	if w.windowStart != windowStart {
 		return false
 	}
 
@@ -433,7 +412,7 @@ func (t *ChannelRequestTracker) clearExpiredCooldown(channelID int, observedUnti
 
 type expiredDurationEntry struct {
 	channelID int
-	dur       time.Duration
+	key       windowKey
 }
 
 type evictionCandidates struct {
@@ -456,10 +435,11 @@ func (t *ChannelRequestTracker) collectEvictionCandidates() evictionCandidates {
 		}
 
 		allExpired := true
-		for dur, w := range durationMap {
-			windowEnd := w.windowStart.Add(dur)
+
+		for wk, w := range durationMap {
+			windowEnd := w.windowStart.Add(wk.duration)
 			if c.now.After(windowEnd) && c.now.Sub(windowEnd) > t.ttl {
-				c.expiredDurations = append(c.expiredDurations, expiredDurationEntry{channelID, dur})
+				c.expiredDurations = append(c.expiredDurations, expiredDurationEntry{channelID, wk})
 			} else {
 				allExpired = false
 			}
@@ -485,10 +465,10 @@ func (t *ChannelRequestTracker) deleteEvictionCandidates(c evictionCandidates) {
 
 	for _, ed := range c.expiredDurations {
 		if dm, ok := t.counters[ed.channelID]; ok {
-			if w, exists := dm[ed.dur]; exists {
-				windowEnd := w.windowStart.Add(ed.dur)
+			if w, exists := dm[ed.key]; exists {
+				windowEnd := w.windowStart.Add(ed.key.duration)
 				if c.now.After(windowEnd) && c.now.Sub(windowEnd) > t.ttl {
-					delete(dm, ed.dur)
+					delete(dm, ed.key)
 				}
 			}
 		}

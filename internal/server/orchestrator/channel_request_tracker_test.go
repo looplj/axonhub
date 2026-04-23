@@ -431,7 +431,7 @@ func TestChannelRequestTracker_Anchor_NonNilAnchor(t *testing.T) {
 	assert.Equal(t, int64(2), count)
 }
 
-func TestChannelRequestTracker_Anchor_AnchorChangeOverwritesPreviousWindow(t *testing.T) {
+func TestChannelRequestTracker_Anchor_SameDurationDifferentAnchorsAreIsolated(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	tracker, _ := newTrackerWithClock(now)
 
@@ -444,11 +444,11 @@ func TestChannelRequestTracker_Anchor_AnchorChangeOverwritesPreviousWindow(t *te
 	nilCount := tracker.GetRequestCountForDuration(1, time.Hour, nil)
 	anchorCount := tracker.GetRequestCountForDuration(1, time.Hour, &anchor)
 
-	assert.Equal(t, int64(0), nilCount)
+	assert.Equal(t, int64(2), nilCount)
 	assert.Equal(t, int64(1), anchorCount)
 }
 
-func TestChannelRequestTracker_Anchor_AnchorChangeResetsWindow(t *testing.T) {
+func TestChannelRequestTracker_Anchor_DifferentAnchorsDoNotResetEachOther(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	tracker, _ := newTrackerWithClock(now)
 	anchor1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -461,7 +461,7 @@ func TestChannelRequestTracker_Anchor_AnchorChangeResetsWindow(t *testing.T) {
 	tracker.IncrementRequestForDuration(1, time.Hour, &anchor2)
 	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Hour, &anchor2))
 
-	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Hour, &anchor1))
+	assert.Equal(t, int64(2), tracker.GetRequestCountForDuration(1, time.Hour, &anchor1))
 }
 
 func TestChannelRequestTracker_Anchor_TokensWithAnchor(t *testing.T) {
@@ -1046,7 +1046,7 @@ func TestChannelRequestTracker_ConcurrentEvictionWithMutations(t *testing.T) {
 	assert.Equal(t, int64(goroutines), count)
 }
 
-func TestChannelRequestTracker_AnchorChangeResetsDbQueriedFlags(t *testing.T) {
+func TestChannelRequestTracker_AnchorChangeCreatesNewUnmarkedWindow(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	tracker, _ := newTrackerWithClock(now)
 	anchor1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -1061,10 +1061,11 @@ func TestChannelRequestTracker_AnchorChangeResetsDbQueriedFlags(t *testing.T) {
 	anchor2 := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
 	tracker.IncrementRequestForDuration(1, time.Hour, &anchor2)
 
-	assert.False(t, tracker.IsRequestWindowDbQueried(1, time.Hour, &anchor2),
-		"requestDbQueried should be reset after anchor change because the window has moved")
-	assert.False(t, tracker.IsTokenWindowDbQueried(1, time.Hour, &anchor2),
-		"tokenDbQueried should be reset after anchor change because the window has moved")
+	assert.False(t, tracker.IsRequestWindowDbQueried(1, time.Hour, &anchor2))
+	assert.False(t, tracker.IsTokenWindowDbQueried(1, time.Hour, &anchor2))
+
+	assert.True(t, tracker.IsRequestWindowDbQueried(1, time.Hour, &anchor1))
+	assert.True(t, tracker.IsTokenWindowDbQueried(1, time.Hour, &anchor1))
 }
 
 func TestIncrementRequestForDuration_OverflowClamp(t *testing.T) {
@@ -1079,4 +1080,98 @@ func TestIncrementRequestForDuration_OverflowClamp(t *testing.T) {
 
 	count := tracker.GetRequestCountForDuration(1, time.Minute, nil)
 	assert.Equal(t, int64(math.MaxInt64), count, "overflow should be clamped to MaxInt64")
+}
+
+func TestChannelRequestTracker_RPMAndTPM_SameDuration_DifferentAnchors(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	dur := time.Hour
+	tpmAnchor := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	tracker.IncrementRequestForDuration(1, dur, nil)
+	tracker.IncrementRequestForDuration(1, dur, nil)
+	tracker.IncrementRequestForDuration(1, dur, nil)
+
+	tracker.AddTokensForDuration(1, 500, dur, &tpmAnchor)
+	tracker.AddTokensForDuration(1, 300, dur, &tpmAnchor)
+
+	rpmCount := tracker.GetRequestCountForDuration(1, dur, nil)
+	tpmCount := tracker.GetTokenCountForDuration(1, dur, &tpmAnchor)
+
+	assert.Equal(t, int64(3), rpmCount, "RPM request count should not be discarded by TPM write")
+	assert.Equal(t, int64(800), tpmCount, "TPM token count should be independent of RPM window")
+
+	rpmTokens := tracker.GetTokenCountForDuration(1, dur, nil)
+	tpmRequests := tracker.GetRequestCountForDuration(1, dur, &tpmAnchor)
+
+	assert.Equal(t, int64(0), rpmTokens)
+	assert.Equal(t, int64(0), tpmRequests)
+}
+
+func TestChannelRequestTracker_NilAndZeroTimeAnchorAreEquivalent(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	tracker.IncrementRequestForDuration(1, time.Hour, nil)
+	tracker.IncrementRequestForDuration(1, time.Hour, nil)
+
+	var zeroTime time.Time
+	tracker.IncrementRequestForDuration(1, time.Hour, &zeroTime)
+
+	nilRead := tracker.GetRequestCountForDuration(1, time.Hour, nil)
+	zeroRead := tracker.GetRequestCountForDuration(1, time.Hour, &zeroTime)
+
+	assert.Equal(t, int64(3), nilRead)
+	assert.Equal(t, int64(3), zeroRead)
+}
+
+func TestChannelRequestTracker_SubSecondAnchorIsolation(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	tracker, _ := newTrackerWithClock(now)
+
+	anchorA := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	anchorB := time.Date(2024, 1, 15, 0, 0, 0, 500, time.UTC)
+
+	tracker.IncrementRequestForDuration(1, time.Hour, &anchorA)
+	tracker.IncrementRequestForDuration(1, time.Hour, &anchorA)
+
+	tracker.AddTokensForDuration(1, 100, time.Hour, &anchorB)
+
+	assert.Equal(t, int64(2), tracker.GetRequestCountForDuration(1, time.Hour, &anchorA))
+	assert.Equal(t, int64(100), tracker.GetTokenCountForDuration(1, time.Hour, &anchorB))
+	assert.Equal(t, int64(0), tracker.GetTokenCountForDuration(1, time.Hour, &anchorA))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Hour, &anchorB))
+}
+
+func TestChannelRequestTracker_EvictExpired_AnchorDifferentiatedWindows(t *testing.T) {
+	now := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	clockPtr := &now
+	tracker := NewChannelRequestTracker(WithClock(func() time.Time { return *clockPtr }), WithTrackerTTL(time.Minute))
+
+	anchorA := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	anchorB := time.Date(2024, 1, 15, 6, 0, 0, 0, time.UTC)
+
+	tracker.IncrementRequestForDuration(1, time.Minute, &anchorA)
+	tracker.IncrementRequestForDuration(1, time.Minute, &anchorB)
+
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, &anchorA))
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Minute, &anchorB))
+
+	*clockPtr = now.Add(3 * time.Minute)
+
+	tracker.EvictExpired()
+
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Minute, &anchorA))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Minute, &anchorB))
+
+	tracker.IncrementRequestForDuration(1, time.Hour, &anchorA)
+	tracker.IncrementRequestForDuration(1, time.Minute, &anchorB)
+
+	*clockPtr = now.Add(2*time.Minute + 30*time.Second)
+
+	tracker.EvictExpired()
+
+	assert.Equal(t, int64(1), tracker.GetRequestCountForDuration(1, time.Hour, &anchorA))
+	assert.Equal(t, int64(0), tracker.GetRequestCountForDuration(1, time.Minute, &anchorB))
 }
