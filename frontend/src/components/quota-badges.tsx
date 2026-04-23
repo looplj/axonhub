@@ -138,9 +138,9 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     if (!seconds) return '';
     const hours = Math.floor(seconds / 3600);
     const days = hours >= 24 ? Math.floor(hours / 24) : 0;
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
-    return `${Math.floor(seconds / 60)} min`;
+    if (days > 0) return `${days}${t(days > 1 ? 'quota.label.days' : 'quota.label.day', { defaultValue: days > 1 ? ' days' : ' day' })}`;
+    if (hours > 0) return `${hours}${t(hours > 1 ? 'quota.label.hours' : 'quota.label.hour', { defaultValue: hours > 1 ? ' hours' : ' hour' })}`;
+    return `${Math.floor(seconds / 60)}${t('quota.label.mins', { defaultValue: ' mins' })}`;
   };
 
   const calcDurationPercent = (limit?: number, resetAfter?: number) => {
@@ -161,15 +161,19 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
     const now = Date.now();
     const diffMs = resetTimeMs - now;
-    if (diffMs < 0) return 'Reset now';
+    if (diffMs < 0) return t('quota.label.reset_now', { defaultValue: 'Reset now' });
     
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffDays > 0) return `${diffDays}d ${diffHours % 24}h`;
-    if (diffHours > 0) return `${diffHours}h ${diffMins % 60}m`;
-    return `${diffMins}m`;
+    const d = t('quota.label.d', { defaultValue: 'd' });
+    const h = t('quota.label.h', { defaultValue: 'h' });
+    const m = t('quota.label.m', { defaultValue: 'm' });
+
+    if (diffDays > 0) return `${diffDays}${d} ${diffHours % 24}${h}`;
+    if (diffHours > 0) return `${diffHours}${h} ${diffMins % 60}${m}`;
+    return `${diffMins}${m}`;
   };
 
   const formatDate = (timestamp?: number) => {
@@ -178,14 +182,14 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     const now = new Date();
     
     if (date.toDateString() === now.toDateString()) {
-      return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      return `${t('quota.label.today', { defaultValue: 'Today' })}, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
     }
     
     if (date.getFullYear() === now.getFullYear()) {
-      return format(date, 'MMM dd, HH:mm');
+      return format(date, 'MM-dd HH:mm');
     }
     
-    return format(date, 'MMM dd yyyy, HH:mm');
+    return format(date, 'yyyy-MM-dd HH:mm');
   };
 
   return (
@@ -237,9 +241,9 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
           
           {(quota.nextResetAt || quotaData.representative_claim) && (
              <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1">
-                <span>{quotaData.representative_claim === 'five_hour' ? '5h limiting' : quotaData.representative_claim === 'seven_day' ? '7d limiting' : ''}</span>
+                <span>{quotaData.representative_claim === 'five_hour' ? t('quota.label.5h_limiting', { defaultValue: '5h limiting' }) : quotaData.representative_claim === 'seven_day' ? t('quota.label.7d_limiting', { defaultValue: '7d limiting' }) : ''}</span>
                 {quota.nextResetAt && (
-                  <span>Resets in {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
+                  <span>{t('quota.label.resets_in', { defaultValue: 'Resets in' })} {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
                 )}
              </div>
           )}
@@ -278,7 +282,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
               {quotaData.rate_limit.primary_window.reset_at && (
                 <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                  Resets in {formatTimeToReset(quotaData.rate_limit.primary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.primary_window.reset_at)})
+                  {t('quota.label.resets_in', { defaultValue: 'Resets in' })} {formatTimeToReset(quotaData.rate_limit.primary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.primary_window.reset_at)})
                 </div>
               )}
             </div>
@@ -314,7 +318,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
               {quotaData.rate_limit.secondary_window.reset_at && (
                 <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                  Resets in {formatTimeToReset(quotaData.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.secondary_window.reset_at)})
+                  {t('quota.label.resets_in', { defaultValue: 'Resets in' })} {formatTimeToReset(quotaData.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(quotaData.rate_limit.secondary_window.reset_at)})
                 </div>
               )}
             </div>
