@@ -14184,6 +14184,149 @@
           "family": "kat-coder"
         }
       ]
+    },
+    "meta": {
+      "id": "meta",
+      "api": "https://api.llama.com/compat/v1/",
+      "name": "Meta",
+      "doc": "https://llama.developer.meta.com/docs/models",
+      "display_name": "Meta",
+      "models": [
+        {
+          "id": "llama-4-scout-17b-16e-instruct-fp8",
+          "name": "Llama-4-Scout-17B-16E-Instruct-FP8",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-04-05",
+          "last_updated": "2025-04-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-4-Scout-17B-16E-Instruct-FP8",
+          "type": "chat"
+        },
+        {
+          "id": "llama-4-maverick-17b-128e-instruct-fp8",
+          "name": "Llama-4-Maverick-17B-128E-Instruct-FP8",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-04-05",
+          "last_updated": "2025-04-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-4-Maverick-17B-128E-Instruct-FP8",
+          "type": "chat"
+        },
+        {
+          "id": "llama-3.3-70b-instruct",
+          "name": "Llama-3.3-70B-Instruct",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2023-12",
+          "release_date": "2024-12-06",
+          "last_updated": "2024-12-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-3.3-70B-Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "llama-3.3-8b-instruct",
+          "name": "Llama-3.3-8B-Instruct",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2023-12",
+          "release_date": "2024-12-06",
+          "last_updated": "2024-12-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-3.3-8B-Instruct",
+          "type": "chat"
+        }
+      ]
     }
   }
 }
