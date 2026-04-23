@@ -376,6 +376,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSelectedApiFormat(apiFormat);
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
     setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+    setUseKimiCoding(initialRow.type === 'moonshot_coding');
 
     // Detect authMode for codex and claudecode
     if (initialRow.type === 'codex') {
@@ -647,6 +648,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
       if (provider !== 'anthropic') {
         setUseAnthropicAws(false);
+      }
+      if (provider !== 'moonshot') {
+        setUseKimiCoding(false);
       }
 
       if (provider === 'codex') {
@@ -1396,11 +1400,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS);
               setUseGeminiVertex(initialRow.type === 'gemini_vertex');
               setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+              setUseKimiCoding(initialRow.type === 'moonshot_coding');
             } else {
               setSelectedProvider('openai');
               setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS);
               setUseGeminiVertex(false);
               setUseAnthropicAws(false);
+              setUseKimiCoding(false);
             }
           }
           onOpenChange(state);
