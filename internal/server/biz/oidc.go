@@ -889,7 +889,9 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 
 	// Apply role mappings to new user
-	s.applyRoleMappings(ctx, userCreate.Mutation(), groups, p.config, true)
+	if err := s.applyRoleMappings(ctx, userCreate.Mutation(), groups, p.config, true); err != nil {
+		return nil, fmt.Errorf("failed to apply role mappings: %w", err)
+	}
 
 	newUser, err := userCreate.Save(ctx)
 	if err != nil {
@@ -929,7 +931,9 @@ func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, given
 
 	// Sync roles/scopes
 	if cfg.SyncRoleStrategy != "create_only" {
-		s.applyRoleMappings(ctx, update.Mutation(), groups, cfg, false)
+		if err := s.applyRoleMappings(ctx, update.Mutation(), groups, cfg, false); err != nil {
+			return nil, fmt.Errorf("failed to apply role mappings: %w", err)
+		}
 	}
 
 	return update.Save(ctx)
