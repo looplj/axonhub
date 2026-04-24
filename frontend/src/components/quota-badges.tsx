@@ -541,7 +541,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
               )}
             </button>
           </div>
-          <div className={`max-h-[60vh] overflow-y-auto ${channels.length > 4 ? 'grid grid-cols-2 gap-x-4' : ''}`}>
+          <div className={`max-h-[60vh] overflow-y-auto pl-1 pr-1 ${channels.length > 4 ? 'grid grid-cols-2 gap-x-4' : ''}`}>
             {channels.map((channel: ProviderQuotaChannel) => (
               <QuotaRow key={channel.id} channel={channel} />
             ))}
