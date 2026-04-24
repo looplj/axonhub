@@ -3275,6 +3275,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   claudecode
   codex
   github_copilot
+  nanogpt
 }
 """
 ProviderQuotaStatusStatus is enum for the field status
