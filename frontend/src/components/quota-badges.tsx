@@ -1,10 +1,9 @@
 import { Loader2, RefreshCw, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useProviderQuotaStatuses, ProviderQuotaChannel, checkProviderQuotas } from '@/features/system/data/quotas';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useProviderQuotaStatuses, ProviderQuotaChannel } from '@/features/system/data/quotas';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 
 
 const STATUS_LABELS = {
@@ -77,7 +76,6 @@ function getChannelPercentage(channel: ProviderQuotaChannel, quotaData: QuotaDat
   return percentage;
 }
 
-import { Badge } from '@/components/ui/badge';
 
 function ProgressBar({ percentage, type = 'usage', durationPercentage }: { percentage: number; type?: 'usage' | 'duration'; durationPercentage?: number }) {
   const clamped = Math.min(Math.max(percentage || 0, 0), 100);
@@ -147,6 +145,18 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     if (!limit || resetAfter === undefined) return 0;
     const elapsed = limit - resetAfter;
     return Math.max(0, Math.min(100, (elapsed / limit) * 100));
+  };
+
+  const getClaudeDurationPercent = (windowKey: string, resetTs?: number) => {
+    if (!resetTs) return undefined;
+    let limit = 0;
+    if (windowKey === '5h') limit = 5 * 3600;
+    else if (windowKey === '7d') limit = 7 * 24 * 3600;
+    else return undefined;
+    
+    const now = Date.now() / 1000;
+    const resetAfter = resetTs - now;
+    return calcDurationPercent(limit, resetAfter);
   };
 
   const formatTimeToReset = (resetAtOrSeconds?: string | number | null) => {
@@ -221,21 +231,68 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
       {channel.type === 'claudecode' && (
         <div className="mt-4 space-y-4">
           {quotaData.windows?.['5h'] && (
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-muted-foreground">{t('quota.window.5h')}</span>
-                <span className="font-medium text-foreground">{Math.round((quotaData.windows['5h'].utilization || 0) * 100)}%</span>
+            <div className="space-y-2.5">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-muted-foreground">{t('quota.window.5h')}</span>
+                  <span className="font-medium text-foreground">{Math.round((quotaData.windows['5h'].utilization || 0) * 100)}%</span>
+                </div>
+                <ProgressBar 
+                  percentage={(quotaData.windows['5h'].utilization || 0) * 100} 
+                  durationPercentage={getClaudeDurationPercent('5h', quotaData.windows['5h'].reset)}
+                />
               </div>
-              <ProgressBar percentage={(quotaData.windows['5h'].utilization || 0) * 100} />
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-muted-foreground">
+                    5h duration
+                  </span>
+                  <span className="font-medium text-foreground">{Math.round(getClaudeDurationPercent('5h', quotaData.windows['5h'].reset) || 0)}%</span>
+                </div>
+                <ProgressBar 
+                  type="duration"
+                  percentage={getClaudeDurationPercent('5h', quotaData.windows['5h'].reset) || 0} 
+                />
+              </div>
             </div>
           )}
           {quotaData.windows?.['7d'] && (
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-muted-foreground">{t('quota.window.7d')}</span>
-                <span className="font-medium text-foreground">{Math.round((quotaData.windows['7d'].utilization || 0) * 100)}%</span>
+            <div className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-muted-foreground">{t('quota.window.7d')}</span>
+                  <span className="font-medium text-foreground">{Math.round((quotaData.windows['7d'].utilization || 0) * 100)}%</span>
+                </div>
+                <ProgressBar 
+                  percentage={(quotaData.windows['7d'].utilization || 0) * 100} 
+                  durationPercentage={getClaudeDurationPercent('7d', quotaData.windows['7d'].reset)}
+                />
               </div>
-              <ProgressBar percentage={(quotaData.windows['7d'].utilization || 0) * 100} />
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-muted-foreground">
+                    7d duration
+                  </span>
+                  <span className="font-medium text-foreground">{Math.round(getClaudeDurationPercent('7d', quotaData.windows['7d'].reset) || 0)}%</span>
+                </div>
+                <ProgressBar 
+                  type="duration"
+                  percentage={getClaudeDurationPercent('7d', quotaData.windows['7d'].reset) || 0} 
+                />
+              </div>
+            </div>
+          )}
+          {quotaData.windows?.['overage'] && (
+            <div className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-muted-foreground">Overage window</span>
+                  <span className="font-medium text-foreground">{Math.round((quotaData.windows['overage'].utilization || 0) * 100)}%</span>
+                </div>
+                <ProgressBar 
+                  percentage={(quotaData.windows['overage'].utilization || 0) * 100} 
+                />
+              </div>
             </div>
           )}
           
@@ -330,7 +387,6 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 }
 
 function QuotaBadgeTrigger({ channels }: { channels: ProviderQuotaChannel[] }) {
-  const { t } = useTranslation();
   const highestUsed = Math.max(...channels.map(c => {
     const quota = c.quotaStatus;
     if (!quota) return 0;
