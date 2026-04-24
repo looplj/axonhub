@@ -82,7 +82,9 @@ func (Request) Fields() []ent.Field {
 		),
 		field.Int("channel_id").Optional(),
 		// External ID for tracking requests in external systems
-		field.String("external_id").Optional(),
+		field.String("external_id").
+			Optional().
+			MaxLen(512),
 		// The status of the request.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
 		// Whether the request is a streaming request
