@@ -193,6 +193,8 @@ var (
 	DefaultProjectID int
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
+	// ExternalIDValidator is a validator for the "external_id" field. It is called by the builders before save.
+	ExternalIDValidator func(string) error
 	// DefaultStream holds the default value on creation for the "stream" field.
 	DefaultStream bool
 	// DefaultClientIP holds the default value on creation for the "client_ip" field.

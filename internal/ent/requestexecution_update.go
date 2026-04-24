@@ -296,6 +296,11 @@ func (_u *RequestExecutionUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *RequestExecutionUpdate) check() error {
+	if v, ok := _u.mutation.ExternalID(); ok {
+		if err := requestexecution.ExternalIDValidator(v); err != nil {
+			return &ValidationError{Name: "external_id", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.external_id": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := requestexecution.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
@@ -712,6 +717,11 @@ func (_u *RequestExecutionUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *RequestExecutionUpdateOne) check() error {
+	if v, ok := _u.mutation.ExternalID(); ok {
+		if err := requestexecution.ExternalIDValidator(v); err != nil {
+			return &ValidationError{Name: "external_id", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.external_id": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := requestexecution.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
