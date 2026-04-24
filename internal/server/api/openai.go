@@ -556,23 +556,30 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 		return
 	}
 
+	if len(visibleModels) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"object": "list",
+			"data":   []OpenAIModel{},
+		})
+
+		return
+	}
+
 	if !needFullData {
-		openaiModels = make([]OpenAIModel, 0, len(visibleModels))
-		for _, m := range visibleModels {
-			openaiModels = append(openaiModels, convertModelFacadeToOpenAIModel(m))
-		}
+		openaiModels = lo.Map(visibleModels, func(m biz.ModelFacade, _ int) OpenAIModel {
+			return convertModelFacadeToOpenAIModel(m)
+		})
 	} else {
-		visibleIDs := make([]string, 0, len(visibleModels))
-		for _, m := range visibleModels {
-			visibleIDs = append(visibleIDs, m.ID)
-		}
+		visibleIDs := lo.Map(visibleModels, func(m biz.ModelFacade, _ int) string {
+			return m.ID
+		})
 
 		dbModels, err := handlers.EntClient.Model.Query().
 			Where(
 				model.StatusEQ(model.StatusEnabled),
 				model.ModelIDIn(visibleIDs...),
 			).
-				All(ctx)
+			All(ctx)
 		if err != nil {
 			handlers.writeOpenAIInternalError(c, requestID, err)
 			return
@@ -583,14 +590,13 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 			dbModelMap[m.ModelID] = m
 		}
 
-		openaiModels = make([]OpenAIModel, 0, len(visibleModels))
-		for _, m := range visibleModels {
+		openaiModels = lo.Map(visibleModels, func(m biz.ModelFacade, _ int) OpenAIModel {
 			if dbModel, ok := dbModelMap[m.ID]; ok {
-				openaiModels = append(openaiModels, convertModelToOpenAIExtended(dbModel, include))
-			} else {
-				openaiModels = append(openaiModels, convertModelFacadeToOpenAIModel(m))
+				return convertModelToOpenAIExtended(dbModel, include)
 			}
-		}
+
+			return convertModelFacadeToOpenAIModel(m)
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
