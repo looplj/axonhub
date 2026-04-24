@@ -118,6 +118,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
+	svc.registerGithubCopilotSupport()
 
 	return svc
 }
@@ -128,6 +129,10 @@ func (svc *ProviderQuotaService) registerClaudeCodeSupport() {
 
 func (svc *ProviderQuotaService) registerCodexSupport() {
 	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerGithubCopilotSupport() {
+	svc.checkers["github_copilot"] = provider_quota.NewGithubCopilotQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) Start(ctx context.Context) error {
@@ -216,7 +221,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex),
+			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot),
 		)
 
 	if !force {
@@ -393,6 +398,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "claudecode"
 	case channel.TypeCodex:
 		return "codex"
+	case channel.TypeGithubCopilot:
+		return "github_copilot"
 	default:
 		return ""
 	}
