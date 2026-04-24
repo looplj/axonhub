@@ -549,31 +549,47 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 	include, needFullData := parseOpenAIModelInclude(c.Query("include"), handlers.SystemService.ModelSettingsOrDefault(ctx).DefaultModelAPIIncludeAll)
 
 	var openaiModels []OpenAIModel
-	if needFullData {
-		// Query full model data from database with extended metadata
-		models, err := handlers.EntClient.Model.Query().
-			Where(model.StatusEQ(model.StatusEnabled)).
-			All(ctx)
-		if err != nil {
-			handlers.writeOpenAIInternalError(c, requestID, err)
-			return
-		}
 
-		openaiModels = make([]OpenAIModel, 0, len(models))
-		for _, m := range models {
-			openaiModels = append(openaiModels, convertModelToOpenAIExtended(m, include))
+	visibleModels, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		handlers.writeOpenAIInternalError(c, requestID, err)
+		return
+	}
+
+	if !needFullData {
+		openaiModels = make([]OpenAIModel, 0, len(visibleModels))
+		for _, m := range visibleModels {
+			openaiModels = append(openaiModels, convertModelFacadeToOpenAIModel(m))
 		}
 	} else {
-		// Basic mode: only return basic fields (backward compatible)
-		models, err := handlers.ModelService.ListEnabledModels(ctx)
+		visibleIDs := make([]string, 0, len(visibleModels))
+		for _, m := range visibleModels {
+			visibleIDs = append(visibleIDs, m.ID)
+		}
+
+		dbModels, err := handlers.EntClient.Model.Query().
+			Where(
+				model.StatusEQ(model.StatusEnabled),
+				model.ModelIDIn(visibleIDs...),
+			).
+				All(ctx)
 		if err != nil {
 			handlers.writeOpenAIInternalError(c, requestID, err)
 			return
 		}
 
-		openaiModels = make([]OpenAIModel, 0, len(models))
-		for _, m := range models {
-			openaiModels = append(openaiModels, convertModelFacadeToOpenAIModel(m))
+		dbModelMap := make(map[string]*ent.Model, len(dbModels))
+		for _, m := range dbModels {
+			dbModelMap[m.ModelID] = m
+		}
+
+		openaiModels = make([]OpenAIModel, 0, len(visibleModels))
+		for _, m := range visibleModels {
+			if dbModel, ok := dbModelMap[m.ID]; ok {
+				openaiModels = append(openaiModels, convertModelToOpenAIExtended(dbModel, include))
+			} else {
+				openaiModels = append(openaiModels, convertModelFacadeToOpenAIModel(m))
+			}
 		}
 	}
 
