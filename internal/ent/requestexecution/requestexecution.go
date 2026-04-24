@@ -132,6 +132,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultProjectID holds the default value on creation for the "project_id" field.
 	DefaultProjectID int
+	// ExternalIDValidator is a validator for the "external_id" field. It is called by the builders before save.
+	ExternalIDValidator func(string) error
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
 	// DefaultStream holds the default value on creation for the "stream" field.
