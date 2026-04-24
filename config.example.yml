@@ -51,6 +51,10 @@ db:
   dialect: "sqlite3"            # Database dialect: sqlite3, postgres, mysql (env: AXONHUB_DB_DIALECT)
   dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"  # Database connection string (env: AXONHUB_DB_DSN)
   debug: false                  # Enable database debug logging (env: AXONHUB_DB_DEBUG)
+  max_open_conns: 20            # Maximum open DB connections shared by the app (env: AXONHUB_DB_MAX_OPEN_CONNS)
+  max_idle_conns: 10            # Maximum idle DB connections kept in the pool (env: AXONHUB_DB_MAX_IDLE_CONNS)
+  conn_max_lifetime: "30m"      # Recycle DB connections before server/network timeouts (env: AXONHUB_DB_CONN_MAX_LIFETIME)
+  conn_max_idle_time: "10m"     # Close long-idle pooled connections (env: AXONHUB_DB_CONN_MAX_IDLE_TIME)
 
 # Cache configuration
 cache:

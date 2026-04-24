@@ -341,6 +341,26 @@ type MessageContentBlock struct {
 	IsError *bool           `json:"is_error,omitempty"`
 }
 
+func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
+	type blockAlias MessageContentBlock
+
+	if b.Type == "thinking" {
+		type thinkingBlock struct {
+			blockAlias
+			Thinking  string `json:"thinking"`
+			Signature string `json:"signature"`
+		}
+
+		return json.Marshal(thinkingBlock{
+			blockAlias: blockAlias(b),
+			Thinking:   lo.FromPtr(b.Thinking),
+			Signature:  lo.FromPtr(b.Signature),
+		})
+	}
+
+	return json.Marshal(blockAlias(b))
+}
+
 // ImageSource represents image source for Anthropic.
 type ImageSource struct {
 	// Type is the type of image source.
@@ -406,6 +426,24 @@ type StreamDelta struct {
 
 	// For "message_delta"
 	StopSequence *string `json:"stop_sequence,omitempty"`
+}
+
+func (d StreamDelta) MarshalJSON() ([]byte, error) {
+	type deltaAlias StreamDelta
+
+	if lo.FromPtr(d.Type) == "thinking_delta" {
+		type thinkingDelta struct {
+			Type     *string `json:"type,omitempty"`
+			Thinking *string `json:"thinking,omitempty"`
+		}
+
+		return json.Marshal(thinkingDelta{
+			Type:     d.Type,
+			Thinking: d.Thinking,
+		})
+	}
+
+	return json.Marshal(deltaAlias(d))
 }
 
 // StreamMessage represents the message part of a stream event.
