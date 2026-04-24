@@ -145,6 +145,16 @@ type ClearCachePayload struct {
 	Targets []DiagnosticsTarget `json:"targets"`
 }
 
+type ClearChannelOverrideTemplatesInput struct {
+	ChannelIDs []*objects.GUID `json:"channelIDs"`
+}
+
+type ClearChannelOverrideTemplatesPayload struct {
+	Success  bool           `json:"success"`
+	Updated  int            `json:"updated"`
+	Channels []*ent.Channel `json:"channels"`
+}
+
 type CompleteAutoDisableChannelOnboardingInput struct {
 	Dummy *string `json:"dummy,omitempty"`
 }
@@ -548,16 +558,18 @@ func (e DiagnosticsTarget) MarshalJSON() ([]byte, error) {
 type OverrideApplyMode string
 
 const (
-	OverrideApplyModeMerge OverrideApplyMode = "MERGE"
+	OverrideApplyModeMerge   OverrideApplyMode = "MERGE"
+	OverrideApplyModeReplace OverrideApplyMode = "REPLACE"
 )
 
 var AllOverrideApplyMode = []OverrideApplyMode{
 	OverrideApplyModeMerge,
+	OverrideApplyModeReplace,
 }
 
 func (e OverrideApplyMode) IsValid() bool {
 	switch e {
-	case OverrideApplyModeMerge:
+	case OverrideApplyModeMerge, OverrideApplyModeReplace:
 		return true
 	}
 	return false

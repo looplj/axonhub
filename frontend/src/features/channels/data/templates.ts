@@ -57,7 +57,7 @@ export type UpdateChannelOverrideTemplateInput = z.infer<typeof updateChannelOve
 export const applyChannelOverrideTemplateInputSchema = z.object({
   templateID: z.string(),
   channelIDs: z.array(z.string()).min(1, 'At least one channel is required'),
-  mode: z.enum(['MERGE']).optional(),
+  mode: z.enum(['MERGE', 'REPLACE']).optional(),
 });
 export type ApplyChannelOverrideTemplateInput = z.infer<typeof applyChannelOverrideTemplateInputSchema>;
 
@@ -67,6 +67,18 @@ export const applyChannelOverrideTemplatePayloadSchema = z.object({
   channels: z.array(z.any()), // Channel schema is complex, just mark as any here
 });
 export type ApplyChannelOverrideTemplatePayload = z.infer<typeof applyChannelOverrideTemplatePayloadSchema>;
+
+export const clearChannelOverrideTemplatesInputSchema = z.object({
+  channelIDs: z.array(z.string()).min(1, 'At least one channel is required'),
+});
+export type ClearChannelOverrideTemplatesInput = z.infer<typeof clearChannelOverrideTemplatesInputSchema>;
+
+export const clearChannelOverrideTemplatesPayloadSchema = z.object({
+  success: z.boolean(),
+  updated: z.number(),
+  channels: z.array(z.any()),
+});
+export type ClearChannelOverrideTemplatesPayload = z.infer<typeof clearChannelOverrideTemplatesPayloadSchema>;
 
 // GraphQL Fragments
 const TEMPLATE_FRAGMENT = `
@@ -168,6 +180,18 @@ const DELETE_CHANNEL_OVERRIDE_TEMPLATE = `
 const APPLY_CHANNEL_OVERRIDE_TEMPLATE = `
   mutation ApplyChannelOverrideTemplate($input: ApplyChannelOverrideTemplateInput!) {
     applyChannelOverrideTemplate(input: $input) {
+      success
+      updated
+      channels {
+        id
+      }
+    }
+  }
+`;
+
+const CLEAR_CHANNEL_OVERRIDE_TEMPLATES = `
+  mutation ClearChannelOverrideTemplates($input: ClearChannelOverrideTemplatesInput!) {
+    clearChannelOverrideTemplates(input: $input) {
       success
       updated
       channels {
@@ -310,6 +334,31 @@ export function useApplyChannelOverrideTemplate() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.templates.messages.applySuccess', { count: data.updated }));
+    },
+  });
+}
+
+export function useClearChannelOverrideTemplates() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async (input: ClearChannelOverrideTemplatesInput) => {
+      try {
+        const data = await graphqlRequest<{ clearChannelOverrideTemplates: ClearChannelOverrideTemplatesPayload }>(
+          CLEAR_CHANNEL_OVERRIDE_TEMPLATES,
+          { input }
+        );
+        return clearChannelOverrideTemplatesPayloadSchema.parse(data.clearChannelOverrideTemplates);
+      } catch (error) {
+        handleError(error, { context: 'Clear Channel Templates' });
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      toast.success(t('channels.templates.messages.clearSuccess', { count: data.updated }));
     },
   });
 }
