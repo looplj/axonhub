@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon, DoubleArrowRightIcon } from '@radix-ui/react-icons';
 import { Layers, Copy, Check, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,12 @@ export function ChunksDialog({ open, onOpenChange, chunks, title, isLive }: Chun
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageInputValue, setPageInputValue] = useState('1');
   const [copied, setCopied] = useState(false);
+  const chunksPageRef = useRef(chunksPage);
+
+  // Keep ref in sync so live auto-scroll can read the current page
+  useEffect(() => {
+    chunksPageRef.current = chunksPage;
+  }, [chunksPage]);
 
   const handleCopyAll = async () => {
     try {
@@ -94,13 +100,14 @@ export function ChunksDialog({ open, onOpenChange, chunks, title, isLive }: Chun
     }
   }, [handlePageInputBlur]);
 
-  // Reset page when chunks change
+  // Reset page when dialog opens or chunks identity changes.
+  // Keep chunksPage out of deps so manual page navigation is not reverted.
   useEffect(() => {
     if (open && chunks.length > 0) {
-      // When live, auto-navigate to last page if user was on the last page
       if (isLive) {
         const newTotalPages = Math.ceil(chunks.length / pageSize);
-        if (chunksPage >= totalChunksPages || chunksPage === 1) {
+        // totalChunksPages is already re-computed in this render (depends on chunks.length + pageSize)
+        if (chunksPageRef.current >= totalChunksPages || chunksPageRef.current === 1) {
           setChunksPage(newTotalPages);
           setPageInputValue(String(newTotalPages));
         }
@@ -109,7 +116,7 @@ export function ChunksDialog({ open, onOpenChange, chunks, title, isLive }: Chun
         setPageInputValue('1');
       }
     }
-  }, [open, chunks.length, isLive, pageSize, chunksPage, totalChunksPages]);
+  }, [open, chunks.length, isLive, pageSize]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
