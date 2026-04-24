@@ -431,15 +431,38 @@ type StreamDelta struct {
 func (d StreamDelta) MarshalJSON() ([]byte, error) {
 	type deltaAlias StreamDelta
 
-	if lo.FromPtr(d.Type) == "thinking_delta" {
+	switch lo.FromPtr(d.Type) {
+	case "thinking":
+		type thinkingBlock struct {
+			Type      *string `json:"type,omitempty"`
+			Thinking  string  `json:"thinking"`
+			Signature string  `json:"signature"`
+		}
+
+		return json.Marshal(thinkingBlock{
+			Type:      d.Type,
+			Thinking:  lo.FromPtr(d.Thinking),
+			Signature: lo.FromPtr(d.Signature),
+		})
+	case "thinking_delta":
 		type thinkingDelta struct {
 			Type     *string `json:"type,omitempty"`
-			Thinking *string `json:"thinking,omitempty"`
+			Thinking string  `json:"thinking"`
 		}
 
 		return json.Marshal(thinkingDelta{
 			Type:     d.Type,
-			Thinking: d.Thinking,
+			Thinking: lo.FromPtr(d.Thinking),
+		})
+	case "signature_delta":
+		type signatureDelta struct {
+			Type      *string `json:"type,omitempty"`
+			Signature string  `json:"signature"`
+		}
+
+		return json.Marshal(signatureDelta{
+			Type:      d.Type,
+			Signature: lo.FromPtr(d.Signature),
 		})
 	}
 
