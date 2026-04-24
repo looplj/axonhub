@@ -45,7 +45,13 @@
           "display_name": "Qwen3.6 Plus",
           "extra_capabilities": {
             "reasoning": {
-              "supported": true
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -87,7 +93,13 @@
           "display_name": "Qwen3.5 397B-A17B",
           "extra_capabilities": {
             "reasoning": {
-              "supported": true
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -129,7 +141,13 @@
           "display_name": "Qwen3.5 Plus",
           "extra_capabilities": {
             "reasoning": {
-              "supported": true
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -140,7 +158,7 @@
           "family": "qwen",
           "attachment": false,
           "reasoning": {
-            "supported": false
+            "supported": true
           },
           "tool_call": true,
           "temperature": true,
@@ -165,6 +183,17 @@
             "output": 65536
           },
           "display_name": "Qwen3 Max",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -206,6 +235,17 @@
             "output": 32768
           },
           "display_name": "Qwen3 VL Plus",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -285,6 +325,17 @@
             "output": 16384
           },
           "display_name": "Qwen3-Omni Flash",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -398,7 +449,13 @@
           "display_name": "Qwen3 Next 80B A3B Thinking",
           "extra_capabilities": {
             "reasoning": {
-              "supported": true
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -473,6 +530,17 @@
             "output": 32768
           },
           "display_name": "Qwen Flash",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "search": {
             "supported": true,
             "default": false,
@@ -623,6 +691,17 @@
             "output": 32768
           },
           "display_name": "Qwen3 235B A22B",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -663,6 +742,17 @@
             "output": 8192
           },
           "display_name": "Qwen3 8B",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -703,6 +793,17 @@
             "output": 16384
           },
           "display_name": "Qwen3 32B",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -739,6 +840,17 @@
             "output": 32768
           },
           "display_name": "Qwen3-VL 235B-A22B",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -775,6 +887,17 @@
             "output": 32768
           },
           "display_name": "Qwen3-VL 30B-A3B",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -881,6 +1004,17 @@
             "output": 8192
           },
           "display_name": "Qwen3 14B",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -955,6 +1089,17 @@
             "output": 8192
           },
           "display_name": "QwQ Plus",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "search": {
             "supported": true,
             "default": false,
@@ -1144,6 +1289,17 @@
             "output": 16384
           },
           "display_name": "Qwen Turbo",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "search": {
             "supported": true,
             "default": false,
@@ -1531,6 +1687,17 @@
             "output": 32768
           },
           "display_name": "Qwen Plus",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "search": {
             "supported": true,
             "default": false,
@@ -1734,6 +1901,17 @@
             "forced_search": false,
             "search_strategy": "turbo"
           },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -1794,6 +1972,17 @@
             "forced_search": false,
             "search_strategy": "turbo"
           },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -1829,6 +2018,17 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
           },
           "type": "chat"
         },
@@ -1890,6 +2090,17 @@
             "forced_search": false,
             "search_strategy": "turbo"
           },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -1925,6 +2136,17 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
           },
           "type": "chat"
         },
@@ -2116,13 +2338,24 @@
             "output": 65536
           },
           "reasoning": {
-            "supported": false
+            "supported": true
           },
           "search": {
             "supported": true,
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
           },
           "type": "chat"
         },
@@ -2156,7 +2389,13 @@
           },
           "extra_capabilities": {
             "reasoning": {
-              "supported": true
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -2237,6 +2476,17 @@
               "default": 81920
             }
           },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -2265,6 +2515,17 @@
               "min": 0,
               "max": 81920,
               "default": 81920
+            }
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -2297,6 +2558,17 @@
               "default": 38912
             }
           },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -2325,6 +2597,17 @@
               "min": 0,
               "max": 30720,
               "default": 30720
+            }
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -2357,6 +2640,17 @@
               "default": 30720
             }
           },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -2386,6 +2680,17 @@
               "min": 0,
               "max": 81920,
               "default": 81920
+            }
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           },
           "type": "chat"
@@ -2420,6 +2725,17 @@
           },
           "search": {
             "supported": false
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
           },
           "type": "chat"
         },
@@ -2555,9 +2871,69 @@
       "id": "deepseek",
       "api": "https://api.deepseek.com",
       "name": "DeepSeek",
-      "doc": "https://platform.deepseek.com/api-docs/pricing",
+      "doc": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing",
       "display_name": "DeepSeek",
       "models": [
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro",
+          "family": "deepseek",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-05",
+          "release_date": "2026-04-24",
+          "last_updated": "2026-04-24",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 1.74,
+            "output": 3.48,
+            "cache_read": 0.145
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 393216
+          },
+          "display_name": "DeepSeek V4 Pro",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "effort_options": [
+                "high",
+                "max"
+              ],
+              "notes": [
+                "Thinking mode is controlled through the thinking parameter; non-thinking mode disables reasoning."
+              ],
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "high"
+            }
+          },
+          "type": "chat"
+        },
         {
           "id": "deepseek-reasoner",
           "name": "DeepSeek Reasoner",
@@ -2571,10 +2947,10 @@
           "interleaved": {
             "field": "reasoning_content"
           },
-          "temperature": true,
-          "knowledge": "2024-07",
+          "temperature": false,
+          "knowledge": "2025-09",
           "release_date": "2025-01-20",
-          "last_updated": "2025-08-21",
+          "last_updated": "2026-04-24",
           "modalities": {
             "input": [
               "text"
@@ -2583,17 +2959,22 @@
               "text"
             ]
           },
-          "open_weights": false,
+          "open_weights": true,
           "cost": {
-            "input": 0.57,
-            "output": 1.68,
-            "cache_read": 0.07
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.028
           },
           "limit": {
-            "context": 128000,
-            "output": 64000
+            "context": 1048576,
+            "output": 393216
           },
           "display_name": "DeepSeek Reasoner",
+          "metadata": {
+            "alias_of": "deepseek-v4-flash",
+            "mode": "thinking",
+            "lifecycle": "compatibility"
+          },
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -2602,9 +2983,20 @@
               "visibility": "summary",
               "continuation": [
                 "thinking_blocks"
-              ]
+              ],
+              "effort_options": [
+                "high",
+                "max"
+              ],
+              "notes": [
+                "Compatibility alias for deepseek-v4-flash thinking mode."
+              ],
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "high"
             }
           },
+          "structured_output": true,
           "type": "chat"
         },
         {
@@ -2617,9 +3009,9 @@
           },
           "tool_call": true,
           "temperature": true,
-          "knowledge": "2024-07",
+          "knowledge": "2025-09",
           "release_date": "2024-12-26",
-          "last_updated": "2025-08-21",
+          "last_updated": "2026-04-24",
           "modalities": {
             "input": [
               "text"
@@ -2628,17 +3020,81 @@
               "text"
             ]
           },
-          "open_weights": false,
+          "open_weights": true,
           "cost": {
-            "input": 0.57,
-            "output": 1.68,
-            "cache_read": 0.07
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.028
           },
           "limit": {
-            "context": 128000,
-            "output": 8192
+            "context": 1048576,
+            "output": 393216
           },
           "display_name": "DeepSeek Chat",
+          "metadata": {
+            "alias_of": "deepseek-v4-flash",
+            "mode": "non-thinking",
+            "lifecycle": "compatibility"
+          },
+          "structured_output": true,
+          "type": "chat"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash",
+          "family": "deepseek",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "temperature": true,
+          "tool_call": true,
+          "structured_output": true,
+          "last_updated": "2026-04-24",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.028
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 393216
+          },
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "effort_options": [
+                "high",
+                "max"
+              ],
+              "notes": [
+                "Thinking mode is controlled through the thinking parameter; non-thinking mode disables reasoning."
+              ],
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "high"
+            }
+          },
+          "display_name": "DeepSeek V4 Flash",
           "type": "chat"
         }
       ]
@@ -3358,9 +3814,61 @@
       "display_name": "Moonshot AI (China)",
       "models": [
         {
+          "id": "kimi-k2.6",
+          "name": "Kimi K2.6",
+          "family": "kimi-k2.6",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-04-21",
+          "last_updated": "2026-04-21",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.95,
+            "output": 4,
+            "cache_read": 0.16
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Kimi K2.6",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          }
+        },
+        {
           "id": "kimi-k2.5",
           "name": "Kimi K2.5",
-          "family": "kimi",
+          "family": "kimi-k2.5",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -5146,6 +5654,82 @@
       "doc": "https://platform.openai.com/docs/models",
       "display_name": "OpenAI",
       "models": [
+        {
+          "id": "gpt-5.5",
+          "name": "GPT-5.5",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2025-12-01",
+          "release_date": "2026-04-23",
+          "last_updated": "2026-04-23",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cache_read": 0.5
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 920000,
+            "output": 130000
+          },
+          "experimental": {
+            "modes": {
+              "fast": {
+                "cost": {
+                  "input": 12.5,
+                  "output": 75,
+                  "cache_read": 1.25
+                },
+                "provider": {
+                  "body": {
+                    "service_tier": "priority"
+                  }
+                }
+              }
+            }
+          },
+          "display_name": "GPT-5.5",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "medium",
+              "effort_options": [
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ],
+              "verbosity": "medium",
+              "verbosity_options": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "visibility": "hidden"
+            }
+          }
+        },
         {
           "id": "gpt-5.4-mini",
           "name": "GPT-5.4 mini",
@@ -8647,7 +9231,13 @@
           "type": "chat",
           "extra_capabilities": {
             "reasoning": {
-              "supported": true
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           }
         },
@@ -8684,7 +9274,18 @@
             "output": 131072
           },
           "display_name": "MiniMax-M2.7-highspeed",
-          "type": "chat"
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          }
         },
         {
           "id": "MiniMax-M2.5-highspeed",
@@ -8882,7 +9483,7 @@
           "type": "chat"
         },
         {
-          "id": "gemma-4-26b-it",
+          "id": "gemma-4-26b-a4b-it",
           "name": "Gemma 4 26B",
           "family": "gemma",
           "attachment": false,
@@ -10193,7 +10794,12 @@
           "cost": {
             "input": 1.25,
             "output": 10,
-            "cache_read": 0.31
+            "cache_read": 0.125,
+            "context_over_200k": {
+              "input": 2.5,
+              "output": 15,
+              "cache_read": 0.25
+            }
           },
           "limit": {
             "context": 1048576,
@@ -10258,7 +10864,7 @@
           "cost": {
             "input": 0.3,
             "output": 2.5,
-            "cache_read": 0.075,
+            "cache_read": 0.03,
             "input_audio": 1
           },
           "limit": {
@@ -12206,12 +12812,155 @@
         }
       ]
     },
+    "meta": {
+      "id": "meta",
+      "api": "https://api.llama.com/compat/v1/",
+      "name": "Meta",
+      "doc": "https://llama.developer.meta.com/docs/models",
+      "display_name": "Meta",
+      "models": [
+        {
+          "id": "llama-4-scout-17b-16e-instruct-fp8",
+          "name": "Llama-4-Scout-17B-16E-Instruct-FP8",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-04-05",
+          "last_updated": "2025-04-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-4-Scout-17B-16E-Instruct-FP8",
+          "type": "chat"
+        },
+        {
+          "id": "llama-4-maverick-17b-128e-instruct-fp8",
+          "name": "Llama-4-Maverick-17B-128E-Instruct-FP8",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-04-05",
+          "last_updated": "2025-04-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-4-Maverick-17B-128E-Instruct-FP8",
+          "type": "chat"
+        },
+        {
+          "id": "llama-3.3-70b-instruct",
+          "name": "Llama-3.3-70B-Instruct",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2023-12",
+          "release_date": "2024-12-06",
+          "last_updated": "2024-12-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-3.3-70B-Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "llama-3.3-8b-instruct",
+          "name": "Llama-3.3-8B-Instruct",
+          "family": "llama",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2023-12",
+          "release_date": "2024-12-06",
+          "last_updated": "2024-12-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama-3.3-8B-Instruct",
+          "type": "chat"
+        }
+      ]
+    },
     "bytedance": {
       "id": "bytedance",
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-04-17T12:29:50Z",
+      "updated_at": "2026-04-23T03:40:04Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -12227,7 +12976,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -12278,7 +13027,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -12329,7 +13078,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -12377,7 +13126,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -12425,7 +13174,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12472,7 +13221,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12515,7 +13264,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12560,7 +13309,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12624,7 +13373,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12687,7 +13436,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12750,7 +13499,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12812,7 +13561,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12873,7 +13622,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -12917,7 +13666,7 @@
               "最大 RPM: 30000",
               "最大 TPM: 5000000",
               "最大回答(默认 4k):32k",
-              "最大思维链: 32k",
+              "最大思��链: 32k",
               "最大输入: 224k"
             ],
             "features": [
@@ -12937,7 +13686,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13000,7 +13749,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13060,7 +13809,8 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "structured_output": true,
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13094,6 +13844,7 @@
               "工具调用",
               "文本生成",
               "深度思考",
+              "结构化输出",
               "视觉定位"
             ],
             "raw_limits": [
@@ -13121,7 +13872,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13183,7 +13934,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13242,7 +13993,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13294,7 +14045,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13354,7 +14105,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13399,7 +14150,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13439,7 +14190,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13479,7 +14230,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13521,7 +14272,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13563,7 +14314,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13607,7 +14358,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13649,7 +14400,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13691,7 +14442,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13726,7 +14477,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -13755,7 +14506,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -13784,7 +14535,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13822,7 +14573,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-17T12:29:50Z",
+          "last_updated": "2026-04-23T03:40:04Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14182,149 +14933,6 @@
           },
           "vision": false,
           "family": "kat-coder"
-        }
-      ]
-    },
-    "meta": {
-      "id": "meta",
-      "api": "https://api.llama.com/compat/v1/",
-      "name": "Meta",
-      "doc": "https://llama.developer.meta.com/docs/models",
-      "display_name": "Meta",
-      "models": [
-        {
-          "id": "llama-4-scout-17b-16e-instruct-fp8",
-          "name": "Llama-4-Scout-17B-16E-Instruct-FP8",
-          "family": "llama",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2025-04-05",
-          "last_updated": "2025-04-05",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "limit": {
-            "context": 128000,
-            "output": 4096
-          },
-          "display_name": "Llama-4-Scout-17B-16E-Instruct-FP8",
-          "type": "chat"
-        },
-        {
-          "id": "llama-4-maverick-17b-128e-instruct-fp8",
-          "name": "Llama-4-Maverick-17B-128E-Instruct-FP8",
-          "family": "llama",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2025-04-05",
-          "last_updated": "2025-04-05",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "limit": {
-            "context": 128000,
-            "output": 4096
-          },
-          "display_name": "Llama-4-Maverick-17B-128E-Instruct-FP8",
-          "type": "chat"
-        },
-        {
-          "id": "llama-3.3-70b-instruct",
-          "name": "Llama-3.3-70B-Instruct",
-          "family": "llama",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2023-12",
-          "release_date": "2024-12-06",
-          "last_updated": "2024-12-06",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "limit": {
-            "context": 128000,
-            "output": 4096
-          },
-          "display_name": "Llama-3.3-70B-Instruct",
-          "type": "chat"
-        },
-        {
-          "id": "llama-3.3-8b-instruct",
-          "name": "Llama-3.3-8B-Instruct",
-          "family": "llama",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2023-12",
-          "release_date": "2024-12-06",
-          "last_updated": "2024-12-06",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "limit": {
-            "context": 128000,
-            "output": 4096
-          },
-          "display_name": "Llama-3.3-8B-Instruct",
-          "type": "chat"
         }
       ]
     }
