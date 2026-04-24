@@ -402,11 +402,11 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 					Type:     "thinking",
 					Thinking: thinkingContent,
 				}
-				if message.ReasoningSignature != nil {
-					thinkingBlock.Signature = message.ReasoningSignature
-				} else {
-					thinkingBlock.Signature = lo.ToPtr("")
-				}
+			if message.ReasoningSignature != nil {
+				thinkingBlock.Signature = message.ReasoningSignature
+			} else {
+				thinkingBlock.Signature = lo.ToPtr(generateSignature())
+			}
 
 				contentBlocks = append(contentBlocks, thinkingBlock)
 			}

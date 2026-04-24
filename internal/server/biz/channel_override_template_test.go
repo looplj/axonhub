@@ -284,7 +284,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SetSettings(&objects.ChannelSettings{}).
 			SaveX(ctx)
 
-		updated, err := service.ApplyTemplate(ctx, template.ID, []int{ch1.ID, ch2.ID})
+		updated, err := service.ApplyTemplate(ctx, template.ID, []int{ch1.ID, ch2.ID}, ApplyTemplateModeMerge)
 
 		require.NoError(t, err)
 		require.Len(t, updated, 2)
@@ -339,7 +339,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			}).
 			SaveX(ctx)
 
-		updated, err := service.ApplyTemplate(ctx, templateNew.ID, []int{ch.ID})
+		updated, err := service.ApplyTemplate(ctx, templateNew.ID, []int{ch.ID}, ApplyTemplateModeMerge)
 
 		require.NoError(t, err)
 		require.Len(t, updated, 1)
@@ -357,7 +357,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 	})
 
 	t.Run("reject non-existent channel", func(t *testing.T) {
-		_, err := service.ApplyTemplate(ctx, template.ID, []int{999999})
+		_, err := service.ApplyTemplate(ctx, template.ID, []int{999999}, ApplyTemplateModeMerge)
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "not found")
@@ -375,7 +375,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			SaveX(ctx)
 
 		// Try to apply to valid and non-existent channel
-		_, err := service.ApplyTemplate(ctx, template.ID, []int{ch.ID, 999999})
+		_, err := service.ApplyTemplate(ctx, template.ID, []int{ch.ID, 999999}, ApplyTemplateModeMerge)
 
 		// Should fail and rollback
 		require.Error(t, err)
@@ -387,6 +387,139 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 			require.Empty(t, reloaded.Settings.BodyOverrideOperations)
 			require.Empty(t, reloaded.Settings.HeaderOverrideOperations)
 		}
+	})
+
+	t.Run("apply template with replace mode", func(t *testing.T) {
+		// Create a channel with existing operations
+		ch := client.Channel.Create().
+			SetName("Replace Test Channel").
+			SetType(channel.TypeOpenai).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetSettings(&objects.ChannelSettings{
+				BodyOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.7"},
+					{Op: objects.OverrideOpSet, Path: "top_p", Value: "0.9"},
+				},
+				HeaderOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer old-token"},
+				},
+			}).
+			SaveX(ctx)
+
+		updated, err := service.ApplyTemplate(ctx, template.ID, []int{ch.ID}, ApplyTemplateModeReplace)
+
+		require.NoError(t, err)
+		require.Len(t, updated, 1)
+
+		// Verify existing operations are replaced by template operations only
+		require.Len(t, updated[0].Settings.BodyOverrideOperations, 2)
+		require.Contains(t, updated[0].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.9"})
+		require.Contains(t, updated[0].Settings.BodyOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "max_tokens", Value: "2000"})
+		// Ensure old operations are gone
+		for _, op := range updated[0].Settings.BodyOverrideOperations {
+			require.NotEqual(t, "top_p", op.Path)
+		}
+
+		require.Len(t, updated[0].Settings.HeaderOverrideOperations, 1)
+		require.Contains(t, updated[0].Settings.HeaderOverrideOperations, objects.OverrideOperation{Op: objects.OverrideOpSet, Path: "X-Custom-Header", Value: "custom-value"})
+		// Ensure old header is replaced
+		for _, op := range updated[0].Settings.HeaderOverrideOperations {
+			require.NotEqual(t, "Authorization", op.Path)
+		}
+
+		// Legacy fields should be cleared
+		require.Empty(t, updated[0].Settings.OverrideParameters)
+		require.Empty(t, updated[0].Settings.OverrideHeaders)
+	})
+}
+
+func TestChannelOverrideTemplateService_ClearTemplates(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	service := NewChannelOverrideTemplateService(ChannelOverrideTemplateServiceParams{
+		Client:         client,
+		ChannelService: nil,
+	})
+
+	t.Run("clear templates from channels with override operations", func(t *testing.T) {
+		// Create channels with existing override operations
+		ch1 := client.Channel.Create().
+			SetName("Clear Test 1").
+			SetType(channel.TypeOpenai).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetSettings(&objects.ChannelSettings{
+				BodyOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "temperature", Value: "0.7"},
+				},
+				HeaderOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"},
+				},
+			}).
+			SaveX(ctx)
+
+		ch2 := client.Channel.Create().
+			SetName("Clear Test 2").
+			SetType(channel.TypeOpenai).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetSettings(&objects.ChannelSettings{
+				BodyOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "max_tokens", Value: "1000"},
+				},
+			}).
+			SaveX(ctx)
+
+		updated, err := service.ClearTemplates(ctx, []int{ch1.ID, ch2.ID})
+		require.NoError(t, err)
+		require.Len(t, updated, 2)
+
+		// Verify ch1 is cleared
+		require.Empty(t, updated[0].Settings.BodyOverrideOperations)
+		require.Empty(t, updated[0].Settings.HeaderOverrideOperations)
+		require.Empty(t, updated[0].Settings.OverrideParameters)
+		require.Empty(t, updated[0].Settings.OverrideHeaders)
+
+		// Verify ch2 is cleared
+		require.Empty(t, updated[1].Settings.BodyOverrideOperations)
+		require.Empty(t, updated[1].Settings.HeaderOverrideOperations)
+		require.Empty(t, updated[1].Settings.OverrideParameters)
+		require.Empty(t, updated[1].Settings.OverrideHeaders)
+	})
+
+	t.Run("clear templates from channel with no override operations", func(t *testing.T) {
+		ch := client.Channel.Create().
+			SetName("Empty Channel").
+			SetType(channel.TypeOpenai).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetSettings(&objects.ChannelSettings{}).
+			SaveX(ctx)
+
+		updated, err := service.ClearTemplates(ctx, []int{ch.ID})
+		require.NoError(t, err)
+		require.Len(t, updated, 1)
+
+		require.Empty(t, updated[0].Settings.BodyOverrideOperations)
+		require.Empty(t, updated[0].Settings.HeaderOverrideOperations)
+	})
+
+	t.Run("reject non-existent channel", func(t *testing.T) {
+		_, err := service.ClearTemplates(ctx, []int{999999})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not found")
 	})
 }
 

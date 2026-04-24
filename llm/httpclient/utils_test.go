@@ -398,6 +398,32 @@ func TestMergeInboundRequest(t *testing.T) {
 		require.Equal(t, "Test/1.0", got.Headers.Get("User-Agent"))
 	})
 
+	t.Run("should block hop-by-hop headers from inbound request", func(t *testing.T) {
+		dest := &Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Query:   url.Values{},
+		}
+		src := &Request{
+			Headers: http.Header{
+				"Upgrade":          []string{"h2c"},
+				"Keep-Alive":       []string{"timeout=5"},
+				"Te":               []string{"trailers"},
+				"Trailer":          []string{"X-Trailer"},
+				"Proxy-Connection": []string{"keep-alive"},
+				"User-Agent":       []string{"Test/1.0"},
+			},
+			Query: url.Values{},
+		}
+
+		got := MergeInboundRequest(dest, src)
+		require.Empty(t, got.Headers.Get("Upgrade"))
+		require.Empty(t, got.Headers.Get("Keep-Alive"))
+		require.Empty(t, got.Headers.Get("Te"))
+		require.Empty(t, got.Headers.Get("Trailer"))
+		require.Empty(t, got.Headers.Get("Proxy-Connection"))
+		require.Equal(t, "Test/1.0", got.Headers.Get("User-Agent"))
+	})
+
 	t.Run("should return dest if src is nil", func(t *testing.T) {
 		dest := &Request{Headers: http.Header{"X-Test": []string{"val"}}}
 		got := MergeInboundRequest(dest, nil)

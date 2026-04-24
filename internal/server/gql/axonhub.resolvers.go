@@ -520,16 +520,38 @@ func (r *mutationResolver) DeleteChannelOverrideTemplate(ctx context.Context, id
 func (r *mutationResolver) ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error) {
 	channelIDs := objects.IntGuids(input.ChannelIDs)
 
+	mode := biz.ApplyTemplateModeMerge
+	if input.Mode != nil && *input.Mode == OverrideApplyModeReplace {
+		mode = biz.ApplyTemplateModeReplace
+	}
+
 	updatedChannels, err := r.channelOverrideTemplateService.ApplyTemplate(
 		ctx,
 		input.TemplateID.ID,
 		channelIDs,
+		mode,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply template: %w", err)
 	}
 
 	return &ApplyChannelOverrideTemplatePayload{
+		Success:  true,
+		Updated:  len(updatedChannels),
+		Channels: updatedChannels,
+	}, nil
+}
+
+// ClearChannelOverrideTemplates is the resolver for the clearChannelOverrideTemplates field.
+func (r *mutationResolver) ClearChannelOverrideTemplates(ctx context.Context, input ClearChannelOverrideTemplatesInput) (*ClearChannelOverrideTemplatesPayload, error) {
+	channelIDs := objects.IntGuids(input.ChannelIDs)
+
+	updatedChannels, err := r.channelOverrideTemplateService.ClearTemplates(ctx, channelIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear templates: %w", err)
+	}
+
+	return &ClearChannelOverrideTemplatesPayload{
 		Success:  true,
 		Updated:  len(updatedChannels),
 		Channels: updatedChannels,
@@ -761,3 +783,15 @@ func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *mutationResolver) ClearChannelOverrideTemplates(ctx context.Context, input ClearChannelOverrideTemplatesInput) (*ClearChannelOverrideTemplatesPayload, error) {
+	panic(fmt.Errorf("not implemented: ClearChannelOverrideTemplates - clearChannelOverrideTemplates"))
+}
+*/
