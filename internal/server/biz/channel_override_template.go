@@ -145,11 +145,22 @@ func (svc *ChannelOverrideTemplateService) GetTemplate(ctx context.Context, id i
 	return template, nil
 }
 
+// ApplyTemplateMode specifies how to apply a template to channels.
+type ApplyTemplateMode string
+
+const (
+	// ApplyTemplateModeMerge merges template operations with existing channel operations.
+	ApplyTemplateModeMerge ApplyTemplateMode = "MERGE"
+	// ApplyTemplateModeReplace clears existing operations then applies template operations.
+	ApplyTemplateModeReplace ApplyTemplateMode = "REPLACE"
+)
+
 // ApplyTemplate applies the template to the given channels atomically.
 func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 	ctx context.Context,
 	templateID int,
 	channelIDs []int,
+	mode ApplyTemplateMode,
 ) (updated []*ent.Channel, err error) {
 	db := svc.entFromContext(ctx)
 
@@ -181,24 +192,85 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 				settings = *ch.Settings
 			}
 
-			// Get existing header operations from channel settings
-			existingHeaderOps := getHeaderOverrideOperations(&settings)
+			var (
+				newHeaderOps []objects.OverrideOperation
+				newBodyOps   []objects.OverrideOperation
+			)
 
-			// Merge template header operations with existing channel header operations
-			mergedHeaderOps := MergeOverrideHeaders(existingHeaderOps, template.HeaderOverrideOperations)
-			settings.HeaderOverrideOperations = mergedHeaderOps
+			if mode == ApplyTemplateModeReplace {
+				// Replace mode: use template operations directly, ignoring existing
+				newHeaderOps = template.HeaderOverrideOperations
+				newBodyOps = template.BodyOverrideOperations
+			} else {
+				// Default: merge mode
+				existingHeaderOps := getHeaderOverrideOperations(&settings)
+				newHeaderOps = MergeOverrideHeaders(existingHeaderOps, template.HeaderOverrideOperations)
 
-			// Clear legacy header field
+				existingBodyOps := getBodyOverrideOperations(&settings)
+				newBodyOps = MergeOverrideOperations(existingBodyOps, template.BodyOverrideOperations)
+			}
+
+			settings.HeaderOverrideOperations = newHeaderOps
 			settings.OverrideHeaders = nil
 
-			// Get existing body operations from channel settings
-			existingBodyOps := getBodyOverrideOperations(&settings)
+			settings.BodyOverrideOperations = newBodyOps
+			settings.OverrideParameters = ""
 
-			// Merge template body operations with existing channel body operations
-			mergedBodyOps := MergeOverrideOperations(existingBodyOps, template.BodyOverrideOperations)
-			settings.BodyOverrideOperations = mergedBodyOps
+			updatedChannel, err := db.Channel.UpdateOneID(ch.ID).
+				SetSettings(&settings).
+				Save(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to update channel %s: %w", ch.Name, err)
+			}
 
-			// Clear legacy body parameters field
+			updated = append(updated, updatedChannel)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if svc.channelService != nil {
+		svc.channelService.asyncReloadChannels()
+	}
+
+	return updated, nil
+}
+
+// ClearTemplates clears header and body override operations from the given channels.
+func (svc *ChannelOverrideTemplateService) ClearTemplates(
+	ctx context.Context,
+	channelIDs []int,
+) (updated []*ent.Channel, err error) {
+	db := svc.entFromContext(ctx)
+
+	channels, err := db.Channel.Query().
+		Where(channel.IDIn(channelIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	if len(channels) != len(channelIDs) {
+		return nil, fmt.Errorf("some channels not found for provided IDs")
+	}
+
+	updated = make([]*ent.Channel, 0, len(channels))
+
+	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
+		db := svc.entFromContext(ctx)
+
+		for _, ch := range channels {
+			settings := objects.ChannelSettings{}
+			if ch.Settings != nil {
+				settings = *ch.Settings
+			}
+
+			settings.HeaderOverrideOperations = nil
+			settings.OverrideHeaders = nil
+			settings.BodyOverrideOperations = nil
 			settings.OverrideParameters = ""
 
 			updatedChannel, err := db.Channel.UpdateOneID(ch.ID).

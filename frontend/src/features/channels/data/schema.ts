@@ -675,4 +675,6 @@ export type {
   UpdateChannelOverrideTemplateInput,
   ApplyChannelOverrideTemplateInput,
   ApplyChannelOverrideTemplatePayload,
+  ClearChannelOverrideTemplatesInput,
+  ClearChannelOverrideTemplatesPayload,
 } from './templates';
