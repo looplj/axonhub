@@ -242,10 +242,15 @@ func TestNanoGPT_CheckQuota_NullWindow(t *testing.T) {
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
 
-	_, hasDaily := quota.RawData["dailyInputTokens"]
+	windowsRaw, ok := quota.RawData["windows"]
+	require.True(t, ok)
+	windowsMap, ok := windowsRaw.(map[string]any)
+	require.True(t, ok)
+
+	_, hasDaily := windowsMap["dailyInputTokens"]
 	require.False(t, hasDaily)
 
-	_, hasWeekly := quota.RawData["weeklyInputTokens"]
+	_, hasWeekly := windowsMap["weeklyInputTokens"]
 	require.True(t, hasWeekly)
 
 	require.NotNil(t, quota.NextResetAt)

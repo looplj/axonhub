@@ -155,16 +155,22 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["period"] = convertNanoGPTPeriodToMap(response.Period)
 	}
 
+	windows := map[string]any{}
+
 	if response.DailyImages != nil {
-		rawData["dailyImages"] = convertNanoGPTWindowToMap(response.DailyImages)
+		windows["dailyImages"] = convertNanoGPTWindowToMap(response.DailyImages)
 	}
 
 	if response.DailyInputTokens != nil {
-		rawData["dailyInputTokens"] = convertNanoGPTWindowToMap(response.DailyInputTokens)
+		windows["dailyInputTokens"] = convertNanoGPTWindowToMap(response.DailyInputTokens)
 	}
 
 	if response.WeeklyInputTokens != nil {
-		rawData["weeklyInputTokens"] = convertNanoGPTWindowToMap(response.WeeklyInputTokens)
+		windows["weeklyInputTokens"] = convertNanoGPTWindowToMap(response.WeeklyInputTokens)
+	}
+
+	if len(windows) > 0 {
+		rawData["windows"] = windows
 	}
 
 	if response.GraceUntil != nil {
