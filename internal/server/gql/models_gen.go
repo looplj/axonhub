@@ -121,13 +121,14 @@ type ChannelPerformanceStat struct {
 }
 
 type ChannelSuccessRate struct {
-	ChannelID    objects.GUID `json:"channelId"`
-	ChannelName  string       `json:"channelName"`
-	ChannelType  string       `json:"channelType"`
-	SuccessCount int          `json:"successCount"`
-	FailedCount  int          `json:"failedCount"`
-	TotalCount   int          `json:"totalCount"`
-	SuccessRate  float64      `json:"successRate"`
+	ChannelID       objects.GUID `json:"channelId"`
+	ChannelName     string       `json:"channelName"`
+	ChannelType     string       `json:"channelType"`
+	ChannelDisabled bool         `json:"channelDisabled"`
+	SuccessCount    int          `json:"successCount"`
+	FailedCount     int          `json:"failedCount"`
+	TotalCount      int          `json:"totalCount"`
+	SuccessRate     float64      `json:"successRate"`
 }
 
 type ChannelTypeCount struct {

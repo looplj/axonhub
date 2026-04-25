@@ -463,13 +463,14 @@ type ComplexityRoot struct {
 	}
 
 	ChannelSuccessRate struct {
-		ChannelID    func(childComplexity int) int
-		ChannelName  func(childComplexity int) int
-		ChannelType  func(childComplexity int) int
-		FailedCount  func(childComplexity int) int
-		SuccessCount func(childComplexity int) int
-		SuccessRate  func(childComplexity int) int
-		TotalCount   func(childComplexity int) int
+		ChannelDisabled func(childComplexity int) int
+		ChannelID       func(childComplexity int) int
+		ChannelName     func(childComplexity int) int
+		ChannelType     func(childComplexity int) int
+		FailedCount     func(childComplexity int) int
+		SuccessCount    func(childComplexity int) int
+		SuccessRate     func(childComplexity int) int
+		TotalCount      func(childComplexity int) int
 	}
 
 	ChannelTagsModelAssociation struct {
@@ -1102,7 +1103,7 @@ type ComplexityRoot struct {
 		ChannelOverrideTemplates     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
 		ChannelPerformanceStats      func(childComplexity int) int
 		ChannelProbeData             func(childComplexity int, input biz.GetChannelProbeDataInput) int
-		ChannelSuccessRates          func(childComplexity int) int
+		ChannelSuccessRates          func(childComplexity int, timeWindow *string, limit *int) int
 		Channels                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
 		CheckForUpdate               func(childComplexity int) int
 		CostStatsByAPIKey            func(childComplexity int, timeWindow *string) int
@@ -2002,7 +2003,7 @@ type QueryResolver interface {
 	DailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error)
 	TopRequestsProjects(ctx context.Context) ([]*TopRequestsProjects, error)
 	TokenStats(ctx context.Context) (*TokenStats, error)
-	ChannelSuccessRates(ctx context.Context) ([]*ChannelSuccessRate, error)
+	ChannelSuccessRates(ctx context.Context, timeWindow *string, limit *int) ([]*ChannelSuccessRate, error)
 	FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error)
 	FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error)
 	ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error)
@@ -3537,6 +3538,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelSettings.TransformOptions(childComplexity), true
 
+	case "ChannelSuccessRate.channelDisabled":
+		if e.complexity.ChannelSuccessRate.ChannelDisabled == nil {
+			break
+		}
+
+		return e.complexity.ChannelSuccessRate.ChannelDisabled(childComplexity), true
 	case "ChannelSuccessRate.channelId":
 		if e.complexity.ChannelSuccessRate.ChannelID == nil {
 			break
@@ -6627,7 +6634,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.ChannelSuccessRates(childComplexity), true
+		args, err := ec.field_Query_channelSuccessRates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ChannelSuccessRates(childComplexity, args["timeWindow"].(*string), args["limit"].(*int)), true
 	case "Query.channels":
 		if e.complexity.Query.Channels == nil {
 			break
@@ -11781,6 +11793,22 @@ func (ec *executionContext) field_Query_channelProbeData_args(ctx context.Contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_channelSuccessRates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -20409,6 +20437,35 @@ func (ec *executionContext) fieldContext_ChannelSuccessRate_channelType(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSuccessRate_channelDisabled(ctx context.Context, field graphql.CollectedField, obj *ChannelSuccessRate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSuccessRate_channelDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelDisabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSuccessRate_channelDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSuccessRate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -36609,7 +36666,8 @@ func (ec *executionContext) _Query_channelSuccessRates(ctx context.Context, fiel
 		field,
 		ec.fieldContext_Query_channelSuccessRates,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().ChannelSuccessRates(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().ChannelSuccessRates(ctx, fc.Args["timeWindow"].(*string), fc.Args["limit"].(*int))
 		},
 		nil,
 		ec.marshalNChannelSuccessRate2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelSuccessRateᚄ,
@@ -36618,7 +36676,7 @@ func (ec *executionContext) _Query_channelSuccessRates(ctx context.Context, fiel
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_channelSuccessRates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_channelSuccessRates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -36632,6 +36690,8 @@ func (ec *executionContext) fieldContext_Query_channelSuccessRates(_ context.Con
 				return ec.fieldContext_ChannelSuccessRate_channelName(ctx, field)
 			case "channelType":
 				return ec.fieldContext_ChannelSuccessRate_channelType(ctx, field)
+			case "channelDisabled":
+				return ec.fieldContext_ChannelSuccessRate_channelDisabled(ctx, field)
 			case "successCount":
 				return ec.fieldContext_ChannelSuccessRate_successCount(ctx, field)
 			case "failedCount":
@@ -36643,6 +36703,17 @@ func (ec *executionContext) fieldContext_Query_channelSuccessRates(_ context.Con
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSuccessRate", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_channelSuccessRates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -79841,6 +79912,11 @@ func (ec *executionContext) _ChannelSuccessRate(ctx context.Context, sel ast.Sel
 			}
 		case "channelType":
 			out.Values[i] = ec._ChannelSuccessRate_channelType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelDisabled":
+			out.Values[i] = ec._ChannelSuccessRate_channelDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

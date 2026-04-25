@@ -40,6 +40,7 @@ import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedRequestsRequestIdRouteImport } from './routes/_authenticated/requests/$requestId'
+import { Route as AuthenticatedDashboardChannelSuccessRatesRouteImport } from './routes/_authenticated/dashboard/channel-success-rates'
 import { Route as AuthenticatedProjectUsersIndexRouteImport } from './routes/_authenticated/project/users/index'
 import { Route as AuthenticatedProjectTracesIndexRouteImport } from './routes/_authenticated/project/traces/index'
 import { Route as AuthenticatedProjectThreadsIndexRouteImport } from './routes/_authenticated/project/threads/index'
@@ -222,6 +223,12 @@ const AuthenticatedRequestsRequestIdRoute =
     path: '/requests/$requestId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDashboardChannelSuccessRatesRoute =
+  AuthenticatedDashboardChannelSuccessRatesRouteImport.update({
+    id: '/dashboard/channel-success-rates',
+    path: '/dashboard/channel-success-rates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectUsersIndexRoute =
   AuthenticatedProjectUsersIndexRouteImport.update({
     id: '/project/users/',
@@ -290,7 +297,6 @@ const AuthenticatedProjectRequestsRequestIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/initialization': typeof authInitializationRoute
@@ -302,35 +308,37 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/permission': typeof AuthenticatedPermissionRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/api-keys/': typeof AuthenticatedApiKeysIndexRoute
-  '/channels/': typeof AuthenticatedChannelsIndexRoute
-  '/chats/': typeof AuthenticatedChatsIndexRoute
-  '/data-storages/': typeof AuthenticatedDataStoragesIndexRoute
-  '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
-  '/models/': typeof AuthenticatedModelsIndexRoute
-  '/permission-demo/': typeof AuthenticatedPermissionDemoIndexRoute
-  '/projects/': typeof AuthenticatedProjectsIndexRoute
-  '/prompt-protection-rules/': typeof AuthenticatedPromptProtectionRulesIndexRoute
-  '/roles/': typeof AuthenticatedRolesIndexRoute
+  '/api-keys': typeof AuthenticatedApiKeysIndexRoute
+  '/channels': typeof AuthenticatedChannelsIndexRoute
+  '/chats': typeof AuthenticatedChatsIndexRoute
+  '/data-storages': typeof AuthenticatedDataStoragesIndexRoute
+  '/help-center': typeof AuthenticatedHelpCenterIndexRoute
+  '/models': typeof AuthenticatedModelsIndexRoute
+  '/permission-demo': typeof AuthenticatedPermissionDemoIndexRoute
+  '/projects': typeof AuthenticatedProjectsIndexRoute
+  '/prompt-protection-rules': typeof AuthenticatedPromptProtectionRulesIndexRoute
+  '/roles': typeof AuthenticatedRolesIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
-  '/system/': typeof AuthenticatedSystemIndexRoute
-  '/users/': typeof AuthenticatedUsersIndexRoute
+  '/system': typeof AuthenticatedSystemIndexRoute
+  '/users': typeof AuthenticatedUsersIndexRoute
   '/project/requests/$requestId': typeof AuthenticatedProjectRequestsRequestIdRoute
   '/project/threads/$threadId': typeof AuthenticatedProjectThreadsThreadIdRoute
   '/project/traces/$traceId': typeof AuthenticatedProjectTracesTraceIdRoute
-  '/project/api-keys/': typeof AuthenticatedProjectApiKeysIndexRoute
-  '/project/playground/': typeof AuthenticatedProjectPlaygroundIndexRoute
-  '/project/prompts/': typeof AuthenticatedProjectPromptsIndexRoute
-  '/project/requests/': typeof AuthenticatedProjectRequestsIndexRoute
-  '/project/roles/': typeof AuthenticatedProjectRolesIndexRoute
-  '/project/threads/': typeof AuthenticatedProjectThreadsIndexRoute
-  '/project/traces/': typeof AuthenticatedProjectTracesIndexRoute
-  '/project/users/': typeof AuthenticatedProjectUsersIndexRoute
+  '/project/api-keys': typeof AuthenticatedProjectApiKeysIndexRoute
+  '/project/playground': typeof AuthenticatedProjectPlaygroundIndexRoute
+  '/project/prompts': typeof AuthenticatedProjectPromptsIndexRoute
+  '/project/requests': typeof AuthenticatedProjectRequestsIndexRoute
+  '/project/roles': typeof AuthenticatedProjectRolesIndexRoute
+  '/project/threads': typeof AuthenticatedProjectThreadsIndexRoute
+  '/project/traces': typeof AuthenticatedProjectTracesIndexRoute
+  '/project/users': typeof AuthenticatedProjectUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof authForgotPasswordRoute
@@ -344,6 +352,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/permission': typeof AuthenticatedPermissionRoute
   '/': typeof AuthenticatedIndexRoute
+  '/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -389,6 +398,7 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/permission': typeof AuthenticatedPermissionRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/_authenticated/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -422,7 +432,6 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/settings'
     | '/forgot-password'
     | '/initialization'
@@ -434,35 +443,37 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/permission'
+    | '/'
+    | '/dashboard/channel-success-rates'
     | '/requests/$requestId'
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
     | '/settings/profile'
-    | '/api-keys/'
-    | '/channels/'
-    | '/chats/'
-    | '/data-storages/'
-    | '/help-center/'
-    | '/models/'
-    | '/permission-demo/'
-    | '/projects/'
-    | '/prompt-protection-rules/'
-    | '/roles/'
+    | '/api-keys'
+    | '/channels'
+    | '/chats'
+    | '/data-storages'
+    | '/help-center'
+    | '/models'
+    | '/permission-demo'
+    | '/projects'
+    | '/prompt-protection-rules'
+    | '/roles'
     | '/settings/'
-    | '/system/'
-    | '/users/'
+    | '/system'
+    | '/users'
     | '/project/requests/$requestId'
     | '/project/threads/$threadId'
     | '/project/traces/$traceId'
-    | '/project/api-keys/'
-    | '/project/playground/'
-    | '/project/prompts/'
-    | '/project/requests/'
-    | '/project/roles/'
-    | '/project/threads/'
-    | '/project/traces/'
-    | '/project/users/'
+    | '/project/api-keys'
+    | '/project/playground'
+    | '/project/prompts'
+    | '/project/requests'
+    | '/project/roles'
+    | '/project/threads'
+    | '/project/traces'
+    | '/project/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forgot-password'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/permission'
     | '/'
+    | '/dashboard/channel-success-rates'
     | '/requests/$requestId'
     | '/settings/appearance'
     | '/settings/display'
@@ -520,6 +532,7 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/permission'
     | '/_authenticated/'
+    | '/_authenticated/dashboard/channel-success-rates'
     | '/_authenticated/requests/$requestId'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
@@ -569,7 +582,7 @@ declare module '@tanstack/react-router' {
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -660,14 +673,14 @@ declare module '@tanstack/react-router' {
     '/_authenticated/users/': {
       id: '/_authenticated/users/'
       path: '/users'
-      fullPath: '/users/'
+      fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/system/': {
       id: '/_authenticated/system/'
       path: '/system'
-      fullPath: '/system/'
+      fullPath: '/system'
       preLoaderRoute: typeof AuthenticatedSystemIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
@@ -681,70 +694,70 @@ declare module '@tanstack/react-router' {
     '/_authenticated/roles/': {
       id: '/_authenticated/roles/'
       path: '/roles'
-      fullPath: '/roles/'
+      fullPath: '/roles'
       preLoaderRoute: typeof AuthenticatedRolesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/prompt-protection-rules/': {
       id: '/_authenticated/prompt-protection-rules/'
       path: '/prompt-protection-rules'
-      fullPath: '/prompt-protection-rules/'
+      fullPath: '/prompt-protection-rules'
       preLoaderRoute: typeof AuthenticatedPromptProtectionRulesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/projects/': {
       id: '/_authenticated/projects/'
       path: '/projects'
-      fullPath: '/projects/'
+      fullPath: '/projects'
       preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/permission-demo/': {
       id: '/_authenticated/permission-demo/'
       path: '/permission-demo'
-      fullPath: '/permission-demo/'
+      fullPath: '/permission-demo'
       preLoaderRoute: typeof AuthenticatedPermissionDemoIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/models/': {
       id: '/_authenticated/models/'
       path: '/models'
-      fullPath: '/models/'
+      fullPath: '/models'
       preLoaderRoute: typeof AuthenticatedModelsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/help-center/': {
       id: '/_authenticated/help-center/'
       path: '/help-center'
-      fullPath: '/help-center/'
+      fullPath: '/help-center'
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/data-storages/': {
       id: '/_authenticated/data-storages/'
       path: '/data-storages'
-      fullPath: '/data-storages/'
+      fullPath: '/data-storages'
       preLoaderRoute: typeof AuthenticatedDataStoragesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/chats/': {
       id: '/_authenticated/chats/'
       path: '/chats'
-      fullPath: '/chats/'
+      fullPath: '/chats'
       preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/channels/': {
       id: '/_authenticated/channels/'
       path: '/channels'
-      fullPath: '/channels/'
+      fullPath: '/channels'
       preLoaderRoute: typeof AuthenticatedChannelsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/api-keys/': {
       id: '/_authenticated/api-keys/'
       path: '/api-keys'
-      fullPath: '/api-keys/'
+      fullPath: '/api-keys'
       preLoaderRoute: typeof AuthenticatedApiKeysIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
@@ -783,59 +796,66 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRequestsRequestIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard/channel-success-rates': {
+      id: '/_authenticated/dashboard/channel-success-rates'
+      path: '/dashboard/channel-success-rates'
+      fullPath: '/dashboard/channel-success-rates'
+      preLoaderRoute: typeof AuthenticatedDashboardChannelSuccessRatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/project/users/': {
       id: '/_authenticated/project/users/'
       path: '/project/users'
-      fullPath: '/project/users/'
+      fullPath: '/project/users'
       preLoaderRoute: typeof AuthenticatedProjectUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/traces/': {
       id: '/_authenticated/project/traces/'
       path: '/project/traces'
-      fullPath: '/project/traces/'
+      fullPath: '/project/traces'
       preLoaderRoute: typeof AuthenticatedProjectTracesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/threads/': {
       id: '/_authenticated/project/threads/'
       path: '/project/threads'
-      fullPath: '/project/threads/'
+      fullPath: '/project/threads'
       preLoaderRoute: typeof AuthenticatedProjectThreadsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/roles/': {
       id: '/_authenticated/project/roles/'
       path: '/project/roles'
-      fullPath: '/project/roles/'
+      fullPath: '/project/roles'
       preLoaderRoute: typeof AuthenticatedProjectRolesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/requests/': {
       id: '/_authenticated/project/requests/'
       path: '/project/requests'
-      fullPath: '/project/requests/'
+      fullPath: '/project/requests'
       preLoaderRoute: typeof AuthenticatedProjectRequestsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/prompts/': {
       id: '/_authenticated/project/prompts/'
       path: '/project/prompts'
-      fullPath: '/project/prompts/'
+      fullPath: '/project/prompts'
       preLoaderRoute: typeof AuthenticatedProjectPromptsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/playground/': {
       id: '/_authenticated/project/playground/'
       path: '/project/playground'
-      fullPath: '/project/playground/'
+      fullPath: '/project/playground'
       preLoaderRoute: typeof AuthenticatedProjectPlaygroundIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/api-keys/': {
       id: '/_authenticated/project/api-keys/'
       path: '/project/api-keys'
-      fullPath: '/project/api-keys/'
+      fullPath: '/project/api-keys'
       preLoaderRoute: typeof AuthenticatedProjectApiKeysIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
@@ -890,6 +910,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedPermissionRoute: typeof AuthenticatedPermissionRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedDashboardChannelSuccessRatesRoute: typeof AuthenticatedDashboardChannelSuccessRatesRoute
   AuthenticatedRequestsRequestIdRoute: typeof AuthenticatedRequestsRequestIdRoute
   AuthenticatedApiKeysIndexRoute: typeof AuthenticatedApiKeysIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
@@ -920,6 +941,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedPermissionRoute: AuthenticatedPermissionRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedDashboardChannelSuccessRatesRoute:
+    AuthenticatedDashboardChannelSuccessRatesRoute,
   AuthenticatedRequestsRequestIdRoute: AuthenticatedRequestsRequestIdRoute,
   AuthenticatedApiKeysIndexRoute: AuthenticatedApiKeysIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,

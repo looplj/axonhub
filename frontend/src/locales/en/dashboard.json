@@ -71,5 +71,19 @@
   "dashboard.cards.fastestPerformers.description": "Fastest {{type}} by tokens/second · {{count}} requests across top performers",
   "dashboard.cards.fastestPerformers.channelType": "channels",
   "dashboard.cards.fastestPerformers.modelType": "models",
-  "dashboard.stats.updated": "Updated: {{time}}"
+  "dashboard.stats.updated": "Updated: {{time}}",
+  "dashboard.channelSuccessRates.pageTitle": "Channel Success Rates",
+  "dashboard.channelSuccessRates.backToDashboard": "Back to Dashboard",
+  "dashboard.channelSuccessRates.allTypes": "All Types",
+  "dashboard.channelSuccessRates.showWarnings": "Show Warnings Only",
+  "dashboard.channelSuccessRates.sortByTotal": "Sort by Total",
+  "dashboard.channelSuccessRates.sortBySuccess": "Sort by Success",
+  "dashboard.channelSuccessRates.sortByFailed": "Sort by Failed",
+  "dashboard.channelSuccessRates.sortByRate": "Sort by Rate",
+  "dashboard.channelSuccessRates.desc": "Descending",
+  "dashboard.channelSuccessRates.asc": "Ascending",
+  "dashboard.channelSuccessRates.showing": "Showing {{start}} - {{end}} / {{total}}",
+  "dashboard.channelSuccessRates.prev": "Previous",
+  "dashboard.channelSuccessRates.next": "Next",
+  "dashboard.viewAll": "View All"
 }
