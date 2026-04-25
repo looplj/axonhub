@@ -549,32 +549,54 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 	include, needFullData := parseOpenAIModelInclude(c.Query("include"), handlers.SystemService.ModelSettingsOrDefault(ctx).DefaultModelAPIIncludeAll)
 
 	var openaiModels []OpenAIModel
-	if needFullData {
-		// Query full model data from database with extended metadata
-		models, err := handlers.EntClient.Model.Query().
-			Where(model.StatusEQ(model.StatusEnabled)).
+
+	visibleModels, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		handlers.writeOpenAIInternalError(c, requestID, err)
+		return
+	}
+
+	if len(visibleModels) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"object": "list",
+			"data":   []OpenAIModel{},
+		})
+
+		return
+	}
+
+	if !needFullData {
+		openaiModels = lo.Map(visibleModels, func(m biz.ModelFacade, _ int) OpenAIModel {
+			return convertModelFacadeToOpenAIModel(m)
+		})
+	} else {
+		visibleIDs := lo.Map(visibleModels, func(m biz.ModelFacade, _ int) string {
+			return m.ID
+		})
+
+		dbModels, err := handlers.EntClient.Model.Query().
+			Where(
+				model.StatusEQ(model.StatusEnabled),
+				model.ModelIDIn(visibleIDs...),
+			).
 			All(ctx)
 		if err != nil {
 			handlers.writeOpenAIInternalError(c, requestID, err)
 			return
 		}
 
-		openaiModels = make([]OpenAIModel, 0, len(models))
-		for _, m := range models {
-			openaiModels = append(openaiModels, convertModelToOpenAIExtended(m, include))
-		}
-	} else {
-		// Basic mode: only return basic fields (backward compatible)
-		models, err := handlers.ModelService.ListEnabledModels(ctx)
-		if err != nil {
-			handlers.writeOpenAIInternalError(c, requestID, err)
-			return
+		dbModelMap := make(map[string]*ent.Model, len(dbModels))
+		for _, m := range dbModels {
+			dbModelMap[m.ModelID] = m
 		}
 
-		openaiModels = make([]OpenAIModel, 0, len(models))
-		for _, m := range models {
-			openaiModels = append(openaiModels, convertModelFacadeToOpenAIModel(m))
-		}
+		openaiModels = lo.Map(visibleModels, func(m biz.ModelFacade, _ int) OpenAIModel {
+			if dbModel, ok := dbModelMap[m.ID]; ok {
+				return convertModelToOpenAIExtended(dbModel, include)
+			}
+
+			return convertModelFacadeToOpenAIModel(m)
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
