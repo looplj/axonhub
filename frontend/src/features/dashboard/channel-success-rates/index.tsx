@@ -95,7 +95,7 @@ export default function DashboardChannelSuccessRates() {
   }, [timeWindow, filterType, showWarningsOnly, sortField, sortOrder]);
 
   const handleBack = () => {
-    navigate({ to: '/dashboard' });
+    navigate({ to: '/' });
   };
 
   const scrollToTop = () => {
