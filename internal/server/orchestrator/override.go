@@ -172,6 +172,12 @@ func applyBodyOperation(
 		return applyBodyRename(body, op)
 	case objects.OverrideOpCopy:
 		return applyBodyCopy(body, op)
+	case objects.OverrideOpArrayAppend:
+		return applyBodyArrayInsert(ctx, body, op, renderCtx, arrayInsertAtEnd)
+	case objects.OverrideOpArrayPrepend:
+		return applyBodyArrayInsert(ctx, body, op, renderCtx, arrayInsertAtStart)
+	case objects.OverrideOpArrayInsert:
+		return applyBodyArrayInsert(ctx, body, op, renderCtx, arrayInsertAtIndex)
 	default:
 		log.Warn(ctx, "unknown override operation",
 			log.String("op", op.Op),
@@ -221,6 +227,98 @@ func applyBodyCopy(body []byte, op objects.OverrideOperation) ([]byte, error) {
 	}
 
 	return sjson.SetBytes(body, op.To, result.Value())
+}
+
+type arrayInsertMode int
+
+const (
+	arrayInsertAtStart arrayInsertMode = iota
+	arrayInsertAtEnd
+	arrayInsertAtIndex
+)
+
+// applyBodyArrayInsert inserts one or more values into an array at the requested position.
+// Behavior:
+//   - If the rendered value is a JSON array and op.Splat is nil or true, its elements are
+//     spread into the target array. Set Splat=false to insert the array as a single nested element.
+//   - When the target path does not exist, a new array is created with the value(s).
+//   - When the target path exists but is not an array, an error is returned.
+//   - For arrayInsertAtIndex, op.Index is required and may be negative (counted from the end).
+//     Out-of-range indexes are clamped to [0, len].
+func applyBodyArrayInsert(
+	ctx context.Context,
+	body []byte,
+	op objects.OverrideOperation,
+	renderCtx RenderContext,
+	mode arrayInsertMode,
+) ([]byte, error) {
+	if op.Path == "" {
+		return body, fmt.Errorf("array op requires a path")
+	}
+
+	rendered := renderOverrideValue(ctx, op.Value, renderCtx)
+
+	splat := true
+	if op.Splat != nil {
+		splat = *op.Splat
+	}
+
+	var toInsert []any
+
+	if arr, ok := rendered.([]any); ok && splat {
+		toInsert = arr
+	} else {
+		toInsert = []any{rendered}
+	}
+
+	existing := gjson.GetBytes(body, op.Path)
+	if !existing.Exists() {
+		// Create a new array at the path. For arrayInsertAtIndex with a non-zero index,
+		// the position is effectively clamped to 0 since the array is empty.
+		return sjson.SetBytes(body, op.Path, toInsert)
+	}
+
+	if !existing.IsArray() {
+		return body, fmt.Errorf("path %q is not an array", op.Path)
+	}
+
+	var current []any
+	if err := json.Unmarshal([]byte(existing.Raw), &current); err != nil {
+		return body, fmt.Errorf("decode array at %q: %w", op.Path, err)
+	}
+
+	var pos int
+
+	switch mode {
+	case arrayInsertAtStart:
+		pos = 0
+	case arrayInsertAtEnd:
+		pos = len(current)
+	case arrayInsertAtIndex:
+		if op.Index == nil {
+			return body, fmt.Errorf("array_insert requires an index")
+		}
+
+		pos = *op.Index
+		if pos < 0 {
+			pos = len(current) + pos
+		}
+
+		if pos < 0 {
+			pos = 0
+		}
+
+		if pos > len(current) {
+			pos = len(current)
+		}
+	}
+
+	merged := make([]any, 0, len(current)+len(toInsert))
+	merged = append(merged, current[:pos]...)
+	merged = append(merged, toInsert...)
+	merged = append(merged, current[pos:]...)
+
+	return sjson.SetBytes(body, op.Path, merged)
 }
 
 func applyOverrideOperationToHeaders(

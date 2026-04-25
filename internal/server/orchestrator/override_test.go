@@ -2067,3 +2067,160 @@ func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, processedRequest)
 }
+
+func TestOverrideOperationsArrayOps(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{
+		Model: "claude-sonnet-4-6",
+		Metadata: map[string]string{
+			"session_id": "sess-9",
+		},
+	}
+
+	runMiddleware := func(t *testing.T, ops string, body string) string {
+		t.Helper()
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "array-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: ops,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    llmRequest.Model,
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+
+		result, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{Body: []byte(body)})
+		require.NoError(t, err)
+
+		return string(result.Body)
+	}
+
+	t.Run("array_append inserts a single object at the end", func(t *testing.T) {
+		ops := `[{"op":"array_append","path":"system","value":"{\"type\":\"text\",\"text\":\"injected\"}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"original"}]}`)
+
+		require.Equal(t, "original", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "injected", gjson.Get(got, "system.1.text").String())
+		require.Equal(t, int64(2), gjson.Get(got, "system.#").Int())
+	})
+
+	t.Run("array_prepend inserts a single object at the start", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"{\"type\":\"text\",\"text\":\"injected\"}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"original"}]}`)
+
+		require.Equal(t, "injected", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "original", gjson.Get(got, "system.1.text").String())
+	})
+
+	t.Run("array_prepend with array value spreads elements (splat default true)", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"[{\"text\":\"a\"},{\"text\":\"b\"}]"}]`
+		got := runMiddleware(t, ops, `{"system":[{"text":"original"}]}`)
+
+		require.Equal(t, "a", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "b", gjson.Get(got, "system.1.text").String())
+		require.Equal(t, "original", gjson.Get(got, "system.2.text").String())
+	})
+
+	t.Run("array_prepend with splat=false inserts the array as a single element", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"tags","value":"[\"a\",\"b\"]","splat":false}]`
+		got := runMiddleware(t, ops, `{"tags":["x"]}`)
+
+		require.True(t, gjson.Get(got, "tags.0").IsArray())
+		require.Equal(t, "a", gjson.Get(got, "tags.0.0").String())
+		require.Equal(t, "b", gjson.Get(got, "tags.0.1").String())
+		require.Equal(t, "x", gjson.Get(got, "tags.1").String())
+	})
+
+	t.Run("array_insert at positive index", func(t *testing.T) {
+		ops := `[{"op":"array_insert","path":"items","index":1,"value":"X"}]`
+		got := runMiddleware(t, ops, `{"items":["a","b","c"]}`)
+
+		require.Equal(t, `["a","X","b","c"]`, gjson.Get(got, "items").Raw)
+	})
+
+	t.Run("array_insert with negative index counts from end", func(t *testing.T) {
+		ops := `[{"op":"array_insert","path":"items","index":-1,"value":"X"}]`
+		got := runMiddleware(t, ops, `{"items":["a","b","c"]}`)
+
+		// -1 means "before last": result -> [a, b, X, c]
+		require.Equal(t, `["a","b","X","c"]`, gjson.Get(got, "items").Raw)
+	})
+
+	t.Run("array_insert clamps out-of-range index", func(t *testing.T) {
+		ops := `[{"op":"array_insert","path":"items","index":99,"value":"X"}]`
+		got := runMiddleware(t, ops, `{"items":["a","b"]}`)
+
+		require.Equal(t, `["a","b","X"]`, gjson.Get(got, "items").Raw)
+	})
+
+	t.Run("array_append on missing path creates new array", func(t *testing.T) {
+		ops := `[{"op":"array_append","path":"system","value":"{\"type\":\"text\",\"text\":\"only\"}"}]`
+		got := runMiddleware(t, ops, `{}`)
+
+		require.Equal(t, "only", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, int64(1), gjson.Get(got, "system.#").Int())
+	})
+
+	t.Run("array_prepend on non-array path is a no-op with warning", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"X"}]`
+		got := runMiddleware(t, ops, `{"system":"not-an-array"}`)
+
+		// On error the middleware logs a warning but continues with the unchanged body.
+		require.Equal(t, "not-an-array", gjson.Get(got, "system").String())
+	})
+
+	t.Run("multiple array_prepend ops apply in declared order at index 0", func(t *testing.T) {
+		// Two prepends: each runs against current state and inserts at index 0.
+		// First op inserts B -> [B, original]; second op inserts A -> [A, B, original].
+		ops := `[
+			{"op":"array_prepend","path":"system","value":"{\"text\":\"B\"}"},
+			{"op":"array_prepend","path":"system","value":"{\"text\":\"A\"}"}
+		]`
+		got := runMiddleware(t, ops, `{"system":[{"text":"original"}]}`)
+
+		require.Equal(t, "A", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "B", gjson.Get(got, "system.1.text").String())
+		require.Equal(t, "original", gjson.Get(got, "system.2.text").String())
+	})
+
+	t.Run("array_prepend supports nested cache_control objects", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"{\"type\":\"text\",\"text\":\"prefix\",\"cache_control\":{\"type\":\"ephemeral\"}}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"user"}]}`)
+
+		require.Equal(t, "ephemeral", gjson.Get(got, "system.0.cache_control.type").String())
+		require.Equal(t, "prefix", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "user", gjson.Get(got, "system.1.text").String())
+	})
+
+	t.Run("array op respects condition", func(t *testing.T) {
+		// Condition false: no change.
+		ops := `[{"op":"array_append","path":"system","value":"X","condition":"{{eq .Model \"never\"}}"}]`
+		got := runMiddleware(t, ops, `{"system":["a"]}`)
+		require.Equal(t, `["a"]`, gjson.Get(got, "system").Raw)
+
+		// Condition true: append happens.
+		ops = `[{"op":"array_append","path":"system","value":"X","condition":"{{eq .Model \"claude-sonnet-4-6\"}}"}]`
+		got = runMiddleware(t, ops, `{"system":["a"]}`)
+		require.Equal(t, `["a","X"]`, gjson.Get(got, "system").Raw)
+	})
+
+	t.Run("array_prepend supports templated value", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"{\"type\":\"text\",\"text\":\"session-{{index .Metadata \"session_id\"}}\"}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"text":"u"}]}`)
+
+		require.Equal(t, "session-sess-9", gjson.Get(got, "system.0.text").String())
+	})
+}

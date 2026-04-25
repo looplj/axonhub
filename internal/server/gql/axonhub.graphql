@@ -25,6 +25,8 @@ type OverrideOperation {
   to: String
   value: String
   condition: String
+  index: Int
+  splat: Boolean
 }
 
 input OverrideOperationInput {
@@ -34,6 +36,8 @@ input OverrideOperationInput {
   to: String
   value: String
   condition: String
+  index: Int
+  splat: Boolean
 }
 
 type TransformOptions {
