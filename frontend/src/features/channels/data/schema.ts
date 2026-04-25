@@ -107,8 +107,8 @@ export const overrideOperationSchema = z.object({
   to: z.string().optional(),
   value: z.any().optional(),
   condition: z.string().optional(),
-  index: z.number().int().optional(),
-  splat: z.boolean().optional(),
+  index: z.number().int().nullish(),
+  splat: z.boolean().nullish(),
 })
 export type OverrideOperation = z.infer<typeof overrideOperationSchema>
 
