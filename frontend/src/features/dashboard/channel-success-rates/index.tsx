@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useChannelSuccessRates } from '../data/dashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
+import ContentSection from '@/features/settings/components/content-section';
 
 type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate';
 type SortOrder = 'asc' | 'desc';
@@ -90,7 +91,7 @@ export default function DashboardChannelSuccessRates() {
   );
 
   // Reset to page 1 when filters change
-  useMemo(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [timeWindow, filterType, showWarningsOnly, sortField, sortOrder]);
 
@@ -147,9 +148,9 @@ export default function DashboardChannelSuccessRates() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="day">今天</SelectItem>
-                <SelectItem value="week">本周</SelectItem>
-                <SelectItem value="month">本月</SelectItem>
+                <SelectItem value="day">{t('dashboard.stats.today')}</SelectItem>
+                <SelectItem value="week">{t('dashboard.stats.thisWeek')}</SelectItem>
+                <SelectItem value="month">{t('dashboard.stats.thisMonth')}</SelectItem>
               </SelectContent>
             </Select>
 

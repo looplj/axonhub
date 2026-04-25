@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { BarChart3, Brain, Key, Zap, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,9 +168,9 @@ export default function DashboardPage() {
               <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
               <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
               <CardAction>
-                <a href='/dashboard/channel-success-rates' className='text-sm text-primary hover:underline'>
+                <Link to='/dashboard/channel-success-rates' className='text-sm text-primary hover:underline'>
                   {t('dashboard.viewAll')}
-                </a>
+                </Link>
               </CardAction>
             </CardHeader>
             <CardContent>
