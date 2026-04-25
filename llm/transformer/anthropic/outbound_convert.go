@@ -104,6 +104,15 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		}
 	}
 
+	// Restore Anthropic's top-level cache_control (automatic prompt caching).
+	// When present we keep it as-is on the upstream request and skip our own
+	// per-block breakpoint optimization (handled in TransformRequest).
+	if chatReq.TransformerMetadata != nil {
+		if cc, ok := chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl); ok && cc != nil {
+			req.CacheControl = cc
+		}
+	}
+
 	return req
 }
 

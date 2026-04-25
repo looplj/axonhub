@@ -162,8 +162,14 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
 
-	// Apply cache_control breakpoint policy to optimize cache control if client requests with cache_control.
-	if countCacheControls(anthropicReq) > 0 {
+	// Anthropic supports two prompt-caching modes (see
+	// https://docs.claude.com/en/docs/build-with-claude/prompt-caching):
+	//   1. Automatic caching: a single top-level cache_control field. Anthropic
+	//      itself manages the breakpoint placement, so we forward it untouched
+	//      and intentionally skip our own breakpoint optimization pipeline.
+	//   2. Explicit cache breakpoints: per-block cache_control fields. We run
+	//      our optimization pipeline only in this mode.
+	if anthropicReq.CacheControl == nil && countCacheControls(anthropicReq) > 0 {
 		optimizeCacheControl(anthropicReq)
 	}
 

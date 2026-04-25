@@ -92,6 +92,14 @@ type MessageRequest struct {
 
 	// Stream is an optional flag to enable streaming.
 	Stream *bool `json:"stream,omitempty"`
+
+	// CacheControl enables Anthropic's automatic prompt caching. When set at
+	// the top level of the request, Anthropic automatically applies the cache
+	// breakpoint to the last cacheable block and moves it forward as the
+	// conversation grows. See https://docs.claude.com/en/docs/build-with-claude/prompt-caching.
+	// When this field is set, AxonHub preserves it as-is and skips its own
+	// per-block cache_control breakpoint optimization pipeline.
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
 type AnthropicMetadata struct {
@@ -151,6 +159,14 @@ const TransformerMetadataKeyOutputConfigEffort = "output_config_effort"
 
 // TransformerMetadataKeyThinkingDisplay is the key for storing thinking display in TransformerMetadata.
 const TransformerMetadataKeyThinkingDisplay = "thinking_display"
+
+// TransformerMetadataKeyCacheControl is the key for storing the top-level
+// cache_control value (Anthropic's automatic prompt caching marker) carried by
+// an Anthropic-format inbound request. The value is a *CacheControl. The
+// Anthropic outbound transformer restores it onto the upstream request
+// untouched and skips its own breakpoint optimization pipeline so that
+// Anthropic's automatic caching behavior is preserved.
+const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
 
 type Thinking struct {
 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
