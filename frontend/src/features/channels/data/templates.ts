@@ -106,6 +106,8 @@ const TEMPLATE_FRAGMENT = `
       to
       value
       condition
+      index
+      splat
     }
     bodyOverrideOperations {
       op
@@ -114,6 +116,8 @@ const TEMPLATE_FRAGMENT = `
       to
       value
       condition
+      index
+      splat
     }
   }
 `;

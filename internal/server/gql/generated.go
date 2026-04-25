@@ -917,8 +917,10 @@ type ComplexityRoot struct {
 	OverrideOperation struct {
 		Condition func(childComplexity int) int
 		From      func(childComplexity int) int
+		Index     func(childComplexity int) int
 		Op        func(childComplexity int) int
 		Path      func(childComplexity int) int
+		Splat     func(childComplexity int) int
 		To        func(childComplexity int) int
 		Value     func(childComplexity int) int
 	}
@@ -5841,6 +5843,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OverrideOperation.From(childComplexity), true
+	case "OverrideOperation.index":
+		if e.complexity.OverrideOperation.Index == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.Index(childComplexity), true
 	case "OverrideOperation.op":
 		if e.complexity.OverrideOperation.Op == nil {
 			break
@@ -5853,6 +5861,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OverrideOperation.Path(childComplexity), true
+	case "OverrideOperation.splat":
+		if e.complexity.OverrideOperation.Splat == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.Splat(childComplexity), true
 	case "OverrideOperation.to":
 		if e.complexity.OverrideOperation.To == nil {
 			break
@@ -18738,6 +18752,10 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_headerOverrideO
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "index":
+				return ec.fieldContext_OverrideOperation_index(ctx, field)
+			case "splat":
+				return ec.fieldContext_OverrideOperation_splat(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
 		},
@@ -18781,6 +18799,10 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_bodyOverrideOpe
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "index":
+				return ec.fieldContext_OverrideOperation_index(ctx, field)
+			case "splat":
+				return ec.fieldContext_OverrideOperation_splat(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
 		},
@@ -20210,6 +20232,10 @@ func (ec *executionContext) fieldContext_ChannelSettings_headerOverrideOperation
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "index":
+				return ec.fieldContext_OverrideOperation_index(ctx, field)
+			case "splat":
+				return ec.fieldContext_OverrideOperation_splat(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
 		},
@@ -20253,6 +20279,10 @@ func (ec *executionContext) fieldContext_ChannelSettings_bodyOverrideOperations(
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "index":
+				return ec.fieldContext_OverrideOperation_index(ctx, field)
+			case "splat":
+				return ec.fieldContext_OverrideOperation_splat(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OverrideOperation", field.Name)
 		},
@@ -31781,6 +31811,64 @@ func (ec *executionContext) fieldContext_OverrideOperation_condition(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_index(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_index,
+		func(ctx context.Context) (any, error) {
+			return obj.Index, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_index(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_splat(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_splat,
+		func(ctx context.Context) (any, error) {
+			return obj.Splat, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_splat(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -62270,7 +62358,7 @@ func (ec *executionContext) unmarshalInputOverrideOperationInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"op", "path", "from", "to", "value", "condition"}
+	fieldsInOrder := [...]string{"op", "path", "from", "to", "value", "condition", "index", "splat"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -62319,6 +62407,20 @@ func (ec *executionContext) unmarshalInputOverrideOperationInput(ctx context.Con
 				return it, err
 			}
 			it.Condition = data
+		case "index":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("index"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Index = data
+		case "splat":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("splat"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Splat = data
 		}
 	}
 
@@ -83389,6 +83491,10 @@ func (ec *executionContext) _OverrideOperation(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._OverrideOperation_value(ctx, field, obj)
 		case "condition":
 			out.Values[i] = ec._OverrideOperation_condition(ctx, field, obj)
+		case "index":
+			out.Values[i] = ec._OverrideOperation_index(ctx, field, obj)
+		case "splat":
+			out.Values[i] = ec._OverrideOperation_splat(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
