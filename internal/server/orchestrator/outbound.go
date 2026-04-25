@@ -141,7 +141,7 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	if len(ts.responseChunks) > 0 {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
-		aggregatedCompleted = aggErr == nil && isCompletedAggregatedOutboundResponse(meta)
+		aggregatedCompleted = aggErr == nil && isCompletedAggregated(meta)
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
@@ -299,8 +299,8 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 	}
 }
 
-func isCompletedAggregatedOutboundResponse(meta llm.ResponseMeta) bool {
-	return meta.Usage != nil
+func isCompletedAggregated(meta llm.ResponseMeta) bool {
+	return meta.Usage != nil && meta.Usage.CompletionTokens > 0
 }
 
 var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit breaker")
