@@ -87,11 +87,11 @@ import (
 // ======================================================
 //
 // Checker: internal/server/biz/provider_quota/nanogpt_checker.go
-//   - Makes request to NanoGPT balance endpoint (/api/v1/balance)
+//   - Makes request to NanoGPT subscription usage endpoint (/api/subscription/v1/usage)
 //   - Uses simple API key authentication (no OAuth required)
-//   - Internally parses JSON response (balance, total_granted)
-//   - Normalizes status based on remaining balance
-//   - Detects warning state (balance < 20% of total_granted)
+//   - Internally parses JSON response (state, windows, percentUsed)
+//   - Normalizes status: active→available, grace→warning, inactive→exhausted
+//   - Detects high-usage warning state (any window percentUsed >= 0.8)
 //
 
 type ProviderQuotaServiceParams struct {

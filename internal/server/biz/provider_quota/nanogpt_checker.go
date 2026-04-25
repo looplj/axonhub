@@ -124,6 +124,14 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	// Calculate NextResetAt from earliest resetAt across all windows
 	nextResetAt := findEarliestResetAt(response.DailyImages, response.DailyInputTokens, response.WeeklyInputTokens)
 
+	// During grace period, windows typically have no resetAt;
+	// fall back to graceUntil as the relevant deadline.
+	if nextResetAt == nil && response.GraceUntil != nil {
+		if t, err := time.Parse(time.RFC3339, *response.GraceUntil); err == nil {
+			nextResetAt = &t
+		}
+	}
+
 	// Build raw data map with all non-nil windows
 	rawData := map[string]any{}
 
@@ -204,7 +212,12 @@ func buildNanoGPTQuotaURL(baseURL string) string {
 		return "https://nano-gpt.com/api/subscription/v1/usage"
 	}
 
-	return fmt.Sprintf("%s://%s/api/subscription/v1/usage", parsed.Scheme, parsed.Host)
+	scheme := parsed.Scheme
+	if scheme == "http" {
+		scheme = "https"
+	}
+
+	return fmt.Sprintf("%s://%s/api/subscription/v1/usage", scheme, parsed.Host)
 }
 
 // isAnyWindowHighUsage returns true if any non-nil window has percentUsed >= 0.8.

@@ -310,7 +310,6 @@
   "quota.window.weekly_input_tokens": "每周输入 Token",
   "quota.window.daily_images": "每日图片",
   "quota.window.daily_input_tokens": "每日输入 Token",
-  "quota.label.state_active": "活跃",
   "quota.label.state_grace": "宽限期",
   "quota.label.state_inactive": "未激活",
   "system.providerQuota.refresh.label": "刷新配额",

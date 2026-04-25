@@ -98,10 +98,10 @@ type ProviderGitHubCopilotQuotaData = ProviderQuotaDataCommon & {
 }
 
 export type NanoGPTQuotaWindow = {
-  used: number;
-  remaining: number;
-  percentUsed: number;
-  resetAt: number;
+  used?: number;
+  remaining?: number;
+  percentUsed?: number;
+  resetAt?: number;
 }
 
 export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
@@ -178,7 +178,7 @@ export function useProviderQuotaStatuses() {
 
   const channels = data?.queryChannels?.edges?.map((e: any) => e.node) || [];
 
-  // Filter for OAuth channels (claudecode, codex, github_copilot) - check both lowercase and PascalCase
+  // Filter for quota-enabled channels
   const oauthChannels = channels.filter((c: any) => {
     const type = c.type?.toLowerCase();
     const match = ['claudecode', 'codex', 'github_copilot', 'nanogpt', 'nanogpt_responses'].includes(type);
