@@ -166,6 +166,11 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
               <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
+              <CardAction>
+                <a href='/dashboard/channel-success-rates' className='text-sm text-primary hover:underline'>
+                  {t('dashboard.viewAll')}
+                </a>
+              </CardAction>
             </CardHeader>
             <CardContent>
               <ChannelSuccessRate />

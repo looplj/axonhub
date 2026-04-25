@@ -84,5 +84,6 @@
   "dashboard.channelSuccessRates.asc": "Ascending",
   "dashboard.channelSuccessRates.showing": "Showing {{start}} - {{end}} / {{total}}",
   "dashboard.channelSuccessRates.prev": "Previous",
-  "dashboard.channelSuccessRates.next": "Next"
+  "dashboard.channelSuccessRates.next": "Next",
+  "dashboard.viewAll": "View All"
 }

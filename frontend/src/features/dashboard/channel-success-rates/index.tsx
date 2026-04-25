@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useChannelSuccessRates } from '../data/dashboard';
-import { ContentSection } from '@/components/content-section';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Header } from '@/components/layout/header';
 
 type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate';
 type SortOrder = 'asc' | 'desc';
@@ -130,7 +131,8 @@ export default function DashboardChannelSuccessRates() {
   const total = sortedChannels.length;
 
   return (
-    <ContentSection title={t('dashboard.channelSuccessRates.pageTitle')} desc="查看所有渠道的请求成功率统计">
+    <div className="flex flex-col gap-4">
+      <Header title={t('dashboard.channelSuccessRates.pageTitle')} description="查看所有渠道的请求成功率统计" />
       <div className="space-y-4">
         {/* Toolbar */}
         <div className="flex items-center justify-between">
@@ -281,6 +283,6 @@ export default function DashboardChannelSuccessRates() {
           </div>
         )}
       </div>
-    </ContentSection>
+    </div>
   );
 }
