@@ -56,5 +56,6 @@ type API struct {
 }
 
 type APIAuth struct {
-	AllowNoAuth bool `conf:"allow_no_auth" yaml:"allow_no_auth" json:"allow_no_auth"`
+	AllowNoAuth bool   `conf:"allow_no_auth" yaml:"allow_no_auth" json:"allow_no_auth"`
+	KeyPrefix   string `conf:"key_prefix" yaml:"key_prefix" json:"key_prefix"`
 }
