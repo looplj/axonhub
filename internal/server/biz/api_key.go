@@ -42,6 +42,7 @@ type APIKeyServiceParams struct {
 	CacheConfig    xcache.Config
 	Ent            *ent.Client
 	ProjectService *ProjectService
+	KeyPrefix      string `name:"api_key_prefix"`
 }
 
 type APIKeyService struct {
@@ -50,6 +51,7 @@ type APIKeyService struct {
 	ProjectService *ProjectService
 	APIKeyCache    *live.IndexedCache[string, *ent.APIKey]
 	apiKeyNotifier watcher.Notifier[live.CacheEvent[string]]
+	keyPrefix      string
 }
 
 func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
@@ -58,6 +60,7 @@ func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
 			db: params.Ent,
 		},
 		ProjectService: params.ProjectService,
+		keyPrefix:      params.KeyPrefix,
 	}
 
 	cacheMode := params.CacheConfig.Mode
@@ -158,8 +161,8 @@ func (s *APIKeyService) loadAPIKeysSince(ctx context.Context, since time.Time) (
 	return items, maxUpdated, nil
 }
 
-// GenerateAPIKey generates a new API key with ah- prefix (similar to OpenAI format).
-func GenerateAPIKey() (string, error) {
+// GenerateAPIKey generates a new API key with the given prefix.
+func GenerateAPIKey(prefix string) (string, error) {
 	// Generate 32 bytes of random data
 	bytes := make([]byte, 32)
 
@@ -168,8 +171,8 @@ func GenerateAPIKey() (string, error) {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)
 	}
 
-	// Convert to hex and add ah- prefix
-	return "ah-" + hex.EncodeToString(bytes), nil
+	// Convert to hex and add prefix
+	return prefix + "-" + hex.EncodeToString(bytes), nil
 }
 
 // CreateLLMAPIKey creates a new API key for LLM calls using a service account API key.
@@ -181,7 +184,7 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 
 	client := s.entFromContext(ctx)
 
-	generatedKey, err := GenerateAPIKey()
+	generatedKey, err := GenerateAPIKey(s.keyPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate api key: %w", err)
 	}
@@ -229,8 +232,8 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 		return nil, xerrors.DuplicateNameError("API Key", input.Name)
 	}
 
-	// Generate API key with ah- prefix (similar to OpenAI format)
-	generatedKey, err := GenerateAPIKey()
+	// Generate API key with configured prefix
+	generatedKey, err := GenerateAPIKey(s.keyPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate API key: %w", err)
 	}
