@@ -495,6 +495,7 @@
   "channels.dialogs.rateLimit.fields.queueTimeoutMs.placeholder": "Milliseconds, leave empty for no timeout",
   "channels.dialogs.rateLimit.fields.queueTimeoutMs.description": "How long (in milliseconds) a queued request waits before failing with HTTP 429. Only applies when Queue Size is set.",
   "channels.dialogs.rateLimit.errors.queueRequiresMaxConcurrent": "Queue Size requires Max Concurrent to be set (greater than 0).",
+  "channels.dialogs.rateLimit.hints.softModeWarning": "Without a Queue Size, Max Concurrent only down-ranks this channel in load balancing — it does NOT block excess requests. To enforce a hard limit, set Queue Size (e.g. 1) and a Queue Wait Timeout.",
   "channels.dialogs.bulkOrdering.title": "Bulk Channel Ordering",
   "channels.dialogs.bulkOrdering.description": "Drag and drop to reorder channels. Higher weight channels will be preferred when selecting channels.",
   "channels.dialogs.bulkOrdering.dragHint": "Drag channels to reorder them",

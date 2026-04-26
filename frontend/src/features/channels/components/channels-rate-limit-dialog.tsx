@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -88,6 +89,17 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       form.reset(valuesFromChannel(currentRow));
     }
   }, [open, currentRow, form]);
+
+  // Soft-mode advisory: when the user sets MaxConcurrent without a queue, the
+  // limiter only down-ranks the channel in load-balancer scoring — it does not
+  // block excess requests. Surface this so users understand why the cap may
+  // appear to be exceeded under load.
+  const watchedMaxConcurrent = form.watch('maxConcurrent');
+  const watchedQueueSize = form.watch('queueSize');
+  const showSoftModeHint =
+    typeof watchedMaxConcurrent === 'number' &&
+    watchedMaxConcurrent > 0 &&
+    (typeof watchedQueueSize !== 'number' || watchedQueueSize <= 0);
 
   const onSubmit = async (values: RateLimitFormValues) => {
     try {
@@ -216,6 +228,12 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                           />
                         </FormControl>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.queueSize.description')}</FormDescription>
+                        {showSoftModeHint && (
+                          <div className='mt-1 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200'>
+                            <AlertTriangle className='mt-0.5 h-3.5 w-3.5 shrink-0' />
+                            <span>{t('channels.dialogs.rateLimit.hints.softModeWarning')}</span>
+                          </div>
+                        )}
                         {fieldState.error?.message === 'queueRequiresMaxConcurrent' ? (
                           <p className='text-destructive text-sm'>
                             {t('channels.dialogs.rateLimit.errors.queueRequiresMaxConcurrent')}
