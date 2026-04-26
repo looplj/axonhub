@@ -452,9 +452,27 @@ func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
 	return p.state.CurrentCandidateIndex+1 < len(p.state.ChannelModelsCandidates)
 }
 
+// resetPassThroughStreamState cancels the current attempt's fan-out goroutine (if any)
+// and clears pass-through stream state so the next attempt starts with a clean slate.
+// Must be called before every retry to prevent goroutine leaks and data races on
+// state.RawStreamErrRef.
+func (p *PersistentOutboundTransformer) resetPassThroughStreamState() {
+	if p.state.RawStreamCancel != nil {
+		p.state.RawStreamCancel()
+		p.state.RawStreamCancel = nil
+	}
+
+	p.state.RawStreamCh = nil
+	p.state.RawStreamErrRef = nil
+}
+
 // NextChannel moves to the next available candidate for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
+	// Cancel any in-flight pass-through stream goroutine from the previous attempt
+	// so it exits promptly and releases its upstream HTTP connection.
+	p.resetPassThroughStreamState()
+
 	p.state.CurrentCandidateIndex++
 
 	p.state.CurrentModelIndex = 0
@@ -540,6 +558,10 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 
 	// Reset request execution for the same channel.
 	p.state.RequestExec = nil
+
+	// Cancel any in-flight pass-through stream goroutine from the previous attempt
+	// so it exits promptly and releases its upstream HTTP connection.
+	p.resetPassThroughStreamState()
 
 	// If there's another model in the list, advance to it.
 	if p.state.CurrentModelIndex+1 < len(candidate.Models) {
