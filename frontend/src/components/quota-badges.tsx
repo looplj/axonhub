@@ -1,6 +1,6 @@
 import { Loader2, RefreshCw, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useProviderQuotaStatuses, ProviderQuotaChannel } from '@/features/system/data/quotas';
+import { useProviderQuotaStatuses, ProviderQuotaChannel, ProviderNanoGPTQuotaData, NanoGPTQuotaWindow } from '@/features/system/data/quotas';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
@@ -78,6 +78,14 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     }
 
     percentage = 100 - lowestRemaining;
+  } else if (channel.type === 'nanogpt' || channel.type === 'nanogpt_responses') {
+    const qd = channel.quotaStatus?.quotaData;
+    if (!qd) return 0;
+    let maxPercent = 0;
+    if (qd.windows?.weeklyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.weeklyInputTokens.percentUsed ?? 0) * 100);
+    if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
+    if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
+    percentage = maxPercent;
   }
   return percentage;
 }
@@ -90,10 +98,10 @@ function ProgressBar({ percentage, type = 'usage', durationPercentage }: { perce
   if (type === 'duration') {
     bgStyle = { backgroundColor: '#71717a' }; // zinc-500
   } else {
-    let u = clamped / 100;
+    const u = clamped / 100;
     let severity = u;
     if (durationPercentage !== undefined && durationPercentage > 0) {
-      let d = Math.max(durationPercentage / 100, 0.01);
+      const d = Math.max(durationPercentage / 100, 0.01);
       severity = u * (u / d);
     }
     severity = Math.min(1, Math.max(0, severity));
@@ -123,6 +131,12 @@ function ProgressBar({ percentage, type = 'usage', durationPercentage }: { perce
       />
     </div>
   );
+}
+
+function formatTokenCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return `${n}`;
 }
 
 function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
@@ -481,6 +495,62 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
           })()}
         </div>
       )}
+
+      {(channel.type === 'nanogpt' || channel.type === 'nanogpt_responses') && (
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderNanoGPTQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            const windowEntries: [string, NanoGPTQuotaWindow | null | undefined, boolean][] = [
+              ['weekly_input_tokens', qd.windows?.weeklyInputTokens, true],
+              ['daily_images', qd.windows?.dailyImages, false],
+              ['daily_input_tokens', qd.windows?.dailyInputTokens, true],
+            ];
+
+            windowEntries.forEach(([key, window, isTokens], idx) => {
+              if (!window) return;
+              const label = t(`quota.window.${key}`);
+              const pct = (window.percentUsed ?? 0) * 100;
+              const usedStr = isTokens ? formatTokenCount(window.used ?? 0) : `${window.used ?? 0}`;
+              const remStr = isTokens ? formatTokenCount(window.remaining ?? 0) : `${window.remaining ?? 0}`;
+
+              items.push(
+                <div key={key} className={idx > 0 ? 'space-y-2.5 pt-3 border-t border-dashed border-border/60' : 'space-y-2.5'}>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {label} <span className="opacity-70 font-normal">({usedStr}/{remStr})</span>
+                      </span>
+                      <span className="font-medium text-foreground">{Math.round(pct)}%</span>
+                    </div>
+                    <ProgressBar percentage={pct} />
+                  </div>
+                  {window.resetAt ? (
+                    <div className="text-[11px] text-muted-foreground text-right pt-0.5">
+                      {t('quota.label.resets_in')} {formatTimeToReset(new Date(window.resetAt).toISOString())}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            });
+
+            if (qd.state && qd.state !== 'active') {
+              const stateKey = `quota.label.state_${qd.state}`;
+              items.push(
+                <div key="state" className="flex items-center gap-1.5 pt-1">
+                  <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-yellow-500 border-yellow-500/30 font-semibold">
+                    {t(stateKey)}
+                  </Badge>
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
     </div>
   );
 }
@@ -515,14 +585,26 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
   if (channels.length === 0) return null;
 
+  const groupedChannels = channels.reduce((acc, channel) => {
+    if (channel.type === 'nanogpt_responses') {
+      const existing = acc.find(c => c.type === 'nanogpt');
+      if (!existing) {
+        acc.push(channel);
+      }
+    } else {
+      acc.push(channel);
+    }
+    return acc;
+  }, [] as ProviderQuotaChannel[]);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button type="button" className="p-2 hover:bg-muted rounded-md transition-colors relative">
-          <QuotaBadgeTrigger channels={channels} />
+          <QuotaBadgeTrigger channels={groupedChannels} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className={channels.length > 4 ? "w-[640px]" : "w-80"} align="end">
+      <PopoverContent className={groupedChannels.length > 4 ? "w-[640px]" : "w-80"} align="end">
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -541,8 +623,8 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
               )}
             </button>
           </div>
-          <div className={`max-h-[60vh] overflow-y-auto pl-1 pr-1 ${channels.length > 4 ? 'grid grid-cols-2 gap-x-4' : ''}`}>
-            {channels.map((channel: ProviderQuotaChannel) => (
+          <div className={`max-h-[60vh] overflow-y-auto pl-1 pr-1 ${groupedChannels.length > 4 ? 'grid grid-cols-2 gap-x-4' : ''}`}>
+            {groupedChannels.map((channel: ProviderQuotaChannel) => (
               <QuotaRow key={channel.id} channel={channel} />
             ))}
           </div>
