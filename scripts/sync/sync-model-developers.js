@@ -329,27 +329,24 @@ function filterProviders(data, allowedIds) {
 	if (allowedIds.includes("xiaomi")) {
 		const xiaomiTokenPlanKeys = [
 			"xiaomi-token-plan-cn",
+			"xiaomi-token-plan-sgp",
+			"xiaomi-token-plan-ams",
 		];
 		const mergedModels = new Map();
-		let baseProvider = filtered.xiaomi || data.providers.xiaomi || null;
+		const baseProvider = filtered.xiaomi || data.providers.xiaomi || null;
 
-		for (const key of xiaomiTokenPlanKeys) {
-			const provider = data.providers[key];
-			if (!provider) continue;
-			const models = Array.isArray(provider.models) ? provider.models : [];
-			for (const model of models) {
-				if (!mergedModels.has(model.id)) {
-					mergedModels.set(model.id, deepClone(model));
-				}
+		// Process base provider first so its real pricing takes precedence
+		if (baseProvider) {
+			for (const model of baseProvider.models || []) {
+				mergedModels.set(model.id, deepClone(model));
 			}
 		}
 
-		// Also include models already on the xiaomi provider
-		if (baseProvider) {
-			const existingModels = Array.isArray(baseProvider.models)
-				? baseProvider.models
-				: [];
-			for (const model of existingModels) {
+		// Add token-plan models only for IDs not already present
+		for (const key of xiaomiTokenPlanKeys) {
+			const provider = data.providers[key];
+			if (!provider) continue;
+			for (const model of provider.models || []) {
 				if (!mergedModels.has(model.id)) {
 					mergedModels.set(model.id, deepClone(model));
 				}
