@@ -629,7 +629,7 @@
   "channels.dialogs.userAgentPassThrough.inherit": "继承系统设置",
   "channels.dialogs.userAgentPassThrough.enabled": "已启用",
   "channels.dialogs.userAgentPassThrough.disabled": "已禁用",
-  "channels.dialogs.bodyPassThrough.label": "请求体透传",
-  "channels.dialogs.bodyPassThrough.enabled": "启用请求体透传",
-  "channels.dialogs.bodyPassThrough.warning": "启用后，提示词注入和提示词保护将不会生效。"
+  "channels.dialogs.bodyPassThrough.label": "透传",
+  "channels.dialogs.bodyPassThrough.enabled": "启用透传",
+  "channels.dialogs.bodyPassThrough.warning": "启用后，请求和响应都会透传，但仅在客户端请求格式与渠道格式一致时生效。提示词注入和提示词保护将不会生效。"
 }
