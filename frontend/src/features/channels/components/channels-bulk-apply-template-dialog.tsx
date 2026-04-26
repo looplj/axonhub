@@ -6,6 +6,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Channel } from '../data/schema';
 import { useChannelOverrideTemplates, useApplyChannelOverrideTemplate } from '../data/templates';
 
@@ -19,6 +20,7 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
   const { t } = useTranslation();
   const applyTemplate = useApplyChannelOverrideTemplate();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'MERGE' | 'REPLACE'>('MERGE');
   const [templateSearchOpen, setTemplateSearchOpen] = useState(false);
   const [templateSearchValue, setTemplateSearchValue] = useState('');
 
@@ -41,10 +43,11 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
       await applyTemplate.mutateAsync({
         templateID: selectedTemplateId,
         channelIDs: selectedChannels.map((ch) => ch.id),
-        mode: 'MERGE',
+        mode,
       });
       onOpenChange(false);
       setSelectedTemplateId(null);
+      setMode('MERGE');
     } catch (error) {
       // Error already handled by mutation
     }
@@ -53,6 +56,7 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
   const handleClose = () => {
     onOpenChange(false);
     setSelectedTemplateId(null);
+    setMode('MERGE');
     setTemplateSearchValue('');
   };
 
@@ -121,11 +125,26 @@ export function ChannelsBulkApplyTemplateDialog({ open, onOpenChange, selectedCh
             </Popover>
           </div>
 
+          {/* mode selector */}
+          <div className='space-y-2'>
+            <Label>{t('channels.templates.bulk.modeLabel')}</Label>
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as 'MERGE' | 'REPLACE')} className='flex gap-6'>
+              <div className='flex items-center space-x-2'>
+                <RadioGroupItem value='MERGE' id='mode-merge' />
+                <Label htmlFor='mode-merge' className='cursor-pointer font-normal'>{t('channels.templates.bulk.modeMerge')}</Label>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <RadioGroupItem value='REPLACE' id='mode-replace' />
+                <Label htmlFor='mode-replace' className='cursor-pointer font-normal'>{t('channels.templates.bulk.modeReplace')}</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
           {/* Info Message */}
           {selectedTemplateId && (
             <div className='bg-muted/50 rounded-md border p-3'>
               <p className='text-muted-foreground text-sm'>
-                {t('channels.templates.bulk.applyInfo')}
+                {mode === 'MERGE' ? t('channels.templates.bulk.applyInfoMerge') : t('channels.templates.bulk.applyInfoReplace')}
               </p>
             </div>
           )}

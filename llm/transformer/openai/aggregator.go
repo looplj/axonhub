@@ -15,13 +15,14 @@ import (
 
 // choiceAggregator is a helper struct to aggregate data for each choice.
 type choiceAggregator struct {
-	index            int
-	content          strings.Builder
-	reasoningContent strings.Builder
-	toolCalls        map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
-	finishReason     *string
-	role             string
-	annotations      map[string]llm.Annotation // Map to track unique annotations by URL
+	index               int
+	content             strings.Builder
+	reasoningContent    strings.Builder
+	hasReasoningContent bool                  // Tracks whether any delta carried reasoning_content (even an empty string).
+	toolCalls           map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
+	finishReason        *string
+	role                string
+	annotations         map[string]llm.Annotation // Map to track unique annotations by URL
 }
 
 // addAnnotations adds annotations from a message to the choice aggregator,
@@ -103,8 +104,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 					choiceAgg.content.WriteString(*choice.Delta.Content.Content)
 				}
 
-				// Handle reasoning content
+				// Handle reasoning content. Track presence of the field separately from its
+				// content length so that a semantically meaningful empty string (e.g. DeepSeek
+				// thinking mode emitting reasoning_content: "") is preserved on the aggregated
+				// message rather than being silently dropped.
 				if choice.Delta.ReasoningContent != nil {
+					choiceAgg.hasReasoningContent = true
 					choiceAgg.reasoningContent.WriteString(*choice.Delta.ReasoningContent)
 				}
 
@@ -202,8 +207,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			Role: choiceAgg.role,
 		}
 
-		// Set reasoning content if available
-		if choiceAgg.reasoningContent.Len() > 0 {
+		// Set reasoning content if any delta carried the field, preserving an empty
+		// string when present (required for round-tripping providers like DeepSeek
+		// thinking mode that may emit reasoning_content: "").
+		if choiceAgg.hasReasoningContent {
 			reasoningContent := choiceAgg.reasoningContent.String()
 			message.ReasoningContent = &reasoningContent
 		}

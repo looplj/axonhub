@@ -2,6 +2,7 @@ import { useChannels } from '../context/channels-context';
 import { ChannelsActionDialog } from './channels-action-dialog';
 import { ChannelsArchiveDialog } from './channels-archive-dialog';
 import { ChannelsBulkApplyTemplateDialog } from './channels-bulk-apply-template-dialog';
+import { ChannelsBulkClearTemplateDialog } from './channels-bulk-clear-template-dialog';
 import { ChannelsBulkArchiveDialog } from './channels-bulk-archive-dialog';
 import { ChannelsBulkDeleteDialog } from './channels-bulk-delete-dialog';
 import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog';
@@ -47,6 +48,8 @@ export function ChannelsDialogs() {
         onOpenChange={(isOpen) => setOpen(isOpen ? 'bulkApplyTemplate' : null)}
         selectedChannels={selectedChannels}
       />
+
+      <ChannelsBulkClearTemplateDialog />
 
       <ChannelsBulkImportDialog isOpen={open === 'bulkImport'} onClose={() => setOpen(null)} />
 

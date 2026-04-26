@@ -2,9 +2,11 @@ package anthropic
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -53,6 +55,11 @@ type anthropicInboundStream struct {
 	pendingSignature *string
 }
 
+// generateSignature generates a random signature using base64(uuid).
+func generateSignature() string {
+	return base64.StdEncoding.EncodeToString([]byte(uuid.New().String()))
+}
+
 // closeThinkingBlock ensures any open or implied thinking block is properly
 // closed. It handles three scenarios:
 //  1. pendingSignature exists but no thinking block was started — creates a
@@ -60,6 +67,9 @@ type anthropicInboundStream struct {
 //  2. A thinking block is open — flushes any pending signature as
 //     signature_delta, then emits content_block_stop.
 //  3. Neither — no-op.
+//
+// If no signature is available when closing a thinking block, a random
+// base64-encoded UUID is generated as a placeholder signature.
 func (s *anthropicInboundStream) closeThinkingBlock() error {
 	if s.pendingSignature != nil && !s.hasThinkingContentStarted {
 		sig := s.pendingSignature
@@ -129,20 +139,23 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 	if s.hasThinkingContentStarted {
 		s.hasThinkingContentStarted = false
 
-		if s.pendingSignature != nil {
-			sig := s.pendingSignature
-			s.pendingSignature = nil
+		// Use pending signature if available, otherwise generate a random one.
+		sig := s.pendingSignature
+		s.pendingSignature = nil
+		if sig == nil {
+			rs := generateSignature()
+			sig = &rs
+		}
 
-			if err := s.enqueEvent(&StreamEvent{
-				Type:  "content_block_delta",
-				Index: &s.contentIndex,
-				Delta: &StreamDelta{
-					Type:      lo.ToPtr("signature_delta"),
-					Signature: sig,
-				},
-			}); err != nil {
-				return fmt.Errorf("failed to enqueue signature_delta event: %w", err)
-			}
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_delta",
+			Index: &s.contentIndex,
+			Delta: &StreamDelta{
+				Type:      lo.ToPtr("signature_delta"),
+				Signature: sig,
+			},
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue signature_delta event: %w", err)
 		}
 
 		if err := s.enqueEvent(&StreamEvent{
@@ -306,25 +319,17 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 		}
 
-		// Add signature delta before stopping thinking block if signature is available
+		// Buffer signature: always defer emission to closeThinkingBlock so that
+		// we emit exactly one signature_delta per thinking block (avoiding
+		// duplicates when a random placeholder would otherwise be generated).
+		// If multiple signature chunks arrive, concatenate them to match the
+		// aggregator's behavior.
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
-			if !s.hasThinkingContentStarted {
-				// Thinking hasn't started yet (e.g., Responses API sends encrypted_content before thinking).
-				// Buffer the signature and emit it after thinking finishes.
+			if s.pendingSignature == nil {
 				s.pendingSignature = choice.Delta.ReasoningSignature
 			} else {
-				err := s.enqueEvent(&StreamEvent{
-					Type:  "content_block_delta",
-					Index: &s.contentIndex,
-					Delta: &StreamDelta{
-						Type:      lo.ToPtr("signature_delta"),
-						Signature: choice.Delta.ReasoningSignature,
-					},
-				})
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue signature_delta event: %w", err)
-					return false
-				}
+				combined := *s.pendingSignature + *choice.Delta.ReasoningSignature
+				s.pendingSignature = &combined
 			}
 		}
 

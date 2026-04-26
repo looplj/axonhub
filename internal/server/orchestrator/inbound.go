@@ -139,7 +139,7 @@ func (ts *InboundPersistentStream) Close() error {
 
 	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
-		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 {
+		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && isCompletedAggregated(meta) {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
 		}
@@ -155,6 +155,26 @@ func (ts *InboundPersistentStream) Close() error {
 			if errToReport == nil {
 				errToReport = streamErr
 			}
+
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
+	// If the stream ended without a terminal event and we couldn't determine it was
+	// completed through aggregation, mark it as incomplete/failed. This handles the case
+	// where the upstream connection drops silently (EOF) without sending a terminal event,
+	// which would otherwise fall through and incorrectly mark the request as "completed".
+	if !ts.state.StreamCompleted {
+		log.Debug(ctx, "Stream ended without terminal event or completed response, treating as incomplete")
+
+		if ts.request != nil {
+			persistCtx := context.WithoutCancel(ctx)
+
+			errToReport := errors.New("stream ended without terminal event or completed response")
 
 			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))

@@ -520,16 +520,38 @@ func (r *mutationResolver) DeleteChannelOverrideTemplate(ctx context.Context, id
 func (r *mutationResolver) ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error) {
 	channelIDs := objects.IntGuids(input.ChannelIDs)
 
+	mode := biz.ApplyTemplateModeMerge
+	if input.Mode != nil && *input.Mode == OverrideApplyModeReplace {
+		mode = biz.ApplyTemplateModeReplace
+	}
+
 	updatedChannels, err := r.channelOverrideTemplateService.ApplyTemplate(
 		ctx,
 		input.TemplateID.ID,
 		channelIDs,
+		mode,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply template: %w", err)
 	}
 
 	return &ApplyChannelOverrideTemplatePayload{
+		Success:  true,
+		Updated:  len(updatedChannels),
+		Channels: updatedChannels,
+	}, nil
+}
+
+// ClearChannelOverrideTemplates is the resolver for the clearChannelOverrideTemplates field.
+func (r *mutationResolver) ClearChannelOverrideTemplates(ctx context.Context, input ClearChannelOverrideTemplatesInput) (*ClearChannelOverrideTemplatesPayload, error) {
+	channelIDs := objects.IntGuids(input.ChannelIDs)
+
+	updatedChannels, err := r.channelOverrideTemplateService.ClearTemplates(ctx, channelIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear templates: %w", err)
+	}
+
+	return &ClearChannelOverrideTemplatesPayload{
 		Success:  true,
 		Updated:  len(updatedChannels),
 		Channels: updatedChannels,

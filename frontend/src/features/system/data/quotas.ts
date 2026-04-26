@@ -31,20 +31,139 @@ export async function checkProviderQuotas() {
   return graphqlRequest(CHECK_PROVIDER_QUOTAS_QUERY);
 }
 
+type ProviderQuotaDataCommon = {
+  plan_type?: string;
+  error?: string;
+}
+
+type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
+  windows?: {
+    '5h'?: { utilization?: number; reset?: number; status?: string };
+    '7d'?: { utilization?: number; reset?: number; status?: string };
+    overage?: { utilization?: number; reset?: number; status?: string };
+  };
+  representative_claim?: string;
+}
+
+type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
+  rate_limit?: {
+    primary_window?: {
+      used_percent?: number;
+      reset_at?: number;
+      reset_after_seconds?: number;
+      limit_window_seconds?: number;
+    };
+    secondary_window?: {
+      used_percent?: number;
+      reset_at?: number;
+      reset_after_seconds?: number;
+      limit_window_seconds?: number;
+    };
+  };
+}
+
+
+type CopilotQuotaSnapshot = {
+  entitlement: number;
+  has_quota: boolean;
+  overage_count: number;
+  overage_permitted: boolean;
+  percent_remaining: number;
+  quota_id: string;
+  quota_remaining: number;
+  quota_reset_at: number;
+  remaining: number;
+  timestamp_utc: string;
+  unlimited: boolean;
+};
+
+type ProviderGitHubCopilotQuotaData = ProviderQuotaDataCommon & {
+  limited_user_quotas?: {
+    chat?: number;
+    completions?: number;
+    [key: string]: number | undefined;
+  };
+  quota_snapshots?: {
+    chat?: CopilotQuotaSnapshot;
+    completions?: CopilotQuotaSnapshot;
+    premium_interactions?: CopilotQuotaSnapshot;
+    premium_models?: CopilotQuotaSnapshot;
+    [key: string]: CopilotQuotaSnapshot | undefined;
+  };
+  total_quotas?: {
+    chat?: number;
+    completions?: number;
+    [key: string]: number | undefined;
+  };
+}
+
+export type NanoGPTQuotaWindow = {
+  used?: number;
+  remaining?: number;
+  percentUsed?: number;
+  resetAt?: number;
+}
+
+export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
+  state?: string;
+  active?: boolean;
+  allowOverage?: boolean;
+  limits?: {
+    weeklyInputTokens?: number;
+    dailyImages?: number;
+    dailyInputTokens?: number;
+  };
+  windows?: {
+    weeklyInputTokens?: NanoGPTQuotaWindow | null;
+    dailyImages?: NanoGPTQuotaWindow | null;
+    dailyInputTokens?: NanoGPTQuotaWindow | null;
+  };
+  period?: { currentPeriodEnd?: string };
+}
+
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
-  type: string;
   quotaStatus?: {
-    status: string;
+    status: 'available' | 'warning' | 'exhausted' | 'unknown';
     nextResetAt: string | null;
     ready: boolean;
-    quotaData: any;
   };
-};
+} & (
+    | {
+      type: 'claudecode'
+      quotaStatus?: {
+        quotaData: ProviderClaudeQuotaData
+      }
+    }
+    | {
+      type: 'codex'
+      quotaStatus?: {
+        quotaData: ProviderCodexQuotaData
+      }
+    }
+    | {
+      type: 'github_copilot'
+      quotaStatus?: {
+        quotaData: ProviderGitHubCopilotQuotaData
+      }
+    }
+    | {
+      type: 'nanogpt'
+      quotaStatus?: {
+        quotaData: ProviderNanoGPTQuotaData
+      }
+    }
+    | {
+      type: 'nanogpt_responses'
+      quotaStatus?: {
+        quotaData: ProviderNanoGPTQuotaData
+      }
+    }
+  )
 
 export function useProviderQuotaStatuses() {
-  const { data, error } = useQuery({
+  const { data } = useQuery({
     queryKey: ['provider-quotas'],
     queryFn: async () => {
       const input = {
@@ -59,10 +178,10 @@ export function useProviderQuotaStatuses() {
 
   const channels = data?.queryChannels?.edges?.map((e: any) => e.node) || [];
 
-  // Filter for OAuth channels (claudecode, codex) - check both lowercase and PascalCase
+  // Filter for quota-enabled channels
   const oauthChannels = channels.filter((c: any) => {
     const type = c.type?.toLowerCase();
-    const match = ['claudecode', 'codex'].includes(type);
+    const match = ['claudecode', 'codex', 'github_copilot', 'nanogpt', 'nanogpt_responses'].includes(type);
     return match;
   });
 

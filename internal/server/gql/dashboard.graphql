@@ -105,6 +105,7 @@ type ChannelSuccessRate {
   channelId: ID!
   channelName: String!
   channelType: String!
+  channelDisabled: Boolean!
   successCount: Int!
   failedCount: Int!
   totalCount: Int!
@@ -222,7 +223,7 @@ extend type Query {
   dailyRequestStats: [DailyRequestStats!]!
   topRequestsProjects: [TopRequestsProjects!]!
   tokenStats: TokenStats!
-  channelSuccessRates: [ChannelSuccessRate!]!
+  channelSuccessRates(timeWindow: String, limit: Int): [ChannelSuccessRate!]!
   fastestChannels(input: FastestChannelsInput!): [FastestChannel!]!
   fastestModels(input: FastestChannelsInput!): [FastestModel!]!
   """

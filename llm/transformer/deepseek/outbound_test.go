@@ -126,27 +126,27 @@ func TestOutboundTransformer_TransformRequest_Thinking(t *testing.T) {
 	tests := []struct {
 		name            string
 		reasoningEffort string
-		expectThinking  bool
+		expectedThinking string
 	}{
 		{
 			name:            "reasoning effort high enables thinking",
 			reasoningEffort: "high",
-			expectThinking:  true,
+			expectedThinking: "enabled",
 		},
 		{
 			name:            "reasoning effort medium enables thinking",
 			reasoningEffort: "medium",
-			expectThinking:  true,
+			expectedThinking: "enabled",
 		},
 		{
 			name:            "reasoning effort none disables thinking",
 			reasoningEffort: "none",
-			expectThinking:  false,
+			expectedThinking: "disabled",
 		},
 		{
-			name:            "empty reasoning effort disables thinking",
+			name:            "empty reasoning effort enables thinking by default",
 			reasoningEffort: "",
-			expectThinking:  false,
+			expectedThinking: "enabled",
 		},
 	}
 
@@ -176,12 +176,8 @@ func TestOutboundTransformer_TransformRequest_Thinking(t *testing.T) {
 			err = json.Unmarshal(got.Body, &dsReq)
 			require.NoError(t, err)
 
-			if tt.expectThinking {
-				assert.NotNil(t, dsReq.Thinking)
-				assert.Equal(t, "enabled", dsReq.Thinking.Type)
-			} else {
-				assert.Nil(t, dsReq.Thinking)
-			}
+			require.NotNil(t, dsReq.Thinking)
+			assert.Equal(t, tt.expectedThinking, dsReq.Thinking.Type)
 		})
 	}
 }
@@ -231,6 +227,151 @@ func TestOutboundTransformer_TransformRequest_URL(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedURL, got.URL)
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformRequest_ReasoningContentFill(t *testing.T) {
+	config := &Config{
+		BaseURL:        "https://api.deepseek.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	}
+
+	tr, err := NewOutboundTransformerWithConfig(config)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name               string
+		reasoningEffort    string
+		messages           []llm.Message
+		expectedReasoning  []map[string]any // per assistant message: {"reasoning_content": "<value>"} or nil
+		expectThinking     bool
+	}{
+		{
+			name:            "thinking enabled fills empty reasoning_content for assistant messages",
+			reasoningEffort: "high",
+			messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hi")}},
+			},
+			expectThinking: true,
+			expectedReasoning: []map[string]any{
+				{"reasoning_content": ""},
+			},
+		},
+		{
+			name:            "thinking enabled preserves existing reasoning_content",
+			reasoningEffort: "high",
+			messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hi")}, ReasoningContent: lo.ToPtr("Let me think...")},
+			},
+			expectThinking: true,
+			expectedReasoning: []map[string]any{
+				{"reasoning_content": "Let me think..."},
+			},
+		},
+		{
+			name:            "default thinking fills reasoning_content when effort is empty",
+			reasoningEffort: "",
+			messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hi")}},
+			},
+			expectThinking: true,
+			expectedReasoning: []map[string]any{
+				{"reasoning_content": ""},
+			},
+		},
+		{
+			name:            "thinking disabled does not fill reasoning_content",
+			reasoningEffort: "none",
+			messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hi")}},
+			},
+			expectThinking: false,
+			expectedReasoning: []map[string]any{
+				nil,
+			},
+		},
+		{
+			name:            "multiple assistant messages all get filled",
+			reasoningEffort: "medium",
+			messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hi")}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("How are you?")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("I'm fine")}, ReasoningContent: lo.ToPtr("thinking")},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Great")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Thanks")}},
+			},
+			expectThinking: true,
+			expectedReasoning: []map[string]any{
+				{"reasoning_content": ""},
+				{"reasoning_content": "thinking"},
+				{"reasoning_content": ""},
+			},
+		},
+		{
+			name:            "non-assistant messages are not affected",
+			reasoningEffort: "high",
+			messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("You are helpful")}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hi")}},
+			},
+			expectThinking: true,
+			expectedReasoning: []map[string]any{
+				{"reasoning_content": ""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := &llm.Request{
+				Model:           "deepseek-reasoner",
+				ReasoningEffort: tt.reasoningEffort,
+				Messages:        tt.messages,
+			}
+
+			ctx := context.Background()
+			got, err := tr.TransformRequest(ctx, request)
+
+			require.NoError(t, err)
+			assert.NotNil(t, got)
+
+			var dsReq Request
+
+			err = json.Unmarshal(got.Body, &dsReq)
+			require.NoError(t, err)
+
+			require.NotNil(t, dsReq.Thinking)
+			if tt.expectThinking {
+				assert.Equal(t, "enabled", dsReq.Thinking.Type)
+			} else {
+				assert.Equal(t, "disabled", dsReq.Thinking.Type)
+			}
+
+			// Collect assistant messages in order
+			var assistantMsgs []openai.Message
+			for _, msg := range dsReq.Messages {
+				if msg.Role == "assistant" {
+					assistantMsgs = append(assistantMsgs, msg)
+				}
+			}
+
+			require.Equal(t, len(tt.expectedReasoning), len(assistantMsgs), "number of assistant messages")
+
+			for i, expected := range tt.expectedReasoning {
+				if expected == nil {
+					assert.Nil(t, assistantMsgs[i].ReasoningContent, "assistant msg %d should have nil ReasoningContent", i)
+				} else {
+					require.NotNil(t, assistantMsgs[i].ReasoningContent, "assistant msg %d should have ReasoningContent", i)
+					assert.Equal(t, expected["reasoning_content"], *assistantMsgs[i].ReasoningContent, "assistant msg %d ReasoningContent", i)
+				}
+			}
 		})
 	}
 }

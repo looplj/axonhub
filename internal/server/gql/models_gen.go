@@ -121,13 +121,14 @@ type ChannelPerformanceStat struct {
 }
 
 type ChannelSuccessRate struct {
-	ChannelID    objects.GUID `json:"channelId"`
-	ChannelName  string       `json:"channelName"`
-	ChannelType  string       `json:"channelType"`
-	SuccessCount int          `json:"successCount"`
-	FailedCount  int          `json:"failedCount"`
-	TotalCount   int          `json:"totalCount"`
-	SuccessRate  float64      `json:"successRate"`
+	ChannelID       objects.GUID `json:"channelId"`
+	ChannelName     string       `json:"channelName"`
+	ChannelType     string       `json:"channelType"`
+	ChannelDisabled bool         `json:"channelDisabled"`
+	SuccessCount    int          `json:"successCount"`
+	FailedCount     int          `json:"failedCount"`
+	TotalCount      int          `json:"totalCount"`
+	SuccessRate     float64      `json:"successRate"`
 }
 
 type ChannelTypeCount struct {
@@ -143,6 +144,16 @@ type ClearCachePayload struct {
 	Success bool                `json:"success"`
 	Message string              `json:"message"`
 	Targets []DiagnosticsTarget `json:"targets"`
+}
+
+type ClearChannelOverrideTemplatesInput struct {
+	ChannelIDs []*objects.GUID `json:"channelIDs"`
+}
+
+type ClearChannelOverrideTemplatesPayload struct {
+	Success  bool           `json:"success"`
+	Updated  int            `json:"updated"`
+	Channels []*ent.Channel `json:"channels"`
 }
 
 type CompleteAutoDisableChannelOnboardingInput struct {
@@ -561,16 +572,18 @@ func (e DiagnosticsTarget) MarshalJSON() ([]byte, error) {
 type OverrideApplyMode string
 
 const (
-	OverrideApplyModeMerge OverrideApplyMode = "MERGE"
+	OverrideApplyModeMerge   OverrideApplyMode = "MERGE"
+	OverrideApplyModeReplace OverrideApplyMode = "REPLACE"
 )
 
 var AllOverrideApplyMode = []OverrideApplyMode{
 	OverrideApplyModeMerge,
+	OverrideApplyModeReplace,
 }
 
 func (e OverrideApplyMode) IsValid() bool {
 	switch e {
-	case OverrideApplyModeMerge:
+	case OverrideApplyModeMerge, OverrideApplyModeReplace:
 		return true
 	}
 	return false
