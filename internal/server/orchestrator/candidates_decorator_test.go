@@ -61,9 +61,8 @@ func TestSelectedChannelsSelector_WithAllowedChannels(t *testing.T) {
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
-	connectionTracker := NewDefaultConnectionTracker(10)
 
-	baseSelector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
+	baseSelector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 
 	req := &llm.Request{
 		Model: "gpt-4",

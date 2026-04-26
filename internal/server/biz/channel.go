@@ -153,6 +153,11 @@ type ChannelService struct {
 	enabledChannelsCache *live.Cache[[]*Channel]
 	channelNotifier      watcher.Notifier[live.CacheEvent[struct{}]]
 
+	// limiterForgetter is invoked after channel mutations so the orchestrator's
+	// ChannelLimiterManager can drop the limiter entry for the affected channel.
+	// Optional: when nil, mutations skip the call (used in tests / before wiring).
+	limiterForgetter ChannelLimiterForgetter
+
 	// perfWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
 	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
 	perfWindowSeconds int64
@@ -431,6 +436,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 				return nil, fmt.Errorf("invalid header override operations: %w", err)
 			}
 		}
+
+		if err := ValidateRateLimit(input.Settings.RateLimit); err != nil {
+			return nil, fmt.Errorf("invalid rate limit: %w", err)
+		}
 	}
 
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
@@ -541,6 +550,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			}
 		}
 
+		if err := ValidateRateLimit(input.Settings.RateLimit); err != nil {
+			return nil, fmt.Errorf("invalid rate limit: %w", err)
+		}
+
 		mut.SetSettings(input.Settings)
 	}
 
@@ -575,6 +588,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		return nil, fmt.Errorf("failed to update channel: %w", err)
 	}
 
+	// Intentionally NO forgetLimiter call: ChannelLimiterManager.GetOrCreate
+	// already detects rate-limit changes via cfg equality and rebuilds on the
+	// next request. Calling Forget on every update (including unrelated
+	// settings) would orphan in-flight slots and let the next batch of
+	// requests transiently exceed MaxConcurrent.
 	svc.asyncReloadChannels()
 
 	return channel, nil
@@ -613,6 +631,7 @@ func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
 		return fmt.Errorf("failed to delete channel: %w", err)
 	}
 
+	svc.forgetLimiter(id)
 	svc.asyncReloadChannels()
 
 	return nil

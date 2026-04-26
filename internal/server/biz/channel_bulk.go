@@ -201,6 +201,10 @@ func (svc *ChannelService) BulkDeleteChannels(ctx context.Context, ids []int) er
 		return fmt.Errorf("failed to bulk delete channels: %w", err)
 	}
 
+	for _, id := range ids {
+		svc.forgetLimiter(id)
+	}
+
 	log.Info(ctx, "bulk deleted channels", log.Int("count", deleted))
 	svc.asyncReloadChannels()
 
