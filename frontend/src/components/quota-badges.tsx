@@ -620,6 +620,8 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             if (qd.weeklyTokenLimit) {
               const pctRemaining = qd.weeklyTokenLimit.percentRemaining ?? 100;
               const usedPct = 100 - pctRemaining;
+              const remainingCredits = qd.weeklyTokenLimit.remainingCredits;
+              const maxCredits = qd.weeklyTokenLimit.maxCredits;
               items.push(
                 <div key="weekly" className="space-y-2.5">
                   <div className="space-y-1">
@@ -629,6 +631,17 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                     </div>
                     <ProgressBar percentage={usedPct} />
                   </div>
+                  {remainingCredits != null && maxCredits != null && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">{t('quota.label.credits_remaining')}</span>
+                      <span className="font-medium text-foreground">{remainingCredits}/{maxCredits}</span>
+                    </div>
+                  )}
+                  {qd.weeklyTokenLimit.nextRegenAt && (
+                    <div className="text-[11px] text-muted-foreground text-right pt-0.5">
+                      {t('quota.label.resets_in')} {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt)}
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -645,20 +658,9 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                       {t('quota.status.limited')}
                     </Badge>
                   )}
-                </div>
-              );
-            }
-
-            if (qd.subscription) {
-              items.push(
-                <div key="sub" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-medium text-muted-foreground">{t('quota.label.subscription')}</span>
-                    <span className="font-medium text-foreground">{qd.subscription.requests ?? 0}/{qd.subscription.limit ?? 0}</span>
-                  </div>
-                  {qd.subscription.renewsAt && (
+                  {qd.rollingFiveHourLimit.nextTickAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {t('quota.label.resets_in')} {formatTimeToReset(qd.subscription.renewsAt)}
+                      {t('quota.label.resets_in')} {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt)}
                     </div>
                   )}
                 </div>
@@ -716,8 +718,16 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                 <div key="credits" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-medium text-muted-foreground">{t('quota.label.credits_remaining')}</span>
-                    <span className="font-medium text-foreground">${qd.balance.credits_remaining_usd?.toFixed(2) ?? '0.00'}</span>
+                    <span className="font-medium text-foreground">{qd.balance.credits_remaining_usd != null ? `$${qd.balance.credits_remaining_usd.toFixed(2)}` : '$0.00'}</span>
                   </div>
+                </div>
+              );
+            }
+
+            if (quota.nextResetAt) {
+              items.push(
+                <div key="reset" className="text-[11px] text-muted-foreground text-right pt-1">
+                  {t('quota.label.resets_in')} {formatTimeToReset(quota.nextResetAt)}
                 </div>
               );
             }

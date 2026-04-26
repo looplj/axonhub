@@ -133,9 +133,8 @@ export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
 }
 
 export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
-  subscription?: { limit?: number | null; requests?: number | null; renewsAt?: string | null } | null;
-  weeklyTokenLimit?: { percentRemaining?: number | null; remainingCredits?: string | null; maxCredits?: string | null } | null;
-  rollingFiveHourLimit?: { limited?: boolean | null; remaining?: number | null; max?: number | null } | null;
+  weeklyTokenLimit?: { percentRemaining?: number | null; remainingCredits?: string | null; maxCredits?: string | null; nextRegenAt?: string | null } | null;
+  rollingFiveHourLimit?: { limited?: boolean | null; remaining?: number | null; max?: number | null; nextTickAt?: string | null } | null;
 }
 
 export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
