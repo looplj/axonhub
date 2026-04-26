@@ -183,6 +183,29 @@ func TestWafer_CheckQuota_MalformedJSON(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to parse wafer usage response")
 }
 
+func TestWafer_CheckQuota_HTTPError(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Status:     "401 Unauthorized",
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"error":"unauthorized"}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewWaferQuotaChecker(httpClient)
+
+	_, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "401")
+}
+
 func TestWafer_CheckQuota_CustomBaseURL(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -249,5 +272,13 @@ func TestWafer_SupportsChannel(t *testing.T) {
 	require.False(t, checker.SupportsChannel(&ent.Channel{
 		Type:    channel.TypeNanogpt,
 		BaseURL: "https://pass.wafer.ai",
+	}))
+	require.True(t, checker.SupportsChannel(&ent.Channel{
+		Type:    channel.TypeOpenai,
+		BaseURL: "https://pass.wafer.ai:443",
+	}))
+	require.False(t, checker.SupportsChannel(&ent.Channel{
+		Type:    channel.TypeOpenai,
+		BaseURL: "https://evilwafer.ai",
 	}))
 }

@@ -29,7 +29,7 @@ func DetectProviderFromURL(baseURL string) string {
 		return ""
 	}
 
-	host := strings.ToLower(parsed.Host)
+	host := strings.ToLower(parsed.Hostname())
 	if host == "" {
 		return ""
 	}

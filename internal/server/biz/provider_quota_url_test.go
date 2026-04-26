@@ -160,3 +160,55 @@ func TestHasCredentialsForProvider_NonOpenaiNoCreds(t *testing.T) {
 	}
 	require.False(t, hasCredentialsForProvider(ch))
 }
+
+func TestGetProviderType_OpenaiWithWaferURLPort(t *testing.T) {
+	svc := &ProviderQuotaService{
+		checkers: make(map[string]provider_quota.QuotaChecker),
+	}
+
+	ch := &ent.Channel{
+		Type:    channel.TypeOpenai,
+		BaseURL: "https://pass.wafer.ai:443",
+	}
+	result := svc.getProviderType(ch)
+	require.Equal(t, "wafer", result)
+}
+
+func TestGetProviderType_OpenaiWithSyntheticURLPort(t *testing.T) {
+	svc := &ProviderQuotaService{
+		checkers: make(map[string]provider_quota.QuotaChecker),
+	}
+
+	ch := &ent.Channel{
+		Type:    channel.TypeOpenaiResponses,
+		BaseURL: "https://api.synthetic.new:443",
+	}
+	result := svc.getProviderType(ch)
+	require.Equal(t, "synthetic", result)
+}
+
+func TestGetProviderType_OpenaiWithNeuralWattURLPort(t *testing.T) {
+	svc := &ProviderQuotaService{
+		checkers: make(map[string]provider_quota.QuotaChecker),
+	}
+
+	ch := &ent.Channel{
+		Type:    channel.TypeOpenai,
+		BaseURL: "https://api.neuralwatt.com:443",
+	}
+	result := svc.getProviderType(ch)
+	require.Equal(t, "neuralwatt", result)
+}
+
+func TestGetProviderType_OpenaiWithFalsePositiveURL(t *testing.T) {
+	svc := &ProviderQuotaService{
+		checkers: make(map[string]provider_quota.QuotaChecker),
+	}
+
+	ch := &ent.Channel{
+		Type:    channel.TypeOpenai,
+		BaseURL: "https://evilwafer.ai",
+	}
+	result := svc.getProviderType(ch)
+	require.Equal(t, "", result)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -89,6 +90,10 @@ func (c *SyntheticQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel)
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return QuotaData{}, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(resp.Body))
+	}
+
 	return c.parseResponse(resp.Body)
 }
 
@@ -156,7 +161,8 @@ func isSyntheticURL(baseURL string) bool {
 		return false
 	}
 
-	return strings.HasSuffix(parsed.Host, "api.synthetic.new")
+	host := parsed.Hostname()
+	return host == "api.synthetic.new" || strings.HasSuffix(host, ".api.synthetic.new")
 }
 
 func buildSyntheticQuotaURL(baseURL string) string {

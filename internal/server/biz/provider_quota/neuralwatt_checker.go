@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -74,6 +75,10 @@ func (c *NeuralWattQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return QuotaData{}, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(resp.Body))
+	}
+
 	return c.parseResponse(resp.Body)
 }
 
@@ -88,6 +93,8 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	if response.Subscription != nil {
 		if response.Subscription.InOverage != nil && *response.Subscription.InOverage {
+			normalizedStatus = "exhausted"
+		} else if response.Subscription.KwhRemaining != nil && *response.Subscription.KwhRemaining <= 0 {
 			normalizedStatus = "exhausted"
 		} else if isNeuralWattLowRemaining(response.Subscription) {
 			normalizedStatus = "warning"
@@ -136,7 +143,8 @@ func isNeuralWattURL(baseURL string) bool {
 		return false
 	}
 
-	return strings.HasSuffix(parsed.Host, "api.neuralwatt.com")
+	host := parsed.Hostname()
+	return host == "api.neuralwatt.com" || strings.HasSuffix(host, ".api.neuralwatt.com")
 }
 
 func isNeuralWattLowRemaining(sub *NeuralWattSubscription) bool {

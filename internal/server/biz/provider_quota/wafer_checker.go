@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -67,6 +68,10 @@ func (c *WaferQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 	resp, err := hc.Do(ctx, httpRequest)
 	if err != nil {
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return QuotaData{}, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(resp.Body))
 	}
 
 	return c.parseResponse(resp.Body)
@@ -172,7 +177,8 @@ func isWaferURL(baseURL string) bool {
 		return false
 	}
 
-	return strings.HasSuffix(parsed.Host, "wafer.ai")
+	host := parsed.Hostname()
+	return host == "wafer.ai" || strings.HasSuffix(host, ".wafer.ai")
 }
 
 func buildWaferQuotaURL(baseURL string) string {

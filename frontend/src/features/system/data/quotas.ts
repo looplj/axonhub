@@ -207,7 +207,7 @@ export type ProviderQuotaChannel = {
       type: 'openai'
       providerType?: undefined
       quotaStatus?: {
-        quotaData: Record<string, unknown>
+        quotaData: ProviderQuotaDataCommon
       }
     }
   )

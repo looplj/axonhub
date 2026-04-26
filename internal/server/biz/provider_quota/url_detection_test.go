@@ -15,6 +15,8 @@ func TestDetectProviderFromURL_Wafer(t *testing.T) {
 		{"subdomain", "https://pass.wafer.ai"},
 		{"with path", "https://api.wafer.ai/v1/chat"},
 		{"http scheme", "http://wafer.ai"},
+		{"with port", "https://pass.wafer.ai:443"},
+		{"with non-standard port", "https://pass.wafer.ai:8443"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -32,6 +34,7 @@ func TestDetectProviderFromURL_Synthetic(t *testing.T) {
 		{"exact domain", "https://api.synthetic.new"},
 		{"subdomain", "https://us-east.api.synthetic.new"},
 		{"with path", "https://api.synthetic.new/v1/chat/completions"},
+		{"with port", "https://api.synthetic.new:443"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -49,6 +52,7 @@ func TestDetectProviderFromURL_NeuralWatt(t *testing.T) {
 		{"exact domain", "https://api.neuralwatt.com"},
 		{"subdomain", "https://us.api.neuralwatt.com"},
 		{"with path", "https://api.neuralwatt.com/v1"},
+		{"with port", "https://api.neuralwatt.com:443"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -99,6 +103,22 @@ func TestDetectProviderFromURL_Malformed(t *testing.T) {
 		{"missing scheme", "wafer.ai"},
 		{"just host no scheme", "api.synthetic.new"},
 		{"garbage", "://invalid"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectProviderFromURL(tt.baseURL)
+			require.Equal(t, "", result)
+		})
+	}
+}
+
+func TestDetectProviderFromURL_FalsePositives(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+	}{
+		{"evil wafer", "https://evilwafer.ai"},
+		{"fake synthetic", "https://fakeapi.synthetic.new"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

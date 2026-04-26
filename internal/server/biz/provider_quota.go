@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -19,6 +21,9 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+const maxConcurrentQuotaChecks = 8
+
 
 // HOW TO ADD A NEW PROVIDER QUOTA CHECKER
 // ========================================
@@ -357,8 +362,17 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 		log.Bool("force", force),
 	)
 
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(min(maxConcurrentQuotaChecks, len(channelsToCheck)))
 	for _, ch := range channelsToCheck {
-		svc.checkChannelQuota(ctx, ch, now)
+		ch := ch
+		eg.Go(func() error {
+			svc.checkChannelQuota(egCtx, ch, now)
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		log.Error(ctx, "Error in concurrent quota check", log.Cause(err))
 	}
 }
 

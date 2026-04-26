@@ -780,7 +780,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
   if (channels.length === 0) return null;
 
-  const groupedChannels = channels.reduce((acc, channel) => {
+  const groupedChannels = channels.reduce((acc: ProviderQuotaChannel[], channel: ProviderQuotaChannel) => {
     if (channel.type === 'nanogpt_responses') {
       const existing = acc.find(c => c.type === 'nanogpt');
       if (!existing) {

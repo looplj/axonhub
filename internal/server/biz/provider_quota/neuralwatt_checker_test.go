@@ -192,6 +192,70 @@ func TestNeuralWatt_CheckQuota_MalformedJSON(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to parse neuralwatt usage response")
 }
 
+func TestNeuralWatt_CheckQuota_HTTPError(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Status:     "401 Unauthorized",
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"error":"unauthorized"}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewNeuralWattQuotaChecker(httpClient)
+
+	_, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "401")
+}
+
+func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"balance": {
+					"credits_remaining_usd": 0.0,
+					"total_credits_usd": 5.0,
+					"accounting_method": "energy"
+				},
+				"subscription": {
+					"plan": "standard",
+					"status": "active",
+					"current_period_start": "2026-04-02T05:58:36Z",
+					"current_period_end": "2026-05-02T05:58:36Z",
+					"kwh_included": 20.0,
+					"kwh_used": 20.0,
+					"kwh_remaining": 0.0,
+					"in_overage": false
+				}
+			}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewNeuralWattQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "exhausted", quota.Status)
+	require.False(t, quota.Ready)
+}
+
 func TestNeuralWatt_CheckQuota_CustomBaseURL(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -254,5 +318,9 @@ func TestNeuralWatt_SupportsChannel(t *testing.T) {
 	require.False(t, checker.SupportsChannel(&ent.Channel{
 		Type:    channel.TypeClaudecode,
 		BaseURL: "https://api.neuralwatt.com",
+	}))
+	require.True(t, checker.SupportsChannel(&ent.Channel{
+		Type:    channel.TypeOpenai,
+		BaseURL: "https://api.neuralwatt.com:443",
 	}))
 }
