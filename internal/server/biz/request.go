@@ -180,6 +180,10 @@ func (s *RequestService) CreateRequest(
 		mut = mut.SetClientIP(httpRequest.ClientIP)
 	}
 
+	if llmRequest.ReasoningEffort != "" {
+		mut = mut.SetReasoningEffort(llmRequest.ReasoningEffort)
+	}
+
 	// Determine if we should store in database or external storage
 	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
 

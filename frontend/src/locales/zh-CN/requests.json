@@ -2,6 +2,7 @@
   "requests.title": "请求日志",
   "requests.description": "查看和管理 LLM 调用请求日志",
   "requests.columns.modelId": "模型ID",
+  "requests.columns.reasoningEffort": "推理强度",
   "requests.columns.stream": "流式",
   "requests.columns.source": "来源",
   "requests.columns.channel": "渠道",

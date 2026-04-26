@@ -3475,6 +3475,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldModelID)
 				fieldSeen[request.FieldModelID] = struct{}{}
 			}
+		case "reasoningEffort":
+			if _, ok := fieldSeen[request.FieldReasoningEffort]; !ok {
+				selectedFields = append(selectedFields, request.FieldReasoningEffort)
+				fieldSeen[request.FieldReasoningEffort] = struct{}{}
+			}
 		case "format":
 			if _, ok := fieldSeen[request.FieldFormat]; !ok {
 				selectedFields = append(selectedFields, request.FieldFormat)
