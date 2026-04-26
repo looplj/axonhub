@@ -77,10 +77,39 @@ func OnRawRequest(name string, handler func(ctx context.Context, request *httpcl
 	}
 }
 
+func OnRawResponse(name string, handler func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)) Middleware {
+	return &simpleMiddleware{
+		name:                       name,
+		outboundRawResponseHandler: handler,
+	}
+}
+
+func OnRawStream(name string, handler func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)) Middleware {
+	return &simpleMiddleware{
+		name:                   name,
+		outboundRawStreamHandler: handler,
+	}
+}
+
+func OnInboundRawResponse(name string, handler func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)) Middleware {
+	return &simpleMiddleware{
+		name:                      name,
+		inboundRawResponseHandler: handler,
+	}
+}
+
+func OnInboundRawStream(name string, handler func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)) Middleware {
+	return &simpleMiddleware{
+		name:                    name,
+		inboundRawStreamHandler: handler,
+	}
+}
+
 type simpleMiddleware struct {
 	name                            string
 	inboundRequestHandler           func(ctx context.Context, request *llm.Request) (*llm.Request, error)
 	inboundRawResponseHandler       func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
+	inboundRawStreamHandler         func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)
 	outboundRawRequestHandler       func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)
 	outboundRawResponseHandler      func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
 	outboundRawStreamHandler        func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)
@@ -110,7 +139,11 @@ func (d *simpleMiddleware) OnInboundRawResponse(ctx context.Context, response *h
 }
 
 func (d *simpleMiddleware) OnInboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-	return stream, nil
+	if d.inboundRawStreamHandler == nil {
+		return stream, nil
+	}
+
+	return d.inboundRawStreamHandler(ctx, stream)
 }
 
 func (d *simpleMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {

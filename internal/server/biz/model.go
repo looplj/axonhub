@@ -180,14 +180,21 @@ func validateFilterLeaf(condition objects.Condition) error {
 		return fmt.Errorf("condition field is required")
 	}
 
-	if condition.Field != "prompt_tokens" {
+	switch condition.Field {
+	case "prompt_tokens":
+		return validatePromptTokensLeaf(condition)
+	case "stream":
+		return validateStreamLeaf(condition)
+	default:
 		return fmt.Errorf("unsupported condition field %q", condition.Field)
 	}
+}
 
+func validatePromptTokensLeaf(condition objects.Condition) error {
 	switch condition.Operator {
 	case "lt", "lte", "gt", "gte", "<", "<=", ">", ">=":
 	default:
-		return fmt.Errorf("unsupported condition operator %q", condition.Operator)
+		return fmt.Errorf("unsupported condition operator %q for prompt_tokens", condition.Operator)
 	}
 
 	value, ok, err := filterConditionValueToInt64(condition)
@@ -196,14 +203,29 @@ func validateFilterLeaf(condition objects.Condition) error {
 	}
 
 	if !ok {
-		return fmt.Errorf("condition value for %s must be an integer", condition.Field)
+		return fmt.Errorf("condition value for prompt_tokens must be an integer")
 	}
 
 	if value < 0 {
-		return fmt.Errorf("%s must be greater than or equal to 0", condition.Field)
+		return fmt.Errorf("prompt_tokens must be greater than or equal to 0")
 	}
 
 	return nil
+}
+
+func validateStreamLeaf(condition objects.Condition) error {
+	switch condition.Operator {
+	case "eq", "ne", "=", "==", "!=":
+	default:
+		return fmt.Errorf("unsupported condition operator %q for stream", condition.Operator)
+	}
+
+	switch condition.Value.(type) {
+	case bool:
+		return nil
+	default:
+		return fmt.Errorf("condition value for stream must be a boolean, got %T", condition.Value)
+	}
 }
 
 func filterValueToInt64(value any) (int64, bool) {

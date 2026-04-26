@@ -45,6 +45,12 @@ server:
     exposed_headers: []         # Exposed headers (env: AXONHUB_SERVER_CORS_EXPOSED_HEADERS)
     allow_credentials: true     # Allow credentials (env: AXONHUB_SERVER_CORS_ALLOW_CREDENTIALS)
     max_age: 1m                  # Max age for preflight cache in seconds (env: AXONHUB_SERVER_CORS_MAX_AGE)
+  api:
+    auth:
+      allow_no_auth: false       # Allow requests without API key (env: AXONHUB_SERVER_API_AUTH_ALLOW_NO_AUTH)
+      key_prefix: "ah"           # API key prefix (env: AXONHUB_SERVER_API_AUTH_KEY_PREFIX)
+                                 # Default: "ah"
+                                 # Examples: "sk" generates "sk-<64hex>", "myapp" generates "myapp-<64hex>"
 
 # Database configuration
 db:

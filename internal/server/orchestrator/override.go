@@ -14,7 +14,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -388,128 +387,6 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 
 		for _, op := range overrideHeaders {
 			applyOverrideOperationToHeaders(ctx, request.Headers, op, renderCtx)
-		}
-
-		return request, nil
-	})
-}
-
-// applyPassThroughBody creates a middleware that reuses the original inbound request body when
-// the channel enables pass-through and the inbound and outbound API formats are identical.
-// For formats that encode the selected model in the request body, the mapped llmReq.Model is
-// written back into the copied raw payload so pass-through does not bypass model mapping.
-func applyPassThroughBody(outbound *PersistentOutboundTransformer) pipeline.Middleware {
-	return pipeline.OnRawRequest("pass-through-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		channel := outbound.GetCurrentChannel()
-		if channel.Settings == nil || !channel.Settings.PassThroughBody {
-			return request, nil
-		}
-
-		llmReq := outbound.state.LlmRequest
-
-		// Compare inbound API format (from llm.Request) with outbound API format (from httpclient.Request).
-		// httpclient.Request.APIFormat is set by the outbound transformer to indicate the actual format
-		// used for this specific request.
-		if request.APIFormat == "" || string(llmReq.APIFormat) != request.APIFormat {
-			return request, nil
-		}
-
-		log.Debug(ctx, "applying pass-through body",
-			log.String("channel", channel.Name),
-			log.String("api_format", request.APIFormat),
-		)
-
-		body, err := mergePassThroughBody(llmReq.RawRequest.Body, llmReq.APIFormat, llmReq.Model)
-		if err != nil {
-			log.Warn(ctx, "failed to merge pass-through body, keeping outbound body",
-				log.String("channel", channel.Name),
-				log.Int("channel_id", channel.ID),
-				log.Cause(err),
-			)
-
-			return request, nil
-		}
-
-		request.Body = body
-
-		return request, nil
-	})
-}
-
-func mergePassThroughBody(rawBody []byte, apiFormat llm.APIFormat, model string) ([]byte, error) {
-	body := append([]byte(nil), rawBody...)
-
-	if !passThroughBodyNeedsModelPatch(apiFormat) {
-		return body, nil
-	}
-
-	if model == "" {
-		return body, nil
-	}
-
-	nextBody, err := sjson.SetBytes(body, "model", model)
-	if err != nil {
-		return nil, fmt.Errorf("set model in pass-through body: %w", err)
-	}
-
-	return nextBody, nil
-}
-
-func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
-	//nolint:exhaustive // ohter format do not need model field.
-	switch apiFormat {
-	case llm.APIFormatOpenAIChatCompletion,
-		llm.APIFormatOpenAIResponse,
-		llm.APIFormatOpenAIResponseCompact,
-		llm.APIFormatOpenAIEmbedding,
-		llm.APIFormatJinaEmbedding,
-		llm.APIFormatJinaRerank,
-		llm.APIFormatAnthropicMessage:
-		return true
-	default:
-		return false
-	}
-}
-
-// applyUserAgentPassThrough creates a middleware that applies the User-Agent pass-through setting.
-func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
-	return pipeline.OnRawRequest("user-agent-pass-through", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		channel := outbound.GetCurrentChannel()
-		if channel == nil {
-			return request, nil
-		}
-
-		var passThroughEnabled bool
-		if channel.Settings != nil && channel.Settings.PassThroughUserAgent != nil {
-			passThroughEnabled = *channel.Settings.PassThroughUserAgent
-		} else {
-			globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
-			if err != nil {
-				log.Warn(ctx, "failed to get global user agent pass through setting", log.Cause(err))
-
-				passThroughEnabled = false
-			} else {
-				passThroughEnabled = globalPassThrough
-			}
-		}
-
-		// Handle User-Agent header based on pass-through setting
-		// This must be done here (before persistRequestExecution) to ensure
-		// the correct User-Agent is logged in request execution records.
-		if request.Headers == nil {
-			request.Headers = make(http.Header)
-		}
-
-		if passThroughEnabled {
-			// Pass-through enabled: use the original client's User-Agent
-			if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
-				if clientUA := outbound.state.LlmRequest.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
-					request.Headers.Set("User-Agent", clientUA)
-				}
-			}
-		} else {
-			// Pass-through disabled: use AxonHub's default User-Agent
-			request.Headers.Set("User-Agent", "axonhub/1.0")
 		}
 
 		return request, nil

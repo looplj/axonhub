@@ -12667,6 +12667,108 @@
       "display_name": "Xiaomi",
       "models": [
         {
+          "id": "mimo-v2.5-pro",
+          "name": "MiMo-V2.5-Pro",
+          "family": "mimo-v2.5-pro",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2024-12",
+          "release_date": "2026-04-22",
+          "last_updated": "2026-04-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "display_name": "MiMo-V2.5-Pro",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          }
+        },
+        {
+          "id": "mimo-v2.5",
+          "name": "MiMo-V2.5",
+          "family": "mimo-v2.5",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2024-12",
+          "release_date": "2026-04-22",
+          "last_updated": "2026-04-22",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "display_name": "MiMo-V2.5",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          }
+        },
+        {
           "id": "mimo-v2-omni",
           "name": "MiMo-V2-Omni",
           "family": "mimo",
@@ -12767,6 +12869,37 @@
               ]
             }
           }
+        },
+        {
+          "id": "mimo-v2-tts",
+          "name": "MiMo-V2-TTS",
+          "family": "mimo",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "release_date": "2026-03-18",
+          "last_updated": "2026-03-18",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 8000,
+            "output": 16000
+          },
+          "display_name": "MiMo-V2-TTS",
+          "type": "chat"
         },
         {
           "id": "mimo-v2-flash",
