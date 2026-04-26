@@ -105,6 +105,9 @@ const (
 	ProviderTypeCodex         ProviderType = "codex"
 	ProviderTypeGithubCopilot ProviderType = "github_copilot"
 	ProviderTypeNanogpt       ProviderType = "nanogpt"
+	ProviderTypeWafer         ProviderType = "wafer"
+	ProviderTypeSynthetic     ProviderType = "synthetic"
+	ProviderTypeNeuralwatt    ProviderType = "neuralwatt"
 )
 
 func (pt ProviderType) String() string {
@@ -114,7 +117,7 @@ func (pt ProviderType) String() string {
 // ProviderTypeValidator is a validator for the "provider_type" field enum values. It is called by the builders before save.
 func ProviderTypeValidator(pt ProviderType) error {
 	switch pt {
-	case ProviderTypeClaudecode, ProviderTypeCodex, ProviderTypeGithubCopilot, ProviderTypeNanogpt:
+	case ProviderTypeClaudecode, ProviderTypeCodex, ProviderTypeGithubCopilot, ProviderTypeNanogpt, ProviderTypeWafer, ProviderTypeSynthetic, ProviderTypeNeuralwatt:
 		return nil
 	default:
 		return fmt.Errorf("providerquotastatus: invalid enum value for provider_type field: %q", pt)

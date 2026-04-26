@@ -1,6 +1,6 @@
 import { Loader2, RefreshCw, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useProviderQuotaStatuses, ProviderQuotaChannel, ProviderNanoGPTQuotaData, NanoGPTQuotaWindow } from '@/features/system/data/quotas';
+import { useProviderQuotaStatuses, ProviderQuotaChannel, ProviderNanoGPTQuotaData, NanoGPTQuotaWindow, ProviderWaferQuotaData, ProviderSyntheticQuotaData, ProviderNeuralWattQuotaData } from '@/features/system/data/quotas';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
@@ -86,6 +86,20 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
+  } else if (channel.type === 'openai' && channel.providerType === 'wafer') {
+    const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
+    percentage = qd?.current_period_used_percent ?? 0;
+  } else if (channel.type === 'openai' && channel.providerType === 'synthetic') {
+    const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
+    const weeklyPct = qd?.weeklyTokenLimit?.percentRemaining ?? 100;
+    percentage = 100 - weeklyPct;
+  } else if (channel.type === 'openai' && channel.providerType === 'neuralwatt') {
+    const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
+    const kwhIncluded = qd?.subscription?.kwh_included ?? 0;
+    const kwhUsed = qd?.subscription?.kwh_used ?? 0;
+    if (kwhIncluded > 0) {
+      percentage = (kwhUsed / kwhIncluded) * 100;
+    }
   }
   return percentage;
 }
@@ -551,6 +565,187 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
           })()}
         </div>
       )}
+
+      {channel.type === 'openai' && channel.providerType === 'wafer' && (
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            const usedPct = qd.current_period_used_percent ?? 0;
+            items.push(
+              <div key="usage" className="space-y-2.5">
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">
+                      {t('quota.label.usage_percent', { percent: Math.round(usedPct) })}
+                    </span>
+                    <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
+                  </div>
+                  <ProgressBar percentage={usedPct} />
+                </div>
+              </div>
+            );
+
+            if (qd.remaining_included_requests != null || qd.included_request_limit != null) {
+              items.push(
+                <div key="remaining" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">{t('quota.label.remaining_requests')}</span>
+                    <span className="font-medium text-foreground">{qd.remaining_included_requests ?? 0}/{qd.included_request_limit ?? 0}</span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (qd.plan_tier) {
+              items.push(
+                <div key="plan" className="flex items-center gap-1.5 pt-1">
+                  <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    {qd.plan_tier}
+                  </Badge>
+                </div>
+              );
+            }
+
+            if (qd.window_end) {
+              items.push(
+                <div key="reset" className="text-[11px] text-muted-foreground text-right pt-1">
+                  {t('quota.label.resets_in')} {formatTimeToReset(qd.window_end)}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'openai' && channel.providerType === 'synthetic' && (
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            if (qd.weeklyTokenLimit) {
+              const pctRemaining = qd.weeklyTokenLimit.percentRemaining ?? 100;
+              const usedPct = 100 - pctRemaining;
+              items.push(
+                <div key="weekly" className="space-y-2.5">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">{t('quota.label.weekly_token_limit')}</span>
+                      <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
+                    </div>
+                    <ProgressBar percentage={usedPct} />
+                  </div>
+                </div>
+              );
+            }
+
+            if (qd.rollingFiveHourLimit) {
+              items.push(
+                <div key="5h" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">{t('quota.label.rolling_5h_limit')}</span>
+                    <span className="font-medium text-foreground">{qd.rollingFiveHourLimit.remaining ?? 0}/{qd.rollingFiveHourLimit.max ?? 0}</span>
+                  </div>
+                  {qd.rollingFiveHourLimit.limited && (
+                    <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-yellow-500 border-yellow-500/30 font-semibold">
+                      {t('quota.status.limited')}
+                    </Badge>
+                  )}
+                </div>
+              );
+            }
+
+            if (qd.subscription) {
+              items.push(
+                <div key="sub" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">{t('quota.label.subscription')}</span>
+                    <span className="font-medium text-foreground">{qd.subscription.requests ?? 0}/{qd.subscription.limit ?? 0}</span>
+                  </div>
+                  {qd.subscription.renewsAt && (
+                    <div className="text-[11px] text-muted-foreground text-right pt-0.5">
+                      {t('quota.label.resets_in')} {formatTimeToReset(qd.subscription.renewsAt)}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'openai' && channel.providerType === 'neuralwatt' && (
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            if (qd.subscription) {
+              const kwhIncluded = qd.subscription.kwh_included ?? 0;
+              const kwhUsed = qd.subscription.kwh_used ?? 0;
+              const kwhRemaining = qd.subscription.kwh_remaining ?? 0;
+              const usedPct = kwhIncluded > 0 ? (kwhUsed / kwhIncluded) * 100 : 0;
+
+              items.push(
+                <div key="kwh" className="space-y-2.5">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {t('quota.label.kwh_remaining')}
+                        <span className="opacity-70 font-normal"> ({kwhRemaining}/{kwhIncluded})</span>
+                      </span>
+                      <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
+                    </div>
+                    <ProgressBar percentage={usedPct} />
+                  </div>
+                </div>
+              );
+
+              if (qd.subscription.in_overage) {
+                items.push(
+                  <div key="overage" className="flex items-center gap-1.5 pt-1">
+                    <Badge variant="destructive" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider font-semibold">
+                      {t('quota.label.in_overage')}
+                    </Badge>
+                  </div>
+                );
+              }
+
+              if (qd.subscription.plan) {
+                items.push(
+                  <div key="plan" className="flex items-center gap-1.5 pt-1">
+                    <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      {qd.subscription.plan}
+                    </Badge>
+                  </div>
+                );
+              }
+            }
+
+            if (qd.balance) {
+              items.push(
+                <div key="credits" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">{t('quota.label.credits_remaining')}</span>
+                    <span className="font-medium text-foreground">${qd.balance.credits_remaining_usd?.toFixed(2) ?? '0.00'}</span>
+                  </div>
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
     </div>
   );
 }
@@ -588,6 +783,11 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
   const groupedChannels = channels.reduce((acc, channel) => {
     if (channel.type === 'nanogpt_responses') {
       const existing = acc.find(c => c.type === 'nanogpt');
+      if (!existing) {
+        acc.push(channel);
+      }
+    } else if (channel.type === 'openai' && channel.providerType) {
+      const existing = acc.find(c => c.type === 'openai' && c.providerType === channel.providerType);
       if (!existing) {
         acc.push(channel);
       }

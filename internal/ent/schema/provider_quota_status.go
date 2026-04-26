@@ -31,7 +31,7 @@ func (ProviderQuotaStatus) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("channel_id").Immutable(),
 		field.Enum("provider_type").
-			Values("claudecode", "codex", "github_copilot", "nanogpt").
+			Values("claudecode", "codex", "github_copilot", "nanogpt", "wafer", "synthetic", "neuralwatt").
 			Immutable(),
 		field.Enum("status").
 			Values("available", "warning", "exhausted", "unknown").
