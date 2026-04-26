@@ -14,6 +14,23 @@ func supportsAdaptiveThinking(config *Config) bool {
 	}
 }
 
+// supportsOutputConfig returns true if the platform supports the output_config field
+// with effort control. DeepSeek supports output_config.effort but does NOT support
+// thinking.type = "adaptive".
+func supportsOutputConfig(config *Config) bool {
+	if config == nil {
+		return true
+	}
+
+	//nolint:exhaustive // Checked.
+	switch config.Type {
+	case PlatformDirect, PlatformClaudeCode, PlatformBedrock, PlatformVertex, PlatformDeepSeek:
+		return true
+	default:
+		return false
+	}
+}
+
 // thinkingBudgetToReasoningEffort converts thinking budget tokens to reasoning effort string.
 func thinkingBudgetToReasoningEffort(budgetTokens int64) string {
 	// Map budget tokens to reasoning effort based on the same logic used in outbound

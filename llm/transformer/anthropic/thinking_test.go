@@ -681,9 +681,9 @@ func TestOutputConfig_Outbound(t *testing.T) {
 			},
 		},
 		{
-			name: "unsupported platform output_config_effort=max -> Thinking enabled high budget",
+			name: "DeepSeek platform output_config_effort=max -> OutputConfig{Effort:max}",
 			chatReq: &llm.Request{
-				Model:     "claude-3-sonnet-20240229",
+				Model:     "deepseek-v4-pro",
 				MaxTokens: lo.ToPtr(int64(4096)),
 				Messages: []llm.Message{
 					{
@@ -700,10 +700,10 @@ func TestOutputConfig_Outbound(t *testing.T) {
 			},
 			validate: func(t *testing.T, anthropicReq *MessageRequest) {
 				t.Helper()
-				require.Nil(t, anthropicReq.OutputConfig)
-				require.NotNil(t, anthropicReq.Thinking)
-				require.Equal(t, "enabled", anthropicReq.Thinking.Type)
-				require.Equal(t, int64(30000), anthropicReq.Thinking.BudgetTokens)
+				require.NotNil(t, anthropicReq.OutputConfig)
+				require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
+				// DeepSeek supports output_config; Thinking is nil when no reasoning effort/budget is set
+				require.Nil(t, anthropicReq.Thinking)
 			},
 		},
 		{
@@ -1154,6 +1154,210 @@ func TestOutboundConvert_RedactedThinkingOnlyToAnthropic(t *testing.T) {
 	require.Equal(t, "text", assistantMsg.Content.MultipleContent[1].Type)
 	require.NotNil(t, assistantMsg.Content.MultipleContent[1].Text)
 	require.Equal(t, textContent, *assistantMsg.Content.MultipleContent[1].Text)
+}
+
+func TestEnsureAssistantThinkingBlocks_SimpleContent(t *testing.T) {
+	msgs := []MessageParam{
+		{Role: "assistant", Content: MessageContent{Content: lo.ToPtr("Hello")}},
+	}
+	ensureAssistantThinkingBlocks(msgs)
+	require.Len(t, msgs, 1)
+	require.Nil(t, msgs[0].Content.Content)
+	require.Len(t, msgs[0].Content.MultipleContent, 2)
+	require.Equal(t, "thinking", msgs[0].Content.MultipleContent[0].Type)
+	require.Equal(t, "", *msgs[0].Content.MultipleContent[0].Thinking)
+	require.Equal(t, "text", msgs[0].Content.MultipleContent[1].Type)
+	require.Equal(t, "Hello", *msgs[0].Content.MultipleContent[1].Text)
+}
+
+func TestEnsureAssistantThinkingBlocks_AlreadyHasThinking(t *testing.T) {
+	msgs := []MessageParam{
+		{
+			Role: "assistant",
+			Content: MessageContent{
+				MultipleContent: []MessageContentBlock{
+					{Type: "thinking", Thinking: lo.ToPtr("I think...")},
+					{Type: "text", Text: lo.ToPtr("Answer")},
+				},
+			},
+		},
+	}
+	ensureAssistantThinkingBlocks(msgs)
+	require.Len(t, msgs[0].Content.MultipleContent, 2)
+	require.Equal(t, "I think...", *msgs[0].Content.MultipleContent[0].Thinking)
+}
+
+func TestEnsureAssistantThinkingBlocks_MultipleContentWithoutThinking(t *testing.T) {
+	msgs := []MessageParam{
+		{
+			Role: "assistant",
+			Content: MessageContent{
+				MultipleContent: []MessageContentBlock{
+					{Type: "text", Text: lo.ToPtr("Hello")},
+					{Type: "tool_use", ID: "123", Name: lo.ToPtr("calc"), Input: json.RawMessage(`{}`)},
+				},
+			},
+		},
+	}
+	ensureAssistantThinkingBlocks(msgs)
+	require.Len(t, msgs[0].Content.MultipleContent, 3)
+	require.Equal(t, "thinking", msgs[0].Content.MultipleContent[0].Type)
+	require.Equal(t, "", *msgs[0].Content.MultipleContent[0].Thinking)
+	require.Equal(t, "text", msgs[0].Content.MultipleContent[1].Type)
+	require.Equal(t, "tool_use", msgs[0].Content.MultipleContent[2].Type)
+}
+
+func TestEnsureAssistantThinkingBlocks_SkipsNonAssistant(t *testing.T) {
+	msgs := []MessageParam{
+		{Role: "user", Content: MessageContent{Content: lo.ToPtr("hi")}},
+		{Role: "system", Content: MessageContent{Content: lo.ToPtr("be helpful")}},
+	}
+	ensureAssistantThinkingBlocks(msgs)
+	for _, msg := range msgs {
+		require.NotNil(t, msg.Content.Content) // still simple string, not converted
+	}
+}
+
+func TestEnsureAssistantThinkingBlocks_EmptyContent(t *testing.T) {
+	msgs := []MessageParam{
+		{Role: "assistant", Content: MessageContent{MultipleContent: []MessageContentBlock{}}},
+	}
+	ensureAssistantThinkingBlocks(msgs)
+	require.Len(t, msgs[0].Content.MultipleContent, 1)
+	require.Equal(t, "thinking", msgs[0].Content.MultipleContent[0].Type)
+	require.Equal(t, "", *msgs[0].Content.MultipleContent[0].Thinking)
+}
+
+func TestIsThinkingEnabled(t *testing.T) {
+	tests := []struct {
+		name     string
+		req      *MessageRequest
+		expected bool
+	}{
+		{name: "nil thinking -> enabled", req: &MessageRequest{}, expected: true},
+		{name: "thinking enabled -> enabled", req: &MessageRequest{Thinking: &Thinking{Type: "enabled"}}, expected: true},
+		{name: "thinking adaptive -> enabled", req: &MessageRequest{Thinking: &Thinking{Type: "adaptive"}}, expected: true},
+		{name: "thinking disabled -> disabled", req: &MessageRequest{Thinking: &Thinking{Type: "disabled"}}, expected: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, isThinkingEnabled(tt.req))
+		})
+	}
+}
+
+func TestDeepSeek_EnsureThinkingBlocksInAssistantMessages(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		config   *Config
+		validate func(t *testing.T, anthropicReq *MessageRequest)
+	}{
+		{
+			name: "DeepSeek with simple assistant content -> thinking block added",
+			chatReq: &llm.Request{
+				Model:     "deepseek-v4-pro",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+					{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hello!")}},
+				},
+			},
+			config: &Config{Type: PlatformDeepSeek},
+			validate: func(t *testing.T, req *MessageRequest) {
+				t.Helper()
+				require.Len(t, req.Messages, 2)
+				// assistant message should have thinking + text blocks
+				assistantMsg := req.Messages[1]
+				require.Nil(t, assistantMsg.Content.Content)
+				require.Len(t, assistantMsg.Content.MultipleContent, 2)
+				require.Equal(t, "thinking", assistantMsg.Content.MultipleContent[0].Type)
+				require.Equal(t, "", *assistantMsg.Content.MultipleContent[0].Thinking)
+				require.Equal(t, "text", assistantMsg.Content.MultipleContent[1].Type)
+				require.Equal(t, "Hello!", *assistantMsg.Content.MultipleContent[1].Text)
+			},
+		},
+		{
+			name: "Non-DeepSeek platform -> no thinking blocks added",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+					{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hello!")}},
+				},
+			},
+			config: &Config{Type: PlatformDirect},
+			validate: func(t *testing.T, req *MessageRequest) {
+				t.Helper()
+				require.Len(t, req.Messages, 2)
+				assistantMsg := req.Messages[1]
+				require.NotNil(t, assistantMsg.Content.Content)
+				require.Equal(t, "Hello!", *assistantMsg.Content.Content)
+			},
+		},
+		{
+			name: "DeepSeek with existing thinking block -> no duplicate",
+			chatReq: &llm.Request{
+				Model:     "deepseek-v4-pro",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+					{
+						Role:             "assistant",
+						ReasoningContent: lo.ToPtr("Let me think..."),
+						Content:          llm.MessageContent{Content: lo.ToPtr("Answer")},
+					},
+				},
+			},
+			config: &Config{Type: PlatformDeepSeek},
+			validate: func(t *testing.T, req *MessageRequest) {
+				t.Helper()
+				require.Len(t, req.Messages, 2)
+				assistantMsg := req.Messages[1]
+				require.Len(t, assistantMsg.Content.MultipleContent, 2)
+				// thinking block preserved as-is, not duplicated
+				require.Equal(t, "thinking", assistantMsg.Content.MultipleContent[0].Type)
+				require.Equal(t, "Let me think...", *assistantMsg.Content.MultipleContent[0].Thinking)
+				require.Equal(t, "text", assistantMsg.Content.MultipleContent[1].Type)
+				require.Equal(t, "Answer", *assistantMsg.Content.MultipleContent[1].Text)
+			},
+		},
+		{
+			name: "DeepSeek with output_config -> thinking blocks added",
+			chatReq: &llm.Request{
+				Model:     "deepseek-v4-pro",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+					{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hello!")}},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyOutputConfigEffort: "high",
+				},
+			},
+			config: &Config{Type: PlatformDeepSeek},
+			validate: func(t *testing.T, req *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, req.OutputConfig)
+				require.Equal(t, "high", req.OutputConfig.Effort)
+				assistantMsg := req.Messages[1]
+				require.Len(t, assistantMsg.Content.MultipleContent, 2)
+				require.Equal(t, "thinking", assistantMsg.Content.MultipleContent[0].Type)
+				require.Equal(t, "", *assistantMsg.Content.MultipleContent[0].Thinking)
+				require.Equal(t, "text", assistantMsg.Content.MultipleContent[1].Type)
+				require.Equal(t, "Hello!", *assistantMsg.Content.MultipleContent[1].Text)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			anthropicReq := convertToAnthropicRequestWithConfig(tt.chatReq, tt.config, shared.TransportScope{})
+			require.NotNil(t, anthropicReq)
+			tt.validate(t, anthropicReq)
+		})
+	}
 }
 
 func TestOutboundConvert_RedactedThinkingToAnthropicCompatiblePlatformKeepsEncodedSignature(t *testing.T) {
