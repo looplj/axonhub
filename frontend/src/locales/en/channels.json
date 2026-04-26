@@ -629,7 +629,7 @@
   "channels.dialogs.userAgentPassThrough.inherit": "Inherit from system",
   "channels.dialogs.userAgentPassThrough.enabled": "Enabled",
   "channels.dialogs.userAgentPassThrough.disabled": "Disabled",
-  "channels.dialogs.bodyPassThrough.label": "Request Body Pass-Through",
-  "channels.dialogs.bodyPassThrough.enabled": "Enable request body pass-through",
-  "channels.dialogs.bodyPassThrough.warning": "When enabled, prompt injection and prompt protection will not take effect."
+  "channels.dialogs.bodyPassThrough.label": "Pass-Through",
+  "channels.dialogs.bodyPassThrough.enabled": "Enable pass-through",
+  "channels.dialogs.bodyPassThrough.warning": "When enabled, both the request and response will be passed through only when the client request format matches the channel format. Prompt injection and prompt protection will not take effect."
 }

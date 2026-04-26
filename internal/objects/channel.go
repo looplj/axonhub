@@ -145,7 +145,8 @@ type ChannelSettings struct {
 	PassThroughUserAgent *bool `json:"passThroughUserAgent,omitempty"`
 
 	// PassThroughBody controls whether to forward the original request body directly
-	// to the upstream provider without re-serialization.
+	// to the upstream provider and the raw provider response/stream directly to the client
+	// without re-serialization through the transform pipelines.
 	// Only effective when the inbound and outbound API formats are identical.
 	PassThroughBody bool `json:"passThroughBody,omitempty"`
 
