@@ -2875,6 +2875,66 @@
       "display_name": "DeepSeek",
       "models": [
         {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash",
+          "family": "deepseek",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-05",
+          "release_date": "2026-04-24",
+          "last_updated": "2026-04-24",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.028
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 393216
+          },
+          "display_name": "DeepSeek V4 Flash",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "effort_options": [
+                "high",
+                "max"
+              ],
+              "notes": [
+                "Thinking mode is controlled through the thinking parameter; non-thinking mode disables reasoning."
+              ],
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "high"
+            }
+          },
+          "type": "chat"
+        },
+        {
           "id": "deepseek-v4-pro",
           "name": "DeepSeek V4 Pro",
           "family": "deepseek",
@@ -3037,64 +3097,6 @@
             "lifecycle": "compatibility"
           },
           "structured_output": true,
-          "type": "chat"
-        },
-        {
-          "id": "deepseek-v4-flash",
-          "name": "DeepSeek V4 Flash",
-          "family": "deepseek",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "temperature": true,
-          "tool_call": true,
-          "structured_output": true,
-          "last_updated": "2026-04-24",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.14,
-            "output": 0.28,
-            "cache_read": 0.028
-          },
-          "limit": {
-            "context": 1048576,
-            "output": 393216
-          },
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "interleaved": true,
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thinking_blocks"
-              ],
-              "effort_options": [
-                "high",
-                "max"
-              ],
-              "notes": [
-                "Thinking mode is controlled through the thinking parameter; non-thinking mode disables reasoning."
-              ],
-              "default_enabled": true,
-              "mode": "effort",
-              "effort": "high"
-            }
-          },
-          "display_name": "DeepSeek V4 Flash",
           "type": "chat"
         }
       ]
@@ -5683,7 +5685,12 @@
           "cost": {
             "input": 5,
             "output": 30,
-            "cache_read": 0.5
+            "cache_read": 0.5,
+            "context_over_200k": {
+              "input": 10,
+              "output": 45,
+              "cache_read": 1
+            }
           },
           "limit": {
             "context": 1050000,
@@ -13666,7 +13673,7 @@
               "最大 RPM: 30000",
               "最大 TPM: 5000000",
               "最大回答(默认 4k):32k",
-              "最大思��链: 32k",
+              "最大思维链: 32k",
               "最大输入: 224k"
             ],
             "features": [
