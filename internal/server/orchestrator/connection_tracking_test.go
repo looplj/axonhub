@@ -50,22 +50,23 @@ func channelWithLimit(id int, name string, max, queue int64) *biz.Channel {
 func TestChannelLimiterMiddleware_AcquireAndReleaseOnResponse(t *testing.T) {
 	t.Parallel()
 
-	ch := channelWithLimit(1, "k", 2, 0) // soft mode is enough for counting
+	ch := channelWithLimit(1, "k", 2, 0)
 	mgr := NewChannelLimiterManager()
 	out := newTestOutbound(ch)
 	m := withChannelLimiter(out, mgr, nil).(*channelLimiterMiddleware)
+	lim := mgr.GetOrCreate(ch)
 
 	_, err := m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
 	require.NoError(t, err)
-	require.NotNil(t, m.acquired)
+	require.NotNil(t, m.current.Load())
 
-	inFlight, _ := m.acquired.Stats()
+	inFlight, _ := lim.Stats()
 	assert.Equal(t, 1, inFlight)
 
 	_, err = m.OnOutboundLlmResponse(t.Context(), &llm.Response{})
 	require.NoError(t, err)
 
-	inFlight, _ = m.acquired.Stats()
+	inFlight, _ = lim.Stats()
 	assert.Equal(t, 0, inFlight, "Release on response must drop in-flight")
 }
 
@@ -79,7 +80,7 @@ func TestChannelLimiterMiddleware_NoLimitChannelBypasses(t *testing.T) {
 
 	_, err := m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
 	require.NoError(t, err)
-	assert.Nil(t, m.acquired, "channels without rate limit must not engage limiter")
+	assert.Nil(t, m.current.Load(), "channels without rate limit must not engage limiter")
 }
 
 func TestChannelLimiterMiddleware_QueueFullReturnsTypedError(t *testing.T) {
@@ -121,7 +122,7 @@ func TestChannelLimiterMiddleware_QueueFullReturnsTypedError(t *testing.T) {
 	require.ErrorAs(t, err, &queueErr)
 	assert.Equal(t, channelQueueReasonFull, queueErr.Reason)
 	assert.Equal(t, ch.ID, queueErr.ChannelID)
-	assert.Nil(t, m.acquired, "no slot must be retained after Acquire failure")
+	assert.Nil(t, m.current.Load(), "no slot must be retained after Acquire failure")
 
 	cancelQueueSlot()
 	<-queueDone
@@ -135,15 +136,14 @@ func TestChannelLimiterMiddleware_OnceProtection(t *testing.T) {
 	mgr := NewChannelLimiterManager()
 	out := newTestOutbound(ch)
 	m := withChannelLimiter(out, mgr, nil).(*channelLimiterMiddleware)
+	lim := mgr.GetOrCreate(ch)
 
 	_, err := m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
 	require.NoError(t, err)
 
-	inFlight, _ := m.acquired.Stats()
+	inFlight, _ := lim.Stats()
 	require.Equal(t, 1, inFlight)
 
-	// Trigger every release path concurrently — sync.Once must keep inFlight from
-	// going negative.
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Go(func() {
@@ -156,7 +156,7 @@ func TestChannelLimiterMiddleware_OnceProtection(t *testing.T) {
 	}
 	wg.Wait()
 
-	inFlight, _ = m.acquired.Stats()
+	inFlight, _ = lim.Stats()
 	assert.Equal(t, 0, inFlight, "release must run exactly once across all paths")
 }
 
@@ -167,6 +167,7 @@ func TestChannelLimiterMiddleware_StreamCloseReleases(t *testing.T) {
 	mgr := NewChannelLimiterManager()
 	out := newTestOutbound(ch)
 	m := withChannelLimiter(out, mgr, nil).(*channelLimiterMiddleware)
+	lim := mgr.GetOrCreate(ch)
 
 	_, err := m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
 	require.NoError(t, err)
@@ -175,8 +176,50 @@ func TestChannelLimiterMiddleware_StreamCloseReleases(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, wrappedStream.Close())
 
-	inFlight, _ := m.acquired.Stats()
+	inFlight, _ := lim.Stats()
 	assert.Equal(t, 0, inFlight, "stream Close must release the slot")
+}
+
+// Pipeline.Process re-enters OnOutboundRawRequest on same-channel retry and
+// channel switch. A struct-scoped Once would short-circuit every release after
+// the first, leaking the slot permanently; per-attempt slots must not.
+func TestChannelLimiterMiddleware_RetryReacquireDoesNotLeak(t *testing.T) {
+	t.Parallel()
+
+	ch := channelWithLimit(7, "retry-ch", 2, 0)
+	mgr := NewChannelLimiterManager()
+	out := newTestOutbound(ch)
+	m := withChannelLimiter(out, mgr, nil).(*channelLimiterMiddleware)
+	lim := mgr.GetOrCreate(ch)
+
+	_, err := m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
+	require.NoError(t, err)
+	m.OnOutboundRawError(t.Context(), errors.New("upstream 429"))
+
+	inFlight, _ := lim.Stats()
+	require.Equal(t, 0, inFlight, "attempt 1 must release after error")
+
+	_, err = m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
+	require.NoError(t, err)
+
+	inFlight, _ = lim.Stats()
+	require.Equal(t, 1, inFlight, "attempt 2 must hold a slot")
+
+	_, err = m.OnOutboundLlmResponse(t.Context(), &llm.Response{})
+	require.NoError(t, err)
+
+	inFlight, _ = lim.Stats()
+	require.Equal(t, 0, inFlight, "attempt 2 success must release; pre-fix this leaked")
+
+	_, err = m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
+	require.NoError(t, err)
+
+	wrapped, err := m.OnOutboundLlmStream(t.Context(), &emptyResponseStream{})
+	require.NoError(t, err)
+	require.NoError(t, wrapped.Close())
+
+	inFlight, _ = lim.Stats()
+	assert.Equal(t, 0, inFlight, "stream Close on retry must release; pre-fix this leaked")
 }
 
 // emptyResponseStream is a minimal Stream[*llm.Response] used only as a passthrough.

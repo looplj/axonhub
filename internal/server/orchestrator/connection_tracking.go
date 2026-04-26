@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -34,8 +35,9 @@ func withChannelLimiter(
 // upstream provider and releases it once the response is fully drained (or the
 // request fails).
 //
-// One instance per request: the orchestrator constructs a fresh middleware list
-// for each Process call, so capturing the acquired limiter on the struct is safe.
+// One instance per Process call, but Process re-enters OnOutboundRawRequest on
+// same-channel retry and channel switch. Each Acquire mints its own limiterSlot
+// so the release Once cannot bleed across attempts.
 type channelLimiterMiddleware struct {
 	pipeline.DummyMiddleware
 
@@ -43,10 +45,18 @@ type channelLimiterMiddleware struct {
 	manager  *ChannelLimiterManager
 	metrics  *ChannelLimiterMetrics
 
-	// Per-request state: captured at Acquire so a config swap mid-request still
-	// releases the slot on the limiter that owns it.
-	acquired    *ChannelLimiter
-	releaseOnce sync.Once
+	// Single-writer: pipeline.Process invokes middleware hooks serially, so
+	// Acquire/Store of current is never racing itself. The only concurrent
+	// reader is a wrapped stream's Close, which captures the slot pointer at
+	// wrap time and never reads current.
+	current atomic.Pointer[limiterSlot]
+}
+
+// limiterSlot owns one Acquire/Release pair so each pipeline attempt has its
+// own once guard.
+type limiterSlot struct {
+	lim  *ChannelLimiter
+	once sync.Once
 }
 
 func (m *channelLimiterMiddleware) Name() string { return "channel-limiter" }
@@ -96,7 +106,7 @@ func (m *channelLimiterMiddleware) OnOutboundRawRequest(ctx context.Context, req
 		m.metrics.ObserveQueueWait(ctx, channel, time.Since(acquireStart))
 	}
 
-	m.acquired = lim
+	m.current.Store(&limiterSlot{lim: lim})
 
 	if log.DebugEnabled(ctx) {
 		inFlight, waiting := lim.Stats()
@@ -112,37 +122,42 @@ func (m *channelLimiterMiddleware) OnOutboundRawRequest(ctx context.Context, req
 }
 
 func (m *channelLimiterMiddleware) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
-	m.release(ctx)
+	m.releaseCurrent(ctx)
 	return response, nil
 }
 
 func (m *channelLimiterMiddleware) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
-	if m.acquired == nil {
+	slot := m.current.Load()
+	if slot == nil {
 		return stream, nil
 	}
 
 	return &channelLimiterStream{
 		Stream:  stream,
-		release: func() { m.release(ctx) },
+		release: func() { m.releaseSlot(ctx, slot) },
 	}, nil
 }
 
 func (m *channelLimiterMiddleware) OnOutboundRawError(ctx context.Context, err error) {
-	m.release(ctx)
+	m.releaseCurrent(ctx)
 }
 
-// release returns the slot exactly once across all paths (success, error, stream close).
-func (m *channelLimiterMiddleware) release(ctx context.Context) {
-	if m.acquired == nil {
-		return
+func (m *channelLimiterMiddleware) releaseCurrent(ctx context.Context) {
+	if slot := m.current.Load(); slot != nil {
+		m.releaseSlot(ctx, slot)
 	}
+}
 
-	m.releaseOnce.Do(func() {
-		m.acquired.Release()
+// releaseSlot must be passed the slot the caller intends to release — stream
+// wrappers release the slot they were minted with, not whatever's current at
+// Close time.
+func (m *channelLimiterMiddleware) releaseSlot(ctx context.Context, slot *limiterSlot) {
+	slot.once.Do(func() {
+		slot.lim.Release()
 
 		if log.DebugEnabled(ctx) {
 			channel := m.outbound.GetCurrentChannel()
-			inFlight, waiting := m.acquired.Stats()
+			inFlight, waiting := slot.lim.Stats()
 			fields := []log.Field{
 				log.Int("in_flight", inFlight),
 				log.Int("waiting", waiting),
