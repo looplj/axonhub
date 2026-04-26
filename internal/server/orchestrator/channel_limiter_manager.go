@@ -67,9 +67,21 @@ func extractLimiterConfig(ch *biz.Channel) limiterConfig {
 //
 // Returns nil when the channel has no concurrency limit configured. Callers
 // should treat nil as "no admission control" and proceed without Acquire/Release.
+//
+// When concurrency limiting is disabled but a stale entry exists (i.e. the user
+// just cleared MaxConcurrent), the entry is dropped so Stats/Snapshot stop
+// reporting it and downstream scoring code can't dereference now-nil rate-limit
+// pointers. In-flight requests that still hold slots Release into the orphaned
+// limiter; the limiter is GC'd once the last reference drops.
 func (m *ChannelLimiterManager) GetOrCreate(ch *biz.Channel) *ChannelLimiter {
 	cfg := extractLimiterConfig(ch)
 	if cfg.capacity == 0 {
+		if ch != nil {
+			m.mu.Lock()
+			delete(m.entries, ch.ID)
+			m.mu.Unlock()
+		}
+
 		return nil
 	}
 

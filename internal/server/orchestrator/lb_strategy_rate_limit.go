@@ -212,7 +212,18 @@ func (s *RateLimitAwareStrategy) scoreConcurrency(channel *biz.Channel, details 
 		return s.maxScore, false
 	}
 
+	// Defensive: a stale entry can briefly outlive a "limit disabled" config
+	// change before the next GetOrCreate call drops it. Treat it as unlimited
+	// rather than dereferencing nil rate-limit pointers.
 	rl := channel.Settings.RateLimit
+	if rl == nil || rl.MaxConcurrent == nil || *rl.MaxConcurrent <= 0 {
+		if details != nil {
+			details["concurrency_reason"] = "channel_limiter_disabled"
+		}
+
+		return s.maxScore, false
+	}
+
 	capacity := int(*rl.MaxConcurrent)
 
 	queueSize := 0
@@ -236,6 +247,12 @@ func (s *RateLimitAwareStrategy) scoreConcurrency(channel *biz.Channel, details 
 			return 0, true
 		}
 
+		// Hard mode is split into two ranges that must stay monotonic so the
+		// LB never prefers a saturated channel over one with free capacity:
+		//   - queueing:        [0, queueingScoreCeiling*maxScore]
+		//   - below capacity:  [queueingScoreCeiling*maxScore, maxScore]
+		queueCeiling := s.maxScore * queueingScoreCeiling
+
 		if inFlight >= capacity {
 			waitingRatio := float64(waiting) / float64(queueSize)
 
@@ -244,7 +261,7 @@ func (s *RateLimitAwareStrategy) scoreConcurrency(channel *biz.Channel, details 
 				details["concurrency_waiting_ratio"] = waitingRatio
 			}
 
-			return scaleScore(s.maxScore*queueingScoreCeiling, 1-waitingRatio), false
+			return scaleScore(queueCeiling, 1-waitingRatio), false
 		}
 
 		ratio := float64(inFlight) / float64(capacity)
@@ -254,7 +271,7 @@ func (s *RateLimitAwareStrategy) scoreConcurrency(channel *biz.Channel, details 
 			details["concurrency_inflight_ratio"] = ratio
 		}
 
-		return scaleScore(s.maxScore, 1-ratio), false
+		return queueCeiling + scaleScore(s.maxScore-queueCeiling, 1-ratio), false
 	}
 
 	if inFlight >= capacity {

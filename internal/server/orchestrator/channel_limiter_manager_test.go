@@ -209,6 +209,33 @@ func TestChannelLimiterManager_Stats(t *testing.T) {
 	lim.Release()
 }
 
+func TestChannelLimiterManager_GetOrCreate_DropsStaleEntryWhenDisabled(t *testing.T) {
+	t.Parallel()
+
+	m := NewChannelLimiterManager()
+
+	// First, create a limiter for the channel.
+	enabled := makeChannel(42, &objects.ChannelRateLimit{
+		MaxConcurrent: lo.ToPtr(int64(5)),
+	})
+	require.NotNil(t, m.GetOrCreate(enabled))
+
+	_, _, ok := m.Stats(42)
+	require.True(t, ok, "stats reports channel as tracked while limiter exists")
+
+	// Same channel ID, but rate limit cleared (user disabled MaxConcurrent).
+	disabled := makeChannel(42, nil)
+	assert.Nil(t, m.GetOrCreate(disabled))
+
+	_, _, ok = m.Stats(42)
+	assert.False(t, ok, "stale entry must be dropped so Stats reports unlimited")
+
+	// Snapshot should also no longer report the channel.
+	for _, snap := range m.Snapshot() {
+		assert.NotEqual(t, 42, snap.ChannelID, "Snapshot must not include dropped channel")
+	}
+}
+
 func TestChannelLimiterManager_GetOrCreate_DistinctChannels(t *testing.T) {
 	t.Parallel()
 

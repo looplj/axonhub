@@ -16,7 +16,7 @@ const (
 )
 
 // ChannelQueueError represents a channel-level admission failure raised by
-// ChannelLimiter inside the connectionTracking middleware.
+// ChannelLimiter inside the channelLimiter middleware.
 //
 // It joins the typed cause (ErrChannelQueueFull / ErrChannelQueueTimeout) with
 // a synthetic *httpclient.Error so the inbound TransformError path can pluck

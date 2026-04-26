@@ -238,6 +238,84 @@ func TestRateLimitAwareStrategy_Score_HardMode_QueuingCappedScore(t *testing.T) 
 	lim.Release()
 }
 
+func TestRateLimitAwareStrategy_Score_HardMode_Monotonic(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent: lo.ToPtr(int64(10)),
+					QueueSize:     lo.ToPtr(int64(10)),
+				},
+			},
+		},
+	}
+
+	lim := mgr.GetOrCreate(channel)
+	require.NotNil(t, lim)
+
+	ctx := context.Background()
+
+	// 9/10 below capacity: score should stay strictly above the
+	// at-capacity-empty-queue score so the LB never prefers a saturated
+	// channel over one with free headroom.
+	for range 9 {
+		require.NoError(t, lim.Acquire(t.Context()))
+	}
+
+	belowCapacityScore := strategy.Score(ctx, channel)
+
+	// Saturate to capacity (no waiters yet).
+	require.NoError(t, lim.Acquire(t.Context()))
+
+	atCapacityScore := strategy.Score(ctx, channel)
+
+	assert.Greater(t, belowCapacityScore, atCapacityScore,
+		"below-capacity must score higher than at-capacity-with-empty-queue")
+
+	// Sanity: at-capacity-empty-queue equals queueingScoreCeiling × maxScore = 30.
+	assert.InDelta(t, 30.0, atCapacityScore, 0.0001)
+
+	for range 10 {
+		lim.Release()
+	}
+}
+
+func TestRateLimitAwareStrategy_Score_StaleEntryAfterLimiterDisabled(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent: lo.ToPtr(int64(5)),
+				},
+			},
+		},
+	}
+
+	require.NotNil(t, mgr.GetOrCreate(channel))
+
+	// Simulate the user clearing the rate limit between GetOrCreate (which
+	// admits a request) and the next Score call (which still sees the
+	// stale manager entry until the next admission triggers cleanup).
+	channel.Settings.RateLimit = nil
+
+	ctx := context.Background()
+
+	// Must not panic and must treat the channel as unlimited.
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
+}
+
 func TestRateLimitAwareStrategy_Score_MinOfRPMAndConcurrency(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mgr := NewChannelLimiterManager()
