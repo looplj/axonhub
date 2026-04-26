@@ -763,6 +763,7 @@ func (c *PromptProtectionRuleUpdateOne) SetInput(i UpdatePromptProtectionRuleInp
 type CreateRequestInput struct {
 	Source                     *request.Source
 	ModelID                    string
+	ReasoningEffort            *string
 	Format                     *string
 	RequestHeaders             objects.JSONRawMessage
 	RequestBody                objects.JSONRawMessage
@@ -792,6 +793,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 		m.SetSource(*v)
 	}
 	m.SetModelID(i.ModelID)
+	if v := i.ReasoningEffort; v != nil {
+		m.SetReasoningEffort(*v)
+	}
 	if v := i.Format; v != nil {
 		m.SetFormat(*v)
 	}

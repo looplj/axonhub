@@ -13223,6 +13223,7 @@ type RequestMutation struct {
 	updated_at                        *time.Time
 	source                            *request.Source
 	model_id                          *string
+	reasoning_effort                  *string
 	format                            *string
 	request_headers                   *objects.JSONRawMessage
 	appendrequest_headers             objects.JSONRawMessage
@@ -13692,6 +13693,55 @@ func (m *RequestMutation) OldModelID(ctx context.Context) (v string, err error) 
 // ResetModelID resets all changes to the "model_id" field.
 func (m *RequestMutation) ResetModelID() {
 	m.model_id = nil
+}
+
+// SetReasoningEffort sets the "reasoning_effort" field.
+func (m *RequestMutation) SetReasoningEffort(s string) {
+	m.reasoning_effort = &s
+}
+
+// ReasoningEffort returns the value of the "reasoning_effort" field in the mutation.
+func (m *RequestMutation) ReasoningEffort() (r string, exists bool) {
+	v := m.reasoning_effort
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReasoningEffort returns the old "reasoning_effort" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldReasoningEffort(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReasoningEffort is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReasoningEffort requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReasoningEffort: %w", err)
+	}
+	return oldValue.ReasoningEffort, nil
+}
+
+// ClearReasoningEffort clears the value of the "reasoning_effort" field.
+func (m *RequestMutation) ClearReasoningEffort() {
+	m.reasoning_effort = nil
+	m.clearedFields[request.FieldReasoningEffort] = struct{}{}
+}
+
+// ReasoningEffortCleared returns if the "reasoning_effort" field was cleared in this mutation.
+func (m *RequestMutation) ReasoningEffortCleared() bool {
+	_, ok := m.clearedFields[request.FieldReasoningEffort]
+	return ok
+}
+
+// ResetReasoningEffort resets all changes to the "reasoning_effort" field.
+func (m *RequestMutation) ResetReasoningEffort() {
+	m.reasoning_effort = nil
+	delete(m.clearedFields, request.FieldReasoningEffort)
 }
 
 // SetFormat sets the "format" field.
@@ -14873,7 +14923,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 25)
+	fields := make([]string, 0, 26)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -14897,6 +14947,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.model_id != nil {
 		fields = append(fields, request.FieldModelID)
+	}
+	if m.reasoning_effort != nil {
+		fields = append(fields, request.FieldReasoningEffort)
 	}
 	if m.format != nil {
 		fields = append(fields, request.FieldFormat)
@@ -14973,6 +15026,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.Source()
 	case request.FieldModelID:
 		return m.ModelID()
+	case request.FieldReasoningEffort:
+		return m.ReasoningEffort()
 	case request.FieldFormat:
 		return m.Format()
 	case request.FieldRequestHeaders:
@@ -15032,6 +15087,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldSource(ctx)
 	case request.FieldModelID:
 		return m.OldModelID(ctx)
+	case request.FieldReasoningEffort:
+		return m.OldReasoningEffort(ctx)
 	case request.FieldFormat:
 		return m.OldFormat(ctx)
 	case request.FieldRequestHeaders:
@@ -15130,6 +15187,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelID(v)
+		return nil
+	case request.FieldReasoningEffort:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReasoningEffort(v)
 		return nil
 	case request.FieldFormat:
 		v, ok := value.(string)
@@ -15340,6 +15404,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldDataStorageID) {
 		fields = append(fields, request.FieldDataStorageID)
 	}
+	if m.FieldCleared(request.FieldReasoningEffort) {
+		fields = append(fields, request.FieldReasoningEffort)
+	}
 	if m.FieldCleared(request.FieldRequestHeaders) {
 		fields = append(fields, request.FieldRequestHeaders)
 	}
@@ -15395,6 +15462,9 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldDataStorageID:
 		m.ClearDataStorageID()
+		return nil
+	case request.FieldReasoningEffort:
+		m.ClearReasoningEffort()
 		return nil
 	case request.FieldRequestHeaders:
 		m.ClearRequestHeaders()
@@ -15460,6 +15530,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldModelID:
 		m.ResetModelID()
+		return nil
+	case request.FieldReasoningEffort:
+		m.ResetReasoningEffort()
 		return nil
 	case request.FieldFormat:
 		m.ResetFormat()
