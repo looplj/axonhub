@@ -363,6 +363,91 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		selector.cacheMu.RUnlock()
 	})
 
+	t.Run("stream condition filters by request stream value", func(t *testing.T) {
+		streamModelID := "stream-conditional-model"
+
+		streamChannel, err := client.Channel.Create().
+			SetName("Stream Only Channel").
+			SetType(channel.TypeOpenai).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "test-key-stream"}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetOrderingWeight(100).
+			SetStatus(channel.StatusEnabled).
+			Save(ctx)
+		require.NoError(t, err)
+
+		client.Model.Create().
+			SetDeveloper("test-developer").
+			SetModelID(streamModelID).
+			SetType(model.TypeChat).
+			SetName("Stream Conditional Model").
+			SetIcon("test-icon").
+			SetGroup("test-group").
+			SetModelCard(&objects.ModelCard{}).
+			SetStatus(model.StatusEnabled).
+			SetSettings(&objects.ModelSettings{
+				Associations: []*objects.ModelAssociation{
+					{
+						Type: "channel_model",
+						When: &objects.ModelAssociationWhen{
+							Enabled: true,
+							Condition: &objects.Condition{
+								Logic: "and",
+								Conditions: []objects.Condition{{
+									Field:    "stream",
+									Operator: "eq",
+									Value:    true,
+								}},
+							},
+						},
+						ChannelModel: &objects.ChannelModelAssociation{
+							ChannelID: streamChannel.ID,
+							ModelID:   "gpt-4",
+						},
+					},
+				},
+			}).
+			SaveX(ctx)
+
+		selector.ChannelService = newTestChannelServiceForChannels(client)
+
+		streamTrue := true
+		streamFalse := false
+
+		streamReq := &llm.Request{
+			Model:  streamModelID,
+			Stream: &streamTrue,
+			Messages: []llm.Message{{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: new("hello"),
+				},
+			}},
+		}
+
+		streamCandidates, err := selector.selectModelCandidates(ctx, streamReq)
+		require.NoError(t, err)
+		require.Len(t, streamCandidates, 1)
+		require.Equal(t, streamChannel.ID, streamCandidates[0].Channel.ID)
+
+		noStreamReq := &llm.Request{
+			Model:  streamModelID,
+			Stream: &streamFalse,
+			Messages: []llm.Message{{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: new("hello"),
+				},
+			}},
+		}
+
+		noStreamCandidates, err := selector.selectModelCandidates(ctx, noStreamReq)
+		require.NoError(t, err)
+		require.Empty(t, noStreamCandidates)
+	})
+
 	t.Run("empty channels returns empty candidates", func(t *testing.T) {
 		// Delete all channels
 		_, err := client.Channel.Delete().Where(channel.IDIn(channels[0].ID, channels[1].ID, channels[2].ID)).Exec(ctx)
