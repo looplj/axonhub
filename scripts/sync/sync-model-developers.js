@@ -325,6 +325,51 @@ function filterProviders(data, allowedIds) {
 		}
 	}
 
+	// Merge xiaomi-token-plan-* providers into xiaomi developer
+	if (allowedIds.includes("xiaomi")) {
+		const xiaomiTokenPlanKeys = [
+			"xiaomi-token-plan-cn",
+		];
+		const mergedModels = new Map();
+		let baseProvider = filtered.xiaomi || data.providers.xiaomi || null;
+
+		for (const key of xiaomiTokenPlanKeys) {
+			const provider = data.providers[key];
+			if (!provider) continue;
+			const models = Array.isArray(provider.models) ? provider.models : [];
+			for (const model of models) {
+				if (!mergedModels.has(model.id)) {
+					mergedModels.set(model.id, deepClone(model));
+				}
+			}
+		}
+
+		// Also include models already on the xiaomi provider
+		if (baseProvider) {
+			const existingModels = Array.isArray(baseProvider.models)
+				? baseProvider.models
+				: [];
+			for (const model of existingModels) {
+				if (!mergedModels.has(model.id)) {
+					mergedModels.set(model.id, deepClone(model));
+				}
+			}
+		}
+
+		if (mergedModels.size > 0) {
+			filtered.xiaomi = {
+				...(baseProvider || {}),
+				id: "xiaomi",
+				name: "Xiaomi",
+				display_name: "Xiaomi",
+				models: Array.from(mergedModels.values()),
+			};
+			console.log(
+				`Merged ${mergedModels.size} models from xiaomi-token-plan-* into xiaomi developer`,
+			);
+		}
+	}
+
 	if (allowedIds.includes(KWAIPILOT_DEVELOPER_ID)) {
 		const kwaipilotProvider = buildKWAIPilotProvider(data);
 		if (kwaipilotProvider) {
