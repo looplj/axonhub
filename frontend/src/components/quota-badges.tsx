@@ -241,11 +241,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
         <div className="flex items-center gap-2">
           <BatteryIcon className={`w-4 h-4 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`} />
           <span className="font-medium text-foreground">{channel.name}</span>
-          {quotaData.plan_type && (
-            <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-              {quotaData.plan_type}
-            </Badge>
-          )}
+
         </div>
         <Badge
           variant={status === 'available' ? 'outline' : status === 'warning' ? 'secondary' : status === 'exhausted' ? 'destructive' : 'outline'}
@@ -599,15 +595,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
               );
             }
 
-            if (qd.plan_tier) {
-              items.push(
-                <div key="plan" className="flex items-center gap-1.5 pt-1">
-                  <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                    {qd.plan_tier}
-                  </Badge>
-                </div>
-              );
-            }
+
 
             if (qd.window_end) {
               items.push(
@@ -720,15 +708,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                 );
               }
 
-              if (qd.subscription.plan) {
-                items.push(
-                  <div key="plan" className="flex items-center gap-1.5 pt-1">
-                    <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                      {qd.subscription.plan}
-                    </Badge>
-                  </div>
-                );
-              }
+
             }
 
             if (qd.balance) {
@@ -804,7 +784,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
           <QuotaBadgeTrigger channels={groupedChannels} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className={groupedChannels.length > 4 ? "w-[640px]" : "w-80"} align="end">
+      <PopoverContent className={groupedChannels.length > 4 ? "w-full sm:w-[640px]" : "w-full sm:w-80"} align="end">
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -823,7 +803,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
               )}
             </button>
           </div>
-          <div className={`max-h-[60vh] overflow-y-auto pl-1 pr-1 ${groupedChannels.length > 4 ? 'grid grid-cols-2 gap-x-4' : ''}`}>
+          <div className={`max-h-[60vh] overflow-y-auto pl-1 pr-1 ${groupedChannels.length > 4 ? 'grid grid-cols-1 sm:grid-cols-2 gap-x-4' : ''}`}>
             {groupedChannels.map((channel: ProviderQuotaChannel) => (
               <QuotaRow key={channel.id} channel={channel} />
             ))}
