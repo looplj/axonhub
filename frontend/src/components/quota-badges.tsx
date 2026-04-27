@@ -617,7 +617,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
               const remainingCredits = qd.weeklyTokenLimit.remainingCredits;
               const maxCredits = qd.weeklyTokenLimit.maxCredits;
               const usedCredits = (remainingCredits != null && maxCredits != null)
-                ? (parseFloat(maxCredits) - parseFloat(remainingCredits)).toString()
+                ? `$${(parseFloat(maxCredits.replace('$', '')) - parseFloat(remainingCredits.replace('$', ''))).toFixed(2)}`
                 : null;
               items.push(
                 <div key="weekly" className="space-y-2.5">
