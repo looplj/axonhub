@@ -40,6 +40,8 @@ type Request struct {
 	Source request.Source `json:"source,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
+	// Reasoning effort used for reasoning models
+	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 	// Format holds the value of the "format" field.
 	Format string `json:"format,omitempty"`
 	// Request headers
@@ -190,7 +192,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldMetricsReasoningDurationMs, request.FieldContentStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
+		case request.FieldSource, request.FieldModelID, request.FieldReasoningEffort, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldContentSavedAt:
 			values[i] = new(sql.NullTime)
@@ -262,6 +264,12 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
 				_m.ModelID = value.String
+			}
+		case request.FieldReasoningEffort:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field reasoning_effort", values[i])
+			} else if value.Valid {
+				_m.ReasoningEffort = value.String
 			}
 		case request.FieldFormat:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -473,6 +481,9 @@ func (_m *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
 	builder.WriteString(_m.ModelID)
+	builder.WriteString(", ")
+	builder.WriteString("reasoning_effort=")
+	builder.WriteString(_m.ReasoningEffort)
 	builder.WriteString(", ")
 	builder.WriteString("format=")
 	builder.WriteString(_m.Format)

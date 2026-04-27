@@ -1191,6 +1191,7 @@ type ComplexityRoot struct {
 		ModelID                    func(childComplexity int) int
 		Project                    func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
+		ReasoningEffort            func(childComplexity int) int
 		RequestBody                func(childComplexity int) int
 		RequestHeaders             func(childComplexity int) int
 		ResponseBody               func(childComplexity int) int
@@ -7295,6 +7296,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.ProjectID(childComplexity), true
+	case "Request.reasoningEffort":
+		if e.complexity.Request.ReasoningEffort == nil {
+			break
+		}
+
+		return e.complexity.Request.ReasoningEffort(childComplexity), true
 	case "Request.requestBody":
 		if e.complexity.Request.RequestBody == nil {
 			break
@@ -38739,6 +38746,35 @@ func (ec *executionContext) fieldContext_Request_modelID(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_reasoningEffort(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_reasoningEffort,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningEffort, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_reasoningEffort(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_format(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -39794,6 +39830,8 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_source(ctx, field)
 			case "modelID":
 				return ec.fieldContext_Request_modelID(ctx, field)
+			case "reasoningEffort":
+				return ec.fieldContext_Request_reasoningEffort(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
@@ -40529,6 +40567,8 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_source(ctx, field)
 			case "modelID":
 				return ec.fieldContext_Request_modelID(ctx, field)
+			case "reasoningEffort":
+				return ec.fieldContext_Request_reasoningEffort(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
@@ -48504,6 +48544,8 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_source(ctx, field)
 			case "modelID":
 				return ec.fieldContext_Request_modelID(ctx, field)
+			case "reasoningEffort":
+				return ec.fieldContext_Request_reasoningEffort(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
@@ -59169,7 +59211,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "reasoningEffort", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59190,6 +59232,13 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ModelID = data
+		case "reasoningEffort":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffort"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffort = data
 		case "format":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -66829,7 +66878,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "reasoningEffort", "reasoningEffortNEQ", "reasoningEffortIn", "reasoningEffortNotIn", "reasoningEffortGT", "reasoningEffortGTE", "reasoningEffortLT", "reasoningEffortLTE", "reasoningEffortContains", "reasoningEffortHasPrefix", "reasoningEffortHasSuffix", "reasoningEffortIsNil", "reasoningEffortNotNil", "reasoningEffortEqualFold", "reasoningEffortContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67394,6 +67443,111 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.ModelIDContainsFold = data
+		case "reasoningEffort":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffort"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffort = data
+		case "reasoningEffortNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortNEQ = data
+		case "reasoningEffortIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortIn = data
+		case "reasoningEffortNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortNotIn = data
+		case "reasoningEffortGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortGT = data
+		case "reasoningEffortGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortGTE = data
+		case "reasoningEffortLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortLT = data
+		case "reasoningEffortLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortLTE = data
+		case "reasoningEffortContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortContains = data
+		case "reasoningEffortHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortHasPrefix = data
+		case "reasoningEffortHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortHasSuffix = data
+		case "reasoningEffortIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortIsNil = data
+		case "reasoningEffortNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortNotNil = data
+		case "reasoningEffortEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortEqualFold = data
+		case "reasoningEffortContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortContainsFold = data
 		case "format":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -86956,6 +87110,8 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "reasoningEffort":
+			out.Values[i] = ec._Request_reasoningEffort(ctx, field, obj)
 		case "format":
 			out.Values[i] = ec._Request_format(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
