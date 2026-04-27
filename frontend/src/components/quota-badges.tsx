@@ -584,7 +584,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                     <span className="font-medium text-muted-foreground">
                       {t('quota.label.requests')} <span className="opacity-70 font-normal">({usedRequests}/{totalRequests})</span>
                     </span>
-                    <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
+                    <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
                   </div>
                   <ProgressBar percentage={usedPct} />
                 </div>
@@ -629,7 +629,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                           <span className="opacity-70 font-normal"> ({usedCredits}/{maxCredits})</span>
                         )}
                       </span>
-                      <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
+                      <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
                     </div>
                     <ProgressBar percentage={usedPct} />
                   </div>
@@ -654,7 +654,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                       <span className="font-medium text-muted-foreground">
                         {t('quota.label.rolling_5h_limit')} <span className="opacity-70 font-normal">({Math.round(fiveHrUsed)}/{Math.round(fiveHrMax)})</span>
                       </span>
-                      <span className="font-medium text-foreground">{Math.round(fiveHrUsedPct)}%</span>
+                      <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(fiveHrUsedPct) })}</span>
                     </div>
                     <ProgressBar percentage={fiveHrUsedPct} />
                   </div>
@@ -698,7 +698,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                         {t('quota.label.kwh_remaining')}
                         <span className="opacity-70 font-normal"> ({kwhUsed}/{kwhIncluded})</span>
                       </span>
-                      <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
+                      <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
                     </div>
                     <ProgressBar percentage={usedPct} />
                   </div>
