@@ -32,10 +32,11 @@ func setupOpenAIRetrieveTest(t *testing.T) (*ent.Client, *biz.ChannelService, *b
 	t.Cleanup(func() { _ = client.Close() })
 
 	channelSvc := biz.NewChannelServiceForTest(client)
-	systemSvc := biz.NewSystemService(biz.SystemServiceParams{
+	systemSvc, err := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
 		Ent:         client,
 	})
+	require.NoError(t, err)
 	modelSvc := biz.NewModelService(biz.ModelServiceParams{
 		ChannelService: channelSvc,
 		SystemService:  systemSvc,

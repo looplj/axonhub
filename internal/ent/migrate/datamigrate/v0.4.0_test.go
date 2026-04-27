@@ -172,7 +172,7 @@ func TestV0_4_0_DefaultDataStorageSystemSetting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify system setting was created with correct value
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
 	defaultID, err := systemService.DefaultDataStorageID(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, ds.ID, defaultID)
