@@ -191,6 +191,39 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformRequest_DeepSeekReasoningEffortUsesOutputConfig(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		Type:           PlatformDeepSeek,
+		BaseURL:        "https://api.deepseek.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "deepseek-chat",
+		ReasoningEffort: "max",
+		MaxTokens:       lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	var anthropicReq MessageRequest
+	err = json.Unmarshal(result.Body, &anthropicReq)
+	require.NoError(t, err)
+
+	require.NotNil(t, anthropicReq.OutputConfig)
+	require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
+	require.Nil(t, anthropicReq.Thinking)
+}
+
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("", "")
 

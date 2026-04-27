@@ -125,6 +125,13 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
 
+	// DeepSeek Anthropic format supports output_config.effort. When reasoning_effort
+	// is present, prefer output_config over thinking so suffix-based effort routing
+	// (for example deepseek-chat-max) preserves the explicit effort level.
+	if config != nil && config.Type == PlatformDeepSeek && chatReq.ReasoningEffort != "" {
+		req.OutputConfig = &OutputConfig{Effort: chatReq.ReasoningEffort}
+	}
+
 	// Determine thinking config priority: adaptive > enabled > disabled
 	if chatReq.TransformerMetadata != nil {
 		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
@@ -132,7 +139,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		}
 	}
 
-	if req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
+	if req.OutputConfig == nil && req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
 		req.Thinking = buildThinking(chatReq, config)
 	}
 
