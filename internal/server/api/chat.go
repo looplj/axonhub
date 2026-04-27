@@ -63,6 +63,19 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
+		// Handle quota exhausted errors specially - return 503 with specific error code
+		var quotaErr *orchestrator.QuotaExhaustedError
+		if errors.As(err, &quotaErr) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error": gin.H{
+					"message": quotaErr.Error(),
+					"type":    "server_error",
+					"code":    "quota_exhausted",
+				},
+			})
+			return
+		}
+
 		httpErr := handlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 

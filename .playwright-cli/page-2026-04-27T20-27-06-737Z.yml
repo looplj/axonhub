@@ -1,0 +1,260 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e98]:
+      - banner [ref=e99]:
+        - generic [ref=e100]:
+          - generic [ref=e101]:
+            - button "Toggle Sidebar" [ref=e102] [cursor=pointer]:
+              - img
+              - generic [ref=e103]: Toggle Sidebar
+            - generic [ref=e104]:
+              - img "Default Logo" [ref=e106]
+              - generic [ref=e107]: AxonHub QA
+            - button "Default" [ref=e109] [cursor=pointer]:
+              - generic [ref=e110]: Default
+              - img [ref=e111]
+          - generic [ref=e114]:
+            - link [ref=e115] [cursor=pointer]:
+              - /url: /system
+              - button [ref=e116]:
+                - img
+            - button "Toggle language" [ref=e117] [cursor=pointer]:
+              - img
+              - generic [ref=e118]: Toggle language
+            - button "Toggle theme" [ref=e119] [cursor=pointer]:
+              - img
+              - img
+              - generic [ref=e120]: Toggle theme
+      - generic [ref=e121]:
+        - link "Skip to Main" [ref=e122] [cursor=pointer]:
+          - /url: "#content"
+        - generic [ref=e125]:
+          - generic [ref=e127]:
+            - generic [ref=e128]:
+              - generic [ref=e129]: Admin
+              - list [ref=e130]:
+                - listitem [ref=e131]:
+                  - link "Dashboard" [ref=e132] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e133]
+                    - generic [ref=e138]: Dashboard
+                - listitem [ref=e139]:
+                  - link "Projects" [ref=e140] [cursor=pointer]:
+                    - /url: /projects
+                    - img [ref=e141]
+                    - generic [ref=e150]: Projects
+                - listitem [ref=e151]:
+                  - link "Channels" [ref=e152] [cursor=pointer]:
+                    - /url: /channels
+                    - img [ref=e153]
+                    - generic [ref=e155]: Channels
+                - listitem [ref=e156]:
+                  - link "Models" [ref=e157] [cursor=pointer]:
+                    - /url: /models
+                    - img [ref=e158]
+                    - generic [ref=e162]: Models
+                - listitem [ref=e163]:
+                  - link "Prompt Protection" [ref=e164] [cursor=pointer]:
+                    - /url: /prompt-protection-rules
+                    - img [ref=e165]
+                    - generic [ref=e167]: Prompt Protection
+                - listitem [ref=e168]:
+                  - link "Data Storages" [ref=e169] [cursor=pointer]:
+                    - /url: /data-storages
+                    - img [ref=e170]
+                    - generic [ref=e174]: Data Storages
+                - listitem [ref=e175]:
+                  - link "Users" [ref=e176] [cursor=pointer]:
+                    - /url: /users
+                    - img [ref=e177]
+                    - generic [ref=e182]: Users
+                - listitem [ref=e183]:
+                  - link "Roles" [ref=e184] [cursor=pointer]:
+                    - /url: /roles
+                    - img [ref=e185]
+                    - generic [ref=e187]: Roles
+            - generic [ref=e188]:
+              - generic [ref=e189]: Project
+              - list [ref=e190]:
+                - listitem [ref=e191]:
+                  - link "API Keys" [ref=e192] [cursor=pointer]:
+                    - /url: /project/api-keys
+                    - img [ref=e193]
+                    - generic [ref=e195]: API Keys
+                - listitem [ref=e196]:
+                  - link "Prompts" [ref=e197] [cursor=pointer]:
+                    - /url: /project/prompts
+                    - img [ref=e198]
+                    - generic [ref=e201]: Prompts
+                - listitem [ref=e202]:
+                  - link "Requests" [ref=e203] [cursor=pointer]:
+                    - /url: /project/requests
+                    - img [ref=e204]
+                    - generic [ref=e206]: Requests
+                - listitem [ref=e207]:
+                  - link "Traces" [ref=e208] [cursor=pointer]:
+                    - /url: /project/traces
+                    - img [ref=e209]
+                    - generic [ref=e214]: Traces
+                - listitem [ref=e215]:
+                  - link "Threads" [ref=e216] [cursor=pointer]:
+                    - /url: /project/threads
+                    - img [ref=e217]
+                    - generic [ref=e218]: Threads
+                - listitem [ref=e219]:
+                  - link "Users" [ref=e220] [cursor=pointer]:
+                    - /url: /project/users
+                    - img [ref=e221]
+                    - generic [ref=e226]: Users
+                - listitem [ref=e227]:
+                  - link "Roles" [ref=e228] [cursor=pointer]:
+                    - /url: /project/roles
+                    - img [ref=e229]
+                    - generic [ref=e231]: Roles
+                - listitem [ref=e232]:
+                  - link "Playground" [ref=e233] [cursor=pointer]:
+                    - /url: /project/playground
+                    - img [ref=e234]
+                    - generic [ref=e238]: Playground
+          - list [ref=e240]:
+            - listitem [ref=e241]:
+              - button "AU Admin User admin@axonhub.test" [ref=e242] [cursor=pointer]:
+                - generic [ref=e244]: AU
+                - generic [ref=e245]:
+                  - generic [ref=e246]: Admin User
+                  - generic [ref=e247]: admin@axonhub.test
+                - img [ref=e248]
+        - generic [ref=e252]:
+          - generic [ref=e253]:
+            - generic [ref=e254]:
+              - generic [ref=e255]:
+                - generic [ref=e257]:
+                  - img [ref=e259]
+                  - generic [ref=e263]: All time requests
+                - generic [ref=e265]:
+                  - generic [ref=e266]: "0"
+                  - generic [ref=e267]:
+                    - generic [ref=e268]: 0%
+                    - generic [ref=e269]: vs last week
+                - img [ref=e272]
+              - generic [ref=e276]:
+                - generic [ref=e278]:
+                  - img [ref=e280]
+                  - generic [ref=e283]: Success Rate
+                - generic [ref=e285]:
+                  - generic [ref=e287]: 0.0%
+                  - progressbar [ref=e288]
+                  - generic [ref=e290]:
+                    - generic [ref=e291]: 0 Failed requests
+                    - generic [ref=e292]: Average
+              - generic [ref=e293]:
+                - generic [ref=e294]:
+                  - generic [ref=e295]:
+                    - img [ref=e297]
+                    - generic [ref=e299]: Token Statistics
+                  - tablist [ref=e302]:
+                    - tab "All" [ref=e303] [cursor=pointer]
+                    - tab "MO" [ref=e304] [cursor=pointer]
+                    - tab "WK" [ref=e305] [cursor=pointer]
+                    - tab "Day" [selected] [ref=e306] [cursor=pointer]
+                - generic [ref=e308]:
+                  - generic [ref=e309]:
+                    - generic [ref=e310]: Input
+                    - generic [ref=e311]: "0"
+                  - generic [ref=e313]:
+                    - generic [ref=e314]: Output
+                    - generic [ref=e315]: "0"
+                  - generic [ref=e317]:
+                    - generic [ref=e318]: Cached
+                    - generic [ref=e319]: "0"
+              - generic [ref=e320]:
+                - generic [ref=e322]:
+                  - img [ref=e323]
+                  - generic [ref=e325]: Today's Requests
+                - generic [ref=e328]:
+                  - generic [ref=e329]: "0"
+                  - generic [ref=e330]:
+                    - generic [ref=e331]: "This week: 0"
+                    - generic [ref=e332]: "This month: 0"
+            - generic [ref=e333]:
+              - generic [ref=e334]:
+                - generic [ref=e336]: Daily Overview
+                - generic [ref=e339]:
+                  - generic:
+                    - status:
+                      - paragraph: 04/26
+                      - list:
+                        - listitem: "Cost : $0"
+                        - listitem: "Requests : 0"
+                        - listitem: "Tokens : 0"
+                  - list [ref=e341]:
+                    - listitem [ref=e342]:
+                      - img "Cost legend icon" [ref=e343]
+                      - text: Cost
+                    - listitem [ref=e345]:
+                      - img "Requests legend icon" [ref=e346]
+                      - text: Requests
+                    - listitem [ref=e348]:
+                      - img "Tokens legend icon" [ref=e349]
+                      - text: Tokens
+                  - application [ref=e351]:
+                    - generic [ref=e368]:
+                      - generic [ref=e369]:
+                        - generic [ref=e371]: 03/30
+                        - generic [ref=e373]: 04/03
+                        - generic [ref=e375]: 04/07
+                        - generic [ref=e377]: 04/11
+                        - generic [ref=e379]: 04/15
+                        - generic [ref=e381]: 04/19
+                        - generic [ref=e383]: 04/23
+                        - generic [ref=e385]: 04/27
+                      - generic [ref=e386]:
+                        - generic [ref=e388]: "0"
+                        - generic [ref=e390]: "3"
+                        - generic [ref=e392]: "6"
+                        - generic [ref=e394]: "9"
+                        - generic [ref=e396]: "10"
+                      - generic [ref=e397]:
+                        - generic [ref=e399]: "0"
+                        - generic [ref=e401]: "250"
+                        - generic [ref=e403]: "500"
+                        - generic [ref=e405]: "750"
+                        - generic [ref=e407]: 1K
+                      - generic [ref=e408]:
+                        - generic [ref=e410]: $0
+                        - generic [ref=e412]: $0
+                        - generic [ref=e414]: $0
+                        - generic [ref=e416]: $0
+                        - generic [ref=e418]: $0
+              - generic [ref=e419]:
+                - generic [ref=e420]:
+                  - generic [ref=e421]: Channel Success Rate
+                  - generic [ref=e422]: Success rate of requests across different channels.
+                  - link "View All" [ref=e424] [cursor=pointer]:
+                    - /url: /dashboard/channel-success-rates
+                - generic [ref=e426]: No channel data available
+          - button "Channel Analytics" [ref=e428] [cursor=pointer]:
+            - generic [ref=e429]:
+              - img [ref=e431]
+              - generic [ref=e433]: Channel Analytics
+            - img [ref=e435]
+          - button "Model Analytics" [ref=e438] [cursor=pointer]:
+            - generic [ref=e439]:
+              - img [ref=e441]
+              - generic [ref=e451]: Model Analytics
+            - img [ref=e453]
+          - button "API Key Analytics" [ref=e456] [cursor=pointer]:
+            - generic [ref=e457]:
+              - img [ref=e459]
+              - generic [ref=e463]: API Key Analytics
+            - img [ref=e465]
+          - button "Performance Analytics" [ref=e468] [cursor=pointer]:
+            - generic [ref=e469]:
+              - img [ref=e471]
+              - generic [ref=e473]: Performance Analytics
+            - img [ref=e475]
+    - generic [ref=e95]:
+      - heading "Command Palette" [level=2] [ref=e96]
+      - paragraph [ref=e97]: Search for a command to run...
+    - region "Notifications alt+T"
+  - generic [ref=e497]: $0

@@ -156,6 +156,32 @@ func (r *mutationResolver) UpdateVideoStorageSettings(ctx context.Context, input
 	return true, nil
 }
 
+// UpdateQuotaEnforcementSettings is the resolver for the updateQuotaEnforcementSettings field.
+func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, input UpdateQuotaEnforcementSettingsInput) (bool, error) {
+	if input.Mode != nil && *input.Mode != "exhausted_only" && *input.Mode != "de_prioritize" {
+		return false, fmt.Errorf("invalid mode: must be \"exhausted_only\" or \"de_prioritize\"")
+	}
+
+	current := r.systemService.QuotaEnforcementSettingsOrDefault(ctx)
+	newSettings := biz.QuotaEnforcementSettings{
+		Enabled: current.Enabled,
+		Mode:    current.Mode,
+	}
+	if input.Enabled != nil {
+		newSettings.Enabled = *input.Enabled
+	}
+	if input.Mode != nil {
+		newSettings.Mode = *input.Mode
+	}
+
+	err := r.systemService.SetQuotaEnforcementSettings(ctx, newSettings)
+	if err != nil {
+		return false, fmt.Errorf("failed to update quota enforcement settings: %w", err)
+	}
+
+	return true, nil
+}
+
 // CheckProviderQuotas is the resolver for the checkProviderQuotas field.
 func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error) {
 	if r.providerQuotaService == nil {
@@ -389,6 +415,11 @@ func (r *queryResolver) SystemGeneralSettings(ctx context.Context) (*biz.SystemG
 // VideoStorageSettings is the resolver for the videoStorageSettings field.
 func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error) {
 	return r.systemService.VideoStorageSettings(ctx)
+}
+
+// QuotaEnforcementSettings is the resolver for the quotaEnforcementSettings field.
+func (r *queryResolver) QuotaEnforcementSettings(ctx context.Context) (*biz.QuotaEnforcementSettings, error) {
+	return r.systemService.QuotaEnforcementSettingsOrDefault(ctx), nil
 }
 
 // ProxyPresets is the resolver for the proxyPresets field.

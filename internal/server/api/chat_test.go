@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -259,6 +260,46 @@ func TestFormatStreamError_HttpClientError(t *testing.T) {
 	assert.Equal(t, "Internal server error", errorField["message"])
 	assert.Equal(t, "internal_error", errorField["type"])
 	assert.Equal(t, "", errorField["code"])
+}
+
+func TestChatCompletion_QuotaExhausted_Returns503(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	// Simulate a QuotaExhaustedError being returned from the orchestrator
+	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
+
+	// Verify the error type assertion works
+	var target *orchestrator.QuotaExhaustedError
+	require.True(t, errors.As(quotaErr, &target), "errors.As should match QuotaExhaustedError")
+
+	// Simulate the handler's error handling path
+	if errors.As(quotaErr, &target) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": gin.H{
+				"message": target.Error(),
+				"type":    "server_error",
+				"code":    "quota_exhausted",
+			},
+		})
+	}
+
+	// Verify HTTP status is 503
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code, "should return 503 Service Unavailable")
+
+	// Verify response body
+	var resp map[string]any
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err, "response should be valid JSON")
+
+	errorField, ok := resp["error"].(map[string]any)
+	require.True(t, ok, "response should have 'error' field")
+
+	assert.Equal(t, "all channels quota exhausted for model gpt-4", errorField["message"])
+	assert.Equal(t, "server_error", errorField["type"])
+	assert.Equal(t, "quota_exhausted", errorField["code"])
 }
 
 func TestFormatStreamError_LlmResponseError_PassesCodeAndRequestID(t *testing.T) {

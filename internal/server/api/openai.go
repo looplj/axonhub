@@ -39,6 +39,7 @@ type OpenAIHandlersParams struct {
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
 	ChannelLimiterManager       *orchestrator.ChannelLimiterManager
+	ProviderQuotaStatusProvider orchestrator.ProviderQuotaStatusProvider
 	Client                      *ent.Client
 }
 
@@ -77,6 +78,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -93,6 +95,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -109,6 +112,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -125,6 +129,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -141,6 +146,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -157,6 +163,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -173,6 +180,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -189,6 +197,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		},
 		VideoInboundTransformer: videoInbound,
@@ -233,6 +242,19 @@ func (handlers *OpenAIHandlers) CreateVideo(c *gin.Context) {
 
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 	if err != nil {
+		// Handle quota exhausted errors specially - return 503 with specific error code
+		var quotaErr *orchestrator.QuotaExhaustedError
+		if errors.As(err, &quotaErr) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error": gin.H{
+					"message": quotaErr.Error(),
+					"type":    "server_error",
+					"code":    "quota_exhausted",
+				},
+			})
+			return
+		}
+
 		httpErr := handlers.VideoHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 		return
@@ -246,6 +268,19 @@ func (handlers *OpenAIHandlers) CreateVideo(c *gin.Context) {
 	result, err := handlers.VideoHandlers.ChatCompletionOrchestrator.Process(ctx, genericReq)
 	if err != nil {
 		log.Error(ctx, "Error processing openai video create", log.Cause(err))
+
+		// Handle quota exhausted errors specially - return 503 with specific error code
+		var quotaErr *orchestrator.QuotaExhaustedError
+		if errors.As(err, &quotaErr) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error": gin.H{
+					"message": quotaErr.Error(),
+					"type":    "server_error",
+					"code":    "quota_exhausted",
+				},
+			})
+			return
+		}
 
 		httpErr := handlers.VideoHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))

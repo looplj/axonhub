@@ -24,6 +24,11 @@ import (
 
 const maxConcurrentQuotaChecks = 8
 
+type QuotaChannelStatus struct {
+	Status string // available, warning, exhausted, unknown
+	Ready  bool
+}
+
 
 // HOW TO ADD A NEW PROVIDER QUOTA CHECKER
 // ========================================
@@ -192,7 +197,8 @@ type ProviderQuotaService struct {
 	// Registry
 	checkers map[string]provider_quota.QuotaChecker
 
-	mu sync.Mutex
+	mu         sync.Mutex
+	quotaCache sync.Map
 }
 
 func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaService {
@@ -245,8 +251,8 @@ func (svc *ProviderQuotaService) registerNeuralWattSupport() {
 }
 
 func (svc *ProviderQuotaService) Start(ctx context.Context) error {
-	// Convert check interval to cron expression
-	// For example, 20m -> */20 * * * *, 1h -> 0 * * * *, 30m -> */30 * * * *
+	svc.loadQuotaCache(ctx)
+
 	cronExpr := svc.intervalToCronExpr(svc.getCheckInterval())
 
 	_, err := svc.Executor.ScheduleFuncAtCronRate(
@@ -303,6 +309,38 @@ func (svc *ProviderQuotaService) getCheckInterval() time.Duration {
 
 func (svc *ProviderQuotaService) Stop(ctx context.Context) error {
 	return svc.Executor.Shutdown(ctx)
+}
+
+func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {
+	records, err := svc.db.ProviderQuotaStatus.Query().All(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to load quota cache from DB", log.Cause(err))
+		return
+	}
+
+	for _, r := range records {
+		svc.quotaCache.Store(r.ChannelID, &QuotaChannelStatus{
+			Status: string(r.Status),
+			Ready:  r.Ready,
+		})
+	}
+
+	log.Debug(ctx, "Loaded quota cache from DB", log.Int("records", len(records)))
+}
+
+func (svc *ProviderQuotaService) GetQuotaStatus(channelID int) *QuotaChannelStatus {
+	val, ok := svc.quotaCache.Load(channelID)
+	if !ok {
+		return nil
+	}
+	return val.(*QuotaChannelStatus)
+}
+
+func (svc *ProviderQuotaService) updateQuotaCache(channelID int, status string, ready bool) {
+	svc.quotaCache.Store(channelID, &QuotaChannelStatus{
+		Status: status,
+		Ready:  ready,
+	})
 }
 
 // ManualCheck forces an immediate quota check for all relevant channels.
@@ -454,7 +492,10 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 		log.Error(ctx, "Failed to save quota status",
 			log.Int("channel_id", channelID),
 			log.Cause(err))
+		return
 	}
+
+	svc.updateQuotaCache(channelID, quotaData.Status, quotaData.Ready)
 }
 
 func (svc *ProviderQuotaService) saveQuotaError(
@@ -487,7 +528,10 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			log.Error(ctx, "Failed to save quota error",
 				log.Int("channel_id", ch.ID),
 				log.Cause(err))
+			return
 		}
+
+		svc.updateQuotaCache(ch.ID, string(existing.Status), existing.Ready)
 
 		return
 	}
@@ -506,7 +550,10 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		log.Error(ctx, "Failed to save quota error",
 			log.Int("channel_id", ch.ID),
 			log.Cause(err))
+		return
 	}
+
+	svc.updateQuotaCache(ch.ID, string(providerquotastatus.StatusUnknown), false)
 }
 
 func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {

@@ -1,0 +1,168 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e98]:
+      - banner [ref=e99]:
+        - generic [ref=e100]:
+          - generic [ref=e101]:
+            - button "Toggle Sidebar" [ref=e102] [cursor=pointer]:
+              - img
+              - generic [ref=e103]: Toggle Sidebar
+            - generic [ref=e104]:
+              - img "Default Logo" [ref=e106]
+              - generic [ref=e107]: AxonHub QA
+            - button "Default" [ref=e109] [cursor=pointer]:
+              - generic [ref=e110]: Default
+              - img [ref=e111]
+          - generic [ref=e114]:
+            - link [ref=e115] [cursor=pointer]:
+              - /url: /system
+              - button [ref=e116]:
+                - img
+            - button "Toggle language" [ref=e117] [cursor=pointer]:
+              - img
+              - generic [ref=e118]: Toggle language
+            - button "Toggle theme" [ref=e119] [cursor=pointer]:
+              - img
+              - img
+              - generic [ref=e120]: Toggle theme
+      - generic [ref=e121]:
+        - link "Skip to Main" [ref=e122] [cursor=pointer]:
+          - /url: "#content"
+        - generic [ref=e125]:
+          - generic [ref=e127]:
+            - generic [ref=e128]:
+              - generic [ref=e129]: Admin
+              - list [ref=e130]:
+                - listitem [ref=e131]:
+                  - link "Dashboard" [ref=e132] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e133]
+                    - generic [ref=e138]: Dashboard
+                - listitem [ref=e139]:
+                  - link "Projects" [ref=e140] [cursor=pointer]:
+                    - /url: /projects
+                    - img [ref=e141]
+                    - generic [ref=e150]: Projects
+                - listitem [ref=e151]:
+                  - link "Channels" [ref=e152] [cursor=pointer]:
+                    - /url: /channels
+                    - img [ref=e153]
+                    - generic [ref=e155]: Channels
+                - listitem [ref=e156]:
+                  - link "Models" [ref=e157] [cursor=pointer]:
+                    - /url: /models
+                    - img [ref=e158]
+                    - generic [ref=e162]: Models
+                - listitem [ref=e163]:
+                  - link "Prompt Protection" [ref=e164] [cursor=pointer]:
+                    - /url: /prompt-protection-rules
+                    - img [ref=e165]
+                    - generic [ref=e167]: Prompt Protection
+                - listitem [ref=e168]:
+                  - link "Data Storages" [ref=e169] [cursor=pointer]:
+                    - /url: /data-storages
+                    - img [ref=e170]
+                    - generic [ref=e174]: Data Storages
+                - listitem [ref=e175]:
+                  - link "Users" [ref=e176] [cursor=pointer]:
+                    - /url: /users
+                    - img [ref=e177]
+                    - generic [ref=e182]: Users
+                - listitem [ref=e183]:
+                  - link "Roles" [ref=e184] [cursor=pointer]:
+                    - /url: /roles
+                    - img [ref=e185]
+                    - generic [ref=e187]: Roles
+            - generic [ref=e188]:
+              - generic [ref=e189]: Project
+              - list [ref=e190]:
+                - listitem [ref=e191]:
+                  - link "API Keys" [ref=e192] [cursor=pointer]:
+                    - /url: /project/api-keys
+                    - img [ref=e193]
+                    - generic [ref=e195]: API Keys
+                - listitem [ref=e196]:
+                  - link "Prompts" [ref=e197] [cursor=pointer]:
+                    - /url: /project/prompts
+                    - img [ref=e198]
+                    - generic [ref=e201]: Prompts
+                - listitem [ref=e202]:
+                  - link "Requests" [ref=e203] [cursor=pointer]:
+                    - /url: /project/requests
+                    - img [ref=e204]
+                    - generic [ref=e206]: Requests
+                - listitem [ref=e207]:
+                  - link "Traces" [ref=e208] [cursor=pointer]:
+                    - /url: /project/traces
+                    - img [ref=e209]
+                    - generic [ref=e214]: Traces
+                - listitem [ref=e215]:
+                  - link "Threads" [ref=e216] [cursor=pointer]:
+                    - /url: /project/threads
+                    - img [ref=e217]
+                    - generic [ref=e218]: Threads
+                - listitem [ref=e219]:
+                  - link "Users" [ref=e220] [cursor=pointer]:
+                    - /url: /project/users
+                    - img [ref=e221]
+                    - generic [ref=e226]: Users
+                - listitem [ref=e227]:
+                  - link "Roles" [ref=e228] [cursor=pointer]:
+                    - /url: /project/roles
+                    - img [ref=e229]
+                    - generic [ref=e231]: Roles
+                - listitem [ref=e232]:
+                  - link "Playground" [ref=e233] [cursor=pointer]:
+                    - /url: /project/playground
+                    - img [ref=e234]
+                    - generic [ref=e238]: Playground
+          - list [ref=e240]:
+            - listitem [ref=e241]:
+              - button "AU Admin User admin@axonhub.test" [ref=e242] [cursor=pointer]:
+                - generic [ref=e244]: AU
+                - generic [ref=e245]:
+                  - generic [ref=e246]: Admin User
+                  - generic [ref=e247]: admin@axonhub.test
+                - img [ref=e248]
+        - main [ref=e505]:
+          - generic [ref=e507]:
+            - heading "System Settings" [level=2] [ref=e508]
+            - paragraph [ref=e509]: Configure global system behavior, retry policies, and storage.
+          - generic [ref=e511]:
+            - tablist [ref=e512]:
+              - tab "General" [ref=e513] [cursor=pointer]
+              - tab "Brand" [ref=e514] [cursor=pointer]
+              - tab "Retry" [ref=e515] [cursor=pointer]
+              - tab "Webhook" [ref=e516] [cursor=pointer]
+              - tab "Storage" [ref=e517] [cursor=pointer]
+              - tab "Proxy" [ref=e518] [cursor=pointer]
+              - tab "Quota" [active] [selected] [ref=e519] [cursor=pointer]
+              - tab "Diagnostics" [ref=e520] [cursor=pointer]
+              - tab "Backup" [ref=e521] [cursor=pointer]
+              - tab "About" [ref=e522] [cursor=pointer]
+            - tabpanel "Quota" [ref=e557]:
+              - generic [ref=e558]:
+                - generic [ref=e559]:
+                  - generic [ref=e560]: Quota Enforcement
+                  - generic [ref=e561]: Configure how AxonHub handles channels that have exhausted their provider quota.
+                - generic [ref=e563]:
+                  - generic [ref=e564]:
+                    - generic [ref=e565]:
+                      - generic [ref=e566]: Enable Quota Enforcement
+                      - generic [ref=e567]: When enabled, AxonHub will automatically enforce quota limits on channels based on their provider quota status.
+                    - switch "Enable Quota Enforcement" [checked] [ref=e568] [cursor=pointer]
+                    - checkbox [checked]
+                  - generic [ref=e570]:
+                    - generic [ref=e571]: Enforcement Mode
+                    - generic [ref=e572]: Choose how AxonHub responds when a channel's provider quota is exhausted.
+                    - combobox "Enforcement Mode" [ref=e573] [cursor=pointer]:
+                      - generic: De-prioritize
+                      - img
+                    - combobox [ref=e574]
+                    - generic [ref=e576]: Channels with exhausted quota will be deprioritized in load balancing but not fully disabled. If all channels are exhausted, requests will still be routed. This provides a softer approach that maintains availability.
+                  - button "Save" [ref=e578] [cursor=pointer]
+    - generic [ref=e95]:
+      - heading "Command Palette" [level=2] [ref=e96]
+      - paragraph [ref=e97]: Search for a command to run...
+    - region "Notifications alt+T"
+  - generic [ref=e497]: $0
