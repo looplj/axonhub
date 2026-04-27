@@ -3,6 +3,7 @@ package gc
 import (
 	"context"
 	"fmt"
+	"sync"
 	"strings"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -54,6 +54,9 @@ type Worker struct {
 	Ent                *ent.Client
 	Config             Config
 	CancelFunc         context.CancelFunc
+	wg                 sync.WaitGroup // F-D34: tracks in-flight cleanup tasks
+	mu                 sync.Mutex     // protects cleanupFailures
+	cleanupFailures    []string       // F-D7: tracks external storage deletion failures
 }
 
 type Params struct {
@@ -132,9 +135,13 @@ func (w *Worker) Start(ctx context.Context) error {
 }
 
 func (w *Worker) Stop(ctx context.Context) error {
+	// F-D34: Cancel first to stop scheduling new tasks,
+	// then wait for all in-flight cleanup tasks to finish.
 	if w.CancelFunc != nil {
 		w.CancelFunc()
 	}
+
+	w.wg.Wait()
 
 	return w.Executor.Shutdown(ctx)
 }
@@ -144,7 +151,8 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool, stats *CleanupStat
 	log.Info(ctx, "Starting automatic cleanup process")
 
 	ctx = ent.NewContext(ctx, w.Ent)
-	ctx = schematype.SkipSoftDelete(ctx)
+	// F-D72: Do NOT use SkipSoftDelete. GC should respect soft-delete semantics:
+	// only hard-delete records that have been soft-deleted past their retention period.
 
 	// Get storage policy
 	policy, err := w.SystemService.StoragePolicy(ctx)
@@ -244,9 +252,43 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool, stats *CleanupStat
 }
 
 // runCleanupWithSystemContext wraps runCleanup with system context.
+// F-D34: Tracks in-flight cleanup via WaitGroup for graceful shutdown.
 func (w *Worker) runCleanupWithSystemContext(ctx context.Context) {
+	w.wg.Add(1)
+	defer w.wg.Done()
+
 	stats := CleanupStats{}
 	w.runCleanup(ctx, false, &stats)
+}
+
+// F-D7: retryWithBackoff retries an operation up to maxAttempts times
+// with exponential backoff. Returns nil on success, last error on failure.
+func retryWithBackoff(ctx context.Context, maxAttempts int, op func() error) error {
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		err := op()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if attempt < maxAttempts-1 {
+			backoff := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s, 4s
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+	}
+	return lastErr
+}
+
+// recordCleanupFailure tracks a failed external storage deletion.
+func (w *Worker) recordCleanupFailure(ctx context.Context, msg string) {
+	log.Error(ctx, "External storage cleanup failed after retries", log.String("detail", msg))
+	w.mu.Lock()
+	w.cleanupFailures = append(w.cleanupFailures, msg)
+	w.mu.Unlock()
 }
 
 // cleanupRequests deletes requests older than the specified number of days.
@@ -386,7 +428,6 @@ func (w *Worker) cleanupExecutionExternalStorage(ctx context.Context, exec *ent.
 			log.Cause(err),
 			log.Int("execution_id", exec.ID),
 		)
-
 		return
 	}
 
@@ -401,13 +442,13 @@ func (w *Worker) cleanupExecutionExternalStorage(ctx context.Context, exec *ent.
 		biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID),
 	}
 
+	// F-D7: Retry each key deletion with exponential backoff.
 	for _, key := range keys {
-		if err := w.DataStorageService.DeleteData(ctx, ds, key); err != nil {
-			log.Warn(ctx, "Failed to delete execution external data",
-				log.Cause(err),
-				log.Int("execution_id", exec.ID),
-				log.String("key", key),
-			)
+		err := retryWithBackoff(ctx, 3, func() error {
+			return w.DataStorageService.DeleteData(ctx, ds, key)
+		})
+		if err != nil {
+			w.recordCleanupFailure(ctx, fmt.Sprintf("execution_id=%d key=%s err=%v", exec.ID, key, err))
 		}
 	}
 }
@@ -423,7 +464,6 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 			log.Cause(err),
 			log.Int("request_id", req.ID),
 		)
-
 		return
 	}
 
@@ -439,13 +479,13 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 		biz.GenerateRequestDirKey(req.ProjectID, req.ID),
 	}
 
+	// F-D7: Retry each key deletion with exponential backoff.
 	for _, key := range keys {
-		if err := w.DataStorageService.DeleteData(ctx, ds, key); err != nil {
-			log.Warn(ctx, "Failed to delete request external data",
-				log.Cause(err),
-				log.Int("request_id", req.ID),
-				log.String("key", key),
-			)
+		err := retryWithBackoff(ctx, 3, func() error {
+			return w.DataStorageService.DeleteData(ctx, ds, key)
+		})
+		if err != nil {
+			w.recordCleanupFailure(ctx, fmt.Sprintf("request_id=%d key=%s err=%v", req.ID, key, err))
 		}
 	}
 }
