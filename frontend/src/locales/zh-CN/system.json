@@ -318,6 +318,7 @@
   "quota.provider.neuralwatt": "NeuralWatt",
   "quota.label.usage_percent": "已使用 {{percent}}%",
   "quota.label.remaining_requests": "剩余请求",
+  "quota.label.requests": "请求",
   "quota.label.included_limit": "包含限额",
   "quota.label.kwh_remaining": "剩余 kWh",
   "quota.label.kwh_included": "包含 kWh",

@@ -570,12 +570,14 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             const items: React.ReactNode[] = [];
 
             const usedPct = qd.current_period_used_percent ?? 0;
+            const usedRequests = (qd.included_request_limit ?? 0) - (qd.remaining_included_requests ?? 0);
+            const totalRequests = qd.included_request_limit ?? 0;
             items.push(
               <div key="usage" className="space-y-2.5">
                 <div className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-medium text-muted-foreground">
-                      {t('quota.label.usage_percent', { percent: Math.round(usedPct) })}
+                      {t('quota.label.requests')} <span className="opacity-70 font-normal">({usedRequests}/{totalRequests})</span>
                     </span>
                     <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
                   </div>
@@ -583,19 +585,6 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                 </div>
               </div>
             );
-
-            if (qd.remaining_included_requests != null || qd.included_request_limit != null) {
-              items.push(
-                <div key="remaining" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-medium text-muted-foreground">{t('quota.label.remaining_requests')}</span>
-                    <span className="font-medium text-foreground">{qd.remaining_included_requests ?? 0}/{qd.included_request_limit ?? 0}</span>
-                  </div>
-                </div>
-              );
-            }
-
-
 
             if (qd.window_end) {
               items.push(
@@ -626,17 +615,16 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                 <div key="weekly" className="space-y-2.5">
                   <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-muted-foreground">{t('quota.label.weekly_token_limit')}</span>
+                      <span className="font-medium text-muted-foreground">
+                        {t('quota.label.weekly_token_limit')}
+                        {remainingCredits != null && maxCredits != null && (
+                          <span className="opacity-70 font-normal"> ({remainingCredits}/{maxCredits})</span>
+                        )}
+                      </span>
                       <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
                     </div>
                     <ProgressBar percentage={usedPct} />
                   </div>
-                  {remainingCredits != null && maxCredits != null && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-muted-foreground">{t('quota.label.credits_remaining')}</span>
-                      <span className="font-medium text-foreground">{remainingCredits}/{maxCredits}</span>
-                    </div>
-                  )}
                   {qd.weeklyTokenLimit.nextRegenAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
                       {t('quota.label.resets_in')} {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt)}
@@ -647,11 +635,19 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             }
 
             if (qd.rollingFiveHourLimit) {
+              const fiveHrRemaining = qd.rollingFiveHourLimit.remaining ?? 0;
+              const fiveHrMax = qd.rollingFiveHourLimit.max ?? 0;
+              const fiveHrUsedPct = fiveHrMax > 0 ? ((fiveHrMax - fiveHrRemaining) / fiveHrMax) * 100 : 0;
               items.push(
                 <div key="5h" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-medium text-muted-foreground">{t('quota.label.rolling_5h_limit')}</span>
-                    <span className="font-medium text-foreground">{Math.round(qd.rollingFiveHourLimit.remaining ?? 0)}/{Math.round(qd.rollingFiveHourLimit.max ?? 0)}</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {t('quota.label.rolling_5h_limit')} <span className="opacity-70 font-normal">({Math.round(fiveHrRemaining)}/{Math.round(fiveHrMax)})</span>
+                      </span>
+                      <span className="font-medium text-foreground">{Math.round(fiveHrUsedPct)}%</span>
+                    </div>
+                    <ProgressBar percentage={fiveHrUsedPct} />
                   </div>
                   {qd.rollingFiveHourLimit.limited && (
                     <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-yellow-500 border-yellow-500/30 font-semibold">
