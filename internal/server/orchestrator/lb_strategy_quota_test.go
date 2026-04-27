@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -27,7 +28,7 @@ type mockQuotaEnforcementSettingsProvider struct {
 
 func (m *mockQuotaEnforcementSettingsProvider) QuotaEnforcementSettingsOrDefault(_ context.Context) *biz.QuotaEnforcementSettings {
 	if m.settings == nil {
-		return &biz.QuotaEnforcementSettings{Enabled: false, Mode: "exhausted_only"}
+		return &biz.QuotaEnforcementSettings{Enabled: false, Mode: biz.QuotaEnforcementModeExhaustedOnly}
 	}
 	return m.settings
 }
@@ -35,11 +36,11 @@ func (m *mockQuotaEnforcementSettingsProvider) QuotaEnforcementSettingsOrDefault
 func TestQuotaAwareStrategy_Score_EnforcementDisabled(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: false, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: false, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -52,11 +53,11 @@ func TestQuotaAwareStrategy_Score_EnforcementDisabled(t *testing.T) {
 func TestQuotaAwareStrategy_Score_Exhausted(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -69,11 +70,11 @@ func TestQuotaAwareStrategy_Score_Exhausted(t *testing.T) {
 func TestQuotaAwareStrategy_Score_Warning_DePrioritize(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "warning", Ready: true},
+			1: {Status: providerquotastatus.StatusWarning, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "de_prioritize"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeDePrioritize},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -90,11 +91,11 @@ func TestQuotaAwareStrategy_Score_Warning_DePrioritize(t *testing.T) {
 func TestQuotaAwareStrategy_Score_Warning_ExhaustedOnly(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "warning", Ready: true},
+			1: {Status: providerquotastatus.StatusWarning, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -107,11 +108,11 @@ func TestQuotaAwareStrategy_Score_Warning_ExhaustedOnly(t *testing.T) {
 func TestQuotaAwareStrategy_Score_Available(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "available", Ready: true},
+			1: {Status: providerquotastatus.StatusAvailable, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -124,11 +125,11 @@ func TestQuotaAwareStrategy_Score_Available(t *testing.T) {
 func TestQuotaAwareStrategy_Score_Unknown(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "unknown", Ready: false},
+			1: {Status: providerquotastatus.StatusUnknown, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -143,7 +144,7 @@ func TestQuotaAwareStrategy_Score_NilQuotaData(t *testing.T) {
 		statuses: map[int]*biz.QuotaChannelStatus{},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -155,7 +156,7 @@ func TestQuotaAwareStrategy_Score_NilQuotaData(t *testing.T) {
 
 func TestQuotaAwareStrategy_Score_NilProvider(t *testing.T) {
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(nil, settings)
 
@@ -172,7 +173,7 @@ func TestQuotaAwareStrategy_Score_UnrecognizedStatus(t *testing.T) {
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -185,7 +186,7 @@ func TestQuotaAwareStrategy_Score_UnrecognizedStatus(t *testing.T) {
 func TestQuotaAwareStrategy_ScoreWithDebug_EnforcementDisabled(t *testing.T) {
 	provider := &mockQuotaStatusProvider{}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: false, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: false, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -203,11 +204,11 @@ func TestQuotaAwareStrategy_ScoreWithDebug_EnforcementDisabled(t *testing.T) {
 func TestQuotaAwareStrategy_ScoreWithDebug_Exhausted(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -219,19 +220,19 @@ func TestQuotaAwareStrategy_ScoreWithDebug_Exhausted(t *testing.T) {
 	assert.Equal(t, float64(quotaExhaustedScore), score)
 	assert.Equal(t, "QuotaAware", debug.StrategyName)
 	assert.Equal(t, true, debug.Details["enforcement_enabled"])
-	assert.Equal(t, "exhausted_only", debug.Details["mode"])
-	assert.Equal(t, "exhausted", debug.Details["quota_status"])
+	assert.Equal(t, string(biz.QuotaEnforcementModeExhaustedOnly), string(debug.Details["mode"].(biz.QuotaEnforcementMode)))
+	assert.Equal(t, string(providerquotastatus.StatusExhausted), string(debug.Details["quota_status"].(providerquotastatus.Status)))
 	assert.Equal(t, "quota_exhausted", debug.Details["score_reason"])
 }
 
 func TestQuotaAwareStrategy_ScoreWithDebug_Warning_DePrioritize(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "warning", Ready: true},
+			1: {Status: providerquotastatus.StatusWarning, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "de_prioritize"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeDePrioritize},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -242,7 +243,7 @@ func TestQuotaAwareStrategy_ScoreWithDebug_Warning_DePrioritize(t *testing.T) {
 
 	assert.InDelta(t, 20.0, score, 0.0001)
 	assert.Equal(t, "QuotaAware", debug.StrategyName)
-	assert.Equal(t, "warning", debug.Details["quota_status"])
+	assert.Equal(t, string(providerquotastatus.StatusWarning), string(debug.Details["quota_status"].(providerquotastatus.Status)))
 	assert.Equal(t, "warning_de_prioritize", debug.Details["score_reason"])
 	assert.Equal(t, 0.8, debug.Details["usage_ratio"])
 	assert.InDelta(t, 20.0, debug.Details["scaled_score"], 0.0001)
@@ -253,7 +254,7 @@ func TestQuotaAwareStrategy_ScoreWithDebug_NilQuotaData(t *testing.T) {
 		statuses: map[int]*biz.QuotaChannelStatus{},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -269,7 +270,7 @@ func TestQuotaAwareStrategy_ScoreWithDebug_NilQuotaData(t *testing.T) {
 
 func TestQuotaAwareStrategy_ScoreWithDebug_NilProvider(t *testing.T) {
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(nil, settings)
 
@@ -286,11 +287,11 @@ func TestQuotaAwareStrategy_ScoreWithDebug_NilProvider(t *testing.T) {
 func TestQuotaAwareStrategy_ScoreWithDebug_Available(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "available", Ready: true},
+			1: {Status: providerquotastatus.StatusAvailable, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -300,18 +301,18 @@ func TestQuotaAwareStrategy_ScoreWithDebug_Available(t *testing.T) {
 	score, debug := strategy.ScoreWithDebug(ctx, channel)
 
 	assert.Equal(t, 0.0, score)
-	assert.Equal(t, "available", debug.Details["quota_status"])
+	assert.Equal(t, string(providerquotastatus.StatusAvailable), string(debug.Details["quota_status"].(providerquotastatus.Status)))
 	assert.Equal(t, "status_available", debug.Details["score_reason"])
 }
 
 func TestQuotaAwareStrategy_ScoreWithDebug_Unknown(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "unknown", Ready: false},
+			1: {Status: providerquotastatus.StatusUnknown, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -321,7 +322,7 @@ func TestQuotaAwareStrategy_ScoreWithDebug_Unknown(t *testing.T) {
 	score, debug := strategy.ScoreWithDebug(ctx, channel)
 
 	assert.Equal(t, 0.0, score)
-	assert.Equal(t, "unknown", debug.Details["quota_status"])
+	assert.Equal(t, string(providerquotastatus.StatusUnknown), string(debug.Details["quota_status"].(providerquotastatus.Status)))
 	assert.Equal(t, "status_unknown", debug.Details["score_reason"])
 }
 
@@ -332,7 +333,7 @@ func TestQuotaAwareStrategy_ScoreWithDebug_UnrecognizedStatus(t *testing.T) {
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -343,7 +344,7 @@ func TestQuotaAwareStrategy_ScoreWithDebug_UnrecognizedStatus(t *testing.T) {
 
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "unrecognized", debug.Details["quota_status"])
-	assert.Equal(t, "glitched", debug.Details["raw_status"])
+	assert.Equal(t, "glitched", string(debug.Details["raw_status"].(providerquotastatus.Status)))
 	assert.Equal(t, "status_unrecognized", debug.Details["score_reason"])
 }
 
@@ -355,13 +356,13 @@ func TestQuotaAwareStrategy_Name(t *testing.T) {
 func TestQuotaAwareStrategy_Score_MultipleChannels(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
-			2: {Status: "available", Ready: true},
-			3: {Status: "warning", Ready: true},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			2: {Status: providerquotastatus.StatusAvailable, Ready: true},
+			3: {Status: providerquotastatus.StatusWarning, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "de_prioritize"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeDePrioritize},
 	}
 	strategy := NewQuotaAwareStrategy(provider, settings)
 
@@ -378,11 +379,11 @@ func TestQuotaAwareStrategy_Score_MultipleChannels(t *testing.T) {
 func TestQuotaAwareStrategy_Score_ExhaustedBothModes(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
 		},
 	}
 
-	for _, mode := range []string{"exhausted_only", "de_prioritize"} {
+	for _, mode := range []biz.QuotaEnforcementMode{biz.QuotaEnforcementModeExhaustedOnly, biz.QuotaEnforcementModeDePrioritize} {
 		settings := &mockQuotaEnforcementSettingsProvider{
 			settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: mode},
 		}

@@ -119,13 +119,22 @@ type VideoStorageSettings struct {
 	ScanLimit int `json:"scan_limit"`
 }
 
+// QuotaEnforcementMode defines how quota enforcement is applied.
+type QuotaEnforcementMode string
+
+const (
+	// QuotaEnforcementModeExhaustedOnly filters out channels with exhausted quota only.
+	QuotaEnforcementModeExhaustedOnly QuotaEnforcementMode = "exhausted_only"
+	// QuotaEnforcementModeDePrioritize filters exhausted channels and penalizes warning channels.
+	QuotaEnforcementModeDePrioritize QuotaEnforcementMode = "de_prioritize"
+)
+
 // QuotaEnforcementSettings represents quota enforcement configuration.
 type QuotaEnforcementSettings struct {
 	// Enabled controls whether quota enforcement is active.
 	Enabled bool `json:"enabled"`
 	// Mode defines how quota is enforced.
-	// Supported values: "exhausted_only", "de_prioritize".
-	Mode string `json:"mode"`
+	Mode QuotaEnforcementMode `json:"mode"`
 }
 
 // BackupFrequency represents how often automatic backups should run.

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { useQuotaEnforcementSettings, useUpdateQuotaEnforcementSettings, type UpdateQuotaEnforcementSettingsInput } from '../data/system';
+import { useQuotaEnforcementSettings, useUpdateQuotaEnforcementSettings, type QuotaEnforcementMode, type UpdateQuotaEnforcementSettingsInput } from '../data/system';
 
 export function QuotaSettings() {
   const { t } = useTranslation();
@@ -40,7 +40,7 @@ export function QuotaSettings() {
   const handleModeChange = useCallback((value: string) => {
     setFormData((prev) => ({
       ...prev,
-      mode: value,
+      mode: value as QuotaEnforcementMode,
     }));
   }, []);
 
@@ -88,8 +88,8 @@ export function QuotaSettings() {
                 <Label htmlFor='quota-mode'>{t('system.quota.mode.label')}</Label>
                 <div className='text-muted-foreground mb-2 text-sm'>{t('system.quota.mode.description')}</div>
                 <Select
-                  value={formData.mode || 'exhausted_only'}
-                  onValueChange={(value) => value && handleModeChange(value)}
+                  value={formData.mode}
+                  onValueChange={handleModeChange}
                 >
                   <SelectTrigger id='quota-mode' className='w-56'>
                     <SelectValue placeholder={t('system.quota.mode.placeholder')} />

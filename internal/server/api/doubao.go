@@ -70,19 +70,6 @@ func (h *DoubaoHandlers) CreateTask(c *gin.Context) {
 
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 	if err != nil {
-		// Handle quota exhausted errors specially - return 503 with specific error code
-		var quotaErr *orchestrator.QuotaExhaustedError
-		if errors.As(err, &quotaErr) {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error": gin.H{
-					"message": quotaErr.Error(),
-					"type":    "server_error",
-					"code":    "quota_exhausted",
-				},
-			})
-			return
-		}
-
 		httpErr := h.CreateOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 		return
@@ -97,16 +84,7 @@ func (h *DoubaoHandlers) CreateTask(c *gin.Context) {
 	if err != nil {
 		log.Error(ctx, "Error processing doubao create", log.Cause(err))
 
-		// Handle quota exhausted errors specially - return 503 with specific error code
-		var quotaErr *orchestrator.QuotaExhaustedError
-		if errors.As(err, &quotaErr) {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error": gin.H{
-					"message": quotaErr.Error(),
-					"type":    "server_error",
-					"code":    "quota_exhausted",
-				},
-			})
+		if writeQuotaExhaustedResponse(c, err) {
 			return
 		}
 

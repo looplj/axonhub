@@ -1393,14 +1393,16 @@ const UPDATE_QUOTA_ENFORCEMENT_SETTINGS_MUTATION = `
   }
 `;
 
+export type QuotaEnforcementMode = 'exhausted_only' | 'de_prioritize';
+
 export interface QuotaEnforcementSettings {
   enabled: boolean;
-  mode: string;
+  mode: QuotaEnforcementMode;
 }
 
 export interface UpdateQuotaEnforcementSettingsInput {
   enabled?: boolean;
-  mode?: string;
+  mode?: QuotaEnforcementMode;
 }
 
 export function useQuotaEnforcementSettings() {

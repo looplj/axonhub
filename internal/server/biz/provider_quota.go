@@ -25,7 +25,7 @@ import (
 const maxConcurrentQuotaChecks = 8
 
 type QuotaChannelStatus struct {
-	Status string // available, warning, exhausted, unknown
+	Status providerquotastatus.Status
 	Ready  bool
 }
 
@@ -320,7 +320,7 @@ func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {
 
 	for _, r := range records {
 		svc.quotaCache.Store(r.ChannelID, &QuotaChannelStatus{
-			Status: string(r.Status),
+			Status: r.Status,
 			Ready:  r.Ready,
 		})
 	}
@@ -336,7 +336,7 @@ func (svc *ProviderQuotaService) GetQuotaStatus(channelID int) *QuotaChannelStat
 	return val.(*QuotaChannelStatus)
 }
 
-func (svc *ProviderQuotaService) updateQuotaCache(channelID int, status string, ready bool) {
+func (svc *ProviderQuotaService) updateQuotaCache(channelID int, status providerquotastatus.Status, ready bool) {
 	svc.quotaCache.Store(channelID, &QuotaChannelStatus{
 		Status: status,
 		Ready:  ready,
@@ -495,7 +495,7 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 		return
 	}
 
-	svc.updateQuotaCache(channelID, quotaData.Status, quotaData.Ready)
+	svc.updateQuotaCache(channelID, providerquotastatus.Status(quotaData.Status), quotaData.Ready)
 }
 
 func (svc *ProviderQuotaService) saveQuotaError(
@@ -531,7 +531,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			return
 		}
 
-		svc.updateQuotaCache(ch.ID, string(existing.Status), existing.Ready)
+		svc.updateQuotaCache(ch.ID, existing.Status, existing.Ready)
 
 		return
 	}
@@ -553,7 +553,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		return
 	}
 
-	svc.updateQuotaCache(ch.ID, string(providerquotastatus.StatusUnknown), false)
+	svc.updateQuotaCache(ch.ID, providerquotastatus.StatusUnknown, false)
 }
 
 func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {

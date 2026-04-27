@@ -158,8 +158,8 @@ func (r *mutationResolver) UpdateVideoStorageSettings(ctx context.Context, input
 
 // UpdateQuotaEnforcementSettings is the resolver for the updateQuotaEnforcementSettings field.
 func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, input UpdateQuotaEnforcementSettingsInput) (bool, error) {
-	if input.Mode != nil && *input.Mode != "exhausted_only" && *input.Mode != "de_prioritize" {
-		return false, fmt.Errorf("invalid mode: must be \"exhausted_only\" or \"de_prioritize\"")
+	if input.Mode != nil && *input.Mode != string(biz.QuotaEnforcementModeExhaustedOnly) && *input.Mode != string(biz.QuotaEnforcementModeDePrioritize) {
+		return false, fmt.Errorf("invalid mode: must be %q or %q", biz.QuotaEnforcementModeExhaustedOnly, biz.QuotaEnforcementModeDePrioritize)
 	}
 
 	current := r.systemService.QuotaEnforcementSettingsOrDefault(ctx)
@@ -171,7 +171,7 @@ func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, i
 		newSettings.Enabled = *input.Enabled
 	}
 	if input.Mode != nil {
-		newSettings.Mode = *input.Mode
+		newSettings.Mode = biz.QuotaEnforcementMode(*input.Mode)
 	}
 
 	err := r.systemService.SetQuotaEnforcementSettings(ctx, newSettings)

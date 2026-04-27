@@ -63,16 +63,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
-		// Handle quota exhausted errors specially - return 503 with specific error code
-		var quotaErr *orchestrator.QuotaExhaustedError
-		if errors.As(err, &quotaErr) {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error": gin.H{
-					"message": quotaErr.Error(),
-					"type":    "server_error",
-					"code":    "quota_exhausted",
-				},
-			})
+		if writeQuotaExhaustedResponse(c, err) {
 			return
 		}
 
@@ -221,4 +212,19 @@ func FormatStreamError(_ context.Context, err error) any {
 		},
 		"request_id": requestID,
 	}
+}
+
+func writeQuotaExhaustedResponse(c *gin.Context, err error) bool {
+	var quotaErr *orchestrator.QuotaExhaustedError
+	if errors.As(err, &quotaErr) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": gin.H{
+				"message": quotaErr.Error(),
+				"type":    "server_error",
+				"code":    "quota_exhausted",
+			},
+		})
+		return true
+	}
+	return false
 }

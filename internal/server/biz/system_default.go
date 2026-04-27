@@ -67,5 +67,5 @@ var defaultVideoStorageSettings = VideoStorageSettings{
 
 var defaultQuotaEnforcementSettings = QuotaEnforcementSettings{
 	Enabled: false,
-	Mode:    "exhausted_only",
+	Mode:    QuotaEnforcementModeExhaustedOnly,
 }

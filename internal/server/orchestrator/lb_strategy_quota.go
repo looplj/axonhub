@@ -14,6 +14,9 @@ import (
 // fallback candidates.
 const quotaExhaustedScore = -10000
 
+// warningUsageRatio approximates channel usage when entering warning state.
+const warningUsageRatio = 0.8
+
 // QuotaEnforcementSettingsProvider provides quota enforcement configuration.
 type QuotaEnforcementSettingsProvider interface {
 	QuotaEnforcementSettingsOrDefault(ctx context.Context) *biz.QuotaEnforcementSettings
@@ -22,7 +25,7 @@ type QuotaEnforcementSettingsProvider interface {
 // QuotaAwareStrategy adjusts channel scores based on provider quota status.
 // Channels with exhausted quota receive a large negative penalty so the load
 // balancer deprioritises them. Warning-state channels are penalised
-// proportionally when the enforcement mode is "de_prioritize".
+// proportionally when the enforcement mode is QuotaEnforcementModeDePrioritize.
 type QuotaAwareStrategy struct {
 	provider       ProviderQuotaStatusProvider
 	systemService  QuotaEnforcementSettingsProvider
@@ -120,11 +123,8 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 		return quotaExhaustedScore, "quota_exhausted"
 
 	case "warning":
-		if settings.Mode == "de_prioritize" {
-			// Proportional penalty: the more quota is used, the lower the score.
-			// We use 0.8 as the usage ratio for warning state (warning triggers
-			// at ~80% usage), so the score reflects remaining headroom.
-			usageRatio := 0.8
+		if settings.Mode == biz.QuotaEnforcementModeDePrioritize {
+			usageRatio := warningUsageRatio
 			score := scaleScore(s.maxScore, 1-usageRatio)
 			if details != nil {
 				details["usage_ratio"] = usageRatio

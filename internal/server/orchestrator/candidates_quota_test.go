@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
@@ -15,13 +16,13 @@ import (
 func TestProviderQuotaSelector_ExhaustedOnlyMode(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
-			2: {Status: "warning", Ready: true},
-			3: {Status: "available", Ready: true},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			2: {Status: providerquotastatus.StatusWarning, Ready: true},
+			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{
@@ -44,13 +45,13 @@ func TestProviderQuotaSelector_ExhaustedOnlyMode(t *testing.T) {
 func TestProviderQuotaSelector_DePrioritizeMode(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
-			2: {Status: "warning", Ready: true},
-			3: {Status: "available", Ready: true},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			2: {Status: providerquotastatus.StatusWarning, Ready: true},
+			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "de_prioritize"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeDePrioritize},
 	}
 
 	inner := &mockSelector{
@@ -73,11 +74,11 @@ func TestProviderQuotaSelector_DePrioritizeMode(t *testing.T) {
 func TestProviderQuotaSelector_EnforcementDisabled(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: false, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: false, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{
@@ -96,12 +97,12 @@ func TestProviderQuotaSelector_EnforcementDisabled(t *testing.T) {
 func TestProviderQuotaSelector_AllExhausted(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
-			2: {Status: "exhausted", Ready: false},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			2: {Status: providerquotastatus.StatusExhausted, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{
@@ -123,7 +124,7 @@ func TestProviderQuotaSelector_NoQuotaData(t *testing.T) {
 		statuses: map[int]*biz.QuotaChannelStatus{},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{
@@ -141,7 +142,7 @@ func TestProviderQuotaSelector_NoQuotaData(t *testing.T) {
 
 func TestProviderQuotaSelector_NilProvider(t *testing.T) {
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{
@@ -160,7 +161,7 @@ func TestProviderQuotaSelector_NilProvider(t *testing.T) {
 func TestProviderQuotaSelector_WrappedError(t *testing.T) {
 	provider := &mockQuotaStatusProvider{}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{err: errors.New("inner error")}
@@ -175,7 +176,7 @@ func TestProviderQuotaSelector_WrappedError(t *testing.T) {
 func TestProviderQuotaSelector_EmptyCandidates(t *testing.T) {
 	provider := &mockQuotaStatusProvider{}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{candidates: []*ChannelModelsCandidate{}}
@@ -190,11 +191,11 @@ func TestProviderQuotaSelector_EmptyCandidates(t *testing.T) {
 func TestProviderQuotaSelector_UnknownStatusKept(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "unknown", Ready: false},
+			1: {Status: providerquotastatus.StatusUnknown, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "exhausted_only"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
 	}
 
 	inner := &mockSelector{
@@ -213,14 +214,14 @@ func TestProviderQuotaSelector_UnknownStatusKept(t *testing.T) {
 func TestProviderQuotaSelector_MixedCandidates(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: "exhausted", Ready: false},
-			2: {Status: "warning", Ready: true},
-			3: {Status: "available", Ready: true},
-			4: {Status: "unknown", Ready: false},
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			2: {Status: providerquotastatus.StatusWarning, Ready: true},
+			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
+			4: {Status: providerquotastatus.StatusUnknown, Ready: false},
 		},
 	}
 	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: "de_prioritize"},
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeDePrioritize},
 	}
 
 	inner := &mockSelector{

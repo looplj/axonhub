@@ -13,8 +13,8 @@ import (
 // It wraps another CandidateSelector and removes exhausted candidates from the
 // result set based on the current QuotaEnforcementSettings.
 //
-// In "exhausted_only" mode, only exhausted channels are filtered out.
-// In "de_prioritize" mode, exhausted channels are also filtered out (the
+// In QuotaEnforcementModeExhaustedOnly mode, only exhausted channels are filtered out.
+// In QuotaEnforcementModeDePrioritize mode, exhausted channels are also filtered out (the
 // QuotaAwareStrategy handles scoring for warning-state channels).
 // Channels with nil quota data, "available", "warning", or "unknown" status
 // are always kept.
@@ -22,6 +22,7 @@ type ProviderQuotaSelector struct {
 	wrapped       CandidateSelector
 	provider      ProviderQuotaStatusProvider
 	systemService QuotaEnforcementSettingsProvider
+	FilteredCount int
 }
 
 func WithProviderQuotaSelector(wrapped CandidateSelector, provider ProviderQuotaStatusProvider, systemService QuotaEnforcementSettingsProvider) *ProviderQuotaSelector {
@@ -65,15 +66,17 @@ func (s *ProviderQuotaSelector) Select(ctx context.Context, req *llm.Request) ([
 		default:
 			// "available", "warning", "unknown", and any unrecognized status
 			// are kept. The QuotaAwareStrategy handles scoring for warning
-			// channels in "de_prioritize" mode.
+			// channels in QuotaEnforcementModeDePrioritize mode.
 			return true
 		}
 	})
 
+	s.FilteredCount = len(candidates) - len(filtered)
+
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "ProviderQuotaSelector: filtered candidates",
 			log.String("model", req.Model),
-			log.String("mode", settings.Mode),
+			log.String("mode", string(settings.Mode)),
 			log.Int("before", len(candidates)),
 			log.Int("after", len(filtered)),
 		)
