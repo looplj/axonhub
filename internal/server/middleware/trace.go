@@ -77,7 +77,13 @@ func tryGetTraceIDFromBody(c *gin.Context, config tracing.Config) (string, error
 // gets or creates the corresponding trace entity in the database.
 func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		traceID := getTraceIDFromHeader(c, config)
+		var traceID string
+		sessionScoped := false // only session-scoped sources should seed shared.WithSessionID
+
+		traceID = getTraceIDFromHeader(c, config)
+		// Trace-header and extra-trace-header sources are request-scoped,
+		// NOT suitable for cache identity (they change every turn).
+
 		if traceID == "" && config.ClaudeCodeTraceEnabled {
 			var err error
 
@@ -86,10 +92,17 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 				AbortWithError(c, http.StatusBadRequest, err)
 				return
 			}
+
+			if traceID != "" {
+				sessionScoped = true
+			}
 		}
 
 		if traceID == "" && config.CodexTraceEnabled {
 			traceID = tryExtractTraceIDFromCodexRequest(c)
+			if traceID != "" {
+				sessionScoped = true
+			}
 		}
 
 		if traceID == "" && len(config.ExtraTraceBodyFields) > 0 {
@@ -100,6 +113,7 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 				AbortWithError(c, http.StatusBadRequest, err)
 				return
 			}
+			// Extra trace body fields are trace-scoped, not session-scoped.
 		}
 
 		if traceID == "" {
@@ -139,8 +153,13 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 
 		ctx := contexts.WithTrace(c.Request.Context(), trace)
 
-		// Set session ID in context if available, to let the provider use it for cache if needed.
-		ctx = shared.WithSessionID(ctx, traceID)
+		// Only set session ID for session-scoped sources (Codex, Claude Code).
+		// Trace-header sources (AH-Trace-Id, extra_trace_headers, extra_trace_body_fields)
+		// are per-request and must NOT seed cache identity to avoid breaking cache
+		// continuity across turns.
+		if sessionScoped {
+			ctx = shared.WithSessionID(ctx, traceID)
+		}
 
 		c.Request = c.Request.WithContext(ctx)
 

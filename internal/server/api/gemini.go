@@ -52,6 +52,7 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				nil, // cacheIdentityResolver
 			),
 		),
 		ChannelService: params.ChannelService,

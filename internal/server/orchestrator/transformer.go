@@ -10,12 +10,13 @@ var (
 )
 
 // NewPersistentTransformers creates enhanced persistent transformers with pre-constructed state.
-func NewPersistentTransformers(state *PersistenceState, wrapped transformer.Inbound) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
+func NewPersistentTransformers(state *PersistenceState, wrapped transformer.Inbound, trustedCacheKeyHosts []string) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
 	return &PersistentInboundTransformer{
 			wrapped: wrapped,
 			state:   state,
 		}, &PersistentOutboundTransformer{
-			wrapped: nil, // Will be set when channel is selected
-			state:   state,
+			wrapped:              nil, // Will be set when channel is selected
+			state:                state,
+			trustedCacheKeyHosts: trustedCacheKeyHosts,
 		}
 }

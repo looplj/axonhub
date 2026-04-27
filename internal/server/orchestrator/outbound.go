@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/cacheidentity"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -307,8 +310,9 @@ var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit bre
 
 // PersistentOutboundTransformer wraps an outbound transformer with shared persistence state.
 type PersistentOutboundTransformer struct {
-	wrapped transformer.Outbound
-	state   *PersistenceState
+	wrapped              transformer.Outbound
+	state                *PersistenceState
+	trustedCacheKeyHosts []string
 }
 
 // APIFormat returns the API format of the transformer.
@@ -349,6 +353,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
 
+	// --- Cache identity gating per channel ---
+	// Apply the resolved cache identity based on whether this channel allows
+	// prompt_cache_key emission. This runs per-attempt so retries/channel
+	// switches don't leak identity to incompatible upstreams.
+	ctx, llmRequest = p.applyCacheIdentityGating(ctx, llmRequest, candidate)
+
 	return p.wrapped.TransformRequest(ctx, llmRequest)
 }
 
@@ -384,6 +394,76 @@ func containsResponseCustomToolMessages(messages []llm.Message) bool {
 	}
 
 	return false
+}
+
+// applyCacheIdentityGating applies channel-aware cache identity policy.
+// It injects the resolved session ID into the context and sets or clears
+// PromptCacheKey on a shallow clone of the request so retries/channel
+// switches do not leak or lose identity fields across attempts.
+func (p *PersistentOutboundTransformer) applyCacheIdentityGating(
+	ctx context.Context,
+	llmRequest *llm.Request,
+	candidate *ChannelModelsCandidate,
+) (context.Context, *llm.Request) {
+	if candidate == nil || candidate.Channel == nil {
+		return ctx, llmRequest
+	}
+
+	// Inject resolved session ID into context if not already present.
+	if sessionID := cacheidentity.GetResolvedSessionID(llmRequest); sessionID != "" {
+		if _, ok := shared.GetSessionID(ctx); !ok {
+			ctx = shared.WithSessionID(ctx, sessionID)
+		}
+	}
+
+	// Shallow-clone the request to isolate per-attempt mutations.
+	// The clone shares slices/maps with the original (Messages, etc.)
+	// but PromptCacheKey and TransformerMetadata are replaced so
+	// mutations don't bleed across retries or channel switches.
+	cloned := *llmRequest
+	if llmRequest.TransformerMetadata != nil {
+		meta := make(map[string]any, len(llmRequest.TransformerMetadata))
+		for k, v := range llmRequest.TransformerMetadata {
+			meta[k] = v
+		}
+
+		cloned.TransformerMetadata = meta
+	}
+
+	ch := candidate.Channel
+	allowed := cacheidentity.ChannelAllowsPromptCacheKey(ch.Type, ch.BaseURL, p.trustedCacheKeyHosts)
+
+	if allowed {
+		// Inject resolved prompt_cache_key if the request doesn't already have one.
+		if lo.FromPtr(cloned.PromptCacheKey) == "" {
+			if pck := cacheidentity.GetResolvedPromptCacheKey(&cloned); pck != "" {
+				cloned.PromptCacheKey = lo.ToPtr(pck)
+			}
+		}
+
+		// Set the metadata flag so the Responses outbound fallback is allowed.
+		cacheidentity.SetPromptCacheKeyEmitAllowed(&cloned, true)
+	} else {
+		// Deny: clear any resolved prompt_cache_key to prevent it from leaking
+		// to the outbound serializer. Preserve client-provided values: if the
+		// source was "client_provided" the client explicitly wants it.
+		source := cacheidentity.GetResolvedCacheSource(&cloned)
+		if source != cacheidentity.SourceClientProvided {
+			cloned.PromptCacheKey = nil
+		}
+
+		cacheidentity.SetPromptCacheKeyEmitAllowed(&cloned, false)
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "prompt_cache_key emission denied",
+				log.String("channel", ch.Name),
+				log.String("host", ch.BaseURL),
+				log.String("source", source),
+			)
+		}
+	}
+
+	return ctx, &cloned
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

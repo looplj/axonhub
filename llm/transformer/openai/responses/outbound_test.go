@@ -739,6 +739,11 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 				},
 			},
 		},
+		// Explicitly allow fallback — the orchestrator's channel gating
+		// sets this flag for official OpenAI channels.
+		TransformerMetadata: map[string]any{
+			"allow_prompt_cache_key_emit": true,
+		},
 	}
 
 	httpReq, err := transformer.TransformRequest(ctx, req)
@@ -749,6 +754,34 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 	require.NoError(t, err)
 	require.NotNil(t, payload.PromptCacheKey)
 	require.Equal(t, "shared-session-123", *payload.PromptCacheKey)
+}
+
+func TestOutboundTransformer_TransformRequest_DeniesPromptCacheKeyFallbackByDefault(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	ctx := shared.WithSessionID(context.Background(), "shared-session-123")
+
+	req := &llm.Request{
+		Model: "gpt-5.4",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+		// No TransformerMetadata → flag is absent → default-deny.
+	}
+
+	httpReq, err := transformer.TransformRequest(ctx, req)
+	require.NoError(t, err)
+
+	var payload Request
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.Nil(t, payload.PromptCacheKey, "prompt_cache_key should not be set when allow flag is absent (default-deny)")
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {

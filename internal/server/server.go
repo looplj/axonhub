@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/cacheidentity"
 	"github.com/looplj/axonhub/internal/server/dependencies"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/gql"
@@ -92,6 +93,21 @@ func Run(opts ...fx.Option) {
 			dependencies.Module,
 			biz.Module,
 			orchestrator.Module,
+			fx.Provide(func(cfg Config) *cacheidentity.Resolver {
+				ci := cfg.OpenAICacheIdentity
+				if !ci.Enabled {
+					return nil
+				}
+
+				return cacheidentity.NewResolver(cacheidentity.Config{
+					Enabled:                      ci.Enabled,
+					ExtraSessionHeaders:          ci.ExtraSessionHeaders,
+					ExtraSessionBodyFields:       ci.ExtraSessionBodyFields,
+					DeriveFromConversationAnchor: ci.DeriveFromConversationAnchor,
+					AnchorMaxBytes:               ci.AnchorMaxBytes,
+					TrustedPromptCacheKeyHosts:   ci.TrustedPromptCacheKeyHosts,
+				}, cfg.Trace.ThreadHeader)
+			}),
 			backup.Module,
 			video_storage.Module,
 			api.Module,

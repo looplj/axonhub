@@ -187,8 +187,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {
-		if sessionID, ok := shared.GetSessionID(ctx); ok {
-			payload.PromptCacheKey = lo.ToPtr(sessionID)
+		// Only fall back to session ID as prompt_cache_key when explicitly
+		// allowed by the orchestrator's channel gating. This prevents the
+		// shared Responses transformer from leaking cache keys to third-party
+		// OpenAI-compatible proxies that reject unknown fields.
+		if isPromptCacheKeyFallbackAllowed(llmReq.TransformerMetadata) {
+			if sessionID, ok := shared.GetSessionID(ctx); ok {
+				payload.PromptCacheKey = lo.ToPtr(sessionID)
+			}
 		}
 	}
 
@@ -345,4 +351,24 @@ func (t *OutboundTransformer) transformStandardResponse(
 	}
 
 	return llmResp, nil
+}
+
+// isPromptCacheKeyFallbackAllowed checks the TransformerMetadata flag that
+// controls whether GetSessionID should be used as a prompt_cache_key fallback.
+// The flag is set by the orchestrator's channel-aware cache identity gating.
+//
+// Default-deny: if the flag is absent or not explicitly true, fallback is
+// disallowed. This prevents accidental cache-key leakage to third-party
+// proxies when a caller forgets to set the flag.
+func isPromptCacheKeyFallbackAllowed(meta map[string]any) bool {
+	if meta == nil {
+		return false
+	}
+
+	v, ok := meta["allow_prompt_cache_key_emit"].(bool)
+	if !ok {
+		return false
+	}
+
+	return v
 }

@@ -47,6 +47,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				nil, // cacheIdentityResolver: not needed for AISDK
 			),
 			StreamWriter: WriteJSONStream,
 		},

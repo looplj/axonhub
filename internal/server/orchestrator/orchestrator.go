@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/cacheidentity"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/cc"
@@ -29,6 +30,7 @@ func NewChatCompletionOrchestrator(
 	quotaService *biz.QuotaService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	liveStreamRegistry *biz.LiveStreamRegistry,
+	cacheIdentityResolver *cacheidentity.Resolver,
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
@@ -52,6 +54,12 @@ func NewChatCompletionOrchestrator(
 	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy)
 
+	// Extract trusted hosts from resolver config (or empty if resolver is nil).
+	var trustedHosts []string
+	if cacheIdentityResolver != nil {
+		trustedHosts = cacheIdentityResolver.TrustedHosts()
+	}
+
 	return &ChatCompletionOrchestrator{
 		Inbound:            inbound,
 		RequestService:     requestService,
@@ -66,6 +74,8 @@ func NewChatCompletionOrchestrator(
 			cc.StripBillingHeaderCCH(),
 			stream.EnsureUsage(),
 		},
+		cacheIdentityResolver:      cacheIdentityResolver,
+		trustedCacheKeyHosts:       trustedHosts,
 		PipelineFactory:            pipeline.NewFactory(httpClient),
 		ModelMapper:                NewModelMapper(),
 		channelSelector:            defaultSelector,
@@ -111,6 +121,14 @@ type ChatCompletionOrchestrator struct {
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
 	proxy *httpclient.ProxyConfig
+
+	// cacheIdentityResolver resolves stable session IDs and prompt cache keys.
+	// May be nil if the feature is disabled.
+	cacheIdentityResolver *cacheidentity.Resolver
+
+	// trustedCacheKeyHosts is the list of trusted proxy hostnames for
+	// prompt_cache_key emission. Extracted from resolver config at construction.
+	trustedCacheKeyHosts []string
 }
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
@@ -207,9 +225,15 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Add global middlewares
 	middlewares = append(middlewares, processor.Middlewares...)
 
-	inbound, outbound := NewPersistentTransformers(state, processor.Inbound)
+	inbound, outbound := NewPersistentTransformers(state, processor.Inbound, processor.trustedCacheKeyHosts)
 
 	// Add inbound middlewares (executed after inbound.TransformRequest)
+	// Cache identity resolution runs first so the resolved identity
+	// survives channel retries and is available to all downstream steps.
+	if processor.cacheIdentityResolver != nil {
+		middlewares = append(middlewares, enrichCacheIdentity(processor.cacheIdentityResolver))
+	}
+
 	middlewares = append(middlewares,
 		enforceQuota(inbound, processor.QuotaService),
 		checkApiKeyModelAccess(inbound),

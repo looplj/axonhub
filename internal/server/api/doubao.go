@@ -56,6 +56,7 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 			params.QuotaService,
 			params.PromptProtectionRuleService,
 			params.LiveStreamRegistry,
+			nil, // cacheIdentityResolver
 		),
 		InboundTransformer: inbound,
 	}
