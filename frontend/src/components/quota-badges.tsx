@@ -214,9 +214,12 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     const h = t('quota.label.h');
     const m = t('quota.label.m');
 
-    if (diffDays > 0) return `${diffDays}${d} ${diffHours % 24}${h}`;
-    if (diffHours > 0) return `${diffHours}${h} ${diffMins % 60}${m}`;
-    return `${diffMins}${m}`;
+    let timeStr: string;
+    if (diffDays > 0) timeStr = `${diffDays}${d} ${diffHours % 24}${h}`;
+    else if (diffHours > 0) timeStr = `${diffHours}${h} ${diffMins % 60}${m}`;
+    else timeStr = `${diffMins}${m}`;
+
+    return t('quota.label.resets_in_time', { time: timeStr });
   };
 
   const formatDate = (timestamp?: number) => {
@@ -330,7 +333,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1">
                     <span>{qd.representative_claim === 'five_hour' ? t('quota.label.5h_limiting') : qd.representative_claim === 'seven_day' ? t('quota.label.7d_limiting') : ''}</span>
                     {quota.nextResetAt && (
-                      <span>{t('quota.label.resets_in')} {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
+                      <span>{formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
                     )}
                   </div>
                 )}
@@ -355,7 +358,6 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   const tot = total?.[key] ?? rem;
                   const displayRem = rem / 10;
                   const displayTot = tot / 10;
-                  const displayUsed = displayTot - displayRem;
                   const usedPct = tot > 0 ? (1 - rem / tot) * 100 : 0;
                   const labelKey = key === 'completions' ? 'quota.label.inline_suggestions' :
                     key === 'chat' ? 'quota.label.chat_messages' : '';
@@ -366,7 +368,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
                           <span className="font-medium text-muted-foreground">
-                            {label} <span className="opacity-70 font-normal">({Math.round(displayUsed)}/{Math.round(displayTot)})</span>
+                            {label} <span className="opacity-70 font-normal">({Math.round(displayRem)}/{Math.round(displayTot)})</span>
                           </span>
                           <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
                         </div>
@@ -390,7 +392,6 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
                   const displayRem = snapshot.quota_remaining || snapshot.remaining || 0;
                   const displayTot = snapshot.entitlement || 0;
-                  const displayUsed = displayTot - displayRem;
 
                   items.push(
                     <div key={key} className="space-y-2.5 pt-3 first:pt-0 first:border-0 border-t border-dashed border-border/60">
@@ -398,7 +399,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                         <div className="flex justify-between items-center text-xs">
                           <span className="font-medium text-muted-foreground">
                             {label} {!snapshot.unlimited && (
-                              <span className="opacity-70 font-normal">({Math.round(displayUsed)}/{Math.round(displayTot)})</span>
+                              <span className="opacity-70 font-normal">({Math.round(displayRem)}/{Math.round(displayTot)})</span>
                             )}
                           </span>
                           <span className="font-medium text-foreground">
@@ -418,7 +419,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
           {quota.nextResetAt && (
             <div className="text-[11px] text-muted-foreground text-right pt-1">
-              {t('quota.label.resets_in')} {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
+              {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
             </div>
           )}
         </div>
@@ -461,7 +462,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
                     {qd.rate_limit.primary_window.reset_at && (
                       <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                        {t('quota.label.resets_in')} {formatTimeToReset(qd.rate_limit.primary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.primary_window.reset_at)})
+                        {formatTimeToReset(qd.rate_limit.primary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.primary_window.reset_at)})
                       </div>
                     )}
                   </div>
@@ -497,7 +498,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
                     {qd.rate_limit.secondary_window.reset_at && (
                       <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                        {t('quota.label.resets_in')} {formatTimeToReset(qd.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.secondary_window.reset_at)})
+                        {formatTimeToReset(qd.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.secondary_window.reset_at)})
                       </div>
                     )}
                   </div>
@@ -526,14 +527,14 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
               const label = t(`quota.window.${key}`);
               const pct = (window.percentUsed ?? 0) * 100;
               const usedStr = isTokens ? formatTokenCount(window.used ?? 0) : `${window.used ?? 0}`;
-              const totalStr = isTokens ? formatTokenCount((window.used ?? 0) + (window.remaining ?? 0)) : `${(window.used ?? 0) + (window.remaining ?? 0)}`;
+              const remStr = isTokens ? formatTokenCount(window.remaining ?? 0) : `${window.remaining ?? 0}`;
 
               items.push(
                 <div key={key} className={idx > 0 ? 'space-y-2.5 pt-3 border-t border-dashed border-border/60' : 'space-y-2.5'}>
                   <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-medium text-muted-foreground">
-                        {label} <span className="opacity-70 font-normal">({usedStr}/{totalStr})</span>
+                        {label} <span className="opacity-70 font-normal">({usedStr}/{remStr})</span>
                       </span>
                       <span className="font-medium text-foreground">{Math.round(pct)}%</span>
                     </div>
@@ -541,7 +542,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                   {window.resetAt ? (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {t('quota.label.resets_in')} {formatTimeToReset(new Date(window.resetAt).toISOString())}
+                      {formatTimeToReset(new Date(window.resetAt).toISOString())}
                     </div>
                   ) : null}
                 </div>
@@ -591,7 +592,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             if (qd.window_end) {
               items.push(
                 <div key="reset" className="text-[11px] text-muted-foreground text-right pt-1">
-                  {t('quota.label.resets_in')} {formatTimeToReset(qd.window_end)}
+                  {formatTimeToReset(qd.window_end)}
                 </div>
               );
             }
@@ -632,7 +633,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                   {qd.weeklyTokenLimit.nextRegenAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {t('quota.label.resets_in')} {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt)}
+                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt)}
                     </div>
                   )}
                 </div>
@@ -662,7 +663,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   )}
                   {qd.rollingFiveHourLimit.nextTickAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {t('quota.label.resets_in')} {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt)}
+                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt)}
                     </div>
                   )}
                 </div>
@@ -729,7 +730,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             if (quota.nextResetAt) {
               items.push(
                 <div key="reset" className="text-[11px] text-muted-foreground text-right pt-1">
-                  {t('quota.label.resets_in')} {formatTimeToReset(quota.nextResetAt)}
+                  {formatTimeToReset(quota.nextResetAt)}
                 </div>
               );
             }

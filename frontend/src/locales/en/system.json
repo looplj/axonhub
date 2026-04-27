@@ -287,6 +287,7 @@
   "quota.status.limited": "Limited",
   "quota.status.unknown": "Unknown",
   "quota.label.resets_in": "Resets in",
+  "quota.label.resets_in_time": "Resets in {{time}}",
   "quota.label.days": " days",
   "quota.label.day": " day",
   "quota.label.hours": " hours",
