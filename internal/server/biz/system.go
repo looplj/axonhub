@@ -455,6 +455,9 @@ type SystemService struct {
 
 	mu           sync.RWMutex
 	timeLocation *time.Location
+
+	initOnce sync.Once
+	initErr  error
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
@@ -487,132 +490,148 @@ type InitializeSystemParams struct {
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
 func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystemParams) (err error) {
-	ctx, err = authz.WithSystemBypass(ctx, "system-initialize")
-	if err != nil {
-		return nil
-	}
-	// Check if system is already initialized
-	isInitialized, err := s.IsInitialized(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to check initialization status: %w", err)
-	}
-
-	if isInitialized {
-		// System is already initialized, nothing to do
-		return nil
-	}
-
-	secretKey, err := GenerateSecretKey()
-	if err != nil {
-		return fmt.Errorf("failed to generate secret key: %w", err)
-	}
-
-	db := s.entFromContext(ctx)
-
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
-	}
-
-	defer func() {
+	s.initOnce.Do(func() {
+		ctx, err = authz.WithSystemBypass(ctx, "system-initialize")
 		if err != nil {
-			_ = tx.Rollback()
+			s.initErr = err
+			return
 		}
-	}()
+		// Check if system is already initialized
+		isInitialized, err := s.IsInitialized(ctx)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to check initialization status: %w", err)
+			return
+		}
 
-	ctx = ent.NewContext(ctx, tx.Client())
+		if isInitialized {
+			// System is already initialized, nothing to do
+			return
+		}
 
-	hashedPassword, err := HashPassword(params.OwnerPassword)
-	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
-	}
+		secretKey, err := GenerateSecretKey()
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to generate secret key: %w", err)
+			return
+		}
 
-	// Create owner user.
-	preferLanguage := params.PreferLanguage
-	if preferLanguage == "" {
-		preferLanguage = "en" // Default to English if not specified
-	}
-	user, err := tx.User.Create().
-		SetEmail(params.OwnerEmail).
-		SetPassword(hashedPassword).
-		SetFirstName(params.OwnerFirstName).
-		SetLastName(params.OwnerLastName).
-		SetPreferLanguage(preferLanguage).
-		SetIsOwner(true).
-		SetScopes([]string{"*"}). // Give owner all scopes
-		Save(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create owner user: %w", err)
-	}
+		db := s.entFromContext(ctx)
 
-	log.Info(ctx, "created owner user", zap.Int("user_id", user.ID))
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to start transaction: %w", err)
+			return
+		}
 
-	// Set user in context for project creation
-	ctx = contexts.WithUser(ctx, user)
-	// Create default project and assign owner
-	projectService := NewProjectService(ProjectServiceParams{})
-	projectInput := ent.CreateProjectInput{
-		Name:        "Default",
-		Description: lo.ToPtr("Default project"),
-	}
+		defer func() {
+			if err != nil {
+				_ = tx.Rollback()
+			}
+		}()
 
-	_, err = projectService.CreateProject(ctx, projectInput)
-	if err != nil {
-		return fmt.Errorf("failed to create default project: %w", err)
-	}
+		ctx = ent.NewContext(ctx, tx.Client())
 
-	log.Info(ctx, "created default project", zap.String("slug", "default"))
+		hashedPassword, err := HashPassword(params.OwnerPassword)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to hash password=[MASKED_SECRET]", err)
+			return
+		}
 
-	// Set secret key.
-	err = s.setSystemValue(ctx, SystemKeySecretKey, secretKey)
-	if err != nil {
-		return fmt.Errorf("failed to set secret key: %w", err)
-	}
+		// Create owner user.
+		preferLanguage := params.PreferLanguage
+		if preferLanguage == "" {
+			preferLanguage = "en" // Default to English if not specified
+		}
+		user, err := tx.User.Create().
+			SetEmail(params.OwnerEmail).
+			SetPassword(hashedPassword).
+			SetFirstName(params.OwnerFirstName).
+			SetLastName(params.OwnerLastName).
+			SetPreferLanguage(preferLanguage).
+			SetIsOwner(true).
+			SetScopes([]string{"*"}). // Give owner all scopes
+			Save(ctx)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to create owner user: %w", err)
+			return
+		}
 
-	// Set brand name.
-	err = s.setSystemValue(ctx, SystemKeyBrandName, params.BrandName)
-	if err != nil {
-		return fmt.Errorf("failed to set brand name: %w", err)
-	}
+		log.Info(ctx, "created owner user", zap.Int("user_id", user.ID))
 
-	// Create primary data storage
-	primaryDataStorage, err := tx.DataStorage.Create().
-		SetName("Primary").
-		SetDescription("Primary database storage").
-		SetPrimary(true).
-		SetType("database").
-		SetSettings(&objects.DataStorageSettings{}).
-		SetStatus("active").
-		Save(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create primary data storage: %w", err)
-	}
+		// Set user in context for project creation
+		ctx = contexts.WithUser(ctx, user)
+		// Create default project and assign owner
+		projectService := NewProjectService(ProjectServiceParams{})
+		projectInput := ent.CreateProjectInput{
+			Name:        "Default",
+			Description: lo.ToPtr("Default project"),
+		}
 
-	// Set default data storage ID.
-	err = s.SetDefaultDataStorageID(ctx, primaryDataStorage.ID)
-	if err != nil {
-		return fmt.Errorf("failed to set default data storage ID: %w", err)
-	}
+		_, err = projectService.CreateProject(ctx, projectInput)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to create default project: %w", err)
+			return
+		}
 
-	log.Info(ctx, "created primary data storage", zap.Int("data_storage_id", primaryDataStorage.ID))
+		log.Info(ctx, "created default project", zap.String("slug", "default"))
 
-	// Set initialized flag to true.
-	err = s.setSystemValue(ctx, SystemKeyInitialized, "true")
-	if err != nil {
-		return fmt.Errorf("failed to set initialized flag: %w", err)
-	}
+		// Set secret key.
+		err = s.setSystemValue(ctx, SystemKeySecretKey, secretKey)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to set secret key: %w", err)
+			return
+		}
 
-	// Record current build version for initialized system.
-	err = s.SetVersion(ctx, build.Version)
-	if err != nil {
-		return fmt.Errorf("failed to set system version: %w", err)
-	}
+		// Set brand name.
+		err = s.setSystemValue(ctx, SystemKeyBrandName, params.BrandName)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to set brand name: %w", err)
+			return
+		}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+		// Create primary data storage
+		primaryDataStorage, err := tx.DataStorage.Create().
+			SetName("Primary").
+			SetDescription("Primary database storage").
+			SetPrimary(true).
+			SetType("database").
+			SetSettings(&objects.DataStorageSettings{}).
+			SetStatus("active").
+			Save(ctx)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to create primary data storage: %w", err)
+			return
+		}
 
-	return nil
+		// Set default data storage ID.
+		err = s.SetDefaultDataStorageID(ctx, primaryDataStorage.ID)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to set default data storage ID: %w", err)
+			return
+		}
+
+		log.Info(ctx, "created primary data storage", zap.Int("data_storage_id", primaryDataStorage.ID))
+
+		// Set initialized flag to true.
+		err = s.setSystemValue(ctx, SystemKeyInitialized, "true")
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to set initialized flag: %w", err)
+			return
+		}
+
+		// Record current build version for initialized system.
+		err = s.SetVersion(ctx, build.Version)
+		if err != nil {
+			s.initErr = fmt.Errorf("failed to set system version: %w", err)
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			s.initErr = fmt.Errorf("failed to commit transaction: %w", err)
+			return
+		}
+	})
+
+	return s.initErr
 }
 
 // SecretKey retrieves the JWT secret key from system settings.
