@@ -296,6 +296,26 @@ func TestWriteQuotaExhaustedResponse_OtherError_ReturnsFalse(t *testing.T) {
 	assert.False(t, handled, "writeQuotaExhaustedResponse should not handle non-quota errors")
 }
 
+func TestPlaygroundHandleError_QuotaExhausted_Returns503(t *testing.T) {
+	handlers := &PlaygroundHandlers{}
+
+	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
+	errResp := handlers.HandleError(quotaErr)
+
+	assert.Equal(t, http.StatusServiceUnavailable, errResp.Status)
+	assert.Equal(t, http.StatusServiceUnavailable, errResp.Error.Code)
+	assert.Equal(t, "all channels quota exhausted for model gpt-4", errResp.Error.Message)
+}
+
+func TestPlaygroundHandleError_OtherError_Returns500(t *testing.T) {
+	handlers := &PlaygroundHandlers{}
+
+	otherErr := errors.New("something else")
+	errResp := handlers.HandleError(otherErr)
+
+	assert.Equal(t, http.StatusInternalServerError, errResp.Status)
+}
+
 func TestFormatStreamError_LlmResponseError_PassesCodeAndRequestID(t *testing.T) {
 	respErr := &llm.ResponseError{
 		Detail: llm.ErrorDetail{

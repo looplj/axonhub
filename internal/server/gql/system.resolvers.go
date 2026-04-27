@@ -419,7 +419,7 @@ func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoSto
 
 // QuotaEnforcementSettings is the resolver for the quotaEnforcementSettings field.
 func (r *queryResolver) QuotaEnforcementSettings(ctx context.Context) (*biz.QuotaEnforcementSettings, error) {
-	return r.systemService.QuotaEnforcementSettingsOrDefault(ctx), nil
+	return r.systemService.QuotaEnforcementSettings(ctx)
 }
 
 // ProxyPresets is the resolver for the proxyPresets field.

@@ -1316,6 +1316,10 @@ func (s *SystemService) SetQuotaEnforcementSettings(ctx context.Context, setting
 		settings.Mode = defaultQuotaEnforcementSettings.Mode
 	}
 
+	if settings.Mode != QuotaEnforcementModeExhaustedOnly && settings.Mode != QuotaEnforcementModeDePrioritize {
+		return fmt.Errorf("invalid quota enforcement mode: %q", settings.Mode)
+	}
+
 	jsonBytes, err := json.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal quota enforcement settings: %w", err)

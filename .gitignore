@@ -137,6 +137,8 @@ coverage.out
 *.test
 *.backup
 
+.playwright-cli/
+
 # E2E testing artifacts
 scripts/e2e/.e2e-backend.pid
 scripts/e2e/axonhub-e2e.db

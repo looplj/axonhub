@@ -82,10 +82,9 @@ func TestQuotaAwareStrategy_Score_Warning_DePrioritize(t *testing.T) {
 	ctx := context.Background()
 
 	score := strategy.Score(ctx, channel)
-	// usageRatio=0.8, score = scaleScore(100, 1-0.8) = scaleScore(100, 0.2) = 20
-	assert.Greater(t, score, 0.0, "warning in de_prioritize mode should have positive score")
-	assert.Less(t, score, 100.0, "warning in de_prioritize mode should have score < 100")
-	assert.InDelta(t, 20.0, score, 0.0001)
+	assert.Less(t, score, 0.0, "warning in de_prioritize mode should have negative score (penalty)")
+	assert.Greater(t, score, float64(quotaExhaustedScore), "warning should rank above exhausted")
+	assert.InDelta(t, -20.0, score, 0.0001)
 }
 
 func TestQuotaAwareStrategy_Score_Warning_ExhaustedOnly(t *testing.T) {
@@ -241,12 +240,12 @@ func TestQuotaAwareStrategy_ScoreWithDebug_Warning_DePrioritize(t *testing.T) {
 
 	score, debug := strategy.ScoreWithDebug(ctx, channel)
 
-	assert.InDelta(t, 20.0, score, 0.0001)
+	assert.InDelta(t, -20.0, score, 0.0001)
 	assert.Equal(t, "QuotaAware", debug.StrategyName)
 	assert.Equal(t, string(providerquotastatus.StatusWarning), string(debug.Details["quota_status"].(providerquotastatus.Status)))
 	assert.Equal(t, "warning_de_prioritize", debug.Details["score_reason"])
 	assert.Equal(t, 0.8, debug.Details["usage_ratio"])
-	assert.InDelta(t, 20.0, debug.Details["scaled_score"], 0.0001)
+	assert.InDelta(t, -20.0, debug.Details["scaled_score"], 0.0001)
 }
 
 func TestQuotaAwareStrategy_ScoreWithDebug_NilQuotaData(t *testing.T) {
@@ -373,7 +372,7 @@ func TestQuotaAwareStrategy_Score_MultipleChannels(t *testing.T) {
 	ctx := context.Background()
 	assert.Equal(t, float64(quotaExhaustedScore), strategy.Score(ctx, c1))
 	assert.Equal(t, 0.0, strategy.Score(ctx, c2))
-	assert.InDelta(t, 20.0, strategy.Score(ctx, c3), 0.0001)
+	assert.InDelta(t, -20.0, strategy.Score(ctx, c3), 0.0001)
 }
 
 func TestQuotaAwareStrategy_Score_ExhaustedBothModes(t *testing.T) {

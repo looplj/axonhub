@@ -125,7 +125,7 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 	case "warning":
 		if settings.Mode == biz.QuotaEnforcementModeDePrioritize {
 			usageRatio := warningUsageRatio
-			score := scaleScore(s.maxScore, 1-usageRatio)
+			score := -scaleScore(s.maxScore, 1-usageRatio)
 			if details != nil {
 				details["usage_ratio"] = usageRatio
 				details["scaled_score"] = score
