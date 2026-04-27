@@ -26,6 +26,8 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"entgo.io/ent/dialect/sql"
+
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -136,7 +138,7 @@ func (s *APIKeyService) loadAPIKeyByKey(ctx context.Context, cacheKey string) (*
 				return nil, err
 			}
 			// Backfill the hash on read.
-			_, _ = client.APIKey.UpdateOne(item).SetKeyHash(keyHash).Save(ctx)
+			_, _ = client.APIKey.UpdateOne(item).Modify(func(u *sql.UpdateBuilder) { u.Set(apikey.FieldKeyHash, keyHash) }).Save(ctx)
 		} else {
 			return nil, err
 		}

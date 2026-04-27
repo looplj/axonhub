@@ -31,6 +31,8 @@ const (
 	FieldProjectID = "project_id"
 	// FieldKey holds the string denoting the key field in the database.
 	FieldKey = "key"
+	// FieldKeyHash holds the string denoting the key_hash field in the database.
+	FieldKeyHash = "key_hash"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldType holds the string denoting the type field in the database.
@@ -81,6 +83,7 @@ var Columns = []string{
 	FieldUserID,
 	FieldProjectID,
 	FieldKey,
+	FieldKeyHash,
 	FieldName,
 	FieldType,
 	FieldStatus,
@@ -213,6 +216,11 @@ func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
 // ByKey orders the results by the key field.
 func ByKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKey, opts...).ToFunc()
+}
+
+// ByKeyHash orders the results by the key_hash field.
+func ByKeyHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKeyHash, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.

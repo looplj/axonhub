@@ -219,13 +219,13 @@ type WebhookNotifierConfig struct {
 }
 
 type WebhookTarget struct {
-	Name      string                `json:"name"`
-	Enabled   bool                  `json:"enabled"`
-	URL       string                `json:"url"`
+	Name      string                  `json:"name"`
+	Enabled   bool                    `json:"enabled"`
+	URL       string                  `json:"url"`
 	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
-	TimeoutMs int                   `json:"timeout_ms"`
-	Headers   []objects.HeaderEntry `json:"headers"`
-	Body      string                `json:"body"`
+	TimeoutMs int                     `json:"timeout_ms"`
+	Headers   []objects.HeaderEntry   `json:"headers"`
+	Body      string                  `json:"body"`
 }
 
 type WebhookSubscription struct {
@@ -434,7 +434,10 @@ type SystemServiceParams struct {
 }
 
 func NewSystemService(params SystemServiceParams) (*SystemService, error) {
-	cache := xcache.NewFromConfig[ent.System](params.CacheConfig)
+	cache, err := xcache.NewFromConfig[ent.System](params.CacheConfig)
+	if err != nil {
+		return nil, err
+	}
 	return &SystemService{
 		AbstractService: &AbstractService{
 			db: params.Ent,
@@ -547,7 +550,7 @@ func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystem
 	// Set user in context for project creation
 	ctx = contexts.WithUser(ctx, user)
 	// Create default project and assign owner
-	projectService, _ := NewProjectService(ProjectServiceParams{})
+	projectService := NewProjectService(ProjectServiceParams{})
 	projectInput := ent.CreateProjectInput{
 		Name:        "Default",
 		Description: lo.ToPtr("Default project"),

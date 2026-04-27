@@ -127,17 +127,25 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 		p(1), p(2), p(3), p(4), p(5),
 	)
 
-	var today, thisWeek, lastWeek, thisMonth dbsql.NullInt64
-	err := sqlDB.DB().QueryContext(ctx, query,
+	var today, thisWeek, lastWeek, thisMonth sql.NullInt64
+	rows, err := sqlDB.DB().QueryContext(ctx, query,
 		period.Today.Start.UTC(),
 		period.ThisWeek.Start.UTC(),
 		period.LastWeek.Start.UTC(),
 		period.LastWeek.End.UTC(),
 		period.ThisMonth.Start.UTC(),
-	).Scan(&today, &thisWeek, &lastWeek, &thisMonth)
+	)
 	if err != nil {
 		log.Warn(ctx, "failed to query request stats", log.Cause(err))
 		return stats, nil
+	}
+	defer func() { _ = rows.Close() }()
+
+	if rows.Next() {
+		if err := rows.Scan(&today, &thisWeek, &lastWeek, &thisMonth); err != nil {
+			log.Warn(ctx, "failed to scan request stats", log.Cause(err))
+			return stats, nil
+		}
 	}
 
 	if today.Valid {
@@ -712,7 +720,7 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	}
 
 	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
+	_ = xtime.GetCalendarPeriods(loc)
 
 	// Single aggregation query with conditional sums for all time periods
 	type periodTokenSums struct {

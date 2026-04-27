@@ -111,7 +111,7 @@ func (v *V0_3_0) createDefaultProject(ctx context.Context) (*ent.Project, *ent.U
 
 	// Use the ProjectService to create the default project
 	// This will automatically create the three default roles (admin, developer, viewer)
-	projectService , _ := biz.NewProjectService(biz.ProjectServiceParams{})
+	projectService := biz.NewProjectService(biz.ProjectServiceParams{})
 	input := ent.CreateProjectInput{
 		Name:        "Default",
 		Description: lo.ToPtr("Default project"),

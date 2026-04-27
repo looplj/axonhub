@@ -46,7 +46,7 @@ func NewMigrator(client *ent.Client) *Migrator {
 func NewMigratorWithoutRegistrations(client *ent.Client) *Migrator {
 	return &Migrator{
 		client:        client,
-		systemService: biz.NewSystemService(biz.SystemServiceParams{}),
+		systemService: func() *biz.SystemService { s, _ := biz.NewSystemService(biz.SystemServiceParams{}); return s }(),
 		migrations:    []DataMigrator{},
 	}
 }
