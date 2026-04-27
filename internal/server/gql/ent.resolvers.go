@@ -277,6 +277,10 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 
 // Channels is the resolver for the channels field.
 func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) (*ent.ChannelConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
 		orderBy.Field = ent.DefaultChannelOrder.Field
 	}
@@ -321,6 +325,10 @@ func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[i
 
 // Models is the resolver for the models field.
 func (r *queryResolver) Models(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) (*ent.ModelConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
 		orderBy.Field = ent.DefaultModelOrder.Field
 	}

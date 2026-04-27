@@ -589,11 +589,14 @@ func (s *DataStorageService) SaveDataFromReader(ctx context.Context, ds *ent.Dat
 		if err != nil {
 			return "", 0, fmt.Errorf("failed to create file: %w, key: %s", err, key)
 		}
-		defer f.Close()
-
 		n, err := io.Copy(f, r)
 		if err != nil {
+			f.Close()
 			return "", 0, fmt.Errorf("failed to write file: %w, key: %s", err, key)
+		}
+
+		if err := f.Close(); err != nil {
+			return "", 0, fmt.Errorf("failed to flush file: %w, key: %s", err, key)
 		}
 
 		return key, n, nil
