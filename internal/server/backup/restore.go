@@ -2,6 +2,8 @@ package backup
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -678,11 +680,42 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 
 		remapAPIKeyProfilesChannelIDs(akData.Profiles, channelIDMap)
 
-		existing, err := db.APIKey.Query().
+		// F-D27: First try exact key match, then fall back to prefix matching
+		// for cases where backup data contains masked/truncated keys.
+		var existing *ent.APIKey
+
+		// Step 1: Try exact match first.
+		exact, err := db.APIKey.Query().
 			Where(apikey.Key(akData.Key)).
 			First(ctx)
 		if err != nil && !ent.IsNotFound(err) {
 			return err
+		}
+		if exact != nil {
+			existing = exact
+		} else {
+			// Step 2: Prefix match for masked/truncated keys.
+			// Use name as a confidence check: only accept a prefix-match candidate
+			// when the name confirms it is the correct key.
+			prefixLen := 8
+			if len(akData.Key) < prefixLen {
+				prefixLen = len(akData.Key)
+			}
+			prefix := akData.Key[:prefixLen]
+
+			candidates, err := db.APIKey.Query().
+				Where(apikey.KeyHasPrefix(prefix)).
+				All(ctx)
+			if err != nil && !ent.IsNotFound(err) {
+				return err
+			}
+
+			for _, c := range candidates {
+				if c.Name == akData.Name && c.Type == akData.Type {
+					existing = c
+					break
+				}
+			}
 		}
 
 		if existing != nil {
@@ -734,6 +767,7 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 
 			create := db.APIKey.Create().
 				SetKey(akData.Key).
+				SetKeyHash(hashAPIKey(akData.Key)).
 				SetName(akData.Name).
 				SetType(akData.Type).
 				SetStatus(akData.Status).
@@ -753,4 +787,11 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 	}
 
 	return nil
+}
+
+// hashAPIKey computes the SHA-256 hash of an API key for secure storage.
+// Mirrors biz.hashKey to avoid cross-package import in the backup layer.
+func hashAPIKey(key string) string {
+	h := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(h[:])
 }
