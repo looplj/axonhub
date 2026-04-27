@@ -13,11 +13,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"cloud.google.com/go/storage"
 	"github.com/samber/lo"
 	"github.com/spf13/afero"
 	"github.com/spf13/afero/gcsfs"
 	"github.com/studio-b12/gowebdav"
+	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 	"golang.org/x/oauth2/google"
 
@@ -34,7 +37,6 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
 // DataStorageService handles data storage operations.
@@ -43,6 +45,7 @@ type DataStorageService struct {
 
 	SystemService *SystemService
 	Cache         xcache.Cache[ent.DataStorage]
+	Executors     executors.ScheduledExecutor
 
 	// fsCache caches afero filesystem instances by data storage ID
 	fsCache      map[int]afero.Fs
@@ -56,31 +59,35 @@ type DataStorageServiceParams struct {
 
 	SystemService *SystemService
 	CacheConfig   xcache.Config
+	Executor      executors.ScheduledExecutor
 	Client        *ent.Client
 }
 
 // NewDataStorageService creates a new DataStorageService.
-func NewDataStorageService(params DataStorageServiceParams) *DataStorageService {
+func NewDataStorageService(params DataStorageServiceParams) (*DataStorageService, error) {
+	cache, err := xcache.NewFromConfig[ent.DataStorage](params.CacheConfig)
+	if err != nil {
+		return nil, err
+	}
 	svc := &DataStorageService{
 		AbstractService: &AbstractService{
 			db: params.Client,
 		},
 		SystemService: params.SystemService,
-		Cache:         xcache.NewFromConfig[ent.DataStorage](params.CacheConfig),
+		Cache:         cache,
+		Executors:     params.Executor,
 		fsCache:       make(map[int]afero.Fs),
 	}
 	svc.reloadFileSystemsPeriodically(context.Background())
 
-	return svc
-}
+	if _, err := svc.Executors.ScheduleFuncAtCronRate(
+		svc.reloadFileSystemsPeriodically,
+		executors.CRONRule{Expr: "*/1 * * * *"},
+	); err != nil {
+		log.Error(context.Background(), "failed to schedule data storage filesystem refresh", log.Cause(err))
+	}
 
-func (s *DataStorageService) RegisterScheduledTasks(ctx context.Context, sched *scheduler.Scheduler) error {
-	return sched.Register(ctx, scheduler.TaskSpec{
-		Name:        "datastorage-fs-reload",
-		Description: "Refresh data storage filesystem cache every minute",
-		CronExpr:    "*/1 * * * *",
-		Timezone:    "UTC",
-	}, s.reloadFileSystemsPeriodically)
+	return svc, nil
 }
 
 func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {
@@ -388,7 +395,12 @@ func (s *DataStorageService) InvalidateFsCache(id int) error {
 func (s *DataStorageService) createS3Fs(ctx context.Context, s3Config *objects.S3) (afero.Fs, error) {
 	credProvider := awscredentials.NewStaticCredentialsProvider(
 		s3Config.AccessKey,
-		s3Config.SecretKey,
+		func() string {
+			if s3Config.SecretKey != nil {
+				return *s3Config.SecretKey
+			}
+			return ""
+		}(),
 		"",
 	)
 
@@ -425,13 +437,13 @@ func (s *DataStorageService) createGcsFs(ctx context.Context, gcsConfig *objects
 	}
 
 	// Create GCS client
-	client, err := storage.NewClient(context.Background(), googleoption.WithCredentials(creds))
+	client, err := storage.NewClient(ctx, googleoption.WithCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCS client: %w", err)
 	}
 
 	// Create GCS filesystem
-	fs, err := gcsfs.NewGcsFSFromClient(context.Background(), client)
+	fs, err := gcsfs.NewGcsFSFromClient(ctx, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCS filesystem: %w", err)
 	}
@@ -530,24 +542,16 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			}
 		}
 
-		if ds.Type != datastorage.TypeFs {
-			// For S3 with PathStyle enabled, remove leading slash from key
-			// to avoid InvalidArgument error from S3 compatible storage services
-			if isS3PathStyle(ds) {
-				key = strings.TrimPrefix(key, "/")
+		if ds.Type == datastorage.TypeFs {
+			// Local filesystem: direct write (already atomic on most systems)
+			if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
+				return fmt.Errorf("failed to write file: %w, key: %s", err, key)
 			}
-
-			f, err := fs.Create(key)
-			if err != nil {
-				return fmt.Errorf("failed to create file: %w, key: %s", err, key)
+		} else {
+			// S3/GCS/WebDAV: atomic write via temp-file + rename
+			if err := atomicWriteFile(fs, key, data); err != nil {
+				return fmt.Errorf("failed to atomically write file: %w, key: %s", err, key)
 			}
-
-			_ = f.Close()
-		}
-
-		// Write data to file
-		if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
-			return fmt.Errorf("failed to write file: %w, key: %s", err, key)
 		}
 
 		return nil
@@ -584,21 +588,72 @@ func (s *DataStorageService) SaveDataFromReader(ctx context.Context, ds *ent.Dat
 			key = strings.TrimPrefix(key, "/")
 		}
 
+	var n int64
+	if ds.Type == datastorage.TypeFs {
 		f, err := fs.Create(key)
 		if err != nil {
 			return "", 0, fmt.Errorf("failed to create file: %w, key: %s", err, key)
 		}
-		defer f.Close()
-
-		n, err := io.Copy(f, r)
+		n, err = io.Copy(f, r)
 		if err != nil {
+			_ = f.Close()
 			return "", 0, fmt.Errorf("failed to write file: %w, key: %s", err, key)
 		}
+		if err := f.Close(); err != nil {
+			return "", 0, fmt.Errorf("failed to flush file: %w, key: %s", err, key)
+		}
+	} else {
+		// S3/GCS/WebDAV: atomic write via temp-file + rename
+		var err error
+		n, err = atomicWriteReader(fs, key, r)
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to atomically write file: %w, key: %s", err, key)
+		}
+	}
 
-		return key, n, nil
+	return key, n, nil
 	default:
 		return "", 0, fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
+}
+
+// atomicWriteFile writes data to key via a temp-file + rename pattern,
+// providing at-least-once atomicity semantics for remote backends.
+func atomicWriteFile(fs afero.Fs, key string, data []byte) error {
+	tmpKey := fmt.Sprintf(".tmp/%s-%s", uuid.New().String(), filepath.Base(key))
+	if err := afero.WriteFile(fs, tmpKey, data, 0o777); err != nil {
+		return err
+	}
+	if err := fs.Rename(tmpKey, key); err != nil {
+		_ = fs.Remove(tmpKey)
+		return err
+	}
+	return nil
+}
+
+// atomicWriteReader streams data from r to key via a temp-file + rename pattern,
+// providing at-least-once atomicity semantics for remote backends.
+func atomicWriteReader(fs afero.Fs, key string, r io.Reader) (int64, error) {
+	tmpKey := fmt.Sprintf(".tmp/%s-%s", uuid.New().String(), filepath.Base(key))
+	f, err := fs.Create(tmpKey)
+	if err != nil {
+		return 0, err
+	}
+	n, err := io.Copy(f, r)
+	if err != nil {
+		_ = f.Close()
+		_ = fs.Remove(tmpKey)
+		return 0, err
+	}
+	if err := f.Close(); err != nil {
+		_ = fs.Remove(tmpKey)
+		return 0, err
+	}
+	if err := fs.Rename(tmpKey, key); err != nil {
+		_ = fs.Remove(tmpKey)
+		return 0, err
+	}
+	return n, nil
 }
 
 // DeleteData removes data stored under the provided key for the given data storage.
@@ -678,7 +733,7 @@ func isS3Provided(s3 *objects.S3) bool {
 	}
 
 	return s3.BucketName != "" || s3.Endpoint != "" || s3.Region != "" ||
-		s3.AccessKey != "" || s3.SecretKey != ""
+		s3.AccessKey != "" || (s3.SecretKey != nil && *s3.SecretKey != "")
 }
 
 // isS3PathStyle checks if the data storage is S3 with PathStyle enabled.
@@ -742,9 +797,11 @@ func (s *DataStorageService) mergeSettings(existing, input *objects.DataStorageS
 			merged.S3.AccessKey = existing.S3.AccessKey
 		}
 
-		if input.S3.SecretKey != "" {
+		if input.S3.SecretKey != nil {
+			// Explicit value provided: use it (empty string means clear the key)
 			merged.S3.SecretKey = input.S3.SecretKey
 		} else if existing.S3 != nil {
+			// No explicit value: preserve existing key
 			merged.S3.SecretKey = existing.S3.SecretKey
 		}
 	} else if existing.S3 != nil {
