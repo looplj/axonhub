@@ -288,6 +288,7 @@
   "quota.status.unknown": "未知",
   "quota.label.resets_in": "重置于",
   "quota.label.resets_in_time": "重置于 {{time}}",
+  "quota.label.no_usage_yet": "尚无使用量",
   "quota.label.days": "天",
   "quota.label.day": "天",
   "quota.label.hours": "小时",

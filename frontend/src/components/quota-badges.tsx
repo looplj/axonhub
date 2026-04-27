@@ -192,7 +192,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     return calcDurationPercent(limit, resetAfter);
   };
 
-  const formatTimeToReset = (resetAtOrSeconds?: string | number | null) => {
+  const formatTimeToReset = (resetAtOrSeconds?: string | number | null, usedPercent?: number) => {
     if (!resetAtOrSeconds) return '';
 
     let resetTimeMs: number;
@@ -204,7 +204,10 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
     const now = Date.now();
     const diffMs = resetTimeMs - now;
-    if (diffMs < 0) return t('quota.label.reset_now');
+    if (diffMs < 0) {
+      if (usedPercent === 0) return t('quota.label.no_usage_yet');
+      return t('quota.label.reset_now');
+    }
 
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -592,7 +595,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             if (qd.window_end) {
               items.push(
                 <div key="reset" className="text-[11px] text-muted-foreground text-right pt-1">
-                  {formatTimeToReset(qd.window_end)}
+                  {formatTimeToReset(qd.window_end, usedPct)}
                 </div>
               );
             }
@@ -633,7 +636,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                   {qd.weeklyTokenLimit.nextRegenAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt)}
+                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct)}
                     </div>
                   )}
                 </div>
@@ -663,7 +666,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   )}
                   {qd.rollingFiveHourLimit.nextTickAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt)}
+                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt, fiveHrUsedPct)}
                     </div>
                   )}
                 </div>

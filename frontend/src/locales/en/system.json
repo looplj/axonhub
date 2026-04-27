@@ -288,6 +288,7 @@
   "quota.status.unknown": "Unknown",
   "quota.label.resets_in": "Resets in",
   "quota.label.resets_in_time": "Resets in {{time}}",
+  "quota.label.no_usage_yet": "No usage yet",
   "quota.label.days": " days",
   "quota.label.day": " day",
   "quota.label.hours": " hours",
