@@ -18,10 +18,20 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 	t.Helper()
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
+	require.NoError(t, err)
+	dataStorageService, err := NewDataStorageService(
+		DataStorageServiceParams{
+			SystemService: systemService,
+			CacheConfig:   xcache.Config{},
+			Executor:      executors.NewPoolScheduleExecutor(),
+			Client:        client,
+		},
+	)
+	require.NoError(t, err)
 	threadService := NewThreadService(
 		client,
 		NewTraceService(TraceServiceParams{
@@ -29,14 +39,7 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 				client,
 				systemService,
 				NewUsageLogService(client, systemService, NewChannelServiceForTest(client)),
-				NewDataStorageService(
-					DataStorageServiceParams{
-						SystemService: systemService,
-						CacheConfig:   xcache.Config{},
-						Executor:      executors.NewPoolScheduleExecutor(),
-						Client:        client,
-					},
-				),
+				dataStorageService,
 				NewLiveStreamRegistry(),
 			),
 			Ent: client,

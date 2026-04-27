@@ -39,11 +39,12 @@ func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *en
 		require.NoError(t, err)
 	}
 
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
-	dataStorageService := NewDataStorageService(
+	require.NoError(t, err)
+	dataStorageService, err := NewDataStorageService(
 		DataStorageServiceParams{
 			SystemService: systemService,
 			CacheConfig:   xcache.Config{},
@@ -51,6 +52,7 @@ func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *en
 			Client:        client,
 		},
 	)
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 	traceService := NewTraceService(TraceServiceParams{
