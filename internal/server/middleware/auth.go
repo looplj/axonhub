@@ -26,7 +26,9 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, config)
 		// DO NOT ALLOW USE NO AUTH API KEY DIRECTLY.
-		if key == biz.NoAuthAPIKeyValue {
+		// Only reject empty keys when one was actually extracted (err == nil).
+		// When err == ErrAPIKeyRequired, let the flow continue to AuthenticateNoAuth.
+		if err == nil && key == biz.NoAuthAPIKeyValue {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
 			return
 		}
