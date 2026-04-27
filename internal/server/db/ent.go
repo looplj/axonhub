@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql/schema"
@@ -21,7 +22,7 @@ import (
 	_ "github.com/looplj/axonhub/internal/pkg/sqlite"
 )
 
-func NewEntClient(cfg Config) *ent.Client {
+func NewEntClient(cfg Config, ctx context.Context) *ent.Client {
 	var opts []ent.Option
 	if cfg.Debug {
 		opts = append(opts, ent.Debug())
@@ -79,8 +80,11 @@ func NewEntClient(cfg Config) *ent.Client {
 	opts = append(opts, ent.Driver(drv))
 	client := ent.NewClient(opts...)
 
+	migCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	err = client.Schema.Create(
-		context.Background(),
+		migCtx,
 		migrate.WithGlobalUniqueID(false),
 		migrate.WithForeignKeys(false),
 		migrate.WithDropIndex(true),
@@ -92,10 +96,8 @@ func NewEntClient(cfg Config) *ent.Client {
 	}
 
 	// Run data migrations using the Migrator framework
-	ctx := context.Background()
-
 	migrator := datamigrate.NewMigrator(client)
-	if err := migrator.Run(ctx); err != nil {
+	if err := migrator.Run(migCtx); err != nil {
 		panic(err)
 	}
 
