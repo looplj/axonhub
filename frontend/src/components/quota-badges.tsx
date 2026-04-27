@@ -192,7 +192,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     return calcDurationPercent(limit, resetAfter);
   };
 
-  const formatTimeToReset = (resetAtOrSeconds?: string | number | null, usedPercent?: number) => {
+  const formatTimeToReset = (resetAtOrSeconds?: string | number | null, usedPercent?: number, regenerates?: boolean) => {
     if (!resetAtOrSeconds) return '';
 
     let resetTimeMs: number;
@@ -206,7 +206,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
     const now = Date.now();
     const diffMs = resetTimeMs - now;
-    if (diffMs < 0) return t('quota.label.reset_now');
+    if (diffMs < 0) return regenerates ? t('quota.label.regenerating_now') : t('quota.label.reset_now');
 
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -221,7 +221,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     else if (diffHours > 0) timeStr = `${diffHours}${h} ${diffMins % 60}${m}`;
     else timeStr = `${diffMins}${m}`;
 
-    return t('quota.label.resets_in_time', { time: timeStr });
+    return regenerates ? t('quota.label.regenerates_in_time', { time: timeStr }) : t('quota.label.resets_in_time', { time: timeStr });
   };
 
   const formatDate = (timestamp?: number) => {
@@ -635,7 +635,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                   {qd.weeklyTokenLimit.nextRegenAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct)}
+                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, true)}
                     </div>
                   )}
                 </div>
@@ -665,7 +665,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   )}
                   {qd.rollingFiveHourLimit.nextTickAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt, fiveHrUsedPct)}
+                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt, fiveHrUsedPct, true)}
                     </div>
                   )}
                 </div>
