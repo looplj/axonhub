@@ -61,13 +61,15 @@ func (svc *BackupService) triggerAutoBackup(ctx context.Context) {
 	if err != nil {
 		errMsg = err.Error()
 		log.Error(ctx, "Auto backup failed", log.Cause(err))
+		if updateErr := svc.systemService.UpdateAutoBackupError(ctx, errMsg); updateErr != nil {
+			log.Error(ctx, "Failed to update auto backup error", log.Cause(updateErr))
+		}
 	} else {
 		log.Info(ctx, "Auto backup completed successfully",
 			log.String("cost", time.Since(startAt).String()))
-	}
-
-	if err := svc.systemService.UpdateAutoBackupLastRun(ctx, errMsg); err != nil {
-		log.Error(ctx, "Failed to update auto backup status", log.Cause(err))
+		if updateErr := svc.systemService.UpdateAutoBackupLastRun(ctx, ""); updateErr != nil {
+			log.Error(ctx, "Failed to update auto backup status", log.Cause(updateErr))
+		}
 	}
 }
 

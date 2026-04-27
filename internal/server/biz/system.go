@@ -1387,3 +1387,16 @@ func (s *SystemService) UpdateAutoBackupLastRun(ctx context.Context, lastError s
 
 	return s.SetAutoBackupSettings(ctx, *settings)
 }
+
+// UpdateAutoBackupError records only the error from a failed backup attempt,
+// without touching LastBackupAt (which should only advance on success).
+func (s *SystemService) UpdateAutoBackupError(ctx context.Context, errMsg string) error {
+	settings, err := s.AutoBackupSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	settings.LastBackupError = errMsg
+
+	return s.SetAutoBackupSettings(ctx, *settings)
+}
