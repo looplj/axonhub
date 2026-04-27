@@ -6,30 +6,21 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 )
 
-// quotaExhaustedScore is the penalty applied to channels whose provider quota
-// is exhausted. It must dominate the maximum positive sum from all other
-// strategies so exhausted channels rank last while still being available as
-// fallback candidates.
 const quotaExhaustedScore = -10000
 
-// warningUsageRatio approximates channel usage when entering warning state.
 const warningUsageRatio = 0.8
 
-// QuotaEnforcementSettingsProvider provides quota enforcement configuration.
 type QuotaEnforcementSettingsProvider interface {
 	QuotaEnforcementSettingsOrDefault(ctx context.Context) *biz.QuotaEnforcementSettings
 }
 
-// QuotaAwareStrategy adjusts channel scores based on provider quota status.
-// Channels with exhausted quota receive a large negative penalty so the load
-// balancer deprioritises them. Warning-state channels are penalised
-// proportionally when the enforcement mode is QuotaEnforcementModeDePrioritize.
 type QuotaAwareStrategy struct {
-	provider       ProviderQuotaStatusProvider
-	systemService  QuotaEnforcementSettingsProvider
-	maxScore       float64
+	provider      ProviderQuotaStatusProvider
+	systemService QuotaEnforcementSettingsProvider
+	maxScore      float64
 }
 
 func NewQuotaAwareStrategy(provider ProviderQuotaStatusProvider, systemService QuotaEnforcementSettingsProvider) *QuotaAwareStrategy {
@@ -78,8 +69,6 @@ func (s *QuotaAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Ch
 	}
 }
 
-// score is the unified scorer. When details is nil, no diagnostic info is
-// recorded. Returns the final score and a human-readable reason string.
 func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, details map[string]any) (float64, string) {
 	settings := s.systemService.QuotaEnforcementSettingsOrDefault(ctx)
 
@@ -111,11 +100,17 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 		return 0, "no_quota_data"
 	}
 
+	limitType := provider_quota.QuotaLimitType(quotaLimitTypeFromContext(ctx))
+	effectiveStatus, _ := quotaStatus.EffectiveStatus(limitType)
+
 	if details != nil {
-		details["quota_status"] = quotaStatus.Status
+		details["quota_status"] = effectiveStatus
+		if limitType != "" {
+			details["limit_type"] = string(limitType)
+		}
 	}
 
-	switch quotaStatus.Status {
+	switch effectiveStatus {
 	case "unknown":
 		return 0, "status_unknown"
 
@@ -124,7 +119,7 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 
 	case "warning":
 		if settings.Mode == biz.QuotaEnforcementModeDePrioritize {
-			usageRatio := warningUsageRatio
+			usageRatio := s.usageRatioForLimit(quotaStatus, limitType)
 			score := -scaleScore(s.maxScore, 1-usageRatio)
 			if details != nil {
 				details["usage_ratio"] = usageRatio
@@ -132,7 +127,6 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 			}
 			return score, "warning_de_prioritize"
 		}
-		// exhausted_only mode: warning is acceptable, no penalty.
 		return 0, "warning_exhausted_only"
 
 	case "available":
@@ -141,8 +135,34 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 	default:
 		if details != nil {
 			details["quota_status"] = "unrecognized"
-			details["raw_status"] = quotaStatus.Status
+			details["raw_status"] = effectiveStatus
 		}
 		return 0, "status_unrecognized"
 	}
+}
+
+func (s *QuotaAwareStrategy) usageRatioForLimit(quotaStatus *biz.QuotaChannelStatus, limitType provider_quota.QuotaLimitType) float64 {
+	if len(quotaStatus.Limits) == 0 {
+		return warningUsageRatio
+	}
+
+	worstRatio := 0.0
+	found := false
+
+	for _, l := range quotaStatus.Limits {
+		if l.Type != limitType {
+			continue
+		}
+
+		found = true
+		if l.UsageRatio > worstRatio {
+			worstRatio = l.UsageRatio
+		}
+	}
+
+	if !found {
+		return warningUsageRatio
+	}
+
+	return worstRatio
 }

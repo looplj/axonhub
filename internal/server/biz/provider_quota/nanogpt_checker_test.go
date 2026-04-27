@@ -407,3 +407,50 @@ func TestNanoGPT_CheckQuota_InvalidJSON(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to parse nanogpt usage response")
 }
+
+func TestNanoGPT_CheckQuota_PerLimitStatuses(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"active": true,
+				"state": "active",
+				"dailyImages": {"used": 45, "remaining": 5, "percentUsed": 0.9, "resetAt": 1717200000000},
+				"dailyInputTokens": {"used": 1000, "remaining": 199000, "percentUsed": 0.005, "resetAt": 1717200000000},
+				"weeklyInputTokens": {"used": 5000, "remaining": 995000, "percentUsed": 0.05, "resetAt": 1717804800000}
+			}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewNanoGPTQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "warning", quota.Status, "overall should be warning because images >= 80%")
+	require.Len(t, quota.Limits, 3)
+
+	imgLimit := quota.Limits[0]
+	require.Equal(t, QuotaLimitTypeImage, imgLimit.Type)
+	require.Equal(t, "warning", imgLimit.Status)
+	require.InDelta(t, 0.9, imgLimit.UsageRatio, 0.001)
+	require.True(t, imgLimit.Ready)
+
+	dailyTokenLimit := quota.Limits[1]
+	require.Equal(t, QuotaLimitTypeToken, dailyTokenLimit.Type)
+	require.Equal(t, "available", dailyTokenLimit.Status)
+	require.InDelta(t, 0.005, dailyTokenLimit.UsageRatio, 0.001)
+
+	weeklyTokenLimit := quota.Limits[2]
+	require.Equal(t, QuotaLimitTypeToken, weeklyTokenLimit.Type)
+	require.Equal(t, "available", weeklyTokenLimit.Status)
+	require.InDelta(t, 0.05, weeklyTokenLimit.UsageRatio, 0.001)
+}

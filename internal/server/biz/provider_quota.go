@@ -27,8 +27,53 @@ const maxConcurrentQuotaChecks = 8
 type QuotaChannelStatus struct {
 	Status providerquotastatus.Status
 	Ready  bool
+	Limits []provider_quota.QuotaLimitStatus
 }
 
+func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimitType) (providerquotastatus.Status, bool) {
+	if len(s.Limits) == 0 {
+		return s.Status, s.Ready
+	}
+
+	worstStatus := providerquotastatus.StatusAvailable
+	worstReady := true
+	found := false
+
+	for _, l := range s.Limits {
+		if l.Type != limitType {
+			continue
+		}
+
+		found = true
+
+		ls := providerquotastatus.Status(l.Status)
+		if quotaStatusRank(ls) > quotaStatusRank(worstStatus) {
+			worstStatus = ls
+			worstReady = l.Ready
+		}
+	}
+
+	if !found {
+		return s.Status, s.Ready
+	}
+
+	return worstStatus, worstReady
+}
+
+func quotaStatusRank(s providerquotastatus.Status) int {
+	switch s {
+	case providerquotastatus.StatusAvailable:
+		return 0
+	case providerquotastatus.StatusWarning:
+		return 1
+	case providerquotastatus.StatusExhausted:
+		return 2
+	case providerquotastatus.StatusUnknown:
+		return -1
+	default:
+		return -1
+	}
+}
 
 // HOW TO ADD A NEW PROVIDER QUOTA CHECKER
 // ========================================
@@ -299,6 +344,17 @@ func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) stri
 	return fmt.Sprintf("*/%d * * * *", rounded)
 }
 
+func (svc *ProviderQuotaService) getWarningCheckInterval() time.Duration {
+	return svc.getCheckInterval() / 4
+}
+
+func (svc *ProviderQuotaService) nextCheckIntervalForStatus(status string) time.Duration {
+	if status == "warning" {
+		return svc.getWarningCheckInterval()
+	}
+	return svc.getCheckInterval()
+}
+
 func (svc *ProviderQuotaService) getCheckInterval() time.Duration {
 	if svc.checkInterval > 0 {
 		return svc.checkInterval
@@ -322,6 +378,7 @@ func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {
 		svc.quotaCache.Store(r.ChannelID, &QuotaChannelStatus{
 			Status: r.Status,
 			Ready:  r.Ready,
+			Limits: extractLimitsFromQuotaData(r.QuotaData),
 		})
 	}
 
@@ -336,10 +393,11 @@ func (svc *ProviderQuotaService) GetQuotaStatus(channelID int) *QuotaChannelStat
 	return val.(*QuotaChannelStatus)
 }
 
-func (svc *ProviderQuotaService) updateQuotaCache(channelID int, status providerquotastatus.Status, ready bool) {
+func (svc *ProviderQuotaService) updateQuotaCache(channelID int, status providerquotastatus.Status, ready bool, limits []provider_quota.QuotaLimitStatus) {
 	svc.quotaCache.Store(channelID, &QuotaChannelStatus{
 		Status: status,
 		Ready:  ready,
+		Limits: limits,
 	})
 }
 
@@ -464,14 +522,14 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	quotaData provider_quota.QuotaData,
 	now time.Time,
 ) {
-	nextCheck := now.Add(svc.getCheckInterval())
+	nextCheck := now.Add(svc.nextCheckIntervalForStatus(quotaData.Status))
 	pt := providerquotastatus.ProviderType(providerType)
 
 	create := svc.db.ProviderQuotaStatus.Create().
 		SetChannelID(channelID).
 		SetProviderType(pt).
 		SetStatus(providerquotastatus.Status(quotaData.Status)).
-		SetQuotaData(quotaData.RawData).
+		SetQuotaData(svc.mergeLimitsIntoQuotaData(quotaData)).
 		SetNextCheckAt(nextCheck)
 
 	// Only set next_reset_at if it exists (it's optional in schema)
@@ -495,7 +553,7 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 		return
 	}
 
-	svc.updateQuotaCache(channelID, providerquotastatus.Status(quotaData.Status), quotaData.Ready)
+	svc.updateQuotaCache(channelID, providerquotastatus.Status(quotaData.Status), quotaData.Ready, quotaData.Limits)
 }
 
 func (svc *ProviderQuotaService) saveQuotaError(
@@ -531,7 +589,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			return
 		}
 
-		svc.updateQuotaCache(ch.ID, existing.Status, existing.Ready)
+		svc.updateQuotaCache(ch.ID, existing.Status, existing.Ready, nil)
 
 		return
 	}
@@ -553,7 +611,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		return
 	}
 
-	svc.updateQuotaCache(ch.ID, providerquotastatus.StatusUnknown, false)
+	svc.updateQuotaCache(ch.ID, providerquotastatus.StatusUnknown, false, nil)
 }
 
 func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
@@ -583,4 +641,76 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 
 	return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey) ||
 		strings.TrimSpace(ch.Credentials.APIKey) != "" || len(ch.Credentials.APIKeys) > 0
+}
+
+func (svc *ProviderQuotaService) mergeLimitsIntoQuotaData(quotaData provider_quota.QuotaData) map[string]any {
+	data := lo.Assign(map[string]any{}, quotaData.RawData)
+
+	if len(quotaData.Limits) > 0 {
+		limitMaps := make([]map[string]any, 0, len(quotaData.Limits))
+		for _, l := range quotaData.Limits {
+			m := map[string]any{
+				"type":       string(l.Type),
+				"status":     l.Status,
+				"usageRatio":  l.UsageRatio,
+				"ready":      l.Ready,
+			}
+			if l.NextResetAt != nil {
+				m["nextResetAt"] = l.NextResetAt.Format(time.RFC3339)
+			}
+			limitMaps = append(limitMaps, m)
+		}
+		data["_limits"] = limitMaps
+	}
+
+	return data
+}
+
+func extractLimitsFromQuotaData(data map[string]any) []provider_quota.QuotaLimitStatus {
+	rawLimits, ok := data["_limits"]
+	if !ok {
+		return nil
+	}
+
+	limitSlice, ok := rawLimits.([]any)
+	if !ok {
+		return nil
+	}
+
+	var limits []provider_quota.QuotaLimitStatus
+
+	for _, raw := range limitSlice {
+		m, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		ls := provider_quota.QuotaLimitStatus{}
+
+		if t, ok := m["type"].(string); ok {
+			ls.Type = provider_quota.QuotaLimitType(t)
+		}
+
+		if s, ok := m["status"].(string); ok {
+			ls.Status = s
+		}
+
+		if u, ok := m["usageRatio"].(float64); ok {
+			ls.UsageRatio = u
+		}
+
+		if r, ok := m["ready"].(bool); ok {
+			ls.Ready = r
+		}
+
+		if ts, ok := m["nextResetAt"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, ts); err == nil {
+				ls.NextResetAt = &t
+			}
+		}
+
+		limits = append(limits, ls)
+	}
+
+	return limits
 }

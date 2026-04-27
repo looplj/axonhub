@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 )
 
 type mockQuotaStatusProvider struct {
@@ -394,4 +395,70 @@ func TestQuotaAwareStrategy_Score_ExhaustedBothModes(t *testing.T) {
 		assert.Equal(t, float64(quotaExhaustedScore), strategy.Score(ctx, channel),
 			"exhausted should get penalty in mode=%s", mode)
 	}
+}
+
+func TestQuotaAwareStrategy_Score_PerLimitImageExhausted(t *testing.T) {
+	provider := &mockQuotaStatusProvider{
+		statuses: map[int]*biz.QuotaChannelStatus{
+			1: {
+				Status: providerquotastatus.StatusWarning,
+				Ready:  true,
+				Limits: []provider_quota.QuotaLimitStatus{
+					{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
+					{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
+				},
+			},
+		},
+	}
+
+	systemService := &mockQuotaEnforcementSettingsProvider{
+		settings: &biz.QuotaEnforcementSettings{
+			Enabled: true,
+			Mode:    biz.QuotaEnforcementModeDePrioritize,
+		},
+	}
+
+	strategy := NewQuotaAwareStrategy(provider, systemService)
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
+
+	ctx := contextWithQuotaLimitType(context.Background(), string(provider_quota.QuotaLimitTypeImage))
+	score := strategy.Score(ctx, channel)
+	assert.Equal(t, float64(quotaExhaustedScore), score, "image-exhausted channel should get exhausted score for image request")
+
+	ctx = contextWithQuotaLimitType(context.Background(), string(provider_quota.QuotaLimitTypeToken))
+	score = strategy.Score(ctx, channel)
+	assert.Equal(t, 0.0, score, "token-available channel should get 0 score for token request")
+}
+
+func TestQuotaAwareStrategy_Score_PerLimitImageWarning(t *testing.T) {
+	provider := &mockQuotaStatusProvider{
+		statuses: map[int]*biz.QuotaChannelStatus{
+			1: {
+				Status: providerquotastatus.StatusWarning,
+				Ready:  true,
+				Limits: []provider_quota.QuotaLimitStatus{
+					{Type: provider_quota.QuotaLimitTypeImage, Status: "warning", UsageRatio: 0.9, Ready: true},
+					{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
+				},
+			},
+		},
+	}
+
+	systemService := &mockQuotaEnforcementSettingsProvider{
+		settings: &biz.QuotaEnforcementSettings{
+			Enabled: true,
+			Mode:    biz.QuotaEnforcementModeDePrioritize,
+		},
+	}
+
+	strategy := NewQuotaAwareStrategy(provider, systemService)
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
+
+	ctx := contextWithQuotaLimitType(context.Background(), string(provider_quota.QuotaLimitTypeImage))
+	score := strategy.Score(ctx, channel)
+	assert.Less(t, score, 0.0, "image-warning channel should get penalty for image request")
+
+	ctx = contextWithQuotaLimitType(context.Background(), string(provider_quota.QuotaLimitTypeToken))
+	score = strategy.Score(ctx, channel)
+	assert.Equal(t, 0.0, score, "token-available channel should get 0 score for token request")
 }

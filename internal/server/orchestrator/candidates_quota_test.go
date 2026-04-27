@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -245,4 +246,41 @@ func TestProviderQuotaSelector_MixedCandidates(t *testing.T) {
 		ids[i] = c.Channel.ID
 	}
 	require.ElementsMatch(t, []int{2, 3, 4, 5}, ids)
+}
+
+func TestProviderQuotaSelector_PerLimit_ImageExhausted_KeptForToken(t *testing.T) {
+	provider := &mockQuotaStatusProvider{
+		statuses: map[int]*biz.QuotaChannelStatus{
+			1: {
+				Status: providerquotastatus.StatusExhausted,
+				Ready:  false,
+				Limits: []provider_quota.QuotaLimitStatus{
+					{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
+					{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
+				},
+			},
+		},
+	}
+
+	inner := &mockSelector{
+		candidates: []*ChannelModelsCandidate{
+			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
+		},
+	}
+
+	systemService := &mockQuotaEnforcementSettingsProvider{
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
+	}
+
+	selector := WithProviderQuotaSelector(inner, provider, systemService)
+
+	tokenReq := &llm.Request{Model: "gpt-4"}
+	result, err := selector.Select(context.Background(), tokenReq)
+	require.NoError(t, err)
+	require.Len(t, result, 1, "channel should be kept for token request when only image limit is exhausted")
+
+	imageReq := &llm.Request{Model: "dall-e-3", Image: &llm.ImageRequest{}}
+	result, err = selector.Select(context.Background(), imageReq)
+	require.NoError(t, err)
+	require.Len(t, result, 0, "channel should be filtered for image request when image limit is exhausted")
 }

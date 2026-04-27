@@ -47,8 +47,8 @@ func TestProviderQuotaService_UpdateQuotaCache(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true)
-	svc.updateQuotaCache(2, providerquotastatus.StatusExhausted, false)
+	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true, nil)
+	svc.updateQuotaCache(2, providerquotastatus.StatusExhausted, false, nil)
 
 	status1 := svc.GetQuotaStatus(1)
 	assert.NotNil(t, status1)
@@ -66,8 +66,8 @@ func TestProviderQuotaService_UpdateQuotaCache_Overwrite(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true)
-	svc.updateQuotaCache(1, providerquotastatus.StatusExhausted, false)
+	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true, nil)
+	svc.updateQuotaCache(1, providerquotastatus.StatusExhausted, false, nil)
 
 	status := svc.GetQuotaStatus(1)
 	assert.NotNil(t, status)
@@ -87,7 +87,7 @@ func TestProviderQuotaService_ConcurrentAccess(t *testing.T) {
 	for i := range goroutines {
 		go func(id int) {
 			defer wg.Done()
-			svc.updateQuotaCache(id, providerquotastatus.StatusAvailable, true)
+			svc.updateQuotaCache(id, providerquotastatus.StatusAvailable, true, nil)
 		}(i)
 	}
 
@@ -114,7 +114,7 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true)
+	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true, nil)
 
 	var wg sync.WaitGroup
 	const iterations = 100
@@ -123,7 +123,7 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 	for range iterations {
 		go func() {
 			defer wg.Done()
-			svc.updateQuotaCache(1, providerquotastatus.StatusExhausted, false)
+			svc.updateQuotaCache(1, providerquotastatus.StatusExhausted, false, nil)
 		}()
 	}
 
