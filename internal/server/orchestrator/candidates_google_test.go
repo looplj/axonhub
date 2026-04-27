@@ -69,9 +69,10 @@ func TestGoogleNativeToolsSelector_Select_WithGoogleNativeTools(t *testing.T) {
 
 	channels := createGeminiTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
@@ -106,9 +107,10 @@ func TestGoogleNativeToolsSelector_Select_WithoutGoogleNativeTools(t *testing.T)
 
 	channels := createGeminiTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
@@ -153,9 +155,10 @@ func TestGoogleNativeToolsSelector_Select_NoCompatibleChannels(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
@@ -182,9 +185,10 @@ func TestGoogleNativeToolsSelector_Select_EmptyTools(t *testing.T) {
 
 	channels := createGeminiTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 
@@ -216,9 +220,10 @@ func TestGoogleNativeToolsSelector_Select_MultipleGoogleNativeTools(t *testing.T
 
 	channels := createGeminiTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	selector := WithGoogleNativeToolsSelector(baseSelector)
 

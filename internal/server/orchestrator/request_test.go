@@ -100,9 +100,10 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingResponse(t *testing.T
 	}
 
 	channelService := biz.NewChannelServiceForTest(client)
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		Ent: client,
 	})
+	require.NoError(t, err)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
 	state.UsageLogService = usageLogService
@@ -171,9 +172,10 @@ func TestPersistRequestMiddleware_UsageExtraction_ChatResponse(t *testing.T) {
 	}
 
 	channelService := biz.NewChannelServiceForTest(client)
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		Ent: client,
 	})
+	require.NoError(t, err)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
 	state.UsageLogService = usageLogService
@@ -244,9 +246,10 @@ func TestPersistRequestMiddleware_UsageExtraction_NilUsage(t *testing.T) {
 	}
 
 	channelService := biz.NewChannelServiceForTest(client)
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		Ent: client,
 	})
+	require.NoError(t, err)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
 	state.UsageLogService = usageLogService
@@ -309,9 +312,10 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingWithNilUsage(t *testi
 	}
 
 	channelService := biz.NewChannelServiceForTest(client)
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		Ent: client,
 	})
+	require.NoError(t, err)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
 	state.UsageLogService = usageLogService

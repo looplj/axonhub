@@ -2,12 +2,14 @@ package orchestrator
 
 import (
 	"context"
+	"testing"
 
 	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/stretchr/testify/require"
 )
 
 // mockStrategy is a test strategy that returns a fixed score.
@@ -90,11 +92,14 @@ func (m *mockTraceProvider) GetLastSuccessfulChannelID(ctx context.Context, trac
 
 // newTestChannelService creates a minimal channel service for testing.
 // It bypasses the normal initialization to avoid requiring a ScheduledExecutor.
-func newTestChannelService(client *ent.Client) *biz.ChannelService {
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+func newTestChannelService(t *testing.T, client *ent.Client) *biz.ChannelService {
+	t.Helper()
+
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
 		Ent:         client,
 	})
+	require.NoError(t, err)
 
 	return biz.NewChannelService(biz.ChannelServiceParams{
 		Executor:      executors.NewPoolScheduleExecutor(),
@@ -104,17 +109,21 @@ func newTestChannelService(client *ent.Client) *biz.ChannelService {
 }
 
 // newTestRequestService creates a minimal request service for testing.
-func newTestRequestService(client *ent.Client) *biz.RequestService {
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+func newTestRequestService(t *testing.T, client *ent.Client) *biz.RequestService {
+	t.Helper()
+
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
-	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
+	require.NoError(t, err)
+	dataStorageService, err := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		Client:        client,
 		SystemService: systemService,
 		CacheConfig:   xcache.Config{},
 		Executor:      executors.NewPoolScheduleExecutor(),
 	})
+	require.NoError(t, err)
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
