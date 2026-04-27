@@ -91,8 +91,12 @@ server:
 ```yaml
 db:
   dialect: "sqlite3"            # sqlite3, postgres, mysql, tidb
-  dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"  # 连接字符串
+  dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"  # 主库连接字符串
   debug: false                  # 启用数据库调试日志
+  read_replica:
+    read_dsn: ""                # 从库连接字符串（留空则禁用读写分离，所有查询走主库）
+    read_max_open_conns: 0      # 从库最大打开连接数（0 表示使用默认值）
+    read_max_idle_conns: 0      # 从库最大空闲连接数（0 表示使用默认值）
 ```
 
 **支持的数据库：**
@@ -105,6 +109,28 @@ db:
 - `AXONHUB_DB_DIALECT`
 - `AXONHUB_DB_DSN`
 - `AXONHUB_DB_DEBUG`
+- `AXONHUB_DB_READ_REPLICA_READ_DSN`
+- `AXONHUB_DB_READ_REPLICA_READ_MAX_OPEN_CONNS`
+- `AXONHUB_DB_READ_REPLICA_READ_MAX_IDLE_CONNS`
+
+#### 读写分离
+
+当配置了 `read_replica.read_dsn` 时，AxonHub 会自动根据 SQL 语句类型分流：
+
+| 操作类型 | 目标 | 示例 |
+|----------|------|------|
+| 读（SELECT/WITH 等） | 从库 | 查询、列表、统计 |
+| 写（INSERT/UPDATE/DELETE 等） | 主库 | 创建、更新、删除 |
+| 事务（Tx） | 主库 | 所有事务操作强制走主库，避免复制延迟 |
+
+**示例（PostgreSQL）：**
+```yaml
+db:
+  dialect: "postgres"
+  dsn: "postgres://axonhub:password@master.db:5432/axonhub?sslmode=disable"
+  read_replica:
+    read_dsn: "postgres://axonhub:password@replica.db:5432/axonhub?sslmode=disable"
+```
 
 ### 缓存配置
 
