@@ -527,13 +527,11 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 }
 
 func hasCredentialsForProvider(ch *ent.Channel) bool {
-	switch ch.Type {
-	case channel.TypeOpenai, channel.TypeOpenaiResponses:
+	if ch.Type == channel.TypeOpenai || ch.Type == channel.TypeOpenaiResponses {
 		providerType := provider_quota.DetectProviderFromURL(ch.BaseURL)
 		if _, ok := provider_quota.URLDetectedProviders()[providerType]; ok {
 			return strings.TrimSpace(ch.Credentials.APIKey) != "" || len(ch.Credentials.APIKeys) > 0
 		}
-	default:
 	}
 
 	return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey) ||
