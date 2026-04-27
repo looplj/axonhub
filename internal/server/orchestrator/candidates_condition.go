@@ -31,6 +31,7 @@ func filterResolvedCandidatesForRequest(
 	}
 
 	promptTokens := estimatePromptTokens(req)
+	stream := reqStream(req)
 	filtered := make([]*resolvedAssociationCandidate, 0, len(resolvedCandidates))
 
 	for _, candidate := range resolvedCandidates {
@@ -38,7 +39,7 @@ func filterResolvedCandidatesForRequest(
 			continue
 		}
 
-		if !matchesAssociationWhen(promptTokens, candidate.when) {
+		if !matchesAssociationWhen(promptTokens, stream, candidate.when) {
 			continue
 		}
 
@@ -55,7 +56,15 @@ func filterResolvedCandidatesForRequest(
 	return aggregateChannelModelCandidates(filtered)
 }
 
-func matchesAssociationWhen(promptTokens int64, when *objects.ModelAssociationWhen) bool {
+func reqStream(req *llm.Request) bool {
+	if req == nil || req.Stream == nil {
+		return false
+	}
+
+	return *req.Stream
+}
+
+func matchesAssociationWhen(promptTokens int64, stream bool, when *objects.ModelAssociationWhen) bool {
 	if when == nil {
 		return true
 	}
@@ -66,6 +75,7 @@ func matchesAssociationWhen(promptTokens int64, when *objects.ModelAssociationWh
 
 	if when.Condition != nil && !objects.Evaluate(*when.Condition, map[string]any{
 		"prompt_tokens": promptTokens,
+		"stream":        stream,
 	}) {
 		return false
 	}

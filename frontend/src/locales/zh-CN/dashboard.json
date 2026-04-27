@@ -71,5 +71,19 @@
   "dashboard.cards.fastestPerformers.description": "最快的{{type}} by tokens/second · {{count}} 次请求",
   "dashboard.cards.fastestPerformers.channelType": "通道",
   "dashboard.cards.fastestPerformers.modelType": "模型",
-  "dashboard.stats.updated": "更新时间: {{time}}"
+  "dashboard.stats.updated": "更新时间: {{time}}",
+  "dashboard.channelSuccessRates.pageTitle": "渠道成功率",
+  "dashboard.channelSuccessRates.backToDashboard": "返回仪表盘",
+  "dashboard.channelSuccessRates.allTypes": "所有类型",
+  "dashboard.channelSuccessRates.showWarnings": "只显示警告",
+  "dashboard.channelSuccessRates.sortByTotal": "按总数排序",
+  "dashboard.channelSuccessRates.sortBySuccess": "按成功数排序",
+  "dashboard.channelSuccessRates.sortByFailed": "按失败数排序",
+  "dashboard.channelSuccessRates.sortByRate": "按成功率排序",
+  "dashboard.channelSuccessRates.desc": "降序",
+  "dashboard.channelSuccessRates.asc": "升序",
+  "dashboard.channelSuccessRates.showing": "显示 {{start}} - {{end}} / {{total}}",
+  "dashboard.channelSuccessRates.prev": "上一页",
+  "dashboard.channelSuccessRates.next": "下一页",
+  "dashboard.viewAll": "查看全部"
 }

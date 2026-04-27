@@ -110,6 +110,18 @@ type BulkUpdateChannelOrderingResult struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+// ChannelLimiterStats is a point-in-time snapshot of the per-channel concurrency limiter.
+type ChannelLimiterStats struct {
+	// Number of requests currently holding a capacity slot.
+	InFlight int `json:"inFlight"`
+	// Number of requests currently waiting in the FIFO queue.
+	Waiting int `json:"waiting"`
+	// Configured MaxConcurrent (capacity ceiling).
+	Capacity int `json:"capacity"`
+	// Configured QueueSize (0 means soft mode — no waiting queue, only counts).
+	QueueSize int `json:"queueSize"`
+}
+
 // Performance statistics for a specific channel on a given date
 type ChannelPerformanceStat struct {
 	Date         string   `json:"date"`
@@ -140,13 +152,14 @@ type ChannelRateLimitStatus struct {
 }
 
 type ChannelSuccessRate struct {
-	ChannelID    objects.GUID `json:"channelId"`
-	ChannelName  string       `json:"channelName"`
-	ChannelType  string       `json:"channelType"`
-	SuccessCount int          `json:"successCount"`
-	FailedCount  int          `json:"failedCount"`
-	TotalCount   int          `json:"totalCount"`
-	SuccessRate  float64      `json:"successRate"`
+	ChannelID       objects.GUID `json:"channelId"`
+	ChannelName     string       `json:"channelName"`
+	ChannelType     string       `json:"channelType"`
+	ChannelDisabled bool         `json:"channelDisabled"`
+	SuccessCount    int          `json:"successCount"`
+	FailedCount     int          `json:"failedCount"`
+	TotalCount      int          `json:"totalCount"`
+	SuccessRate     float64      `json:"successRate"`
 }
 
 type ChannelTypeCount struct {

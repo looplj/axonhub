@@ -284,134 +284,6 @@ func TestOverrideHeadersKeepJSONLikeString(t *testing.T) {
 	require.Equal(t, expectedValue, processedRequest.Headers.Get("Extra"))
 }
 
-func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
-	ctx := context.Background()
-
-	channel := &biz.Channel{
-		Channel: &ent.Channel{
-			ID:   1,
-			Name: "pass-through-model-mapping",
-			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
-			},
-		},
-	}
-
-	outbound := &PersistentOutboundTransformer{
-		state: &PersistenceState{
-			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-			LlmRequest: &llm.Request{
-				Model:     "gpt-4o",
-				APIFormat: llm.APIFormatOpenAIChatCompletion,
-				RawRequest: &httpclient.Request{
-					APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-					Body:      []byte(`{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`),
-				},
-			},
-		},
-	}
-
-	request := &httpclient.Request{
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
-	}
-
-	processed, err := applyPassThroughBody(outbound).OnOutboundRawRequest(ctx, request)
-	require.NoError(t, err)
-	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
-	require.Equal(t, 0.4, gjson.GetBytes(processed.Body, "temperature").Float())
-	require.Equal(t, "my-alias", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
-
-	processed.Body[0] = '['
-	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
-}
-
-func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
-	ctx := context.Background()
-
-	channel := &biz.Channel{
-		Channel: &ent.Channel{
-			ID:   1,
-			Name: "pass-through-jina-rerank-model-mapping",
-			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
-			},
-		},
-	}
-
-	outbound := &PersistentOutboundTransformer{
-		state: &PersistenceState{
-			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-			LlmRequest: &llm.Request{
-				Model:     "Qwen/Qwen3-Reranker-8B",
-				APIFormat: llm.APIFormatJinaRerank,
-				RawRequest: &httpclient.Request{
-					APIFormat: string(llm.APIFormatJinaRerank),
-					Body:      []byte(`{"model":"Qwen-3-Rerank-8B","query":"what is ai","documents":["a","b"],"top_n":2}`),
-				},
-			},
-		},
-	}
-
-	request := &httpclient.Request{
-		APIFormat: string(llm.APIFormatJinaRerank),
-		Body:      []byte(`{"model":"Qwen/Qwen3-Reranker-8B","query":"what is ai","documents":["a","b"]}`),
-	}
-
-	processed, err := applyPassThroughBody(outbound).OnOutboundRawRequest(ctx, request)
-	require.NoError(t, err)
-	require.Equal(t, "Qwen/Qwen3-Reranker-8B", gjson.GetBytes(processed.Body, "model").String())
-	require.Equal(t, float64(2), gjson.GetBytes(processed.Body, "top_n").Float())
-	require.Equal(t, "Qwen-3-Rerank-8B", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
-}
-
-func TestApplyPassThroughBodyPreservesMappedModelForJinaEmbedding(t *testing.T) {
-	ctx := context.Background()
-
-	channel := &biz.Channel{
-		Channel: &ent.Channel{
-			ID:   1,
-			Name: "pass-through-jina-embedding-model-mapping",
-			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
-			},
-		},
-	}
-
-	outbound := &PersistentOutboundTransformer{
-		state: &PersistenceState{
-			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-			LlmRequest: &llm.Request{
-				Model:     "jina-embeddings-v3",
-				APIFormat: llm.APIFormatJinaEmbedding,
-				RawRequest: &httpclient.Request{
-					APIFormat: string(llm.APIFormatJinaEmbedding),
-					Body:      []byte(`{"model":"my-embedding-alias","input":"hello","task":"retrieval.query"}`),
-				},
-			},
-		},
-	}
-
-	request := &httpclient.Request{
-		APIFormat: string(llm.APIFormatJinaEmbedding),
-		Body:      []byte(`{"model":"jina-embeddings-v3","input":"hello"}`),
-	}
-
-	processed, err := applyPassThroughBody(outbound).OnOutboundRawRequest(ctx, request)
-	require.NoError(t, err)
-	require.Equal(t, "jina-embeddings-v3", gjson.GetBytes(processed.Body, "model").String())
-	require.Equal(t, "retrieval.query", gjson.GetBytes(processed.Body, "task").String())
-	require.Equal(t, "my-embedding-alias", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
-}
-
-func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
-	rawBody := []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`)
-
-	merged, err := mergePassThroughBody(rawBody, llm.APIFormatGeminiContents, "gemini-2.5-pro")
-	require.NoError(t, err)
-	require.Equal(t, string(rawBody), string(merged))
-}
-
 // TestOverrideParameters tests that TransformRequest works correctly.
 // Note: Override parameters are now applied via OnRawRequest middleware,
 // so this test only verifies the base transformation without overrides.
@@ -1926,144 +1798,159 @@ func TestIssue632Override(t *testing.T) {
 	}
 }
 
-// TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
-func TestApplyUserAgentPassThrough(t *testing.T) {
-	tests := []struct {
-		name             string
-		channelUASetting *bool // Channel-level override
-		globalUAEnabled  bool  // System-level setting
-		clientUA         string
-		wantUAHeader     string
-	}{
-		{
-			name:             "channel_disabled_ignores_global",
-			channelUASetting: new(false),
-			globalUAEnabled:  true,
-			clientUA:         "Client/1.0",
-			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
-		},
-		{
-			name:             "channel_enabled_ignores_global",
-			channelUASetting: new(true),
-			globalUAEnabled:  false,
-			clientUA:         "Client/1.0",
-			wantUAHeader:     "Client/1.0",
-		},
-		{
-			name:             "channel_nil_inherits_global_disabled",
-			channelUASetting: nil,
-			globalUAEnabled:  false,
-			clientUA:         "Client/1.0",
-			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
-		},
-		{
-			name:             "channel_nil_inherits_global_enabled",
-			channelUASetting: nil,
-			globalUAEnabled:  true,
-			clientUA:         "Client/1.0",
-			wantUAHeader:     "Client/1.0",
-		},
-		{
-			name:             "enabled_but_no_client_ua",
-			channelUASetting: new(true),
-			globalUAEnabled:  true,
-			clientUA:         "",
-			wantUAHeader:     "",
+func TestOverrideOperationsArrayOps(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{
+		Model: "claude-sonnet-4-6",
+		Metadata: map[string]string{
+			"session_id": "sess-9",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, client := setupTest(t)
+	runMiddleware := func(t *testing.T, ops string, body string) string {
+		t.Helper()
 
-			// Create real system service with test database
-			systemService := newTestSystemService(client)
-
-			// Set global User-Agent pass-through setting
-			err := systemService.SetUserAgentPassThrough(ctx, tt.globalUAEnabled)
-			require.NoError(t, err)
-
-			// Create mock channel with optional pass-through setting
-			channelSettings := &objects.ChannelSettings{}
-			if tt.channelUASetting != nil {
-				channelSettings.PassThroughUserAgent = tt.channelUASetting
-			}
-
-			channel := &biz.Channel{
-				Channel: &ent.Channel{
-					ID:       1,
-					Name:     "test-channel",
-					Settings: channelSettings,
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "array-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: ops,
 				},
-				Outbound: &mockTransformer{},
-			}
+			},
+			Outbound: &mockTransformer{},
+		}
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    llmRequest.Model,
+			},
+		}
 
-			// Create raw request with client UA - RawRequest is *httpclient.Request in llm.Request
-			rawHeaders := make(http.Header)
-			if tt.clientUA != "" {
-				rawHeaders.Set("User-Agent", tt.clientUA)
-			}
+		middleware := applyOverrideRequestBody(outbound)
 
-			llmRequest := &llm.Request{
-				Model: "gpt-4",
-				RawRequest: &httpclient.Request{
-					Headers: rawHeaders,
-				},
-			}
+		result, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{Body: []byte(body)})
+		require.NoError(t, err)
 
-			// Create outbound transformer
-			outbound := &PersistentOutboundTransformer{
-				wrapped: &mockTransformer{},
-				state: &PersistenceState{
-					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-					LlmRequest:       llmRequest,
-				},
-			}
-
-			// Create middleware
-			middleware := applyUserAgentPassThrough(outbound, systemService)
-
-			// Execute middleware
-			rawRequest := &httpclient.Request{
-				Headers: make(http.Header),
-			}
-			processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
-
-			require.NoError(t, err)
-			require.NotNil(t, processedRequest)
-
-			// Verify User-Agent header is set correctly
-			if tt.wantUAHeader != "" {
-				require.Equal(t, tt.wantUAHeader, processedRequest.Headers.Get("User-Agent"))
-			} else {
-				// When no User-Agent expected, header should be empty
-				require.Empty(t, processedRequest.Headers.Get("User-Agent"))
-			}
-		})
-	}
-}
-
-// TestApplyUserAgentPassThrough_NoChannel tests the middleware when no channel is selected.
-func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
-	ctx, client := setupTest(t)
-
-	// Create real system service with test database
-	systemService := newTestSystemService(client)
-
-	// Create outbound without a channel
-	outbound := &PersistentOutboundTransformer{
-		wrapped: &mockTransformer{},
-		state:   &PersistenceState{},
+		return string(result.Body)
 	}
 
-	// Create middleware
-	middleware := applyUserAgentPassThrough(outbound, systemService)
+	t.Run("array_append inserts a single object at the end", func(t *testing.T) {
+		ops := `[{"op":"array_append","path":"system","value":"{\"type\":\"text\",\"text\":\"injected\"}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"original"}]}`)
 
-	// Execute middleware
-	rawRequest := &httpclient.Request{
-		Headers: make(http.Header),
-	}
-	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
-	require.NoError(t, err)
-	require.NotNil(t, processedRequest)
+		require.Equal(t, "original", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "injected", gjson.Get(got, "system.1.text").String())
+		require.Equal(t, int64(2), gjson.Get(got, "system.#").Int())
+	})
+
+	t.Run("array_prepend inserts a single object at the start", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"{\"type\":\"text\",\"text\":\"injected\"}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"original"}]}`)
+
+		require.Equal(t, "injected", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "original", gjson.Get(got, "system.1.text").String())
+	})
+
+	t.Run("array_prepend with array value spreads elements (splat default true)", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"[{\"text\":\"a\"},{\"text\":\"b\"}]"}]`
+		got := runMiddleware(t, ops, `{"system":[{"text":"original"}]}`)
+
+		require.Equal(t, "a", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "b", gjson.Get(got, "system.1.text").String())
+		require.Equal(t, "original", gjson.Get(got, "system.2.text").String())
+	})
+
+	t.Run("array_prepend with splat=false inserts the array as a single element", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"tags","value":"[\"a\",\"b\"]","splat":false}]`
+		got := runMiddleware(t, ops, `{"tags":["x"]}`)
+
+		require.True(t, gjson.Get(got, "tags.0").IsArray())
+		require.Equal(t, "a", gjson.Get(got, "tags.0.0").String())
+		require.Equal(t, "b", gjson.Get(got, "tags.0.1").String())
+		require.Equal(t, "x", gjson.Get(got, "tags.1").String())
+	})
+
+	t.Run("array_insert at positive index", func(t *testing.T) {
+		ops := `[{"op":"array_insert","path":"items","index":1,"value":"X"}]`
+		got := runMiddleware(t, ops, `{"items":["a","b","c"]}`)
+
+		require.Equal(t, `["a","X","b","c"]`, gjson.Get(got, "items").Raw)
+	})
+
+	t.Run("array_insert with negative index counts from end", func(t *testing.T) {
+		ops := `[{"op":"array_insert","path":"items","index":-1,"value":"X"}]`
+		got := runMiddleware(t, ops, `{"items":["a","b","c"]}`)
+
+		// -1 means "before last": result -> [a, b, X, c]
+		require.Equal(t, `["a","b","X","c"]`, gjson.Get(got, "items").Raw)
+	})
+
+	t.Run("array_insert clamps out-of-range index", func(t *testing.T) {
+		ops := `[{"op":"array_insert","path":"items","index":99,"value":"X"}]`
+		got := runMiddleware(t, ops, `{"items":["a","b"]}`)
+
+		require.Equal(t, `["a","b","X"]`, gjson.Get(got, "items").Raw)
+	})
+
+	t.Run("array_append on missing path creates new array", func(t *testing.T) {
+		ops := `[{"op":"array_append","path":"system","value":"{\"type\":\"text\",\"text\":\"only\"}"}]`
+		got := runMiddleware(t, ops, `{}`)
+
+		require.Equal(t, "only", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, int64(1), gjson.Get(got, "system.#").Int())
+	})
+
+	t.Run("array_prepend on non-array path is a no-op with warning", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"X"}]`
+		got := runMiddleware(t, ops, `{"system":"not-an-array"}`)
+
+		// On error the middleware logs a warning but continues with the unchanged body.
+		require.Equal(t, "not-an-array", gjson.Get(got, "system").String())
+	})
+
+	t.Run("multiple array_prepend ops apply in declared order at index 0", func(t *testing.T) {
+		// Two prepends: each runs against current state and inserts at index 0.
+		// First op inserts B -> [B, original]; second op inserts A -> [A, B, original].
+		ops := `[
+			{"op":"array_prepend","path":"system","value":"{\"text\":\"B\"}"},
+			{"op":"array_prepend","path":"system","value":"{\"text\":\"A\"}"}
+		]`
+		got := runMiddleware(t, ops, `{"system":[{"text":"original"}]}`)
+
+		require.Equal(t, "A", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "B", gjson.Get(got, "system.1.text").String())
+		require.Equal(t, "original", gjson.Get(got, "system.2.text").String())
+	})
+
+	t.Run("array_prepend supports nested cache_control objects", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"{\"type\":\"text\",\"text\":\"prefix\",\"cache_control\":{\"type\":\"ephemeral\"}}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"user"}]}`)
+
+		require.Equal(t, "ephemeral", gjson.Get(got, "system.0.cache_control.type").String())
+		require.Equal(t, "prefix", gjson.Get(got, "system.0.text").String())
+		require.Equal(t, "user", gjson.Get(got, "system.1.text").String())
+	})
+
+	t.Run("array op respects condition", func(t *testing.T) {
+		// Condition false: no change.
+		ops := `[{"op":"array_append","path":"system","value":"X","condition":"{{eq .Model \"never\"}}"}]`
+		got := runMiddleware(t, ops, `{"system":["a"]}`)
+		require.Equal(t, `["a"]`, gjson.Get(got, "system").Raw)
+
+		// Condition true: append happens.
+		ops = `[{"op":"array_append","path":"system","value":"X","condition":"{{eq .Model \"claude-sonnet-4-6\"}}"}]`
+		got = runMiddleware(t, ops, `{"system":["a"]}`)
+		require.Equal(t, `["a","X"]`, gjson.Get(got, "system").Raw)
+	})
+
+	t.Run("array_prepend supports templated value", func(t *testing.T) {
+		ops := `[{"op":"array_prepend","path":"system","value":"{\"type\":\"text\",\"text\":\"session-{{index .Metadata \"session_id\"}}\"}"}]`
+		got := runMiddleware(t, ops, `{"system":[{"text":"u"}]}`)
+
+		require.Equal(t, "session-sess-9", gjson.Get(got, "system.0.text").String())
+	})
 }

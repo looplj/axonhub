@@ -20,6 +20,8 @@ axonhub:
     AXONHUB_DB_DIALECT: postgres
     # Full database connection string - customize this for your environment
     AXONHUB_DB_DSN: postgres://axonhub:axonhub_password@axonhub-postgresql:5432/axonhub?sslmode=disable
+    # Read replica DSN - leave empty to disable read-write separation (env: AXONHUB_DB_READ_REPLICA_READ_DSN)
+    # AXONHUB_DB_READ_REPLICA_READ_DSN: postgres://axonhub:axonhub_password@axonhub-postgresql:5432/axonhub?sslmode=disable
   
   # Service configuration
   service:

@@ -171,9 +171,10 @@ func ValidateOverrideParameters(params string) error {
 }
 
 // ValidateBodyOverrideOperations validates body override operations.
-// - set/delete: require non-empty Path
+// - set/delete/array_*: require non-empty Path
 // - rename/copy: require non-empty From and To
-// - set: cannot set the "stream" field.
+// - array_insert: requires Index
+// - set/array_*: cannot target the "stream" field.
 func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 	for i, op := range ops {
 		switch op.Op {
@@ -192,6 +193,18 @@ func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 		case objects.OverrideOpRename, objects.OverrideOpCopy:
 			if strings.TrimSpace(op.From) == "" || strings.TrimSpace(op.To) == "" {
 				return fmt.Errorf("body operation at index %d (%s) requires non-empty from and to", i, op.Op)
+			}
+		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
+			if strings.TrimSpace(op.Path) == "" {
+				return fmt.Errorf("body operation at index %d (%s) has an empty path", i, op.Op)
+			}
+
+			if strings.EqualFold(op.Path, "stream") {
+				return fmt.Errorf("override parameters cannot contain the field \"stream\"")
+			}
+
+			if op.Op == objects.OverrideOpArrayInsert && op.Index == nil {
+				return fmt.Errorf("body operation at index %d (array_insert) requires an index", i)
 			}
 		default:
 			return fmt.Errorf("body operation at index %d has unknown op %q", i, op.Op)
@@ -219,6 +232,8 @@ func ValidateOverrideHeaders(ops []objects.OverrideOperation) error {
 			if strings.TrimSpace(op.From) == "" || strings.TrimSpace(op.To) == "" {
 				return fmt.Errorf("header operation at index %d (%s) requires non-empty from and to", i, op.Op)
 			}
+		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
+			return fmt.Errorf("header operation at index %d (%s) is not supported on headers; array ops only apply to the body", i, op.Op)
 		default:
 			return fmt.Errorf("header operation at index %d has unknown op %q", i, op.Op)
 		}

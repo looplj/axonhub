@@ -28,6 +28,8 @@ type OverrideOperation {
   to: String
   value: String
   condition: String
+  index: Int
+  splat: Boolean
 }
 
 input OverrideOperationInput {
@@ -37,6 +39,8 @@ input OverrideOperationInput {
   to: String
   value: String
   condition: String
+  index: Int
+  splat: Boolean
 }
 
 type TransformOptions {
@@ -138,12 +142,17 @@ input ChannelRateLimitInput {
   tpm: Int64
   cost: Float
   maxConcurrent: Int
+  # Queue-based concurrency (from unstable)
+  queueSize: Int
+  queueTimeoutMs: Int
+  # Configurable rate limit durations (from feature branch)
   rpmDuration: RateLimitDuration
   tpmDuration: RateLimitDuration
   costDuration: RateLimitDuration
   rpmWindowAnchor: Time
   tpmWindowAnchor: Time
   costWindowAnchor: Time
+  # Per-model concurrent limits
   modelConcurrent: [ModelConcurrentInput!]
 }
 
@@ -152,12 +161,17 @@ type ChannelRateLimit {
   tpm: Int64
   cost: Float
   maxConcurrent: Int
+  # Queue-based concurrency (from unstable)
+  queueSize: Int
+  queueTimeoutMs: Int
+  # Configurable rate limit durations (from feature branch)
   rpmDuration: RateLimitDuration
   tpmDuration: RateLimitDuration
   costDuration: RateLimitDuration
   rpmWindowAnchor: Time
   tpmWindowAnchor: Time
   costWindowAnchor: Time
+  # Per-model concurrent limits
   modelConcurrent: [ModelConcurrent!]
 }
 
@@ -612,6 +626,12 @@ extend type Channel {
   Returns null if no rate limits are configured for this channel.
   """
   rateLimitStatus: ChannelRateLimitStatus @goField(forceResolver: true)
+
+  """
+  Real-time per-channel concurrency limiter snapshot. Returns null when the channel
+  has no MaxConcurrent configured (no admission control).
+  """
+  liveLimiterStats: ChannelLimiterStats @goField(forceResolver: true)
 }
 
 type ChannelRateLimitStatus {
@@ -631,6 +651,28 @@ type ChannelRateLimitStatus {
   concurrentLimit: Int
   isCoolingDown: Boolean!
   cooldownUntil: Time
+}
+
+"""
+ChannelLimiterStats is a point-in-time snapshot of the per-channel concurrency limiter.
+"""
+type ChannelLimiterStats {
+  """
+  Number of requests currently holding a capacity slot.
+  """
+  inFlight: Int!
+  """
+  Number of requests currently waiting in the FIFO queue.
+  """
+  waiting: Int!
+  """
+  Configured MaxConcurrent (capacity ceiling).
+  """
+  capacity: Int!
+  """
+  Configured QueueSize (0 means soft mode — no waiting queue, only counts).
+  """
+  queueSize: Int!
 }
 
 type Segment {

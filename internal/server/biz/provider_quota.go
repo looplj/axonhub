@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -82,6 +83,16 @@ import (
 //   - Normalizes status based on limit_reached and allowed flags
 //   - Detects warning state (primary_window.used_percent >= 80)
 //
+// EXAMPLE: NANO GPT PROVIDER (simple API key, non-OAuth)
+// ======================================================
+//
+// Checker: internal/server/biz/provider_quota/nanogpt_checker.go
+//   - Makes request to NanoGPT subscription usage endpoint (/api/subscription/v1/usage)
+//   - Uses simple API key authentication (no OAuth required)
+//   - Internally parses JSON response (state, windows, percentUsed)
+//   - Normalizes status: active→available, grace→warning, inactive→exhausted
+//   - Detects high-usage warning state (any window percentUsed >= 0.8)
+//
 
 type ProviderQuotaServiceParams struct {
 	fx.In
@@ -119,6 +130,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
 	svc.registerGithubCopilotSupport()
+	svc.registerNanoGPTSupport()
 
 	return svc
 }
@@ -133,6 +145,10 @@ func (svc *ProviderQuotaService) registerCodexSupport() {
 
 func (svc *ProviderQuotaService) registerGithubCopilotSupport() {
 	svc.checkers["github_copilot"] = provider_quota.NewGithubCopilotQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerNanoGPTSupport() {
+	svc.checkers["nanogpt"] = provider_quota.NewNanoGPTQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) Start(ctx context.Context) error {
@@ -221,7 +237,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot),
+			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses),
 		)
 
 	if !force {
@@ -259,13 +275,13 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 }
 
 func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.Channel, now time.Time) {
-	if ch.Credentials.OAuth == nil && !isOAuthJSON(ch.Credentials.APIKey) {
-		log.Debug(ctx, "channel does not support check quota", log.Int("channel_id", ch.ID), log.String("channel_name", ch.Name))
+	providerType := svc.getProviderType(ch)
+	if providerType == "" {
 		return
 	}
 
-	providerType := svc.getProviderType(ch)
-	if providerType == "" {
+	if ch.Credentials.OAuth == nil && !isOAuthJSON(ch.Credentials.APIKey) && strings.TrimSpace(ch.Credentials.APIKey) == "" && len(ch.Credentials.APIKeys) == 0 {
+		log.Debug(ctx, "channel does not support check quota", log.Int("channel_id", ch.ID), log.String("channel_name", ch.Name))
 		return
 	}
 
@@ -392,7 +408,6 @@ func (svc *ProviderQuotaService) saveQuotaError(
 }
 
 func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
-	// Only claudecode and codex support quota checking; all others return empty
 	switch ch.Type { //nolint:exhaustive
 	case channel.TypeClaudecode:
 		return "claudecode"
@@ -400,6 +415,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "codex"
 	case channel.TypeGithubCopilot:
 		return "github_copilot"
+	case channel.TypeNanogpt, channel.TypeNanogptResponses:
+		return "nanogpt"
 	default:
 		return ""
 	}

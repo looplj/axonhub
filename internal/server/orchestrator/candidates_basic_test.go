@@ -29,8 +29,7 @@ func TestDefaultChannelSelector_Select_SingleChannel(t *testing.T) {
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -83,8 +82,7 @@ func TestDefaultChannelSelector_Select_NoChannelsAvailable(t *testing.T) {
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -115,8 +113,7 @@ func TestDefaultChannelSelector_Select_ModelNotSupported(t *testing.T) {
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 
 	req := &llm.Request{
 		Model: "gpt-4", // This model is not supported by the channel
@@ -137,8 +134,7 @@ func TestDefaultChannelSelector_Select_EmptyRequest(t *testing.T) {
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	connectionTracker := NewDefaultConnectionTracker(10)
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 
 	// Empty request should still work
 	req := &llm.Request{}

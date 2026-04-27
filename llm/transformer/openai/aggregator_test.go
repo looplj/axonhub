@@ -319,3 +319,55 @@ func TestAggregateStreamChunks_WithInvalidAnnotations(t *testing.T) {
 	require.Equal(t, "https://example.com/valid", got.Choices[0].Message.Annotations[0].URLCitation.URL)
 	require.Equal(t, "Valid Source", got.Choices[0].Message.Annotations[0].URLCitation.Title)
 }
+
+// TestAggregateStreamChunks_PreservesEmptyReasoningContent verifies that an empty
+// reasoning_content (e.g. produced by DeepSeek thinking mode when reasoning_tokens
+// is 0) is preserved on the aggregated message rather than being silently dropped.
+// This empty string is semantically meaningful and must be round-tripped back to
+// the provider in subsequent multi-turn requests.
+func TestAggregateStreamChunks_PreservesEmptyReasoningContent(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"deepseek-reasoner","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":""}}]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"deepseek-reasoner","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":"stop"}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	require.Len(t, got.Choices, 1)
+	require.NotNil(t, got.Choices[0].Message)
+	require.NotNil(t, got.Choices[0].Message.ReasoningContent, "empty reasoning_content must be preserved")
+	require.Equal(t, "", *got.Choices[0].Message.ReasoningContent)
+}
+
+// TestAggregateStreamChunks_OmitsReasoningContentWhenAbsent verifies that when no
+// delta carries the reasoning_content field at all, the aggregated message does
+// not have ReasoningContent set (nil pointer).
+func TestAggregateStreamChunks_OmitsReasoningContentWhenAbsent(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"},"finish_reason":"stop"}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	require.Len(t, got.Choices, 1)
+	require.NotNil(t, got.Choices[0].Message)
+	require.Nil(t, got.Choices[0].Message.ReasoningContent)
+}

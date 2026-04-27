@@ -45,6 +45,7 @@ type Resolver struct {
 	modelFetcher                   *biz.ModelFetcher
 	defaultSelector                *orchestrator.DefaultSelector
 	candidateSelectorDiagnostics   *orchestrator.CandidateSelectorDiagnostics
+	channelLimiterManager          *orchestrator.ChannelLimiterManager
 	rateLimitTracker               *orchestrator.ChannelRequestTracker
 	connectionTracker              *orchestrator.DefaultConnectionTracker
 	quotaService                   *biz.QuotaService
@@ -77,6 +78,7 @@ func NewSchema(
 	providerQuotaService *biz.ProviderQuotaService,
 	defaultSelector *orchestrator.DefaultSelector,
 	candidateSelectorDiagnostics *orchestrator.CandidateSelectorDiagnostics,
+	channelLimiterManager *orchestrator.ChannelLimiterManager,
 	rateLimitTracker *orchestrator.ChannelRequestTracker,
 	connectionTracker *orchestrator.DefaultConnectionTracker,
 	quotaService *biz.QuotaService,
@@ -109,6 +111,7 @@ func NewSchema(
 			modelFetcher:                   modelFetcher,
 			defaultSelector:                defaultSelector,
 			candidateSelectorDiagnostics:   candidateSelectorDiagnostics,
+			channelLimiterManager:          channelLimiterManager,
 			rateLimitTracker:               rateLimitTracker,
 			connectionTracker:              connectionTracker,
 			quotaService:                   quotaService,

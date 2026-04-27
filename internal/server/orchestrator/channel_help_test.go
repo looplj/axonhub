@@ -48,7 +48,6 @@ func newTestLoadBalancedSelector(
 	client *ent.Client,
 	systemService *biz.SystemService,
 	requestService *biz.RequestService,
-	_ *DefaultConnectionTracker,
 ) CandidateSelector {
 	strategies := []LoadBalanceStrategy{
 		NewTraceAwareStrategy(requestService),
@@ -371,7 +370,7 @@ func newTestOrchestrator(
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},

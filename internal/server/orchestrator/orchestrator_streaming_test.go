@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -80,7 +81,7 @@ func TestChatCompletionOrchestrator_Process_Streaming(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -182,7 +183,7 @@ func TestChatCompletionOrchestrator_Process_StreamingError(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -280,7 +281,7 @@ func TestChatCompletionOrchestrator_Process_StreamingSuccess_NotMarkedAsError(t 
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -365,8 +366,13 @@ func (s *errorAfterEventsStream) Err() error {
 
 func (s *errorAfterEventsStream) Close() error { return nil }
 
-// TestChatCompletionOrchestrator_Process_ConnectionTracking tests connection tracking.
-func TestChatCompletionOrchestrator_Process_ConnectionTracking(t *testing.T) {
+// TestChatCompletionOrchestrator_Process_QueueRejectionDoesNotConsumeRPM is a
+// regression test for the middleware ordering invariant: channel admission must
+// run BEFORE rate-limit tracking so a locally rejected request does not bump the
+// per-channel RPM counter for a request that never reached upstream. Reversing
+// the order would let a flood of queue rejections push the channel into a false
+// "RPM exhausted" state and force avoidable failover.
+func TestChatCompletionOrchestrator_Process_QueueRejectionDoesNotConsumeRPM(t *testing.T) {
 	ctx := context.Background()
 	ctx = authz.WithTestBypass(ctx)
 
@@ -375,12 +381,105 @@ func TestChatCompletionOrchestrator_Process_ConnectionTracking(t *testing.T) {
 
 	ctx = ent.NewContext(ctx, client)
 
-	// Setup
 	project := createTestProject(t, ctx, client)
 	ch := createTestChannel(t, ctx, client)
 	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
 
-	// Create mock executor
+	mockResp := buildMockOpenAIResponse("chatcmpl-rpm", "gpt-4", "rpm test", 5, 10)
+	executor := &mockExecutor{
+		response: &httpclient.Response{
+			StatusCode: 200,
+			Body:       mockResp,
+			Headers:    http.Header{"Content-Type": []string{"application/json"}},
+		},
+	}
+
+	outbound, err := openai.NewOutboundTransformer(ch.BaseURL, ch.Credentials.APIKey)
+	require.NoError(t, err)
+
+	maxConcurrent := int64(1)
+	queueSize := int64(2)
+	queueTimeoutMs := int64(30)
+	bizChannel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:               ch.ID,
+			Name:             ch.Name,
+			BaseURL:          ch.BaseURL,
+			Credentials:      ch.Credentials,
+			SupportedModels:  ch.SupportedModels,
+			DefaultTestModel: ch.DefaultTestModel,
+			Status:           ch.Status,
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent:  &maxConcurrent,
+					QueueSize:      &queueSize,
+					QueueTimeoutMs: &queueTimeoutMs,
+				},
+			},
+		},
+		Outbound: outbound,
+	}
+
+	channelSelector := &staticChannelSelector{candidates: channelsToTestCandidates([]*biz.Channel{bizChannel}, "gpt-4")}
+
+	mgr := NewChannelLimiterManager()
+	rateLimitTracker := NewChannelRequestTracker()
+
+	// Saturate capacity externally so the orchestrator's Acquire must enter the
+	// queue and eventually hit the per-channel timeout.
+	lim := mgr.GetOrCreate(bizChannel)
+	require.NotNil(t, lim)
+	require.NoError(t, lim.Acquire(ctx))
+	defer lim.Release()
+
+	orchestrator := &ChatCompletionOrchestrator{
+		channelSelector:       channelSelector,
+		Inbound:               openai.NewInboundTransformer(),
+		RequestService:        requestService,
+		ChannelService:        channelService,
+		PromptProvider:        &stubPromptProvider{},
+		SystemService:         systemService,
+		UsageLogService:       usageLogService,
+		PipelineFactory:       pipeline.NewFactory(executor),
+		ModelMapper:           NewModelMapper(),
+		channelLimiterManager: mgr,
+		rateLimitTracker:      rateLimitTracker,
+		Middlewares: []pipeline.Middleware{
+			stream.EnsureUsage(),
+		},
+	}
+
+	httpRequest := buildTestRequest("gpt-4", "rpm test", false)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+
+	_, err = orchestrator.Process(ctx, httpRequest)
+	require.Error(t, err)
+
+	var queueErr *ChannelQueueError
+	require.ErrorAs(t, err, &queueErr, "expected channel queue rejection")
+	assert.Equal(t, channelQueueReasonTimeout, queueErr.Reason)
+
+	assert.Zero(t, rateLimitTracker.GetRequestCount(ch.ID),
+		"queue rejection must not consume RPM budget — middleware order regression")
+}
+
+// TestChatCompletionOrchestrator_Process_ChannelLimiter exercises the channel admission
+// middleware end-to-end: configure a channel with MaxConcurrent + QueueSize, run a
+// request through the orchestrator, and confirm the limiter slot is released after
+// completion.
+func TestChatCompletionOrchestrator_Process_ChannelLimiter(t *testing.T) {
+	ctx := context.Background()
+	ctx = authz.WithTestBypass(ctx)
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+
 	mockResp := buildMockOpenAIResponse("chatcmpl-conn", "gpt-4", "Connection test", 5, 10)
 	executor := &mockExecutor{
 		response: &httpclient.Response{
@@ -390,50 +489,59 @@ func TestChatCompletionOrchestrator_Process_ConnectionTracking(t *testing.T) {
 		},
 	}
 
-	// Create outbound transformer
 	outbound, err := openai.NewOutboundTransformer(ch.BaseURL, ch.Credentials.APIKey)
 	require.NoError(t, err)
 
+	maxConcurrent := int64(2)
+	queueSize := int64(5)
 	bizChannel := &biz.Channel{
-		Channel:  ch,
+		Channel: &ent.Channel{
+			ID:               ch.ID,
+			Name:             ch.Name,
+			BaseURL:          ch.BaseURL,
+			Credentials:      ch.Credentials,
+			SupportedModels:  ch.SupportedModels,
+			DefaultTestModel: ch.DefaultTestModel,
+			Status:           ch.Status,
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent: &maxConcurrent,
+					QueueSize:     &queueSize,
+				},
+			},
+		},
 		Outbound: outbound,
 	}
 
 	channelSelector := &staticChannelSelector{candidates: channelsToTestCandidates([]*biz.Channel{bizChannel}, "gpt-4")}
 
-	// Create connection tracker
-	connectionTracker := NewDefaultConnectionTracker(1024)
+	mgr := NewChannelLimiterManager()
 
 	orchestrator := &ChatCompletionOrchestrator{
-		channelSelector:   channelSelector,
-		Inbound:           openai.NewInboundTransformer(),
-		RequestService:    requestService,
-		ChannelService:    channelService,
-		PromptProvider:    &stubPromptProvider{},
-		SystemService:     systemService,
-		UsageLogService:   usageLogService,
-		PipelineFactory:   pipeline.NewFactory(executor),
-		ModelMapper:       NewModelMapper(),
-		connectionTracker: connectionTracker,
+		channelSelector:       channelSelector,
+		Inbound:               openai.NewInboundTransformer(),
+		RequestService:        requestService,
+		ChannelService:        channelService,
+		PromptProvider:        &stubPromptProvider{},
+		SystemService:         systemService,
+		UsageLogService:       usageLogService,
+		PipelineFactory:       pipeline.NewFactory(executor),
+		ModelMapper:           NewModelMapper(),
+		channelLimiterManager: mgr,
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
 	}
 
-	// Verify initial connection count is 0
-	assert.Equal(t, 0, connectionTracker.GetActiveConnections(ch.ID))
-
-	// Build request
 	httpRequest := buildTestRequest("gpt-4", "Connection test", false)
 	ctx = contexts.WithProjectID(ctx, project.ID)
 
-	// Execute
 	result, err := orchestrator.Process(ctx, httpRequest)
-
-	// Assert
 	require.NoError(t, err)
 	assert.NotNil(t, result.ChatCompletion)
 
-	// After completion, connection count should be back to 0
-	assert.Equal(t, 0, connectionTracker.GetActiveConnections(ch.ID))
+	inFlight, waiting, ok := mgr.Stats(ch.ID)
+	require.True(t, ok, "limiter should have been created for the configured channel")
+	assert.Equal(t, 0, inFlight, "slot must be released after request completion")
+	assert.Equal(t, 0, waiting)
 }

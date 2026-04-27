@@ -64,7 +64,7 @@ func TestChatCompletionOrchestrator_Process_ErrorHandling(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -129,7 +129,7 @@ func TestChatCompletionOrchestrator_Process_NoChannelsAvailable(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -181,7 +181,7 @@ func TestChatCompletionOrchestrator_Process_InvalidRequest(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},

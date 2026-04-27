@@ -77,6 +77,38 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
 }
 
+// LiveLimiterStats is the resolver for the liveLimiterStats field.
+func (r *channelResolver) LiveLimiterStats(ctx context.Context, obj *ent.Channel) (*ChannelLimiterStats, error) {
+	if r.channelLimiterManager == nil || obj == nil {
+		return nil, nil
+	}
+
+	if obj.Settings == nil || obj.Settings.RateLimit == nil {
+		return nil, nil
+	}
+
+	rl := obj.Settings.RateLimit
+	if rl.MaxConcurrent == nil || *rl.MaxConcurrent <= 0 {
+		return nil, nil
+	}
+
+	queueSize := 0
+	if rl.QueueSize != nil && *rl.QueueSize > 0 {
+		queueSize = int(*rl.QueueSize)
+	}
+
+	// Stats returns ok=false until the first request creates the limiter; in
+	// that case in-flight / waiting are simply 0.
+	inFlight, waiting, _ := r.channelLimiterManager.Stats(obj.ID)
+
+	return &ChannelLimiterStats{
+		InFlight:  inFlight,
+		Waiting:   waiting,
+		Capacity:  int(*rl.MaxConcurrent),
+		QueueSize: queueSize,
+	}, nil
+}
+
 // RateLimitStatus resolves the rate limit status for a channel.
 //
 // NOTE: This field resolver is called per-channel, resulting in N+1 queries when
@@ -224,7 +256,6 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 
 	return status, nil
 }
-
 
 // Cost is the resolver for the cost field.
 func (r *channelRateLimitResolver) Cost(ctx context.Context, obj *objects.ChannelRateLimit) (*float64, error) {

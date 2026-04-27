@@ -5624,6 +5624,23 @@ type RequestWhereInput struct {
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
+	// "reasoning_effort" field predicates.
+	ReasoningEffort             *string  `json:"reasoningEffort,omitempty"`
+	ReasoningEffortNEQ          *string  `json:"reasoningEffortNEQ,omitempty"`
+	ReasoningEffortIn           []string `json:"reasoningEffortIn,omitempty"`
+	ReasoningEffortNotIn        []string `json:"reasoningEffortNotIn,omitempty"`
+	ReasoningEffortGT           *string  `json:"reasoningEffortGT,omitempty"`
+	ReasoningEffortGTE          *string  `json:"reasoningEffortGTE,omitempty"`
+	ReasoningEffortLT           *string  `json:"reasoningEffortLT,omitempty"`
+	ReasoningEffortLTE          *string  `json:"reasoningEffortLTE,omitempty"`
+	ReasoningEffortContains     *string  `json:"reasoningEffortContains,omitempty"`
+	ReasoningEffortHasPrefix    *string  `json:"reasoningEffortHasPrefix,omitempty"`
+	ReasoningEffortHasSuffix    *string  `json:"reasoningEffortHasSuffix,omitempty"`
+	ReasoningEffortIsNil        bool     `json:"reasoningEffortIsNil,omitempty"`
+	ReasoningEffortNotNil       bool     `json:"reasoningEffortNotNil,omitempty"`
+	ReasoningEffortEqualFold    *string  `json:"reasoningEffortEqualFold,omitempty"`
+	ReasoningEffortContainsFold *string  `json:"reasoningEffortContainsFold,omitempty"`
+
 	// "format" field predicates.
 	Format             *string  `json:"format,omitempty"`
 	FormatNEQ          *string  `json:"formatNEQ,omitempty"`
@@ -6058,6 +6075,51 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, request.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
+	if i.ReasoningEffort != nil {
+		predicates = append(predicates, request.ReasoningEffortEQ(*i.ReasoningEffort))
+	}
+	if i.ReasoningEffortNEQ != nil {
+		predicates = append(predicates, request.ReasoningEffortNEQ(*i.ReasoningEffortNEQ))
+	}
+	if len(i.ReasoningEffortIn) > 0 {
+		predicates = append(predicates, request.ReasoningEffortIn(i.ReasoningEffortIn...))
+	}
+	if len(i.ReasoningEffortNotIn) > 0 {
+		predicates = append(predicates, request.ReasoningEffortNotIn(i.ReasoningEffortNotIn...))
+	}
+	if i.ReasoningEffortGT != nil {
+		predicates = append(predicates, request.ReasoningEffortGT(*i.ReasoningEffortGT))
+	}
+	if i.ReasoningEffortGTE != nil {
+		predicates = append(predicates, request.ReasoningEffortGTE(*i.ReasoningEffortGTE))
+	}
+	if i.ReasoningEffortLT != nil {
+		predicates = append(predicates, request.ReasoningEffortLT(*i.ReasoningEffortLT))
+	}
+	if i.ReasoningEffortLTE != nil {
+		predicates = append(predicates, request.ReasoningEffortLTE(*i.ReasoningEffortLTE))
+	}
+	if i.ReasoningEffortContains != nil {
+		predicates = append(predicates, request.ReasoningEffortContains(*i.ReasoningEffortContains))
+	}
+	if i.ReasoningEffortHasPrefix != nil {
+		predicates = append(predicates, request.ReasoningEffortHasPrefix(*i.ReasoningEffortHasPrefix))
+	}
+	if i.ReasoningEffortHasSuffix != nil {
+		predicates = append(predicates, request.ReasoningEffortHasSuffix(*i.ReasoningEffortHasSuffix))
+	}
+	if i.ReasoningEffortIsNil {
+		predicates = append(predicates, request.ReasoningEffortIsNil())
+	}
+	if i.ReasoningEffortNotNil {
+		predicates = append(predicates, request.ReasoningEffortNotNil())
+	}
+	if i.ReasoningEffortEqualFold != nil {
+		predicates = append(predicates, request.ReasoningEffortEqualFold(*i.ReasoningEffortEqualFold))
+	}
+	if i.ReasoningEffortContainsFold != nil {
+		predicates = append(predicates, request.ReasoningEffortContainsFold(*i.ReasoningEffortContainsFold))
 	}
 	if i.Format != nil {
 		predicates = append(predicates, request.FormatEQ(*i.Format))

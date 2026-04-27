@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -80,10 +81,18 @@ func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrches
 		costTracker.Start()
 	}
 
+	channelService.SetChannelLimiterForgetter(channelLimiterManager)
+
+	channelLimiterMetrics, err := NewChannelLimiterMetrics(metrics.Meter, channelLimiterManager)
+	if err != nil {
+		log.Warn(context.Background(), "failed to register channel limiter metrics, continuing without them", log.Cause(err))
+		channelLimiterMetrics = nil
+	}
+
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
-	rateLimitStrategy := NewRateLimitAwareStrategy(RateLimitProvider{
+rateLimitStrategy := NewRateLimitAwareStrategy(RateLimitProvider{
 		RequestTracker:    rateLimitTracker,
 		ConnectionTracker: connectionTracker,
 		ModelConnTracker:  modelConnectionTracker,
@@ -156,8 +165,12 @@ type ChatCompletionOrchestrator struct {
 	adaptiveLoadBalancer       *LoadBalancer
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
-	// The connection tracker used for request lifetime tracking and rate-limit concurrency fallback.
-	connectionTracker ConnectionTracker
+	// channelLimiterManager owns per-channel concurrency admission control and
+	// supplies in-flight / queue stats to the rate-limit-aware load-balancer strategy.
+	channelLimiterManager *ChannelLimiterManager
+	// channelLimiterMetrics emits OTel metrics for the limiter (gauges + counters
+	// + histogram). May be nil in test setups that skip metric registration.
+	channelLimiterMetrics *ChannelLimiterMetrics
 	// The rate limit tracker for rate limit aware load balancing.
 	rateLimitTracker *ChannelRequestTracker
 	// The model connection tracker for per-model connection tracking.
@@ -271,18 +284,23 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Add inbound middlewares (executed after inbound.TransformRequest)
 	middlewares = append(middlewares,
 		enforceQuota(inbound, processor.QuotaService),
+		applyAutoReasoningEffort(processor.SystemService),
 		checkApiKeyModelAccess(inbound),
 		applyModelMapping(inbound),
 		selectCandidates(inbound),
 		injectPrompts(inbound),
 		protectPrompts(inbound),
+		// Response pass-through middlewares run before persistRequest so the raw provider
+		// response is saved when pass-through is enabled.
+		applyPassThroughResponse(outbound),
+		applyPassThroughStream(outbound),
 		persistRequest(inbound),
 	)
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
 		// applyPassThroughBody runs first so that override operations can still modify the pass-through body.
-		applyPassThroughBody(outbound),
+		applyPassThroughRequestBody(outbound),
 		applyOverrideRequestBody(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial
 		// User-Agent value (either from client pass-through or default "axonhub/1.0").
@@ -302,12 +320,20 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Forward the events to the live streaming.
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
 
+		// Per-channel admission control. Must run before rate-limit tracking so a
+		// locally rejected (queue full / queue timeout) request does not consume
+		// RPM budget for a request that never reached upstream.
+		withChannelLimiter(outbound, processor.channelLimiterManager, processor.channelLimiterMetrics),
 		// Rate limit tracking middleware for load balancing.
 		withRateLimitTracking(outbound, processor.rateLimitTracker, time.Now),
 		// Connection tracking middleware for load balancing.
 		withConnectionTracking(outbound, processor.connectionTracker),
 		// Model connection tracking middleware for per-model concurrency tracking.
 		withModelConnectionTracking(outbound, processor.modelConnectionTracker),
+		// Response pass-through capture middlewares must be last in the outbound list
+		// so they run first in reverse order (before any other OnOutboundRawResponse/OnOutboundRawStream handlers).
+		captureRawProviderResponse(outbound),
+		captureRawProviderStream(outbound),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))

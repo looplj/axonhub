@@ -98,7 +98,7 @@ func TestChatCompletionOrchestrator_Process_MinuteQuotaExceeded(t *testing.T) {
 		QuotaService:      quotaService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},

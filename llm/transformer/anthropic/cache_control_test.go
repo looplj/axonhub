@@ -567,3 +567,166 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		require.Empty(t, block.CacheControl.TTL)
 	})
 }
+
+// TestInboundTransformer_TopLevelCacheControl verifies that the top-level
+// `cache_control` field (Anthropic's automatic prompt caching) sent by clients
+// is captured during inbound parsing and propagated via TransformerMetadata.
+func TestInboundTransformer_TopLevelCacheControl(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	t.Run("type only", func(t *testing.T) {
+		httpReq := &httpclient.Request{
+			Headers: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: []byte(`{
+				"model": "claude-opus-4-6",
+				"max_tokens": 22280,
+				"cache_control": {"type": "ephemeral"},
+				"messages": [{"role": "user", "content": "Hi"}]
+			}`),
+		}
+
+		got, err := transformer.TransformRequest(context.Background(), httpReq)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.NotNil(t, got.TransformerMetadata)
+
+		cc, ok := got.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl)
+		require.True(t, ok, "cache_control should be stored as *CacheControl in TransformerMetadata")
+		require.Equal(t, "ephemeral", cc.Type)
+		require.Empty(t, cc.TTL)
+	})
+
+	t.Run("with ttl", func(t *testing.T) {
+		httpReq := &httpclient.Request{
+			Headers: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: []byte(`{
+				"model": "claude-opus-4-6",
+				"max_tokens": 22280,
+				"cache_control": {"type": "ephemeral", "ttl": "1h"},
+				"messages": [{"role": "user", "content": "Hi"}]
+			}`),
+		}
+
+		got, err := transformer.TransformRequest(context.Background(), httpReq)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+
+		cc, ok := got.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl)
+		require.True(t, ok)
+		require.Equal(t, "ephemeral", cc.Type)
+		require.Equal(t, "1h", cc.TTL)
+	})
+}
+
+// TestOutboundTransformer_TopLevelCacheControlPassthrough verifies that the
+// top-level `cache_control` marker is forwarded to the upstream Anthropic
+// request as-is and that AxonHub's per-block breakpoint optimization pipeline
+// is intentionally skipped (Anthropic manages breakpoints automatically).
+func TestOutboundTransformer_TopLevelCacheControlPassthrough(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+
+	systemPrompt := "You are a helpful assistant."
+
+	req := &llm.Request{
+		Model:     "claude-opus-4-6",
+		MaxTokens: func() *int64 { v := int64(22280); return &v }(),
+		Messages: []llm.Message{
+			{
+				Role:    "system",
+				Content: llm.MessageContent{Content: &systemPrompt},
+			},
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: func() *string { s := "Hi"; return &s }()},
+			},
+		},
+		TransformerMetadata: map[string]any{
+			TransformerMetadataKeyCacheControl: &CacheControl{Type: "ephemeral", TTL: "1h"},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, httpReq)
+
+	// Top-level cache_control must be forwarded to the upstream payload as-is.
+	var raw map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &raw))
+	rawCC, hasTopLevel := raw["cache_control"]
+	require.True(t, hasTopLevel, "top-level cache_control must be forwarded to upstream")
+	rawCCMap, ok := rawCC.(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "ephemeral", rawCCMap["type"])
+	require.Equal(t, "1h", rawCCMap["ttl"])
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(httpReq.Body, &anthropicReq))
+
+	// The breakpoint optimization pipeline must NOT run when automatic caching
+	// is requested via the top-level field: the system prompt should remain a
+	// plain string and no per-block cache_control should be injected.
+	require.NotNil(t, anthropicReq.System)
+	require.Nil(t, anthropicReq.System.MultiplePrompts)
+	require.NotNil(t, anthropicReq.System.Prompt)
+	require.Equal(t, systemPrompt, *anthropicReq.System.Prompt)
+	require.Equal(t, 0, countCacheControls(&anthropicReq))
+}
+
+// TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd verifies the
+// regression reported in https://github.com/looplj/axonhub/issues/1484:
+// Anthropic-in & Anthropic-out flows used to drop the top-level
+// `cache_control` field. After the fix, the field is preserved end-to-end and
+// the breakpoint optimization pipeline is bypassed so Anthropic's automatic
+// caching behavior remains intact.
+func TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd(t *testing.T) {
+	inbound := NewInboundTransformer()
+	outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{
+			"model": "claude-opus-4-6",
+			"max_tokens": 22280,
+			"top_p": 0.95,
+			"stream": false,
+			"temperature": 1,
+			"cache_control": {"type": "ephemeral"},
+			"messages": [{"role": "user", "content": "Hi"}]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	upstream, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.NotNil(t, upstream)
+
+	var raw map[string]any
+	require.NoError(t, json.Unmarshal(upstream.Body, &raw))
+
+	// The top-level cache_control marker must be forwarded as-is.
+	rawCC, hasTopLevel := raw["cache_control"]
+	require.True(t, hasTopLevel, "top-level cache_control must be forwarded to upstream")
+	rawCCMap, ok := rawCC.(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "ephemeral", rawCCMap["type"])
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(upstream.Body, &anthropicReq))
+
+	// Optimization pipeline must be skipped: the user message content should
+	// remain a plain string with no injected per-block cache_control.
+	require.Len(t, anthropicReq.Messages, 1)
+	require.NotNil(t, anthropicReq.Messages[0].Content.Content)
+	require.Equal(t, "Hi", *anthropicReq.Messages[0].Content.Content)
+	require.Equal(t, 0, countCacheControls(&anthropicReq))
+}

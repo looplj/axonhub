@@ -91,8 +91,12 @@ server:
 ```yaml
 db:
   dialect: "sqlite3"            # sqlite3, postgres, mysql, tidb
-  dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"  # Connection string
+  dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"  # Master connection string
   debug: false                  # Enable database debug logging
+  read_replica:
+    read_dsn: ""                # Read replica connection string (empty = no read-write separation)
+    read_max_open_conns: 0      # Max open connections for replica (0 = use default)
+    read_max_idle_conns: 0      # Max idle connections for replica (0 = use default)
 ```
 
 **Supported Databases:**
@@ -105,6 +109,28 @@ db:
 - `AXONHUB_DB_DIALECT`
 - `AXONHUB_DB_DSN`
 - `AXONHUB_DB_DEBUG`
+- `AXONHUB_DB_READ_REPLICA_READ_DSN`
+- `AXONHUB_DB_READ_REPLICA_READ_MAX_OPEN_CONNS`
+- `AXONHUB_DB_READ_REPLICA_READ_MAX_IDLE_CONNS`
+
+#### Read-Write Separation
+
+When `read_replica.read_dsn` is configured, AxonHub automatically routes queries based on SQL statement type:
+
+| Operation | Target | Examples |
+|-----------|--------|----------|
+| Read (SELECT/WITH etc.) | Replica | Queries, listings, aggregations |
+| Write (INSERT/UPDATE/DELETE etc.) | Master | Creates, updates, deletes |
+| Transactions (Tx) | Master | All transaction ops force master to avoid replication lag |
+
+**Example (PostgreSQL):**
+```yaml
+db:
+  dialect: "postgres"
+  dsn: "postgres://axonhub:password@master.db:5432/axonhub?sslmode=disable"
+  read_replica:
+    read_dsn: "postgres://axonhub:password@replica.db:5432/axonhub?sslmode=disable"
+```
 
 ### Cache Configuration
 

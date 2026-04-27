@@ -21,7 +21,7 @@ AxonHub uses Go templates for dynamic value rendering. You can access the follow
 
 ## Override Operation Types
 
-AxonHub supports the following four override operations:
+AxonHub supports the following override operations:
 
 | Operation Type | Description | Use Case |
 | :--- | :--- | :--- |
@@ -29,6 +29,11 @@ AxonHub supports the following four override operations:
 | `delete` | Delete specified field | Remove unwanted parameters |
 | `rename` | Rename field (move from `from` to `to`) | Field name mapping conversion |
 | `copy` | Copy field value (copy from `from` to `to`) | Parameter reuse |
+| `array_append` | Append value(s) to the end of the array at `path` | Inject items after existing array content |
+| `array_prepend` | Prepend value(s) to the start of the array at `path` | Inject items before existing array content |
+| `array_insert` | Insert value(s) at a specific position in the array at `path` | Insert items at an arbitrary position |
+
+> Array operations only apply to the body. Headers only support `set`, `delete`, `rename`, and `copy`.
 
 ## Override Parameters
 
@@ -36,12 +41,14 @@ Override parameters are defined as an array of operations, each containing the f
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `op` | string | Yes | Operation type: `set`, `delete`, `rename`, `copy` |
-| `path` | string | Conditional | Target field path (required for `set` and `delete`) |
+| `op` | string | Yes | Operation type: `set`, `delete`, `rename`, `copy`, `array_append`, `array_prepend`, `array_insert` |
+| `path` | string | Conditional | Target field path (required for `set`, `delete`, and all array ops) |
 | `from` | string | Conditional | Source field path (required for `rename` and `copy`) |
 | `to` | string | Conditional | Target field path (required for `rename` and `copy`) |
-| `value` | string | Conditional | Field value (required for `set` operation), supports templates |
+| `value` | string | Conditional | Field value (required for `set` and all array ops), supports templates |
 | `condition` | string | No | Condition expression, executes when result is `"true"` |
+| `index` | number | Conditional | Insertion position (required for `array_insert`); negative values count from the end, out-of-range values are clamped to `[0, len]` |
+| `splat` | bool | No | When the rendered value is a JSON array, controls whether elements are spread into the target array. Defaults to `true`. Set to `false` to insert the array itself as a single nested element. Only meaningful for array ops. |
 
 ### Basic Example
 
@@ -131,6 +138,80 @@ Use the `condition` field to implement conditional logic:
   }
 ]
 ```
+
+### Array Operations
+
+Array operations let you inject items into an existing array (e.g. `system`, `messages`, `tools`) without replacing it. Use them when you need to keep the user's original content and add proxy-side content around it.
+
+**Behavior:**
+- If `path` does not exist, a new array is created with the value(s).
+- If `path` exists but is not an array, the operation is skipped and a warning is logged.
+- If the rendered `value` is a JSON array and `splat` is `true` (default), its elements are spread into the target array. Set `splat: false` to insert the array as a single nested element.
+- For `array_insert`, `index` may be negative (counted from the end). `index = -1` inserts before the last element. Out-of-range values are clamped to `[0, len]`.
+
+**Append a single object:**
+
+```json
+[
+  {
+    "op": "array_append",
+    "path": "messages",
+    "value": "{\"role\":\"system\",\"content\":\"appended note\"}"
+  }
+]
+```
+
+**Prepend multiple system items (preserving the user's original content):**
+
+```json
+[
+  {
+    "op": "array_prepend",
+    "path": "system",
+    "value": "[{\"type\":\"text\",\"text\":\"x-anthropic-billing-header: ...\"},{\"type\":\"text\",\"text\":\"You are Claude Code...\",\"cache_control\":{\"type\":\"ephemeral\"}}]"
+  }
+]
+```
+
+Result (assuming the request originally has `system: [{"type":"text","text":"<user>"}]`):
+
+```json
+{
+  "system": [
+    {"type": "text", "text": "x-anthropic-billing-header: ..."},
+    {"type": "text", "text": "You are Claude Code...", "cache_control": {"type": "ephemeral"}},
+    {"type": "text", "text": "<user>"}
+  ]
+}
+```
+
+**Insert at a specific position:**
+
+```json
+[
+  {
+    "op": "array_insert",
+    "path": "messages",
+    "index": 1,
+    "value": "{\"role\":\"system\",\"content\":\"inserted between message 0 and 1\"}"
+  }
+]
+```
+
+**Insert an array as a single nested element (disable splat):**
+
+```json
+[
+  {
+    "op": "array_prepend",
+    "path": "tags",
+    "value": "[\"a\",\"b\"]",
+    "splat": false
+  }
+]
+```
+
+Result on `{"tags": ["x"]}`: `{"tags": [["a","b"], "x"]}`.
 
 ### Dynamic JSON Objects
 

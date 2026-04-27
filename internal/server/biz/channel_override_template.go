@@ -331,14 +331,16 @@ func getBodyOverrideOperations(settings *objects.ChannelSettings) []objects.Over
 
 // MergeOverrideOperations merges existing body operations with template operations.
 // - For set/delete ops, matching is by Path. Template overrides existing.
-// - For rename/copy ops, they are always appended.
+// - For rename/copy and array_* ops, they are always appended (multiple of the same path are meaningful).
 // - Existing ops not mentioned in the template are preserved.
 func MergeOverrideOperations(existing, template []objects.OverrideOperation) []objects.OverrideOperation {
 	result := make([]objects.OverrideOperation, 0, len(existing)+len(template))
 	result = append(result, existing...)
 
 	for _, op := range template {
-		if op.Op == objects.OverrideOpRename || op.Op == objects.OverrideOpCopy {
+		switch op.Op {
+		case objects.OverrideOpRename, objects.OverrideOpCopy,
+			objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
 			result = append(result, op)
 			continue
 		}

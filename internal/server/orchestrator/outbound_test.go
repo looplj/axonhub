@@ -313,11 +313,11 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 
 func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 	t.Run("usage means completed", func(t *testing.T) {
-		require.True(t, isCompletedAggregatedOutboundResponse(llm.ResponseMeta{Usage: &llm.Usage{TotalTokens: 15}}))
+		require.True(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))
 	})
 
 	t.Run("missing usage is not completed", func(t *testing.T) {
-		require.False(t, isCompletedAggregatedOutboundResponse(llm.ResponseMeta{}))
+		require.False(t, isCompletedAggregated(llm.ResponseMeta{}))
 	})
 }
 

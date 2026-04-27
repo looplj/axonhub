@@ -130,7 +130,8 @@ dumps
 .gocache
 
 config.yml
-internal/server/static/dist
+internal/server/static/dist/*
+!internal/server/static/dist/.gitkeep
 *.b64
 coverage.out
 *.test

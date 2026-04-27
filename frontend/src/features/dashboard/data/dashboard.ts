@@ -100,6 +100,7 @@ export const channelSuccessRateSchema = z.object({
   channelId: z.string(),
   channelName: z.string(),
   channelType: z.string(),
+  channelDisabled: z.boolean(),
   successCount: z.number(),
   failedCount: z.number(),
   totalCount: z.number(),
@@ -304,11 +305,12 @@ const TOP_PROJECTS_QUERY = `
 `;
 
 const CHANNEL_SUCCESS_RATES_QUERY = `
-  query GetChannelSuccessRates {
-    channelSuccessRates {
+  query GetChannelSuccessRates($timeWindow: String, $limit: Int) {
+    channelSuccessRates(timeWindow: $timeWindow, limit: $limit) {
       channelId
       channelName
       channelType
+      channelDisabled
       successCount
       failedCount
       totalCount
@@ -556,14 +558,18 @@ export function useTokenStats() {
   });
 }
 
-export function useChannelSuccessRates() {
+export function useChannelSuccessRates(limit?: number, timeWindow?: string) {
   return useQuery({
-    queryKey: ['channelSuccessRates'],
+    queryKey: ['channelSuccessRates', limit, timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channelSuccessRates: ChannelSuccessRate[] }>(CHANNEL_SUCCESS_RATES_QUERY);
+      const data = await graphqlRequest<{ channelSuccessRates: ChannelSuccessRate[] }>(
+        CHANNEL_SUCCESS_RATES_QUERY,
+        { ...(timeWindow != null && { timeWindow }), ...(limit != null && { limit }) }
+      );
       return data.channelSuccessRates.map((item) => channelSuccessRateSchema.parse(item));
     },
     refetchInterval: 300000,
+    placeholderData: (previousData) => previousData,
   });
 }
 

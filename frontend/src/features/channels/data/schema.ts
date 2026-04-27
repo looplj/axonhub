@@ -101,12 +101,14 @@ export type HeaderEntry = z.infer<typeof headerEntrySchema>;
 
 // Override Operation
 export const overrideOperationSchema = z.object({
-  op: z.enum(['set', 'delete', 'rename', 'copy']),
+  op: z.enum(['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert']),
   path: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   value: z.any().optional(),
   condition: z.string().optional(),
+  index: z.number().int().nullish(),
+  splat: z.boolean().nullish(),
 })
 export type OverrideOperation = z.infer<typeof overrideOperationSchema>
 
@@ -160,10 +162,10 @@ export type ModelConcurrentEntry = z.infer<typeof modelConcurrentEntrySchema>;
 
 // Channel Rate Limit
 export const channelRateLimitSchema = z.object({
-  rpm: z.number().int().positive().optional().nullable(),
-  tpm: z.number().int().positive().optional().nullable(),
-  cost: z.number().positive().optional().nullable(),
-  maxConcurrent: z.number().int().positive().optional().nullable(),
+  rpm: z.number().int().nonnegative().optional().nullable(),
+  tpm: z.number().int().nonnegative().optional().nullable(),
+  cost: z.number().nonnegative().optional().nullable(),
+  maxConcurrent: z.number().int().nonnegative().optional().nullable(),
   rpmDuration: rateLimitDurationEnum.optional().nullable(),
   tpmDuration: rateLimitDurationEnum.optional().nullable(),
   costDuration: rateLimitDurationEnum.optional().nullable(),
@@ -171,6 +173,8 @@ export const channelRateLimitSchema = z.object({
   tpmWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
   costWindowAnchor: z.string().datetime({ offset: true, message: 'Invalid ISO datetime format' }).optional().nullable(),
   modelConcurrent: z.array(modelConcurrentEntrySchema).optional().nullable(),
+  queueSize: z.number().int().nonnegative().optional().nullable(),
+  queueTimeoutMs: z.number().int().nonnegative().optional().nullable(),
 });
 export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
 
@@ -197,6 +201,16 @@ export const channelRateLimitStatusSchema = z.object({
   cooldownUntil: z.string().nullable(),
 });
 export type ChannelRateLimitStatus = z.infer<typeof channelRateLimitStatusSchema>;
+
+// Live snapshot of the per-channel concurrency limiter.
+// Returned from the backend only when MaxConcurrent is configured.
+export const channelLimiterStatsSchema = z.object({
+  inFlight: z.number().int().nonnegative(),
+  waiting: z.number().int().nonnegative(),
+  capacity: z.number().int().nonnegative(),
+  queueSize: z.number().int().nonnegative(),
+});
+export type ChannelLimiterStats = z.infer<typeof channelLimiterStatsSchema>;
 
 // Channel Settings
 export const channelSettingsSchema = z.object({
@@ -284,6 +298,7 @@ export const channelSchema = z.object({
   errorMessage: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
+  liveLimiterStats: channelLimiterStatsSchema.optional().nullable(),
 });
 export type Channel = z.infer<typeof channelSchema>;
 
