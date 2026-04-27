@@ -129,6 +129,58 @@ const (
 	QuotaEnforcementModeDePrioritize QuotaEnforcementMode = "de_prioritize"
 )
 
+func (m QuotaEnforcementMode) MarshalGQL(w io.Writer) {
+	var s string
+
+	switch m {
+	case QuotaEnforcementModeExhaustedOnly:
+		s = "EXHAUSTED_ONLY"
+	case QuotaEnforcementModeDePrioritize:
+		s = "DE_PRIORITIZE"
+	default:
+		s = "EXHAUSTED_ONLY"
+	}
+
+	_, _ = io.WriteString(w, `"`+s+`"`)
+}
+
+func (m *QuotaEnforcementMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("QuotaEnforcementMode must be a string")
+	}
+
+	switch str {
+	case "EXHAUSTED_ONLY":
+		*m = QuotaEnforcementModeExhaustedOnly
+	case "DE_PRIORITIZE":
+		*m = QuotaEnforcementModeDePrioritize
+	default:
+		return fmt.Errorf("invalid QuotaEnforcementMode: %s", str)
+	}
+
+	return nil
+}
+
+func (m *QuotaEnforcementMode) UnmarshalJSON(data []byte) error {
+	var raw string
+	if json.Unmarshal(data, &raw) == nil {
+		switch raw {
+		case string(QuotaEnforcementModeExhaustedOnly), "EXHAUSTED_ONLY":
+			*m = QuotaEnforcementModeExhaustedOnly
+		case string(QuotaEnforcementModeDePrioritize), "DE_PRIORITIZE":
+			*m = QuotaEnforcementModeDePrioritize
+		default:
+			*m = QuotaEnforcementModeExhaustedOnly
+		}
+
+		return nil
+	}
+
+	*m = QuotaEnforcementModeExhaustedOnly
+	return nil
+}
+
 // QuotaEnforcementSettings represents quota enforcement configuration.
 type QuotaEnforcementSettings struct {
 	// Enabled controls whether quota enforcement is active.

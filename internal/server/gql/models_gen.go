@@ -501,8 +501,8 @@ type UpdateProjectUserInput struct {
 }
 
 type UpdateQuotaEnforcementSettingsInput struct {
-	Enabled *bool   `json:"enabled,omitempty"`
-	Mode    *string `json:"mode,omitempty"`
+	Enabled *bool                     `json:"enabled,omitempty"`
+	Mode    *biz.QuotaEnforcementMode `json:"mode,omitempty"`
 }
 
 type UpdateUserAgentPassThroughSettingsInput struct {

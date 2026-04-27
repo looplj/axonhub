@@ -1393,7 +1393,7 @@ const UPDATE_QUOTA_ENFORCEMENT_SETTINGS_MUTATION = `
   }
 `;
 
-export type QuotaEnforcementMode = 'exhausted_only' | 'de_prioritize';
+export type QuotaEnforcementMode = 'EXHAUSTED_ONLY' | 'DE_PRIORITIZE';
 
 export interface QuotaEnforcementSettings {
   enabled: boolean;

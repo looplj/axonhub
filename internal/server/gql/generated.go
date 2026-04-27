@@ -38893,7 +38893,7 @@ func (ec *executionContext) _QuotaEnforcementSettings_mode(ctx context.Context, 
 			return obj.Mode, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNQuotaEnforcementMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQuotaEnforcementMode,
 		true,
 		true,
 	)
@@ -38906,7 +38906,7 @@ func (ec *executionContext) fieldContext_QuotaEnforcementSettings_mode(_ context
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type QuotaEnforcementMode does not have child fields")
 		},
 	}
 	return fc, nil
@@ -72509,7 +72509,7 @@ func (ec *executionContext) unmarshalInputUpdateQuotaEnforcementSettingsInput(ct
 			it.Enabled = data
 		case "mode":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOQuotaEnforcementMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQuotaEnforcementMode(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -98295,6 +98295,16 @@ func (ec *executionContext) unmarshalNQueryModelsInput2githubᚗcomᚋloopljᚋa
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNQuotaEnforcementMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQuotaEnforcementMode(ctx context.Context, v any) (biz.QuotaEnforcementMode, error) {
+	var res biz.QuotaEnforcementMode
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNQuotaEnforcementMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQuotaEnforcementMode(ctx context.Context, sel ast.SelectionSet, v biz.QuotaEnforcementMode) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNQuotaEnforcementSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQuotaEnforcementSettings(ctx context.Context, sel ast.SelectionSet, v biz.QuotaEnforcementSettings) graphql.Marshaler {
 	return ec._QuotaEnforcementSettings(ctx, sel, &v)
 }
@@ -104276,6 +104286,22 @@ func (ec *executionContext) unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋlooplj�
 	}
 	res, err := ec.unmarshalInputProxyConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOQuotaEnforcementMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQuotaEnforcementMode(ctx context.Context, v any) (*biz.QuotaEnforcementMode, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(biz.QuotaEnforcementMode)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOQuotaEnforcementMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQuotaEnforcementMode(ctx context.Context, sel ast.SelectionSet, v *biz.QuotaEnforcementMode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalORegexAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRegexAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.RegexAssociation) graphql.Marshaler {

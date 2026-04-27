@@ -359,6 +359,6 @@
   "system.quota.mode.placeholder": "Select enforcement mode",
   "system.quota.mode.options.exhaustedOnly": "Exhausted Only",
   "system.quota.mode.options.dePrioritize": "De-prioritize",
-  "system.quota.mode.documentation.exhausted_only": "Channels with fully exhausted quota will be temporarily disabled. Requests will only be routed to channels with remaining quota. This is the strictest mode and ensures no requests go to exhausted channels.",
-  "system.quota.mode.documentation.de_prioritize": "Channels with exhausted quota will be deprioritized in load balancing but not fully disabled. If all channels are exhausted, requests will still be routed. This provides a softer approach that maintains availability."
+  "system.quota.mode.documentation.EXHAUSTED_ONLY": "Channels with fully exhausted quota will be temporarily disabled. Requests will only be routed to channels with remaining quota. This is the strictest mode and ensures no requests go to exhausted channels.",
+  "system.quota.mode.documentation.DE_PRIORITIZE": "Channels with exhausted quota will be deprioritized in load balancing but not fully disabled. If all channels are exhausted, requests will still be routed. This provides a softer approach that maintains availability."
 }

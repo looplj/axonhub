@@ -146,14 +146,19 @@ input UpdateRetryPolicyInput {
   emptyResponseDetection: Boolean
 }
 
+enum QuotaEnforcementMode {
+  EXHAUSTED_ONLY
+  DE_PRIORITIZE
+}
+
 type QuotaEnforcementSettings {
   enabled: Boolean!
-  mode: String!
+  mode: QuotaEnforcementMode!
 }
 
 input UpdateQuotaEnforcementSettingsInput {
   enabled: Boolean
-  mode: String
+  mode: QuotaEnforcementMode
 }
 
 type SystemModelSettings {

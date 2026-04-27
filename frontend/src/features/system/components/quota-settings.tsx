@@ -18,7 +18,7 @@ export function QuotaSettings() {
 
   const [formData, setFormData] = useState<UpdateQuotaEnforcementSettingsInput>({
     enabled: false,
-    mode: 'exhausted_only',
+    mode: 'EXHAUSTED_ONLY',
   });
 
   useEffect(() => {
@@ -95,8 +95,8 @@ export function QuotaSettings() {
                     <SelectValue placeholder={t('system.quota.mode.placeholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='exhausted_only'>{t('system.quota.mode.options.exhaustedOnly')}</SelectItem>
-                    <SelectItem value='de_prioritize'>{t('system.quota.mode.options.dePrioritize')}</SelectItem>
+                    <SelectItem value='EXHAUSTED_ONLY'>{t('system.quota.mode.options.exhaustedOnly')}</SelectItem>
+                    <SelectItem value='DE_PRIORITIZE'>{t('system.quota.mode.options.dePrioritize')}</SelectItem>
                   </SelectContent>
                 </Select>
 
