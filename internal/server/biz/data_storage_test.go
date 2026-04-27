@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/samber/lo"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 	"github.com/zhenzou/executors"
@@ -32,9 +33,10 @@ func setupDataStorageTest(t *testing.T) (*ent.Client, *DataStorageService, conte
 		},
 	}
 
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: cacheConfig,
 	})
+	require.NoError(t, err)
 
 	executor := executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
 
@@ -42,12 +44,13 @@ func setupDataStorageTest(t *testing.T) (*ent.Client, *DataStorageService, conte
 		_ = executor.Shutdown(context.Background())
 	})
 
-	service := NewDataStorageService(DataStorageServiceParams{
+	service, err := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
 		Executor:      executor,
 		Client:        client,
 	})
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
@@ -70,9 +73,10 @@ func setupDataStorageTestWithRedis(t *testing.T) (*ent.Client, *DataStorageServi
 		},
 	}
 
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: cacheConfig,
 	})
+	require.NoError(t, err)
 
 	executor := executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
 
@@ -80,12 +84,13 @@ func setupDataStorageTestWithRedis(t *testing.T) (*ent.Client, *DataStorageServi
 		_ = executor.Shutdown(context.Background())
 	})
 
-	service := NewDataStorageService(DataStorageServiceParams{
+	service, err := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
 		Executor:      executor,
 		Client:        client,
 	})
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
@@ -208,7 +213,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 				Endpoint:   "existing-endpoint",
 				Region:     "existing-region",
 				AccessKey:  existingAccess,
-				SecretKey:  existingSecret,
+				SecretKey:  &existingSecret,
 			},
 			GCS: &objects.GCS{
 				BucketName: "existing-gcs-bucket",
@@ -234,7 +239,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 					Endpoint:   "",
 					Region:     "updated-region",
 					AccessKey:  "",
-					SecretKey:  "",
+					SecretKey:  lo.ToPtr(""),
 				},
 				GCS: &objects.GCS{
 					BucketName: "updated-gcs-bucket",
@@ -258,7 +263,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		require.Equal(t, "", updated.Settings.S3.Endpoint)
 		require.Equal(t, "updated-region", updated.Settings.S3.Region)
 		require.Equal(t, existingAccess, updated.Settings.S3.AccessKey)
-		require.Equal(t, existingSecret, updated.Settings.S3.SecretKey)
+		require.Equal(t, existingSecret, *updated.Settings.S3.SecretKey)
 
 		require.NotNil(t, updated.Settings.GCS)
 		require.Equal(t, "updated-gcs-bucket", updated.Settings.GCS.BucketName)
@@ -279,7 +284,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 				Endpoint:   "existing-endpoint",
 				Region:     "existing-region",
 				AccessKey:  "old-access",
-				SecretKey:  "old-secret",
+				SecretKey:  lo.ToPtr("old-secret"),
 			},
 			GCS: &objects.GCS{
 				BucketName: "existing-gcs-bucket",
@@ -307,7 +312,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 					Endpoint:   "new-endpoint",
 					Region:     "new-region",
 					AccessKey:  "new-access",
-					SecretKey:  "new-secret",
+					SecretKey:  lo.ToPtr("new-secret"),
 				},
 				GCS: &objects.GCS{
 					BucketName: "new-gcs-bucket",
@@ -331,7 +336,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		require.Equal(t, "new-endpoint", updated.Settings.S3.Endpoint)
 		require.Equal(t, "new-region", updated.Settings.S3.Region)
 		require.Equal(t, "new-access", updated.Settings.S3.AccessKey)
-		require.Equal(t, "new-secret", updated.Settings.S3.SecretKey)
+		require.Equal(t, "new-secret", *updated.Settings.S3.SecretKey)
 
 		require.NotNil(t, updated.Settings.GCS)
 		require.Equal(t, "new-gcs-bucket", updated.Settings.GCS.BucketName)
@@ -707,16 +712,18 @@ func TestDataStorageService_CacheExpiration(t *testing.T) {
 		},
 	}
 
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: cacheConfig,
 	})
+	require.NoError(t, err)
 
-	service := NewDataStorageService(DataStorageServiceParams{
+	service, err := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
 		Executor:      executors.NewPoolScheduleExecutor(),
 		Client:        client,
 	})
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
