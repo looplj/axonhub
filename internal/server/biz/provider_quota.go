@@ -533,6 +533,7 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 		if _, ok := provider_quota.URLDetectedProviders()[providerType]; ok {
 			return strings.TrimSpace(ch.Credentials.APIKey) != "" || len(ch.Credentials.APIKeys) > 0
 		}
+	default:
 	}
 
 	return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey) ||
