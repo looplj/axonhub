@@ -371,9 +371,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 			return nil
 		})
 	}
-	if err := eg.Wait(); err != nil {
-		log.Error(ctx, "Error in concurrent quota check", log.Cause(err))
-	}
+	eg.Wait()
 }
 
 func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.Channel, now time.Time) {

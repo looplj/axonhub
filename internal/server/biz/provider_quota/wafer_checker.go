@@ -96,9 +96,7 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	}
 
 	if response.RemainingIncludedRequests != nil &&
-		*response.RemainingIncludedRequests <= 0 &&
-		response.OverageRequestCount != nil &&
-		*response.OverageRequestCount > 0 {
+		*response.RemainingIncludedRequests <= 0 {
 		normalizedStatus = "exhausted"
 	}
 

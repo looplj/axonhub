@@ -282,3 +282,86 @@ func TestWafer_SupportsChannel(t *testing.T) {
 		BaseURL: "https://evilwafer.ai",
 	}))
 }
+
+func TestWafer_CheckQuota_APIKeysFallback(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			require.Equal(t, "Bearer fallback-key", req.Header.Get("Authorization"))
+
+			body := `{
+				"endpoint": "pass.wafer.ai",
+				"billing_model": "pass_quota",
+				"plan_tier": "pro",
+				"window_start": "2026-04-25T00:00:00+00:00",
+				"window_end": "2026-04-25T05:00:00+00:00",
+				"request_count": 10,
+				"included_request_limit": 5000,
+				"included_request_count": 10,
+				"remaining_included_requests": 4990,
+				"overage_request_count": 0,
+				"current_period_used_percent": 0.2,
+				"input_tokens": 1000,
+				"output_tokens": 500,
+				"total_tokens": 1500
+			}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewWaferQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey:  "",
+			APIKeys: []string{"fallback-key"},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+}
+
+func TestWafer_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"endpoint": "pass.wafer.ai",
+				"billing_model": "pass_quota",
+				"plan_tier": "pro",
+				"window_start": "2026-04-25T00:00:00+00:00",
+				"window_end": "2026-04-25T05:00:00+00:00",
+				"request_count": 5000,
+				"included_request_limit": 5000,
+				"included_request_count": 5000,
+				"remaining_included_requests": 0,
+				"overage_request_count": 0,
+				"current_period_used_percent": 100.0,
+				"input_tokens": 2468184,
+				"output_tokens": 12148,
+				"total_tokens": 2480332
+			}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewWaferQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "exhausted", quota.Status)
+	require.False(t, quota.Ready)
+}

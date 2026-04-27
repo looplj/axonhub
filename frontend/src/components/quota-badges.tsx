@@ -682,7 +682,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             if (qd.subscription) {
               const kwhIncluded = qd.subscription.kwh_included ?? 0;
               const kwhUsed = qd.subscription.kwh_used ?? 0;
-              const kwhRemaining = qd.subscription.kwh_remaining ?? 0;
+              const kwhRemaining = qd.subscription.kwh_remaining ?? Math.max(0, kwhIncluded - kwhUsed);
               const usedPct = kwhIncluded > 0 ? (kwhUsed / kwhIncluded) * 100 : 0;
 
               items.push(

@@ -161,7 +161,7 @@ func isSyntheticURL(baseURL string) bool {
 		return false
 	}
 
-	host := parsed.Hostname()
+	host := strings.ToLower(parsed.Hostname())
 	return host == "api.synthetic.new" || strings.HasSuffix(host, ".api.synthetic.new")
 }
 

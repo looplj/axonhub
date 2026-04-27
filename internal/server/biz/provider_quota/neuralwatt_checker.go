@@ -98,7 +98,7 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 			normalizedStatus = "exhausted"
 		} else if isNeuralWattLowRemaining(response.Subscription) {
 			normalizedStatus = "warning"
-		} else {
+		} else if response.Subscription.KwhRemaining != nil {
 			normalizedStatus = "available"
 		}
 	}

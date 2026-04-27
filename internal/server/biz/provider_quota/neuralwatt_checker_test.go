@@ -256,6 +256,40 @@ func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
 	require.False(t, quota.Ready)
 }
 
+func TestNeuralWatt_CheckQuota_SubscriptionWithoutKeyFields(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"balance": {
+					"credits_remaining_usd": 5.0,
+					"total_credits_usd": 5.0
+				},
+				"subscription": {
+					"plan": "standard",
+					"status": "active"
+				}
+			}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewNeuralWattQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "unknown", quota.Status)
+	require.False(t, quota.Ready)
+}
+
 func TestNeuralWatt_CheckQuota_CustomBaseURL(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
