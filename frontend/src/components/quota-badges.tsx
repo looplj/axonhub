@@ -202,12 +202,11 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
       resetTimeMs = new Date(resetAtOrSeconds).getTime();
     }
 
+    if (usedPercent === 0) return t('quota.label.no_usage_yet');
+
     const now = Date.now();
     const diffMs = resetTimeMs - now;
-    if (diffMs < 0) {
-      if (usedPercent === 0) return t('quota.label.no_usage_yet');
-      return t('quota.label.reset_now');
-    }
+    if (diffMs < 0) return t('quota.label.reset_now');
 
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
