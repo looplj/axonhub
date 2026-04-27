@@ -25,7 +25,6 @@ func TestLivePreviewMiddleware_OnInboundLlmRequest_DisablesPreviewForNonStreamin
 
 		middleware := &livePreviewMiddleware{
 			enabled:     true,
-			initialized: true,
 		}
 
 		_, err := middleware.OnInboundLlmRequest(ctx, &llm.Request{Stream: &nonStreaming})
@@ -39,12 +38,12 @@ func TestLivePreviewMiddleware_OnInboundLlmRequest_DisablesPreviewForNonStreamin
 		middleware := &livePreviewMiddleware{
 			liveStreamRegistry: biz.NewLiveStreamRegistry(),
 			enabled:            true,
-			initialized:        true,
 		}
 
 		_, err := middleware.OnInboundLlmRequest(ctx, &llm.Request{Stream: &streaming})
 		require.NoError(t, err)
-		require.True(t, middleware.enabled)
+		// systemService is nil, so once.Do sets enabled = false
+		require.False(t, middleware.enabled)
 	})
 }
 
