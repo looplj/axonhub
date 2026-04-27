@@ -11,8 +11,6 @@ type Config struct {
 	ConnMaxLifetime time.Duration `conf:"conn_max_lifetime" yaml:"conn_max_lifetime" json:"conn_max_lifetime"`
 	ConnMaxIdleTime time.Duration `conf:"conn_max_idle_time" yaml:"conn_max_idle_time" json:"conn_max_idle_time"`
 
-	// ReadReplica is optional. When read_dsn is empty (default), all queries go to master.
-	// When read_dsn is set, SELECT/WITH queries are routed to the read replica.
 	ReadReplica ReadReplicaConfig `conf:"read_replica" yaml:"read_replica" json:"read_replica"`
 }
 
