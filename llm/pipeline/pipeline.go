@@ -258,6 +258,10 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 	llmRequest.RawRequest = request
 
+	// Save original request body for retry safety (body may be consumed on first attempt)
+	savedBody := make([]byte, len(request.Body))
+	copy(savedBody, request.Body)
+
 	var lastErr error
 
 	channelSwitches := 0
@@ -265,6 +269,9 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 	// Step 3: Process the request
 	for {
+		// Restore body before each attempt
+		request.Body = savedBody
+
 		result, err := p.processRequest(ctx, llmRequest)
 		if err == nil {
 			return result, nil
