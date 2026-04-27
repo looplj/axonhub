@@ -35,7 +35,7 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		if err == nil {
 			apiKey, err = auth.AuthenticateAPIKey(c.Request.Context(), key)
 		}
-		if err != nil {
+		if errors.Is(err, ErrAPIKeyRequired) {
 			apiKey, err = auth.AuthenticateNoAuth(c.Request.Context())
 		}
 		if err != nil {

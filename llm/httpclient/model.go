@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -58,6 +59,25 @@ type Request struct {
 
 }
 
+// LogValue implements slog.LogValuer so that debug logging of Request
+// does not leak authentication credentials.
+func (r *Request) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("method", r.Method),
+		slog.String("url", r.URL),
+		slog.String("path", r.Path),
+		slog.Any("query", r.Query),
+		slog.Any("headers", r.Headers),
+		slog.String("content_type", r.ContentType),
+		slog.Int("body_len", len(r.Body)),
+		slog.Int("json_body_len", len(r.JSONBody)),
+		slog.Any("auth", r.Auth), // AuthConfig has its own LogValue
+		slog.String("request_id", r.RequestID),
+		slog.String("client_ip", r.ClientIP),
+		slog.String("request_type", r.RequestType),
+		slog.String("api_format", r.APIFormat),
+	)
+}
 
 // AuthConfig represents authentication configuration.
 type AuthConfig struct {
@@ -70,6 +90,27 @@ type AuthConfig struct {
 
 	// HeaderKey is the header key for the request if the type is "api_key".
 	HeaderKey string `json:"header_key,omitempty"`
+}
+
+// LogValue implements slog.LogValuer so that debug logging of AuthConfig
+// masks the API key and does not leak credentials.
+func (a *AuthConfig) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("type", a.Type),
+		slog.String("api_key", maskKey(a.APIKey)),
+		slog.String("header_key", a.HeaderKey),
+	)
+}
+
+// maskKey returns a redacted version of an API key for safe logging.
+func maskKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return "****"
+	}
+	return key[:4] + "****" + key[len(key)-4:]
 }
 
 const (
