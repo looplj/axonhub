@@ -10,12 +10,12 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
+	"sync/atomic"
 )
 
 // OutboundPersistentStream wraps a stream and tracks all responses for final saving to database.
@@ -35,7 +35,7 @@ type OutboundPersistentStream struct {
 	transformer    transformer.Outbound
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
-	closed         bool
+	closed         atomic.Bool
 	state          *PersistenceState
 }
 
@@ -62,7 +62,6 @@ func NewOutboundPersistentStream(
 		transformer:     outboundTransformer,
 		perf:            perf,
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
-		closed:          false,
 		state:           state,
 	}
 
@@ -93,11 +92,11 @@ func (ts *OutboundPersistentStream) Err() error {
 }
 
 func (ts *OutboundPersistentStream) Close() error {
-	if ts.closed {
+	if ts.closed.Load() {
 		return nil
 	}
 
-	ts.closed = true
+	ts.closed.Store(true)
 	ctx := ts.ctx
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
