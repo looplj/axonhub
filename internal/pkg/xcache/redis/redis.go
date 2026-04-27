@@ -8,8 +8,29 @@ import (
 	"time"
 
 	lib_store "github.com/eko/gocache/lib/v4/store"
+	"github.com/looplj/axonhub/internal/log"
 	redis "github.com/redis/go-redis/v9"
 )
+
+// safeUnmarshal wraps json.Unmarshal with panic recovery.
+// On decode failure it logs a warning and returns an error,
+// allowing callers to treat corrupted cache data as a miss.
+func safeUnmarshal[T any](ctx context.Context, key string, data []byte, dest *T) error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warn(ctx, "Redis cache data caused unmarshal panic, treating as cache miss",
+				log.String("cache_key", key),
+				log.Any("panic", r))
+		}
+	}()
+	if err := json.Unmarshal(data, dest); err != nil {
+		log.Warn(ctx, "Redis cache data failed to unmarshal, treating as cache miss",
+			log.String("cache_key", key),
+			log.Cause(err))
+		return err
+	}
+	return nil
+}
 
 // RedisClientInterface represents a go-redis/redis client.
 type RedisClientInterface interface {
@@ -64,10 +85,9 @@ func (gs *RedisStore[T]) Get(ctx context.Context, key any) (any, error) {
 	}
 
 	// JSON object or array - unmarshal into the target type
-	if err := json.Unmarshal([]byte(object), &result); err != nil {
+	if err := safeUnmarshal(ctx, keyString, []byte(object), &result); err != nil {
 		var zero T
-		// If JSON decoding fails, return error
-		return zero, err
+		return zero, lib_store.NotFoundWithCause(err)
 	}
 
 	return result, nil
@@ -92,10 +112,9 @@ func (gs *RedisStore[T]) GetWithTTL(ctx context.Context, key any) (any, time.Dur
 	}
 
 	// JSON object or array - unmarshal into the target type
-	if err := json.Unmarshal([]byte(object), &result); err != nil {
+	if err := safeUnmarshal(ctx, keyString, []byte(object), &result); err != nil {
 		var zero T
-		// If JSON decoding fails, return error
-		return zero, 0, err
+		return zero, 0, lib_store.NotFoundWithCause(err)
 	}
 
 	ttl, err := gs.client.TTL(ctx, keyString).Result()

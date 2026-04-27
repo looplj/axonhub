@@ -139,7 +139,9 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 
 		// Store trace in context
 		if log.DebugEnabled(c.Request.Context()) {
-			log.Debug(c.Request.Context(), "Trace created", log.Any("trace", trace))
+			log.Debug(c.Request.Context(), "Trace created",
+				log.Int("trace_id", trace.ID),
+				log.String("trace_uuid", trace.TraceID))
 		}
 
 		ctx := contexts.WithTrace(c.Request.Context(), trace)

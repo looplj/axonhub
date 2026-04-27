@@ -20,6 +20,33 @@ type DataURL struct {
 	IsBase64 bool
 }
 
+// allowedMediaTypes defines the permitted top-level media types for data URLs.
+// Only image/*, text/plain, and application/json are allowed to prevent
+// injection of executable content (e.g., text/html, application/javascript).
+var allowedMediaTypes = map[string]bool{
+	"image":            true,
+	"text/plain":       true,
+	"application/json": true,
+}
+
+// validateMediaType checks whether the given MIME type is in the allowlist.
+// It matches exact types (e.g., "text/plain") and top-level wildcards (e.g., "image/*").
+func validateMediaType(mediaType string) error {
+	if mediaType == "" {
+		return nil // default text/plain is allowed
+	}
+	// Exact match
+	if allowedMediaTypes[mediaType] {
+		return nil
+	}
+	// Wildcard match for image/*, audio/*, video/* etc.
+	topLevel, _, _ := strings.Cut(mediaType, "/")
+	if allowedMediaTypes[topLevel] {
+		return nil
+	}
+	return fmt.Errorf("data URL media type %q is not allowed", mediaType)
+}
+
 // ParseDataURL parses a data URL and returns its components.
 // Returns nil if the URL is not a valid data URL.
 // Rejects data URLs whose decoded content exceeds DefaultMaxDataURL bytes.
@@ -77,6 +104,11 @@ func ParseDataURLWithLimit(url string, maxDataSize int) *DataURL {
 		if decodedLen > maxDataSize {
 			return nil
 		}
+	}
+
+	// Reject unsupported media types
+	if err := validateMediaType(mediaType); err != nil {
+		return nil
 	}
 
 	return &DataURL{

@@ -232,7 +232,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 				slog.String("method", rawReq.Method),
 				slog.String("url", rawReq.URL.String()),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.String("body", truncateBody(body)))
 		}
 
 		return nil, &Error{
@@ -250,7 +250,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 			slog.String("method", rawReq.Method),
 			slog.String("url", rawReq.URL.String()),
 			slog.Int("status_code", rawResp.StatusCode),
-			slog.String("body", string(body)))
+			slog.String("body", truncateBody(body)))
 	}
 
 	// Build generic response
@@ -307,7 +307,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 				slog.String("method", rawReq.Method),
 				slog.String("url", rawReq.URL.String()),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.String("body", truncateBody(body)))
 		}
 
 		return nil, &Error{
@@ -420,6 +420,17 @@ func applyAuth(headers http.Header, auth *AuthConfig) error {
 	}
 
 	return nil
+}
+
+// truncateBody limits the response body logged at debug level to prevent
+// leaking large or sensitive payloads. Bodies longer than 512 bytes are
+// truncated with an ellipsis suffix.
+func truncateBody(body []byte) string {
+	const maxLen = 512
+	if len(body) <= maxLen {
+		return string(body)
+	}
+	return string(body[:maxLen]) + "... (truncated)"
 }
 
 // extractHeaders extracts headers from HTTP response.

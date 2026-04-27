@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -120,18 +121,25 @@ func (s *APIKeyService) loadAPIKeyByKey(ctx context.Context, cacheKey string) (*
 	}
 
 	client := s.entFromContext(ctx)
+	keyHash := hashKey(originalKey)
 
-	item, err := client.APIKey.Query().Where(apikey.KeyEQ(originalKey), apikey.DeletedAtEQ(0)).First(ctx)
+	item, err := client.APIKey.Query().Where(apikey.KeyHashEQ(keyHash), apikey.DeletedAtEQ(0)).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, live.ErrKeyNotFound
+			// Migration path: fall back to plaintext key lookup for keys
+			// stored before key_hash was introduced.
+			item, err = client.APIKey.Query().Where(apikey.KeyEQ(originalKey), apikey.DeletedAtEQ(0)).First(ctx)
+			if err != nil {
+				if ent.IsNotFound(err) {
+					return nil, live.ErrKeyNotFound
+				}
+				return nil, err
+			}
+			// Backfill the hash on read.
+			_, _ = client.APIKey.UpdateOne(item).SetKeyHash(keyHash).Save(ctx)
+		} else {
+			return nil, err
 		}
-
-		return nil, err
-	}
-
-	if buildAPIKeyCacheKey(item.Key) != cacheKey {
-		return nil, live.ErrKeyNotFound
 	}
 
 	return item, nil
@@ -175,6 +183,12 @@ func GenerateAPIKey(prefix string) (string, error) {
 	return prefix + "-" + hex.EncodeToString(bytes), nil
 }
 
+// hashKey computes the SHA-256 hash of an API key for secure storage.
+func hashKey(key string) string {
+	h := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(h[:])
+}
+
 // CreateLLMAPIKey creates a new API key for LLM calls using a service account API key.
 func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, name string) (*ent.APIKey, error) {
 	name = strings.TrimSpace(name)
@@ -192,6 +206,7 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 	create := client.APIKey.Create().
 		SetName(name).
 		SetKey(generatedKey).
+		SetKeyHash(hashKey(generatedKey)).
 		SetUserID(owner.UserID).
 		SetProjectID(owner.ProjectID).
 		SetType(apikey.TypeUser).
@@ -241,6 +256,7 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 	create := client.APIKey.Create().
 		SetName(input.Name).
 		SetKey(generatedKey).
+		SetKeyHash(hashKey(generatedKey)).
 		SetUserID(user.ID).
 		SetProjectID(input.ProjectID)
 
@@ -671,6 +687,7 @@ func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, er
 	apiKey, err := client.APIKey.Create().
 		SetName(NoAuthAPIKeyName).
 		SetKey(generatedKey).
+		SetKeyHash(hashKey(generatedKey)).
 		SetUserID(owner.ID).
 		SetProjectID(proj.ID).
 		SetType(apikey.TypeNoauth).
@@ -693,4 +710,3 @@ func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, er
 
 	return apiKey, nil
 }
-

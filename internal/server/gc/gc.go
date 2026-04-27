@@ -250,6 +250,12 @@ func (w *Worker) runCleanupWithSystemContext(ctx context.Context) {
 }
 
 // cleanupRequests deletes requests older than the specified number of days.
+//
+// Deletion order is critical due to foreign key constraints:
+// 1. RequestExecution records are deleted first (child records)
+// 2. Request records are deleted second (parent records)
+//
+// This order ensures referential integrity is maintained during cleanup.
 func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool, stats *CleanupStats) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for requests")
