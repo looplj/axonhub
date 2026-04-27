@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"sync"
 
 	"github.com/looplj/axonhub/internal/pkg/chunkbuffer"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -18,7 +19,7 @@ type livePreviewMiddleware struct {
 	systemService      *biz.SystemService
 	liveStreamRegistry *biz.LiveStreamRegistry
 	enabled            bool
-	initialized        bool
+	once               sync.Once
 }
 
 func withLivePreview(state *PersistenceState, systemService *biz.SystemService, liveStreamRegistry *biz.LiveStreamRegistry) pipeline.Middleware {
@@ -44,10 +45,9 @@ func (m *livePreviewMiddleware) OnInboundLlmRequest(ctx context.Context, request
 		return request, nil
 	}
 
-	if !m.initialized {
+	m.once.Do(func() {
 		m.enabled = m.systemService != nil && m.systemService.StoragePolicyOrDefault(ctx).LivePreview
-		m.initialized = true
-	}
+	})
 
 	return request, nil
 }
