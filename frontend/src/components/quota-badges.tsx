@@ -651,7 +651,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                 <div key="5h" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-medium text-muted-foreground">{t('quota.label.rolling_5h_limit')}</span>
-                    <span className="font-medium text-foreground">{qd.rollingFiveHourLimit.remaining ?? 0}/{qd.rollingFiveHourLimit.max ?? 0}</span>
+                    <span className="font-medium text-foreground">{Math.round(qd.rollingFiveHourLimit.remaining ?? 0)}/{Math.round(qd.rollingFiveHourLimit.max ?? 0)}</span>
                   </div>
                   {qd.rollingFiveHourLimit.limited && (
                     <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-yellow-500 border-yellow-500/30 font-semibold">

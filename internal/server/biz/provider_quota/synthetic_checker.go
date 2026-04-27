@@ -46,8 +46,8 @@ type SyntheticWeeklyTokenLimit struct {
 type SyntheticRollingFiveHourLimit struct {
 	NextTickAt  *string  `json:"nextTickAt,omitempty"`
 	TickPercent *float64 `json:"tickPercent,omitempty"`
-	Remaining   *int64   `json:"remaining,omitempty"`
-	Max         *int64   `json:"max,omitempty"`
+	Remaining   *float64 `json:"remaining,omitempty"`
+	Max         *float64 `json:"max,omitempty"`
 	Limited     *bool    `json:"limited,omitempty"`
 }
 
