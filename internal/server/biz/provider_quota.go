@@ -371,7 +371,9 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 			return nil
 		})
 	}
-	eg.Wait()
+	if err := eg.Wait(); err != nil {
+		log.Info(ctx, "quota check group interrupted", log.Cause(err))
+	}
 }
 
 func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.Channel, now time.Time) {
