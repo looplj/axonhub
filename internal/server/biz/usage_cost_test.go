@@ -83,7 +83,8 @@ func TestUsageCost_PerUnitPromptAndCompletion(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
@@ -158,7 +159,8 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
@@ -211,7 +213,8 @@ func TestUsageCost_NoPriceConfigured(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
@@ -290,7 +293,8 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
@@ -381,7 +385,8 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
@@ -477,7 +482,8 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)
@@ -564,7 +570,8 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	built, err := channelService.GetChannel(ctx, ch.ID)
 	require.NoError(t, err)

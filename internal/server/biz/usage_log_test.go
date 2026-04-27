@@ -40,10 +40,11 @@ func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 	svc := NewUsageLogService(client, systemService, channelService)
 
@@ -136,10 +137,11 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 
 	// Preload the channel with model prices
@@ -259,10 +261,11 @@ func TestUsageLogService_CreateUsageLog_WithCachedTokens(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	systemService := NewSystemService(SystemServiceParams{
+	systemService, err := NewSystemService(SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
+	require.NoError(t, err)
 	channelService := NewChannelServiceForTest(client)
 
 	// Preload the channel with model prices
