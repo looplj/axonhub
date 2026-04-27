@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+const warningUsedPercent = 80
+
 type WaferUsageResponse struct {
 	Endpoint                   *string  `json:"endpoint,omitempty"`
 	BillingModel               *string  `json:"billing_model,omitempty"`
@@ -88,7 +90,7 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	if response.CurrentPeriodUsedPercent != nil {
 		pct := *response.CurrentPeriodUsedPercent
-		if pct < 80 {
+		if pct < warningUsedPercent {
 			normalizedStatus = "available"
 		} else {
 			normalizedStatus = "warning"
@@ -166,17 +168,7 @@ func (c *WaferQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 		return false
 	}
 
-	return isWaferURL(ch.BaseURL)
-}
-
-func isWaferURL(baseURL string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(baseURL))
-	if err != nil {
-		return false
-	}
-
-	host := parsed.Hostname()
-	return host == "wafer.ai" || strings.HasSuffix(host, ".wafer.ai")
+	return DetectProviderFromURL(ch.BaseURL) == "wafer"
 }
 
 func buildWaferQuotaURL(baseURL string) string {

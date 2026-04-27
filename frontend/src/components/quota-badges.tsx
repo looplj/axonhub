@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 
 
+const syntheticWeeklyRegenTickPct = 0.02;
+
 const STATUS_LABELS = {
   available: 'quota.status.available',
   warning: 'quota.status.warning',
@@ -640,7 +642,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                   {qd.weeklyTokenLimit.nextRegenAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, 0.02)}
+                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, syntheticWeeklyRegenTickPct)}
                     </div>
                   )}
                 </div>
@@ -692,7 +694,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             if (qd.subscription) {
               const kwhIncluded = qd.subscription.kwh_included ?? 0;
               const kwhUsed = qd.subscription.kwh_used ?? 0;
-              const kwhRemaining = qd.subscription.kwh_remaining ?? Math.max(0, kwhIncluded - kwhUsed);
+              const _kwhRemaining = qd.subscription.kwh_remaining ?? Math.max(0, kwhIncluded - kwhUsed);
               const usedPct = kwhIncluded > 0 ? (kwhUsed / kwhIncluded) * 100 : 0;
 
               items.push(

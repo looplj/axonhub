@@ -17,6 +17,15 @@ var urlProviderMap = []urlProviderEntry{
 	{hostPattern: "api.neuralwatt.com", providerType: "neuralwatt"},
 }
 
+func URLDetectedProviders() map[string]struct{} {
+	providers := make(map[string]struct{}, len(urlProviderMap))
+	for _, entry := range urlProviderMap {
+		providers[entry.providerType] = struct{}{}
+	}
+
+	return providers
+}
+
 // DetectProviderFromURL returns the provider type for a base URL, or "" if unrecognized.
 func DetectProviderFromURL(baseURL string) string {
 	baseURL = strings.TrimSpace(baseURL)

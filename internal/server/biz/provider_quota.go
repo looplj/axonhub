@@ -528,8 +528,7 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 	switch ch.Type {
 	case channel.TypeOpenai, channel.TypeOpenaiResponses:
 		providerType := provider_quota.DetectProviderFromURL(ch.BaseURL)
-		switch providerType {
-		case "wafer", "synthetic", "neuralwatt":
+		if _, ok := provider_quota.URLDetectedProviders()[providerType]; ok {
 			return strings.TrimSpace(ch.Credentials.APIKey) != "" || len(ch.Credentials.APIKeys) > 0
 		}
 	}

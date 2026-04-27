@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+const warningRemainingFraction = 0.2
+
 type NeuralWattBalance struct {
 	CreditsRemainingUSD *float64 `json:"credits_remaining_usd,omitempty"`
 	TotalCreditsUSD     *float64 `json:"total_credits_usd,omitempty"`
@@ -134,17 +136,7 @@ func (c *NeuralWattQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 		return false
 	}
 
-	return isNeuralWattURL(ch.BaseURL)
-}
-
-func isNeuralWattURL(baseURL string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(baseURL))
-	if err != nil {
-		return false
-	}
-
-	host := parsed.Hostname()
-	return host == "api.neuralwatt.com" || strings.HasSuffix(host, ".api.neuralwatt.com")
+	return DetectProviderFromURL(ch.BaseURL) == "neuralwatt"
 }
 
 func isNeuralWattLowRemaining(sub *NeuralWattSubscription) bool {
@@ -152,7 +144,7 @@ func isNeuralWattLowRemaining(sub *NeuralWattSubscription) bool {
 		return false
 	}
 
-	return *sub.KwhRemaining < *sub.KwhIncluded*0.2
+	return *sub.KwhRemaining < *sub.KwhIncluded*warningRemainingFraction
 }
 
 func buildNeuralWattQuotaURL(baseURL string) string {

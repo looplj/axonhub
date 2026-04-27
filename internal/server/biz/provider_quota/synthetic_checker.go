@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+const warningPercentRemaining = 20
+
 type SyntheticUsageResponse struct {
 	Subscription         *SyntheticSubscription         `json:"subscription,omitempty"`
 	Search               *SyntheticSearch               `json:"search,omitempty"`
@@ -108,7 +110,7 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	if response.RollingFiveHourLimit != nil && response.RollingFiveHourLimit.Limited != nil && *response.RollingFiveHourLimit.Limited {
 		normalizedStatus = "exhausted"
-	} else if response.WeeklyTokenLimit != nil && response.WeeklyTokenLimit.PercentRemaining != nil && *response.WeeklyTokenLimit.PercentRemaining < 20 {
+	} else if response.WeeklyTokenLimit != nil && response.WeeklyTokenLimit.PercentRemaining != nil && *response.WeeklyTokenLimit.PercentRemaining < warningPercentRemaining {
 		normalizedStatus = "warning"
 	} else if response.RollingFiveHourLimit != nil || response.WeeklyTokenLimit != nil {
 		normalizedStatus = "available"
@@ -152,17 +154,7 @@ func (c *SyntheticQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 		return false
 	}
 
-	return isSyntheticURL(ch.BaseURL)
-}
-
-func isSyntheticURL(baseURL string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(baseURL))
-	if err != nil {
-		return false
-	}
-
-	host := strings.ToLower(parsed.Hostname())
-	return host == "api.synthetic.new" || strings.HasSuffix(host, ".api.synthetic.new")
+	return DetectProviderFromURL(ch.BaseURL) == "synthetic"
 }
 
 func buildSyntheticQuotaURL(baseURL string) string {
