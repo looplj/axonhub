@@ -355,6 +355,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   const tot = total?.[key] ?? rem;
                   const displayRem = rem / 10;
                   const displayTot = tot / 10;
+                  const displayUsed = displayTot - displayRem;
                   const usedPct = tot > 0 ? (1 - rem / tot) * 100 : 0;
                   const labelKey = key === 'completions' ? 'quota.label.inline_suggestions' :
                     key === 'chat' ? 'quota.label.chat_messages' : '';
@@ -365,7 +366,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
                           <span className="font-medium text-muted-foreground">
-                            {label} <span className="opacity-70 font-normal">({Math.round(displayRem)}/{Math.round(displayTot)})</span>
+                            {label} <span className="opacity-70 font-normal">({Math.round(displayUsed)}/{Math.round(displayTot)})</span>
                           </span>
                           <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
                         </div>
@@ -389,6 +390,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
                   const displayRem = snapshot.quota_remaining || snapshot.remaining || 0;
                   const displayTot = snapshot.entitlement || 0;
+                  const displayUsed = displayTot - displayRem;
 
                   items.push(
                     <div key={key} className="space-y-2.5 pt-3 first:pt-0 first:border-0 border-t border-dashed border-border/60">
@@ -396,7 +398,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                         <div className="flex justify-between items-center text-xs">
                           <span className="font-medium text-muted-foreground">
                             {label} {!snapshot.unlimited && (
-                              <span className="opacity-70 font-normal">({Math.round(displayRem)}/{Math.round(displayTot)})</span>
+                              <span className="opacity-70 font-normal">({Math.round(displayUsed)}/{Math.round(displayTot)})</span>
                             )}
                           </span>
                           <span className="font-medium text-foreground">
@@ -524,14 +526,14 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
               const label = t(`quota.window.${key}`);
               const pct = (window.percentUsed ?? 0) * 100;
               const usedStr = isTokens ? formatTokenCount(window.used ?? 0) : `${window.used ?? 0}`;
-              const remStr = isTokens ? formatTokenCount(window.remaining ?? 0) : `${window.remaining ?? 0}`;
+              const totalStr = isTokens ? formatTokenCount((window.used ?? 0) + (window.remaining ?? 0)) : `${(window.used ?? 0) + (window.remaining ?? 0)}`;
 
               items.push(
                 <div key={key} className={idx > 0 ? 'space-y-2.5 pt-3 border-t border-dashed border-border/60' : 'space-y-2.5'}>
                   <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-medium text-muted-foreground">
-                        {label} <span className="opacity-70 font-normal">({usedStr}/{remStr})</span>
+                        {label} <span className="opacity-70 font-normal">({usedStr}/{totalStr})</span>
                       </span>
                       <span className="font-medium text-foreground">{Math.round(pct)}%</span>
                     </div>
@@ -611,14 +613,17 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
               const usedPct = 100 - pctRemaining;
               const remainingCredits = qd.weeklyTokenLimit.remainingCredits;
               const maxCredits = qd.weeklyTokenLimit.maxCredits;
+              const usedCredits = (remainingCredits != null && maxCredits != null)
+                ? (parseFloat(maxCredits) - parseFloat(remainingCredits)).toString()
+                : null;
               items.push(
                 <div key="weekly" className="space-y-2.5">
                   <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-medium text-muted-foreground">
                         {t('quota.label.weekly_token_limit')}
-                        {remainingCredits != null && maxCredits != null && (
-                          <span className="opacity-70 font-normal"> ({remainingCredits}/{maxCredits})</span>
+                        {usedCredits != null && maxCredits != null && (
+                          <span className="opacity-70 font-normal"> ({usedCredits}/{maxCredits})</span>
                         )}
                       </span>
                       <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
@@ -637,13 +642,14 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
             if (qd.rollingFiveHourLimit) {
               const fiveHrRemaining = qd.rollingFiveHourLimit.remaining ?? 0;
               const fiveHrMax = qd.rollingFiveHourLimit.max ?? 0;
-              const fiveHrUsedPct = fiveHrMax > 0 ? ((fiveHrMax - fiveHrRemaining) / fiveHrMax) * 100 : 0;
+              const fiveHrUsed = fiveHrMax - fiveHrRemaining;
+              const fiveHrUsedPct = fiveHrMax > 0 ? (fiveHrUsed / fiveHrMax) * 100 : 0;
               items.push(
                 <div key="5h" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
                   <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-medium text-muted-foreground">
-                        {t('quota.label.rolling_5h_limit')} <span className="opacity-70 font-normal">({Math.round(fiveHrRemaining)}/{Math.round(fiveHrMax)})</span>
+                        {t('quota.label.rolling_5h_limit')} <span className="opacity-70 font-normal">({Math.round(fiveHrUsed)}/{Math.round(fiveHrMax)})</span>
                       </span>
                       <span className="font-medium text-foreground">{Math.round(fiveHrUsedPct)}%</span>
                     </div>
@@ -687,7 +693,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-medium text-muted-foreground">
                         {t('quota.label.kwh_remaining')}
-                        <span className="opacity-70 font-normal"> ({kwhRemaining}/{kwhIncluded})</span>
+                        <span className="opacity-70 font-normal"> ({kwhUsed}/{kwhIncluded})</span>
                       </span>
                       <span className="font-medium text-foreground">{Math.round(usedPct)}%</span>
                     </div>
