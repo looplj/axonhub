@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,8 +14,16 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-func withConnectionTracking(outbound *PersistentOutboundTransformer, tracker ConnectionTracker) pipeline.Middleware {
+func isNilConnectionTracker(tracker ConnectionTracker) bool {
 	if tracker == nil {
+		return true
+	}
+	v := reflect.ValueOf(tracker)
+	return v.Kind() == reflect.Pointer && v.IsNil()
+}
+
+func withConnectionTracking(outbound *PersistentOutboundTransformer, tracker ConnectionTracker) pipeline.Middleware {
+	if isNilConnectionTracker(tracker) {
 		return &noopConnectionTracking{}
 	}
 

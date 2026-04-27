@@ -75,6 +75,8 @@ func NewTestChannelOrchestrator(
 			NewRateLimitAwareStrategy(RateLimitProvider{
 				RequestTracker:    rateLimitTracker,
 				ConnectionTracker: connTracker,
+				ModelConnTracker:  modelConnTracker,
+				CostTracker:       costTracker,
 			}),
 		),
 		connectionTracking:     connTracker,

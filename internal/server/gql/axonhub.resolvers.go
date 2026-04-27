@@ -188,10 +188,12 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 	}
 
 	if rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 {
-		concurrentCurrent := r.connectionTracker.GetActiveConnections(channelID)
-		status.ConcurrentCurrent = &concurrentCurrent
-		concurrentLimit := int(*rl.MaxConcurrent)
-		status.ConcurrentLimit = &concurrentLimit
+		if r.connectionTracker != nil {
+			concurrentCurrent := r.connectionTracker.GetActiveConnections(channelID)
+			status.ConcurrentCurrent = &concurrentCurrent
+			concurrentLimit := int(*rl.MaxConcurrent)
+			status.ConcurrentLimit = &concurrentLimit
+		}
 	}
 
 	if rl.Cost != nil && rl.Cost.IsPositive() && r.quotaService != nil {
