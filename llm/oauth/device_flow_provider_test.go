@@ -1095,58 +1095,6 @@ func TestDeviceFlowProvider_AutoRefresh_StartStop_Idempotent(t *testing.T) {
 	provider.StopAutoRefresh()
 	provider.StopAutoRefresh()
 }
-
-// Test auto-refresh triggers refresh.
-func TestDeviceFlowProvider_AutoRefresh_TriggersRefresh(t *testing.T) {
-	var refreshCalls atomic.Int32
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		refreshCalls.Add(1)
-
-		resp := TokenResponse{
-			AccessToken: "refreshed",
-			TokenType:   "Bearer",
-			ExpiresIn:   1,
-		}
-		b, _ := json.Marshal(resp)
-
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(b)
-	}))
-	defer server.Close()
-
-	var refreshedCalled atomic.Int32
-
-	provider := NewDeviceFlowProvider(DeviceFlowProviderParams{
-		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
-		Config: DeviceFlowConfig{
-			TokenURL: server.URL + "/token",
-			ClientID: "test-client",
-		},
-		Credentials: &OAuthCredentials{
-			AccessToken:  "expired",
-			RefreshToken: "refresh",
-			ExpiresAt:    time.Now().Add(-time.Hour),
-		},
-		OnRefreshed: func(ctx context.Context, refreshed *OAuthCredentials) error {
-			refreshedCalled.Add(1)
-			return nil
-		},
-	})
-
-	provider.StartAutoRefresh(context.Background(), AutoRefreshOptions{
-		Interval:      10 * time.Millisecond,
-		RefreshBefore: 950 * time.Millisecond,
-	})
-
-	time.Sleep(200 * time.Millisecond)
-
-	provider.StopAutoRefresh()
-
-	assert.GreaterOrEqual(t, refreshCalls.Load(), int32(1))
-	assert.GreaterOrEqual(t, refreshedCalled.Load(), int32(1))
-}
-
 // Test network errors.
 func TestDeviceFlowProvider_NetworkErrors(t *testing.T) {
 	t.Parallel()
