@@ -23,12 +23,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xdecimal"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/samber/lo"
-
-	"github.com/looplj/axonhub/internal/pkg/xdecimal"
 )
 
 // AllModelEntries is the resolver for the allModelEntries field.
@@ -75,38 +74,6 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	}
 
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
-}
-
-// LiveLimiterStats is the resolver for the liveLimiterStats field.
-func (r *channelResolver) LiveLimiterStats(ctx context.Context, obj *ent.Channel) (*ChannelLimiterStats, error) {
-	if r.channelLimiterManager == nil || obj == nil {
-		return nil, nil
-	}
-
-	if obj.Settings == nil || obj.Settings.RateLimit == nil {
-		return nil, nil
-	}
-
-	rl := obj.Settings.RateLimit
-	if rl.MaxConcurrent == nil || *rl.MaxConcurrent <= 0 {
-		return nil, nil
-	}
-
-	queueSize := 0
-	if rl.QueueSize != nil && *rl.QueueSize > 0 {
-		queueSize = int(*rl.QueueSize)
-	}
-
-	// Stats returns ok=false until the first request creates the limiter; in
-	// that case in-flight / waiting are simply 0.
-	inFlight, waiting, _ := r.channelLimiterManager.Stats(obj.ID)
-
-	return &ChannelLimiterStats{
-		InFlight:  inFlight,
-		Waiting:   waiting,
-		Capacity:  int(*rl.MaxConcurrent),
-		QueueSize: queueSize,
-	}, nil
 }
 
 // RateLimitStatus resolves the rate limit status for a channel.
@@ -255,6 +222,58 @@ func (r *channelResolver) RateLimitStatus(ctx context.Context, obj *ent.Channel)
 	}
 
 	return status, nil
+}
+
+// LiveLimiterStats is the resolver for the liveLimiterStats field.
+func (r *channelResolver) LiveLimiterStats(ctx context.Context, obj *ent.Channel) (*ChannelLimiterStats, error) {
+	if r.channelLimiterManager == nil || obj == nil {
+		return nil, nil
+	}
+
+	if obj.Settings == nil || obj.Settings.RateLimit == nil {
+		return nil, nil
+	}
+
+	rl := obj.Settings.RateLimit
+	if rl.MaxConcurrent == nil || *rl.MaxConcurrent <= 0 {
+		return nil, nil
+	}
+
+	queueSize := 0
+	if rl.QueueSize != nil && *rl.QueueSize > 0 {
+		queueSize = int(*rl.QueueSize)
+	}
+
+	// Stats returns ok=false until the first request creates the limiter; in
+	// that case in-flight / waiting are simply 0.
+	inFlight, waiting, _ := r.channelLimiterManager.Stats(obj.ID)
+
+	return &ChannelLimiterStats{
+		InFlight:  inFlight,
+		Waiting:   waiting,
+		Capacity:  int(*rl.MaxConcurrent),
+		QueueSize: queueSize,
+	}, nil
+}
+
+// Rpm is the resolver for the rpm field.
+func (r *channelRateLimitResolver) Rpm(ctx context.Context, obj *objects.ChannelRateLimit) (*Int64Scalar, error) {
+	if obj == nil || obj.RPM == nil {
+		return nil, nil
+	}
+
+	s := Int64Scalar(*obj.RPM)
+	return &s, nil
+}
+
+// Tpm is the resolver for the tpm field.
+func (r *channelRateLimitResolver) Tpm(ctx context.Context, obj *objects.ChannelRateLimit) (*Int64Scalar, error) {
+	if obj == nil || obj.TPM == nil {
+		return nil, nil
+	}
+
+	s := Int64Scalar(*obj.TPM)
+	return &s, nil
 }
 
 // Cost is the resolver for the cost field.
@@ -995,6 +1014,28 @@ func (r *traceResolver) FirstText(ctx context.Context, obj *ent.Trace) (*string,
 // UsageMetadata is the resolver for the usageMetadata field.
 func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz.UsageMetadata, error) {
 	return r.traceService.UsageMetadata(ctx, obj.ID)
+}
+
+// Rpm is the resolver for the rpm field.
+func (r *channelRateLimitInputResolver) Rpm(ctx context.Context, obj *objects.ChannelRateLimit, data *Int64Scalar) error {
+	if data == nil {
+		obj.RPM = nil
+		return nil
+	}
+
+	obj.RPM = lo.ToPtr(int64(*data))
+	return nil
+}
+
+// Tpm is the resolver for the tpm field.
+func (r *channelRateLimitInputResolver) Tpm(ctx context.Context, obj *objects.ChannelRateLimit, data *Int64Scalar) error {
+	if data == nil {
+		obj.TPM = nil
+		return nil
+	}
+
+	obj.TPM = lo.ToPtr(int64(*data))
+	return nil
 }
 
 // Cost is the resolver for the cost field.

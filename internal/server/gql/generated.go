@@ -69,6 +69,7 @@ type ResolverRoot interface {
 	ChannelOverrideTemplate() ChannelOverrideTemplateResolver
 	ChannelProbe() ChannelProbeResolver
 	ChannelProbeData() ChannelProbeDataResolver
+	ChannelRateLimit() ChannelRateLimitResolver
 	ChannelSettings() ChannelSettingsResolver
 	DataStorage() DataStorageResolver
 	Model() ModelResolver
@@ -89,6 +90,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
+	ChannelRateLimitInput() ChannelRateLimitInputResolver
 }
 
 type DirectiveRoot struct {
@@ -277,6 +279,7 @@ type ComplexityRoot struct {
 		OrderingWeight          func(childComplexity int) int
 		Policies                func(childComplexity int) int
 		ProviderQuotaStatus     func(childComplexity int) int
+		RateLimitStatus         func(childComplexity int) int
 		Remark                  func(childComplexity int) int
 		Requests                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
 		Settings                func(childComplexity int) int
@@ -445,11 +448,38 @@ type ComplexityRoot struct {
 	}
 
 	ChannelRateLimit struct {
-		MaxConcurrent  func(childComplexity int) int
-		QueueSize      func(childComplexity int) int
-		QueueTimeoutMs func(childComplexity int) int
-		RPM            func(childComplexity int) int
-		TPM            func(childComplexity int) int
+		Cost             func(childComplexity int) int
+		CostDuration     func(childComplexity int) int
+		CostWindowAnchor func(childComplexity int) int
+		MaxConcurrent    func(childComplexity int) int
+		ModelConcurrent  func(childComplexity int) int
+		QueueSize        func(childComplexity int) int
+		QueueTimeoutMs   func(childComplexity int) int
+		RPMDuration      func(childComplexity int) int
+		RPMWindowAnchor  func(childComplexity int) int
+		Rpm              func(childComplexity int) int
+		TPMDuration      func(childComplexity int) int
+		TPMWindowAnchor  func(childComplexity int) int
+		Tpm              func(childComplexity int) int
+	}
+
+	ChannelRateLimitStatus struct {
+		ConcurrentCurrent func(childComplexity int) int
+		ConcurrentLimit   func(childComplexity int) int
+		CooldownUntil     func(childComplexity int) int
+		CostCurrent       func(childComplexity int) int
+		CostLimit         func(childComplexity int) int
+		CostResetAt       func(childComplexity int) int
+		CostWindowAnchor  func(childComplexity int) int
+		IsCoolingDown     func(childComplexity int) int
+		RpmCurrent        func(childComplexity int) int
+		RpmLimit          func(childComplexity int) int
+		RpmResetAt        func(childComplexity int) int
+		RpmWindowAnchor   func(childComplexity int) int
+		TpmCurrent        func(childComplexity int) int
+		TpmLimit          func(childComplexity int) int
+		TpmResetAt        func(childComplexity int) int
+		TpmWindowAnchor   func(childComplexity int) int
 	}
 
 	ChannelRegexAssociation struct {
@@ -746,6 +776,11 @@ type ComplexityRoot struct {
 		Channel  func(childComplexity int) int
 		Models   func(childComplexity int) int
 		Priority func(childComplexity int) int
+	}
+
+	ModelConcurrent struct {
+		Limit func(childComplexity int) int
+		Model func(childComplexity int) int
 	}
 
 	ModelConnection struct {
@@ -1830,6 +1865,7 @@ type ChannelResolver interface {
 	AllModelEntries(ctx context.Context, obj *ent.Channel) ([]*biz.ChannelModelEntry, error)
 	Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error)
 	DisabledAPIKeys(ctx context.Context, obj *ent.Channel) ([]*objects.DisabledAPIKey, error)
+	RateLimitStatus(ctx context.Context, obj *ent.Channel) (*ChannelRateLimitStatus, error)
 	LiveLimiterStats(ctx context.Context, obj *ent.Channel) (*ChannelLimiterStats, error)
 }
 type ChannelModelPriceResolver interface {
@@ -1857,6 +1893,13 @@ type ChannelProbeResolver interface {
 }
 type ChannelProbeDataResolver interface {
 	ChannelID(ctx context.Context, obj *biz.ChannelProbeData) (*objects.GUID, error)
+}
+type ChannelRateLimitResolver interface {
+	Rpm(ctx context.Context, obj *objects.ChannelRateLimit) (*Int64Scalar, error)
+	Tpm(ctx context.Context, obj *objects.ChannelRateLimit) (*Int64Scalar, error)
+	Cost(ctx context.Context, obj *objects.ChannelRateLimit) (*float64, error)
+
+	ModelConcurrent(ctx context.Context, obj *objects.ChannelRateLimit) ([]*ModelConcurrent, error)
 }
 type ChannelSettingsResolver interface {
 	HeaderOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error)
@@ -2143,6 +2186,17 @@ type UserRoleResolver interface {
 	ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
+}
+
+type ChannelRateLimitInputResolver interface {
+	Rpm(ctx context.Context, obj *objects.ChannelRateLimit, data *Int64Scalar) error
+	Tpm(ctx context.Context, obj *objects.ChannelRateLimit, data *Int64Scalar) error
+	Cost(ctx context.Context, obj *objects.ChannelRateLimit, data *float64) error
+
+	RpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error
+	TpmWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error
+	CostWindowAnchor(ctx context.Context, obj *objects.ChannelRateLimit, data *time.Time) error
+	ModelConcurrent(ctx context.Context, obj *objects.ChannelRateLimit, data []*ModelConcurrentInput) error
 }
 
 type executableSchema struct {
@@ -2852,6 +2906,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.ProviderQuotaStatus(childComplexity), true
+	case "Channel.rateLimitStatus":
+		if e.complexity.Channel.RateLimitStatus == nil {
+			break
+		}
+
+		return e.complexity.Channel.RateLimitStatus(childComplexity), true
 	case "Channel.remark":
 		if e.complexity.Channel.Remark == nil {
 			break
@@ -3479,12 +3539,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelProbeSetting.Frequency(childComplexity), true
 
+	case "ChannelRateLimit.cost":
+		if e.complexity.ChannelRateLimit.Cost == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.Cost(childComplexity), true
+	case "ChannelRateLimit.costDuration":
+		if e.complexity.ChannelRateLimit.CostDuration == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.CostDuration(childComplexity), true
+	case "ChannelRateLimit.costWindowAnchor":
+		if e.complexity.ChannelRateLimit.CostWindowAnchor == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.CostWindowAnchor(childComplexity), true
 	case "ChannelRateLimit.maxConcurrent":
 		if e.complexity.ChannelRateLimit.MaxConcurrent == nil {
 			break
 		}
 
 		return e.complexity.ChannelRateLimit.MaxConcurrent(childComplexity), true
+	case "ChannelRateLimit.modelConcurrent":
+		if e.complexity.ChannelRateLimit.ModelConcurrent == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.ModelConcurrent(childComplexity), true
 	case "ChannelRateLimit.queueSize":
 		if e.complexity.ChannelRateLimit.QueueSize == nil {
 			break
@@ -3497,18 +3581,139 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelRateLimit.QueueTimeoutMs(childComplexity), true
+	case "ChannelRateLimit.rpmDuration":
+		if e.complexity.ChannelRateLimit.RPMDuration == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.RPMDuration(childComplexity), true
+	case "ChannelRateLimit.rpmWindowAnchor":
+		if e.complexity.ChannelRateLimit.RPMWindowAnchor == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.RPMWindowAnchor(childComplexity), true
 	case "ChannelRateLimit.rpm":
-		if e.complexity.ChannelRateLimit.RPM == nil {
+		if e.complexity.ChannelRateLimit.Rpm == nil {
 			break
 		}
 
-		return e.complexity.ChannelRateLimit.RPM(childComplexity), true
+		return e.complexity.ChannelRateLimit.Rpm(childComplexity), true
+	case "ChannelRateLimit.tpmDuration":
+		if e.complexity.ChannelRateLimit.TPMDuration == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.TPMDuration(childComplexity), true
+	case "ChannelRateLimit.tpmWindowAnchor":
+		if e.complexity.ChannelRateLimit.TPMWindowAnchor == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.TPMWindowAnchor(childComplexity), true
 	case "ChannelRateLimit.tpm":
-		if e.complexity.ChannelRateLimit.TPM == nil {
+		if e.complexity.ChannelRateLimit.Tpm == nil {
 			break
 		}
 
-		return e.complexity.ChannelRateLimit.TPM(childComplexity), true
+		return e.complexity.ChannelRateLimit.Tpm(childComplexity), true
+
+	case "ChannelRateLimitStatus.concurrentCurrent":
+		if e.complexity.ChannelRateLimitStatus.ConcurrentCurrent == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.ConcurrentCurrent(childComplexity), true
+	case "ChannelRateLimitStatus.concurrentLimit":
+		if e.complexity.ChannelRateLimitStatus.ConcurrentLimit == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.ConcurrentLimit(childComplexity), true
+	case "ChannelRateLimitStatus.cooldownUntil":
+		if e.complexity.ChannelRateLimitStatus.CooldownUntil == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.CooldownUntil(childComplexity), true
+	case "ChannelRateLimitStatus.costCurrent":
+		if e.complexity.ChannelRateLimitStatus.CostCurrent == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.CostCurrent(childComplexity), true
+	case "ChannelRateLimitStatus.costLimit":
+		if e.complexity.ChannelRateLimitStatus.CostLimit == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.CostLimit(childComplexity), true
+	case "ChannelRateLimitStatus.costResetAt":
+		if e.complexity.ChannelRateLimitStatus.CostResetAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.CostResetAt(childComplexity), true
+	case "ChannelRateLimitStatus.costWindowAnchor":
+		if e.complexity.ChannelRateLimitStatus.CostWindowAnchor == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.CostWindowAnchor(childComplexity), true
+	case "ChannelRateLimitStatus.isCoolingDown":
+		if e.complexity.ChannelRateLimitStatus.IsCoolingDown == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.IsCoolingDown(childComplexity), true
+	case "ChannelRateLimitStatus.rpmCurrent":
+		if e.complexity.ChannelRateLimitStatus.RpmCurrent == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.RpmCurrent(childComplexity), true
+	case "ChannelRateLimitStatus.rpmLimit":
+		if e.complexity.ChannelRateLimitStatus.RpmLimit == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.RpmLimit(childComplexity), true
+	case "ChannelRateLimitStatus.rpmResetAt":
+		if e.complexity.ChannelRateLimitStatus.RpmResetAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.RpmResetAt(childComplexity), true
+	case "ChannelRateLimitStatus.rpmWindowAnchor":
+		if e.complexity.ChannelRateLimitStatus.RpmWindowAnchor == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.RpmWindowAnchor(childComplexity), true
+	case "ChannelRateLimitStatus.tpmCurrent":
+		if e.complexity.ChannelRateLimitStatus.TpmCurrent == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.TpmCurrent(childComplexity), true
+	case "ChannelRateLimitStatus.tpmLimit":
+		if e.complexity.ChannelRateLimitStatus.TpmLimit == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.TpmLimit(childComplexity), true
+	case "ChannelRateLimitStatus.tpmResetAt":
+		if e.complexity.ChannelRateLimitStatus.TpmResetAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.TpmResetAt(childComplexity), true
+	case "ChannelRateLimitStatus.tpmWindowAnchor":
+		if e.complexity.ChannelRateLimitStatus.TpmWindowAnchor == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimitStatus.TpmWindowAnchor(childComplexity), true
 
 	case "ChannelRegexAssociation.channelId":
 		if e.complexity.ChannelRegexAssociation.ChannelID == nil {
@@ -4598,6 +4803,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelChannelConnection.Priority(childComplexity), true
+
+	case "ModelConcurrent.limit":
+		if e.complexity.ModelConcurrent.Limit == nil {
+			break
+		}
+
+		return e.complexity.ModelConcurrent.Limit(childComplexity), true
+	case "ModelConcurrent.model":
+		if e.complexity.ModelConcurrent.Model == nil {
+			break
+		}
+
+		return e.complexity.ModelConcurrent.Model(childComplexity), true
 
 	case "ModelConnection.edges":
 		if e.complexity.ModelConnection.Edges == nil {
@@ -9806,6 +10024,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputModelCardLimitInput,
 		ec.unmarshalInputModelCardModalitiesInput,
 		ec.unmarshalInputModelCardReasoningInput,
+		ec.unmarshalInputModelConcurrentInput,
 		ec.unmarshalInputModelIDAssociationInput,
 		ec.unmarshalInputModelMappingInput,
 		ec.unmarshalInputModelOrder,
@@ -14879,6 +15098,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -15819,6 +16040,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -15964,6 +16187,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -16936,6 +17161,69 @@ func (ec *executionContext) fieldContext_Channel_disabledAPIKeys(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Channel_rateLimitStatus(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_rateLimitStatus,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Channel().RateLimitStatus(ctx, obj)
+		},
+		nil,
+		ec.marshalOChannelRateLimitStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelRateLimitStatus,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_rateLimitStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "rpmCurrent":
+				return ec.fieldContext_ChannelRateLimitStatus_rpmCurrent(ctx, field)
+			case "rpmLimit":
+				return ec.fieldContext_ChannelRateLimitStatus_rpmLimit(ctx, field)
+			case "rpmResetAt":
+				return ec.fieldContext_ChannelRateLimitStatus_rpmResetAt(ctx, field)
+			case "rpmWindowAnchor":
+				return ec.fieldContext_ChannelRateLimitStatus_rpmWindowAnchor(ctx, field)
+			case "tpmCurrent":
+				return ec.fieldContext_ChannelRateLimitStatus_tpmCurrent(ctx, field)
+			case "tpmLimit":
+				return ec.fieldContext_ChannelRateLimitStatus_tpmLimit(ctx, field)
+			case "tpmResetAt":
+				return ec.fieldContext_ChannelRateLimitStatus_tpmResetAt(ctx, field)
+			case "tpmWindowAnchor":
+				return ec.fieldContext_ChannelRateLimitStatus_tpmWindowAnchor(ctx, field)
+			case "costCurrent":
+				return ec.fieldContext_ChannelRateLimitStatus_costCurrent(ctx, field)
+			case "costLimit":
+				return ec.fieldContext_ChannelRateLimitStatus_costLimit(ctx, field)
+			case "costResetAt":
+				return ec.fieldContext_ChannelRateLimitStatus_costResetAt(ctx, field)
+			case "costWindowAnchor":
+				return ec.fieldContext_ChannelRateLimitStatus_costWindowAnchor(ctx, field)
+			case "concurrentCurrent":
+				return ec.fieldContext_ChannelRateLimitStatus_concurrentCurrent(ctx, field)
+			case "concurrentLimit":
+				return ec.fieldContext_ChannelRateLimitStatus_concurrentLimit(ctx, field)
+			case "isCoolingDown":
+				return ec.fieldContext_ChannelRateLimitStatus_isCoolingDown(ctx, field)
+			case "cooldownUntil":
+				return ec.fieldContext_ChannelRateLimitStatus_cooldownUntil(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelRateLimitStatus", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Channel_liveLimiterStats(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17294,6 +17582,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -17907,6 +18197,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Con
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -19777,6 +20069,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -20066,10 +20360,10 @@ func (ec *executionContext) _ChannelRateLimit_rpm(ctx context.Context, field gra
 		field,
 		ec.fieldContext_ChannelRateLimit_rpm,
 		func(ctx context.Context) (any, error) {
-			return obj.RPM, nil
+			return ec.resolvers.ChannelRateLimit().Rpm(ctx, obj)
 		},
 		nil,
-		ec.marshalOInt2ᚖint64,
+		ec.marshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar,
 		true,
 		false,
 	)
@@ -20079,10 +20373,10 @@ func (ec *executionContext) fieldContext_ChannelRateLimit_rpm(_ context.Context,
 	fc = &graphql.FieldContext{
 		Object:     "ChannelRateLimit",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20095,10 +20389,10 @@ func (ec *executionContext) _ChannelRateLimit_tpm(ctx context.Context, field gra
 		field,
 		ec.fieldContext_ChannelRateLimit_tpm,
 		func(ctx context.Context) (any, error) {
-			return obj.TPM, nil
+			return ec.resolvers.ChannelRateLimit().Tpm(ctx, obj)
 		},
 		nil,
-		ec.marshalOInt2ᚖint64,
+		ec.marshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar,
 		true,
 		false,
 	)
@@ -20108,10 +20402,39 @@ func (ec *executionContext) fieldContext_ChannelRateLimit_tpm(_ context.Context,
 	fc = &graphql.FieldContext{
 		Object:     "ChannelRateLimit",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_cost(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_cost,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelRateLimit().Cost(ctx, obj)
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20199,6 +20522,679 @@ func (ec *executionContext) fieldContext_ChannelRateLimit_queueTimeoutMs(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_rpmDuration(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_rpmDuration,
+		func(ctx context.Context) (any, error) {
+			return obj.RPMDuration, nil
+		},
+		nil,
+		ec.marshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_rpmDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RateLimitDuration does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_tpmDuration(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_tpmDuration,
+		func(ctx context.Context) (any, error) {
+			return obj.TPMDuration, nil
+		},
+		nil,
+		ec.marshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_tpmDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RateLimitDuration does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_costDuration(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_costDuration,
+		func(ctx context.Context) (any, error) {
+			return obj.CostDuration, nil
+		},
+		nil,
+		ec.marshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_costDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RateLimitDuration does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_rpmWindowAnchor(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_rpmWindowAnchor,
+		func(ctx context.Context) (any, error) {
+			return obj.RPMWindowAnchor, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_rpmWindowAnchor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_tpmWindowAnchor(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_tpmWindowAnchor,
+		func(ctx context.Context) (any, error) {
+			return obj.TPMWindowAnchor, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_tpmWindowAnchor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_costWindowAnchor(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_costWindowAnchor,
+		func(ctx context.Context) (any, error) {
+			return obj.CostWindowAnchor, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_costWindowAnchor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_modelConcurrent(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_modelConcurrent,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelRateLimit().ModelConcurrent(ctx, obj)
+		},
+		nil,
+		ec.marshalOModelConcurrent2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrentᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_modelConcurrent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "model":
+				return ec.fieldContext_ModelConcurrent_model(ctx, field)
+			case "limit":
+				return ec.fieldContext_ModelConcurrent_limit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelConcurrent", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_rpmCurrent(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_rpmCurrent,
+		func(ctx context.Context) (any, error) {
+			return obj.RpmCurrent, nil
+		},
+		nil,
+		ec.marshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_rpmCurrent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_rpmLimit(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_rpmLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.RpmLimit, nil
+		},
+		nil,
+		ec.marshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_rpmLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_rpmResetAt(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_rpmResetAt,
+		func(ctx context.Context) (any, error) {
+			return obj.RpmResetAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_rpmResetAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_rpmWindowAnchor(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_rpmWindowAnchor,
+		func(ctx context.Context) (any, error) {
+			return obj.RpmWindowAnchor, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_rpmWindowAnchor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_tpmCurrent(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_tpmCurrent,
+		func(ctx context.Context) (any, error) {
+			return obj.TpmCurrent, nil
+		},
+		nil,
+		ec.marshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_tpmCurrent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_tpmLimit(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_tpmLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.TpmLimit, nil
+		},
+		nil,
+		ec.marshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_tpmLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_tpmResetAt(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_tpmResetAt,
+		func(ctx context.Context) (any, error) {
+			return obj.TpmResetAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_tpmResetAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_tpmWindowAnchor(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_tpmWindowAnchor,
+		func(ctx context.Context) (any, error) {
+			return obj.TpmWindowAnchor, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_tpmWindowAnchor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_costCurrent(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_costCurrent,
+		func(ctx context.Context) (any, error) {
+			return obj.CostCurrent, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_costCurrent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_costLimit(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_costLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.CostLimit, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_costLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_costResetAt(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_costResetAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CostResetAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_costResetAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_costWindowAnchor(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_costWindowAnchor,
+		func(ctx context.Context) (any, error) {
+			return obj.CostWindowAnchor, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_costWindowAnchor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_concurrentCurrent(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_concurrentCurrent,
+		func(ctx context.Context) (any, error) {
+			return obj.ConcurrentCurrent, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_concurrentCurrent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_concurrentLimit(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_concurrentLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.ConcurrentLimit, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_concurrentLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_isCoolingDown(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_isCoolingDown,
+		func(ctx context.Context) (any, error) {
+			return obj.IsCoolingDown, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_isCoolingDown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimitStatus_cooldownUntil(ctx context.Context, field graphql.CollectedField, obj *ChannelRateLimitStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimitStatus_cooldownUntil,
+		func(ctx context.Context) (any, error) {
+			return obj.CooldownUntil, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimitStatus_cooldownUntil(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimitStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20669,12 +21665,28 @@ func (ec *executionContext) fieldContext_ChannelSettings_rateLimit(_ context.Con
 				return ec.fieldContext_ChannelRateLimit_rpm(ctx, field)
 			case "tpm":
 				return ec.fieldContext_ChannelRateLimit_tpm(ctx, field)
+			case "cost":
+				return ec.fieldContext_ChannelRateLimit_cost(ctx, field)
 			case "maxConcurrent":
 				return ec.fieldContext_ChannelRateLimit_maxConcurrent(ctx, field)
 			case "queueSize":
 				return ec.fieldContext_ChannelRateLimit_queueSize(ctx, field)
 			case "queueTimeoutMs":
 				return ec.fieldContext_ChannelRateLimit_queueTimeoutMs(ctx, field)
+			case "rpmDuration":
+				return ec.fieldContext_ChannelRateLimit_rpmDuration(ctx, field)
+			case "tpmDuration":
+				return ec.fieldContext_ChannelRateLimit_tpmDuration(ctx, field)
+			case "costDuration":
+				return ec.fieldContext_ChannelRateLimit_costDuration(ctx, field)
+			case "rpmWindowAnchor":
+				return ec.fieldContext_ChannelRateLimit_rpmWindowAnchor(ctx, field)
+			case "tpmWindowAnchor":
+				return ec.fieldContext_ChannelRateLimit_tpmWindowAnchor(ctx, field)
+			case "costWindowAnchor":
+				return ec.fieldContext_ChannelRateLimit_costWindowAnchor(ctx, field)
+			case "modelConcurrent":
+				return ec.fieldContext_ChannelRateLimit_modelConcurrent(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelRateLimit", field.Name)
 		},
@@ -21398,6 +22410,8 @@ func (ec *executionContext) fieldContext_ClearChannelOverrideTemplatesPayload_ch
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -25642,6 +26656,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -25707,6 +26723,64 @@ func (ec *executionContext) _ModelChannelConnection_priority(ctx context.Context
 func (ec *executionContext) fieldContext_ModelChannelConnection_priority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ModelChannelConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelConcurrent_model(ctx context.Context, field graphql.CollectedField, obj *ModelConcurrent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelConcurrent_model,
+		func(ctx context.Context) (any, error) {
+			return obj.Model, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelConcurrent_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelConcurrent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelConcurrent_limit(ctx context.Context, field graphql.CollectedField, obj *ModelConcurrent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelConcurrent_limit,
+		func(ctx context.Context) (any, error) {
+			return obj.Limit, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelConcurrent_limit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelConcurrent",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26679,6 +27753,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -26778,6 +27854,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -26877,6 +27955,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -26976,6 +28056,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -35259,6 +36341,8 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_channel(_ context.C
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -36396,6 +37480,8 @@ func (ec *executionContext) fieldContext_Query_allChannelSummarys(ctx context.Co
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -39937,6 +41023,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -41012,6 +42100,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -48072,6 +49162,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -49085,6 +50177,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_credentials(ctx, field)
 			case "disabledAPIKeys":
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "rateLimitStatus":
+				return ec.fieldContext_Channel_rateLimitStatus(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
@@ -57469,7 +58563,7 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"rpm", "tpm", "maxConcurrent", "queueSize", "queueTimeoutMs"}
+	fieldsInOrder := [...]string{"rpm", "tpm", "cost", "maxConcurrent", "queueSize", "queueTimeoutMs", "rpmDuration", "tpmDuration", "costDuration", "rpmWindowAnchor", "tpmWindowAnchor", "costWindowAnchor", "modelConcurrent"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57478,18 +58572,31 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 		switch k {
 		case "rpm":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rpm"))
-			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			data, err := ec.unmarshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RPM = data
+			if err = ec.resolvers.ChannelRateLimitInput().Rpm(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "tpm":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tpm"))
-			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			data, err := ec.unmarshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TPM = data
+			if err = ec.resolvers.ChannelRateLimitInput().Tpm(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "cost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cost"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelRateLimitInput().Cost(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "maxConcurrent":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxConcurrent"))
 			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
@@ -57511,6 +58618,63 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 				return it, err
 			}
 			it.QueueTimeoutMs = data
+		case "rpmDuration":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rpmDuration"))
+			data, err := ec.unmarshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RPMDuration = data
+		case "tpmDuration":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tpmDuration"))
+			data, err := ec.unmarshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TPMDuration = data
+		case "costDuration":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costDuration"))
+			data, err := ec.unmarshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostDuration = data
+		case "rpmWindowAnchor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rpmWindowAnchor"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelRateLimitInput().RpmWindowAnchor(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "tpmWindowAnchor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tpmWindowAnchor"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelRateLimitInput().TpmWindowAnchor(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "costWindowAnchor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costWindowAnchor"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelRateLimitInput().CostWindowAnchor(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "modelConcurrent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelConcurrent"))
+			data, err := ec.unmarshalOModelConcurrentInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrentInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelRateLimitInput().ModelConcurrent(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -61633,6 +62797,40 @@ func (ec *executionContext) unmarshalInputModelCardReasoningInput(ctx context.Co
 				return it, err
 			}
 			it.Default = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputModelConcurrentInput(ctx context.Context, obj any) (ModelConcurrentInput, error) {
+	var it ModelConcurrentInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"model", "limit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "model":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("model"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Model = data
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
 		}
 	}
 
@@ -78716,6 +79914,39 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "rateLimitStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Channel_rateLimitStatus(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "liveLimiterStats":
 			field := field
 
@@ -80400,15 +81631,224 @@ func (ec *executionContext) _ChannelRateLimit(ctx context.Context, sel ast.Selec
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ChannelRateLimit")
 		case "rpm":
-			out.Values[i] = ec._ChannelRateLimit_rpm(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelRateLimit_rpm(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "tpm":
-			out.Values[i] = ec._ChannelRateLimit_tpm(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelRateLimit_tpm(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "cost":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelRateLimit_cost(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "maxConcurrent":
 			out.Values[i] = ec._ChannelRateLimit_maxConcurrent(ctx, field, obj)
 		case "queueSize":
 			out.Values[i] = ec._ChannelRateLimit_queueSize(ctx, field, obj)
 		case "queueTimeoutMs":
 			out.Values[i] = ec._ChannelRateLimit_queueTimeoutMs(ctx, field, obj)
+		case "rpmDuration":
+			out.Values[i] = ec._ChannelRateLimit_rpmDuration(ctx, field, obj)
+		case "tpmDuration":
+			out.Values[i] = ec._ChannelRateLimit_tpmDuration(ctx, field, obj)
+		case "costDuration":
+			out.Values[i] = ec._ChannelRateLimit_costDuration(ctx, field, obj)
+		case "rpmWindowAnchor":
+			out.Values[i] = ec._ChannelRateLimit_rpmWindowAnchor(ctx, field, obj)
+		case "tpmWindowAnchor":
+			out.Values[i] = ec._ChannelRateLimit_tpmWindowAnchor(ctx, field, obj)
+		case "costWindowAnchor":
+			out.Values[i] = ec._ChannelRateLimit_costWindowAnchor(ctx, field, obj)
+		case "modelConcurrent":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelRateLimit_modelConcurrent(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelRateLimitStatusImplementors = []string{"ChannelRateLimitStatus"}
+
+func (ec *executionContext) _ChannelRateLimitStatus(ctx context.Context, sel ast.SelectionSet, obj *ChannelRateLimitStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelRateLimitStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelRateLimitStatus")
+		case "rpmCurrent":
+			out.Values[i] = ec._ChannelRateLimitStatus_rpmCurrent(ctx, field, obj)
+		case "rpmLimit":
+			out.Values[i] = ec._ChannelRateLimitStatus_rpmLimit(ctx, field, obj)
+		case "rpmResetAt":
+			out.Values[i] = ec._ChannelRateLimitStatus_rpmResetAt(ctx, field, obj)
+		case "rpmWindowAnchor":
+			out.Values[i] = ec._ChannelRateLimitStatus_rpmWindowAnchor(ctx, field, obj)
+		case "tpmCurrent":
+			out.Values[i] = ec._ChannelRateLimitStatus_tpmCurrent(ctx, field, obj)
+		case "tpmLimit":
+			out.Values[i] = ec._ChannelRateLimitStatus_tpmLimit(ctx, field, obj)
+		case "tpmResetAt":
+			out.Values[i] = ec._ChannelRateLimitStatus_tpmResetAt(ctx, field, obj)
+		case "tpmWindowAnchor":
+			out.Values[i] = ec._ChannelRateLimitStatus_tpmWindowAnchor(ctx, field, obj)
+		case "costCurrent":
+			out.Values[i] = ec._ChannelRateLimitStatus_costCurrent(ctx, field, obj)
+		case "costLimit":
+			out.Values[i] = ec._ChannelRateLimitStatus_costLimit(ctx, field, obj)
+		case "costResetAt":
+			out.Values[i] = ec._ChannelRateLimitStatus_costResetAt(ctx, field, obj)
+		case "costWindowAnchor":
+			out.Values[i] = ec._ChannelRateLimitStatus_costWindowAnchor(ctx, field, obj)
+		case "concurrentCurrent":
+			out.Values[i] = ec._ChannelRateLimitStatus_concurrentCurrent(ctx, field, obj)
+		case "concurrentLimit":
+			out.Values[i] = ec._ChannelRateLimitStatus_concurrentLimit(ctx, field, obj)
+		case "isCoolingDown":
+			out.Values[i] = ec._ChannelRateLimitStatus_isCoolingDown(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cooldownUntil":
+			out.Values[i] = ec._ChannelRateLimitStatus_cooldownUntil(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -82750,6 +84190,47 @@ func (ec *executionContext) _ModelChannelConnection(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelConcurrentImplementors = []string{"ModelConcurrent"}
+
+func (ec *executionContext) _ModelConcurrent(ctx context.Context, sel ast.SelectionSet, obj *ModelConcurrent) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelConcurrentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelConcurrent")
+		case "model":
+			out.Values[i] = ec._ModelConcurrent_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "limit":
+			out.Values[i] = ec._ModelConcurrent_limit(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -96843,6 +98324,21 @@ func (ec *executionContext) marshalNModelChannelConnection2ᚖgithubᚗcomᚋloo
 	return ec._ModelChannelConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNModelConcurrent2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrent(ctx context.Context, sel ast.SelectionSet, v *ModelConcurrent) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ModelConcurrent(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNModelConcurrentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrentInput(ctx context.Context, v any) (*ModelConcurrentInput, error) {
+	res, err := ec.unmarshalInputModelConcurrentInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNModelConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelConnection(ctx context.Context, sel ast.SelectionSet, v ent.ModelConnection) graphql.Marshaler {
 	return ec._ModelConnection(ctx, sel, &v)
 }
@@ -101085,6 +102581,13 @@ func (ec *executionContext) unmarshalOChannelRateLimitInput2ᚖgithubᚗcomᚋlo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOChannelRateLimitStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelRateLimitStatus(ctx context.Context, sel ast.SelectionSet, v *ChannelRateLimitStatus) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelRateLimitStatus(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOChannelRegexAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRegexAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelRegexAssociation) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -102303,6 +103806,22 @@ func (ec *executionContext) marshalOInt2ᚖint64(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar(ctx context.Context, v any) (*Int64Scalar, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(Int64Scalar)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt642ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInt64Scalar(ctx context.Context, sel ast.SelectionSet, v *Int64Scalar) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
 	if v == nil {
 		return nil, nil
@@ -102455,6 +103974,71 @@ func (ec *executionContext) unmarshalOModelCardModalitiesInput2githubᚗcomᚋlo
 func (ec *executionContext) unmarshalOModelCardReasoningInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx context.Context, v any) (objects.ModelCardReasoning, error) {
 	res, err := ec.unmarshalInputModelCardReasoningInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOModelConcurrent2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrentᚄ(ctx context.Context, sel ast.SelectionSet, v []*ModelConcurrent) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelConcurrent2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOModelConcurrentInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrentInputᚄ(ctx context.Context, v any) ([]*ModelConcurrentInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ModelConcurrentInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNModelConcurrentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelConcurrentInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOModelEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.ModelEdge) graphql.Marshaler {
@@ -103965,6 +105549,22 @@ func (ec *executionContext) unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋlooplj�
 	}
 	res, err := ec.unmarshalInputProxyConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration(ctx context.Context, v any) (*objects.RateLimitDuration, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(objects.RateLimitDuration)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORateLimitDuration2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRateLimitDuration(ctx context.Context, sel ast.SelectionSet, v *objects.RateLimitDuration) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalORegexAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRegexAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.RegexAssociation) graphql.Marshaler {

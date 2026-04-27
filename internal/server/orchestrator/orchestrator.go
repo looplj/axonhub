@@ -81,7 +81,8 @@ func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrches
 		costTracker.Start()
 	}
 
-	channelService.SetChannelLimiterForgetter(channelLimiterManager)
+	channelLimiterManager := NewChannelLimiterManager()
+	cfg.ChannelService.SetChannelLimiterForgetter(channelLimiterManager)
 
 	channelLimiterMetrics, err := NewChannelLimiterMetrics(metrics.Meter, channelLimiterManager)
 	if err != nil {
@@ -91,8 +92,7 @@ func NewChatCompletionOrchestrator(cfg OrchestratorConfig) *ChatCompletionOrches
 
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
-
-rateLimitStrategy := NewRateLimitAwareStrategy(RateLimitProvider{
+	rateLimitStrategy := NewRateLimitAwareStrategy(RateLimitProvider{
 		RequestTracker:    rateLimitTracker,
 		ConnectionTracker: connectionTracker,
 		ModelConnTracker:  modelConnectionTracker,
@@ -131,6 +131,8 @@ rateLimitStrategy := NewRateLimitAwareStrategy(RateLimitProvider{
 		PipelineFactory:            pipeline.NewFactory(cfg.HttpClient),
 		ModelMapper:                NewModelMapper(),
 		channelSelector:            cfg.DefaultSelector,
+		channelLimiterManager:      channelLimiterManager,
+		channelLimiterMetrics:      channelLimiterMetrics,
 		connectionTracker:          connectionTracker,
 		rateLimitTracker:           rateLimitTracker,
 		modelConnectionTracker:     modelConnectionTracker,
@@ -165,14 +167,10 @@ type ChatCompletionOrchestrator struct {
 	adaptiveLoadBalancer       *LoadBalancer
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
-	// channelLimiterManager owns per-channel concurrency admission control and
-	// supplies in-flight / queue stats to the rate-limit-aware load-balancer strategy.
 	channelLimiterManager *ChannelLimiterManager
-	// channelLimiterMetrics emits OTel metrics for the limiter (gauges + counters
-	// + histogram). May be nil in test setups that skip metric registration.
 	channelLimiterMetrics *ChannelLimiterMetrics
-	// The rate limit tracker for rate limit aware load balancing.
-	rateLimitTracker *ChannelRequestTracker
+	connectionTracker      ConnectionTracker
+	rateLimitTracker       *ChannelRequestTracker
 	// The model connection tracker for per-model connection tracking.
 	modelConnectionTracker *ModelConnectionTracker
 	// costTracker caches channel spend for cost-based rate-limit scoring.
