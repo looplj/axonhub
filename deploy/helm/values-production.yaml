@@ -23,6 +23,8 @@ axonhub:
     AXONHUB_DB_DSN: postgres://axonhub:your_db_password@your-db-host:5432/axonhub?sslmode=require
     # For internal PostgreSQL - uncomment below and comment above
     # AXONHUB_DB_DSN: postgres://axonhub:CHANGE_ME_POSTGRES_USER_123456@axonhub-postgresql:5432/axonhub?sslmode=disable
+    # Read replica DSN for read-write separation - leave empty to disable (env: AXONHUB_DB_READ_REPLICA_READ_DSN)
+    # AXONHUB_DB_READ_REPLICA_READ_DSN: postgres://axonhub:your_db_password@your-db-read-host:5432/axonhub?sslmode=require
   
   # Environment variables are defined above in the axonhub.env section
   

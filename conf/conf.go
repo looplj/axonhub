@@ -172,6 +172,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("db.max_idle_conns", 10)
 	v.SetDefault("db.conn_max_lifetime", "30m")
 	v.SetDefault("db.conn_max_idle_time", "10m")
+	v.SetDefault("db.read_replica.read_dsn", "")
+	v.SetDefault("db.read_replica.read_max_open_conns", 0)
+	v.SetDefault("db.read_replica.read_max_idle_conns", 0)
 
 	// Log defaults
 	v.SetDefault("log.name", "axonhub")

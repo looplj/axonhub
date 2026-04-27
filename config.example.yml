@@ -61,6 +61,10 @@ db:
   max_idle_conns: 10            # Maximum idle DB connections kept in the pool (env: AXONHUB_DB_MAX_IDLE_CONNS)
   conn_max_lifetime: "30m"      # Recycle DB connections before server/network timeouts (env: AXONHUB_DB_CONN_MAX_LIFETIME)
   conn_max_idle_time: "10m"     # Close long-idle pooled connections (env: AXONHUB_DB_CONN_MAX_IDLE_TIME)
+  read_replica:                 # Optional read replica for read-write separation (env: AXONHUB_DB_READ_REPLICA_*)
+    read_dsn: ""                 #   Read replica DSN; leave empty to disable (env: AXONHUB_DB_READ_REPLICA_READ_DSN)
+    read_max_open_conns: 0      #   Max open connections for replica (env: AXONHUB_DB_READ_REPLICA_READ_MAX_OPEN_CONNS)
+    read_max_idle_conns: 0      #   Max idle connections for replica (env: AXONHUB_DB_READ_REPLICA_READ_MAX_IDLE_CONNS)
 
 # Cache configuration
 cache:
