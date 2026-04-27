@@ -38,9 +38,6 @@ func (t *InboundTransformer) TransformRequest(
 
 	// Check content type
 	contentType := httpReq.Headers.Get("Content-Type")
-	if contentType == "" {
-		contentType = httpReq.Headers.Get("Content-Type")
-	}
 
 	if !strings.Contains(strings.ToLower(contentType), "application/json") {
 		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
