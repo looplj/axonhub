@@ -219,13 +219,13 @@ type WebhookNotifierConfig struct {
 }
 
 type WebhookTarget struct {
-	Name      string                `json:"name"`
-	Enabled   bool                  `json:"enabled"`
-	URL       string                `json:"url"`
+	Name      string                  `json:"name"`
+	Enabled   bool                    `json:"enabled"`
+	URL       string                  `json:"url"`
 	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
-	TimeoutMs int                   `json:"timeout_ms"`
-	Headers   []objects.HeaderEntry `json:"headers"`
-	Body      string                `json:"body"`
+	TimeoutMs int                     `json:"timeout_ms"`
+	Headers   []objects.HeaderEntry   `json:"headers"`
+	Body      string                  `json:"body"`
 }
 
 type WebhookSubscription struct {
@@ -253,6 +253,12 @@ type SystemModelSettings struct {
 	// When true, /v1/models behaves like /v1/models?include=all.
 	// When false, /v1/models returns only the basic compatibility fields by default.
 	DefaultModelAPIIncludeAll bool `json:"default_model_api_include_all"`
+
+	// AutoReasoningEffort controls whether model names with reasoning effort suffixes
+	// like "gpt-5.4-xhigh" are normalized to the base model and reasoning_effort.
+	// When true, the suffix is stripped from model and applied to request.reasoning_effort,
+	// overriding any reasoning_effort already set in the request.
+	AutoReasoningEffort bool `json:"auto_reasoning_effort"`
 }
 
 type SystemChannelSettings struct {

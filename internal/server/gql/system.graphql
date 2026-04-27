@@ -150,12 +150,14 @@ type SystemModelSettings {
   fallbackToChannelsOnModelNotFound: Boolean!
   queryAllChannelModels: Boolean!
   defaultModelAPIIncludeAll: Boolean!
+  autoReasoningEffort: Boolean!
 }
 
 input UpdateSystemModelSettingsInput {
   fallbackToChannelsOnModelNotFound: Boolean
   queryAllChannelModels: Boolean
   defaultModelAPIIncludeAll: Boolean
+  autoReasoningEffort: Boolean
 }
 
 input UpdateDefaultDataStorageInput {

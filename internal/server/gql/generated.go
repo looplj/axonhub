@@ -1472,6 +1472,7 @@ type ComplexityRoot struct {
 	}
 
 	SystemModelSettings struct {
+		AutoReasoningEffort               func(childComplexity int) int
 		DefaultModelAPIIncludeAll         func(childComplexity int) int
 		FallbackToChannelsOnModelNotFound func(childComplexity int) int
 		QueryAllChannelModels             func(childComplexity int) int
@@ -8323,6 +8324,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SystemModelSettingOnboarding.Onboarded(childComplexity), true
 
+	case "SystemModelSettings.autoReasoningEffort":
+		if e.complexity.SystemModelSettings.AutoReasoningEffort == nil {
+			break
+		}
+
+		return e.complexity.SystemModelSettings.AutoReasoningEffort(childComplexity), true
 	case "SystemModelSettings.defaultModelAPIIncludeAll":
 		if e.complexity.SystemModelSettings.DefaultModelAPIIncludeAll == nil {
 			break
@@ -37947,6 +37954,8 @@ func (ec *executionContext) fieldContext_Query_systemModelSettings(_ context.Con
 				return ec.fieldContext_SystemModelSettings_queryAllChannelModels(ctx, field)
 			case "defaultModelAPIIncludeAll":
 				return ec.fieldContext_SystemModelSettings_defaultModelAPIIncludeAll(ctx, field)
+			case "autoReasoningEffort":
+				return ec.fieldContext_SystemModelSettings_autoReasoningEffort(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemModelSettings", field.Name)
 		},
@@ -44795,6 +44804,35 @@ func (ec *executionContext) _SystemModelSettings_defaultModelAPIIncludeAll(ctx c
 }
 
 func (ec *executionContext) fieldContext_SystemModelSettings_defaultModelAPIIncludeAll(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemModelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemModelSettings_autoReasoningEffort(ctx context.Context, field graphql.CollectedField, obj *biz.SystemModelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemModelSettings_autoReasoningEffort,
+		func(ctx context.Context) (any, error) {
+			return obj.AutoReasoningEffort, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemModelSettings_autoReasoningEffort(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SystemModelSettings",
 		Field:      field,
@@ -72804,7 +72842,7 @@ func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"fallbackToChannelsOnModelNotFound", "queryAllChannelModels", "defaultModelAPIIncludeAll"}
+	fieldsInOrder := [...]string{"fallbackToChannelsOnModelNotFound", "queryAllChannelModels", "defaultModelAPIIncludeAll", "autoReasoningEffort"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72832,6 +72870,13 @@ func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx con
 				return it, err
 			}
 			it.DefaultModelAPIIncludeAll = data
+		case "autoReasoningEffort":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoReasoningEffort"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoReasoningEffort = data
 		}
 	}
 
@@ -90375,6 +90420,11 @@ func (ec *executionContext) _SystemModelSettings(ctx context.Context, sel ast.Se
 			}
 		case "defaultModelAPIIncludeAll":
 			out.Values[i] = ec._SystemModelSettings_defaultModelAPIIncludeAll(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "autoReasoningEffort":
+			out.Values[i] = ec._SystemModelSettings_autoReasoningEffort(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
