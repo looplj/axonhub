@@ -226,7 +226,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
-		// applyPassThroughRequestBody runs first so that override operations can still modify the pass-through body.
+		// applyPassThroughBody runs first so that override operations can still modify the pass-through body.
 		applyPassThroughRequestBody(outbound),
 		applyOverrideRequestBody(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial

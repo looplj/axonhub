@@ -94,7 +94,7 @@ func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model 
 }
 
 func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
-	//nolint:exhaustive // other formats do not need model field.
+	//nolint:exhaustive // ohter format do not need model field.
 	switch apiFormat {
 	case llm.APIFormatOpenAIChatCompletion,
 		llm.APIFormatOpenAIResponse,
