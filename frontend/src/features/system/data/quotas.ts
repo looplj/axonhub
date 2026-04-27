@@ -134,7 +134,7 @@ export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
 
 export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
   weeklyTokenLimit?: { percentRemaining?: number | null; remainingCredits?: string | null; maxCredits?: string | null; nextRegenAt?: string | null } | null;
-  rollingFiveHourLimit?: { limited?: boolean | null; remaining?: number | null; max?: number | null; nextTickAt?: string | null } | null;
+  rollingFiveHourLimit?: { limited?: boolean | null; remaining?: number | null; max?: number | null; nextTickAt?: string | null; tickPercent?: number | null } | null;
 }
 
 export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {

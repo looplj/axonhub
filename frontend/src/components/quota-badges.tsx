@@ -192,7 +192,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     return calcDurationPercent(limit, resetAfter);
   };
 
-  const formatTimeToReset = (resetAtOrSeconds?: string | number | null, usedPercent?: number, regenerates?: boolean) => {
+  const formatTimeToReset = (resetAtOrSeconds?: string | number | null, usedPercent?: number, regenerates?: boolean | number) => {
     if (!resetAtOrSeconds) return '';
 
     let resetTimeMs: number;
@@ -206,7 +206,9 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
     const now = Date.now();
     const diffMs = resetTimeMs - now;
-    if (diffMs < 0) return regenerates ? t('quota.label.regenerating_now') : t('quota.label.reset_now');
+    const isRegen = regenerates != null && regenerates !== false;
+    const regenPct = typeof regenerates === 'number' ? Math.round(regenerates * 100) : null;
+    if (diffMs < 0) return isRegen ? t('quota.label.regenerating_now') : t('quota.label.reset_now');
 
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -221,7 +223,10 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     else if (diffHours > 0) timeStr = `${diffHours}${h} ${diffMins % 60}${m}`;
     else timeStr = `${diffMins}${m}`;
 
-    return regenerates ? t('quota.label.regenerates_in_time', { time: timeStr }) : t('quota.label.resets_in_time', { time: timeStr });
+    if (isRegen && regenPct != null) {
+      return t('quota.label.regenerates_pct_in_time', { percent: regenPct, time: timeStr });
+    }
+    return isRegen ? t('quota.label.regenerates_in_time', { time: timeStr }) : t('quota.label.resets_in_time', { time: timeStr });
   };
 
   const formatDate = (timestamp?: number) => {
@@ -635,7 +640,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                   {qd.weeklyTokenLimit.nextRegenAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, true)}
+                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, 0.02)}
                     </div>
                   )}
                 </div>
@@ -665,7 +670,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   )}
                   {qd.rollingFiveHourLimit.nextTickAt && (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt, fiveHrUsedPct, true)}
+                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt, fiveHrUsedPct, qd.rollingFiveHourLimit.tickPercent ?? 0.05)}
                     </div>
                   )}
                 </div>

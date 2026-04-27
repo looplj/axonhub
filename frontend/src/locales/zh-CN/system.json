@@ -289,6 +289,7 @@
   "quota.label.resets_in": "重置于",
   "quota.label.resets_in_time": "重置于 {{time}}",
   "quota.label.regenerates_in_time": "再生于 {{time}}",
+  "quota.label.regenerates_pct_in_time": "再生 {{percent}}% 于 {{time}}",
   "quota.label.regenerating_now": "正在再生",
   "quota.label.no_usage_yet": "尚无使用量",
   "quota.label.days": "天",
