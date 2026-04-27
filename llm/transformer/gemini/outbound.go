@@ -213,7 +213,7 @@ func (t *OutboundTransformer) buildFullRequestURL(llmReq *llm.Request) string {
 	// If base URL starts with Cloudflare gateway, don't add /v1 prefix
 	if t.config.PlatformType == PlatformVertex {
 		baseURL := strings.TrimSuffix(t.config.BaseURL, "/")
-		if strings.Contains(baseURL, "/v1/") {
+		if strings.Contains(baseURL, "/v1/") || strings.HasSuffix(baseURL, "/v1") {
 			return fmt.Sprintf("%s/publishers/google/models/%s:%s", baseURL, llmReq.Model, action)
 		}
 
