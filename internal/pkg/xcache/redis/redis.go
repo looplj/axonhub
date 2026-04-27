@@ -49,8 +49,12 @@ func NewRedisStore[T any](client RedisClientInterface, options ...lib_store.Opti
 func (gs *RedisStore[T]) Get(ctx context.Context, key any) (any, error) {
 	var result T
 
-	//nolint:forcetypeassert // Expected type is string.
-	object, err := gs.client.Get(ctx, key.(string)).Result()
+	keyString, ok := key.(string)
+	if !ok {
+		return result, lib_store.NotFoundWithCause(fmt.Errorf("expected string key, got %T", key))
+	}
+
+	object, err := gs.client.Get(ctx, keyString).Result()
 	if errors.Is(err, redis.Nil) {
 		return result, lib_store.NotFoundWithCause(err)
 	}
@@ -107,6 +111,11 @@ func (gs *RedisStore[T]) GetWithTTL(ctx context.Context, key any) (any, time.Dur
 func (s *RedisStore[T]) Set(ctx context.Context, key any, value any, options ...lib_store.Option) error {
 	opts := lib_store.ApplyOptionsWithDefault(s.options, options...)
 
+	keyString, ok := key.(string)
+	if !ok {
+		return fmt.Errorf("expected string key, got %T", key)
+	}
+
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -114,8 +123,7 @@ func (s *RedisStore[T]) Set(ctx context.Context, key any, value any, options ...
 
 	encodedValue := string(raw)
 
-	//nolint:forcetypeassert // Expected type is string.
-	err = s.client.Set(ctx, key.(string), encodedValue, opts.Expiration).Err()
+	err = s.client.Set(ctx, keyString, encodedValue, opts.Expiration).Err()
 	if err != nil {
 		return err
 	}
@@ -132,22 +140,28 @@ func (s *RedisStore[T]) Set(ctx context.Context, key any, value any, options ...
 }
 
 func (s *RedisStore[T]) setTagsWithTTL(ctx context.Context, key any, tags []string, ttl time.Duration) {
+	keyString, ok := key.(string)
+	if !ok {
+		return
+	}
 	for _, tag := range tags {
 		tagKey := fmt.Sprintf(RedisTagPattern, tag)
-		//nolint:forcetypeassert // Expected type is string.
-		s.client.SAdd(ctx, tagKey, key.(string))
+		s.client.SAdd(ctx, tagKey, keyString)
 		s.client.Expire(ctx, tagKey, ttl)
 	}
 }
 
 func (s *RedisStore[T]) setTags(ctx context.Context, key any, tags []string) {
-	s.setTagsWithTTL(ctx, key, tags, 720*time.Hour)
+	s.setTagsWithTTL(ctx, key, tags, 168*time.Hour)
 }
 
 // Delete removes data from Redis for given key identifier.
 func (gs *RedisStore[T]) Delete(ctx context.Context, key any) error {
-	//nolint:forcetypeassert // Expected type is string.
-	return gs.client.Del(ctx, key.(string)).Err()
+	keyString, ok := key.(string)
+	if !ok {
+		return fmt.Errorf("expected string key, got %T", key)
+	}
+	return gs.client.Del(ctx, keyString).Err()
 }
 
 // GetType returns the store type.
