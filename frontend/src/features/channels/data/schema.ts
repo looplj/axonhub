@@ -101,12 +101,14 @@ export type HeaderEntry = z.infer<typeof headerEntrySchema>;
 
 // Override Operation
 export const overrideOperationSchema = z.object({
-  op: z.enum(['set', 'delete', 'rename', 'copy']),
+  op: z.enum(['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert']),
   path: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   value: z.any().optional(),
   condition: z.string().optional(),
+  index: z.number().int().nullish(),
+  splat: z.boolean().nullish(),
 })
 export type OverrideOperation = z.infer<typeof overrideOperationSchema>
 

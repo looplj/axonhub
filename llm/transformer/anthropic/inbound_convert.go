@@ -67,6 +67,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID
 	}
 
+	// Propagate the top-level cache_control (Anthropic automatic caching)
+	// through the pipeline so the Anthropic outbound transformer can restore
+	// it on the upstream request and bypass its own breakpoint optimization.
+	if anthropicReq.CacheControl != nil {
+		chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl] = anthropicReq.CacheControl
+	}
+
 	// Convert messages
 	messages := make([]llm.Message, 0, len(anthropicReq.Messages))
 

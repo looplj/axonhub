@@ -26,9 +26,6 @@ import { ModelAssociation } from '../data/schema';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
-const promptTokensOperators = ['lt', 'lte', 'gt', 'gte'] as const;
-type PromptTokensOperator = (typeof promptTokensOperators)[number];
-
 const whenFilterFields: FilterBuilderField[] = [
   {
     value: 'prompt_tokens',
@@ -42,7 +39,22 @@ const whenFilterFields: FilterBuilderField[] = [
       { value: 'gte', label: '>= Greater than or equal' },
     ],
   },
+  {
+    value: 'stream',
+    label: 'Stream',
+    type: 'boolean',
+    operators: [
+      { value: 'eq', label: '= Equals' },
+      { value: 'ne', label: '!= Not equal' },
+    ],
+  },
 ];
+
+function isValidConditionOperator(field: string, operator: string): boolean {
+  const fieldConfig = whenFilterFields.find((f) => f.value === field);
+  if (!fieldConfig) return false;
+  return fieldConfig.operators.some((op) => op.value === operator);
+}
 
 const DEFAULT_WHEN_CONDITION: FilterBuilderGroupListValue = {
   groups: [],
@@ -126,6 +138,13 @@ function validateWhenConditionNode(
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Value must be a number',
+      path: [...path, 'value'],
+    });
+  }
+  if (condition.field === 'stream' && typeof condition.value !== 'boolean') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Value must be a boolean',
       path: [...path, 'value'],
     });
   }
@@ -782,7 +801,7 @@ function normalizeWhenCondition(
     };
   }
 
-  if (!promptTokensOperators.includes(condition.operator as PromptTokensOperator)) {
+  if (!isValidConditionOperator(condition.field, condition.operator)) {
     return null;
   }
 
@@ -1238,7 +1257,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                       singleGroup
                       fields={whenFilterFields.map((item) => ({
                         ...item,
-                        label: item.value === 'prompt_tokens' ? t('models.dialogs.association.conditions.fields.prompt_tokens') : item.label,
+                        label: t(`models.dialogs.association.conditions.fields.${item.value}`),
                         placeholder: t('models.dialogs.association.conditions.valuePlaceholder'),
                         operators: item.operators?.map((operator) => ({
                           value: operator.value,
@@ -1259,7 +1278,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
               )}
             />
             {hasGroupListData(whenCondition) && (
-              <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.conditions.prompt_tokensHint')}</p>
+              <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.conditions.conditionsHint')}</p>
             )}
           </div>
         )}

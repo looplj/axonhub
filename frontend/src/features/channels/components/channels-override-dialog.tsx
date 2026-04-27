@@ -130,7 +130,28 @@ const OP_LABELS: Record<OpType, string> = {
   delete: 'channels.dialogs.settings.overrides.body.opDelete',
   rename: 'channels.dialogs.settings.overrides.body.opRename',
   copy: 'channels.dialogs.settings.overrides.body.opCopy',
+  array_append: 'channels.dialogs.settings.overrides.body.opArrayAppend',
+  array_prepend: 'channels.dialogs.settings.overrides.body.opArrayPrepend',
+  array_insert: 'channels.dialogs.settings.overrides.body.opArrayInsert',
 };
+
+// Body operations support array manipulation; headers only support scalar set/delete/rename/copy.
+const BODY_OP_TYPES: OpType[] = ['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert'];
+const HEADER_OP_TYPES: OpType[] = ['set', 'delete', 'rename', 'copy'];
+
+const ARRAY_OPS: OpType[] = ['array_append', 'array_prepend', 'array_insert'];
+
+function isArrayOp(op: OpType | undefined): boolean {
+  return !!op && ARRAY_OPS.includes(op);
+}
+
+function isValidBodyOp(b: OverrideOperation): boolean {
+  if (b.op === 'set' || b.op === 'delete') return !!b.path?.trim();
+  if (b.op === 'rename' || b.op === 'copy') return !!b.from?.trim() && !!b.to?.trim();
+  if (b.op === 'array_append' || b.op === 'array_prepend') return !!b.path?.trim();
+  if (b.op === 'array_insert') return !!b.path?.trim() && typeof b.index === 'number';
+  return false;
+}
 
 interface OperationRowProps {
   index: number;
@@ -147,9 +168,11 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
 
   if (!field) return null;
 
-  const needsPathOnly = field.op === 'set' || field.op === 'delete';
+  const arrayOp = isArrayOp(field.op);
+  const needsPathOnly = field.op === 'set' || field.op === 'delete' || arrayOp;
   const needsFromTo = field.op === 'rename' || field.op === 'copy';
-  const needsValue = field.op === 'set';
+  const needsValue = field.op === 'set' || arrayOp;
+  const needsIndex = field.op === 'array_insert';
 
   return (
     <div className='space-y-3 rounded-lg border p-3'>
@@ -164,7 +187,7 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(Object.keys(OP_LABELS) as OpType[]).map((opType) => (
+              {BODY_OP_TYPES.map((opType) => (
                 <SelectItem key={opType} value={opType}>
                   {t(OP_LABELS[opType])}
                 </SelectItem>
@@ -179,7 +202,9 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
             <Input
               data-testid={`op-path-${index}`}
               className='mt-1 font-mono'
-              placeholder={t('channels.dialogs.settings.overrides.body.pathPlaceholder')}
+              placeholder={t(arrayOp
+                ? 'channels.dialogs.settings.overrides.body.arrayPathPlaceholder'
+                : 'channels.dialogs.settings.overrides.body.pathPlaceholder')}
               value={field.path || ''}
               onChange={(e) => onUpdate(index, { path: e.target.value })}
             />
@@ -211,6 +236,30 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
           </>
         )}
 
+        {needsIndex && (
+          <div className='w-32'>
+            <Label className='text-sm font-medium'>{t('channels.dialogs.settings.overrides.body.arrayIndex')}</Label>
+            <Input
+              data-testid={`op-index-${index}`}
+              type='number'
+              className='mt-1 font-mono'
+              placeholder={t('channels.dialogs.settings.overrides.body.arrayIndexPlaceholder')}
+              value={typeof field.index === 'number' ? String(field.index) : ''}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '' || raw === '-') {
+                  onUpdate(index, { index: undefined });
+                  return;
+                }
+                const parsed = Number(raw);
+                if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
+                  onUpdate(index, { index: Math.trunc(parsed) });
+                }
+              }}
+            />
+          </div>
+        )}
+
         <div className='pt-5'>
           <Button
             type='button'
@@ -231,10 +280,23 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
           <Input
             data-testid={`op-value-${index}`}
             className='mt-1 font-mono'
-            placeholder={t('channels.dialogs.settings.overrides.body.valuePlaceholder')}
+            placeholder={t(arrayOp
+              ? 'channels.dialogs.settings.overrides.body.arrayValuePlaceholder'
+              : 'channels.dialogs.settings.overrides.body.valuePlaceholder')}
             value={parseValueForDisplay(field.value)}
             onChange={(e) => onUpdate(index, { value: e.target.value })}
           />
+          {arrayOp && (
+            <label className='text-muted-foreground mt-2 flex items-center gap-2 text-xs'>
+              <input
+                type='checkbox'
+                data-testid={`op-splat-${index}`}
+                checked={field.splat !== false}
+                onChange={(e) => onUpdate(index, { splat: e.target.checked })}
+              />
+              <span>{t('channels.dialogs.settings.overrides.body.arraySplatLabel')}</span>
+            </label>
+          )}
         </div>
       )}
 
@@ -298,7 +360,7 @@ function HeaderOperationRow({ index, control, onUpdate, onRemove }: HeaderOperat
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(Object.keys(OP_LABELS) as OpType[]).map((opType) => (
+              {HEADER_OP_TYPES.map((opType) => (
                 <SelectItem key={opType} value={opType}>
                   {t(OP_LABELS[opType])}
                 </SelectItem>
@@ -511,7 +573,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     // Validate body operations
     for (let i = 0; i < bodyOps.length; i++) {
       const op = bodyOps[i];
-      if (op.op === 'set' || op.op === 'delete') {
+      if (op.op === 'set' || op.op === 'delete' || isArrayOp(op.op)) {
         if (!op.path?.trim()) {
           toast.error(t('channels.dialogs.settings.overrides.validation.emptyPath', { index: i + 1, op: op.op }));
           return;
@@ -522,6 +584,10 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
           toast.error(t('channels.dialogs.settings.overrides.validation.emptyFromTo', { index: i + 1, op: op.op }));
           return;
         }
+      }
+      if (op.op === 'array_insert' && typeof op.index !== 'number') {
+        toast.error(t('channels.dialogs.settings.overrides.validation.missingIndex', { index: i + 1 }));
+        return;
       }
     }
 
@@ -548,11 +614,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
         if (h.op === 'rename' || h.op === 'copy') return h.from?.trim() && h.to?.trim();
         return false;
       });
-      const validBodyOps = bodyOps.filter((b) => {
-        if (b.op === 'set' || b.op === 'delete') return b.path?.trim();
-        if (b.op === 'rename' || b.op === 'copy') return b.from?.trim() && b.to?.trim();
-        return false;
-      });
+      const validBodyOps = bodyOps.filter(isValidBodyOp);
       const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
         bodyOverrideOperations: validBodyOps,
         headerOverrideOperations: validHeaderOps,
@@ -613,11 +675,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
         if (h.op === 'rename' || h.op === 'copy') return h.from?.trim() && h.to?.trim();
         return false;
       });
-      const validBodyOps = bodyOps.filter((b) => {
-        if (b.op === 'set' || b.op === 'delete') return b.path?.trim();
-        if (b.op === 'rename' || b.op === 'copy') return b.from?.trim() && b.to?.trim();
-        return false;
-      });
+      const validBodyOps = bodyOps.filter(isValidBodyOp);
       try {
         await createTemplate.mutateAsync({
           name,

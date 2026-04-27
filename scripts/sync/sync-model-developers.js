@@ -325,6 +325,48 @@ function filterProviders(data, allowedIds) {
 		}
 	}
 
+	// Merge xiaomi-token-plan-* providers into xiaomi developer
+	if (allowedIds.includes("xiaomi")) {
+		const xiaomiTokenPlanKeys = [
+			"xiaomi-token-plan-cn",
+			"xiaomi-token-plan-sgp",
+			"xiaomi-token-plan-ams",
+		];
+		const mergedModels = new Map();
+		const baseProvider = filtered.xiaomi || data.providers.xiaomi || null;
+
+		// Process base provider first so its real pricing takes precedence
+		if (baseProvider) {
+			for (const model of baseProvider.models || []) {
+				mergedModels.set(model.id, deepClone(model));
+			}
+		}
+
+		// Add token-plan models only for IDs not already present
+		for (const key of xiaomiTokenPlanKeys) {
+			const provider = data.providers[key];
+			if (!provider) continue;
+			for (const model of provider.models || []) {
+				if (!mergedModels.has(model.id)) {
+					mergedModels.set(model.id, deepClone(model));
+				}
+			}
+		}
+
+		if (mergedModels.size > 0) {
+			filtered.xiaomi = {
+				...(baseProvider || {}),
+				id: "xiaomi",
+				name: "Xiaomi",
+				display_name: "Xiaomi",
+				models: Array.from(mergedModels.values()),
+			};
+			console.log(
+				`Merged ${mergedModels.size} models from xiaomi-token-plan-* into xiaomi developer`,
+			);
+		}
+	}
+
 	if (allowedIds.includes(KWAIPILOT_DEVELOPER_ID)) {
 		const kwaipilotProvider = buildKWAIPilotProvider(data);
 		if (kwaipilotProvider) {

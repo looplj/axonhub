@@ -95,6 +95,26 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     },
 
     {
+      accessorKey: 'reasoningEffort',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.reasoningEffort')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const reasoningEffort = row.original.reasoningEffort;
+
+        if (!reasoningEffort) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        return (
+          <Badge className='border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-900/20 dark:text-sky-300'>
+            {reasoningEffort}
+          </Badge>
+        );
+      },
+    },
+
+    {
       id: 'stream',
       accessorKey: 'stream',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.stream')} />,
