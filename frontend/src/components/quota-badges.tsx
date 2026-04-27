@@ -1,10 +1,12 @@
 import { Loader2, RefreshCw, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useProviderQuotaStatuses, ProviderQuotaChannel, ProviderNanoGPTQuotaData, NanoGPTQuotaWindow } from '@/features/system/data/quotas';
+import { useProviderQuotaStatuses, ProviderQuotaChannel, ProviderNanoGPTQuotaData, NanoGPTQuotaWindow, ProviderWaferQuotaData, ProviderSyntheticQuotaData, ProviderNeuralWattQuotaData } from '@/features/system/data/quotas';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 
+
+const syntheticWeeklyRegenTickPct = 0.02;
 
 const STATUS_LABELS = {
   available: 'quota.status.available',
@@ -86,6 +88,20 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
+  } else if (channel.type === 'openai' && channel.providerType === 'wafer') {
+    const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
+    percentage = qd?.current_period_used_percent ?? 0;
+  } else if (channel.type === 'openai' && channel.providerType === 'synthetic') {
+    const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
+    const weeklyPct = qd?.weeklyTokenLimit?.percentRemaining ?? 100;
+    percentage = 100 - weeklyPct;
+  } else if (channel.type === 'openai' && channel.providerType === 'neuralwatt') {
+    const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
+    const kwhIncluded = qd?.subscription?.kwh_included ?? 0;
+    const kwhUsed = qd?.subscription?.kwh_used ?? 0;
+    if (kwhIncluded > 0) {
+      percentage = (kwhUsed / kwhIncluded) * 100;
+    }
   }
   return percentage;
 }
@@ -178,7 +194,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     return calcDurationPercent(limit, resetAfter);
   };
 
-  const formatTimeToReset = (resetAtOrSeconds?: string | number | null) => {
+  const formatTimeToReset = (resetAtOrSeconds?: string | number | null, usedPercent?: number, regenerates?: boolean | number) => {
     if (!resetAtOrSeconds) return '';
 
     let resetTimeMs: number;
@@ -188,9 +204,13 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
       resetTimeMs = new Date(resetAtOrSeconds).getTime();
     }
 
+    if (usedPercent === 0) return t('quota.label.no_usage_yet');
+
     const now = Date.now();
     const diffMs = resetTimeMs - now;
-    if (diffMs < 0) return t('quota.label.reset_now');
+    const isRegen = regenerates != null && regenerates !== false;
+    const regenPct = typeof regenerates === 'number' ? Math.round(regenerates * 100) : null;
+    if (diffMs < 0) return isRegen ? t('quota.label.regenerating_now') : t('quota.label.reset_now');
 
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -200,9 +220,15 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
     const h = t('quota.label.h');
     const m = t('quota.label.m');
 
-    if (diffDays > 0) return `${diffDays}${d} ${diffHours % 24}${h}`;
-    if (diffHours > 0) return `${diffHours}${h} ${diffMins % 60}${m}`;
-    return `${diffMins}${m}`;
+    let timeStr: string;
+    if (diffDays > 0) timeStr = `${diffDays}${d} ${diffHours % 24}${h}`;
+    else if (diffHours > 0) timeStr = `${diffHours}${h} ${diffMins % 60}${m}`;
+    else timeStr = `${diffMins}${m}`;
+
+    if (isRegen && regenPct != null) {
+      return t('quota.label.regenerates_pct_in_time', { percent: regenPct, time: timeStr });
+    }
+    return isRegen ? t('quota.label.regenerates_in_time', { time: timeStr }) : t('quota.label.resets_in_time', { time: timeStr });
   };
 
   const formatDate = (timestamp?: number) => {
@@ -227,11 +253,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
         <div className="flex items-center gap-2">
           <BatteryIcon className={`w-4 h-4 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`} />
           <span className="font-medium text-foreground">{channel.name}</span>
-          {quotaData.plan_type && (
-            <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-              {quotaData.plan_type}
-            </Badge>
-          )}
+
         </div>
         <Badge
           variant={status === 'available' ? 'outline' : status === 'warning' ? 'secondary' : status === 'exhausted' ? 'destructive' : 'outline'}
@@ -320,7 +342,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1">
                     <span>{qd.representative_claim === 'five_hour' ? t('quota.label.5h_limiting') : qd.representative_claim === 'seven_day' ? t('quota.label.7d_limiting') : ''}</span>
                     {quota.nextResetAt && (
-                      <span>{t('quota.label.resets_in')} {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
+                      <span>{formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})</span>
                     )}
                   </div>
                 )}
@@ -406,7 +428,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
           {quota.nextResetAt && (
             <div className="text-[11px] text-muted-foreground text-right pt-1">
-              {t('quota.label.resets_in')} {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
+              {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
             </div>
           )}
         </div>
@@ -449,7 +471,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
                     {qd.rate_limit.primary_window.reset_at && (
                       <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                        {t('quota.label.resets_in')} {formatTimeToReset(qd.rate_limit.primary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.primary_window.reset_at)})
+                        {formatTimeToReset(qd.rate_limit.primary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.primary_window.reset_at)})
                       </div>
                     )}
                   </div>
@@ -485,7 +507,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
 
                     {qd.rate_limit.secondary_window.reset_at && (
                       <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                        {t('quota.label.resets_in')} {formatTimeToReset(qd.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.secondary_window.reset_at)})
+                        {formatTimeToReset(qd.rate_limit.secondary_window.reset_after_seconds)} ({formatDate(qd.rate_limit.secondary_window.reset_at)})
                       </div>
                     )}
                   </div>
@@ -529,7 +551,7 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   </div>
                   {window.resetAt ? (
                     <div className="text-[11px] text-muted-foreground text-right pt-0.5">
-                      {t('quota.label.resets_in')} {formatTimeToReset(new Date(window.resetAt).toISOString())}
+                      {formatTimeToReset(new Date(window.resetAt).toISOString())}
                     </div>
                   ) : null}
                 </div>
@@ -543,6 +565,181 @@ function QuotaRow({ channel }: { channel: ProviderQuotaChannel }) {
                   <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-yellow-500 border-yellow-500/30 font-semibold">
                     {t(stateKey)}
                   </Badge>
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'openai' && channel.providerType === 'wafer' && (
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            const usedPct = qd.current_period_used_percent ?? 0;
+            const usedRequests = (qd.included_request_limit ?? 0) - (qd.remaining_included_requests ?? 0);
+            const totalRequests = qd.included_request_limit ?? 0;
+            items.push(
+              <div key="usage" className="space-y-2.5">
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">
+                      {t('quota.label.requests')} <span className="opacity-70 font-normal">({usedRequests}/{totalRequests})</span>
+                    </span>
+                    <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
+                  </div>
+                  <ProgressBar percentage={usedPct} />
+                </div>
+              </div>
+            );
+
+            if (qd.window_end) {
+              items.push(
+                <div key="reset" className="text-[11px] text-muted-foreground text-right pt-1">
+                  {formatTimeToReset(qd.window_end, usedPct)}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'openai' && channel.providerType === 'synthetic' && (
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            if (qd.weeklyTokenLimit) {
+              const pctRemaining = qd.weeklyTokenLimit.percentRemaining ?? 100;
+              const usedPct = 100 - pctRemaining;
+              const remainingCredits = qd.weeklyTokenLimit.remainingCredits;
+              const maxCredits = qd.weeklyTokenLimit.maxCredits;
+              const usedCredits = (remainingCredits != null && maxCredits != null)
+                ? `$${(parseFloat(maxCredits.replace('$', '')) - parseFloat(remainingCredits.replace('$', ''))).toFixed(2)}`
+                : null;
+              items.push(
+                <div key="weekly" className="space-y-2.5">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {t('quota.label.weekly_token_limit')}
+                        {usedCredits != null && maxCredits != null && (
+                          <span className="opacity-70 font-normal"> ({usedCredits}/{maxCredits})</span>
+                        )}
+                      </span>
+                      <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
+                    </div>
+                    <ProgressBar percentage={usedPct} />
+                  </div>
+                  {qd.weeklyTokenLimit.nextRegenAt && (
+                    <div className="text-[11px] text-muted-foreground text-right pt-0.5">
+                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, syntheticWeeklyRegenTickPct)}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            if (qd.rollingFiveHourLimit) {
+              const fiveHrRemaining = qd.rollingFiveHourLimit.remaining ?? 0;
+              const fiveHrMax = qd.rollingFiveHourLimit.max ?? 0;
+              const fiveHrUsed = fiveHrMax - fiveHrRemaining;
+              const fiveHrUsedPct = fiveHrMax > 0 ? (fiveHrUsed / fiveHrMax) * 100 : 0;
+              items.push(
+                <div key="5h" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {t('quota.label.rolling_5h_limit')} <span className="opacity-70 font-normal">({Math.round(fiveHrUsed)}/{Math.round(fiveHrMax)})</span>
+                      </span>
+                      <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(fiveHrUsedPct) })}</span>
+                    </div>
+                    <ProgressBar percentage={fiveHrUsedPct} />
+                  </div>
+                  {qd.rollingFiveHourLimit.limited && (
+                    <Badge variant="outline" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider text-yellow-500 border-yellow-500/30 font-semibold">
+                      {t('quota.status.limited')}
+                    </Badge>
+                  )}
+                  {qd.rollingFiveHourLimit.nextTickAt && (
+                    <div className="text-[11px] text-muted-foreground text-right pt-0.5">
+                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt, fiveHrUsedPct, qd.rollingFiveHourLimit.tickPercent ?? 0.05)}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'openai' && channel.providerType === 'neuralwatt' && (
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            if (qd.subscription) {
+              const kwhIncluded = qd.subscription.kwh_included ?? 0;
+              const kwhUsed = qd.subscription.kwh_used ?? 0;
+              const _kwhRemaining = qd.subscription.kwh_remaining ?? Math.max(0, kwhIncluded - kwhUsed);
+              const usedPct = kwhIncluded > 0 ? (kwhUsed / kwhIncluded) * 100 : 0;
+
+              items.push(
+                <div key="kwh" className="space-y-2.5">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {t('quota.label.kwh_remaining')}
+                        <span className="opacity-70 font-normal"> ({kwhUsed}/{kwhIncluded})</span>
+                      </span>
+                      <span className="font-medium text-foreground">{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
+                    </div>
+                    <ProgressBar percentage={usedPct} />
+                  </div>
+                </div>
+              );
+
+              if (qd.subscription.in_overage) {
+                items.push(
+                  <div key="overage" className="flex items-center gap-1.5 pt-1">
+                    <Badge variant="destructive" className="px-1.5 py-0 h-4 text-[10px] uppercase tracking-wider font-semibold">
+                      {t('quota.label.in_overage')}
+                    </Badge>
+                  </div>
+                );
+              }
+
+
+            }
+
+            if (qd.balance) {
+              items.push(
+                <div key="credits" className="space-y-2.5 pt-3 border-t border-dashed border-border/60">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-muted-foreground">{t('quota.label.credits_remaining')}</span>
+                    <span className="font-medium text-foreground">{qd.balance.credits_remaining_usd != null ? `$${qd.balance.credits_remaining_usd.toFixed(2)}` : '$0.00'}</span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (quota.nextResetAt) {
+              items.push(
+                <div key="reset" className="text-[11px] text-muted-foreground text-right pt-1">
+                  {formatTimeToReset(quota.nextResetAt)}
                 </div>
               );
             }
@@ -585,9 +782,14 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
   if (channels.length === 0) return null;
 
-  const groupedChannels = channels.reduce((acc, channel) => {
+  const groupedChannels = channels.reduce((acc: ProviderQuotaChannel[], channel: ProviderQuotaChannel) => {
     if (channel.type === 'nanogpt_responses') {
       const existing = acc.find(c => c.type === 'nanogpt');
+      if (!existing) {
+        acc.push(channel);
+      }
+    } else if (channel.type === 'openai' && channel.providerType) {
+      const existing = acc.find(c => c.type === 'openai' && c.providerType === channel.providerType);
       if (!existing) {
         acc.push(channel);
       }
@@ -604,7 +806,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
           <QuotaBadgeTrigger channels={groupedChannels} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className={groupedChannels.length > 4 ? "w-[640px]" : "w-80"} align="end">
+      <PopoverContent className={groupedChannels.length > 4 ? "w-full sm:w-[640px]" : "w-full sm:w-80"} align="end">
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -623,7 +825,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
               )}
             </button>
           </div>
-          <div className={`max-h-[60vh] overflow-y-auto pl-1 pr-1 ${groupedChannels.length > 4 ? 'grid grid-cols-2 gap-x-4' : ''}`}>
+          <div className={`max-h-[60vh] overflow-y-auto pl-1 pr-1 ${groupedChannels.length > 4 ? 'grid grid-cols-1 sm:grid-cols-2 gap-x-4' : ''}`}>
             {groupedChannels.map((channel: ProviderQuotaChannel) => (
               <QuotaRow key={channel.id} channel={channel} />
             ))}
