@@ -37,11 +37,10 @@ func (svc *BackupService) runBackupPeriodic(ctx context.Context) error {
 		return nil
 	}
 
-	cronExpr := "0 2 * * *" // Always run daily at 2 AM
-
+	// F-D61: Use configurable cron expression (falls back to "0 2 * * *" in service constructor).
 	cancelFunc, err := svc.executor.ScheduleFuncAtCronRate(
 		svc.runBackupPeriodically,
-		executors.CRONRule{Expr: cronExpr},
+		executors.CRONRule{Expr: svc.cronExpr},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to schedule backup: %w", err)
@@ -49,7 +48,7 @@ func (svc *BackupService) runBackupPeriodic(ctx context.Context) error {
 
 	svc.cancelFunc = cancelFunc
 
-	log.Info(ctx, "Auto backup scheduled", log.String("cron", cronExpr))
+	log.Info(ctx, "Auto backup scheduled", log.String("cron", svc.cronExpr))
 
 	return nil
 }
@@ -127,8 +126,9 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
-	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	filename := fmt.Sprintf("axonhub-backup-%s.json", timestamp)
+	// F-D91: Use UTC time with Z suffix for unambiguous timezone.
+	timestamp := time.Now().UTC().Format("2006-01-02_15-04-05")
+	filename := fmt.Sprintf("axonhub-backup-%sZ.json", timestamp)
 
 	if err := svc.dataStorageService.SaveData(ctx, ds, filename, data); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)

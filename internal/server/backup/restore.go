@@ -303,6 +303,28 @@ func (svc *BackupService) restoreProjects(ctx context.Context, db *ent.Client, p
 	return nil
 }
 
+// closeOverlappingPriceWindows closes any active price version windows that overlap
+// with the new effective start time, by setting their EffectiveEndAt to the new start time.
+// F-D62: Prevents time window overlap when restoring with overwrite strategy.
+func closeOverlappingPriceWindows(ctx context.Context, db *ent.Client, chID int, modelID string, newStart time.Time) error {
+	// Find active versions whose window overlaps with [newStart, ...):
+	//   EffectiveStartAt < newStart AND (EffectiveEndAt IS NULL OR EffectiveEndAt > newStart)
+	_, err := db.ChannelModelPriceVersion.Update().
+		Where(
+			channelmodelpriceversion.ChannelID(chID),
+			channelmodelpriceversion.ModelID(modelID),
+			channelmodelpriceversion.StatusEQ(channelmodelpriceversion.StatusActive),
+			channelmodelpriceversion.EffectiveStartAtLT(newStart),
+			channelmodelpriceversion.Or(
+				channelmodelpriceversion.EffectiveEndAtIsNil(),
+				channelmodelpriceversion.EffectiveEndAtGT(newStart),
+			),
+		).
+		SetEffectiveEndAt(newStart).
+		Save(ctx)
+	return err
+}
+
 func (svc *BackupService) restoreChannelModelPrices(
 	ctx context.Context,
 	db *ent.Client,
@@ -388,6 +410,11 @@ func (svc *BackupService) restoreChannelModelPrices(
 			case ConflictStrategyError:
 				return fmt.Errorf("channel model price already exists: channel=%s model_id=%s", pData.ChannelName, pData.ModelID)
 			case ConflictStrategyOverwrite:
+				// F-D62: Close any overlapping time windows before inserting the new version.
+				if err := closeOverlappingPriceWindows(ctx, db, ch.ID, pData.ModelID, now); err != nil {
+					return fmt.Errorf("failed to close overlapping price windows: %w", err)
+				}
+
 				// Archive old versions
 				_, err = db.ChannelModelPriceVersion.Update().
 					Where(
