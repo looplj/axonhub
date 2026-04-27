@@ -37,13 +37,15 @@ func (d *routerDriver) Tx(ctx context.Context) (dialect.Tx, error) {
 }
 
 func (d *routerDriver) Close() error {
-	if err := d.master.Close(); err != nil {
-		return err
-	}
+	err1 := d.master.Close()
+	var err2 error
 	if d.replica != nil {
-		return d.replica.Close()
+		err2 = d.replica.Close()
 	}
-	return nil
+	if err1 != nil {
+		return err1
+	}
+	return err2
 }
 
 var _ dialect.Driver = (*routerDriver)(nil)

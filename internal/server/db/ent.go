@@ -81,7 +81,17 @@ func NewEntClient(cfg Config) *ent.Client {
 // openDB opens a sql.DB for the given dialect and DSN, applies pool settings,
 // and returns the ent dialect string along with the DB handle.
 func openDB(dialectName, dsn string, maxOpen, maxIdle int, maxLifetime, maxIdleTime time.Duration) (string, *sql.DB, error) {
-	sqlDB, err := sql.Open(driverName(dialectName), dsn)
+	ed, err := entDialect(dialectName)
+	if err != nil {
+		return "", nil, err
+	}
+
+	drvName, err := driverName(dialectName)
+	if err != nil {
+		return "", nil, err
+	}
+
+	sqlDB, err := sql.Open(drvName, dsn)
 	if err != nil {
 		return "", nil, err
 	}
@@ -99,33 +109,31 @@ func openDB(dialectName, dsn string, maxOpen, maxIdle int, maxLifetime, maxIdleT
 		sqlDB.SetConnMaxIdleTime(maxIdleTime)
 	}
 
-	return entDialect(dialectName), sqlDB, nil
+	return ed, sqlDB, nil
 }
 
-// driverName maps our dialect names to the underlying Go sql driver name.
-func driverName(dialectName string) string {
+func driverName(dialectName string) (string, error) {
 	switch dialectName {
 	case "postgres", "pgx", "postgresdb", "pg", "postgresql":
-		return "pgx"
+		return "pgx", nil
 	case "sqlite3", "sqlite":
-		return "sqlite3"
+		return "sqlite3", nil
 	case "mysql", "tidb":
-		return "mysql"
+		return "mysql", nil
 	default:
-		return dialectName
+		return "", fmt.Errorf("invalid dialect: %s", dialectName)
 	}
 }
 
-// entDialect maps our dialect names to the ent dialect string.
-func entDialect(dialectName string) string {
+func entDialect(dialectName string) (string, error) {
 	switch dialectName {
 	case "postgres", "pgx", "postgresdb", "pg", "postgresql":
-		return dialect.Postgres
+		return dialect.Postgres, nil
 	case "sqlite3", "sqlite":
-		return dialect.SQLite
+		return dialect.SQLite, nil
 	case "mysql", "tidb":
-		return dialect.MySQL
+		return dialect.MySQL, nil
 	default:
-		return dialect.Postgres
+		return "", fmt.Errorf("invalid dialect: %s", dialectName)
 	}
 }
