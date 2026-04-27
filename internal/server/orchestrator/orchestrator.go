@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -29,14 +30,22 @@ func NewChatCompletionOrchestrator(
 	quotaService *biz.QuotaService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	liveStreamRegistry *biz.LiveStreamRegistry,
+	channelLimiterManager *ChannelLimiterManager,
 ) *ChatCompletionOrchestrator {
-	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
+
+	channelService.SetChannelLimiterForgetter(channelLimiterManager)
+
+	channelLimiterMetrics, err := NewChannelLimiterMetrics(metrics.Meter, channelLimiterManager)
+	if err != nil {
+		log.Warn(context.Background(), "failed to register channel limiter metrics, continuing without them", log.Cause(err))
+		channelLimiterMetrics = nil
+	}
 
 	// Initialize model circuit breaker
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
-	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker)
+	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, channelLimiterManager)
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewTraceAwareStrategy(requestService),
@@ -69,7 +78,8 @@ func NewChatCompletionOrchestrator(
 		PipelineFactory:            pipeline.NewFactory(httpClient),
 		ModelMapper:                NewModelMapper(),
 		channelSelector:            defaultSelector,
-		connectionTracker:          connectionTracker,
+		channelLimiterManager:      channelLimiterManager,
+		channelLimiterMetrics:      channelLimiterMetrics,
 		rateLimitTracker:           rateLimitTracker,
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
 		failoverLoadBalancer:       failoverLoadBalancer,
@@ -101,8 +111,12 @@ type ChatCompletionOrchestrator struct {
 	adaptiveLoadBalancer       *LoadBalancer
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
-	// The connection tracker used for request lifetime tracking and rate-limit concurrency fallback.
-	connectionTracker ConnectionTracker
+	// channelLimiterManager owns per-channel concurrency admission control and
+	// supplies in-flight / queue stats to the rate-limit-aware load-balancer strategy.
+	channelLimiterManager *ChannelLimiterManager
+	// channelLimiterMetrics emits OTel metrics for the limiter (gauges + counters
+	// + histogram). May be nil in test setups that skip metric registration.
+	channelLimiterMetrics *ChannelLimiterMetrics
 	// The rate limit tracker for rate limit aware load balancing.
 	rateLimitTracker *ChannelRequestTracker
 	// The model circuit breaker for circuit-breaker load balancing.
@@ -247,10 +261,12 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Forward the events to the live streaming.
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
 
+		// Per-channel admission control. Must run before rate-limit tracking so a
+		// locally rejected (queue full / queue timeout) request does not consume
+		// RPM budget for a request that never reached upstream.
+		withChannelLimiter(outbound, processor.channelLimiterManager, processor.channelLimiterMetrics),
 		// Rate limit tracking middleware for load balancing.
 		withRateLimitTracking(outbound, processor.rateLimitTracker),
-		// Connection tracking middleware for load balancing.
-		withConnectionTracking(outbound, processor.connectionTracker),
 
 		// Response pass-through capture middlewares must be last in the outbound list
 		// so they run first in reverse order (before any other OnOutboundRawResponse/OnOutboundRawStream handlers).

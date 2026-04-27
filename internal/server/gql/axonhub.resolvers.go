@@ -70,6 +70,38 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
 }
 
+// LiveLimiterStats is the resolver for the liveLimiterStats field.
+func (r *channelResolver) LiveLimiterStats(ctx context.Context, obj *ent.Channel) (*ChannelLimiterStats, error) {
+	if r.channelLimiterManager == nil || obj == nil {
+		return nil, nil
+	}
+
+	if obj.Settings == nil || obj.Settings.RateLimit == nil {
+		return nil, nil
+	}
+
+	rl := obj.Settings.RateLimit
+	if rl.MaxConcurrent == nil || *rl.MaxConcurrent <= 0 {
+		return nil, nil
+	}
+
+	queueSize := 0
+	if rl.QueueSize != nil && *rl.QueueSize > 0 {
+		queueSize = int(*rl.QueueSize)
+	}
+
+	// Stats returns ok=false until the first request creates the limiter; in
+	// that case in-flight / waiting are simply 0.
+	inFlight, waiting, _ := r.channelLimiterManager.Stats(obj.ID)
+
+	return &ChannelLimiterStats{
+		InFlight:  inFlight,
+		Waiting:   waiting,
+		Capacity:  int(*rl.MaxConcurrent),
+		QueueSize: queueSize,
+	}, nil
+}
+
 // HeaderOverrideOperations is the resolver for the headerOverrideOperations field.
 func (r *channelSettingsResolver) HeaderOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error) {
 	if obj == nil {

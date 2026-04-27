@@ -38,7 +38,7 @@ type TestChannelOrchestrator struct {
 	modelCircuitBreaker         *biz.ModelCircuitBreaker
 	modelMapper                 *ModelMapper
 	loadBalancer                *LoadBalancer
-	connectionTracking          ConnectionTracker
+	channelLimiterManager       *ChannelLimiterManager
 }
 
 // NewTestChannelOrchestrator creates a new TestChannelOrchestrator.
@@ -60,7 +60,7 @@ func NewTestChannelOrchestrator(
 		modelCircuitBreaker:         biz.NewModelCircuitBreaker(),
 		modelMapper:                 NewModelMapper(),
 		loadBalancer:                NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
-		connectionTracking:          NewDefaultConnectionTracker(100),
+		channelLimiterManager:      NewChannelLimiterManager(),
 	}
 }
 
@@ -105,7 +105,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		adaptiveLoadBalancer:       processor.loadBalancer,
 		failoverLoadBalancer:       processor.loadBalancer,
 		circuitBreakerLoadBalancer: processor.loadBalancer,
-		connectionTracker:          processor.connectionTracking,
+		channelLimiterManager:      processor.channelLimiterManager,
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
@@ -437,7 +437,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		adaptiveLoadBalancer:       processor.loadBalancer,
 		failoverLoadBalancer:       processor.loadBalancer,
 		circuitBreakerLoadBalancer: processor.loadBalancer,
-		connectionTracker:          processor.connectionTracking,
+		channelLimiterManager:      processor.channelLimiterManager,
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 

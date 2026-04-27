@@ -130,12 +130,16 @@ input ChannelRateLimitInput {
   rpm: Int
   tpm: Int
   maxConcurrent: Int
+  queueSize: Int
+  queueTimeoutMs: Int
 }
 
 type ChannelRateLimit {
   rpm: Int
   tpm: Int
   maxConcurrent: Int
+  queueSize: Int
+  queueTimeoutMs: Int
 }
 
 type ChannelCredentials {
@@ -573,6 +577,34 @@ extend type Channel {
   Disabled API keys for this channel. Sensitive: will be null if user can not access.
   """
   disabledAPIKeys: [DisabledAPIKey!] @goField(forceResolver: true)
+
+  """
+  Real-time per-channel concurrency limiter snapshot. Returns null when the channel
+  has no MaxConcurrent configured (no admission control).
+  """
+  liveLimiterStats: ChannelLimiterStats @goField(forceResolver: true)
+}
+
+"""
+ChannelLimiterStats is a point-in-time snapshot of the per-channel concurrency limiter.
+"""
+type ChannelLimiterStats {
+  """
+  Number of requests currently holding a capacity slot.
+  """
+  inFlight: Int!
+  """
+  Number of requests currently waiting in the FIFO queue.
+  """
+  waiting: Int!
+  """
+  Configured MaxConcurrent (capacity ceiling).
+  """
+  capacity: Int!
+  """
+  Configured QueueSize (0 means soft mode — no waiting queue, only counts).
+  """
+  queueSize: Int!
 }
 
 type Segment {
