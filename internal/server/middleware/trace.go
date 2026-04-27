@@ -121,7 +121,12 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		}
 
 		// Bypass privacy policy so tokens without write_requests scope can still trigger tracing.
-		bypassCtx := authz.WithSystemBypass(c.Request.Context(), "trace-middleware")
+		bypassCtx, err := authz.WithSystemBypass(c.Request.Context(), "trace-middleware")
+		if err != nil {
+			log.Error(c.Request.Context(), "failed to create bypass context for tracing", log.Cause(err))
+			c.Next()
+			return
+		}
 
 		// Get or create trace (errors are logged but don't block the request)
 		trace, err := traceService.GetOrCreateTrace(bypassCtx, projectID, traceID, threadID)

@@ -10,9 +10,8 @@ func NewSystemContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, principalKey{}, Principal{Type: PrincipalTypeSystem})
 }
 
-func WithSystemBypass(ctx context.Context, reason string) context.Context {
-	bypassCtx, _ := WithBypassPrivacy(NewSystemContext(ctx), reason)
-	return bypassCtx
+func WithSystemBypass(ctx context.Context, reason string) (context.Context, error) {
+	return WithBypassPrivacy(NewSystemContext(ctx), reason)
 }
 
 func RunWithSystemBypass[T any](ctx context.Context, reason string, fn func(ctx context.Context) (T, error)) (T, error) {

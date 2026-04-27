@@ -433,14 +433,15 @@ type SystemServiceParams struct {
 	Ent         *ent.Client
 }
 
-func NewSystemService(params SystemServiceParams) *SystemService {
+func NewSystemService(params SystemServiceParams) (*SystemService, error) {
+	cache := xcache.NewFromConfig[ent.System](params.CacheConfig)
 	return &SystemService{
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
 		CacheConfig: params.CacheConfig,
-		Cache:       xcache.NewFromConfig[ent.System](params.CacheConfig),
-	}
+		Cache:       cache,
+	}, nil
 }
 
 type SystemService struct {
@@ -454,7 +455,10 @@ type SystemService struct {
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
-	ctx = authz.WithSystemBypass(ctx, "system-is-initialized")
+	ctx, err := authz.WithSystemBypass(ctx, "system-is-initialized")
+	if err != nil {
+		return false, err
+	}
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
@@ -480,7 +484,10 @@ type InitializeSystemParams struct {
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
 func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystemParams) (err error) {
-	ctx = authz.WithSystemBypass(ctx, "system-initialize")
+	ctx, err = authz.WithSystemBypass(ctx, "system-initialize")
+	if err != nil {
+		return nil
+	}
 	// Check if system is already initialized
 	isInitialized, err := s.IsInitialized(ctx)
 	if err != nil {
@@ -540,7 +547,7 @@ func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystem
 	// Set user in context for project creation
 	ctx = contexts.WithUser(ctx, user)
 	// Create default project and assign owner
-	projectService := NewProjectService(ProjectServiceParams{})
+	projectService, _ := NewProjectService(ProjectServiceParams{})
 	projectInput := ent.CreateProjectInput{
 		Name:        "Default",
 		Description: lo.ToPtr("Default project"),
@@ -636,7 +643,10 @@ func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
 
 // BrandName retrieves the brand name.
 func (s *SystemService) BrandName(ctx context.Context) (string, error) {
-	ctx = authz.WithSystemBypass(ctx, "system-brand-name")
+	ctx, err := authz.WithSystemBypass(ctx, "system-brand-name")
+	if err != nil {
+		return "", err
+	}
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
@@ -658,7 +668,10 @@ func (s *SystemService) SetBrandName(ctx context.Context, brandName string) erro
 
 // BrandLogo retrieves the brand logo (base64 encoded).
 func (s *SystemService) BrandLogo(ctx context.Context) (string, error) {
-	ctx = authz.WithSystemBypass(ctx, "system-brand-logo")
+	ctx, err := authz.WithSystemBypass(ctx, "system-brand-logo")
+	if err != nil {
+		return "", err
+	}
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandLogo)).Only(ctx)

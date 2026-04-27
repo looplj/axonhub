@@ -31,7 +31,10 @@ func (v *V0_3_0) Version() string {
 
 // Migrate performs the version 0.3.0 data migration.
 func (v *V0_3_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
-	ctx = authz.WithSystemBypass(context.Background(), "database-migrate")
+	ctx, err = authz.WithSystemBypass(ctx, "database-migrate")
+	if err != nil {
+		return nil
+	}
 	// Check if a project already exists
 	_, err = client.Project.Query().Limit(1).First(ctx)
 	if err == nil {
@@ -108,7 +111,7 @@ func (v *V0_3_0) createDefaultProject(ctx context.Context) (*ent.Project, *ent.U
 
 	// Use the ProjectService to create the default project
 	// This will automatically create the three default roles (admin, developer, viewer)
-	projectService := biz.NewProjectService(biz.ProjectServiceParams{})
+	projectService , _ := biz.NewProjectService(biz.ProjectServiceParams{})
 	input := ent.CreateProjectInput{
 		Name:        "Default",
 		Description: lo.ToPtr("Default project"),
