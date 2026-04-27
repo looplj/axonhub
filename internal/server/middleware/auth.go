@@ -155,15 +155,10 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 // https://ai.google.dev/api/generate-content?hl=zh-cn#text_gen_text_only_prompt-SHELL
 func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := c.Query("key")
-		if key == "" {
-			var err error
-
-			key, err = ExtractAPIKeyFromRequest(c.Request, nil)
-			if err != nil {
-				AbortWithError(c, http.StatusUnauthorized, err)
-				return
-			}
+		key, err := ExtractAPIKeyFromRequest(c.Request, nil)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, err)
+			return
 		}
 
 		apiKey, err := auth.AuthenticateAPIKey(c.Request.Context(), key)

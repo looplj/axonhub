@@ -16,17 +16,13 @@ import (
 )
 
 func wrapHttpError(err error) error {
-	const maxBodyLen = 200
 	if err == nil {
 		return nil
 	}
 	var httpErr *httpclient.Error
 	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
-		bodyStr := string(httpErr.Body)
-		if len(bodyStr) > maxBodyLen {
-			bodyStr = bodyStr[:maxBodyLen] + "...(truncated)"
-		}
-		return fmt.Errorf("%w (response body: %s)", err, bodyStr)
+		slog.Debug("oauth http error response body", "body", string(httpErr.Body))
+		return fmt.Errorf("oauth http error: status %d", httpErr.StatusCode)
 	}
 	return err
 }
