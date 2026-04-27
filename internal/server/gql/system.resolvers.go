@@ -8,6 +8,7 @@ package gql
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -177,12 +178,15 @@ func (r *mutationResolver) TriggerGcCleanup(ctx context.Context) (bool, error) {
 		defer func() {
 			if rec := recover(); rec != nil {
 				// Log the panic or handle it - assuming there's a logging mechanism or just preventing crash
-				fmt.Printf("Recovered from panic in GC goroutine: %v\n", rec)
+				slog.Warn("Recovered from panic in GC goroutine", "panic", rec)
 			}
 		}()
 
 		// Use a detached context with system bypass for background execution
-		bgCtx := authz.WithSystemBypass(context.WithoutCancel(ctx), "manual-gc-cleanup")
+		bgCtx, err := authz.WithSystemBypass(context.WithoutCancel(ctx), "manual-gc-cleanup")
+		if err != nil {
+			return false, err
+		}
 		_ = r.gcWorker.RunCleanupNow(bgCtx)
 	}()
 

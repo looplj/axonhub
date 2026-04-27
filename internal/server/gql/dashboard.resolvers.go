@@ -91,7 +91,6 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Initialize response with defaults to handle partial failures gracefully
 	stats := &RequestStats{
 		RequestsToday:     0,
 		RequestsThisWeek:  0,
@@ -102,36 +101,56 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	loc := r.systemService.TimeLocation(ctx)
 	period := xtime.GetCalendarPeriods(loc)
 
-	if requestsToday, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.Today.Start)).
-		Count(ctx); err != nil {
-		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
-	} else {
-		stats.RequestsToday = requestsToday
+	// Single query with conditional aggregation replaces four separate COUNT queries.
+	dbDriver := r.client.Driver()
+	sqlDB, ok := dbDriver.(*sql.Driver)
+	if !ok {
+		log.Warn(ctx, "failed to get SQL driver for request stats")
+		return stats, nil
 	}
 
-	if requestsThisWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.ThisWeek.Start)).
-		Count(ctx); err != nil {
-		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
-	} else {
-		stats.RequestsThisWeek = requestsThisWeek
+	useDollar := sqlDB.Dialect() == dialect.Postgres
+	p := func(n int) string {
+		if useDollar {
+			return fmt.Sprintf("$%d", n)
+		}
+		return "?"
 	}
 
-	if requestsLastWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.LastWeek.Start), usagelog.CreatedAtLT(period.LastWeek.End)).
-		Count(ctx); err != nil {
-		log.Warn(ctx, "failed to count last week's requests", log.Cause(err))
-	} else {
-		stats.RequestsLastWeek = requestsLastWeek
+	query := fmt.Sprintf(
+		`SELECT
+			SUM(CASE WHEN created_at >= %s THEN 1 ELSE 0 END) AS today,
+			SUM(CASE WHEN created_at >= %s THEN 1 ELSE 0 END) AS this_week,
+			SUM(CASE WHEN created_at >= %s AND created_at < %s THEN 1 ELSE 0 END) AS last_week,
+			SUM(CASE WHEN created_at >= %s THEN 1 ELSE 0 END) AS this_month
+		FROM usage_logs`,
+		p(1), p(2), p(3), p(4), p(5),
+	)
+
+	var today, thisWeek, lastWeek, thisMonth dbsql.NullInt64
+	err := sqlDB.DB().QueryContext(ctx, query,
+		period.Today.Start.UTC(),
+		period.ThisWeek.Start.UTC(),
+		period.LastWeek.Start.UTC(),
+		period.LastWeek.End.UTC(),
+		period.ThisMonth.Start.UTC(),
+	).Scan(&today, &thisWeek, &lastWeek, &thisMonth)
+	if err != nil {
+		log.Warn(ctx, "failed to query request stats", log.Cause(err))
+		return stats, nil
 	}
 
-	if requestsThisMonth, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.ThisMonth.Start)).
-		Count(ctx); err != nil {
-		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
-	} else {
-		stats.RequestsThisMonth = requestsThisMonth
+	if today.Valid {
+		stats.RequestsToday = int(today.Int64)
+	}
+	if thisWeek.Valid {
+		stats.RequestsThisWeek = int(thisWeek.Int64)
+	}
+	if lastWeek.Valid {
+		stats.RequestsLastWeek = int(lastWeek.Int64)
+	}
+	if thisMonth.Valid {
+		stats.RequestsThisMonth = int(thisMonth.Int64)
 	}
 
 	return stats, nil
@@ -695,63 +714,51 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	loc := r.systemService.TimeLocation(ctx)
 	period := xtime.GetCalendarPeriods(loc)
 
-	// Helper function to get token sums for a specific time period
-	getTokenSums := func(since time.Time) (input, output, cached int) {
-		type tokenSums struct {
-			InputTokens  int `json:"input_tokens"`
-			OutputTokens int `json:"output_tokens"`
-			CachedTokens int `json:"cached_tokens"`
-		}
-
-		var records []tokenSums
-
-		err := r.client.UsageLog.Query().
-			Where(usagelog.CreatedAtGTE(since)).
-			Modify(func(s *sql.Selector) {
-				s.Select(
-					sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
-					sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
-					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				)
-			}).
-			Scan(ctx, &records)
-		if err != nil || len(records) == 0 {
-			log.Warn(ctx, "failed to aggregate token stats", log.Cause(err))
-			return 0, 0, 0
-		}
-
-		inputVal := records[0].InputTokens
-		outputVal := records[0].OutputTokens
-		cachedVal := records[0].CachedTokens
-
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "token stats query result",
-				log.String("since", since.Format("2006-01-02 15:04:05")),
-				log.Int("input", inputVal),
-				log.Int("output", outputVal),
-				log.Int("cached", cachedVal))
-		}
-
-		return inputVal, outputVal, cachedVal
+	// Single aggregation query with conditional sums for all time periods
+	type periodTokenSums struct {
+		TodayInput  int `json:"today_input"`
+		TodayOutput int `json:"today_output"`
+		TodayCached int `json:"today_cached"`
+		WeekInput   int `json:"week_input"`
+		WeekOutput  int `json:"week_output"`
+		WeekCached  int `json:"week_cached"`
+		MonthInput  int `json:"month_input"`
+		MonthOutput int `json:"month_output"`
+		MonthCached int `json:"month_cached"`
 	}
 
-	// Get token stats for today
-	input, output, cached := getTokenSums(period.Today.Start)
-	stats.TotalInputTokensToday = input
-	stats.TotalOutputTokensToday = output
-	stats.TotalCachedTokensToday = cached
+	var periodResults []periodTokenSums
 
-	// Get token stats for this week (calendar week from Monday)
-	input, output, cached = getTokenSums(period.ThisWeek.Start)
-	stats.TotalInputTokensThisWeek = input
-	stats.TotalOutputTokensThisWeek = output
-	stats.TotalCachedTokensThisWeek = cached
-
-	// Get token stats for this month (calendar month from 1st)
-	input, output, cached = getTokenSums(period.ThisMonth.Start)
-	stats.TotalInputTokensThisMonth = input
-	stats.TotalOutputTokensThisMonth = output
-	stats.TotalCachedTokensThisMonth = cached
+	err := r.client.UsageLog.Query().
+		Modify(func(s *sql.Selector) {
+			createdAt := s.C(usagelog.FieldCreatedAt)
+			s.Select(
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldPromptTokens), "today_input"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldCompletionTokens), "today_output"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldPromptCachedTokens), "today_cached"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldPromptTokens), "week_input"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldCompletionTokens), "week_output"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldPromptCachedTokens), "week_cached"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldPromptTokens), "month_input"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldCompletionTokens), "month_output"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(CASE WHEN %s >= ? THEN %s ELSE 0 END), 0)", createdAt, usagelog.FieldPromptCachedTokens), "month_cached"),
+			)
+		}).
+		Scan(ctx, &periodResults)
+	if err != nil || len(periodResults) == 0 {
+		log.Warn(ctx, "failed to aggregate period token stats", log.Cause(err))
+	} else {
+		r := periodResults[0]
+		stats.TotalInputTokensToday = r.TodayInput
+		stats.TotalOutputTokensToday = r.TodayOutput
+		stats.TotalCachedTokensToday = r.TodayCached
+		stats.TotalInputTokensThisWeek = r.WeekInput
+		stats.TotalOutputTokensThisWeek = r.WeekOutput
+		stats.TotalCachedTokensThisWeek = r.WeekCached
+		stats.TotalInputTokensThisMonth = r.MonthInput
+		stats.TotalOutputTokensThisMonth = r.MonthOutput
+		stats.TotalCachedTokensThisMonth = r.MonthCached
+	}
 
 	// Get all-time token stats with stale-while-revalidate caching
 	allTimeCacheMu.RLock()
