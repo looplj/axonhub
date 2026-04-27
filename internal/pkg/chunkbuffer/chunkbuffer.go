@@ -20,9 +20,15 @@ type Buffer struct {
 	closed         bool
 	subscribers    map[chan struct{}]struct{}
 	lastAppendedAt time.Time
+	// totalBytes tracks the approximate byte size of all chunks for memory-bounded eviction.
+	totalBytes int
 }
 
-const maxChunkCapacity = 50000
+const (
+	maxChunkCapacity = 50000
+	// maxByteCapacity is the approximate byte limit for the buffer (100MB).
+	maxByteCapacity = 100 * 1024 * 1024
+)
 
 // New creates a new Buffer.
 func New() *Buffer {
@@ -35,7 +41,7 @@ func New() *Buffer {
 
 // Append adds a chunk to the buffer.
 // It is safe to call from the streaming goroutine.
-// Returns false if the buffer is closed.
+// Returns false if the buffer is closed or capacity limits are exceeded.
 func (b *Buffer) Append(chunk *httpclient.StreamEvent) bool {
 	if chunk == nil {
 		return false
@@ -49,8 +55,17 @@ func (b *Buffer) Append(chunk *httpclient.StreamEvent) bool {
 	}
 
 	if len(b.chunks) >= maxChunkCapacity {
-		// Reject append to prevent unbounded memory growth and potential OOMs.
 		return false
+	}
+
+	// Enforce byte-based capacity limit by dropping oldest chunks.
+	chunkSize := len(chunk.Data) + len(chunk.Type) + len(chunk.LastEventID)
+	b.totalBytes += chunkSize
+
+	for b.totalBytes > maxByteCapacity && len(b.chunks) > 0 {
+		oldest := b.chunks[0]
+		b.totalBytes -= len(oldest.Data) + len(oldest.Type) + len(oldest.LastEventID)
+		b.chunks = b.chunks[1:]
 	}
 
 	b.chunks = append(b.chunks, chunk)

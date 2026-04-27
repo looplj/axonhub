@@ -3,6 +3,7 @@ package gc
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -31,6 +32,18 @@ type Config struct {
 	CRON          string `json:"cron" yaml:"cron" conf:"cron" validate:"required"`
 	VacuumEnabled bool   `json:"vacuum_enabled" yaml:"vacuum_enabled" conf:"vacuum_enabled"`
 	VacuumFull    bool   `json:"vacuum_full" yaml:"vacuum_full" conf:"vacuum_full"`
+}
+
+// Worker handles garbage collection and cleanup operations.
+
+// CleanupStats holds the results of a cleanup operation.
+type CleanupStats struct {
+	RequestExecsDeleted  int
+	RequestsDeleted      int
+	ThreadsDeleted       int
+	TracesDeleted        int
+	UsageLogsDeleted     int
+	ChannelProbesDeleted int
 }
 
 // Worker handles garbage collection and cleanup operations.
@@ -126,8 +139,8 @@ func (w *Worker) Stop(ctx context.Context) error {
 	return w.Executor.Shutdown(ctx)
 }
 
-// runCleanup executes the cleanup process based on storage policy.
-func (w *Worker) runCleanup(ctx context.Context, manual bool) {
+// runCleanup executes the cleanup process based on storage policy, accumulating stats.
+func (w *Worker) runCleanup(ctx context.Context, manual bool, stats *CleanupStats) {
 	log.Info(ctx, "Starting automatic cleanup process")
 
 	ctx = ent.NewContext(ctx, w.Ent)
@@ -147,48 +160,32 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 		if option.Enabled {
 			switch option.ResourceType {
 			case "requests":
-				err := w.cleanupRequests(ctx, option.CleanupDays, manual)
+				err := w.cleanupRequests(ctx, option.CleanupDays, manual, stats)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup requests",
 						log.String("resource", option.ResourceType),
 						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up requests",
-						log.String("resource", option.ResourceType),
-						log.Int("cleanup_days", option.CleanupDays))
 				}
 
-				err = w.cleanupThreads(ctx, option.CleanupDays, manual)
+				err = w.cleanupThreads(ctx, option.CleanupDays, manual, stats)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup threads",
 						log.String("resource", "threads"),
 						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up threads",
-						log.String("resource", "threads"),
-						log.Int("cleanup_days", option.CleanupDays))
 				}
 
-				err = w.cleanupTraces(ctx, option.CleanupDays, manual)
+				err = w.cleanupTraces(ctx, option.CleanupDays, manual, stats)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup traces",
 						log.String("resource", "traces"),
 						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up traces",
-						log.String("resource", "traces"),
-						log.Int("cleanup_days", option.CleanupDays))
 				}
 			case "usage_logs":
-				err := w.cleanupUsageLogs(ctx, option.CleanupDays, manual)
+				err := w.cleanupUsageLogs(ctx, option.CleanupDays, manual, stats)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup usage logs",
 						log.String("resource", option.ResourceType),
 						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up usage logs",
-						log.String("resource", option.ResourceType),
-						log.Int("cleanup_days", option.CleanupDays))
 				}
 			default:
 				log.Warn(ctx, "Unknown resource type for cleanup",
@@ -198,13 +195,10 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 	}
 
 	// Always cleanup channel probe data older than 3 days
-	err = w.cleanupChannelProbes(ctx, 3, manual)
+	err = w.cleanupChannelProbes(ctx, 3, manual, stats)
 	if err != nil {
 		log.Error(ctx, "Failed to cleanup channel probes",
 			log.Cause(err))
-	} else {
-		log.Info(ctx, "Successfully cleaned up channel probes",
-			log.Int("cleanup_days", 3))
 	}
 
 	// Run VACUUM after cleanup to reclaim storage space (SQLite and PostgreSQL)
@@ -215,11 +209,48 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 		}
 	}
 
+	// F-D58: Structured summary with deletion counts after cleanup
+	if stats != nil {
+		var parts []string
+		if stats.RequestExecsDeleted > 0 {
+			parts = append(parts, fmt.Sprintf("request_execs=%d", stats.RequestExecsDeleted))
+		}
+		if stats.RequestsDeleted > 0 {
+			parts = append(parts, fmt.Sprintf("requests=%d", stats.RequestsDeleted))
+		}
+		if stats.ThreadsDeleted > 0 {
+			parts = append(parts, fmt.Sprintf("threads=%d", stats.ThreadsDeleted))
+		}
+		if stats.TracesDeleted > 0 {
+			parts = append(parts, fmt.Sprintf("traces=%d", stats.TracesDeleted))
+		}
+		if stats.UsageLogsDeleted > 0 {
+			parts = append(parts, fmt.Sprintf("usage_logs=%d", stats.UsageLogsDeleted))
+		}
+		if stats.ChannelProbesDeleted > 0 {
+			parts = append(parts, fmt.Sprintf("channel_probes=%d", stats.ChannelProbesDeleted))
+		}
+		if len(parts) > 0 {
+			total := stats.RequestExecsDeleted + stats.RequestsDeleted +
+				stats.ThreadsDeleted + stats.TracesDeleted +
+				stats.UsageLogsDeleted + stats.ChannelProbesDeleted
+			log.Info(ctx, "GC cleanup completed",
+				log.Int("total_deleted", total),
+				log.String("breakdown", strings.Join(parts, ", ")))
+		}
+	}
+
 	log.Info(ctx, "Automatic cleanup process completed")
 }
 
+// runCleanupWithSystemContext wraps runCleanup with system context.
+func (w *Worker) runCleanupWithSystemContext(ctx context.Context) {
+	stats := CleanupStats{}
+	w.runCleanup(ctx, false, &stats)
+}
+
 // cleanupRequests deletes requests older than the specified number of days.
-func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool) error {
+func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool, stats *CleanupStats) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for requests")
 		return nil // No cleanup needed
@@ -234,6 +265,9 @@ func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bo
 	if err != nil {
 		return fmt.Errorf("failed to cleanup request executions: %w", err)
 	}
+	if stats != nil {
+		stats.RequestExecsDeleted += execResult
+	}
 
 	log.Debug(ctx, "Deleted old request executions",
 		log.Int("deleted_executions_count", execResult),
@@ -243,6 +277,9 @@ func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bo
 	reqResult, err := w.cleanupOldRequestsRecords(ctx, cutoffTime)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup requests: %w", err)
+	}
+	if stats != nil {
+		stats.RequestsDeleted += reqResult
 	}
 
 	log.Debug(ctx, "Deleted old requests",
@@ -423,7 +460,7 @@ func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int
 }
 
 // cleanupUsageLogs deletes usage logs older than the specified number of days.
-func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual bool) error {
+func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual bool, stats *CleanupStats) error {
 	if !manual && cleanupDays <= 0 {
 		return nil // No cleanup needed
 	}
@@ -440,6 +477,9 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 	if err != nil {
 		return fmt.Errorf("failed to delete old usage logs: %w", err)
 	}
+	if stats != nil {
+		stats.UsageLogsDeleted += result
+	}
 
 	log.Debug(ctx, "Cleaned up usage logs",
 		log.Int("deleted_count", result),
@@ -449,7 +489,7 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 }
 
 // cleanupThreads deletes threads older than the specified number of days.
-func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual bool) error {
+func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual bool, stats *CleanupStats) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for threads")
 		return nil // No cleanup needed
@@ -467,6 +507,9 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 	if err != nil {
 		return fmt.Errorf("failed to delete old threads: %w", err)
 	}
+	if stats != nil {
+		stats.ThreadsDeleted += result
+	}
 
 	log.Debug(ctx, "Cleaned up threads",
 		log.Int("deleted_count", result),
@@ -476,7 +519,7 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 }
 
 // cleanupTraces deletes traces older than the specified number of days.
-func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool) error {
+func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool, stats *CleanupStats) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for traces")
 		return nil // No cleanup needed
@@ -494,6 +537,9 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 	if err != nil {
 		return fmt.Errorf("failed to delete old traces: %w", err)
 	}
+	if stats != nil {
+		stats.TracesDeleted += result
+	}
 
 	log.Debug(ctx, "Cleaned up traces",
 		log.Int("deleted_count", result),
@@ -503,7 +549,7 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 }
 
 // cleanupChannelProbes deletes channel probes older than the specified number of days.
-func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manual bool) error {
+func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manual bool, stats *CleanupStats) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for channel probes")
 		return nil // No cleanup needed
@@ -519,6 +565,9 @@ func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manu
 	})
 	if err != nil {
 		return fmt.Errorf("failed to delete old channel probes: %w", err)
+	}
+	if stats != nil {
+		stats.ChannelProbesDeleted += result
 	}
 
 	log.Debug(ctx, "Cleaned up channel probes",
@@ -592,7 +641,9 @@ func (w *Worker) RunVacuumNow(ctx context.Context) error {
 
 // RunCleanupNow manually triggers the cleanup process.
 // This can be useful for testing or manual execution.
-func (w *Worker) RunCleanupNow(ctx context.Context) error {
-	w.runCleanup(ctx, true)
-	return nil
+// F-D93: Returns CleanupStats so callers can know what was cleaned up.
+func (w *Worker) RunCleanupNow(ctx context.Context) (CleanupStats, error) {
+	stats := CleanupStats{}
+	w.runCleanup(ctx, true, &stats)
+	return stats, nil
 }

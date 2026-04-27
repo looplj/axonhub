@@ -1,7 +1,14 @@
 // Package xurl provides utilities for URL parsing and manipulation.
 package xurl
 
-import "strings"
+import (
+	"encoding/base64"
+	"fmt"
+	"strings"
+)
+
+// DefaultMaxDataURL is the default maximum allowed size for decoded data URL content (10MB).
+const DefaultMaxDataURL = 10 * 1024 * 1024
 
 // DataURL represents a parsed data URL with its components.
 type DataURL struct {
@@ -15,17 +22,23 @@ type DataURL struct {
 
 // ParseDataURL parses a data URL and returns its components.
 // Returns nil if the URL is not a valid data URL.
+// Rejects data URLs whose decoded content exceeds DefaultMaxDataURL bytes.
 //
 // Data URL format: data:[<mediatype>][;base64],<data>
 // Examples:
 //   - data:image/png;base64,iVBORw0KGgo...
 //   - data:text/plain,Hello%20World
 func ParseDataURL(url string) *DataURL {
+	return ParseDataURLWithLimit(url, DefaultMaxDataURL)
+}
+
+// ParseDataURLWithLimit parses a data URL with an explicit size limit.
+// Returns nil if the URL is not valid or exceeds the size limit.
+func ParseDataURLWithLimit(url string, maxDataSize int) *DataURL {
 	if !strings.HasPrefix(url, "data:") {
 		return nil
 	}
 
-	// Split into header and data parts
 	parts := strings.SplitN(url, ",", 2)
 	if len(parts) != 2 {
 		return nil
@@ -34,7 +47,11 @@ func ParseDataURL(url string) *DataURL {
 	header := parts[0]
 	data := parts[1]
 
-	// Parse header: data:[<mediatype>][;base64]
+	// Enforce size limit on the raw data portion.
+	if len(data) > maxDataSize {
+		return nil
+	}
+
 	headerParts := strings.Split(header, ";")
 	if len(headerParts) == 0 {
 		return nil
@@ -42,7 +59,7 @@ func ParseDataURL(url string) *DataURL {
 
 	mediaType := strings.TrimPrefix(headerParts[0], "data:")
 	if mediaType == "" {
-		mediaType = "text/plain" // Default media type per RFC 2397
+		mediaType = "text/plain"
 	}
 
 	isBase64 := false
@@ -51,6 +68,14 @@ func ParseDataURL(url string) *DataURL {
 		if strings.TrimSpace(part) == "base64" {
 			isBase64 = true
 			break
+		}
+	}
+
+	// For base64, verify decoded size does not exceed limit.
+	if isBase64 {
+		decodedLen := base64.StdEncoding.DecodedLen(len(data))
+		if decodedLen > maxDataSize {
+			return nil
 		}
 	}
 
@@ -105,4 +130,33 @@ func BuildDataURL(mediaType string, data string, isBase64 bool) string {
 	}
 
 	return "data:" + mediaType + "," + data
+}
+
+// ValidateDataURLSize checks whether a data URL's decoded content fits within the given limit.
+// Returns an error if the data URL exceeds maxDataSize bytes.
+func ValidateDataURLSize(url string, maxDataSize int) error {
+	if !IsDataURL(url) {
+		return nil
+	}
+
+	parts := strings.SplitN(url, ",", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid data URL format")
+	}
+
+	data := parts[1]
+	if len(data) > maxDataSize {
+		return fmt.Errorf("data URL exceeds size limit (%d bytes > %d bytes)", len(data), maxDataSize)
+	}
+
+	header := parts[0]
+	isBase64 := strings.Contains(header, ";base64")
+	if isBase64 {
+		decodedLen := base64.StdEncoding.DecodedLen(len(data))
+		if decodedLen > maxDataSize {
+			return fmt.Errorf("data URL decoded content exceeds size limit (%d bytes > %d bytes)", decodedLen, maxDataSize)
+		}
+	}
+
+	return nil
 }
