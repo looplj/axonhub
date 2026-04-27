@@ -221,7 +221,8 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}()
 
-	body, err := io.ReadAll(rawResp.Body)
+	const maxResponseBodySize = 100 * 1024 * 1024 // 100MB
+	body, err := io.ReadAll(io.LimitReader(rawResp.Body, maxResponseBodySize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
