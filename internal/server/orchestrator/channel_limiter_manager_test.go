@@ -40,6 +40,8 @@ func TestExtractLimiterConfig_Disabled(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			cfg := extractLimiterConfig(tc.ch)
 			assert.Zero(t, cfg.capacity, "disabled cfg must have zero capacity")
 			assert.Zero(t, cfg.queueSize)
