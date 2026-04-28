@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -146,9 +147,10 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 		return
 	}
 
-	exchangeCode, intent, err := h.oidc.Callback(c.Request.Context(), provider, code, state)
+	exchangeCode, intent, err := h.oidc.Callback(c.Request.Context(), provider, code, state, h.getBaseURL(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		baseURL := h.getBaseURL(c)
+		c.Redirect(http.StatusFound, fmt.Sprintf("%s/oauth/oidc/idp-callback?error=auth_failed&error_description=%s", baseURL, url.QueryEscape(err.Error())))
 		return
 	}
 

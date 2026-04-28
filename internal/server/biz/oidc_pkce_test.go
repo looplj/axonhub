@@ -45,13 +45,13 @@ func TestOIDCService_PKCE_Flow(t *testing.T) {
 	// 3. Test Callback PKCE verification logic
 	
 	// Case A: Missing state/verifier in cache should fail
-	_, _, err = svc.Callback(ctx, providerID, "test-code", "non-existent-state")
+	_, _, err = svc.Callback(ctx, providerID, "test-code", "non-existent-state", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid state or PKCE verifier expired")
 
 	// Case B: Correct state but exchange will fail (because we didn't mock the provider fully)
 	// But we can at least see it passed the PKCE check if the error is about exchange
-	_, _, err = svc.Callback(ctx, providerID, "test-code", state)
+	_, _, err = svc.Callback(ctx, providerID, "test-code", state, "")
 	require.Error(t, err)
 	// It should fail at exchange because p.oauth2 is empty/uninitialized for a real exchange
 	require.Contains(t, err.Error(), "failed to exchange authorization code")

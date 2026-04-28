@@ -70,6 +70,7 @@ type OIDCProvider struct {
 	TokenURL    string `conf:"token_url" yaml:"token_url" json:"token_url"`
 	UserInfoURL string `conf:"user_info_url" yaml:"user_info_url" json:"user_info_url"`
 	JWKSURL     string `conf:"jwks_url" yaml:"jwks_url" json:"jwks_url"`
+	RedirectURL string `conf:"redirect_url" yaml:"redirect_url" json:"redirect_url"`
 	// Behavior
 	OIDCLoginOnly      bool              `conf:"oidc_login_only" yaml:"oidc_login_only" json:"oidc_login_only"`
 	GroupClaims        []string          `conf:"group_claims" yaml:"group_claims" json:"group_claims"`
@@ -263,9 +264,12 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 		// This redirect URI is for IdP -> backend callback handling.
 		// The backend will then issue a short-lived exchange code and redirect to
 		// the frontend callback route: /oauth/oidc/idp-callback?code=...
-		redirectURL := "/oauth/oidc/callback"
-		if numProviders > 1 {
-			redirectURL = fmt.Sprintf("/oauth/oidc/callback/%s", providerID)
+		redirectURL := p.RedirectURL
+		if redirectURL == "" {
+			redirectURL = "/oauth/oidc/callback"
+			if numProviders > 1 {
+				redirectURL = fmt.Sprintf("/oauth/oidc/callback/%s", providerID)
+			}
 		}
 
 		scopes := p.ExtraScopes
@@ -494,7 +498,7 @@ func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerIdentifier st
 	if p.config.EnablePKCE {
 		pkceVerifierBytes := make([]byte, 32)
 		_, _ = rand.Read(pkceVerifierBytes)
-		pkceVerifier = base64.URLEncoding.EncodeToString(pkceVerifierBytes)
+		pkceVerifier = base64.RawURLEncoding.EncodeToString(pkceVerifierBytes)
 
 		// Store PKCE verifier in cache mapped to state (valid for 10 minutes)
 		err := s.cache.Set(ctx, "oidc_pkce:"+state, []byte(pkceVerifier), store.WithExpiration(10*time.Minute))
@@ -525,7 +529,7 @@ func (s *OIDCService) GetLinkAuthorizeURL(ctx context.Context, providerIdentifie
 	return authURL, state, nil
 }
 
-func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, state string) (string, string, error) {
+func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, state, baseURL string) (string, string, error) {
 	// Elevate privileges for database operations as this is an unauthenticated flow
 	ctx = contexts.WithUser(ctx, &ent.User{IsOwner: true})
 
@@ -544,7 +548,12 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 		_ = s.cache.Delete(ctx, "oidc_pkce:"+state) // Consume once
 	}
 
-	oauth2Token, err := p.oauth2.Exchange(ctx, code, opts...)
+	oauth2Config := p.oauth2
+	if baseURL != "" {
+		oauth2Config.RedirectURL = baseURL + p.oauth2.RedirectURL
+	}
+
+	oauth2Token, err := oauth2Config.Exchange(ctx, code, opts...)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to exchange authorization code: %w", err)
 	}
@@ -873,8 +882,12 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 
 	firstName := givenName
 	lastName := familyName
-	if firstName == "" && lastName == "" {
-		firstName = name
+	if firstName == "" && lastName == "" && name != "" {
+		parts := strings.SplitN(name, " ", 2)
+		firstName = parts[0]
+		if len(parts) > 1 {
+			lastName = parts[1]
+		}
 	}
 
 	// Create the User record FIRST
@@ -912,8 +925,12 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, givenName, familyName, picture string, groups []string, cfg OIDCProvider) (*ent.User, error) {
 	firstName := givenName
 	lastName := familyName
-	if firstName == "" && lastName == "" {
-		firstName = name
+	if firstName == "" && lastName == "" && name != "" {
+		parts := strings.SplitN(name, " ", 2)
+		firstName = parts[0]
+		if len(parts) > 1 {
+			lastName = parts[1]
+		}
 	}
 
 	update := u.Update()
@@ -1017,7 +1034,7 @@ func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, gro
 
 	// Roles logic depending on strategy
 	if len(dbRolesToCompile) > 0 {
-		roleEntities, err := s.db.Role.Query().Where(role.LevelEQ(role.LevelSystem), role.NameIn(dbRolesToCompile...)).All(ctx)
+		roleEntities, err := s.db.Role.Query().Where(role.NameIn(dbRolesToCompile...)).All(ctx)
 		if err == nil && len(roleEntities) > 0 {
 			var roleIDs []int
 			for _, r := range roleEntities {
