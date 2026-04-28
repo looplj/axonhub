@@ -15,17 +15,17 @@ import (
 
 // NanoGPTUsageResponse matches the NanoGPT subscription usage API response.
 type NanoGPTUsageResponse struct {
-	Active         *bool              `json:"active,omitempty"`
-	Provider       *string            `json:"provider,omitempty"`
-	ProviderStatus *string            `json:"providerStatus,omitempty"`
-	Limits         *NanoGPTLimits     `json:"limits,omitempty"`
-	AllowOverage   *bool              `json:"allowOverage,omitempty"`
-	Period         *NanoGPTPeriod     `json:"period,omitempty"`
+	Active            *bool               `json:"active,omitempty"`
+	Provider          *string             `json:"provider,omitempty"`
+	ProviderStatus    *string             `json:"providerStatus,omitempty"`
+	Limits            *NanoGPTLimits      `json:"limits,omitempty"`
+	AllowOverage      *bool               `json:"allowOverage,omitempty"`
+	Period            *NanoGPTPeriod      `json:"period,omitempty"`
 	DailyImages       *NanoGPTQuotaWindow `json:"dailyImages,omitempty"`
 	DailyInputTokens  *NanoGPTQuotaWindow `json:"dailyInputTokens,omitempty"`
 	WeeklyInputTokens *NanoGPTQuotaWindow `json:"weeklyInputTokens,omitempty"`
-	State          *string            `json:"state,omitempty"`
-	GraceUntil     *string            `json:"graceUntil,omitempty"`
+	State             *string             `json:"state,omitempty"`
+	GraceUntil        *string             `json:"graceUntil,omitempty"`
 }
 
 // NanoGPTLimits represents the quota limits from the NanoGPT API.
@@ -114,10 +114,15 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		}
 	}
 
-	// Check for warning state: any window with percentUsed >= 0.8
+	limits := buildNanoGPTLimitStatuses(response.DailyImages, response.DailyInputTokens, response.WeeklyInputTokens)
+
+	// Check for warning state: any window with percentUsed >= WarningThresholdRatio
 	if normalizedStatus == "available" {
-		if isAnyWindowHighUsage(response.DailyImages, response.DailyInputTokens, response.WeeklyInputTokens) {
-			normalizedStatus = "warning"
+		for i := range limits {
+			if limits[i].Status == "warning" || limits[i].Status == "exhausted" {
+				normalizedStatus = "warning"
+				break
+			}
 		}
 	}
 
@@ -190,7 +195,8 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		ProviderType: "nanogpt",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
+		Limits:       limits,
 	}, nil
 }
 
@@ -220,14 +226,55 @@ func buildNanoGPTQuotaURL(baseURL string) string {
 	return fmt.Sprintf("%s://%s/api/subscription/v1/usage", scheme, parsed.Host)
 }
 
-// isAnyWindowHighUsage returns true if any non-nil window has percentUsed >= 0.8.
-func isAnyWindowHighUsage(windows ...*NanoGPTQuotaWindow) bool {
-	for _, w := range windows {
-		if w != nil && w.PercentUsed != nil && *w.PercentUsed >= 0.8 {
-			return true
-		}
+func buildNanoGPTLimitStatuses(imageWindow, dailyTokenWindow, weeklyTokenWindow *NanoGPTQuotaWindow) []QuotaLimitStatus {
+	typed := []struct {
+		window   *NanoGPTQuotaWindow
+		limitType QuotaLimitType
+	}{
+		{window: imageWindow, limitType: QuotaLimitTypeImage},
+		{window: dailyTokenWindow, limitType: QuotaLimitTypeToken},
+		{window: weeklyTokenWindow, limitType: QuotaLimitTypeToken},
 	}
-	return false
+
+	var limits []QuotaLimitStatus
+
+	for _, w := range typed {
+		if w.window == nil {
+			continue
+		}
+
+		status := "available"
+		usageRatio := 0.0
+
+		if w.window.PercentUsed != nil {
+			usageRatio = *w.window.PercentUsed
+		}
+
+		if w.window.Remaining != nil && *w.window.Remaining <= 0 {
+			status = "exhausted"
+			usageRatio = 1.0
+		} else if usageRatio >= 1.0 {
+			status = "exhausted"
+		} else if usageRatio >= WarningThresholdRatio {
+			status = "warning"
+		}
+
+		var resetAt *time.Time
+		if w.window.ResetAt != nil && *w.window.ResetAt > 0 {
+			t := time.UnixMilli(*w.window.ResetAt)
+			resetAt = &t
+		}
+
+		limits = append(limits, QuotaLimitStatus{
+			Type:        w.limitType,
+			Status:      status,
+			UsageRatio:  usageRatio,
+			Ready:       status != "exhausted",
+			NextResetAt: resetAt,
+		})
+	}
+
+	return limits
 }
 
 // findEarliestResetAt returns the earliest resetAt time from all non-nil windows.

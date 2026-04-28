@@ -31,6 +31,7 @@ func NewChatCompletionOrchestrator(
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	liveStreamRegistry *biz.LiveStreamRegistry,
 	channelLimiterManager *ChannelLimiterManager,
+	quotaProvider ProviderQuotaStatusProvider,
 ) *ChatCompletionOrchestrator {
 	rateLimitTracker := NewChannelRequestTracker()
 
@@ -46,6 +47,7 @@ func NewChatCompletionOrchestrator(
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
 	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, channelLimiterManager)
+	quotaStrategy := NewQuotaAwareStrategy(quotaProvider, systemService)
 
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewTraceAwareStrategy(requestService),
@@ -53,13 +55,14 @@ func NewChatCompletionOrchestrator(
 		NewWeightRoundRobinStrategy(channelService),
 		NewLatencyAwareStrategy(channelService),
 		rateLimitStrategy,
+		quotaStrategy,
 	)
 
 	failoverLoadBalancer := NewLoadBalancer(systemService, channelService,
-		NewWeightStrategy(), NewRandomStrategy(), rateLimitStrategy)
+		NewWeightStrategy(), NewRandomStrategy(), rateLimitStrategy, quotaStrategy)
 
 	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
-		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy)
+		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy, quotaStrategy)
 
 	return &ChatCompletionOrchestrator{
 		Inbound:            inbound,
@@ -85,6 +88,7 @@ func NewChatCompletionOrchestrator(
 		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
+		quotaProvider:              quotaProvider,
 		proxy:                      nil,
 	}
 }
@@ -121,6 +125,8 @@ type ChatCompletionOrchestrator struct {
 	rateLimitTracker *ChannelRequestTracker
 	// The model circuit breaker for circuit-breaker load balancing.
 	modelCircuitBreaker *biz.ModelCircuitBreaker
+	// The provider quota status provider for quota-aware load balancing and selection.
+	quotaProvider ProviderQuotaStatusProvider
 
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
@@ -229,7 +235,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyAutoReasoningEffort(processor.SystemService),
 		checkApiKeyModelAccess(inbound),
 		applyModelMapping(inbound),
-		selectCandidates(inbound),
+		selectCandidates(inbound, processor.quotaProvider, processor.SystemService),
 		injectPrompts(inbound),
 		protectPrompts(inbound),
 		// Response pass-through middlewares run before persistRequest so the raw provider

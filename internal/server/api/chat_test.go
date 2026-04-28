@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -259,6 +260,61 @@ func TestFormatStreamError_HttpClientError(t *testing.T) {
 	assert.Equal(t, "Internal server error", errorField["message"])
 	assert.Equal(t, "internal_error", errorField["type"])
 	assert.Equal(t, "", errorField["code"])
+}
+
+func TestFormatStreamError_QuotaExhaustedError(t *testing.T) {
+	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
+	result := FormatStreamError(context.Background(), quotaErr)
+
+	data, marshalErr := json.Marshal(result)
+	require.NoError(t, marshalErr)
+
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal(data, &parsed))
+
+	errorField := parsed["error"].(map[string]any)
+	assert.Equal(t, "all channels quota exhausted for model gpt-4", errorField["message"])
+	assert.Equal(t, "quota_exhausted", errorField["type"])
+	assert.Equal(t, "quota_exhausted", errorField["code"])
+}
+
+func TestWrapQuotaExhaustedAsResponseError_QuotaError(t *testing.T) {
+	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
+	result := wrapQuotaExhaustedAsResponseError(quotaErr)
+
+	respErr := &llm.ResponseError{}
+	ok := errors.As(result, &respErr)
+	require.True(t, ok, "should convert to *llm.ResponseError")
+	assert.Equal(t, http.StatusServiceUnavailable, respErr.StatusCode)
+	assert.Equal(t, "all channels quota exhausted for model gpt-4", respErr.Detail.Message)
+	assert.Equal(t, "quota_exhausted", respErr.Detail.Type)
+	assert.Equal(t, "quota_exhausted", respErr.Detail.Code)
+}
+
+func TestWrapQuotaExhaustedAsResponseError_OtherError(t *testing.T) {
+	otherErr := errors.New("something else")
+	result := wrapQuotaExhaustedAsResponseError(otherErr)
+	assert.Equal(t, otherErr, result, "non-quota errors should pass through unchanged")
+}
+
+func TestPlaygroundHandleError_QuotaExhausted_Returns503(t *testing.T) {
+	handlers := &PlaygroundHandlers{}
+
+	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
+	errResp := handlers.HandleError(quotaErr)
+
+	assert.Equal(t, http.StatusServiceUnavailable, errResp.Status)
+	assert.Equal(t, http.StatusServiceUnavailable, errResp.Error.Code)
+	assert.Equal(t, "all channels quota exhausted for model gpt-4", errResp.Error.Message)
+}
+
+func TestPlaygroundHandleError_OtherError_Returns500(t *testing.T) {
+	handlers := &PlaygroundHandlers{}
+
+	otherErr := errors.New("something else")
+	errResp := handlers.HandleError(otherErr)
+
+	assert.Equal(t, http.StatusInternalServerError, errResp.Status)
 }
 
 func TestFormatStreamError_LlmResponseError_PassesCodeAndRequestID(t *testing.T) {

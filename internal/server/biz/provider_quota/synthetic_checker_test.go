@@ -59,6 +59,20 @@ func TestSynthetic_CheckQuota_HappyPath(t *testing.T) {
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
 	require.Equal(t, "synthetic", quota.ProviderType)
+
+	require.Len(t, quota.Limits, 2)
+
+	require.Equal(t, QuotaLimitTypeToken, quota.Limits[0].Type)
+	require.Equal(t, "available", quota.Limits[0].Status)
+	require.InDelta(t, 0.05, quota.Limits[0].UsageRatio, 0.001)
+	require.True(t, quota.Limits[0].Ready)
+	require.NotNil(t, quota.Limits[0].NextResetAt)
+
+	require.Equal(t, QuotaLimitTypeToken, quota.Limits[1].Type)
+	require.Equal(t, "available", quota.Limits[1].Status)
+	require.InDelta(t, 0.614, quota.Limits[1].UsageRatio, 0.001)
+	require.True(t, quota.Limits[1].Ready)
+	require.NotNil(t, quota.Limits[1].NextResetAt)
 }
 
 func TestSynthetic_CheckQuota_WarningState(t *testing.T) {
@@ -99,6 +113,16 @@ func TestSynthetic_CheckQuota_WarningState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "warning", quota.Status)
 	require.True(t, quota.Ready)
+
+	require.Len(t, quota.Limits, 2)
+
+	require.Equal(t, "warning", quota.Limits[0].Status)
+	require.InDelta(t, 0.85, quota.Limits[0].UsageRatio, 0.001)
+	require.True(t, quota.Limits[0].Ready)
+
+	require.Equal(t, "warning", quota.Limits[1].Status)
+	require.InDelta(t, 0.85, quota.Limits[1].UsageRatio, 0.001)
+	require.True(t, quota.Limits[1].Ready)
 }
 
 func TestSynthetic_CheckQuota_ExhaustedState(t *testing.T) {
@@ -139,6 +163,16 @@ func TestSynthetic_CheckQuota_ExhaustedState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "exhausted", quota.Status)
 	require.False(t, quota.Ready)
+
+	require.Len(t, quota.Limits, 2)
+
+	require.Equal(t, "exhausted", quota.Limits[0].Status)
+	require.Equal(t, 1.0, quota.Limits[0].UsageRatio)
+	require.False(t, quota.Limits[0].Ready)
+
+	require.Equal(t, "warning", quota.Limits[1].Status)
+	require.InDelta(t, 1.0, quota.Limits[1].UsageRatio, 0.001)
+	require.True(t, quota.Limits[1].Ready)
 }
 
 func TestSynthetic_CheckQuota_MissingCredentials(t *testing.T) {

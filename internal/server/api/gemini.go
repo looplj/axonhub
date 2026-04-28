@@ -30,6 +30,7 @@ type GeminiHandlersParams struct {
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
 	ChannelLimiterManager       *orchestrator.ChannelLimiterManager
+	ProviderQuotaStatusProvider orchestrator.ProviderQuotaStatusProvider
 }
 
 type GeminiHandlers struct {
@@ -54,6 +55,7 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
 			),
 		),
 		ChannelService: params.ChannelService,

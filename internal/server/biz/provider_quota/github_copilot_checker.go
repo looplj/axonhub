@@ -51,14 +51,23 @@ func (c *GithubCopilotQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Chan
 		return QuotaData{}, err
 	}
 
-	status, _ := c.calculateStatus(payload)
+	status, lowestPercentage := c.calculateStatus(payload)
+
+	usageRatio := 1.0
+	if lowestPercentage > 0 {
+		usageRatio = 1.0 - (lowestPercentage / 100.0)
+	}
+	limits := []QuotaLimitStatus{
+		NewTokenLimitStatus(status, usageRatio, c.parseResetDate(payload)),
+	}
 
 	return QuotaData{
 		Status:       status,
 		ProviderType: "github_copilot",
 		RawData:      c.prepareRawData(payload),
 		NextResetAt:  c.parseResetDate(payload),
-		Ready:        status == "available" || status == "warning",
+		Ready:        IsReadyStatus(status),
+		Limits:       limits,
 	}, nil
 }
 

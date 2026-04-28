@@ -606,6 +606,9 @@ models:
   AutoSyncFrequency:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoSyncFrequency
+  QuotaEnforcementMode:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
   PromptSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptSettings

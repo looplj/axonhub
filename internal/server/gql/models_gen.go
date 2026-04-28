@@ -501,6 +501,11 @@ type UpdateProjectUserInput struct {
 	RemoveRoleIDs []*objects.GUID `json:"removeRoleIDs,omitempty"`
 }
 
+type UpdateQuotaEnforcementSettingsInput struct {
+	Enabled *bool                     `json:"enabled,omitempty"`
+	Mode    *biz.QuotaEnforcementMode `json:"mode,omitempty"`
+}
+
 type UpdateUserAgentPassThroughSettingsInput struct {
 	Enabled bool `json:"enabled"`
 }

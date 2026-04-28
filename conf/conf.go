@@ -38,7 +38,8 @@ type Config struct {
 }
 
 type providerQuotaConfig struct {
-	CheckInterval time.Duration `conf:"check_interval" yaml:"check_interval" json:"check_interval"`
+	CheckInterval             time.Duration `conf:"check_interval" yaml:"check_interval" json:"check_interval"`
+	WarningCheckIntervalRatio int           `conf:"warning_check_interval_ratio" yaml:"warning_check_interval_ratio" json:"warning_check_interval_ratio"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -205,7 +206,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("gc.vacuum_full", false)
 
 	// Provider quota defaults
-	v.SetDefault("provider_quota.check_interval", "20m") // Check every 20 minutes
+	v.SetDefault("provider_quota.check_interval", "5m")
+	v.SetDefault("provider_quota.warning_check_interval_ratio", 4) // Warning interval = check_interval * ratio
 
 	// Cache defaults
 	v.SetDefault("cache.mode", "memory")

@@ -222,7 +222,8 @@ export function useProviderQuotaStatuses() {
       };
       return graphqlRequest<any>(PROVIDER_QUOTA_STATUSES_QUERY, { input });
     },
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 60000,
+    refetchIntervalInBackground: true,
   });
 
   const channels = data?.queryChannels?.edges?.map((e: any) => e.node) || [];

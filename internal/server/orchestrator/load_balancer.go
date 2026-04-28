@@ -86,6 +86,7 @@ type RetryPolicyProvider interface {
 // Save the requested model ID in the context, to let model aware strategy use it, e.g. circuit breaker.
 type modelContextKey struct{}
 type streamContextKey struct{}
+type quotaLimitTypeContextKey struct{}
 
 // contextWithRequestedModel adds the requested model ID to the context.
 func contextWithRequestedModel(ctx context.Context, modelID string) context.Context {
@@ -109,6 +110,17 @@ func requestStreamFromContext(ctx context.Context) bool {
 	stream, _ := ctx.Value(streamContextKey{}).(bool)
 
 	return stream
+}
+
+func contextWithQuotaLimitType(ctx context.Context, limitType string) context.Context {
+	return context.WithValue(ctx, quotaLimitTypeContextKey{}, limitType)
+}
+
+func quotaLimitTypeFromContext(ctx context.Context) string {
+	if lt, ok := ctx.Value(quotaLimitTypeContextKey{}).(string); ok {
+		return lt
+	}
+	return ""
 }
 
 // LoadBalancer applies multiple strategies to sort channels by priority.
