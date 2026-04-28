@@ -25,6 +25,7 @@ func (s TransportScope) Metadata() map[string]string {
 	if s.BaseURL != "" {
 		metadata[MetadataKeyBaseURL] = s.BaseURL
 	}
+
 	if s.AccountIdentity != "" {
 		metadata[MetadataKeyAccountIdentity] = s.AccountIdentity
 	}
@@ -59,5 +60,6 @@ func GetTransportScope(ctx context.Context) (TransportScope, bool) {
 	}
 
 	scope, ok := ctx.Value(transportScopeContextKey{}).(TransportScope)
+
 	return scope, ok
 }

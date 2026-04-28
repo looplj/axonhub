@@ -46,6 +46,7 @@ func TestOutboundTransformer_TransformCompactRequest(t *testing.T) {
 		assert.Equal(t, string(llm.APIFormatOpenAIResponseCompact), httpReq.APIFormat)
 
 		var payload CompactAPIRequest
+
 		err = json.Unmarshal(httpReq.Body, &payload)
 		require.NoError(t, err)
 		assert.Equal(t, "gpt-4o", payload.Model)
@@ -68,6 +69,7 @@ func TestOutboundTransformer_TransformCompactRequest(t *testing.T) {
 		require.NotNil(t, httpReq)
 
 		var payload CompactAPIRequest
+
 		err = json.Unmarshal(httpReq.Body, &payload)
 		require.NoError(t, err)
 		assert.Equal(t, "gpt-4o", payload.Model)
@@ -95,6 +97,7 @@ func TestOutboundTransformer_TransformCompactRequest(t *testing.T) {
 		require.NotNil(t, httpReq)
 
 		var payload CompactAPIRequest
+
 		err = json.Unmarshal(httpReq.Body, &payload)
 		require.NoError(t, err)
 		assert.Equal(t, "gpt-4o", payload.Model)

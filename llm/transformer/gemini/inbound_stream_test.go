@@ -365,11 +365,13 @@ func TestInboundTransformer_TransformStream_AggregatesToolCallArguments(t *testi
 	require.NoError(t, err)
 
 	var last GenerateContentResponse
+
 	for outputStream.Next() {
 		var r GenerateContentResponse
 		require.NoError(t, json.Unmarshal(outputStream.Current().Data, &r))
 		last = r
 	}
+
 	require.NoError(t, outputStream.Err())
 
 	require.Len(t, last.Candidates, 1)
@@ -377,6 +379,7 @@ func TestInboundTransformer_TransformStream_AggregatesToolCallArguments(t *testi
 	parts := last.Candidates[0].Content.Parts
 
 	var fc *FunctionCall
+
 	for _, p := range parts {
 		if p != nil && p.FunctionCall != nil {
 			fc = p.FunctionCall
@@ -439,6 +442,7 @@ func TestInboundTransformer_TransformStream_FinishOnlyChunkWithReasoningSignatur
 	require.Len(t, results, 2)
 
 	var firstResp GenerateContentResponse
+
 	err = json.Unmarshal(results[0].Data, &firstResp)
 	require.NoError(t, err)
 	require.Len(t, firstResp.Candidates, 1)
@@ -447,6 +451,7 @@ func TestInboundTransformer_TransformStream_FinishOnlyChunkWithReasoningSignatur
 	require.Equal(t, "OK", firstResp.Candidates[0].Content.Parts[0].Text)
 
 	var finishResp GenerateContentResponse
+
 	err = json.Unmarshal(results[1].Data, &finishResp)
 	require.NoError(t, err)
 	require.Len(t, finishResp.Candidates, 1)
@@ -792,8 +797,10 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 					if part.FunctionCall != nil {
 						hasFunctionCall = true
+
 						require.Equal(t, "get_user_city", part.FunctionCall.Name)
 						require.Equal(t, "123", part.FunctionCall.Args["user_id"])
+
 						continue
 					}
 
@@ -827,10 +834,12 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					if part == nil {
 						continue
 					}
+
 					if part.FunctionCall != nil {
 						toolCalls = append(toolCalls, part.FunctionCall)
 						continue
 					}
+
 					if !part.Thought {
 						fullText.WriteString(part.Text)
 					}
@@ -931,6 +940,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 			// Compare transformed events against golden file (semantic JSON equality).
 			require.Equal(t, len(expectedEvents), len(actualEvents), "event count should match expected")
+
 			for i := range expectedEvents {
 				var expected, actual GenerateContentResponse
 

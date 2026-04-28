@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -19,7 +21,6 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
-	"github.com/tidwall/gjson"
 )
 
 var modelVersionRegex = regexp.MustCompile(`^gpt-(\d+)`)
@@ -37,11 +38,11 @@ const (
 	VSCodeUserAgentLibHeader       = "x-vscode-user-agent-library-version"
 	CopilotVisionRequestHeader     = "Copilot-Vision-Request"
 	InitiatorHeader                = "X-Initiator"
-	// LiteLLM-style defaults for Copilot quota tracking
-	DefaultEditorVersion       = "vscode/1.95.0"
-	DefaultEditorPluginVersion = "copilot-chat/0.26.7"
-	DefaultUserAgent           = "GitHubCopilotChat/0.26.7"
-	DefaultOpenAIIntent        = "conversation-edits"
+	// LiteLLM-style defaults for Copilot quota tracking.
+	DefaultEditorVersion        = "vscode/1.95.0"
+	DefaultEditorPluginVersion  = "copilot-chat/0.26.7"
+	DefaultUserAgent            = "GitHubCopilotChat/0.26.7"
+	DefaultOpenAIIntent         = "conversation-edits"
 	DefaultCopilotIntegrationID = "vscode-chat"
 	DefaultGitHubAPIVersion     = "2025-04-01"
 	DefaultVSCodeUserAgentLib   = "electron-fetch"
@@ -60,7 +61,7 @@ type OutboundTransformer struct {
 
 type OutboundTransformerParams struct {
 	TokenProvider TokenProvider // required
-	BaseURL       string         // optional, defaults to DefaultCopilotBaseURL
+	BaseURL       string        // optional, defaults to DefaultCopilotBaseURL
 }
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
@@ -171,6 +172,7 @@ func normalizeInitiator(val string) string {
 	if normalized == "user" || normalized == "agent" {
 		return normalized
 	}
+
 	return ""
 }
 
@@ -230,11 +232,13 @@ func hasVisionContent(llmReq *llm.Request) bool {
 			if part.Type == "image_url" || part.ImageURL != nil {
 				return true
 			}
+
 			if part.Text != nil && isImageDataURL(*part.Text) {
 				return true
 			}
 		}
 	}
+
 	return false
 }
 
@@ -250,6 +254,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	// Check for HTTP error status codes.
 	if httpResp.StatusCode >= 400 {
 		bodyLen := len(httpResp.Body)
+
 		var bodyMsg string
 		if bodyLen == 0 {
 			bodyMsg = "(empty body)"
@@ -258,6 +263,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		} else {
 			bodyMsg = fmt.Sprintf("(body: %s, length: %d)", string(httpResp.Body), bodyLen)
 		}
+
 		return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, bodyMsg)
 	}
 
@@ -272,10 +278,13 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 
 	// Check for Copilot's wrapped response format: {"response": {...}}
 	var unwrappedBody []byte
+
 	if !isResponsesFormat && gjson.GetBytes(httpResp.Body, "response").Exists() {
 		// Extract the inner response object
 		innerResponse := gjson.GetBytes(httpResp.Body, "response").Raw
+
 		slog.DebugContext(ctx, "Copilot wrapped response detected, extracting inner response")
+
 		isResponsesFormat = gjson.GetBytes([]byte(innerResponse), "output").Exists() ||
 			gjson.GetBytes([]byte(innerResponse), "object").String() == "response"
 		if isResponsesFormat {
@@ -293,8 +302,10 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 				Headers:    httpResp.Headers,
 				Body:       unwrappedBody,
 			}
+
 			return t.responses.TransformResponse(ctx, wrappedResp)
 		}
+
 		return t.responses.TransformResponse(ctx, httpResp)
 	}
 
@@ -313,8 +324,11 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	// Check if this is a Responses API format stream (Codex) or Chat Completions format
 	// Peek at the first event to determine the format
-	var isResponsesFormat bool
-	var firstEvent *httpclient.StreamEvent
+	var (
+		isResponsesFormat bool
+		firstEvent        *httpclient.StreamEvent
+	)
+
 	if stream.Next() {
 		firstEvent = stream.Current()
 		if firstEvent != nil && len(firstEvent.Data) > 0 {
@@ -342,11 +356,13 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 		// Use cached transformer to avoid repeated allocations
 		if t.openAITransformer == nil {
 			var err error
+
 			t.openAITransformer, err = openai.NewOutboundTransformer(t.baseURL, "")
 			if err != nil {
 				return nil, fmt.Errorf("failed to create openai transformer: %w", err)
 			}
 		}
+
 		return t.openAITransformer.TransformStream(ctx, stream)
 	}
 
@@ -354,6 +370,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	// Local state for tracking item_id to call_id mapping
 	// This allows us to handle multiple concurrent tool calls
 	itemIDToCallID := make(map[string]string)
+
 	var mostRecentCallID string
 
 	// For Codex models, we need to convert the Copilot-specific stream format
@@ -396,7 +413,8 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID map[string]string, mostRecentCallID *string) []byte {
 	eventType := gjson.GetBytes(data, "type").String()
 
-	if eventType == "response.output_item.added" {
+	switch eventType {
+	case "response.output_item.added":
 		callID := gjson.GetBytes(data, "item.call_id").String()
 		if callID != "" {
 			// Capture original item ID before overriding
@@ -407,6 +425,7 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 			if originalID != "" && originalID != callID {
 				itemIDToCallID[originalID] = callID
 			}
+
 			*mostRecentCallID = callID
 
 			// Copilot sends an item with arguments="" first, then later sends another item
@@ -433,11 +452,12 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 				}
 			}
 		}
-	} else if eventType == "response.function_call_arguments.delta" {
+	case "response.function_call_arguments.delta":
 		// Copilot uses random hashes for item_id in delta events, which the aggregator can't find.
 		// We MUST override the item_id to equal the call_id we forced above.
 		// Try to find the call_id from the event's item_id first, then fall back
 		itemID := gjson.GetBytes(data, "item_id").String()
+
 		callID := ""
 		if itemID != "" {
 			callID = itemIDToCallID[itemID]
@@ -446,6 +466,7 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 		if callID == "" {
 			callID = *mostRecentCallID
 		}
+
 		if callID != "" {
 			var event map[string]any
 			if err := json.Unmarshal(data, &event); err == nil {
@@ -455,28 +476,32 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 				}
 			}
 		}
-	} else if eventType == "response.function_call_arguments.done" {
+	case "response.function_call_arguments.done":
 		// Fix item_id for done events too, and also set call_id just in case.
 		// Same lookup pattern as delta
 		itemID := gjson.GetBytes(data, "item_id").String()
+
 		callID := ""
 		if itemID != "" {
 			callID = itemIDToCallID[itemID]
 		}
+
 		if callID == "" {
 			callID = *mostRecentCallID
 		}
+
 		if callID != "" {
 			var event map[string]any
 			if err := json.Unmarshal(data, &event); err == nil {
 				event["item_id"] = callID
+
 				event["call_id"] = callID
 				if fixedData, err := json.Marshal(event); err == nil {
 					return fixedData
 				}
 			}
 		}
-	} else if eventType == "response.output_item.done" {
+	case "response.output_item.done":
 		// If Copilot sends a done event for the item, it might have a random hash for id.
 		// Force it to match our call_id so the aggregator updates the right item.
 		callID := gjson.GetBytes(data, "item.call_id").String()
@@ -485,6 +510,7 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 			if err := json.Unmarshal(data, &event); err == nil {
 				if item, ok := event["item"].(map[string]any); ok {
 					item["id"] = callID
+
 					event["item"] = item
 					if fixedData, err := json.Marshal(event); err == nil {
 						return fixedData
@@ -544,6 +570,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 	if isResponsesAPIStream(chunks) {
 		return responses.AggregateStreamChunks(ctx, chunks)
 	}
+
 	return openai.AggregateStreamChunks(ctx, chunks, openai.DefaultTransformChunk)
 }
 
@@ -562,6 +589,7 @@ func isResponsesAPIStream(chunks []*httpclient.StreamEvent) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -636,6 +664,7 @@ func (s *prependedStream) Next() bool {
 	if !s.firstYielded {
 		s.firstYielded = true
 		s.current = s.firstEvent
+
 		return s.firstEvent != nil
 	}
 
@@ -646,6 +675,7 @@ func (s *prependedStream) Next() bool {
 	} else {
 		s.current = nil
 	}
+
 	return ok
 }
 
@@ -653,6 +683,7 @@ func (s *prependedStream) Current() *httpclient.StreamEvent {
 	if s.firstYielded && s.firstEvent != nil && s.current == s.firstEvent {
 		return s.current
 	}
+
 	return s.upstream.Current()
 }
 

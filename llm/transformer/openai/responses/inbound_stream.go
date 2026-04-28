@@ -202,6 +202,7 @@ func (s *responsesInboundStream) Next() bool {
 				s.err = err
 				return false
 			}
+
 			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
 		}
 
@@ -613,10 +614,12 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 			return fmt.Errorf("failed to enqueue reasoning_summary_part.done event: %w", err)
 		}
 	}
+
 	s.hasReasoningSummaryPart = false
 
 	// Emit output_item.done with complete reasoning item
 	var encryptedContent *string
+
 	if s.accumulatedReasoningSignature.Len() > 0 {
 		encoded := s.accumulatedReasoningSignature.String()
 		encryptedContent = lo.ToPtr(encoded)

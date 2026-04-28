@@ -42,6 +42,7 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 	if llmReq.TransformerMetadata == nil {
 		llmReq.TransformerMetadata = map[string]any{}
 	}
+
 	llmReq.TransformerMetadata["video_prompt"] = prompt
 
 	bodyMap := map[string]any{
@@ -92,6 +93,7 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 	if req.TransformerMetadata == nil {
 		req.TransformerMetadata = map[string]any{}
 	}
+
 	req.TransformerMetadata["model"] = llmReq.Model
 	req.TransformerMetadata["video_prompt"] = prompt
 
@@ -104,6 +106,7 @@ func firstVideoText(content []llm.VideoContent) string {
 			return c.Text
 		}
 	}
+
 	return ""
 }
 
@@ -113,6 +116,7 @@ func firstVideoImageURL(content []llm.VideoContent) string {
 			return c.ImageURL.URL
 		}
 	}
+
 	return ""
 }
 
@@ -142,12 +146,14 @@ func transformVideoResponse(httpResp *httpclient.Response) (*llm.Response, error
 	}
 
 	model := "video-generation"
+
 	var prompt string
 
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
 		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
 			model = m
 		}
+
 		if p, ok := httpResp.Request.TransformerMetadata["video_prompt"].(string); ok && p != "" {
 			prompt = p
 		}
@@ -189,6 +195,7 @@ func normalizeVideoStatusOpenAI(status string) string {
 		if status == "" {
 			return "queued"
 		}
+
 		return strings.ToLower(status)
 	}
 }
@@ -207,28 +214,28 @@ func (t *OutboundTransformer) BuildGetVideoTaskRequest(ctx context.Context, prov
 	url := t.config.BaseURL + "/videos/" + providerTaskID
 
 	return &httpclient.Request{
-		Method:  http.MethodGet,
-		URL:     url,
-		Headers: http.Header{"Accept": []string{"application/json"}},
-		Auth:    authConfig,
+		Method:      http.MethodGet,
+		URL:         url,
+		Headers:     http.Header{"Accept": []string{"application/json"}},
+		Auth:        authConfig,
 		RequestType: llm.RequestTypeVideo.String(),
 		APIFormat:   llm.APIFormatOpenAIVideo.String(),
 	}, nil
 }
 
 type openAIVideoGetResponse struct {
-	ID          string `json:"id"`
-	Object      string `json:"object,omitempty"`
-	Status      string `json:"status,omitempty"`
-	Model       string `json:"model,omitempty"`
-	Prompt      string `json:"prompt,omitempty"`
-	Seconds     *int64 `json:"seconds,omitempty"`
-	Size        string `json:"size,omitempty"`
+	ID          string   `json:"id"`
+	Object      string   `json:"object,omitempty"`
+	Status      string   `json:"status,omitempty"`
+	Model       string   `json:"model,omitempty"`
+	Prompt      string   `json:"prompt,omitempty"`
+	Seconds     *int64   `json:"seconds,omitempty"`
+	Size        string   `json:"size,omitempty"`
 	Progress    *float64 `json:"progress,omitempty"`
-	VideoURL    string `json:"video_url,omitempty"`
-	CreatedAt   int64  `json:"created_at,omitempty"`
-	CompletedAt *int64 `json:"completed_at,omitempty"`
-	ExpiresAt   *int64 `json:"expires_at,omitempty"`
+	VideoURL    string   `json:"video_url,omitempty"`
+	CreatedAt   int64    `json:"created_at,omitempty"`
+	CompletedAt *int64   `json:"completed_at,omitempty"`
+	ExpiresAt   *int64   `json:"expires_at,omitempty"`
 	Error       *struct {
 		Code    string `json:"code,omitempty"`
 		Message string `json:"message,omitempty"`
@@ -259,6 +266,7 @@ func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, htt
 	if resp.CompletedAt != nil {
 		completedAt = *resp.CompletedAt
 	}
+
 	var expiresAt int64
 	if resp.ExpiresAt != nil {
 		expiresAt = *resp.ExpiresAt
@@ -314,10 +322,10 @@ func (t *OutboundTransformer) BuildDeleteVideoTaskRequest(ctx context.Context, p
 	url := t.config.BaseURL + "/videos/" + providerTaskID
 
 	return &httpclient.Request{
-		Method:  http.MethodDelete,
-		URL:     url,
-		Headers: http.Header{"Accept": []string{"application/json"}},
-		Auth:    authConfig,
+		Method:      http.MethodDelete,
+		URL:         url,
+		Headers:     http.Header{"Accept": []string{"application/json"}},
+		Auth:        authConfig,
 		RequestType: llm.RequestTypeVideo.String(),
 		APIFormat:   llm.APIFormatOpenAIVideo.String(),
 	}, nil

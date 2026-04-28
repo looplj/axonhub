@@ -44,6 +44,7 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			require.NotNil(t, transformer)
 			assert.IsType(t, &OutboundTransformer{}, transformer)
@@ -266,7 +267,9 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 				assert.Error(t, err)
 				return
 			}
+
 			assert.NoError(t, err)
+
 			if tt.validateResp != nil {
 				tt.validateResp(t, resp)
 			}

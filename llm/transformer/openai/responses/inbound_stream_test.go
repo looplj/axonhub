@@ -20,6 +20,7 @@ var ignoreFields = cmp.FilterPath(func(p cmp.Path) bool {
 			return true
 		}
 	}
+
 	return false
 }, cmp.Ignore())
 

@@ -761,6 +761,7 @@ func TestOutboundTransformer_TransformResponse_WithGeminiToolCallThoughtSignatur
 	result, err := transformer.TransformResponse(t.Context(), httpResp)
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
+
 	if !assert.Len(t, result.Choices, 1) || !assert.NotNil(t, result.Choices[0].Message) {
 		return
 	}

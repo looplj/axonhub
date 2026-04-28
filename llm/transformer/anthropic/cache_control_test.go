@@ -659,6 +659,7 @@ func TestOutboundTransformer_TopLevelCacheControlPassthrough(t *testing.T) {
 	require.NoError(t, json.Unmarshal(httpReq.Body, &raw))
 	rawCC, hasTopLevel := raw["cache_control"]
 	require.True(t, hasTopLevel, "top-level cache_control must be forwarded to upstream")
+
 	rawCCMap, ok := rawCC.(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, "ephemeral", rawCCMap["type"])
@@ -716,6 +717,7 @@ func TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd(t *testing.T) {
 	// The top-level cache_control marker must be forwarded as-is.
 	rawCC, hasTopLevel := raw["cache_control"]
 	require.True(t, hasTopLevel, "top-level cache_control must be forwarded to upstream")
+
 	rawCCMap, ok := rawCC.(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, "ephemeral", rawCCMap["type"])

@@ -397,6 +397,7 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 			if part.FunctionCall.Args != nil {
 				argsJSON, _ = json.Marshal(part.FunctionCall.Args)
 			}
+
 			tc := llm.ToolCall{
 				ID:   part.FunctionCall.ID,
 				Type: "function",

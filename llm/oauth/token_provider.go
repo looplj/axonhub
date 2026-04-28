@@ -19,10 +19,12 @@ func wrapHttpError(err error) error {
 	if err == nil {
 		return nil
 	}
+
 	var httpErr *httpclient.Error
 	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
 		return fmt.Errorf("%w (response body: %s)", err, string(httpErr.Body))
 	}
+
 	return err
 }
 
@@ -135,6 +137,7 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 		if strings.Contains(err.Error(), "token request failed:") {
 			return nil, fmt.Errorf("token exchange failed: %s", strings.TrimPrefix(err.Error(), "token request failed: "))
 		}
+
 		return nil, err
 	}
 
@@ -378,8 +381,10 @@ func (p *TokenProvider) scheduleNextAutoRefresh(
 		}
 
 		refreshFailed := false
+
 		if _, err := p.EnsureFresh(autoCtx, refreshBefore); err != nil {
 			slog.WarnContext(autoCtx, "failed to auto refresh token", slog.Any("error", err))
+
 			refreshFailed = true
 		}
 

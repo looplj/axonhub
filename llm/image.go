@@ -64,5 +64,3 @@ type ImageData struct {
 	URL           string `json:"url,omitempty"`
 	RevisedPrompt string `json:"revised_prompt,omitempty"`
 }
-
-

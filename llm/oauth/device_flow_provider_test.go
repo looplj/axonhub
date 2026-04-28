@@ -906,12 +906,9 @@ func TestDeviceFlowProvider_ConcurrentCredentials(t *testing.T) {
 	}
 
 	for range 100 {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_ = provider.GetCredentials()
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -1095,6 +1092,7 @@ func TestDeviceFlowProvider_AutoRefresh_StartStop_Idempotent(t *testing.T) {
 	provider.StopAutoRefresh()
 	provider.StopAutoRefresh()
 }
+
 // Test network errors.
 func TestDeviceFlowProvider_NetworkErrors(t *testing.T) {
 	t.Parallel()

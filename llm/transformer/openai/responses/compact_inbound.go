@@ -7,11 +7,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/samber/lo"
 )
 
 var _ transformer.Inbound = (*CompactInboundTransformer)(nil)
@@ -22,6 +23,11 @@ type CompactInboundTransformer struct{}
 // NewCompactInboundTransformer creates a new CompactInboundTransformer.
 func NewCompactInboundTransformer() *CompactInboundTransformer {
 	return &CompactInboundTransformer{}
+}
+
+// APIFormat returns the API format of the transformer.
+func (t *CompactInboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIResponseCompact
 }
 
 // TransformRequest transforms HTTP compact request to llm.Request.
@@ -130,8 +136,10 @@ func convertCompactMessageToItems(msg llm.Message) []Item {
 		role = "assistant"
 	}
 
-	var items []Item
-	var contentItems []Item
+	var (
+		items        []Item
+		contentItems []Item
+	)
 
 	textItemType := "input_text"
 	if role == "assistant" {
@@ -142,6 +150,7 @@ func convertCompactMessageToItems(msg llm.Message) []Item {
 		if len(contentItems) == 0 {
 			return
 		}
+
 		items = append(items, Item{
 			ID:      msg.ID,
 			Type:    "message",
@@ -181,6 +190,7 @@ func convertCompactMessageToItems(msg llm.Message) []Item {
 		case "compaction", "compaction_summary":
 			if part.Compact != nil {
 				flushMessage()
+
 				items = append(items, compactionItemFromPart(part, part.Type))
 			}
 		}

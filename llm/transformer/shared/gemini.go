@@ -37,6 +37,7 @@ func DecodeGeminiThoughtSignature(signature *string, footprint string) *string {
 	}
 
 	decoded := (*signature)[prefixLength:]
+
 	return &decoded
 }
 
@@ -56,6 +57,7 @@ func EncodeGeminiThoughtSignature(signature *string, footprint string) *string {
 
 	prefix := GeminiThoughtSignaturePrefix + base64.StdEncoding.EncodeToString([]byte(footprint))
 	encoded := prefix + *signature
+
 	return &encoded
 }
 

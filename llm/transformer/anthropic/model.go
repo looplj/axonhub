@@ -363,6 +363,7 @@ func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
 	if b.Type == "thinking" {
 		type thinkingBlock struct {
 			blockAlias
+
 			Thinking  string `json:"thinking"`
 			Signature string `json:"signature"`
 		}

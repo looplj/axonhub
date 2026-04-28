@@ -124,28 +124,28 @@ func TestOutboundTransformer_TransformRequest_Thinking(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name            string
-		reasoningEffort string
+		name             string
+		reasoningEffort  string
 		expectedThinking string
 	}{
 		{
-			name:            "reasoning effort high enables thinking",
-			reasoningEffort: "high",
+			name:             "reasoning effort high enables thinking",
+			reasoningEffort:  "high",
 			expectedThinking: "enabled",
 		},
 		{
-			name:            "reasoning effort medium enables thinking",
-			reasoningEffort: "medium",
+			name:             "reasoning effort medium enables thinking",
+			reasoningEffort:  "medium",
 			expectedThinking: "enabled",
 		},
 		{
-			name:            "reasoning effort none disables thinking",
-			reasoningEffort: "none",
+			name:             "reasoning effort none disables thinking",
+			reasoningEffort:  "none",
 			expectedThinking: "disabled",
 		},
 		{
-			name:            "empty reasoning effort enables thinking by default",
-			reasoningEffort: "",
+			name:             "empty reasoning effort enables thinking by default",
+			reasoningEffort:  "",
 			expectedThinking: "enabled",
 		},
 	}
@@ -241,11 +241,11 @@ func TestOutboundTransformer_TransformRequest_ReasoningContentFill(t *testing.T)
 	require.NoError(t, err)
 
 	tests := []struct {
-		name               string
-		reasoningEffort    string
-		messages           []llm.Message
-		expectedReasoning  []map[string]any // per assistant message: {"reasoning_content": "<value>"} or nil
-		expectThinking     bool
+		name              string
+		reasoningEffort   string
+		messages          []llm.Message
+		expectedReasoning []map[string]any // per assistant message: {"reasoning_content": "<value>"} or nil
+		expectThinking    bool
 	}{
 		{
 			name:            "thinking enabled fills empty reasoning_content for assistant messages",
@@ -348,6 +348,7 @@ func TestOutboundTransformer_TransformRequest_ReasoningContentFill(t *testing.T)
 			require.NoError(t, err)
 
 			require.NotNil(t, dsReq.Thinking)
+
 			if tt.expectThinking {
 				assert.Equal(t, "enabled", dsReq.Thinking.Type)
 			} else {
@@ -356,6 +357,7 @@ func TestOutboundTransformer_TransformRequest_ReasoningContentFill(t *testing.T)
 
 			// Collect assistant messages in order
 			var assistantMsgs []openai.Message
+
 			for _, msg := range dsReq.Messages {
 				if msg.Role == "assistant" {
 					assistantMsgs = append(assistantMsgs, msg)

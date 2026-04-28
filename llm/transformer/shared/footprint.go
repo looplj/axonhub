@@ -17,12 +17,15 @@ func ComputeFootprint(baseURL, accountIdentity string) string {
 	if baseURL == "" || accountIdentity == "" {
 		return ""
 	}
+
 	key := baseURL + "\x00" + accountIdentity
 	if v, ok := footprintCache.Load(key); ok {
 		return v.(string)
 	}
+
 	fp := computeFootprint(baseURL, accountIdentity)
 	footprintCache.Store(key, fp)
+
 	return fp
 }
 
@@ -36,9 +39,11 @@ func isFootprintHex6(s string) bool {
 		if c >= '0' && c <= '9' {
 			continue
 		}
+
 		if c >= 'a' && c <= 'f' {
 			continue
 		}
+
 		return false
 	}
 

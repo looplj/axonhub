@@ -29,6 +29,11 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
+// APIFormat returns the API format of the transformer.
+func (t *InboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIResponse
+}
+
 // TransformRequest transforms OpenAI Responses API HTTP request to llm.Request.
 func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
@@ -423,6 +428,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			if nextItem.Input != nil {
 				inputStr = *nextItem.Input
 			}
+
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
 				ID:   nextItem.CallID,
 				Type: llm.ToolTypeResponsesCustomTool,
@@ -743,6 +749,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 					Definition: tool.Format.Definition,
 				}
 			}
+
 			result = append(result, llm.Tool{
 				Type:               llm.ToolTypeResponsesCustomTool,
 				ResponseCustomTool: customTool,

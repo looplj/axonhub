@@ -232,6 +232,7 @@ func (r *ResponseToolChoice) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &str); err == nil {
 		r.StringValue = str
 		r.ObjectValue = nil
+
 		return nil
 	}
 
@@ -240,6 +241,7 @@ func (r *ResponseToolChoice) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &obj); err == nil {
 		r.StringValue = ""
 		r.ObjectValue = &obj
+
 		return nil
 	}
 
@@ -327,6 +329,7 @@ func (i *Input) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &text); err == nil {
 		i.Text = &text
 		i.Items = nil
+
 		return nil
 	}
 
@@ -334,6 +337,7 @@ func (i *Input) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &items); err == nil {
 		i.Text = nil
 		i.Items = items
+
 		return nil
 	}
 
@@ -431,6 +435,7 @@ func (item Item) MarshalJSON() ([]byte, error) {
 	if item.Type == "function_call" {
 		type functionCallItem struct {
 			itemAlias
+
 			Arguments string `json:"arguments"`
 		}
 
@@ -443,6 +448,7 @@ func (item Item) MarshalJSON() ([]byte, error) {
 	if item.Type == "custom_tool_call" {
 		type customToolCallItem struct {
 			itemAlias
+
 			InputStr string `json:"input"`
 		}
 
@@ -460,6 +466,7 @@ func (item Item) MarshalJSON() ([]byte, error) {
 	if item.Type == "compaction" {
 		type compactionItem struct {
 			itemAlias
+
 			EncryptedContent string `json:"encrypted_content"`
 		}
 
@@ -482,6 +489,7 @@ func (item Item) MarshalJSON() ([]byte, error) {
 	// Ensure reasoning items always include summary, even if empty.
 	type reasoningItem struct {
 		itemAlias
+
 		Summary []ReasoningSummary `json:"summary"`
 	}
 

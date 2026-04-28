@@ -292,6 +292,7 @@ func (r *Response) ToLLMResponse() *llm.Response {
 		if resp.TransformerMetadata == nil {
 			resp.TransformerMetadata = make(map[string]any)
 		}
+
 		resp.TransformerMetadata[TransformerMetadataKeyCitations] = r.Citations
 	}
 

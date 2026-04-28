@@ -118,12 +118,13 @@ func stripClaudeToolPrefixFromResponse(body []byte, prefix string) []byte {
 // mergeBetasIntoHeader merges beta features into the Anthropic-Beta header.
 func mergeBetasIntoHeader(baseBetas string, extraBetas []string) string {
 	var parts []string
+
 	existingSet := make(map[string]bool)
 
 	// Add existing betas if present
 	baseBetas = strings.TrimSpace(baseBetas)
 	if baseBetas != "" {
-		for _, b := range strings.Split(baseBetas, ",") {
+		for b := range strings.SplitSeq(baseBetas, ",") {
 			b = strings.TrimSpace(b)
 			if b != "" {
 				parts = append(parts, b)
@@ -178,6 +179,7 @@ func ensureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
 	}
 
 	cch := ""
+
 	if llmReq.TransformerMetadata != nil {
 		if v, ok := llmReq.TransformerMetadata[claudeCodeBillingCCHMetadataKey]; ok {
 			if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
@@ -185,6 +187,7 @@ func ensureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
 			}
 		}
 	}
+
 	if cch == "" {
 		return llmReq
 	}
@@ -236,8 +239,8 @@ func ensureBillingHeaderCCHInText(text string, cch string) (string, bool) {
 		return text, false
 	}
 
-	parts := strings.Split(rest, ";")
-	for _, p := range parts {
+	parts := strings.SplitSeq(rest, ";")
+	for p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
@@ -252,6 +255,7 @@ func ensureBillingHeaderCCHInText(text string, cch string) (string, bool) {
 	if !strings.HasSuffix(out, ";") {
 		out += ";"
 	}
+
 	out += " cch=" + strings.TrimSpace(cch) + ";"
 
 	return out, true

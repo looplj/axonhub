@@ -190,34 +190,34 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersPassthrough(t *testin
 	require.NoError(t, err)
 
 	tests := []struct {
-		name                    string
-		inboundUA               string
-		wantFinalUA             string
-		wantFinalBeta           string
-		wantFinalXApp           string
-		wantFinalVer            string
-		wantFinalDanger         string
-		wantFinalPkgVer         string
+		name            string
+		inboundUA       string
+		wantFinalUA     string
+		wantFinalBeta   string
+		wantFinalXApp   string
+		wantFinalVer    string
+		wantFinalDanger string
+		wantFinalPkgVer string
 	}{
 		{
-			name:                    "non-claude UA passthrough headers override defaults",
-			inboundUA:               "axonhub-test/0.0.1",
-			wantFinalUA:             UserAgent,
-			wantFinalBeta:           "injected",
-			wantFinalXApp:           "web",
-			wantFinalVer:            "1999-01-01",
-			wantFinalDanger:         "false",
-			wantFinalPkgVer:         "999.0.0",
+			name:            "non-claude UA passthrough headers override defaults",
+			inboundUA:       "axonhub-test/0.0.1",
+			wantFinalUA:     UserAgent,
+			wantFinalBeta:   "injected",
+			wantFinalXApp:   "web",
+			wantFinalVer:    "1999-01-01",
+			wantFinalDanger: "false",
+			wantFinalPkgVer: "999.0.0",
 		},
 		{
-			name:                    "claude-cli UA passthrough headers override defaults",
-			inboundUA:               "claude-cli/1.0.99 (external, cli)",
-			wantFinalUA:             "claude-cli/1.0.99 (external, cli)",
-			wantFinalBeta:           "injected",
-			wantFinalXApp:           "web",
-			wantFinalVer:            "1999-01-01",
-			wantFinalDanger:         "false",
-			wantFinalPkgVer:         "999.0.0",
+			name:            "claude-cli UA passthrough headers override defaults",
+			inboundUA:       "claude-cli/1.0.99 (external, cli)",
+			wantFinalUA:     "claude-cli/1.0.99 (external, cli)",
+			wantFinalBeta:   "injected",
+			wantFinalXApp:   "web",
+			wantFinalVer:    "1999-01-01",
+			wantFinalDanger: "false",
+			wantFinalPkgVer: "999.0.0",
 		},
 	}
 

@@ -32,6 +32,7 @@ func HasRetryAfterHeader(err error) bool {
 	if !errors.As(err, &httpErr) || httpErr.StatusCode != http.StatusTooManyRequests {
 		return false
 	}
+
 	return httpErr.Headers != nil && httpErr.Headers.Get("Retry-After") != ""
 }
 
@@ -55,7 +56,9 @@ func ParseRetryAfter(err error) (time.Duration, bool) {
 		if seconds <= 0 {
 			return 0, true
 		}
+
 		duration := time.Duration(seconds) * time.Second
+
 		return min(duration, MaxRetryAfterDuration), true
 	}
 
@@ -65,6 +68,7 @@ func ParseRetryAfter(err error) (time.Duration, bool) {
 		if duration <= 0 {
 			return 0, true
 		}
+
 		return min(duration, MaxRetryAfterDuration), true
 	}
 

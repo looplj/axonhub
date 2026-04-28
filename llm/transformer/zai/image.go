@@ -43,6 +43,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 	if rawReq.TransformerMetadata == nil {
 		rawReq.TransformerMetadata = map[string]any{}
 	}
+
 	rawReq.TransformerMetadata["model"] = chatReq.Model
 
 	return rawReq, nil

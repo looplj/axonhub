@@ -184,5 +184,3 @@ func (e *Embedding) UnmarshalJSON(data []byte) error {
 
 	return fmt.Errorf("invalid embedding type")
 }
-
-

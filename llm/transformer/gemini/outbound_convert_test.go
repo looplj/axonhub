@@ -3142,6 +3142,7 @@ func TestConvertGeminiToLLMResponse_ToolCallThoughtSignatureWithFootprint(t *tes
 	require.NotNil(t, result.Choices[0].Message.ToolCalls[0].TransformerMetadata)
 	raw, ok := result.Choices[0].Message.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature].(string)
 	require.True(t, ok)
+
 	decoded := shared.DecodeGeminiThoughtSignatureInScope(&raw, scope)
 	require.NotNil(t, decoded)
 	require.Equal(t, "signature_A", *decoded)

@@ -571,6 +571,7 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 				CachedTokens: imgResp.Usage.InputTokensDetails.CachedTokens,
 			}
 		}
+
 		if imgResp.Usage.OutputTokensDetails != nil {
 			resp.Usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
 				ReasoningTokens: imgResp.Usage.OutputTokensDetails.ReasoningTokens,

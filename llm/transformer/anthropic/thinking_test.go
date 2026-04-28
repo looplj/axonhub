@@ -635,6 +635,7 @@ func TestThinking_AdaptiveJSON(t *testing.T) {
 				require.JSONEq(t, `{"type":"adaptive"}`, string(data))
 
 				var decoded Thinking
+
 				err := json.Unmarshal(data, &decoded)
 				require.NoError(t, err)
 				require.Equal(t, "adaptive", decoded.Type)
@@ -733,6 +734,7 @@ func TestOutputConfig_Outbound(t *testing.T) {
 			} else {
 				anthropicReq = convertToAnthropicRequest(tt.chatReq)
 			}
+
 			tt.validate(t, anthropicReq)
 		})
 	}
@@ -1213,6 +1215,7 @@ func TestEnsureAssistantThinkingBlocks_SkipsNonAssistant(t *testing.T) {
 		{Role: "system", Content: MessageContent{Content: lo.ToPtr("be helpful")}},
 	}
 	ensureAssistantThinkingBlocks(msgs)
+
 	for _, msg := range msgs {
 		require.NotNil(t, msg.Content.Content) // still simple string, not converted
 	}

@@ -80,6 +80,7 @@ func (d *AWSEventStreamDecoder) Next() bool {
 
 		d.err = err
 		_ = d.Close()
+
 		return false
 	}
 

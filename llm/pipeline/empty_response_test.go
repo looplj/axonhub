@@ -207,10 +207,10 @@ func TestPipeline_Process_NonStreamEmptyResponseDetection(t *testing.T) {
 		}
 
 		p := &pipeline{
-			Executor:              executor,
-			Inbound:               &mockInbound{},
-			Outbound:              outbound,
-			maxSameChannelRetries: 1,
+			Executor:               executor,
+			Inbound:                &mockInbound{},
+			Outbound:               outbound,
+			maxSameChannelRetries:  1,
 			emptyResponseDetection: true,
 		}
 
@@ -241,9 +241,9 @@ func TestPipeline_Process_NonStreamEmptyResponseDetection(t *testing.T) {
 		}
 
 		p := &pipeline{
-			Executor:              executor,
-			Inbound:               &mockInbound{},
-			Outbound:              outbound,
+			Executor:               executor,
+			Inbound:                &mockInbound{},
+			Outbound:               outbound,
 			emptyResponseDetection: true,
 		}
 

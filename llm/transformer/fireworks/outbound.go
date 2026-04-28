@@ -59,6 +59,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	if baseURL == "" {
 		baseURL = DefaultBaseURL
 	}
+
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
 	oaiConfig := &openai.Config{

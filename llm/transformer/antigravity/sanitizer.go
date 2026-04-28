@@ -3,6 +3,7 @@ package antigravity
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/samber/lo"
@@ -10,7 +11,7 @@ import (
 
 // UppercaseSchemaTypes converts all "type" field values to UPPERCASE to match Gemini API requirements.
 // The Gemini/Antigravity API expects type values in uppercase (OBJECT, STRING, etc.) per protobuf spec.
-// Reference: opencode-antigravity-auth/src/plugin/transform/gemini.ts toGeminiSchema() line 76
+// Reference: opencode-antigravity-auth/src/plugin/transform/gemini.ts toGeminiSchema() line 76.
 func UppercaseSchemaTypes(schema map[string]any) map[string]any {
 	if schema == nil {
 		return nil
@@ -38,6 +39,7 @@ func UppercaseSchemaTypes(schema map[string]any) map[string]any {
 					newArray[i] = item
 				}
 			}
+
 			result[key] = newArray
 		} else {
 			result[key] = value
@@ -106,9 +108,12 @@ func deepCopy(src map[string]any) map[string]any {
 	if src == nil {
 		return nil
 	}
+
 	var dst map[string]any
+
 	b, _ := json.Marshal(src)
 	_ = json.Unmarshal(b, &dst)
+
 	return dst
 }
 
@@ -118,12 +123,14 @@ func appendDescriptionHint(schema map[string]any, hint string) map[string]any {
 	if schema == nil {
 		return nil
 	}
+
 	existing, _ := schema["description"].(string)
 	if existing != "" {
 		schema["description"] = fmt.Sprintf("%s (%s)", existing, hint)
 	} else {
 		schema["description"] = hint
 	}
+
 	return schema
 }
 
@@ -139,12 +146,14 @@ func convertRefsToHints(schema map[string]any) map[string]any {
 		hint := fmt.Sprintf("See: %s", defName)
 
 		newSchema := make(map[string]any)
+
 		newSchema["type"] = "object"
 		if desc, ok := schema["description"].(string); ok {
 			newSchema["description"] = fmt.Sprintf("%s (%s)", desc, hint)
 		} else {
 			newSchema["description"] = hint
 		}
+
 		return newSchema
 	}
 
@@ -156,6 +165,7 @@ func convertRefsToHints(schema map[string]any) map[string]any {
 			schema[key] = processArray(subArray, convertRefsToHints)
 		}
 	}
+
 	return schema
 }
 
@@ -174,12 +184,14 @@ func convertConstToEnum(schema map[string]any) map[string]any {
 		if key == "const" {
 			continue
 		}
+
 		if subSchema, ok := value.(map[string]any); ok {
 			schema[key] = convertConstToEnum(subSchema)
 		} else if subArray, ok := value.([]any); ok {
 			schema[key] = processArray(subArray, convertConstToEnum)
 		}
 	}
+
 	return schema
 }
 
@@ -193,6 +205,7 @@ func addEnumHints(schema map[string]any) map[string]any {
 		for _, v := range enumVals {
 			strVals = append(strVals, fmt.Sprintf("%v", v))
 		}
+
 		hint := fmt.Sprintf("Allowed: %s", strings.Join(strVals, ", "))
 		schema = appendDescriptionHint(schema, hint)
 	}
@@ -206,6 +219,7 @@ func addEnumHints(schema map[string]any) map[string]any {
 			}
 		}
 	}
+
 	return schema
 }
 
@@ -227,6 +241,7 @@ func addAdditionalPropertiesHints(schema map[string]any) map[string]any {
 			}
 		}
 	}
+
 	return schema
 }
 
@@ -254,6 +269,7 @@ func moveConstraintsToDescription(schema map[string]any) map[string]any {
 			schema[key] = processArray(subArray, moveConstraintsToDescription)
 		}
 	}
+
 	return schema
 }
 
@@ -267,15 +283,14 @@ func mergeAllOf(schema map[string]any) map[string]any {
 	if allOf, ok := schema["allOf"].([]any); ok {
 		merged := make(map[string]any)
 		mergedProps := make(map[string]any)
+
 		var mergedRequired []string
 
 		for _, item := range allOf {
 			if sub, ok := item.(map[string]any); ok {
 				// Merge properties
 				if props, ok := sub["properties"].(map[string]any); ok {
-					for k, v := range props {
-						mergedProps[k] = v
-					}
+					maps.Copy(mergedProps, props)
 				}
 				// Merge required
 				if req, ok := sub["required"].([]any); ok {
@@ -301,9 +316,7 @@ func mergeAllOf(schema map[string]any) map[string]any {
 		// Apply merged content
 		if len(mergedProps) > 0 {
 			if existingProps, ok := schema["properties"].(map[string]any); ok {
-				for k, v := range mergedProps {
-					existingProps[k] = v
-				}
+				maps.Copy(existingProps, mergedProps)
 			} else {
 				schema["properties"] = mergedProps
 			}
@@ -311,6 +324,7 @@ func mergeAllOf(schema map[string]any) map[string]any {
 
 		if len(mergedRequired) > 0 {
 			var existingRequired []string
+
 			if req, ok := schema["required"].([]any); ok {
 				for _, r := range req {
 					if rStr, ok := r.(string); ok {
@@ -318,6 +332,7 @@ func mergeAllOf(schema map[string]any) map[string]any {
 					}
 				}
 			}
+
 			for _, r := range mergedRequired {
 				if !lo.Contains(existingRequired, r) {
 					existingRequired = append(existingRequired, r)
@@ -329,6 +344,7 @@ func mergeAllOf(schema map[string]any) map[string]any {
 			for i, v := range existingRequired {
 				reqAny[i] = v
 			}
+
 			schema["required"] = reqAny
 		}
 
@@ -351,6 +367,7 @@ func mergeAllOf(schema map[string]any) map[string]any {
 			schema[key] = processArray(subArray, mergeAllOf)
 		}
 	}
+
 	return schema
 }
 
@@ -368,16 +385,19 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 			if mergedEnum != nil {
 				delete(schema, unionKey)
 				schema["type"] = "string"
+
 				schema["enum"] = mergedEnum
 				if parentDesc != "" {
 					schema["description"] = parentDesc
 				}
+
 				continue
 			}
 
 			// Flatten logic
 			bestIdx := 0
 			bestScore := -1
+
 			var allTypes []string
 
 			for i, opt := range options {
@@ -386,6 +406,7 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 					if typeName != "" {
 						allTypes = append(allTypes, typeName)
 					}
+
 					if score > bestScore {
 						bestScore = score
 						bestIdx = i
@@ -420,9 +441,7 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 					}
 
 					// Copy selected fields to schema
-					for k, v := range selected {
-						schema[k] = v
-					}
+					maps.Copy(schema, selected)
 				}
 			}
 		}
@@ -436,6 +455,7 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 			schema[key] = processArray(subArray, flattenAnyOfOneOf)
 		}
 	}
+
 	return schema
 }
 
@@ -450,6 +470,7 @@ func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string
 
 	if types, ok := schema["type"].([]any); ok {
 		var nonNullTypes []string
+
 		hasNull := false
 
 		for _, t := range types {
@@ -468,6 +489,7 @@ func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string
 		} else if hasNull {
 			firstType = "null"
 		}
+
 		schema["type"] = firstType
 
 		if len(nonNullTypes) > 1 {
@@ -504,7 +526,9 @@ func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string
 	if currentPath == "" {
 		if req, ok := schema["required"].([]any); ok {
 			nullableAtRoot := nullableFields[""]
+
 			var newReq []any
+
 			for _, r := range req {
 				if rStr, ok := r.(string); ok {
 					if !lo.Contains(nullableAtRoot, rStr) {
@@ -512,6 +536,7 @@ func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string
 					}
 				}
 			}
+
 			if len(newReq) == 0 {
 				delete(schema, "required")
 			} else {
@@ -557,6 +582,7 @@ func removeUnsupportedKeywords(schema map[string]any, insideProperties bool) map
 				// if (key === "properties") { ... removeUnsupportedKeywords(propSchema, false); }
 				// So we iterate over properties values and treat them as schemas
 				newProps := make(map[string]any)
+
 				for k, v := range subSchema {
 					if vMap, ok := v.(map[string]any); ok {
 						newProps[k] = removeUnsupportedKeywords(vMap, false)
@@ -564,6 +590,7 @@ func removeUnsupportedKeywords(schema map[string]any, insideProperties bool) map
 						newProps[k] = v
 					}
 				}
+
 				schema[key] = newProps
 			} else {
 				schema[key] = removeUnsupportedKeywords(subSchema, false)
@@ -574,6 +601,7 @@ func removeUnsupportedKeywords(schema map[string]any, insideProperties bool) map
 			})
 		}
 	}
+
 	return schema
 }
 
@@ -585,6 +613,7 @@ func cleanupRequiredFields(schema map[string]any) map[string]any {
 	if req, ok := schema["required"].([]any); ok {
 		if props, ok := schema["properties"].(map[string]any); ok {
 			var validReq []any
+
 			for _, r := range req {
 				if rStr, ok := r.(string); ok {
 					if _, exists := props[rStr]; exists {
@@ -592,6 +621,7 @@ func cleanupRequiredFields(schema map[string]any) map[string]any {
 					}
 				}
 			}
+
 			if len(validReq) == 0 {
 				delete(schema, "required")
 			} else {
@@ -607,6 +637,7 @@ func cleanupRequiredFields(schema map[string]any) map[string]any {
 			schema[key] = processArray(subArray, cleanupRequiredFields)
 		}
 	}
+
 	return schema
 }
 
@@ -637,6 +668,7 @@ func addEmptySchemaPlaceholder(schema map[string]any) map[string]any {
 			schema[key] = processArray(subArray, addEmptySchemaPlaceholder)
 		}
 	}
+
 	return schema
 }
 
@@ -651,6 +683,7 @@ func processArray(arr []any, fn func(map[string]any) map[string]any) []any {
 			newArr[i] = item
 		}
 	}
+
 	return newArr
 }
 
@@ -664,15 +697,19 @@ func scoreSchemaOption(schema map[string]any) (int, string) {
 	if typeName == "object" || schema["properties"] != nil {
 		return 3, "object"
 	}
+
 	if typeName == "array" || schema["items"] != nil {
 		return 2, "array"
 	}
+
 	if typeName != "" && typeName != "null" {
 		return 1, typeName
 	}
+
 	if typeName == "" {
 		return 0, "null"
 	}
+
 	return 0, typeName
 }
 
@@ -695,6 +732,7 @@ func tryMergeEnumFromUnion(options []any) []any {
 				enumValues = append(enumValues, enums[0])
 				continue
 			}
+
 			if len(enums) > 0 {
 				enumValues = append(enumValues, enums...)
 				continue
@@ -715,5 +753,6 @@ func tryMergeEnumFromUnion(options []any) []any {
 	if len(enumValues) > 0 {
 		return enumValues
 	}
+
 	return nil
 }

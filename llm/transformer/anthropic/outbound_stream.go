@@ -249,6 +249,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				if usage.PromptTokens == 0 && state.streamUsage.PromptTokens > 0 {
 					usage.PromptTokens = state.streamUsage.PromptTokens
 				}
+
 				if usage.PromptTokensDetails == nil && state.streamUsage.PromptTokensDetails != nil {
 					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
 				}
@@ -336,6 +337,7 @@ func parseAnthropicStreamErrorEvent(event *httpclient.StreamEvent) *llm.Response
 	}
 
 	root := gjson.ParseBytes(event.Data)
+
 	candidate := root
 	if root.Get("event").String() == "error" {
 		if d := root.Get("data"); d.Exists() {
@@ -356,9 +358,11 @@ func parseAnthropicStreamErrorEvent(event *httpclient.StreamEvent) *llm.Response
 	if detail.Message == "" {
 		detail.Message = candidate.Get("message").String()
 	}
+
 	if detail.Message == "" && errObj.Exists() {
 		detail.Message = errObj.String()
 	}
+
 	if detail.Message == "" {
 		detail.Message = "stream error"
 	}

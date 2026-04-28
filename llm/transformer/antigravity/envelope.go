@@ -13,7 +13,7 @@ type AntigravityEnvelope struct {
 	Model string `json:"model"`
 
 	// Request is the provider-specific payload (e.g., Gemini Format for Gemini/Claude models via Antigravity).
-	Request interface{} `json:"request"`
+	Request any `json:"request"`
 
 	// RequestType indicates the type of request (e.g., "agent")
 	RequestType string `json:"requestType,omitempty"`
@@ -25,8 +25,8 @@ type AntigravityEnvelope struct {
 	RequestID string `json:"requestId,omitempty"`
 }
 
-// NewAntigravityEnvelope creates a new envelope with default values
-func NewAntigravityEnvelope(project, model string, request interface{}) AntigravityEnvelope {
+// NewAntigravityEnvelope creates a new envelope with default values.
+func NewAntigravityEnvelope(project, model string, request any) AntigravityEnvelope {
 	return AntigravityEnvelope{
 		Project:     project,
 		Model:       model,
