@@ -185,9 +185,10 @@ func (r *mutationResolver) TriggerGcCleanup(ctx context.Context) (bool, error) {
 		// Use a detached context with system bypass for background execution
 		bgCtx, err := authz.WithSystemBypass(context.WithoutCancel(ctx), "manual-gc-cleanup")
 		if err != nil {
-			return false, err
+			slog.Error("failed to create GC bypass context", "error", err)
+			return
 		}
-		_ = r.gcWorker.RunCleanupNow(bgCtx)
+		_, _ = r.gcWorker.RunCleanupNow(bgCtx)
 	}()
 
 	return true, nil

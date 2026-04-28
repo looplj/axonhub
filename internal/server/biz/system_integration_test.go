@@ -22,7 +22,8 @@ func TestSystemService_Initialize(t *testing.T) {
 	err := migrator.Run(ctx)
 	require.NoError(t, err)
 
-	service := biz.NewSystemService(biz.SystemServiceParams{})
+	service, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
 
 	// Test system initialization with auto-generated secret key
 	err = service.Initialize(ctx, &biz.InitializeSystemParams{

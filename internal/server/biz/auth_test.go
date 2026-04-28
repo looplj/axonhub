@@ -80,7 +80,7 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 
 	// Create a mock system service
 	systemService := &SystemService{
-		Cache: xcache.NewFromConfig[ent.System](cacheConfig),
+		Cache: xcache.MustNewFromConfig[ent.System](cacheConfig),
 	}
 
 	// Set up a test secret key in the system service
@@ -99,11 +99,11 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 	require.NoError(t, err)
 
 	userService := &UserService{
-		UserCache: xcache.NewFromConfig[ent.User](cacheConfig),
+		UserCache: xcache.MustNewFromConfig[ent.User](cacheConfig),
 	}
 
 	projectService := &ProjectService{
-		ProjectCache: xcache.NewFromConfig[xcache.Entry[ent.Project]](cacheConfig),
+		ProjectCache: xcache.MustNewFromConfig[xcache.Entry[ent.Project]](cacheConfig),
 	}
 
 	apiKeyService := NewAPIKeyService(APIKeyServiceParams{

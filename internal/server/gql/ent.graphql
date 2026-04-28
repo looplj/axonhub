@@ -13,6 +13,10 @@ type APIKey implements Node {
   """
   projectID: ID!
   key: String!
+  """
+  SHA-256 hash of the API key for secure verification
+  """
+  keyHash: String
   name: String!
   """
   API Key type: user, service_account, or noauth
@@ -197,6 +201,24 @@ input APIKeyWhereInput {
   keyHasSuffix: String
   keyEqualFold: String
   keyContainsFold: String
+  """
+  key_hash field predicates
+  """
+  keyHash: String
+  keyHashNEQ: String
+  keyHashIn: [String!]
+  keyHashNotIn: [String!]
+  keyHashGT: String
+  keyHashGTE: String
+  keyHashLT: String
+  keyHashLTE: String
+  keyHashContains: String
+  keyHashHasPrefix: String
+  keyHashHasSuffix: String
+  keyHashIsNil: Boolean
+  keyHashNotNil: Boolean
+  keyHashEqualFold: String
+  keyHashContainsFold: String
   """
   name field predicates
   """

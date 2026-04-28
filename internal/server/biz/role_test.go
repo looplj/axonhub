@@ -23,7 +23,7 @@ func setupTestRoleService(t *testing.T) (*RoleService, *UserService, *ent.Client
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 	userService := &UserService{
-		UserCache:           xcache.NewFromConfig[ent.User](cacheConfig),
+		UserCache:           xcache.MustNewFromConfig[ent.User](cacheConfig),
 		permissionValidator: NewPermissionValidator(),
 	}
 

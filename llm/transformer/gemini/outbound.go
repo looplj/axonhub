@@ -60,7 +60,7 @@ func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error
 	return NewOutboundTransformerWithConfig(config)
 }
 
-func clenupConfig(config Config) Config {
+func cleanupConfig(config Config) Config {
 	if config.BaseURL == "" {
 		config.BaseURL = strings.TrimSuffix(DefaultBaseURL, "/")
 	}
@@ -86,7 +86,7 @@ func clenupConfig(config Config) Config {
 
 // NewOutboundTransformerWithConfig creates a new Gemini OutboundTransformer with unified configuration.
 func NewOutboundTransformerWithConfig(config Config) (transformer.Outbound, error) {
-	config = clenupConfig(config)
+	config = cleanupConfig(config)
 
 	return &OutboundTransformer{
 		config: config,

@@ -173,7 +173,7 @@ func TestNewFromConfig_Memory(t *testing.T) {
 		},
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	ctx := context.Background()
 
@@ -202,7 +202,7 @@ func TestNewFromConfig_Redis(t *testing.T) {
 		},
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	ctx := context.Background()
 
@@ -224,9 +224,9 @@ func TestNewFromConfig_RedisWithoutAddr(t *testing.T) {
 		// No Redis config - should fallback to memory
 	}
 
-	require.Panics(t, func() {
-		_ = NewFromConfig[string](cfg)
-	})
+	_, err := NewFromConfig[string](cfg)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "redis cache config is invalid")
 }
 
 func TestNewFromConfig_TwoLevel(t *testing.T) {
@@ -246,7 +246,7 @@ func TestNewFromConfig_TwoLevel(t *testing.T) {
 		},
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	ctx := context.Background()
 
@@ -272,7 +272,7 @@ func TestNewFromConfig_TwoLevelWithoutRedis(t *testing.T) {
 		// No Redis config - should fallback to memory
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	ctx := context.Background()
 
@@ -291,7 +291,7 @@ func TestNewFromConfig_TwoLevelWithoutRedis(t *testing.T) {
 func TestNewFromConfig_EmptyMode(t *testing.T) {
 	cfg := Config{} // Empty config
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	// Should return noop cache
 	require.Equal(t, "noop", cache.GetType())
@@ -307,7 +307,7 @@ func TestNewFromConfig_InvalidMode(t *testing.T) {
 		Mode: "invalid-mode",
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	// Should return noop cache
 	require.Equal(t, "noop", cache.GetType())
@@ -331,7 +331,7 @@ func TestCacheWithExpiration(t *testing.T) {
 		},
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	ctx := context.Background()
 
@@ -364,7 +364,7 @@ func TestCacheOperations(t *testing.T) {
 		},
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	ctx := context.Background()
 
@@ -430,7 +430,7 @@ func TestComplexDataTypes(t *testing.T) {
 		Mode: ModeMemory, // Use memory for complex types
 	}
 
-	cache := NewFromConfig[TestStruct](cfg)
+	cache, _ := NewFromConfig[TestStruct](cfg)
 
 	ctx := context.Background()
 
@@ -465,7 +465,7 @@ func TestSeparateExpirationConfig(t *testing.T) {
 		},
 	}
 
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	ctx := context.Background()
 

@@ -259,7 +259,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		Created:           lastChunkResponse.Created,
 		SystemFingerprint: systemFingerprint,
 		Choices:           choices,
-		Usage:             usage.ToLLMUsage(),
+	}
+
+	// Handle nil usage by providing zero-value
+	if usage != nil {
+		response.Usage = usage.ToLLMUsage()
 	}
 
 	// Add citations to response if any were collected
@@ -281,8 +285,14 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		return nil, llm.ResponseMeta{}, err
 	}
 
-	return data, llm.ResponseMeta{
-		ID:    response.ID,
-		Usage: usage.ToLLMUsage(),
-	}, nil
+	meta := llm.ResponseMeta{
+		ID: response.ID,
+	}
+
+	// Handle nil usage by providing zero-value
+	if usage != nil {
+		meta.Usage = usage.ToLLMUsage()
+	}
+
+	return data, meta, nil
 }

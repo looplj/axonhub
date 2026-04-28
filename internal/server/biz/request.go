@@ -45,7 +45,7 @@ func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogSe
 		UsageLogService:    usageLogService,
 		DataStorageService: dataStorageService,
 		LiveStreamRegistry: liveStreamRegistry,
-		channelCache: xcache.NewFromConfig[int](xcache.Config{
+		channelCache: xcache.MustNewFromConfig[int](xcache.Config{
 			Mode: xcache.ModeMemory,
 			Memory: xcache.MemoryConfig{
 				Expiration: 30 * time.Minute,

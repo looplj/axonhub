@@ -225,10 +225,11 @@ func ToolFromLLM(t llm.Tool) Tool {
 	return Tool{
 		Type: t.Type,
 		Function: Function{
-			Name:        t.Function.Name,
-			Description: t.Function.Description,
-			Parameters:  t.Function.Parameters,
-			Strict:      t.Function.Strict,
+			Name:                t.Function.Name,
+			Description:         t.Function.Description,
+			Parameters:          t.Function.Parameters,
+			ParametersJsonSchema: t.Function.ParametersJsonSchema,
+			Strict:              t.Function.Strict,
 		},
 	}
 }

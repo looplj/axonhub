@@ -373,9 +373,11 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			existingData = map[string]any{}
 		}
 
-		merged := lo.Assign(existingData, map[string]any{
-			"error": quotaErr.Error(),
-		})
+		merged := make(map[string]any, len(existingData)+1)
+		for k, v := range existingData {
+			merged[k] = v
+		}
+		merged["error"] = quotaErr.Error()
 
 		err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
 			SetQuotaData(merged).

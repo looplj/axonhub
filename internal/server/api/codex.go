@@ -35,7 +35,7 @@ type CodexHandlers struct {
 
 func NewCodexHandlers(params CodexHandlersParams) *CodexHandlers {
 	return &CodexHandlers{
-		stateCache: xcache.NewFromConfig[codexOAuthState](params.CacheConfig),
+		stateCache: xcache.MustNewFromConfig[codexOAuthState](params.CacheConfig),
 		httpClient: params.HttpClient,
 	}
 }

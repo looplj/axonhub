@@ -91,7 +91,7 @@ func Test_convertUsage(t *testing.T) {
 			},
 		},
 		{
-			name: "moonshot cached tokens conversion - Anthropic official",
+			name: "cached tokens field present but platform is not moonshot",
 			args: args{
 				usage: &Usage{
 					InputTokens:              100,
@@ -104,12 +104,9 @@ func Test_convertUsage(t *testing.T) {
 				platformType: PlatformDirect,
 			},
 			want: &llm.Usage{
-				PromptTokens:     175, // 100 + 75
+				PromptTokens:     100, // CachedTokens ignored for non-Moonshot platforms
 				CompletionTokens: 50,
-				TotalTokens:      225, // 175 + 50
-				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 75,
-				},
+				TotalTokens:      150, // 100 + 50
 			},
 		},
 		{

@@ -532,7 +532,7 @@ func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystem
 
 		hashedPassword, err := HashPassword(params.OwnerPassword)
 		if err != nil {
-			s.initErr = fmt.Errorf("failed to hash password=[MASKED_SECRET]", err)
+			s.initErr = fmt.Errorf("failed to hash password=[MASKED_SECRET]: %w", err)
 			return
 		}
 

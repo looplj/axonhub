@@ -125,7 +125,7 @@ type AuthService struct {
 func HashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", fmt.Errorf("failed to hash password=[MASKED_SECRET]", err)
+		return "", fmt.Errorf("failed to hash password=[MASKED_SECRET]: %w", err)
 	}
 
 	return hex.EncodeToString(hashedPassword), nil
@@ -135,7 +135,7 @@ func HashPassword(password string) (string, error) {
 func VerifyPassword(hashedPassword, password string) error {
 	decodedHashedPassword, err := hex.DecodeString(hashedPassword)
 	if err != nil {
-		return fmt.Errorf("failed to decode hashed password=[MASKED_SECRET]", err)
+		return fmt.Errorf("failed to decode hashed password=[MASKED_SECRET]: %w", err)
 	}
 
 	return bcrypt.CompareHashAndPassword(decodedHashedPassword, []byte(password))
@@ -199,7 +199,7 @@ func (s *AuthService) AuthenticateUser(
 	})
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, fmt.Errorf("invalid email or password=[MASKED_SECRET]", ErrInvalidPassword)
+			return nil, fmt.Errorf("invalid email or password=[MASKED_SECRET]: %w", ErrInvalidPassword)
 		}
 
 		log.Error(ctx, "failed to get user", log.Cause(err))
