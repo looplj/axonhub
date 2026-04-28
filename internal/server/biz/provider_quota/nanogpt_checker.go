@@ -137,6 +137,7 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		}
 	}
 
+	// Build raw data map with all non-nil windows
 	rawData := map[string]any{}
 
 	if response.Active != nil {
@@ -286,6 +287,7 @@ func findEarliestResetAt(windows ...*NanoGPTQuotaWindow) *time.Time {
 			continue
 		}
 
+		// Convert millisecond epoch to time.Time
 		t := time.UnixMilli(*w.ResetAt)
 
 		if earliest == nil || t.Before(*earliest) {
