@@ -127,11 +127,11 @@ func TestQuotaChannelStatus_EffectiveStatus_AllLimitsUnknown(t *testing.T) {
 
 func TestProviderQuotaService_NextCheckIntervalForStatus(t *testing.T) {
 	svc := &ProviderQuotaService{
-		checkInterval: 20 * time.Minute,
+		checkInterval: 5 * time.Minute,
 	}
 
-	assert.Equal(t, 20*time.Minute, svc.nextCheckIntervalForStatus("available"), "available should use normal interval")
-	assert.Equal(t, 5*time.Minute, svc.nextCheckIntervalForStatus("warning"), "warning should use quarter interval")
-	assert.Equal(t, 20*time.Minute, svc.nextCheckIntervalForStatus("exhausted"), "exhausted should use normal interval")
-	assert.Equal(t, 20*time.Minute, svc.nextCheckIntervalForStatus("unknown"), "unknown should use normal interval")
+	assert.Equal(t, 5*time.Minute, svc.nextCheckIntervalForStatus("available"), "available should use normal interval")
+	assert.Equal(t, 75*time.Second, svc.nextCheckIntervalForStatus("warning"), "warning should use quarter interval")
+	assert.Equal(t, 5*time.Minute, svc.nextCheckIntervalForStatus("exhausted"), "exhausted should use normal interval")
+	assert.Equal(t, 5*time.Minute, svc.nextCheckIntervalForStatus("unknown"), "unknown should use normal interval")
 }

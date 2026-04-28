@@ -371,7 +371,7 @@ func (svc *ProviderQuotaService) getCheckInterval() time.Duration {
 		return svc.checkInterval
 	}
 
-	return 20 * time.Minute
+	return 5 * time.Minute
 }
 
 func (svc *ProviderQuotaService) Stop(ctx context.Context) error {

@@ -242,7 +242,7 @@ gc:
 
 ```yaml
 provider_quota:
-  check_interval: "20m"          # Interval for checking provider quota status
+  check_interval: "5m"           # Interval for checking provider quota status
 ```
 
 **Description:**
@@ -255,11 +255,11 @@ This setting controls how frequently AxonHub polls provider API endpoints to che
 - Minute intervals that divide evenly into 60: `1m`, `2m`, `3m`, `4m`, `5m`, `6m`, `10m`, `12m`, `15m`, `20m`, `30m`
 - Hourly intervals: `1h`, `2h`, `3h`, etc.
 
-**Default:** `20m`
+**Default:** `5m`
 
 **Recommendations:**
 - **Development:** Use shorter intervals (e.g., `5m`) to see quota updates quickly
-- **Production:** Use `20m` or longer to reduce API calls while maintaining reasonable data freshness
+- **Production:** Use `5m` (default) for timely quota detection; increase to `10m` or `20m` to reduce API calls
 - Unsupported intervals will be rounded to the nearest supported value with a warning log message
 
 **Examples:**
