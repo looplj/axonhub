@@ -165,15 +165,17 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 }
 
 func (h *OIDCHandlers) getBaseURL(c *gin.Context) string {
-	baseURL := h.publicURL
-	if baseURL == "" {
-		scheme := "http"
-		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-			scheme = "https"
-		}
-		baseURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	if h.publicURL != "" {
+		return strings.TrimSuffix(h.publicURL, "/")
 	}
-	return strings.TrimSuffix(baseURL, "/")
+
+	// Fallback to request host if publicURL is not configured.
+	// NOTE: In production, it's highly recommended to configure public_url to prevent Host header attacks.
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 }
 
 func (h *OIDCHandlers) Exchange(c *gin.Context) {
@@ -187,6 +189,11 @@ func (h *OIDCHandlers) Exchange(c *gin.Context) {
 
 	user, err := h.oidc.ExchangeCode(c.Request.Context(), req.Code)
 	if err != nil {
+		// Map common exchange errors to 400 Bad Request
+		if strings.Contains(err.Error(), "invalid or expired") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

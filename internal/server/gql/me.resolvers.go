@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -82,10 +83,18 @@ func (r *mutationResolver) UnlinkOIDCIdentity(ctx context.Context, id objects.GU
 		return false, fmt.Errorf("permission denied: this identity does not belong to you")
 	}
 
-	// Double check the password. If it is OIDC_ONLY_PLACEHOLDER, we should not allow unlink,
-	// because user will be locked out.
+	// Double check the password. If it is OIDC_ONLY_PLACEHOLDER, we should not allow unlink
+	// if this is the last OIDC identity, because user will be locked out.
 	if user.Password == biz.OIDC_ONLY_PLACEHOLDER {
-		return false, fmt.Errorf("please set a local password before unlinking your OIDC identity")
+		identityCount, err := r.client.OIDCIdentity.Query().
+			Where(oidcidentity.UserID(user.ID)).
+			Count(ctx)
+		if err != nil {
+			return false, fmt.Errorf("failed to count identities: %w", err)
+		}
+		if identityCount <= 1 {
+			return false, fmt.Errorf("please set a local password before unlinking your last OIDC identity")
+		}
 	}
 
 	// Delete

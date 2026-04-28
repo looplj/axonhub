@@ -201,12 +201,18 @@ func (r *modelResolver) ID(ctx context.Context, obj *ent.Model) (*objects.GUID, 
 
 // ID is the resolver for the id field.
 func (r *oIDCIdentityResolver) ID(ctx context.Context, obj *ent.OIDCIdentity) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeOIDCIdentity,
+		ID:   obj.ID,
+	}, nil
 }
 
 // UserID is the resolver for the userID field.
 func (r *oIDCIdentityResolver) UserID(ctx context.Context, obj *ent.OIDCIdentity) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: UserID - userID"))
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   obj.UserID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
@@ -342,7 +348,14 @@ func (r *queryResolver) Models(ctx context.Context, after *entgql.Cursor[int], f
 
 // OidcIdentities is the resolver for the oidcIdentities field.
 func (r *queryResolver) OidcIdentities(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.OIDCIdentityOrder, where *ent.OIDCIdentityWhereInput) (*ent.OIDCIdentityConnection, error) {
-	panic(fmt.Errorf("not implemented: OidcIdentities - oidcIdentities"))
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	return r.client.OIDCIdentity.Query().Paginate(ctx, after, first, before, last,
+		ent.WithOIDCIdentityOrder(orderBy),
+		ent.WithOIDCIdentityFilter(where.Filter),
+	)
 }
 
 // Projects is the resolver for the projects field.
