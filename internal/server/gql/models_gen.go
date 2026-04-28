@@ -141,11 +141,6 @@ type ChannelSuccessRate struct {
 	FailedCount     int          `json:"failedCount"`
 	TotalCount      int          `json:"totalCount"`
 	SuccessRate     float64      `json:"successRate"`
-	InputTokens     int          `json:"inputTokens"`
-	OutputTokens    int          `json:"outputTokens"`
-	CachedTokens    int          `json:"cachedTokens"`
-	ReasoningTokens int          `json:"reasoningTokens"`
-	TotalTokens     int          `json:"totalTokens"`
 }
 
 type ChannelTypeCount struct {

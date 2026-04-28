@@ -473,19 +473,14 @@ type ComplexityRoot struct {
 	}
 
 	ChannelSuccessRate struct {
-		CachedTokens    func(childComplexity int) int
 		ChannelDisabled func(childComplexity int) int
 		ChannelID       func(childComplexity int) int
 		ChannelName     func(childComplexity int) int
 		ChannelType     func(childComplexity int) int
 		FailedCount     func(childComplexity int) int
-		InputTokens     func(childComplexity int) int
-		OutputTokens    func(childComplexity int) int
-		ReasoningTokens func(childComplexity int) int
 		SuccessCount    func(childComplexity int) int
 		SuccessRate     func(childComplexity int) int
 		TotalCount      func(childComplexity int) int
-		TotalTokens     func(childComplexity int) int
 	}
 
 	ChannelTagsModelAssociation struct {
@@ -3601,12 +3596,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelSettings.TransformOptions(childComplexity), true
 
-	case "ChannelSuccessRate.cachedTokens":
-		if e.complexity.ChannelSuccessRate.CachedTokens == nil {
-			break
-		}
-
-		return e.complexity.ChannelSuccessRate.CachedTokens(childComplexity), true
 	case "ChannelSuccessRate.channelDisabled":
 		if e.complexity.ChannelSuccessRate.ChannelDisabled == nil {
 			break
@@ -3637,24 +3626,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSuccessRate.FailedCount(childComplexity), true
-	case "ChannelSuccessRate.inputTokens":
-		if e.complexity.ChannelSuccessRate.InputTokens == nil {
-			break
-		}
-
-		return e.complexity.ChannelSuccessRate.InputTokens(childComplexity), true
-	case "ChannelSuccessRate.outputTokens":
-		if e.complexity.ChannelSuccessRate.OutputTokens == nil {
-			break
-		}
-
-		return e.complexity.ChannelSuccessRate.OutputTokens(childComplexity), true
-	case "ChannelSuccessRate.reasoningTokens":
-		if e.complexity.ChannelSuccessRate.ReasoningTokens == nil {
-			break
-		}
-
-		return e.complexity.ChannelSuccessRate.ReasoningTokens(childComplexity), true
 	case "ChannelSuccessRate.successCount":
 		if e.complexity.ChannelSuccessRate.SuccessCount == nil {
 			break
@@ -3673,12 +3644,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSuccessRate.TotalCount(childComplexity), true
-	case "ChannelSuccessRate.totalTokens":
-		if e.complexity.ChannelSuccessRate.TotalTokens == nil {
-			break
-		}
-
-		return e.complexity.ChannelSuccessRate.TotalTokens(childComplexity), true
 
 	case "ChannelTagsModelAssociation.channelTags":
 		if e.complexity.ChannelTagsModelAssociation.ChannelTags == nil {
@@ -20949,151 +20914,6 @@ func (ec *executionContext) fieldContext_ChannelSuccessRate_successRate(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelSuccessRate_inputTokens(ctx context.Context, field graphql.CollectedField, obj *ChannelSuccessRate) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelSuccessRate_inputTokens,
-		func(ctx context.Context) (any, error) {
-			return obj.InputTokens, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelSuccessRate_inputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelSuccessRate",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelSuccessRate_outputTokens(ctx context.Context, field graphql.CollectedField, obj *ChannelSuccessRate) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelSuccessRate_outputTokens,
-		func(ctx context.Context) (any, error) {
-			return obj.OutputTokens, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelSuccessRate_outputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelSuccessRate",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelSuccessRate_cachedTokens(ctx context.Context, field graphql.CollectedField, obj *ChannelSuccessRate) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelSuccessRate_cachedTokens,
-		func(ctx context.Context) (any, error) {
-			return obj.CachedTokens, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelSuccessRate_cachedTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelSuccessRate",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelSuccessRate_reasoningTokens(ctx context.Context, field graphql.CollectedField, obj *ChannelSuccessRate) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelSuccessRate_reasoningTokens,
-		func(ctx context.Context) (any, error) {
-			return obj.ReasoningTokens, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelSuccessRate_reasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelSuccessRate",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelSuccessRate_totalTokens(ctx context.Context, field graphql.CollectedField, obj *ChannelSuccessRate) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelSuccessRate_totalTokens,
-		func(ctx context.Context) (any, error) {
-			return obj.TotalTokens, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelSuccessRate_totalTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelSuccessRate",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ChannelTagsModelAssociation_channelTags(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelTagsModelAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37281,16 +37101,6 @@ func (ec *executionContext) fieldContext_Query_channelSuccessRates(ctx context.C
 				return ec.fieldContext_ChannelSuccessRate_totalCount(ctx, field)
 			case "successRate":
 				return ec.fieldContext_ChannelSuccessRate_successRate(ctx, field)
-			case "inputTokens":
-				return ec.fieldContext_ChannelSuccessRate_inputTokens(ctx, field)
-			case "outputTokens":
-				return ec.fieldContext_ChannelSuccessRate_outputTokens(ctx, field)
-			case "cachedTokens":
-				return ec.fieldContext_ChannelSuccessRate_cachedTokens(ctx, field)
-			case "reasoningTokens":
-				return ec.fieldContext_ChannelSuccessRate_reasoningTokens(ctx, field)
-			case "totalTokens":
-				return ec.fieldContext_ChannelSuccessRate_totalTokens(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSuccessRate", field.Name)
 		},
@@ -80840,31 +80650,6 @@ func (ec *executionContext) _ChannelSuccessRate(ctx context.Context, sel ast.Sel
 			}
 		case "successRate":
 			out.Values[i] = ec._ChannelSuccessRate_successRate(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "inputTokens":
-			out.Values[i] = ec._ChannelSuccessRate_inputTokens(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "outputTokens":
-			out.Values[i] = ec._ChannelSuccessRate_outputTokens(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "cachedTokens":
-			out.Values[i] = ec._ChannelSuccessRate_cachedTokens(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "reasoningTokens":
-			out.Values[i] = ec._ChannelSuccessRate_reasoningTokens(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "totalTokens":
-			out.Values[i] = ec._ChannelSuccessRate_totalTokens(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

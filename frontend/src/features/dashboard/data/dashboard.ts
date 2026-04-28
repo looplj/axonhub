@@ -105,11 +105,6 @@ export const channelSuccessRateSchema = z.object({
   failedCount: z.number(),
   totalCount: z.number(),
   successRate: z.number(),
-  inputTokens: z.number(),
-  outputTokens: z.number(),
-  cachedTokens: z.number(),
-  reasoningTokens: z.number(),
-  totalTokens: z.number(),
 });
 
 export const modelPerformanceStatSchema = z.object({
@@ -320,11 +315,6 @@ const CHANNEL_SUCCESS_RATES_QUERY = `
       failedCount
       totalCount
       successRate
-      inputTokens
-      outputTokens
-      cachedTokens
-      reasoningTokens
-      totalTokens
     }
   }
 `;

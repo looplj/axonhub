@@ -915,45 +915,6 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 		return []*ChannelSuccessRate{}, nil
 	}
 
-	// Step 2: Get token stats from usage_log grouped by channel
-	type channelTokenStats struct {
-		ChannelID       int   `json:"channel_id"`
-		InputTokens     int64 `json:"input_tokens"`
-		OutputTokens    int64 `json:"output_tokens"`
-		CachedTokens    int64 `json:"cached_tokens"`
-		ReasoningTokens int64 `json:"reasoning_tokens"`
-	}
-
-	var tokenResults []channelTokenStats
-	err = r.client.UsageLog.Query().
-		Modify(func(s *sql.Selector) {
-			s.Where(sql.NotNull(s.C(usagelog.FieldChannelID)))
-
-			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
-			}
-
-			s.GroupBy(s.C(usagelog.FieldChannelID))
-
-			s.Select(
-				s.C(usagelog.FieldChannelID),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
-			)
-		}).
-		Scan(ctx, &tokenResults)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get channel token stats: %w", err)
-	}
-
-	// Build token map by channel ID
-	tokenMap := make(map[int]channelTokenStats)
-	for _, tr := range tokenResults {
-		tokenMap[tr.ChannelID] = tr
-	}
-
 	// Build response with success rate calculation
 	var response []*ChannelSuccessRate
 
@@ -965,9 +926,6 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 			successRate = float64(result.SuccessCount) / float64(totalCount) * 100
 		}
 
-		tokens := tokenMap[result.ChannelID]
-		totalTokens := int(tokens.InputTokens + tokens.OutputTokens + tokens.ReasoningTokens)
-
 		response = append(response, &ChannelSuccessRate{
 			ChannelID:       objects.GUID{Type: "Channel", ID: result.ChannelID},
 			ChannelName:     "",
@@ -977,11 +935,6 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 			FailedCount:     result.FailedCount,
 			TotalCount:      totalCount,
 			SuccessRate:     successRate,
-			InputTokens:     int(tokens.InputTokens),
-			OutputTokens:    int(tokens.OutputTokens),
-			CachedTokens:    int(tokens.CachedTokens),
-			ReasoningTokens: int(tokens.ReasoningTokens),
-			TotalTokens:     totalTokens,
 		})
 	}
 

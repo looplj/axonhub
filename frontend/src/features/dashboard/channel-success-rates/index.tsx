@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, CoinsIcon, XCircleIcon } from 'lucide-react';
+import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
 import ContentSection from '@/features/settings/components/content-section';
 
-type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate' | 'inputTokens' | 'outputTokens' | 'totalTokens';
+type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate';
 type SortOrder = 'asc' | 'desc';
 
 const PAGE_SIZE = 20;
@@ -74,18 +74,6 @@ export default function DashboardChannelSuccessRates() {
         case 'successRate':
           aVal = a.successRate;
           bVal = b.successRate;
-          break;
-        case 'inputTokens':
-          aVal = a.inputTokens;
-          bVal = b.inputTokens;
-          break;
-        case 'outputTokens':
-          aVal = a.outputTokens;
-          bVal = b.outputTokens;
-          break;
-        case 'totalTokens':
-          aVal = a.totalTokens;
-          bVal = b.totalTokens;
           break;
         default:
           aVal = a.totalCount;
@@ -197,9 +185,6 @@ export default function DashboardChannelSuccessRates() {
                 <SelectItem value="successCount">{t('dashboard.channelSuccessRates.sortBySuccess')}</SelectItem>
                 <SelectItem value="failedCount">{t('dashboard.channelSuccessRates.sortByFailed')}</SelectItem>
                 <SelectItem value="successRate">{t('dashboard.channelSuccessRates.sortByRate')}</SelectItem>
-                <SelectItem value="inputTokens">Input Tokens</SelectItem>
-                <SelectItem value="outputTokens">Output Tokens</SelectItem>
-                <SelectItem value="totalTokens">Total Tokens</SelectItem>
               </SelectContent>
             </Select>
 
@@ -271,18 +256,6 @@ export default function DashboardChannelSuccessRates() {
                     {formatNumber(channel.failedCount)}
                   </span>
                 </div>
-
-                {/* Token consumption */}
-                {channel.totalTokens > 0 && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <CoinsIcon className="h-3 w-3" />
-                    <span>{t('dashboard.channelSuccessRates.inputTokens')}: {formatNumber(channel.inputTokens)}</span>
-                    <span className="text-border">|</span>
-                    <span>{t('dashboard.channelSuccessRates.outputTokens')}: {formatNumber(channel.outputTokens)}</span>
-                    <span className="text-border">|</span>
-                    <span>{t('dashboard.channelSuccessRates.totalTokens')}: {formatNumber(channel.totalTokens)}</span>
-                  </div>
-                )}
               </div>
             ))}
           </div>

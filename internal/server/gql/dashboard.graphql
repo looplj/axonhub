@@ -110,11 +110,6 @@ type ChannelSuccessRate {
   failedCount: Int!
   totalCount: Int!
   successRate: Float!
-  inputTokens: Int!
-  outputTokens: Int!
-  cachedTokens: Int!
-  reasoningTokens: Int!
-  totalTokens: Int!
 }
 
 type FastestChannel {
