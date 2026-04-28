@@ -67,9 +67,13 @@ func TestProviderQuotaSelector_DePrioritizeMode(t *testing.T) {
 	got, err := selector.Select(context.Background(), &llm.Request{})
 
 	require.NoError(t, err)
-	require.Len(t, got, 2)
-	require.Equal(t, 2, got[0].Channel.ID)
-	require.Equal(t, 3, got[1].Channel.ID)
+	require.Len(t, got, 3)
+
+	ids := make([]int, len(got))
+	for i, c := range got {
+		ids[i] = c.Channel.ID
+	}
+	require.ElementsMatch(t, []int{1, 2, 3}, ids)
 }
 
 func TestProviderQuotaSelector_EnforcementDisabled(t *testing.T) {
@@ -239,13 +243,13 @@ func TestProviderQuotaSelector_MixedCandidates(t *testing.T) {
 	got, err := selector.Select(context.Background(), &llm.Request{})
 
 	require.NoError(t, err)
-	require.Len(t, got, 4)
+	require.Len(t, got, 5)
 
 	ids := make([]int, len(got))
 	for i, c := range got {
 		ids[i] = c.Channel.ID
 	}
-	require.ElementsMatch(t, []int{2, 3, 4, 5}, ids)
+	require.ElementsMatch(t, []int{1, 2, 3, 4, 5}, ids)
 }
 
 func TestProviderQuotaSelector_PerLimit_ImageExhausted_KeptForToken(t *testing.T) {

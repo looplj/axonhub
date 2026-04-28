@@ -7,6 +7,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
 )
@@ -42,7 +43,7 @@ func (s *ProviderQuotaSelector) Select(ctx context.Context, req *llm.Request) ([
 
 	settings := s.systemService.QuotaEnforcementSettingsOrDefault(ctx)
 
-	if !settings.Enabled {
+	if !settings.Enabled || settings.Mode == biz.QuotaEnforcementModeDePrioritize {
 		return candidates, nil
 	}
 

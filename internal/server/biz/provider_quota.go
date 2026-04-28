@@ -303,7 +303,7 @@ func (svc *ProviderQuotaService) registerNeuralWattSupport() {
 }
 
 func (svc *ProviderQuotaService) Start(ctx context.Context) error {
-	svc.loadQuotaCache(ctx)
+	go svc.loadQuotaCache(context.Background())
 
 	cronExpr := svc.intervalToCronExpr(svc.getCheckInterval())
 
