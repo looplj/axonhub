@@ -20,6 +20,7 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
             nextResetAt
             ready
             quotaData
+            providerType
           }
         }
       }
@@ -121,6 +122,26 @@ export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
   period?: { currentPeriodEnd?: string };
 }
 
+export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
+  current_period_used_percent?: number | null;
+  remaining_included_requests?: number | null;
+  included_request_limit?: number | null;
+  overage_request_count?: number | null;
+  window_start?: string | null;
+  window_end?: string | null;
+  plan_tier?: string | null;
+}
+
+export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
+  weeklyTokenLimit?: { percentRemaining?: number | null; remainingCredits?: string | null; maxCredits?: string | null; nextRegenAt?: string | null } | null;
+  rollingFiveHourLimit?: { limited?: boolean | null; remaining?: number | null; max?: number | null; nextTickAt?: string | null; tickPercent?: number | null } | null;
+}
+
+export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
+  balance?: { credits_remaining_usd?: number | null; total_credits_usd?: number | null } | null;
+  subscription?: { kwh_included?: number | null; kwh_used?: number | null; kwh_remaining?: number | null; in_overage?: boolean | null; status?: string | null; plan?: string | null } | null;
+}
+
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
@@ -160,6 +181,34 @@ export type ProviderQuotaChannel = {
         quotaData: ProviderNanoGPTQuotaData
       }
     }
+    | {
+      type: 'openai'
+      providerType: 'wafer'
+      quotaStatus?: {
+        quotaData: ProviderWaferQuotaData
+      }
+    }
+    | {
+      type: 'openai'
+      providerType: 'synthetic'
+      quotaStatus?: {
+        quotaData: ProviderSyntheticQuotaData
+      }
+    }
+    | {
+      type: 'openai'
+      providerType: 'neuralwatt'
+      quotaStatus?: {
+        quotaData: ProviderNeuralWattQuotaData
+      }
+    }
+    | {
+      type: 'openai'
+      providerType?: undefined
+      quotaStatus?: {
+        quotaData: ProviderQuotaDataCommon
+      }
+    }
   )
 
 export function useProviderQuotaStatuses() {
@@ -178,20 +227,18 @@ export function useProviderQuotaStatuses() {
 
   const channels = data?.queryChannels?.edges?.map((e: any) => e.node) || [];
 
-  // Filter for quota-enabled channels
-  const oauthChannels = channels.filter((c: any) => {
-    const type = c.type?.toLowerCase();
-    const match = ['claudecode', 'codex', 'github_copilot', 'nanogpt', 'nanogpt_responses'].includes(type);
-    return match;
-  });
+  // Filter for quota-enabled channels (any channel with providerQuotaStatus)
+  const oauthChannels = channels.filter((c: any) => c.providerQuotaStatus != null);
 
   // Map to standard format - providerQuotaStatus is a single object, not an edge/node structure
   return oauthChannels.map((channel: any): ProviderQuotaChannel => {
     const quotaStatus = channel.providerQuotaStatus;
+    const providerType = quotaStatus?.providerType;
     return {
       id: channel.id,
       name: channel.name,
       type: channel.type,
+      ...(channel.type === 'openai' ? { providerType: providerType || undefined } : {}),
       quotaStatus,
     };
   });

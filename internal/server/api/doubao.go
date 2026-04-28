@@ -31,6 +31,7 @@ type DoubaoHandlersParams struct {
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
+	ChannelLimiterManager       *orchestrator.ChannelLimiterManager
 }
 
 type DoubaoHandlers struct {
@@ -56,6 +57,7 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 			params.QuotaService,
 			params.PromptProtectionRuleService,
 			params.LiveStreamRegistry,
+			params.ChannelLimiterManager,
 		),
 		InboundTransformer: inbound,
 	}

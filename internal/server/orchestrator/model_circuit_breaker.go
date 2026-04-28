@@ -89,11 +89,18 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err
 
 	m.releaseProbeLease()
 
-	if !errors.Is(err, context.Canceled) {
-		channel := m.outbound.GetCurrentChannel()
-		modelID := m.outbound.GetRequestedModel()
-		m.modelCircuitBreaker.RecordError(ctx, channel.ID, modelID)
+	if errors.Is(err, context.Canceled) {
+		return
 	}
+
+	// Local queue rejections never reached upstream — must not count as model errors.
+	if isChannelQueueError(err) {
+		return
+	}
+
+	channel := m.outbound.GetCurrentChannel()
+	modelID := m.outbound.GetRequestedModel()
+	m.modelCircuitBreaker.RecordError(ctx, channel.ID, modelID)
 }
 
 func (m *modelCircuitBreakerTracker) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {

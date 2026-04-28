@@ -511,6 +511,12 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
+	// Local queue rejection: same channel is full or timed out — bounce immediately
+	// to the next channel rather than retrying.
+	if isChannelQueueError(err) {
+		return false
+	}
+
 	// Empty response detection: allow same-channel retry so the pipeline can
 	// re-execute the request against the same (or next model in the) channel.
 	if errors.Is(err, pipeline.ErrEmptyResponse) {

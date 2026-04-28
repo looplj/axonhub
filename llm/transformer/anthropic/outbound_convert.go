@@ -23,7 +23,60 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config, s
 	req.Messages = convertMessages(chatReq, scope, config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
+	// DeepSeek requires assistant messages in history to include a thinking block
+	// when thinking is enabled (matching their OpenAI API behavior).
+	if config != nil && config.Type == PlatformDeepSeek && isThinkingEnabled(req) {
+		ensureAssistantThinkingBlocks(req.Messages)
+	}
+
 	return req
+}
+
+func isThinkingEnabled(req *MessageRequest) bool {
+	return req.Thinking == nil || req.Thinking.Type != "disabled"
+}
+
+func ensureAssistantThinkingBlocks(messages []MessageParam) {
+	for i, msg := range messages {
+		if msg.Role != "assistant" {
+			continue
+		}
+		if hasThinkingBlock(msg) {
+			continue
+		}
+
+		emptyThinking := ""
+		thinkingBlock := MessageContentBlock{
+			Type:     "thinking",
+			Thinking: &emptyThinking,
+		}
+
+		if msg.Content.Content != nil {
+			// Convert simple string content to multiple content with thinking + text
+			textBlock := MessageContentBlock{
+				Type: "text",
+				Text: msg.Content.Content,
+			}
+			messages[i].Content = MessageContent{
+				MultipleContent: []MessageContentBlock{thinkingBlock, textBlock},
+			}
+		} else {
+			// Prepend thinking block to existing multiple content
+			messages[i].Content.MultipleContent = append(
+				[]MessageContentBlock{thinkingBlock},
+				messages[i].Content.MultipleContent...,
+			)
+		}
+	}
+}
+
+func hasThinkingBlock(msg MessageParam) bool {
+	for _, block := range msg.Content.MultipleContent {
+		if block.Type == "thinking" {
+			return true
+		}
+	}
+	return false
 }
 
 func shouldDecodeAnthropicSignature(config *Config) bool {
@@ -72,6 +125,13 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
 
+	// DeepSeek Anthropic format supports output_config.effort. When reasoning_effort
+	// is present, prefer output_config over thinking so suffix-based effort routing
+	// (for example deepseek-chat-max) preserves the explicit effort level.
+	if config != nil && config.Type == PlatformDeepSeek && chatReq.ReasoningEffort != "" {
+		req.OutputConfig = &OutputConfig{Effort: chatReq.ReasoningEffort}
+	}
+
 	// Determine thinking config priority: adaptive > enabled > disabled
 	if chatReq.TransformerMetadata != nil {
 		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
@@ -79,7 +139,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		}
 	}
 
-	if req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
+	if req.OutputConfig == nil && req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
 		req.Thinking = buildThinking(chatReq, config)
 	}
 
@@ -93,7 +153,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	// Restore output_config from TransformerMetadata
 	if chatReq.TransformerMetadata != nil {
 		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
-			if supportsAdaptiveThinking(config) {
+			if supportsOutputConfig(config) {
 				req.OutputConfig = &OutputConfig{Effort: effort}
 			} else if req.Thinking == nil || req.Thinking.Type == "adaptive" {
 				req.Thinking = &Thinking{

@@ -51,6 +51,7 @@ export const requestSchema = z.object({
   channel: channelSchema.partial().nullable().optional(),
   source: requestSourceSchema,
   modelID: z.string(),
+  reasoningEffort: z.string().nullable().optional(),
   contentSaved: z.boolean().optional(),
   contentStorageKey: z.string().nullable().optional(),
   requestHeaders: z.any().nullable().optional(),

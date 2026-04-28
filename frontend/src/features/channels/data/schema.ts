@@ -46,15 +46,18 @@ export const channelTypeSchema = z.enum([
   'openai_fake',
   'openrouter',
   'xiaomi',
+  'xiaomi_anthropic',
   'xai',
   'ppio',
   'siliconflow',
   'volcengine',
+  'volcengine_anthropic',
   'longcat',
   'longcat_anthropic',
   'minimax',
   'minimax_anthropic',
   'aihubmix',
+  'aihubmix_anthropic',
   'burncloud',
   'modelscope',
   'bailian',
@@ -151,11 +154,23 @@ export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
 
 // Channel Rate Limit
 export const channelRateLimitSchema = z.object({
-  rpm: z.number().int().positive().optional().nullable(),
-  tpm: z.number().int().positive().optional().nullable(),
-  maxConcurrent: z.number().int().positive().optional().nullable(),
+  rpm: z.number().int().nonnegative().optional().nullable(),
+  tpm: z.number().int().nonnegative().optional().nullable(),
+  maxConcurrent: z.number().int().nonnegative().optional().nullable(),
+  queueSize: z.number().int().nonnegative().optional().nullable(),
+  queueTimeoutMs: z.number().int().nonnegative().optional().nullable(),
 });
 export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
+
+// Live snapshot of the per-channel concurrency limiter.
+// Returned from the backend only when MaxConcurrent is configured.
+export const channelLimiterStatsSchema = z.object({
+  inFlight: z.number().int().nonnegative(),
+  waiting: z.number().int().nonnegative(),
+  capacity: z.number().int().nonnegative(),
+  queueSize: z.number().int().nonnegative(),
+});
+export type ChannelLimiterStats = z.infer<typeof channelLimiterStatsSchema>;
 
 // Channel Settings
 export const channelSettingsSchema = z.object({
@@ -242,6 +257,7 @@ export const channelSchema = z.object({
   errorMessage: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
+  liveLimiterStats: channelLimiterStatsSchema.optional().nullable(),
 });
 export type Channel = z.infer<typeof channelSchema>;
 

@@ -73,7 +73,7 @@ func TestChatCompletionOrchestrator_Process_NonStreaming(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -204,7 +204,7 @@ func TestChatCompletionOrchestrator_Process_WithModelMapping(t *testing.T) {
 		PipelineFactory:     pipeline.NewFactory(executor),
 		ModelMapper:         NewModelMapper(),
 		modelCircuitBreaker: biz.NewModelCircuitBreaker(),
-		connectionTracker:   NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -295,7 +295,7 @@ func TestChatCompletionOrchestrator_Process_WithOverrideParameters(t *testing.T)
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -367,7 +367,7 @@ func TestChatCompletionOrchestrator_Process_MultipleRequests(t *testing.T) {
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -519,7 +519,7 @@ func TestChatCompletionOrchestrator_Process_SameChannelRetryNextModel(t *testing
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
 		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
