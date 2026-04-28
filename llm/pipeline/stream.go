@@ -95,8 +95,12 @@ func (p *pipeline) stream(
 	}
 
 	// Apply raw stream middlewares
+	rawStream := outboundStream
 	outboundStream, err = p.applyRawStreamMiddlewares(ctx, outboundStream)
 	if err != nil {
+		rawStream.Close()
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to apply raw stream middlewares: %w", err)
 	}
 
@@ -115,13 +119,21 @@ func (p *pipeline) stream(
 
 	llmStream, err := p.Outbound.TransformStream(ctx, outboundStream)
 	if err != nil {
+		outboundStream.Close()
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
 		return nil, err
 	}
 
+	rawLlmStream := llmStream
+
 	// Apply LLM stream middlewares
 	llmStream, err = p.applyLlmStreamMiddlewares(ctx, llmStream)
 	if err != nil {
+		rawLlmStream.Close()
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to apply llm stream middlewares: %w", err)
 	}
 
@@ -136,18 +148,28 @@ func (p *pipeline) stream(
 	if p.emptyResponseDetection {
 		llmStream, err = p.checkEmptyResponse(ctx, llmStream)
 		if err != nil {
+			p.applyRawErrorResponseMiddlewares(ctx, err)
+
 			return nil, err
 		}
 	}
 
 	inboundStream, err := p.Inbound.TransformStream(ctx, llmStream)
 	if err != nil {
+		llmStream.Close()
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
 		return nil, err
 	}
 
+	rawInboundStream := inboundStream
+
 	inboundStream, err = p.applyInboundRawStreamMiddlewares(ctx, inboundStream)
 	if err != nil {
+		rawInboundStream.Close()
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to apply inbound raw stream middlewares: %w", err)
 	}
 
