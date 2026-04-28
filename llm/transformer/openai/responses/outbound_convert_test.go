@@ -221,6 +221,93 @@ func TestConvertToolMessage(t *testing.T) {
 	}
 }
 
+func TestConvertWebSearchToTool(t *testing.T) {
+	tests := []struct {
+		name     string
+		src      llm.Tool
+		expected Tool
+	}{
+		{
+			name: "minimal web search tool preserves type without asserting nil internals",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+			},
+			expected: Tool{
+				Type: "web_search",
+			},
+		},
+		{
+			name: "web search maps explicit allowed domains and user location fields",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{
+					AllowedDomains: []string{"example.com", "docs.example.com"},
+					UserLocation: llm.WebSearchToolUserLocation{
+						Type:     "approximate",
+						City:     "San Francisco",
+						Region:   "CA",
+						Country:  "US",
+						Timezone: "America/Los_Angeles",
+					},
+				},
+			},
+			expected: Tool{
+				Type: "web_search",
+				Filters: &WebSearchFilters{
+					AllowedDomains: []string{"example.com", "docs.example.com"},
+				},
+				UserLocation: &WebSearchUserLocation{
+					Type:     "approximate",
+					City:     "San Francisco",
+					Region:   "CA",
+					Country:  "US",
+					Timezone: "America/Los_Angeles",
+				},
+			},
+		},
+		{
+			name: "web search defaults location type to approximate when omitted",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{
+					UserLocation: llm.WebSearchToolUserLocation{
+						Country: "US",
+					},
+				},
+			},
+			expected: Tool{
+				Type: "web_search",
+				UserLocation: &WebSearchUserLocation{
+					Type:    "approximate",
+					Country: "US",
+				},
+			},
+		},
+		{
+			name: "anthropic only strict and max uses are ignored when they are the only fields",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{
+					Strict:  lo.ToPtr(true),
+					MaxUses: lo.ToPtr(int64(3)),
+				},
+			},
+			expected: Tool{
+				Type: "web_search",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertWebSearchToTool(tt.src)
+			require.Equal(t, tt.expected, result)
+			require.Equal(t, "web_search", result.Type)
+			require.Empty(t, result.Parameters)
+		})
+	}
+}
+
 func TestConvertStreamOptions(t *testing.T) {
 	tests := []struct {
 		name     string

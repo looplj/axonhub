@@ -339,6 +339,39 @@ func convertImageGenerationToTool(src llm.Tool) Tool {
 	return tool
 }
 
+func convertWebSearchToTool(src llm.Tool) Tool {
+	tool := Tool{
+		Type: "web_search",
+	}
+
+	if src.WebSearch == nil {
+		return tool
+	}
+
+	if len(src.WebSearch.AllowedDomains) > 0 {
+		tool.Filters = &WebSearchFilters{
+			AllowedDomains: append([]string(nil), src.WebSearch.AllowedDomains...),
+		}
+	}
+
+	location := src.WebSearch.UserLocation
+	if location.Type != "" || location.City != "" || location.Country != "" || location.Region != "" || location.Timezone != "" {
+		locationType := location.Type
+		if locationType == "" {
+			locationType = "approximate"
+		}
+		tool.UserLocation = &WebSearchUserLocation{
+			Type:     locationType,
+			City:     location.City,
+			Country:  location.Country,
+			Region:   location.Region,
+			Timezone: location.Timezone,
+		}
+	}
+
+	return tool
+}
+
 // convertCustomToTool converts an llm.Tool custom tool to Responses API Tool format.
 func convertCustomToTool(src llm.Tool) Tool {
 	tool := Tool{

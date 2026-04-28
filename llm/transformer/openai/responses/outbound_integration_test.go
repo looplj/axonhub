@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -192,6 +193,52 @@ func TestOutboundTransformer_TransformRequest_Integration(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_WithWebSearchTool(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	llmReq := &llm.Request{
+		Model: "gpt-4o-search-preview",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("what happened today in ai")}},
+		},
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeWebSearch,
+			WebSearch: &llm.WebSearch{
+				AllowedDomains: []string{"openai.com", "example.com"},
+				UserLocation: llm.WebSearchToolUserLocation{
+					Type:     "approximate",
+					City:     "San Francisco",
+					Country:  "US",
+					Region:   "California",
+					Timezone: "America/Los_Angeles",
+				},
+			},
+		}},
+	}
+
+	hreq, err := trans.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var actual Request
+	err = json.Unmarshal(hreq.Body, &actual)
+	require.NoError(t, err)
+	require.Len(t, actual.Tools, 1)
+	require.Equal(t, Tool{
+		Type: "web_search",
+		Filters: &WebSearchFilters{
+			AllowedDomains: []string{"openai.com", "example.com"},
+		},
+		UserLocation: &WebSearchUserLocation{
+			Type:     "approximate",
+			City:     "San Francisco",
+			Country:  "US",
+			Region:   "California",
+			Timezone: "America/Los_Angeles",
+		},
+	}, actual.Tools[0])
 }
 
 func TestCompactTransformer_TransformResponse_Integration(t *testing.T) {

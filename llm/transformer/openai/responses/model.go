@@ -22,7 +22,7 @@ type ImageGeneration struct {
 }
 
 type Tool struct {
-	// Any of "function", "image_generation", "custom".
+	// Any of "function", "image_generation", "custom", "web_search".
 	Type        string `json:"type,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
@@ -34,6 +34,10 @@ type Tool struct {
 
 	// This field is for custom tool format definition.
 	Format *CustomToolFormat `json:"format,omitempty"`
+
+	// These fields are for web search.
+	Filters      *WebSearchFilters      `json:"filters,omitempty"`
+	UserLocation *WebSearchUserLocation `json:"user_location,omitempty"`
 
 	// This field is for ImageGeneration
 	Background string `json:"background,omitempty"`
@@ -53,6 +57,18 @@ type Tool struct {
 	Quality string `json:"quality,omitempty"`
 	// This field is for ImageGeneration
 	Size string `json:"size,omitempty"`
+}
+
+type WebSearchFilters struct {
+	AllowedDomains []string `json:"allowed_domains,omitempty"`
+}
+
+type WebSearchUserLocation struct {
+	Type     string `json:"type,omitempty"`
+	City     string `json:"city,omitempty"`
+	Country  string `json:"country,omitempty"`
+	Region   string `json:"region,omitempty"`
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // CustomToolFormat represents the format definition for a custom tool.
@@ -77,7 +93,7 @@ type Request struct {
 
 	// Input can be a string prompt or an array of input items.
 	Input Input `json:"input"`
-	// Tools includes the function/image_generation tools.
+	// Tools includes the function/image_generation/web_search/custom tools.
 	Tools []Tool `json:"tools,omitzero"`
 	// Parallel tool calls preference.
 	ParallelToolCalls *bool `json:"parallel_tool_calls,omitempty"`

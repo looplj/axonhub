@@ -313,6 +313,51 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with web search tool",
+			chatReq: &llm.Request{
+				Model: "gpt-4o-search-preview",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("latest ai news"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{
+							AllowedDomains: []string{"openai.com"},
+							UserLocation: llm.WebSearchToolUserLocation{
+								Type:    "approximate",
+								Country: "US",
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Equal(t, []Tool{
+					{
+						Type: "web_search",
+						Filters: &WebSearchFilters{
+							AllowedDomains: []string{"openai.com"},
+						},
+						UserLocation: &WebSearchUserLocation{
+							Type:    "approximate",
+							Country: "US",
+						},
+					},
+				}, req.Tools)
+			},
+		},
+		{
 			name: "request with unsupported tool type is skipped",
 			chatReq: &llm.Request{
 				Model: "gpt-4o",
