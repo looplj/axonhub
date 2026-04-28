@@ -116,6 +116,7 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	limits := buildNanoGPTLimitStatuses(response.DailyImages, response.DailyInputTokens, response.WeeklyInputTokens)
 
+	// Check for warning state: any window with percentUsed >= WarningThresholdRatio
 	if normalizedStatus == "available" {
 		for i := range limits {
 			if limits[i].Status == "warning" || limits[i].Status == "exhausted" {
@@ -125,8 +126,11 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		}
 	}
 
+	// Calculate NextResetAt from earliest resetAt across all windows
 	nextResetAt := findEarliestResetAt(response.DailyImages, response.DailyInputTokens, response.WeeklyInputTokens)
 
+	// During grace period, windows typically have no resetAt;
+	// fall back to graceUntil as the relevant deadline.
 	if nextResetAt == nil && response.GraceUntil != nil {
 		if t, err := time.Parse(time.RFC3339, *response.GraceUntil); err == nil {
 			nextResetAt = &t
@@ -199,6 +203,9 @@ func (c *NanoGPTQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return ch.Type == channel.TypeNanogpt || ch.Type == channel.TypeNanogptResponses
 }
 
+// buildNanoGPTQuotaURL derives the quota URL from the channel base URL.
+// It extracts scheme+host and appends the quota path.
+// Falls back to https://nano-gpt.com if base URL is empty or invalid.
 func buildNanoGPTQuotaURL(baseURL string) string {
 	baseURL = strings.TrimSpace(baseURL)
 	if baseURL == "" {
@@ -269,6 +276,8 @@ func buildNanoGPTLimitStatuses(imageWindow, dailyTokenWindow, weeklyTokenWindow 
 	return limits
 }
 
+// findEarliestResetAt returns the earliest resetAt time from all non-nil windows.
+// resetAt is a millisecond epoch timestamp.
 func findEarliestResetAt(windows ...*NanoGPTQuotaWindow) *time.Time {
 	var earliest *time.Time
 
