@@ -739,6 +739,7 @@ const MODEL_SETTINGS_QUERY = `
       fallbackToChannelsOnModelNotFound
       queryAllChannelModels
       defaultModelAPIIncludeAll
+      autoReasoningEffort
     }
   }
 `;
@@ -805,12 +806,14 @@ export interface ModelSettings {
   fallbackToChannelsOnModelNotFound: boolean;
   queryAllChannelModels: boolean;
   defaultModelAPIIncludeAll: boolean;
+  autoReasoningEffort: boolean;
 }
 
 export interface UpdateModelSettingsInput {
   fallbackToChannelsOnModelNotFound?: boolean;
   queryAllChannelModels?: boolean;
   defaultModelAPIIncludeAll?: boolean;
+  autoReasoningEffort?: boolean;
 }
 
 export function useModelSettings() {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Loader2, Settings2, RefreshCcw, Layers, ListTree } from 'lucide-react';
+import { Loader2, Settings2, RefreshCcw, Layers, ListTree, BrainCircuit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,12 +21,14 @@ export function ModelSettingsDialog() {
   const [fallbackEnabled, setFallbackEnabled] = React.useState(false);
   const [queryAllChannelModels, setQueryAllChannelModels] = React.useState(false);
   const [defaultModelAPIIncludeAll, setDefaultModelAPIIncludeAll] = React.useState(false);
+  const [autoReasoningEffort, setAutoReasoningEffort] = React.useState(false);
 
   React.useEffect(() => {
     if (settings) {
       setFallbackEnabled(settings.fallbackToChannelsOnModelNotFound);
       setQueryAllChannelModels(settings.queryAllChannelModels);
       setDefaultModelAPIIncludeAll(settings.defaultModelAPIIncludeAll);
+      setAutoReasoningEffort(settings.autoReasoningEffort);
     }
   }, [settings]);
 
@@ -35,10 +37,11 @@ export function ModelSettingsDialog() {
       fallbackToChannelsOnModelNotFound: fallbackEnabled,
       queryAllChannelModels: queryAllChannelModels,
       defaultModelAPIIncludeAll: defaultModelAPIIncludeAll,
+      autoReasoningEffort: autoReasoningEffort,
     };
     await updateModelSettings.mutateAsync(input);
     setOpen(null);
-  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, setOpen]);
+  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, autoReasoningEffort, setOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(null);
@@ -117,6 +120,27 @@ export function ModelSettingsDialog() {
                     id='default-model-api-include-all'
                     checked={defaultModelAPIIncludeAll}
                     onCheckedChange={setDefaultModelAPIIncludeAll}
+                    disabled={updateModelSettings.isPending}
+                    className='scale-100 sm:scale-75'
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className='pb-0'>
+                <CardTitle className='flex items-center gap-2 text-sm sm:text-base'>
+                  <BrainCircuit className='text-muted-foreground h-4 w-4' />
+                  {t('models.dialogs.settings.autoReasoningEffort.label')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='pt-1'>
+                <div className='flex items-center justify-between'>
+                  <p className='text-muted-foreground pr-4 text-sm'>{t('models.dialogs.settings.autoReasoningEffort.description')}</p>
+                  <Switch
+                    id='auto-reasoning-effort'
+                    checked={autoReasoningEffort}
+                    onCheckedChange={setAutoReasoningEffort}
                     disabled={updateModelSettings.isPending}
                     className='scale-100 sm:scale-75'
                   />

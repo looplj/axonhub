@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -290,6 +291,30 @@ func TestRateLimitTracking_OnOutboundRawError_429(t *testing.T) {
 
 	// Verify channel is in cooldown
 	assert.True(t, tracker.IsCoolingDown(channel.ID))
+}
+
+func TestRateLimitTracking_OnOutboundRawError_QueueErrorIgnored(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 7, Name: "kimi"}}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+	}
+
+	queueErr := asChannelQueueError(channel, ErrChannelQueueFull)
+	require.NotNil(t, queueErr)
+
+	middleware.OnOutboundRawError(context.Background(), queueErr)
+
+	assert.False(t, tracker.IsCoolingDown(channel.ID),
+		"local queue rejection must not trigger upstream-style cooldown")
 }
 
 func TestRateLimitTracking_OnOutboundRawError_429WithoutRetryAfter(t *testing.T) {

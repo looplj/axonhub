@@ -372,7 +372,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex", "github_copilot", "nanogpt"}},
+		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex", "github_copilot", "nanogpt", "wafer", "synthetic", "neuralwatt"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"available", "warning", "exhausted", "unknown"}},
 		{Name: "quota_data", Type: field.TypeJSON},
 		{Name: "next_reset_at", Type: field.TypeTime, Nullable: true},

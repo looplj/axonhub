@@ -159,6 +159,18 @@ type ChannelRateLimit struct {
 	RPM           *int64 `json:"rpm,omitempty"`           // Requests Per Minute, nil = unlimited
 	TPM           *int64 `json:"tpm,omitempty"`           // Tokens Per Minute, nil = unlimited
 	MaxConcurrent *int64 `json:"maxConcurrent,omitempty"` // Maximum concurrent requests, nil = unlimited
+
+	// QueueSize controls the limiter mode when MaxConcurrent is set:
+	//   nil / 0 = soft mode (count only, no blocking, no rejection — preserves PR #1322 scoring behaviour)
+	//   > 0     = hard mode (FIFO wait queue with bounded capacity; excess requests rejected)
+	// Has no effect when MaxConcurrent is unset or <= 0.
+	QueueSize *int64 `json:"queueSize,omitempty"`
+
+	// QueueTimeoutMs is the per-channel queue wait timeout in milliseconds.
+	//   nil / 0 = no per-channel timeout (only the request context bounds the wait)
+	//   > 0     = waiters that exceed this duration receive ErrChannelQueueTimeout
+	// Only meaningful in hard mode (QueueSize > 0).
+	QueueTimeoutMs *int64 `json:"queueTimeoutMs,omitempty"`
 }
 
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）

@@ -3280,6 +3280,9 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   codex
   github_copilot
   nanogpt
+  wafer
+  synthetic
+  neuralwatt
 }
 """
 ProviderQuotaStatusStatus is enum for the field status

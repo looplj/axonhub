@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
@@ -16,64 +18,34 @@ func TestRateLimitAwareStrategy_Score_NoRateLimit(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	// No rate limit configured, should return max score
-	assert.Equal(t, 100.0, score)
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
 }
 
-func TestRateLimitAwareStrategy_Score_NoRateLimit_UsesDefaultConnectionFallback(t *testing.T) {
+func TestRateLimitAwareStrategy_Score_NoRateLimitChannelIgnoresManagerStats(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
 
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
-
-	for range 5 {
-		connectionTracker.IncrementConnection(channel.ID)
-	}
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	assert.Equal(t, 50.0, score)
+	// No limiter is created for the channel because RateLimit is nil; full score expected.
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
 }
 
 func TestRateLimitAwareStrategy_Score_Cooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
-	// Set cooldown for the channel
 	tracker.SetCooldown(channel.ID, time.Now().Add(30*time.Second))
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	// Channel in cooldown, should return exhausted score
-	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
 }
 
 func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
@@ -81,29 +53,22 @@ func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
 	rpm := int64(100)
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-		Settings: &objects.ChannelSettings{
-			RateLimit: &objects.ChannelRateLimit{
-				RPM: &rpm,
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{RPM: &rpm},
 			},
 		},
 	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
 
-	// Simulate reaching RPM limit
 	for range rpm {
 		tracker.IncrementRequest(channel.ID)
 	}
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	// RPM exhausted, should return exhausted score
-	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
 }
 
 func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
@@ -111,27 +76,20 @@ func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
 	tpm := int64(1000)
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-		Settings: &objects.ChannelSettings{
-			RateLimit: &objects.ChannelRateLimit{
-				TPM: &tpm,
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{TPM: &tpm},
 			},
 		},
 	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
 
-	// Simulate reaching TPM limit
 	tracker.AddTokens(channel.ID, tpm)
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	// TPM exhausted, should return exhausted score
-	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
 }
 
 func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
@@ -139,30 +97,21 @@ func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
 	rpm := int64(100)
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-		Settings: &objects.ChannelSettings{
-			RateLimit: &objects.ChannelRateLimit{
-				RPM: &rpm,
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{RPM: &rpm},
 			},
 		},
 	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
 
-	// Set cooldown
 	tracker.SetCooldown(channel.ID, time.Now().Add(30*time.Second))
-
-	// Also add some requests (but not exhausted)
 	tracker.IncrementRequest(channel.ID)
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	// Cooldown takes priority, should return exhausted score
-	assert.Equal(t, float64(rateLimitExhaustedScore), score)
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
 }
 
 func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
@@ -171,122 +120,258 @@ func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
 
 	rpm := int64(100)
 	tpm := int64(1000)
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-		Settings: &objects.ChannelSettings{
-			RateLimit: &objects.ChannelRateLimit{
-				RPM: &rpm,
-				TPM: &tpm,
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{RPM: &rpm, TPM: &tpm},
 			},
 		},
 	}
+
+	tracker.IncrementRequest(channel.ID)
+	tracker.IncrementRequest(channel.ID)
+	tracker.AddTokens(channel.ID, 500)
+
+	// maxRatio = max(2/100, 500/1000) = 0.5 -> score 50
+	ctx := context.Background()
+	assert.Equal(t, 50.0, strategy.Score(ctx, channel))
+}
+
+func TestRateLimitAwareStrategy_Score_SoftMode_ConcurrencyContributes(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
+
 	channel := &biz.Channel{
-		Channel: entChannel,
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent: lo.ToPtr(int64(10)),
+				},
+			},
+		},
 	}
 
-	// Simulate 50% usage
-	tracker.IncrementRequest(channel.ID) // 1 request
-	tracker.IncrementRequest(channel.ID)
-	tracker.AddTokens(channel.ID, 500) // 500 tokens
+	lim := mgr.GetOrCreate(channel)
+	require.NotNil(t, lim)
+
+	// 8 / 10 in flight -> ratio 0.8 -> concurrency score 20
+	for range 8 {
+		require.NoError(t, lim.Acquire(t.Context()))
+	}
+
+	ctx := context.Background()
+	assert.InDelta(t, 20.0, strategy.Score(ctx, channel), 0.0001)
+
+	// Saturate to capacity -> exhausted (PR #1322 soft-mode parity)
+	for range 2 {
+		require.NoError(t, lim.Acquire(t.Context()))
+	}
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+
+	for range 10 {
+		lim.Release()
+	}
+}
+
+func TestRateLimitAwareStrategy_Score_HardMode_QueuingCappedScore(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent: lo.ToPtr(int64(2)),
+					QueueSize:     lo.ToPtr(int64(10)),
+				},
+			},
+		},
+	}
+
+	lim := mgr.GetOrCreate(channel)
+	require.NotNil(t, lim)
+
+	// Saturate capacity (no queue yet) -> should already be at "spilled" boundary.
+	require.NoError(t, lim.Acquire(t.Context()))
+	require.NoError(t, lim.Acquire(t.Context()))
 
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
+	// inFlight==capacity but waiting==0 -> waitingRatio=0 -> score = 100 * 0.3 * 1 = 30
+	assert.InDelta(t, 30.0, score, 0.0001)
 
-	// Should be positive (normal usage)
-	// Score = maxScore * (1 - maxRatio)
-	// maxRatio = max(1/100, 500/1000) = 0.5
-	// score = 100 * (1 - 0.5) = 50
-	assert.Equal(t, 50.0, score)
+	// Push 5 waiters into the queue. Drive blocking acquires and let them stay queued.
+	waitCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	enqueued := launchAcquire(t, lim, waitCtx, 5)
+
+	require.Eventually(t, func() bool {
+		_, w := lim.Stats()
+		return w == 5
+	}, time.Second, 5*time.Millisecond)
+
+	// waitingRatio = 5/10 = 0.5 -> score = 100 * 0.3 * 0.5 = 15
+	assert.InDelta(t, 15.0, strategy.Score(ctx, channel), 0.0001)
+
+	// Now fully load capacity + queue -> exhausted.
+	enqueuedExtra := launchAcquire(t, lim, waitCtx, 5)
+	require.Eventually(t, func() bool {
+		_, w := lim.Stats()
+		return w == 10
+	}, time.Second, 5*time.Millisecond)
+
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+
+	cancel()
+	drainGrants(t, lim, enqueued)
+	drainGrants(t, lim, enqueuedExtra)
+	lim.Release()
+	lim.Release()
 }
 
-func TestRateLimitAwareStrategy_Score_UsesDefaultConnectionFallbackWhenMaxConcurrentMissing(t *testing.T) {
+func TestRateLimitAwareStrategy_Score_HardMode_Monotonic(t *testing.T) {
 	tracker := NewChannelRequestTracker()
-	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent: lo.ToPtr(int64(10)),
+					QueueSize:     lo.ToPtr(int64(10)),
+				},
+			},
+		},
+	}
+
+	lim := mgr.GetOrCreate(channel)
+	require.NotNil(t, lim)
+
+	ctx := context.Background()
+
+	// 9/10 below capacity: score should stay strictly above the
+	// at-capacity-empty-queue score so the LB never prefers a saturated
+	// channel over one with free headroom.
+	for range 9 {
+		require.NoError(t, lim.Acquire(t.Context()))
+	}
+
+	belowCapacityScore := strategy.Score(ctx, channel)
+
+	// Saturate to capacity (no waiters yet).
+	require.NoError(t, lim.Acquire(t.Context()))
+
+	atCapacityScore := strategy.Score(ctx, channel)
+
+	assert.Greater(t, belowCapacityScore, atCapacityScore,
+		"below-capacity must score higher than at-capacity-with-empty-queue")
+
+	// Sanity: at-capacity-empty-queue equals queueingScoreCeiling × maxScore = 30.
+	assert.InDelta(t, 30.0, atCapacityScore, 0.0001)
+
+	for range 10 {
+		lim.Release()
+	}
+}
+
+func TestRateLimitAwareStrategy_Score_StaleEntryAfterLimiterDisabled(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					MaxConcurrent: lo.ToPtr(int64(5)),
+				},
+			},
+		},
+	}
+
+	require.NotNil(t, mgr.GetOrCreate(channel))
+
+	// Simulate the user clearing the rate limit between GetOrCreate (which
+	// admits a request) and the next Score call (which still sees the
+	// stale manager entry until the next admission triggers cleanup).
+	channel.Settings.RateLimit = nil
+
+	ctx := context.Background()
+
+	// Must not panic and must treat the channel as unlimited.
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
+}
+
+func TestRateLimitAwareStrategy_Score_MinOfRPMAndConcurrency(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	mgr := NewChannelLimiterManager()
+	strategy := NewRateLimitAwareStrategy(tracker, mgr)
 
 	rpm := int64(100)
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-		Settings: &objects.ChannelSettings{
-			RateLimit: &objects.ChannelRateLimit{
-				RPM: &rpm,
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{
+					RPM:           &rpm,
+					MaxConcurrent: lo.ToPtr(int64(10)),
+				},
 			},
 		},
 	}
-	channel := &biz.Channel{
-		Channel: entChannel,
+
+	// 30% RPM (score 70) and 80% inFlight (score 20) -> min = 20.
+	for range 30 {
+		tracker.IncrementRequest(channel.ID)
 	}
 
+	lim := mgr.GetOrCreate(channel)
+	require.NotNil(t, lim)
 	for range 8 {
-		connectionTracker.IncrementConnection(channel.ID)
+		require.NoError(t, lim.Acquire(t.Context()))
 	}
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	assert.InDelta(t, 20.0, score, 0.000001)
-}
-
-func TestRateLimitAwareStrategy_Score_ExplicitMaxConcurrentOverridesDefaultConnectionFallback(t *testing.T) {
-	tracker := NewChannelRequestTracker()
-	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
-
-	maxConcurrent := int64(20)
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-		Settings: &objects.ChannelSettings{
-			RateLimit: &objects.ChannelRateLimit{
-				MaxConcurrent: &maxConcurrent,
-			},
-		},
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
+	assert.InDelta(t, 20.0, strategy.Score(ctx, channel), 0.0001)
 
 	for range 8 {
-		connectionTracker.IncrementConnection(channel.ID)
+		lim.Release()
 	}
-
-	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	assert.Equal(t, 60.0, score)
 }
 
 func TestRateLimitAwareStrategy_ScoreWithDebug_Cooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
-	// Set cooldown
 	until := time.Now().Add(30 * time.Second)
 	tracker.SetCooldown(channel.ID, until)
 
 	ctx := context.Background()
-	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
+	score, debug := strategy.ScoreWithDebug(ctx, channel)
 
-	// Should return exhausted score
 	assert.Equal(t, float64(rateLimitExhaustedScore), score)
-	assert.Equal(t, "RateLimitAware", strategyScore.StrategyName)
+	assert.Equal(t, "RateLimitAware", debug.StrategyName)
+	assert.Equal(t, "channel_in_cooldown", debug.Details["reason"])
+	assert.Equal(t, true, debug.Details["exhausted"])
 
-	// Check debug details
-	assert.Equal(t, "channel_in_cooldown", strategyScore.Details["reason"])
-	assert.Equal(t, true, strategyScore.Details["exhausted"])
-
-	// Should have cooldown_until field
-	_, hasCooldownUntil := strategyScore.Details["cooldown_until"]
+	_, hasCooldownUntil := debug.Details["cooldown_until"]
 	assert.True(t, hasCooldownUntil)
 }
 
@@ -295,107 +380,52 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_RPMExhausted(t *testing.T) {
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
 	rpm := int64(10)
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-		Settings: &objects.ChannelSettings{
-			RateLimit: &objects.ChannelRateLimit{
-				RPM: &rpm,
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{RPM: &rpm},
 			},
 		},
 	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
 
-	// Exhaust RPM
 	for range rpm {
 		tracker.IncrementRequest(channel.ID)
 	}
 
 	ctx := context.Background()
-	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
+	score, debug := strategy.ScoreWithDebug(ctx, channel)
 
-	// Should return exhausted score
 	assert.Equal(t, float64(rateLimitExhaustedScore), score)
-
-	// Check debug details
-	assert.Equal(t, true, strategyScore.Details["rpm_exhausted"])
-	assert.Equal(t, rpm, strategyScore.Details["rpm_limit"])
-	assert.Equal(t, rpm, strategyScore.Details["rpm_current"])
+	assert.Equal(t, true, debug.Details["rpm_exhausted"])
+	assert.Equal(t, rpm, debug.Details["rpm_limit"])
+	assert.Equal(t, rpm, debug.Details["rpm_current"])
 }
 
 func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
 	ctx := context.Background()
-	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
+	score, debug := strategy.ScoreWithDebug(ctx, channel)
 
-	// Should return max score
 	assert.Equal(t, 100.0, score)
-
-	// Check debug details
-	assert.Equal(t, "no_rate_limit_configured", strategyScore.Details["reason"])
-}
-
-func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit_UsesDefaultConnectionFallback(t *testing.T) {
-	tracker := NewChannelRequestTracker()
-	connectionTracker := NewDefaultConnectionTracker(10)
-	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
-
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
-
-	for range 5 {
-		connectionTracker.IncrementConnection(channel.ID)
-	}
-
-	ctx := context.Background()
-	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
-
-	assert.Equal(t, 50.0, score)
-	assert.Equal(t, "default_connection_limit_fallback", strategyScore.Details["reason"])
-	assert.Equal(t, "connection_tracker_default", strategyScore.Details["concurrency_limit_source"])
-	assert.Equal(t, int64(10), strategyScore.Details["concurrent_limit"])
-	assert.Equal(t, 5, strategyScore.Details["concurrent_current"])
+	assert.Equal(t, "no_rpm_tpm_configured", debug.Details["rpm_tpm_reason"])
 }
 
 func TestRateLimitAwareStrategy_Score_ExpiredCooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
-	entChannel := &ent.Channel{
-		ID:   1,
-		Name: "test-channel",
-	}
-	channel := &biz.Channel{
-		Channel: entChannel,
-	}
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
-	// Set cooldown in the past (expired)
 	tracker.SetCooldown(channel.ID, time.Now().Add(-10*time.Second))
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
-
-	// Cooldown expired, should return max score
-	assert.Equal(t, 100.0, score)
-
-	// Verify cooldown was cleaned up
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
 	assert.False(t, tracker.IsCoolingDown(channel.ID))
 }
 
@@ -403,29 +433,18 @@ func TestRateLimitAwareStrategy_Score_MultipleChannels(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
 
-	entChannel1 := &ent.Channel{ID: 1, Name: "channel-1"}
-	entChannel2 := &ent.Channel{ID: 2, Name: "channel-2"}
+	c1 := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "c1"}}
+	c2 := &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "c2"}}
 
-	channel1 := &biz.Channel{Channel: entChannel1}
-	channel2 := &biz.Channel{Channel: entChannel2}
-
-	// Set cooldown for channel 1 only
 	tracker.SetCooldown(1, time.Now().Add(30*time.Second))
 
 	ctx := context.Background()
-
-	// Channel 1 should be in cooldown
-	score1 := strategy.Score(ctx, channel1)
-	assert.Equal(t, float64(rateLimitExhaustedScore), score1)
-
-	// Channel 2 should NOT be in cooldown
-	score2 := strategy.Score(ctx, channel2)
-	assert.Equal(t, 100.0, score2)
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, c1))
+	assert.Equal(t, 100.0, strategy.Score(ctx, c2))
 }
 
 func TestRateLimitAwareStrategy_Name(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
-
 	assert.Equal(t, "RateLimitAware", strategy.Name())
 }

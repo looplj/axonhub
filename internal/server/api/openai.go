@@ -38,6 +38,7 @@ type OpenAIHandlersParams struct {
 	QuotaService                *biz.QuotaService
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
+	ChannelLimiterManager       *orchestrator.ChannelLimiterManager
 	Client                      *ent.Client
 }
 
@@ -75,6 +76,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -90,6 +92,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -105,6 +108,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -120,6 +124,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -135,6 +140,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -150,6 +156,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -165,6 +172,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -180,6 +188,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
 			),
 		},
 		VideoInboundTransformer: videoInbound,

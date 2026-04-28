@@ -6,8 +6,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -151,4 +154,54 @@ func TestCheckApiKeyModelAccess(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAutoReasoningEffortRunsBeforeModelAccess(t *testing.T) {
+	ctx := authz.WithTestBypass(context.Background())
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+	_, _, systemService, _ := setupTestServices(t, client)
+
+	err := systemService.SetModelSettings(ctx, biz.SystemModelSettings{
+		AutoReasoningEffort: true,
+	})
+	require.NoError(t, err)
+
+	state := &PersistenceState{
+		APIKey: &ent.APIKey{
+			Name: "test-key",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "profile1",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:     "profile1",
+						ModelIDs: []string{"gpt-5.4"},
+					},
+				},
+			},
+		},
+	}
+	inbound := &PersistentInboundTransformer{
+		state: state,
+	}
+
+	request := &llm.Request{
+		Model:           "gpt-5.4-xhigh",
+		ReasoningEffort: "low",
+	}
+
+	normalized, err := applyAutoReasoningEffort(systemService).OnInboundLlmRequest(ctx, request)
+	require.NoError(t, err)
+	require.NotNil(t, normalized)
+	assert.Equal(t, "gpt-5.4", normalized.Model)
+	assert.Equal(t, "xhigh", normalized.ReasoningEffort)
+
+	result, err := checkApiKeyModelAccess(inbound).OnInboundLlmRequest(ctx, normalized)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "gpt-5.4", result.Model)
+	assert.Equal(t, "xhigh", result.ReasoningEffort)
 }

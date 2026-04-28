@@ -128,6 +128,8 @@
   "models.dialogs.settings.queryAllChannelModels.description": "When enabled, models API returns all models from enabled channels. When disabled, only models with explicit Model entity configuration will be returned.",
   "models.dialogs.settings.defaultModelAPIIncludeAll.label": "Return full model info from /v1/models",
   "models.dialogs.settings.defaultModelAPIIncludeAll.description": "When enabled, GET /v1/models returns the same extended metadata as ?include=all by default. When disabled, it returns basic fields unless include is explicitly requested.",
+  "models.dialogs.settings.autoReasoningEffort.label": "Auto Reasoning Effort",
+  "models.dialogs.settings.autoReasoningEffort.description": "When enabled, models like gpt-5.4-xhigh are normalized to gpt-5.4 and reasoning_effort is automatically set to xhigh, max, low, medium, or high.",
   "models.unassociated.title": "Unassociated Channels Detection",
   "models.unassociated.description": "Detect channels with models that are not associated with any model configuration",
   "models.unassociated.summary": "Found {{channelCount}} channels with {{modelCount}} unassociated models",

@@ -45,6 +45,7 @@ import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { ChannelHealthCell } from './channel-health-cell';
+import { ChannelLimiterCell } from './channel-limiter-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 
 const WEIGHT_PRECISION = 4;
@@ -751,9 +752,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.health')} className='justify-center' />,
       cell: ({ row }: { row: Row<Channel> }) => {
         const probePoints = (row.original as any).probePoints || [];
+        const limiterStats = row.original.liveLimiterStats;
         return (
-          <div className='flex justify-center'>
+          <div className='flex flex-col items-center gap-1'>
             <ChannelHealthCell points={probePoints} />
+            {limiterStats ? <ChannelLimiterCell stats={limiterStats} /> : null}
           </div>
         );
       },

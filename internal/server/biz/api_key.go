@@ -163,6 +163,10 @@ func (s *APIKeyService) loadAPIKeysSince(ctx context.Context, since time.Time) (
 
 // GenerateAPIKey generates a new API key with the given prefix.
 func GenerateAPIKey(prefix string) (string, error) {
+	if strings.TrimSpace(prefix) == "" {
+		return "", fmt.Errorf("api key prefix must not be empty")
+	}
+
 	// Generate 32 bytes of random data
 	bytes := make([]byte, 32)
 
