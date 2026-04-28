@@ -1575,6 +1575,7 @@ type ComplexityRoot struct {
 
 	TokenStatsByChannel struct {
 		CachedTokens    func(childComplexity int) int
+		ChannelID       func(childComplexity int) int
 		ChannelName     func(childComplexity int) int
 		InputTokens     func(childComplexity int) int
 		OutputTokens    func(childComplexity int) int
@@ -8726,6 +8727,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TokenStatsByChannel.CachedTokens(childComplexity), true
+	case "TokenStatsByChannel.channelId":
+		if e.complexity.TokenStatsByChannel.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.TokenStatsByChannel.ChannelID(childComplexity), true
 	case "TokenStatsByChannel.channelName":
 		if e.complexity.TokenStatsByChannel.ChannelName == nil {
 			break
@@ -37344,6 +37351,8 @@ func (ec *executionContext) fieldContext_Query_tokenStatsByChannel(ctx context.C
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "channelId":
+				return ec.fieldContext_TokenStatsByChannel_channelId(ctx, field)
 			case "channelName":
 				return ec.fieldContext_TokenStatsByChannel_channelName(ctx, field)
 			case "inputTokens":
@@ -46673,6 +46682,35 @@ func (ec *executionContext) fieldContext_TokenStatsByAPIKey_totalTokens(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStatsByChannel_channelId(ctx context.Context, field graphql.CollectedField, obj *TokenStatsByChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStatsByChannel_channelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStatsByChannel_channelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStatsByChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -91324,6 +91362,11 @@ func (ec *executionContext) _TokenStatsByChannel(ctx context.Context, sel ast.Se
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TokenStatsByChannel")
+		case "channelId":
+			out.Values[i] = ec._TokenStatsByChannel_channelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "channelName":
 			out.Values[i] = ec._TokenStatsByChannel_channelName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

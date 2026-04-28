@@ -165,6 +165,7 @@ input FastestChannelsInput {
 Token usage statistics grouped by channel
 """
 type TokenStatsByChannel {
+  channelId: ID!
   channelName: String!
   inputTokens: Int!
   outputTokens: Int!

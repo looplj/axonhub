@@ -32,11 +32,11 @@ export default function DashboardChannelSuccessRates() {
   // Fetch token stats by channel (reuse existing API)
   const { data: tokenData } = useTokensByChannel(timeWindow);
 
-  // Build token map by channelName for matching
+  // Build token map by channelId for reliable matching
   const tokenByChannel = useMemo(() => {
     if (!tokenData) return new Map<string, TokensByChannel>();
     const map = new Map<string, TokensByChannel>();
-    tokenData.forEach((t) => map.set(t.channelName, t));
+    tokenData.forEach((t) => map.set(t.channelId, t));
     return map;
   }, [tokenData]);
 
@@ -86,16 +86,16 @@ export default function DashboardChannelSuccessRates() {
           bVal = b.successRate;
           break;
         case 'inputTokens':
-          aVal = tokenByChannel.get(a.channelName)?.inputTokens ?? 0;
-          bVal = tokenByChannel.get(b.channelName)?.inputTokens ?? 0;
+          aVal = tokenByChannel.get(a.channelId)?.inputTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelId)?.inputTokens ?? 0;
           break;
         case 'outputTokens':
-          aVal = tokenByChannel.get(a.channelName)?.outputTokens ?? 0;
-          bVal = tokenByChannel.get(b.channelName)?.outputTokens ?? 0;
+          aVal = tokenByChannel.get(a.channelId)?.outputTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelId)?.outputTokens ?? 0;
           break;
         case 'totalTokens':
-          aVal = tokenByChannel.get(a.channelName)?.totalTokens ?? 0;
-          bVal = tokenByChannel.get(b.channelName)?.totalTokens ?? 0;
+          aVal = tokenByChannel.get(a.channelId)?.totalTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelId)?.totalTokens ?? 0;
           break;
         default:
           aVal = a.totalCount;
@@ -244,7 +244,7 @@ export default function DashboardChannelSuccessRates() {
         {!isLoading && paginatedChannels.length > 0 && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {paginatedChannels.map((channel) => {
-              const tokens = tokenByChannel.get(channel.channelName);
+              const tokens = tokenByChannel.get(channel.channelId);
               const showTokens = tokens && tokens.totalTokens > 0;
 
               return (
