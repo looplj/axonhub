@@ -642,5 +642,17 @@
   "channels.dialogs.userAgentPassThrough.disabled": "已禁用",
   "channels.dialogs.bodyPassThrough.label": "透传",
   "channels.dialogs.bodyPassThrough.enabled": "启用透传",
-  "channels.dialogs.bodyPassThrough.warning": "启用后，请求和响应都会透传，但仅在客户端请求格式与渠道格式一致时生效。提示词注入和提示词保护将不会生效。"
+  "channels.dialogs.bodyPassThrough.warning": "启用后，请求和响应都会透传，但仅在客户端请求格式与渠道格式一致时生效。提示词注入和提示词保护将不会生效。",
+  "channels.endpoints.title": "端点配置",
+  "channels.endpoints.apiFormat": "API 格式",
+  "channels.endpoints.path": "路径",
+  "channels.endpoints.pathPlaceholder": "可选路径覆盖 (e.g. /v1/chat/completions)",
+  "channels.endpoints.emptyHint": "将使用基于渠道类型的默认端点。",
+  "channels.endpoints.currentEndpoints": "当前端点",
+  "channels.endpoints.addEndpoint": "添加端点",
+  "channels.endpoints.duplicateError": "API 格式不可重复。",
+  "channels.endpoints.allFormatsUsed": "已使用所有支持的格式。",
+  "channels.endpoints.selectFormatFirst": "请先选择 API 格式",
+  "channels.endpoints.defaultBadge": "默认",
+  "channels.endpoints.defaultLockedHint": "默认端点不可删除。"
 }

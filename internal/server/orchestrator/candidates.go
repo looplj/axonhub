@@ -20,9 +20,10 @@ import (
 
 // ChannelModelsCandidate represents a resolved channel and its matched model entries.
 type ChannelModelsCandidate struct {
-	Channel  *biz.Channel
-	Priority int
-	Models   []biz.ChannelModelEntry
+	Channel   *biz.Channel
+	Priority  int
+	Models    []biz.ChannelModelEntry
+	APIFormat string // selected endpoint API format for this candidate
 }
 
 // resolvedAssociationCandidate keeps the association-level metadata produced by
@@ -109,10 +110,14 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 			continue
 		}
 
+		endpoints := ch.ResolveEndpoints()
+		apiFormat := SelectAPIFormatForRequestType(endpoints, req.RequestType)
+
 		candidates = append(candidates, &ChannelModelsCandidate{
-			Channel:  ch,
-			Priority: 0,
-			Models:   []biz.ChannelModelEntry{entry},
+			Channel:   ch,
+			Priority:  0,
+			Models:    []biz.ChannelModelEntry{entry},
+			APIFormat: apiFormat,
 		})
 	}
 
@@ -590,10 +595,14 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
+	endpoints := channel.ResolveEndpoints()
+	apiFormat := SelectAPIFormatForRequestType(endpoints, req.RequestType)
+
 	candidate := &ChannelModelsCandidate{
-		Channel:  channel,
-		Priority: 0,
-		Models:   []biz.ChannelModelEntry{entry},
+		Channel:   channel,
+		Priority:  0,
+		Models:    []biz.ChannelModelEntry{entry},
+		APIFormat: apiFormat,
 	}
 
 	return []*ChannelModelsCandidate{candidate}, nil

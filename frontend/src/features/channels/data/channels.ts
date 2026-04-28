@@ -9,6 +9,7 @@ import {
   Channel,
   ChannelConnection,
   ChannelSummaryConnection,
+  ChannelEndpoint,
   CreateChannelInput,
   UpdateChannelInput,
   channelConnectionSchema,
@@ -106,6 +107,10 @@ const CREATE_CHANNEL_MUTATION = `
         }
       orderingWeight
       remark
+      endpoints {
+        apiFormat
+        path
+      }
     }
   }
 `;
@@ -154,6 +159,10 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         }
       orderingWeight
       remark
+      endpoints {
+        apiFormat
+        path
+      }
     }
   }
 `;
@@ -203,6 +212,10 @@ const UPDATE_CHANNEL_MUTATION = `
       orderingWeight
       errorMessage
       remark
+      endpoints {
+        apiFormat
+        path
+      }
     }
   }
 `;
@@ -249,6 +262,20 @@ const DELETE_CHANNEL_MUTATION = `
 const BULK_DELETE_CHANNELS_MUTATION = `
   mutation BulkDeleteChannels($ids: [ID!]!) {
     bulkDeleteChannels(ids: $ids)
+  }
+`;
+
+const SAVE_CHANNEL_ENDPOINTS_MUTATION = `
+  mutation SaveChannelEndpoints($input: SaveChannelEndpointsInput!) {
+    saveChannelEndpoints(input: $input) {
+      id
+      type
+      name
+      endpoints {
+        apiFormat
+        path
+      }
+    }
   }
 `;
 
@@ -302,6 +329,10 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         manualModels
         tags
         defaultTestModel
+        endpoints {
+          apiFormat
+          path
+        }
         settings {
           extraModelPrefix
           modelMappings {
@@ -475,6 +506,10 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
         manualModels
         defaultTestModel
         orderingWeight
+        endpoints {
+          apiFormat
+          path
+        }
         settings {
           extraModelPrefix
           modelMappings {
@@ -507,6 +542,10 @@ const ALL_CHANNEL_SUMMARYS_QUERY = `
       baseURL
       orderingWeight
       tags
+      endpoints {
+        apiFormat
+        path
+      }
       allModelEntries {
         requestModel
         actualModel
@@ -625,6 +664,10 @@ const QUERY_CHANNELS_QUERY = `
           orderingWeight
           errorMessage
           remark
+          endpoints {
+            apiFormat
+            path
+          }
           disabledAPIKeys {
             key
             disabledAt
@@ -866,6 +909,35 @@ export function useUpdateChannel() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['channel', data.id] });
+      toast.success(t('channels.messages.updateSuccess'));
+    },
+    onError: (error) => {
+      handleError(error, { context: t('channels.dialogs.edit.title') });
+    },
+  });
+}
+
+export interface SaveChannelEndpointsInput {
+  channelID: string;
+  endpoints: Array<{ apiFormat: string; path?: string }>;
+}
+
+export function useSaveChannelEndpoints() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async (input: SaveChannelEndpointsInput) => {
+      const data = await graphqlRequest<{ saveChannelEndpoints: { id: string; endpoints: ChannelEndpoint[] } }>(
+        SAVE_CHANNEL_ENDPOINTS_MUTATION,
+        { input }
+      );
+      return data.saveChannelEndpoints;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      queryClient.invalidateQueries({ queryKey: ['channel', variables.channelID] });
       toast.success(t('channels.messages.updateSuccess'));
     },
     onError: (error) => {

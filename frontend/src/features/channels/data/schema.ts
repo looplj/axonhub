@@ -19,6 +19,13 @@ export const apiFormatSchema = z.enum([
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
 
+// Channel Endpoint
+export const channelEndpointSchema = z.object({
+  apiFormat: z.string().min(1),
+  path: z.string().optional(),
+});
+export type ChannelEndpoint = z.infer<typeof channelEndpointSchema>;
+
 // Channel Types
 export const channelTypeSchema = z.enum([
   'openai',
@@ -258,6 +265,7 @@ export const channelSchema = z.object({
   remark: z.string().optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
   liveLimiterStats: channelLimiterStatsSchema.optional().nullable(),
+  endpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
 });
 export type Channel = z.infer<typeof channelSchema>;
 
@@ -401,6 +409,7 @@ export const createChannelInputSchema = z
     remark: z.string().optional(),
     orderingWeight: z.number().int().optional(),
     settings: channelSettingsSchema.optional(),
+    endpoints: z.array(channelEndpointSchema).optional(),
     credentials: z.object({
       // apiKey is used for OAuth credentials (JSON string with access_token, refresh_token)
       apiKey: z.string().optional(),
@@ -486,6 +495,7 @@ export const updateChannelInputSchema = z
     settings: channelSettingsSchema.optional(),
     errorMessage: z.string().optional().nullable(),
     remark: z.string().optional().nullable(),
+    endpoints: z.array(channelEndpointSchema).optional(),
     credentials: z
       .object({
         // apiKey 用于 OAuth 凭据 (codex/claudecode/antigravity)，存储 JSON 字符串（含 access_token, refresh_token）

@@ -145,6 +145,9 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 
 	// Build URL
 	url := t.config.BaseURL + "/images/generations"
+	if t.config.EndpointPath != "" {
+		url = t.config.BaseURL + t.config.EndpointPath
+	}
 
 	// Build auth config
 	auth := &httpclient.AuthConfig{
@@ -361,6 +364,9 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 
 	// Build URL
 	url := t.config.BaseURL + "/images/edits"
+	if t.config.EndpointPath != "" {
+		url = t.config.BaseURL + t.config.EndpointPath
+	}
 
 	// Build auth config
 	auth := &httpclient.AuthConfig{
@@ -482,6 +488,9 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, a
 	headers.Set("Accept", "application/json")
 
 	url := t.config.BaseURL + "/images/variations"
+	if t.config.EndpointPath != "" {
+		url = t.config.BaseURL + t.config.EndpointPath
+	}
 
 	auth := &httpclient.AuthConfig{
 		Type:   "bearer",

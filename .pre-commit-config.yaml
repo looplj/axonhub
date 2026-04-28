@@ -1,12 +1,13 @@
 repos:
-  - repo: 'https://github.com/golangci/golangci-lint'
-    rev: v2.9.0
-    hooks:
-      - id: golangci-lint
-        entry: golangci-lint run -vvv
-
   - repo: local
     hooks:
+      - id: golangci-lint-all
+        name: golangci-lint (all modules)
+        entry: make lint-all
+        language: system
+        types: [go]
+        pass_filenames: false
+
       - id: run-go-test
         name: Run go test
         entry: make test-backend-all

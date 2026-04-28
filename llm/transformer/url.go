@@ -38,3 +38,27 @@ func NormalizeBaseURL(url, version string) string {
 
 	return trimmed + "/" + version
 }
+
+// BuildRequestURL constructs the full request URL from base URL and path parameters.
+// When endpointPath is set (non-empty), it overrides defaultPath and skips default version
+// normalization on the base URL itself (but maintains compatibility with "#" and "##" behaviors).
+//
+// Parameters:
+//   - baseURL: the channel's base URL (may contain "#" or "##" suffix)
+//   - version: the API version to append (e.g., "v1")
+//   - defaultPath: the default endpoint path (e.g., "/chat/completions")
+//   - endpointPath: optional custom endpoint path override from channel endpoint config
+//   - rawURL: when true, use baseURL as-is without appending any path
+func BuildRequestURL(baseURL, version, defaultPath, endpointPath string, rawURL bool) string {
+	if rawURL {
+		return strings.TrimRight(baseURL, "/")
+	}
+
+	normalized := NormalizeBaseURL(baseURL, version)
+
+	if endpointPath != "" {
+		return normalized + endpointPath
+	}
+
+	return normalized + defaultPath
+}

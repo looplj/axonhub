@@ -140,6 +140,24 @@ filter-logs:
 
 # --- Linting ---
 
+GO_LINT_CMD = golangci-lint run --timeout 10m --max-same-issues 50 --new --fix ./...
+
+GO_MODULES := . llm
+
+lint-all:
+	@echo "Running golangci-lint (checking and fixing new code) across all Go modules..."
+	@for module in $(GO_MODULES); do \
+		echo ""; \
+		echo "=== Linting $$module module ==="; \
+		if [ -f "$$module/go.mod" ]; then \
+			cd $$module && $(GO_LINT_CMD) && cd - > /dev/null; \
+		else \
+			$(GO_LINT_CMD); \
+		fi; \
+	done
+	@echo ""
+	@echo "All lint checks passed!"
+
 # Generate JSON schema for configuration
 generate-schema:
 	@echo "Generating JSON schema for configuration..."
@@ -147,7 +165,7 @@ generate-schema:
 	@echo "JSON schema generated at config.schema.json"
 
 # Run all lint checks
-lint: lint-privacy
+lint: lint-all lint-privacy
 	@echo "All lint checks passed!"
 
 # Check for illegal privacy.DecisionContext(...Allow) usage

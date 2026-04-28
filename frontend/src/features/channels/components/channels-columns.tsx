@@ -205,6 +205,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconGauge size={16} className='mr-2' />
             {t('channels.dialogs.rateLimit.action')}
           </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('endpoints');
+            }}
+          >
+            <IconRoute size={16} className='mr-2' />
+            {t('channels.endpoints.title')}
+          </DropdownMenuItem>
           {hasMultipleAPIKeys && (
             <DropdownMenuItem
               onClick={() => {

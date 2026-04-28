@@ -642,5 +642,17 @@
   "channels.dialogs.userAgentPassThrough.disabled": "Disabled",
   "channels.dialogs.bodyPassThrough.label": "Pass-Through",
   "channels.dialogs.bodyPassThrough.enabled": "Enable pass-through",
-  "channels.dialogs.bodyPassThrough.warning": "When enabled, both the request and response will be passed through only when the client request format matches the channel format. Prompt injection and prompt protection will not take effect."
+  "channels.dialogs.bodyPassThrough.warning": "When enabled, both the request and response will be passed through only when the client request format matches the channel format. Prompt injection and prompt protection will not take effect.",
+  "channels.endpoints.title": "Endpoints",
+  "channels.endpoints.apiFormat": "API Format",
+  "channels.endpoints.path": "Path",
+  "channels.endpoints.pathPlaceholder": "Optional path override (e.g. /v1/chat/completions)",
+  "channels.endpoints.emptyHint": "Default endpoints based on channel type will be used.",
+  "channels.endpoints.currentEndpoints": "Current Endpoints",
+  "channels.endpoints.addEndpoint": "Add Endpoint",
+  "channels.endpoints.duplicateError": "API format must be unique. Duplicate detected.",
+  "channels.endpoints.allFormatsUsed": "All supported formats are already in use.",
+  "channels.endpoints.selectFormatFirst": "Select API format first",
+  "channels.endpoints.defaultBadge": "Default",
+  "channels.endpoints.defaultLockedHint": "Default endpoints cannot be removed."
 }

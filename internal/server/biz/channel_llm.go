@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
@@ -156,6 +157,136 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 	}
 
 	panic(fmt.Errorf("no enabled api key configured for channel %s", ch.Name))
+}
+
+// BuildOutboundByAPIFormat returns the outbound transformer for the given API format.
+// If the channel does not support the format, returns an error.
+func BuildOutboundByAPIFormat(ch *Channel, apiFormat string) (transformer.Outbound, error) {
+	if ch.Outbounds == nil {
+		return nil, fmt.Errorf("channel %s has no outbounds configured", ch.Name)
+	}
+
+	out, ok := ch.Outbounds[apiFormat]
+	if !ok {
+		return nil, fmt.Errorf("channel %s does not support api_format %q", ch.Name, apiFormat)
+	}
+
+	return out, nil
+}
+
+// buildChannelWithOutbounds builds a Channel with its outbound transformers
+// populated from the channel's endpoints. Each endpoint gets its own outbound
+// transformer, allowing different API formats within the same channel.
+func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel) (*Channel, error) {
+	ch, err := svc.buildChannelWithTransformer(c)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoints := ch.ResolveEndpoints()
+	if len(endpoints) == 0 {
+		return ch, nil
+	}
+
+	defaultEndpoints := DefaultEndpointsForChannelType(c.Type)
+
+	defaultAPIFormat := ""
+	if len(defaultEndpoints) > 0 {
+		defaultAPIFormat = defaultEndpoints[0].APIFormat
+	}
+
+	outbounds := make(map[string]transformer.Outbound, len(endpoints))
+	accountIdentity := strconv.Itoa(c.ID)
+
+	for _, ep := range endpoints {
+		if ep.APIFormat == "" {
+			continue
+		}
+
+		if ep.APIFormat == defaultAPIFormat && ep.Path == "" {
+			outbounds[ep.APIFormat] = ch.Outbound
+			continue
+		}
+
+		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, accountIdentity, ep)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
+		}
+
+		outbounds[ep.APIFormat] = out
+	}
+
+	ch.Outbounds = outbounds
+
+	return ch, nil
+}
+
+// buildNonDefaultEndpointOutbound creates a transformer for an endpoint whose
+// api_format differs from the channel type's default. This handles the case
+// where a channel supports multiple API formats (e.g., an openai channel
+// with both chat/completions and responses endpoints).
+func (svc *ChannelService) buildNonDefaultEndpointOutbound(
+	c *ent.Channel,
+	ch *Channel,
+	accountIdentity string,
+	ep objects.ChannelEndpoint,
+) (transformer.Outbound, error) {
+	apiKeyProvider := getAPIKeyProvider(ch)
+
+	switch ep.APIFormat {
+	case "openai/chat_completions":
+		return openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType:    openai.PlatformOpenAI,
+			BaseURL:         c.BaseURL,
+			AccountIdentity: accountIdentity,
+			APIKeyProvider:  apiKeyProvider,
+			EndpointPath:    ep.Path,
+		})
+	case "openai/responses":
+		return responses.NewOutboundTransformerWithConfig(&responses.Config{
+			BaseURL:         c.BaseURL,
+			AccountIdentity: accountIdentity,
+			APIKeyProvider:  apiKeyProvider,
+			EndpointPath:    ep.Path,
+		})
+	case "openai/image_generation", "openai/image_edit", "openai/image_variation", "openai/embeddings":
+		return openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType:    openai.PlatformOpenAI,
+			BaseURL:         c.BaseURL,
+			AccountIdentity: accountIdentity,
+			APIKeyProvider:  apiKeyProvider,
+			EndpointPath:    ep.Path,
+		})
+	case "anthropic/messages":
+		return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:            anthropic.PlatformDirect,
+			BaseURL:         c.BaseURL,
+			AccountIdentity: accountIdentity,
+			APIKeyProvider:  apiKeyProvider,
+			EndpointPath:    ep.Path,
+		})
+	case "gemini/contents":
+		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
+			BaseURL:         c.BaseURL,
+			AccountIdentity: accountIdentity,
+			APIKeyProvider:  apiKeyProvider,
+			EndpointPath:    ep.Path,
+		})
+	case "jina/rerank", "jina/embeddings":
+		return jina.NewOutboundTransformerWithConfig(&jina.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
+		})
+	case "ollama/chat":
+		return ollama.NewOutboundTransformerWithConfig(&ollama.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
+		})
+	default:
+		return nil, fmt.Errorf("unsupported api_format %q", ep.APIFormat)
+	}
 }
 
 //nolint:maintidx // Checked.
@@ -949,6 +1080,81 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 	ch.cachedModelEntries = entries
 
 	return entries
+}
+
+var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
+	channel.TypeOpenai:            {{APIFormat: "openai/chat_completions"}},
+	channel.TypeOpenaiResponses:   {{APIFormat: "openai/responses"}},
+	channel.TypeCodex:             {{APIFormat: "openai/responses"}},
+	channel.TypeVercel:            {{APIFormat: "openai/chat_completions"}},
+	channel.TypeAnthropic:         {{APIFormat: "anthropic/messages"}},
+	channel.TypeAnthropicAWS:      {{APIFormat: "anthropic/messages"}},
+	channel.TypeAnthropicGcp:      {{APIFormat: "anthropic/messages"}},
+	channel.TypeGeminiOpenai:      {{APIFormat: "openai/chat_completions"}},
+	channel.TypeGemini:            {{APIFormat: "gemini/contents"}},
+	channel.TypeGeminiVertex:      {{APIFormat: "gemini/contents"}},
+	channel.TypeDeepseek:          {{APIFormat: "openai/chat_completions"}},
+	channel.TypeDeepseekAnthropic: {{APIFormat: "anthropic/messages"}},
+	channel.TypeDeepinfra:         {{APIFormat: "openai/chat_completions"}},
+	channel.TypeFireworks:         {{APIFormat: "openai/chat_completions"}},
+	channel.TypeDoubao:            {{APIFormat: "openai/chat_completions"}},
+	channel.TypeDoubaoAnthropic:   {{APIFormat: "anthropic/messages"}},
+	channel.TypeMoonshot:          {{APIFormat: "openai/chat_completions"}},
+	channel.TypeMoonshotAnthropic: {{APIFormat: "anthropic/messages"}},
+	channel.TypeZhipu:             {{APIFormat: "openai/chat_completions"}},
+	channel.TypeZai:               {{APIFormat: "openai/chat_completions"}},
+	channel.TypeZhipuAnthropic:    {{APIFormat: "anthropic/messages"}},
+	channel.TypeZaiAnthropic:      {{APIFormat: "anthropic/messages"}},
+	channel.TypeAnthropicFake:     {{APIFormat: "anthropic/messages"}},
+	channel.TypeOpenaiFake:        {{APIFormat: "openai/chat_completions"}},
+	channel.TypeOpenrouter:        {{APIFormat: "openai/chat_completions"}},
+	channel.TypeXiaomi:            {{APIFormat: "openai/chat_completions"}},
+	channel.TypeXai:               {{APIFormat: "openai/chat_completions"}},
+	channel.TypePpio:              {{APIFormat: "openai/chat_completions"}},
+	channel.TypeSiliconflow:       {{APIFormat: "openai/chat_completions"}},
+	channel.TypeVolcengine:        {{APIFormat: "openai/chat_completions"}},
+	channel.TypeLongcat:           {{APIFormat: "openai/chat_completions"}},
+	channel.TypeLongcatAnthropic:  {{APIFormat: "anthropic/messages"}},
+	channel.TypeMinimax:           {{APIFormat: "openai/chat_completions"}},
+	channel.TypeMinimaxAnthropic:  {{APIFormat: "anthropic/messages"}},
+	channel.TypeAihubmix:          {{APIFormat: "openai/chat_completions"}},
+	channel.TypeBurncloud:         {{APIFormat: "openai/chat_completions"}},
+	channel.TypeModelscope:        {{APIFormat: "openai/chat_completions"}},
+	channel.TypeBailian:           {{APIFormat: "openai/chat_completions"}},
+	channel.TypeBailianAnthropic:  {{APIFormat: "anthropic/messages"}},
+	channel.TypeMoonshotCoding:    {{APIFormat: "anthropic/messages"}},
+	channel.TypeJina: {
+		{APIFormat: "jina/rerank"},
+		{APIFormat: "jina/embeddings"},
+	},
+	channel.TypeGithub:           {{APIFormat: "openai/chat_completions"}},
+	channel.TypeGithubCopilot:    {{APIFormat: "openai/chat_completions"}},
+	channel.TypeClaudecode:       {{APIFormat: "anthropic/messages"}},
+	channel.TypeCerebras:         {{APIFormat: "openai/chat_completions"}},
+	channel.TypeAntigravity:      {{APIFormat: "gemini/contents"}},
+	channel.TypeNanogpt:          {{APIFormat: "openai/chat_completions"}},
+	channel.TypeNanogptResponses: {{APIFormat: "openai/responses"}},
+	channel.TypeOllama:           {{APIFormat: "ollama/chat"}},
+}
+
+func DefaultEndpointsForChannelType(t channel.Type) []objects.ChannelEndpoint {
+	if eps, ok := defaultEndpointsForChannelType[t]; ok {
+		return eps
+	}
+
+	return nil
+}
+
+func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
+	if c.Channel == nil {
+		return nil
+	}
+
+	if len(c.Endpoints) > 0 {
+		return c.Endpoints
+	}
+
+	return DefaultEndpointsForChannelType(c.Type)
 }
 
 // GetDirectModelEntries returns the direct models this channel can handle.

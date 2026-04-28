@@ -268,6 +268,7 @@ type ComplexityRoot struct {
 		Credentials             func(childComplexity int) int
 		DefaultTestModel        func(childComplexity int) int
 		DisabledAPIKeys         func(childComplexity int) int
+		Endpoints               func(childComplexity int) int
 		ErrorMessage            func(childComplexity int) int
 		Executions              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
 		ID                      func(childComplexity int) int
@@ -304,6 +305,11 @@ type ComplexityRoot struct {
 	ChannelEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	ChannelEndpoint struct {
+		APIFormat func(childComplexity int) int
+		Path      func(childComplexity int) int
 	}
 
 	ChannelLimiterStats struct {
@@ -867,6 +873,7 @@ type ComplexityRoot struct {
 		EnableSelectedChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
 		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
+		SaveChannelEndpoints                 func(childComplexity int, input biz.SaveChannelEndpointsInput) int
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		SaveProxyPreset                      func(childComplexity int, input biz.ProxyPreset) int
 		SyncChannelModels                    func(childComplexity int, channelID objects.GUID, pattern *string) int
@@ -1882,6 +1889,7 @@ type MutationResolver interface {
 	CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error)
 	BulkCreateChannels(ctx context.Context, input biz.BulkCreateChannelsInput) ([]*ent.Channel, error)
 	UpdateChannel(ctx context.Context, id objects.GUID, input ent.UpdateChannelInput) (*ent.Channel, error)
+	SaveChannelEndpoints(ctx context.Context, input biz.SaveChannelEndpointsInput) (*ent.Channel, error)
 	UpdateChannelStatus(ctx context.Context, id objects.GUID, status channel.Status) (*ent.Channel, error)
 	DeleteChannel(ctx context.Context, id objects.GUID) (bool, error)
 	BulkArchiveChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
@@ -2803,6 +2811,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.DisabledAPIKeys(childComplexity), true
+	case "Channel.endpoints":
+		if e.complexity.Channel.Endpoints == nil {
+			break
+		}
+
+		return e.complexity.Channel.Endpoints(childComplexity), true
 	case "Channel.errorMessage":
 		if e.complexity.Channel.ErrorMessage == nil {
 			break
@@ -2983,6 +2997,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelEdge.Node(childComplexity), true
+
+	case "ChannelEndpoint.apiFormat":
+		if e.complexity.ChannelEndpoint.APIFormat == nil {
+			break
+		}
+
+		return e.complexity.ChannelEndpoint.APIFormat(childComplexity), true
+	case "ChannelEndpoint.path":
+		if e.complexity.ChannelEndpoint.Path == nil {
+			break
+		}
+
+		return e.complexity.ChannelEndpoint.Path(childComplexity), true
 
 	case "ChannelLimiterStats.capacity":
 		if e.complexity.ChannelLimiterStats.Capacity == nil {
@@ -5415,6 +5442,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Restore(childComplexity, args["file"].(graphql.Upload), args["input"].(backup.RestoreOptions)), true
+	case "Mutation.saveChannelEndpoints":
+		if e.complexity.Mutation.SaveChannelEndpoints == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveChannelEndpoints_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveChannelEndpoints(childComplexity, args["input"].(biz.SaveChannelEndpointsInput)), true
 	case "Mutation.saveChannelModelPrices":
 		if e.complexity.Mutation.SaveChannelModelPrices == nil {
 			break
@@ -9792,6 +9830,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBulkImportChannelsInput,
 		ec.unmarshalInputBulkUpdateChannelOrderingInput,
 		ec.unmarshalInputChannelCredentialsInput,
+		ec.unmarshalInputChannelEndpointInput,
 		ec.unmarshalInputChannelModelAssociationInput,
 		ec.unmarshalInputChannelModelPriceOrder,
 		ec.unmarshalInputChannelModelPriceVersionOrder,
@@ -9891,6 +9930,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRoleOrder,
 		ec.unmarshalInputRoleWhereInput,
 		ec.unmarshalInputS3Input,
+		ec.unmarshalInputSaveChannelEndpointsInput,
 		ec.unmarshalInputSaveChannelModelPriceInput,
 		ec.unmarshalInputSaveProxyPresetInput,
 		ec.unmarshalInputSignInInput,
@@ -10943,6 +10983,17 @@ func (ec *executionContext) field_Mutation_restore_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveChannelEndpoints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNSaveChannelEndpointsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSaveChannelEndpointsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -14919,6 +14970,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -15859,6 +15912,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -16004,6 +16059,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -16578,6 +16635,41 @@ func (ec *executionContext) fieldContext_Channel_remark(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Channel_endpoints(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_endpoints,
+		func(ctx context.Context) (any, error) {
+			return obj.Endpoints, nil
+		},
+		nil,
+		ec.marshalOChannelEndpoint2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_endpoints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "apiFormat":
+				return ec.fieldContext_ChannelEndpoint_apiFormat(ctx, field)
+			case "path":
+				return ec.fieldContext_ChannelEndpoint_path(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
 	}
 	return fc, nil
@@ -17334,6 +17426,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -17385,6 +17479,64 @@ func (ec *executionContext) fieldContext_ChannelEdge_cursor(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelEndpoint_apiFormat(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelEndpoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelEndpoint_apiFormat,
+		func(ctx context.Context) (any, error) {
+			return obj.APIFormat, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelEndpoint_apiFormat(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelEndpoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelEndpoint_path(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelEndpoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelEndpoint_path,
+		func(ctx context.Context) (any, error) {
+			return obj.Path, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelEndpoint_path(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelEndpoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -17947,6 +18099,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Con
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -19817,6 +19971,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -21438,6 +21594,8 @@ func (ec *executionContext) fieldContext_ClearChannelOverrideTemplatesPayload_ch
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -25682,6 +25840,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -26719,6 +26879,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -26818,6 +26980,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -26917,6 +27081,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -26949,6 +27115,107 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_saveChannelEndpoints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_saveChannelEndpoints,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SaveChannelEndpoints(ctx, fc.Args["input"].(biz.SaveChannelEndpointsInput))
+		},
+		nil,
+		ec.marshalNChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannel,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_saveChannelEndpoints(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
+			case "autoSyncSupportedModels":
+				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
+			case "tags":
+				return ec.fieldContext_Channel_tags(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "policies":
+				return ec.fieldContext_Channel_policies(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
+			case "remark":
+				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			case "usageLogs":
+				return ec.fieldContext_Channel_usageLogs(ctx, field)
+			case "channelProbes":
+				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
+			case "providerQuotaStatus":
+				return ec.fieldContext_Channel_providerQuotaStatus(ctx, field)
+			case "allModelEntries":
+				return ec.fieldContext_Channel_allModelEntries(ctx, field)
+			case "credentials":
+				return ec.fieldContext_Channel_credentials(ctx, field)
+			case "disabledAPIKeys":
+				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "liveLimiterStats":
+				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveChannelEndpoints_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -27016,6 +27283,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -35340,6 +35609,8 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_channel(_ context.C
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -36477,6 +36748,8 @@ func (ec *executionContext) fieldContext_Query_allChannelSummarys(ctx context.Co
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -40113,6 +40386,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -41188,6 +41463,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -48277,6 +48554,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -49290,6 +49569,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -55153,6 +55434,40 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Context, obj any) (objects.ChannelEndpoint, error) {
+	var it objects.ChannelEndpoint
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"apiFormat", "path"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "apiFormat":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiFormat"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIFormat = data
+		case "path":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Path = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelModelAssociationInput(ctx context.Context, obj any) (objects.ChannelModelAssociation, error) {
 	var it objects.ChannelModelAssociation
 	asMap := map[string]any{}
@@ -59309,7 +59624,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "manualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark"}
+	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "manualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark", "endpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59414,6 +59729,13 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.Remark = data
+		case "endpoints":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoints"))
+			data, err := ec.unmarshalOChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Endpoints = data
 		}
 	}
 
@@ -69730,6 +70052,40 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSaveChannelEndpointsInput(ctx context.Context, obj any) (biz.SaveChannelEndpointsInput, error) {
+	var it biz.SaveChannelEndpointsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channelID", "endpoints"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelID = data
+		case "endpoints":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoints"))
+			data, err := ec.unmarshalNChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Endpoints = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSaveChannelModelPriceInput(ctx context.Context, obj any) (biz.SaveChannelModelPriceInput, error) {
 	var it biz.SaveChannelModelPriceInput
 	asMap := map[string]any{}
@@ -71639,7 +71995,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "manualModels", "appendManualModels", "clearManualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "clearAutoSyncModelPattern", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark"}
+	fieldsInOrder := [...]string{"type", "baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "manualModels", "appendManualModels", "clearManualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "clearAutoSyncModelPattern", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark", "endpoints", "appendEndpoints", "clearEndpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71835,6 +72191,27 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.ClearRemark = data
+		case "endpoints":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoints"))
+			data, err := ec.unmarshalOChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Endpoints = data
+		case "appendEndpoints":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendEndpoints"))
+			data, err := ec.unmarshalOChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendEndpoints = data
+		case "clearEndpoints":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearEndpoints"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearEndpoints = data
 		}
 	}
 
@@ -78664,6 +79041,8 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Channel_errorMessage(ctx, field, obj)
 		case "remark":
 			out.Values[i] = ec._Channel_remark(ctx, field, obj)
+		case "endpoints":
+			out.Values[i] = ec._Channel_endpoints(ctx, field, obj)
 		case "requests":
 			field := field
 
@@ -79135,6 +79514,47 @@ func (ec *executionContext) _ChannelEdge(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelEndpointImplementors = []string{"ChannelEndpoint"}
+
+func (ec *executionContext) _ChannelEndpoint(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelEndpoint) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelEndpointImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelEndpoint")
+		case "apiFormat":
+			out.Values[i] = ec._ChannelEndpoint_apiFormat(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "path":
+			out.Values[i] = ec._ChannelEndpoint_path(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -83557,6 +83977,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateChannel":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateChannel(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "saveChannelEndpoints":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveChannelEndpoints(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -95308,6 +95735,30 @@ func (ec *executionContext) unmarshalNChannelCredentialsInput2githubᚗcomᚋloo
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNChannelEndpoint2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpoint(ctx context.Context, sel ast.SelectionSet, v objects.ChannelEndpoint) graphql.Marshaler {
+	return ec._ChannelEndpoint(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNChannelEndpointInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpoint(ctx context.Context, v any) (objects.ChannelEndpoint, error) {
+	res, err := ec.unmarshalInputChannelEndpointInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx context.Context, v any) ([]objects.ChannelEndpoint, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.ChannelEndpoint, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNChannelEndpointInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpoint(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalNChannelModelAutoSyncSetting2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelAutoSyncSetting(ctx context.Context, sel ast.SelectionSet, v biz.ChannelModelAutoSyncSetting) graphql.Marshaler {
 	return ec._ChannelModelAutoSyncSetting(ctx, sel, &v)
 }
@@ -98789,6 +99240,11 @@ func (ec *executionContext) unmarshalNRoleWhereInput2ᚖgithubᚗcomᚋloopljᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNSaveChannelEndpointsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSaveChannelEndpointsInput(ctx context.Context, v any) (biz.SaveChannelEndpointsInput, error) {
+	res, err := ec.unmarshalInputSaveChannelEndpointsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNSaveChannelModelPriceInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSaveChannelModelPriceInputᚄ(ctx context.Context, v any) ([]*biz.SaveChannelModelPriceInput, error) {
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
@@ -100888,6 +101344,71 @@ func (ec *executionContext) marshalOChannelEdge2ᚖgithubᚗcomᚋloopljᚋaxonh
 		return graphql.Null
 	}
 	return ec._ChannelEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOChannelEndpoint2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ChannelEndpoint) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelEndpoint2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpoint(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx context.Context, v any) ([]objects.ChannelEndpoint, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.ChannelEndpoint, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNChannelEndpointInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpoint(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOChannelLimiterStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelLimiterStats(ctx context.Context, sel ast.SelectionSet, v *ChannelLimiterStats) graphql.Marshaler {

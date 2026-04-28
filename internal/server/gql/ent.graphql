@@ -271,6 +271,10 @@ type Channel implements Node {
   User-defined remark or note for the channel
   """
   remark: String
+  """
+  Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
+  """
+  endpoints: [ChannelEndpoint!]
   requests(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -1397,6 +1401,10 @@ input CreateChannelInput {
   User-defined remark or note for the channel
   """
   remark: String
+  """
+  Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
+  """
+  endpoints: [ChannelEndpointInput!]
 }
 """
 CreateChannelOverrideTemplateInput is used for create ChannelOverrideTemplate object.
@@ -5454,6 +5462,12 @@ input UpdateChannelInput {
   """
   remark: String
   clearRemark: Boolean
+  """
+  Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
+  """
+  endpoints: [ChannelEndpointInput!]
+  appendEndpoints: [ChannelEndpointInput!]
+  clearEndpoints: Boolean
 }
 """
 UpdateChannelOverrideTemplateInput is used for update ChannelOverrideTemplate object.

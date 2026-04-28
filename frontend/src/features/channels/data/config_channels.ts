@@ -2,7 +2,7 @@ import type { ComponentType } from 'react';
 import { OpenAI, Anthropic, Google, DeepSeek, Doubao, Moonshot, Zhipu, OpenRouter, XAI, Volcengine, SiliconCloud, PPIO, ZAI, LongCat, Minimax, BurnCloud, Vercel, ModelScope, Bailian, Jina, DeepInfra, Github, Claude, Cerebras, XiaomiMiMo, Fireworks, Ollama, AiHubMix } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
-import { ApiFormat, ChannelType } from './schema';
+import { ApiFormat, ChannelType, ChannelEndpoint } from './schema';
 
 
 export const OPENAI_CHAT_COMPLETIONS: ApiFormat = 'openai/chat_completions';
@@ -703,4 +703,59 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
  */
 export const getProvider = (channelType: ChannelType): Provider => {
   return CHANNEL_TYPE_TO_PROVIDER[channelType];
+};
+
+export const CHANNEL_TYPE_TO_DEFAULT_ENDPOINTS: Record<ChannelType, ChannelEndpoint[]> = {
+  openai: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  openai_responses: [{ apiFormat: OPENAI_RESPONSES }],
+  codex: [{ apiFormat: OPENAI_RESPONSES }],
+  vercel: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  anthropic_aws: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  anthropic_gcp: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  gemini_openai: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  gemini: [{ apiFormat: GEMINI_CONTENTS }],
+  gemini_vertex: [{ apiFormat: GEMINI_CONTENTS }],
+  deepseek: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  deepseek_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  deepinfra: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  fireworks: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  doubao: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  doubao_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  moonshot: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  moonshot_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  zhipu: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  zai: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  zhipu_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  zai_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  anthropic_fake: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  openai_fake: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  openrouter: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  xiaomi: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  xai: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  ppio: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  siliconflow: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  volcengine: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  longcat: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  longcat_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  minimax: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  minimax_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  aihubmix: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  burncloud: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  modelscope: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  bailian: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  bailian_anthropic: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  moonshot_coding: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  jina: [
+    { apiFormat: 'jina/rerank' },
+    { apiFormat: 'jina/embeddings' },
+  ],
+  github: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  github_copilot: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  claudecode: [{ apiFormat: ANTHROPIC_MESSAGES }],
+  cerebras: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  antigravity: [{ apiFormat: GEMINI_CONTENTS }],
+  nanogpt: [{ apiFormat: OPENAI_CHAT_COMPLETIONS }],
+  nanogpt_responses: [{ apiFormat: OPENAI_RESPONSES }],
+  ollama: [{ apiFormat: 'ollama/chat' }],
 };

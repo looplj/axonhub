@@ -30,6 +30,11 @@ type Config struct {
 	// If true, the request URL will be used as is, without appending the response endpoint.
 	RawURL bool `json:"raw_url,omitempty"`
 
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/responses").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
+
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
@@ -60,7 +65,11 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 		config.RawURL = true
 		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
 	} else {
-		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		if config.EndpointPath != "" {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+		} else {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		}
 	}
 
 	return &OutboundTransformer{
@@ -236,6 +245,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
 	if t.config.RawURL {
 		return t.config.BaseURL, nil
+	}
+
+	if t.config.EndpointPath != "" {
+		return t.config.BaseURL + t.config.EndpointPath, nil
 	}
 	return t.config.BaseURL + "/responses", nil
 }

@@ -35,6 +35,11 @@ type Config struct {
 	// APIKeyProvider provides API keys for authentication.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path.
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
+
 	// APIVersion is the API version to use.
 	APIVersion string `json:"api_version,omitempty"`
 
@@ -187,6 +192,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 // buildFullRequestURL constructs the appropriate URL for the Gemini API.
 func (t *OutboundTransformer) buildFullRequestURL(llmReq *llm.Request) string {
+	if t.config.EndpointPath != "" {
+		return strings.TrimSuffix(t.config.BaseURL, "/") + t.config.EndpointPath
+	}
+
 	// Determine endpoint based on streaming
 	var action string
 	if llmReq.Stream != nil && *llmReq.Stream {

@@ -27,6 +27,11 @@ func (e *RerankError) Error() string {
 type Config struct {
 	BaseURL        string              `json:"base_url,omitempty"`
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/rerank", "/embeddings").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
 }
 
 // OutboundTransformer implements the outbound transformer for Jina APIs (Rerank and Embedding).
@@ -50,7 +55,11 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+	if config.EndpointPath != "" {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	} else {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+	}
 
 	return &OutboundTransformer{
 		config: config,
@@ -226,11 +235,17 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 // buildRerankURL constructs the rerank API URL.
 func (t *OutboundTransformer) buildRerankURL() string {
+	if t.config.EndpointPath != "" {
+		return t.config.BaseURL + t.config.EndpointPath
+	}
 	return t.config.BaseURL + "/rerank"
 }
 
 // buildEmbeddingURL constructs the embedding API URL.
 func (t *OutboundTransformer) buildEmbeddingURL() string {
+	if t.config.EndpointPath != "" {
+		return t.config.BaseURL + t.config.EndpointPath
+	}
 	return t.config.BaseURL + "/embeddings"
 }
 
