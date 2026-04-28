@@ -182,7 +182,7 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		ProviderType: "nanogpt",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
 	}, nil
 }
@@ -239,7 +239,7 @@ func buildNanoGPTLimitStatuses(imageWindow, dailyTokenWindow, weeklyTokenWindow 
 			usageRatio = 1.0
 		} else if usageRatio >= 1.0 {
 			status = "exhausted"
-		} else if usageRatio >= 0.8 {
+		} else if usageRatio >= WarningThresholdRatio {
 			status = "warning"
 		}
 

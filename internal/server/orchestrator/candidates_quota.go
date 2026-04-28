@@ -16,6 +16,10 @@ type ProviderQuotaSelector struct {
 	wrapped       CandidateSelector
 	provider      ProviderQuotaStatusProvider
 	systemService QuotaEnforcementSettingsProvider
+	// FilteredCount holds the number of candidates removed by the last Select() call.
+	// It is only populated in ExhaustedOnly mode; DePrioritize mode returns early
+	// without setting it. Read after Select() to distinguish "no candidates due to
+	// quota exhaustion" from "no candidates at all".
 	FilteredCount int
 }
 

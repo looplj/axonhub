@@ -149,7 +149,7 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		ProviderType: "synthetic",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
 	}, nil
 }
@@ -193,7 +193,7 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 			usageRatio = 1.0
 		} else if fiveHour.TickPercent != nil {
 			usageRatio = *fiveHour.TickPercent
-			if usageRatio > 0.8 {
+			if usageRatio > WarningThresholdRatio {
 				status = "warning"
 			}
 		}
@@ -220,7 +220,7 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 
 		if weekly.PercentRemaining != nil {
 			usageRatio = 1.0 - (*weekly.PercentRemaining / 100.0)
-			if usageRatio > 0.8 {
+			if usageRatio > WarningThresholdRatio {
 				status = "warning"
 			}
 		}

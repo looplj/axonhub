@@ -144,7 +144,7 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 		fiveHourUtilization := parseFloat(headers.Get("Anthropic-Ratelimit-Unified-5h-Utilization"))
 
 		sevenDayUtilization := parseFloat(headers.Get("Anthropic-Ratelimit-Unified-7d-Utilization"))
-		if fiveHourUtilization >= 0.8 || sevenDayUtilization >= 0.8 {
+		if fiveHourUtilization >= WarningThresholdRatio || sevenDayUtilization >= WarningThresholdRatio {
 			normalizedStatus = "warning"
 		}
 	}
@@ -178,7 +178,7 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 		ProviderType: "claudecode",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
 	}, nil
 }
@@ -204,7 +204,7 @@ func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.
 	status := "available"
 	if utilization >= 1.0 {
 		status = "exhausted"
-	} else if utilization >= 0.8 {
+	} else if utilization >= WarningThresholdRatio {
 		status = "warning"
 	}
 

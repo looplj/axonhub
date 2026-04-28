@@ -162,13 +162,7 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	}
 
 	limits := []QuotaLimitStatus{
-		{
-			Type:        QuotaLimitTypeToken,
-			Status:      normalizedStatus,
-			UsageRatio:  usageRatio,
-			Ready:       normalizedStatus == "available" || normalizedStatus == "warning",
-			NextResetAt: nextResetAt,
-		},
+		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt),
 	}
 
 	return QuotaData{
@@ -176,7 +170,7 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		ProviderType: "wafer",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
 	}, nil
 }

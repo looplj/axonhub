@@ -64,15 +64,11 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 
 		selector = WithStreamPolicySelector(selector)
 
-		var quotaSelector *ProviderQuotaSelector
+		quotaSelector := WithProviderQuotaSelector(selector, quotaProvider, systemService)
+		selector = quotaSelector
 
 		if inbound.state.LoadBalancer != nil {
-			quotaSelector = WithProviderQuotaSelector(selector, quotaProvider, systemService)
-			selector = quotaSelector
 			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
-		} else {
-			quotaSelector = WithProviderQuotaSelector(selector, quotaProvider, systemService)
-			selector = quotaSelector
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)
@@ -112,6 +108,9 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		if quotaSelector != nil {
 			settings := systemService.QuotaEnforcementSettingsOrDefault(ctx)
 			if settings.Enabled && settings.Mode == biz.QuotaEnforcementModeDePrioritize {
+				// In DePrioritize mode the quota selector doesn't filter candidates,
+				// so we must check quota status again here to determine if all
+				// remaining channels are exhausted.
 				if areAllChannelsExhausted(candidates, quotaProvider, llmRequest) {
 					return nil, NewQuotaExhaustedError(llmRequest.Model)
 				}

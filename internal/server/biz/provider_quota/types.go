@@ -36,9 +36,26 @@ type QuotaData struct {
 	Limits       []QuotaLimitStatus `json:"limits"`
 }
 
+// WarningThresholdRatio is the usage ratio at which a channel transitions to "warning" status.
+const WarningThresholdRatio = 0.8
+
 func RequestModality(isImageRequest bool) QuotaLimitType {
 	if isImageRequest {
 		return QuotaLimitTypeImage
 	}
 	return QuotaLimitTypeToken
+}
+
+func IsReadyStatus(status string) bool {
+	return status == "available" || status == "warning"
+}
+
+func NewTokenLimitStatus(status string, usageRatio float64, nextResetAt *time.Time) QuotaLimitStatus {
+	return QuotaLimitStatus{
+		Type:        QuotaLimitTypeToken,
+		Status:      status,
+		UsageRatio:  usageRatio,
+		Ready:       IsReadyStatus(status),
+		NextResetAt: nextResetAt,
+	}
 }

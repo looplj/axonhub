@@ -11,8 +11,14 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 )
 
+// quotaExhaustedScore is the penalty applied to exhausted channels.
+// Chosen to be significantly below any non-exhausted score so that
+// exhausted channels always sort last regardless of other strategy scores.
 const quotaExhaustedScore = -10000
 
+// warningUsageRatio is the fallback usage ratio used when a channel has
+// Warning status but no per-limit data is available. This conservative
+// estimate (80%) is used in DePrioritize mode to compute a penalty score.
 const warningUsageRatio = 0.8
 
 type QuotaEnforcementSettingsProvider interface {

@@ -9,14 +9,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { useQuotaEnforcementSettings, useUpdateQuotaEnforcementSettings, type QuotaEnforcementMode, type UpdateQuotaEnforcementSettingsInput } from '../data/system';
+import { useQuotaEnforcementSettings, useUpdateQuotaEnforcementSettings, type QuotaEnforcementMode } from '../data/system';
+
+interface QuotaFormData {
+  enabled: boolean;
+  mode: QuotaEnforcementMode;
+}
 
 export function QuotaSettings() {
   const { t } = useTranslation();
   const { data: quotaSettings, isLoading } = useQuotaEnforcementSettings();
   const updateQuotaEnforcementSettings = useUpdateQuotaEnforcementSettings();
 
-  const [formData, setFormData] = useState<UpdateQuotaEnforcementSettingsInput>({
+  const [formData, setFormData] = useState<QuotaFormData>({
     enabled: false,
     mode: 'EXHAUSTED_ONLY',
   });
@@ -47,7 +52,10 @@ export function QuotaSettings() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      await updateQuotaEnforcementSettings.mutateAsync(formData);
+      await updateQuotaEnforcementSettings.mutateAsync({
+        enabled: formData.enabled,
+        mode: formData.mode,
+      });
     },
     [updateQuotaEnforcementSettings, formData]
   );

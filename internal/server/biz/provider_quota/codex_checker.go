@@ -146,13 +146,7 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	}
 
 	limits := []QuotaLimitStatus{
-		{
-			Type:        QuotaLimitTypeToken,
-			Status:      normalizedStatus,
-			UsageRatio:  usageRatio,
-			Ready:       normalizedStatus == "available" || normalizedStatus == "warning",
-			NextResetAt: nextResetAt,
-		},
+		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt),
 	}
 
 	if primaryWindowUsedPercent != nil {
@@ -164,7 +158,7 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		ProviderType: "codex",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
 	}, nil
 }

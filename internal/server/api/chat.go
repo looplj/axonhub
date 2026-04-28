@@ -17,6 +17,11 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+const (
+	errTypeQuotaExhausted = "quota_exhausted"
+	errCodeQuotaExhausted = "quota_exhausted"
+)
+
 // StreamWriter is a function type for writing stream events to the response.
 type StreamWriter func(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent])
 
@@ -173,8 +178,8 @@ func FormatStreamError(_ context.Context, err error) any {
 		return gin.H{
 			"error": gin.H{
 				"message": quotaErr.Error(),
-				"type":    "quota_exhausted",
-				"code":    "quota_exhausted",
+				"type":    errTypeQuotaExhausted,
+				"code":    errCodeQuotaExhausted,
 			},
 		}
 	}
@@ -234,8 +239,8 @@ func wrapQuotaExhaustedAsResponseError(err error) error {
 			StatusCode: http.StatusServiceUnavailable,
 			Detail: llm.ErrorDetail{
 				Message: quotaErr.Error(),
-				Type:    "quota_exhausted",
-				Code:    "quota_exhausted",
+				Type:    errTypeQuotaExhausted,
+				Code:    errCodeQuotaExhausted,
 			},
 		}
 	}

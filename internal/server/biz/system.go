@@ -151,9 +151,9 @@ func (m *QuotaEnforcementMode) UnmarshalGQL(v any) error {
 	}
 
 	switch str {
-	case "EXHAUSTED_ONLY", string(QuotaEnforcementModeExhaustedOnly):
+	case "EXHAUSTED_ONLY":
 		*m = QuotaEnforcementModeExhaustedOnly
-	case "DE_PRIORITIZE", string(QuotaEnforcementModeDePrioritize):
+	case "DE_PRIORITIZE":
 		*m = QuotaEnforcementModeDePrioritize
 	default:
 		return fmt.Errorf("invalid QuotaEnforcementMode: %s", str)
@@ -169,9 +169,9 @@ func (m *QuotaEnforcementMode) UnmarshalJSON(data []byte) error {
 	}
 
 	switch raw {
-	case string(QuotaEnforcementModeExhaustedOnly), "EXHAUSTED_ONLY":
+	case "EXHAUSTED_ONLY", string(QuotaEnforcementModeExhaustedOnly):
 		*m = QuotaEnforcementModeExhaustedOnly
-	case string(QuotaEnforcementModeDePrioritize), "DE_PRIORITIZE":
+	case "DE_PRIORITIZE", string(QuotaEnforcementModeDePrioritize):
 		*m = QuotaEnforcementModeDePrioritize
 	default:
 		return fmt.Errorf("invalid QuotaEnforcementMode: %q", raw)

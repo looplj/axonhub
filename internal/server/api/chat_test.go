@@ -262,6 +262,22 @@ func TestFormatStreamError_HttpClientError(t *testing.T) {
 	assert.Equal(t, "", errorField["code"])
 }
 
+func TestFormatStreamError_QuotaExhaustedError(t *testing.T) {
+	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
+	result := FormatStreamError(context.Background(), quotaErr)
+
+	data, marshalErr := json.Marshal(result)
+	require.NoError(t, marshalErr)
+
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal(data, &parsed))
+
+	errorField := parsed["error"].(map[string]any)
+	assert.Equal(t, "all channels quota exhausted for model gpt-4", errorField["message"])
+	assert.Equal(t, "quota_exhausted", errorField["type"])
+	assert.Equal(t, "quota_exhausted", errorField["code"])
+}
+
 func TestWrapQuotaExhaustedAsResponseError_QuotaError(t *testing.T) {
 	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
 	result := wrapQuotaExhaustedAsResponseError(quotaErr)

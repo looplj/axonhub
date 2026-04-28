@@ -29,6 +29,13 @@ type QuotaChannelStatus struct {
 	Limits []provider_quota.QuotaLimitStatus
 }
 
+// EffectiveStatus returns the effective quota status for the given limit type.
+//
+// If the channel-level status is Exhausted, it short-circuits regardless of
+// per-limit data — a channel marked exhausted at the top level is treated as
+// fully unavailable. This means if a future provider sets channel-level
+// "exhausted" for a single limit type (e.g., images), token-limit queries
+// would also return "exhausted" even if tokens remain.
 func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimitType) (providerquotastatus.Status, bool) {
 	if s.Status == providerquotastatus.StatusExhausted {
 		return providerquotastatus.StatusExhausted, false
@@ -64,6 +71,9 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 	}
 
 	if !found {
+		// No matching limit type: return Unknown with ready=true so the channel
+		// is not filtered out. This differs from a per-limit "unknown" status
+		// (where ready=false) because missing data should not block routing.
 		return providerquotastatus.StatusUnknown, true
 	}
 
@@ -366,8 +376,8 @@ func (svc *ProviderQuotaService) getWarningCheckInterval() time.Duration {
 	return svc.getCheckInterval() * time.Duration(ratio)
 }
 
-func (svc *ProviderQuotaService) nextCheckIntervalForStatus(status string) time.Duration {
-	if status == "warning" {
+func (svc *ProviderQuotaService) nextCheckIntervalForStatus(status providerquotastatus.Status) time.Duration {
+	if status == providerquotastatus.StatusWarning {
 		return svc.getWarningCheckInterval()
 	}
 	return svc.getCheckInterval()
@@ -546,7 +556,7 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	quotaData provider_quota.QuotaData,
 	now time.Time,
 ) {
-	nextCheck := now.Add(svc.nextCheckIntervalForStatus(quotaData.Status))
+	nextCheck := now.Add(svc.nextCheckIntervalForStatus(providerquotastatus.Status(quotaData.Status)))
 	pt := providerquotastatus.ProviderType(providerType)
 
 	create := svc.db.ProviderQuotaStatus.Create().
