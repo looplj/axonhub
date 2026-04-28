@@ -80,10 +80,16 @@
   "dashboard.channelSuccessRates.sortBySuccess": "Sort by Success",
   "dashboard.channelSuccessRates.sortByFailed": "Sort by Failed",
   "dashboard.channelSuccessRates.sortByRate": "Sort by Rate",
+  "dashboard.channelSuccessRates.sortByInputTokens": "Sort by Input Tokens",
+  "dashboard.channelSuccessRates.sortByOutputTokens": "Sort by Output Tokens",
+  "dashboard.channelSuccessRates.sortByTotalTokens": "Sort by Total Tokens",
   "dashboard.channelSuccessRates.desc": "Descending",
   "dashboard.channelSuccessRates.asc": "Ascending",
   "dashboard.channelSuccessRates.showing": "Showing {{start}} - {{end}} / {{total}}",
   "dashboard.channelSuccessRates.prev": "Previous",
   "dashboard.channelSuccessRates.next": "Next",
+  "dashboard.channelSuccessRates.inputTokens": "Input",
+  "dashboard.channelSuccessRates.outputTokens": "Output",
+  "dashboard.channelSuccessRates.totalTokens": "Total",
   "dashboard.viewAll": "View All"
 }

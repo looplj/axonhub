@@ -1,17 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useChannelSuccessRates } from '../data/dashboard';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChannelSuccessRates, useTokensByChannel, type TokensByChannel } from '../data/dashboard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
+import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, CoinsIcon, XCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
 import ContentSection from '@/features/settings/components/content-section';
 
-type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate';
+type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate' | 'inputTokens' | 'outputTokens' | 'totalTokens';
 type SortOrder = 'asc' | 'desc';
 
 const PAGE_SIZE = 20;
@@ -29,6 +28,17 @@ export default function DashboardChannelSuccessRates() {
 
   // Fetch all data (limit = undefined)
   const { data: channels, isLoading, error } = useChannelSuccessRates(undefined, timeWindow);
+
+  // Fetch token stats by channel (reuse existing API)
+  const { data: tokenData } = useTokensByChannel(timeWindow);
+
+  // Build token map by channelId for reliable matching
+  const tokenByChannel = useMemo(() => {
+    if (!tokenData) return new Map<string, TokensByChannel>();
+    const map = new Map<string, TokensByChannel>();
+    tokenData.forEach((t) => map.set(t.channelId, t));
+    return map;
+  }, [tokenData]);
 
   // Extract unique channel types
   const channelTypes = useMemo(() => {
@@ -75,13 +85,25 @@ export default function DashboardChannelSuccessRates() {
           aVal = a.successRate;
           bVal = b.successRate;
           break;
+        case 'inputTokens':
+          aVal = tokenByChannel.get(a.channelId)?.inputTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelId)?.inputTokens ?? 0;
+          break;
+        case 'outputTokens':
+          aVal = tokenByChannel.get(a.channelId)?.outputTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelId)?.outputTokens ?? 0;
+          break;
+        case 'totalTokens':
+          aVal = tokenByChannel.get(a.channelId)?.totalTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelId)?.totalTokens ?? 0;
+          break;
         default:
           aVal = a.totalCount;
           bVal = b.totalCount;
       }
       return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
     });
-  }, [filteredChannels, sortField, sortOrder]);
+  }, [filteredChannels, sortField, sortOrder, tokenByChannel]);
 
   // Paginate channels
   const totalPages = Math.ceil(sortedChannels.length / PAGE_SIZE);
@@ -185,6 +207,9 @@ export default function DashboardChannelSuccessRates() {
                 <SelectItem value="successCount">{t('dashboard.channelSuccessRates.sortBySuccess')}</SelectItem>
                 <SelectItem value="failedCount">{t('dashboard.channelSuccessRates.sortByFailed')}</SelectItem>
                 <SelectItem value="successRate">{t('dashboard.channelSuccessRates.sortByRate')}</SelectItem>
+                <SelectItem value="inputTokens">{t('dashboard.channelSuccessRates.sortByInputTokens')}</SelectItem>
+                <SelectItem value="outputTokens">{t('dashboard.channelSuccessRates.sortByOutputTokens')}</SelectItem>
+                <SelectItem value="totalTokens">{t('dashboard.channelSuccessRates.sortByTotalTokens')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -218,46 +243,63 @@ export default function DashboardChannelSuccessRates() {
         {/* Channel cards grid */}
         {!isLoading && paginatedChannels.length > 0 && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedChannels.map((channel) => (
-              <div key={channel.channelId} className="rounded-lg border p-4 shadow-sm">
-                {/* Channel info */}
-                <div className="mb-3 flex items-center gap-3">
-                  <ActivityIcon className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="font-medium">{channel.channelName}</p>
-                    <span className="text-xs text-muted-foreground">{channel.channelType}</span>
-                  </div>
-                  {channel.channelDisabled && <AlertTriangleIcon className="h-5 w-5 text-red-500" />}
-                </div>
+            {paginatedChannels.map((channel) => {
+              const tokens = tokenByChannel.get(channel.channelId);
+              const showTokens = tokens && tokens.totalTokens > 0;
 
-                {/* Success rate display */}
-                <div className="mb-3">
-                  <div className="mb-1 flex items-baseline justify-between">
-                    <span className={`text-2xl font-bold ${getSuccessRateColor(channel.successRate)}`}>
-                      {channel.successRate.toFixed(1)}%
+              return (
+                <div key={channel.channelId} className="rounded-lg border p-4 shadow-sm">
+                  {/* Channel info */}
+                  <div className="mb-3 flex items-center gap-3">
+                    <ActivityIcon className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-medium">{channel.channelName}</p>
+                      <span className="text-xs text-muted-foreground">{channel.channelType}</span>
+                    </div>
+                    {channel.channelDisabled && <AlertTriangleIcon className="h-5 w-5 text-red-500" />}
+                  </div>
+
+                  {/* Success rate display */}
+                  <div className="mb-3">
+                    <div className="mb-1 flex items-baseline justify-between">
+                      <span className={`text-2xl font-bold ${getSuccessRateColor(channel.successRate)}`}>
+                        {channel.successRate.toFixed(1)}%
+                      </span>
+                      <span className="text-xs text-muted-foreground">{formatNumber(channel.totalCount)} total</span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div className={`h-full ${getProgressBarColor(channel.successRate)}`} style={{ width: `${channel.successRate}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Success/Failed counts */}
+                  <div className="flex gap-3 text-sm">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2Icon className="h-4 w-4 text-green-500" />
+                      {formatNumber(channel.successCount)}
                     </span>
-                    <span className="text-xs text-muted-foreground">{formatNumber(channel.totalCount)} total</span>
+                    <span className="flex items-center gap-1">
+                      <XCircleIcon className="h-4 w-4 text-red-500" />
+                      {formatNumber(channel.failedCount)}
+                    </span>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div className={`h-full ${getProgressBarColor(channel.successRate)}`} style={{ width: `${channel.successRate}%` }} />
-                  </div>
+                  {/* Token consumption (from tokenStatsByChannel API) */}
+                  {showTokens && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      <CoinsIcon className="h-3 w-3" />
+                      <span>{t('dashboard.channelSuccessRates.inputTokens')}: {formatNumber(tokens.inputTokens)}</span>
+                      <span className="text-border">|</span>
+                      <span>{t('dashboard.channelSuccessRates.outputTokens')}: {formatNumber(tokens.outputTokens)}</span>
+                      <span className="text-border">|</span>
+                      <span>{t('dashboard.channelSuccessRates.totalTokens')}: {formatNumber(tokens.totalTokens)}</span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Success/Failed counts */}
-                <div className="flex gap-3 text-sm">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-                    {formatNumber(channel.successCount)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <XCircleIcon className="h-4 w-4 text-red-500" />
-                    {formatNumber(channel.failedCount)}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
