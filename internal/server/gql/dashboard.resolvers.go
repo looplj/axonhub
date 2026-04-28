@@ -942,12 +942,7 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 	var tokenResults []channelTokenStats
 	err = r.client.UsageLog.Query().
 		Modify(func(s *sql.Selector) {
-			channelTable := sql.Table(channel.Table)
-			s.Join(channelTable).On(
-				s.C(usagelog.FieldChannelID),
-				channelTable.C(channel.FieldID),
-			)
-			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+			s.Where(sql.NotNull(s.C(usagelog.FieldChannelID)))
 
 			if applyFilter {
 				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
