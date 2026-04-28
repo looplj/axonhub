@@ -26,15 +26,15 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 		}
 
 		if len(msg.ToolCalls) == 0 {
-			filtered = append(filtered, msg)
+			filtered = append(filtered, stripResponsesProtocolExtensionsFromMessage(msg))
 			continue
 		}
 
-		cloned := msg
+		cloned := stripResponsesProtocolExtensionsFromMessage(msg)
 		cloned.ToolCalls = make([]llm.ToolCall, 0, len(msg.ToolCalls))
 
 		for _, toolCall := range msg.ToolCalls {
-			if toolCall.Type == llm.ToolTypeResponsesCustomTool || toolCall.ResponseCustomToolCall != nil {
+			if IsResponsesOnlyToolCall(toolCall) {
 				if toolCall.ID != "" {
 					removedToolCallIDs[toolCall.ID] = struct{}{}
 				}
@@ -46,6 +46,7 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 				continue
 			}
 
+			toolCall.ProtocolExtensions = nil
 			cloned.ToolCalls = append(cloned.ToolCalls, toolCall)
 		}
 
@@ -57,6 +58,14 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 	}
 
 	return filtered
+}
+
+func stripResponsesProtocolExtensionsFromMessage(msg llm.Message) llm.Message {
+	msg.ProtocolExtensions = nil
+	for i := range msg.Content.MultipleContent {
+		msg.Content.MultipleContent[i].TransformerMetadata = nil
+	}
+	return msg
 }
 
 func shouldDropMessageAfterToolFiltering(msg llm.Message) bool {
@@ -73,4 +82,40 @@ func shouldDropMessageAfterToolFiltering(msg llm.Message) bool {
 	}
 
 	return true
+}
+
+// FilterOutResponsesOnlyTools removes tool definitions that are only valid in the
+// OpenAI Responses API and strips lossless protocol metadata from retained tools.
+func FilterOutResponsesOnlyTools(tools []llm.Tool) []llm.Tool {
+	if len(tools) == 0 {
+		return nil
+	}
+
+	filtered := make([]llm.Tool, 0, len(tools))
+	for _, tool := range tools {
+		if IsResponsesOnlyTool(tool) {
+			continue
+		}
+		tool.ProtocolExtensions = nil
+		filtered = append(filtered, tool)
+	}
+	return filtered
+}
+
+func IsResponsesOnlyTool(tool llm.Tool) bool {
+	switch tool.Type {
+	case llm.ToolTypeResponsesCustomTool, "namespace", "tool_search", "local_shell", "mcp", "shell", "apply_patch", "file_search", "code_interpreter", "computer_use_preview":
+		return true
+	default:
+		return false
+	}
+}
+
+func IsResponsesOnlyToolCall(toolCall llm.ToolCall) bool {
+	switch toolCall.Type {
+	case llm.ToolTypeResponsesCustomTool, "local_shell_call", "shell_call", "mcp_call", "apply_patch_call", "tool_search_call":
+		return true
+	default:
+		return toolCall.ResponseCustomToolCall != nil
+	}
 }

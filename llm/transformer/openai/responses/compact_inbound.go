@@ -120,6 +120,13 @@ func convertCompactMessagesToItems(msgs []llm.Message) []Item {
 	items := make([]Item, 0, len(msgs))
 
 	for _, msg := range msgs {
+		if ext := openAIResponsesExtensions(msg.ProtocolExtensions); ext != nil && !ext.Dirty {
+			if rawItems := outputFromRawItems(ext.InputItems); len(rawItems) > 0 {
+				items = append(items, rawItems...)
+				continue
+			}
+		}
+
 		if reasoningItem, ok := buildReasoningItem(msg); ok {
 			items = append(items, reasoningItem)
 		}

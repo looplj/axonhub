@@ -250,6 +250,8 @@ type Request struct {
 	// - "truncation": *string - truncation strategy ("auto", "disabled")
 	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+
+	ProtocolExtensions *ProtocolExtensions `json:"protocol_extensions,omitempty"`
 }
 
 type StreamOptions struct {
@@ -364,6 +366,8 @@ type Message struct {
 
 	// Copilot-only: X-Initiator quota tracking. Ignored by other providers.
 	Attribution string `json:"attribution,omitempty"`
+
+	ProtocolExtensions *ProtocolExtensions `json:"protocol_extensions,omitempty"`
 }
 
 // Annotation represents a citation or reference annotation in a message.
@@ -601,6 +605,8 @@ type Response struct {
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+
+	ProtocolExtensions *ProtocolExtensions `json:"protocol_extensions,omitempty"`
 }
 
 // Choice represents a choice in the response.
@@ -624,6 +630,8 @@ type Choice struct {
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+
+	ProtocolExtensions *ProtocolExtensions `json:"protocol_extensions,omitempty"`
 }
 
 // LogprobsContent represents logprobs information.

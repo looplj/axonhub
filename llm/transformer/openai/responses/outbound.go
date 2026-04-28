@@ -168,6 +168,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 	}
 
+	if ext := openAIResponsesExtensions(llmReq.ProtocolExtensions); ext != nil && !ext.Dirty {
+		if rawTools := toolsFromRawItems(ext.Tools); len(rawTools) > 0 {
+			tools = rawTools
+		}
+	}
+
 	payload := Request{
 		Model:                llmReq.Model,
 		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, scope),
@@ -193,6 +199,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
+	}
+
+	if ext := openAIResponsesExtensions(llmReq.ProtocolExtensions); ext != nil && !ext.Dirty {
+		payload.Extra = cloneRawMap(ext.RequestExtra)
+		if rawInput := inputFromRawItems(ext.InputItems); len(rawInput.Items) > 0 {
+			payload.Input = rawInput
+		}
 	}
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {
@@ -308,6 +321,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 		Created:            resp.CreatedAt,
 		PreviousResponseID: resp.PreviousResponseID,
 		Choices:            make([]llm.Choice, 0),
+		ProtocolExtensions: protocolExtensionsForOutput(resp.Output),
 	}
 
 	// Convert usage if present

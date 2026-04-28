@@ -281,8 +281,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 
 		default:
-			// For other item types (e.g., message), skip - no meaningful content to emit
-			return nil // Intentionally skip this event
+			if item.Type == "message" {
+				return nil
+			}
+			resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
 		}
 
 	case StreamEventTypeFunctionCallArgumentsDelta:
@@ -416,7 +418,19 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		// Reasoning content completed - skip, content was already streamed via deltas
 		return nil // Intentionally skip this event
 
-	case StreamEventTypeOutputItemDone, StreamEventTypeContentPartDone,
+	case StreamEventTypeOutputItemDone:
+		if streamEvent.Item != nil {
+			switch streamEvent.Item.Type {
+			case "message", "function_call", "custom_tool_call", "reasoning", "":
+				return nil // Intentionally skip supported done events
+			default:
+				resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
+			}
+		} else {
+			return nil // Intentionally skip empty done events
+		}
+
+	case StreamEventTypeContentPartDone,
 		StreamEventTypeReasoningSummaryPartAdded, StreamEventTypeReasoningSummaryPartDone:
 		// These events don't need special handling - skip
 		return nil // Intentionally skip this event
@@ -524,8 +538,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	default:
-		// Unknown event type - skip
-		return nil // Intentionally skip this event
+		if streamEvent.Type == "keepalive" {
+			return nil
+		}
+		resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
 	}
 
 	s.enqueue(resp)

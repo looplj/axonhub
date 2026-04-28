@@ -585,12 +585,11 @@ func convertOutputToMessage(output []Item, scope shared.TransportScope, transfor
 					imageOutputFormat = imgFmt
 				}
 			}
-
-			if outputItem.Result != nil && *outputItem.Result != "" {
+			if result := itemResultString(outputItem.Result); result != "" {
 				contentParts = append(contentParts, llm.MessageContentPart{
 					Type: "image_url",
 					ImageURL: &llm.ImageURL{
-						URL: `data:image/` + imageOutputFormat + `;base64,` + *outputItem.Result,
+						URL: `data:image/` + imageOutputFormat + `;base64,` + result,
 					},
 					TransformerMetadata: map[string]any{
 						"background":    outputItem.Background,
@@ -633,9 +632,10 @@ func convertOutputToMessage(output []Item, scope shared.TransportScope, transfor
 	flushText()
 
 	msg := llm.Message{
-		ID:        messageID,
-		Role:      "assistant",
-		ToolCalls: toolCalls,
+		ID:                 messageID,
+		Role:               "assistant",
+		ToolCalls:          toolCalls,
+		ProtocolExtensions: protocolExtensionsForOutput(output),
 	}
 
 	if reasoningContent.Len() > 0 {
@@ -657,4 +657,33 @@ func convertOutputToMessage(output []Item, scope shared.TransportScope, transfor
 	}
 
 	return msg
+}
+
+func itemResultString(result any) string {
+	switch v := result.(type) {
+	case nil:
+		return ""
+	case string:
+		return v
+	case *string:
+		if v == nil {
+			return ""
+		}
+		return *v
+	case json.RawMessage:
+		var s string
+		if err := json.Unmarshal(v, &s); err == nil {
+			return s
+		}
+	case *json.RawMessage:
+		if v == nil {
+			return ""
+		}
+		var s string
+		if err := json.Unmarshal(*v, &s); err == nil {
+			return s
+		}
+	}
+
+	return ""
 }

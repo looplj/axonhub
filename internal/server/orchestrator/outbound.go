@@ -358,12 +358,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
-	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
+	llmRequest = filterResponsesOnlyDataForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
 
 	return p.wrapped.TransformRequest(ctx, llmRequest)
 }
 
-func filterResponseCustomToolMessagesForNonResponsesOutbound(
+func filterResponsesOnlyDataForNonResponsesOutbound(
 	llmRequest *llm.Request,
 	outboundFormat llm.APIFormat,
 ) *llm.Request {
@@ -371,14 +371,23 @@ func filterResponseCustomToolMessagesForNonResponsesOutbound(
 		return nil
 	}
 
-	if !isResponsesFormat(llmRequest.APIFormat) || isResponsesFormat(outboundFormat) || !containsResponseCustomToolMessages(llmRequest.Messages) {
+	if !isResponsesFormat(llmRequest.APIFormat) || isResponsesFormat(outboundFormat) || !containsResponsesOnlyData(llmRequest) {
 		return llmRequest
 	}
 
 	cloned := *llmRequest
 	cloned.Messages = shared.FilterOutResponseCustomToolMessages(llmRequest.Messages)
+	cloned.Tools = shared.FilterOutResponsesOnlyTools(llmRequest.Tools)
+	cloned.ProtocolExtensions = nil
 
 	return &cloned
+}
+
+func filterResponseCustomToolMessagesForNonResponsesOutbound(
+	llmRequest *llm.Request,
+	outboundFormat llm.APIFormat,
+) *llm.Request {
+	return filterResponsesOnlyDataForNonResponsesOutbound(llmRequest, outboundFormat)
 }
 
 func isResponsesFormat(format llm.APIFormat) bool {
@@ -388,13 +397,31 @@ func isResponsesFormat(format llm.APIFormat) bool {
 func containsResponseCustomToolMessages(messages []llm.Message) bool {
 	for _, msg := range messages {
 		for _, toolCall := range msg.ToolCalls {
-			if toolCall.Type == llm.ToolTypeResponsesCustomTool || toolCall.ResponseCustomToolCall != nil {
+			if shared.IsResponsesOnlyToolCall(toolCall) {
 				return true
 			}
+		}
+		if msg.ProtocolExtensions != nil {
+			return true
 		}
 	}
 
 	return false
+}
+
+func containsResponsesOnlyData(llmRequest *llm.Request) bool {
+	if llmRequest == nil {
+		return false
+	}
+	if llmRequest.ProtocolExtensions != nil {
+		return true
+	}
+	for _, tool := range llmRequest.Tools {
+		if shared.IsResponsesOnlyTool(tool) || tool.ProtocolExtensions != nil {
+			return true
+		}
+	}
+	return containsResponseCustomToolMessages(llmRequest.Messages)
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

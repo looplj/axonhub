@@ -121,6 +121,14 @@ func (s *responsesInboundStream) Next() bool {
 		return s.Next() // Try next chunk
 	}
 
+	if rawEvent := rawEventFromResponse(chunk); rawEvent != nil {
+		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+			Type: rawEvent.Type,
+			Data: cloneRaw(rawEvent.Raw),
+		})
+		return true
+	}
+
 	// Handle [DONE] marker
 	if chunk.Object == "[DONE]" {
 		return s.Next() // Try next chunk

@@ -20,6 +20,7 @@ type streamAggregator struct {
 	createdAt          int64
 	status             string
 	previousResponseID *string
+	terminalResponse   *Response
 
 	// Output items - keyed by output_index.
 	// Some streams may (unexpectedly) reuse output_index for multiple items, so we store a slice.
@@ -50,6 +51,8 @@ type aggregatedItem struct {
 
 	// For reasoning type
 	SummaryParts map[int]*aggregatedSummaryPart
+
+	RawItem *Item
 }
 
 type aggregatedSummaryPart struct {
@@ -232,6 +235,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		}
 
 		if ev.Item != nil {
+			item.RawItem = ev.Item
 			item.ID = ev.Item.ID
 			item.Type = ev.Item.Type
 			item.Role = ev.Item.Role
@@ -435,6 +439,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			}
 
 			if item != nil {
+				item.RawItem = ev.Item
 				if ev.Item.Status != nil {
 					item.Status = *ev.Item.Status
 				}
@@ -467,6 +472,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 	case StreamEventTypeResponseCompleted:
 		a.status = "completed"
 		if ev.Response != nil {
+			a.terminalResponse = ev.Response
+			a.responseID = ev.Response.ID
+			a.model = ev.Response.Model
+			a.createdAt = ev.Response.CreatedAt
 			a.previousResponseID = ev.Response.PreviousResponseID
 			if ev.Response.Usage != nil {
 				a.usage = ev.Response.Usage
@@ -484,6 +493,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 // buildResponse builds the final Response object from aggregated state.
 // This is used by responsesInboundStream to build the response.completed event.
 func (a *streamAggregator) buildResponse() *Response {
+	if a.shouldUseTerminalResponse() {
+		return a.terminalResponse
+	}
+
 	// Build output items
 	output := make([]Item, 0, len(a.outputItems))
 
@@ -586,13 +599,21 @@ func (a *streamAggregator) buildResponse() *Response {
 				})
 
 			default:
-				// Generic item
-				output = append(output, Item{
-					ID:     item.ID,
-					Type:   item.Type,
-					Status: lo.ToPtr(item.Status),
-					Role:   item.Role,
-				})
+				if item.RawItem != nil {
+					rawItem := *item.RawItem
+					if rawItem.Status == nil && item.Status != "" {
+						rawItem.Status = lo.ToPtr(item.Status)
+					}
+					output = append(output, rawItem)
+				} else {
+					// Generic item
+					output = append(output, Item{
+						ID:     item.ID,
+						Type:   item.Type,
+						Status: lo.ToPtr(item.Status),
+						Role:   item.Role,
+					})
+				}
 			}
 		}
 	}
@@ -607,4 +628,22 @@ func (a *streamAggregator) buildResponse() *Response {
 		Usage:              a.usage,
 		PreviousResponseID: a.previousResponseID,
 	}
+}
+
+func (a *streamAggregator) shouldUseTerminalResponse() bool {
+	if a.terminalResponse == nil {
+		return false
+	}
+	if len(a.outputItems) == 0 {
+		return true
+	}
+	for _, item := range a.terminalResponse.Output {
+		switch item.Type {
+		case "message", "function_call", "custom_tool_call", "reasoning", "image_generation_call", "compaction", "compaction_summary":
+			continue
+		default:
+			return true
+		}
+	}
+	return false
 }

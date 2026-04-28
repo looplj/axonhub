@@ -33,6 +33,8 @@ type Tool struct {
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
+	ProtocolExtensions *ProtocolExtensions `json:"protocol_extensions,omitempty"`
 }
 
 // Function represents a function definition.
@@ -80,6 +82,8 @@ type ToolCall struct {
 
 	// TransformerMetadata is used for provider-specific metadata (e.g., Gemini).
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+
+	ProtocolExtensions *ProtocolExtensions `json:"protocol_extensions,omitempty"`
 }
 
 type ToolFunction struct {

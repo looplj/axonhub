@@ -186,6 +186,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		PreviousResponseID:  req.PreviousResponseID,
 		TransformerMetadata: map[string]any{},
 		TransformOptions:    llm.TransformOptions{},
+		ProtocolExtensions:  protocolExtensionsFromRequest(req),
 	}
 
 	// Store help fields in TransformerMetadata
@@ -413,8 +414,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "function_call":
 			// Merge function_call into the same assistant message
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: "function",
+				ID:                 nextItem.CallID,
+				Type:               "function",
+				ProtocolExtensions: protocolExtensionsForItem(nextItem),
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Arguments: nextItem.Arguments,
@@ -430,8 +432,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			}
 
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:                 nextItem.CallID,
+				Type:               llm.ToolTypeResponsesCustomTool,
+				ProtocolExtensions: protocolExtensionsForItem(nextItem),
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: nextItem.CallID,
 					Name:   nextItem.Name,
@@ -444,6 +447,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			// If we encounter a text message with assistant role, merge its content
 			if nextItem.Role == "assistant" {
 				msg.ID = nextItem.ID
+				msg.ProtocolExtensions = protocolExtensionsForItem(nextItem)
 				if nextItem.Content != nil && len(nextItem.Content.Items) > 0 && nextItem.isOutputMessageContent() {
 					msg.Content = convertContentItemsToMessageContent(nextItem.GetContentItems())
 				} else if nextItem.Content != nil {
@@ -476,8 +480,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 	switch item.Type {
 	case "message", "input_text", "":
 		msg := &llm.Message{
-			ID:   item.ID,
-			Role: item.Role,
+			ID:                 item.ID,
+			Role:               item.Role,
+			ProtocolExtensions: protocolExtensionsForItem(item),
 		}
 
 		// Handle content - check Content.Items first (output message format from JSON)
@@ -494,7 +499,8 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		// Input image as a standalone item
 		if item.ImageURL != nil {
 			return &llm.Message{
-				Role: lo.Ternary(item.Role != "", item.Role, "user"),
+				Role:               lo.Ternary(item.Role != "", item.Role, "user"),
+				ProtocolExtensions: protocolExtensionsForItem(item),
 				Content: llm.MessageContent{
 					MultipleContent: []llm.MessageContentPart{
 						{
@@ -514,11 +520,13 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 	case "function_call":
 		// Function call from assistant - convert to tool call
 		return &llm.Message{
-			Role: "assistant",
+			Role:               "assistant",
+			ProtocolExtensions: protocolExtensionsForItem(item),
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: "function",
+					ID:                 item.CallID,
+					Type:               "function",
+					ProtocolExtensions: protocolExtensionsForItem(item),
 					Function: llm.FunctionCall{
 						Name:      item.Name,
 						Arguments: item.Arguments,
@@ -535,11 +543,13 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 
 		return &llm.Message{
-			Role: "assistant",
+			Role:               "assistant",
+			ProtocolExtensions: protocolExtensionsForItem(item),
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: llm.ToolTypeResponsesCustomTool,
+					ID:                 item.CallID,
+					Type:               llm.ToolTypeResponsesCustomTool,
+					ProtocolExtensions: protocolExtensionsForItem(item),
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 						CallID: item.CallID,
 						Name:   item.Name,
@@ -555,9 +565,10 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Function call output - convert to tool message
 		msg := &llm.Message{
-			Role:       "tool",
-			ToolCallID: lo.ToPtr(item.CallID),
-			Content:    convertToMessageContent(*item.Output),
+			Role:               "tool",
+			ToolCallID:         lo.ToPtr(item.CallID),
+			Content:            convertToMessageContent(*item.Output),
+			ProtocolExtensions: protocolExtensionsForItem(item),
 		}
 		if item.Name != "" {
 			msg.ToolCallName = lo.ToPtr(item.Name)
@@ -571,9 +582,27 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Custom tool call output - convert to tool message
 		msg := &llm.Message{
-			Role:       "tool",
-			ToolCallID: lo.ToPtr(item.CallID),
-			Content:    convertToMessageContent(*item.Output),
+			Role:               "tool",
+			ToolCallID:         lo.ToPtr(item.CallID),
+			Content:            convertToMessageContent(*item.Output),
+			ProtocolExtensions: protocolExtensionsForItem(item),
+		}
+		if item.Name != "" {
+			msg.ToolCallName = lo.ToPtr(item.Name)
+		}
+
+		return msg, nil
+
+	case "mcp_tool_call_output":
+		output := item.Output
+		if output == nil {
+			output = &Input{Text: lo.ToPtr(itemResultJSON(item.Result))}
+		}
+		msg := &llm.Message{
+			Role:               "tool",
+			ToolCallID:         lo.ToPtr(item.CallID),
+			Content:            convertToMessageContent(*output),
+			ProtocolExtensions: protocolExtensionsForItem(item),
 		}
 		if item.Name != "" {
 			msg.ToolCallName = lo.ToPtr(item.Name)
@@ -756,8 +785,10 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 			})
 
 		default:
-			// Skip unsupported tool types
-			continue
+			result = append(result, llm.Tool{
+				Type:               tool.Type,
+				ProtocolExtensions: protocolExtensionsForTool(tool),
+			})
 		}
 	}
 
@@ -779,131 +810,139 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 	// Convert usage
 	resp.Usage = ConvertLLMUsageToResponsesUsage(chatResp.Usage)
 
+	if ext := openAIResponsesExtensions(chatResp.ProtocolExtensions); ext != nil && !ext.Dirty {
+		if rawOutput := outputFromRawItems(ext.OutputItems); len(rawOutput) > 0 {
+			resp.Output = rawOutput
+		}
+	}
+
 	// Convert choices to output items
-	for _, choice := range chatResp.Choices {
-		var message *llm.Message
-		if choice.Message != nil {
-			message = choice.Message
-		} else if choice.Delta != nil {
-			message = choice.Delta
-		}
-
-		if message == nil {
-			continue
-		}
-
-		messageItemID := message.ID
-		if messageItemID == "" {
-			messageItemID = generateItemID()
-		}
-
-		// Handle reasoning content
-		if reasoningItem, ok := buildReasoningItem(*message); ok {
-			resp.Output = append(resp.Output, reasoningItem)
-		}
-
-		// Handle tool calls (function calls and custom tool calls)
-		if len(message.ToolCalls) > 0 {
-			for _, toolCall := range message.ToolCalls {
-				if toolCall.ResponseCustomToolCall != nil {
-					resp.Output = append(resp.Output, Item{
-						ID:     toolCall.ID,
-						Type:   "custom_tool_call",
-						CallID: toolCall.ResponseCustomToolCall.CallID,
-						Name:   toolCall.ResponseCustomToolCall.Name,
-						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
-						Status: lo.ToPtr("completed"),
-					})
-				} else {
-					resp.Output = append(resp.Output, Item{
-						ID:        toolCall.ID,
-						Type:      "function_call",
-						CallID:    toolCall.ID,
-						Name:      toolCall.Function.Name,
-						Arguments: toolCall.Function.Arguments,
-						Status:    lo.ToPtr("completed"),
-					})
-				}
+	if len(resp.Output) == 0 {
+		for _, choice := range chatResp.Choices {
+			var message *llm.Message
+			if choice.Message != nil {
+				message = choice.Message
+			} else if choice.Delta != nil {
+				message = choice.Delta
 			}
-		}
 
-		// Handle text content
-		if message.Content.Content != nil && *message.Content.Content != "" {
-			text := *message.Content.Content
-			resp.Output = append(resp.Output, Item{
-				ID:   messageItemID,
-				Type: "message",
-				Role: "assistant",
-				Content: &Input{
-					Items: []Item{
-						{
-							Type:        "output_text",
-							Text:        &text,
-							Annotations: []Annotation{},
-						},
-					},
-				},
-				Status: lo.ToPtr("completed"),
-			})
-		} else if len(message.Content.MultipleContent) > 0 {
-			contentItems := make([]Item, 0)
+			if message == nil {
+				continue
+			}
 
-			for _, part := range message.Content.MultipleContent {
-				switch part.Type {
-				case "text":
-					if part.Text != nil {
-						text := *part.Text
-						contentItems = append(contentItems, Item{
-							Type:        "output_text",
-							Text:        &text,
-							Annotations: []Annotation{},
+			messageItemID := message.ID
+			if messageItemID == "" {
+				messageItemID = generateItemID()
+			}
+
+			// Handle reasoning content
+			if reasoningItem, ok := buildReasoningItem(*message); ok {
+				resp.Output = append(resp.Output, reasoningItem)
+			}
+
+			// Handle tool calls (function calls and custom tool calls)
+			if len(message.ToolCalls) > 0 {
+				for _, toolCall := range message.ToolCalls {
+					if toolCall.ResponseCustomToolCall != nil {
+						resp.Output = append(resp.Output, Item{
+							ID:     toolCall.ID,
+							Type:   "custom_tool_call",
+							CallID: toolCall.ResponseCustomToolCall.CallID,
+							Name:   toolCall.ResponseCustomToolCall.Name,
+							Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
+							Status: lo.ToPtr("completed"),
+						})
+					} else {
+						resp.Output = append(resp.Output, Item{
+							ID:        toolCall.ID,
+							Type:      "function_call",
+							CallID:    toolCall.ID,
+							Name:      toolCall.Function.Name,
+							Arguments: toolCall.Function.Arguments,
+							Status:    lo.ToPtr("completed"),
 						})
 					}
-				case "image_url":
-					// Handle image output
-					if part.ImageURL != nil {
-						imageItem := Item{
-							ID:           generateItemID(),
-							Type:         "image_generation_call",
-							Role:         "assistant",
-							Result:       lo.ToPtr(xurl.ExtractBase64FromDataURL(part.ImageURL.URL)),
-							Status:       lo.ToPtr("completed"),
-							Background:   xmap.GetStringPtr(part.TransformerMetadata, "background"),
-							OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, "output_format"),
-							Quality:      xmap.GetStringPtr(part.TransformerMetadata, "quality"),
-							Size:         xmap.GetStringPtr(part.TransformerMetadata, "size"),
-						}
-						resp.Output = append(resp.Output, imageItem)
-					}
-				case "compaction", "compaction_summary":
-					if part.Compact != nil {
-						resp.Output = append(resp.Output, compactionItemFromPart(part, part.Type))
-					}
 				}
 			}
 
-			if len(contentItems) > 0 {
+			// Handle text content
+			if message.Content.Content != nil && *message.Content.Content != "" {
+				text := *message.Content.Content
 				resp.Output = append(resp.Output, Item{
-					ID:      messageItemID,
-					Type:    "message",
-					Role:    "assistant",
-					Content: &Input{Items: contentItems},
-					Status:  lo.ToPtr("completed"),
+					ID:   messageItemID,
+					Type: "message",
+					Role: "assistant",
+					Content: &Input{
+						Items: []Item{
+							{
+								Type:        "output_text",
+								Text:        &text,
+								Annotations: []Annotation{},
+							},
+						},
+					},
+					Status: lo.ToPtr("completed"),
 				})
-			}
-		}
+			} else if len(message.Content.MultipleContent) > 0 {
+				contentItems := make([]Item, 0)
 
-		// Set status based on finish reason
-		if choice.FinishReason != nil {
-			switch *choice.FinishReason {
-			case "stop":
-				resp.Status = lo.ToPtr("completed")
-			case "length":
-				resp.Status = lo.ToPtr("incomplete")
-			case "tool_calls":
-				resp.Status = lo.ToPtr("completed")
-			case "error":
-				resp.Status = lo.ToPtr("failed")
+				for _, part := range message.Content.MultipleContent {
+					switch part.Type {
+					case "text":
+						if part.Text != nil {
+							text := *part.Text
+							contentItems = append(contentItems, Item{
+								Type:        "output_text",
+								Text:        &text,
+								Annotations: []Annotation{},
+							})
+						}
+					case "image_url":
+						// Handle image output
+						if part.ImageURL != nil {
+							imageItem := Item{
+								ID:           generateItemID(),
+								Type:         "image_generation_call",
+								Role:         "assistant",
+								Result:       lo.ToPtr(xurl.ExtractBase64FromDataURL(part.ImageURL.URL)),
+								Status:       lo.ToPtr("completed"),
+								Background:   xmap.GetStringPtr(part.TransformerMetadata, "background"),
+								OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, "output_format"),
+								Quality:      xmap.GetStringPtr(part.TransformerMetadata, "quality"),
+								Size:         xmap.GetStringPtr(part.TransformerMetadata, "size"),
+							}
+							resp.Output = append(resp.Output, imageItem)
+						}
+					case "compaction", "compaction_summary":
+						if part.Compact != nil {
+							resp.Output = append(resp.Output, compactionItemFromPart(part, part.Type))
+						}
+					}
+				}
+
+				if len(contentItems) > 0 {
+					resp.Output = append(resp.Output, Item{
+						ID:      messageItemID,
+						Type:    "message",
+						Role:    "assistant",
+						Content: &Input{Items: contentItems},
+						Status:  lo.ToPtr("completed"),
+					})
+				}
+			}
+
+			// Set status based on finish reason
+			if choice.FinishReason != nil {
+				switch *choice.FinishReason {
+				case "stop":
+					resp.Status = lo.ToPtr("completed")
+				case "length":
+					resp.Status = lo.ToPtr("incomplete")
+				case "tool_calls":
+					resp.Status = lo.ToPtr("completed")
+				case "error":
+					resp.Status = lo.ToPtr("failed")
+				}
 			}
 		}
 	}
