@@ -85,5 +85,8 @@
   "dashboard.channelSuccessRates.showing": "Showing {{start}} - {{end}} / {{total}}",
   "dashboard.channelSuccessRates.prev": "Previous",
   "dashboard.channelSuccessRates.next": "Next",
+  "dashboard.channelSuccessRates.inputTokens": "Input",
+  "dashboard.channelSuccessRates.outputTokens": "Output",
+  "dashboard.channelSuccessRates.totalTokens": "Total",
   "dashboard.viewAll": "View All"
 }
