@@ -17,6 +17,11 @@ import (
 type Config struct {
 	BaseURL        string              `json:"base_url,omitempty"`
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/api/chat").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
 }
 
 type OutboundTransformer struct {
@@ -130,7 +135,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 	}
 
-	url := strings.TrimSuffix(t.config.BaseURL, "/") + "/api/chat"
+	base := strings.TrimSuffix(t.config.BaseURL, "/")
+	defaultPath := "/api/chat"
+
+	path := defaultPath
+	if t.config.EndpointPath != "" {
+		path = t.config.EndpointPath
+	}
+
+	url := base + path
 
 	return &httpclient.Request{
 		Method:    http.MethodPost,

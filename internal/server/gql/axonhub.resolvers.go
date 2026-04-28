@@ -153,6 +153,11 @@ func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, i
 	return r.channelService.UpdateChannel(ctx, id.ID, &input)
 }
 
+// SaveChannelEndpoints is the resolver for the saveChannelEndpoints field.
+func (r *mutationResolver) SaveChannelEndpoints(ctx context.Context, input biz.SaveChannelEndpointsInput) (*ent.Channel, error) {
+	return r.channelService.SaveChannelEndpoints(ctx, input)
+}
+
 // UpdateChannelStatus is the resolver for the updateChannelStatus field.
 func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.GUID, status channel.Status) (*ent.Channel, error) {
 	return r.channelService.UpdateChannelStatus(ctx, id.ID, status)

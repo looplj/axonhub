@@ -31,7 +31,8 @@ type ChannelsDialogType =
   | 'transformOptions'
   | 'rateLimit'
   | 'testAPIKeys'
-  | 'disabledAPIKeys';
+  | 'disabledAPIKeys'
+  | 'endpoints';
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null;

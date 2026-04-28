@@ -59,6 +59,11 @@ type Config struct {
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/messages").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
+
 	// Thinking configuration
 	// Maps ReasoningEffort values to Anthropic thinking budget tokens
 	ReasoningEffortToBudget map[string]int64 `json:"reasoning_effort_to_budget,omitempty"`
@@ -105,7 +110,11 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	case PlatformVertex, PlatformBedrock:
 		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
 	default:
-		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		if config.EndpointPath != "" {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+		} else {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		}
 	}
 
 	return t, nil
@@ -288,6 +297,9 @@ func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) (string,
 
 	default:
 		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+		if t.config.EndpointPath != "" {
+			return t.config.BaseURL + t.config.EndpointPath, nil
+		}
 		return t.config.BaseURL + "/messages", nil
 	}
 }

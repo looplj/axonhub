@@ -193,7 +193,11 @@ linters:
       allow-trailing-comment: false
       # Force newlines in end of case at this limit (0 = never).
       force-case-trailing-whitespace: 0
-
+    modernize:
+      # List of analyzers to disable.
+      # By default, all analyzers are enabled.
+      disable: 
+        - newexpr
   
   exclusions:
     presets:
@@ -293,6 +297,11 @@ linters:
       - linters:
           - stylecheck
         text: "ST1016:"
+
+      # For compatibility with previous versions.
+      # Also, those reports are not relevant.
+      - linters: [gosec]
+        text: "(G704: SSRF via taint analysis|G703: Path traversal via taint analysis|G702: Command injection via taint analysis|G115: integer overflow conversion uintptr|G705: XSS via taint analysis)"
 
       # Exclude lll issues for long lines with go:generate
       - linters:
@@ -399,4 +408,7 @@ issues:
   new: true
 
   # Auto-fix enabled issues. Default is false.
-  fix: true
+  # ⚠️ 注意：fix 会修复所有检测到的问题，不只是 new code
+  # 要只修复新代码，请使用命令行: golangci-lint run --new --fix
+  # 或者: golangci-lint run --new-from-rev=HEAD~1 --fix
+  fix: false

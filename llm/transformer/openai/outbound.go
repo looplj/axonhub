@@ -42,6 +42,11 @@ type Config struct {
 	// If true, the request URL will be used as is, without appending the chat completions endpoint.
 	RawURL bool `json:"raw_url,omitempty"`
 
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/chat/completions").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
+
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
@@ -78,7 +83,11 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		config.RawURL = true
 		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
 	} else if !config.RawURL {
-		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		if config.EndpointPath != "" {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+		} else {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		}
 	}
 
 	return &OutboundTransformer{
@@ -350,6 +359,9 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 		return t.config.BaseURL, nil
 	}
 
+	if t.config.EndpointPath != "" {
+		return t.config.BaseURL + t.config.EndpointPath, nil
+	}
 	return t.config.BaseURL + "/chat/completions", nil
 }
 

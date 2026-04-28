@@ -237,6 +237,12 @@ func (_c *ChannelCreate) SetNillableRemark(v *string) *ChannelCreate {
 	return _c
 }
 
+// SetEndpoints sets the "endpoints" field.
+func (_c *ChannelCreate) SetEndpoints(v []objects.ChannelEndpoint) *ChannelCreate {
+	_c.mutation.SetEndpoints(v)
+	return _c
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_c *ChannelCreate) AddRequestIDs(ids ...int) *ChannelCreate {
 	_c.mutation.AddRequestIDs(ids...)
@@ -422,6 +428,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultOrderingWeight
 		_c.mutation.SetOrderingWeight(v)
 	}
+	if _, ok := _c.mutation.Endpoints(); !ok {
+		v := channel.DefaultEndpoints
+		_c.mutation.SetEndpoints(v)
+	}
 	return nil
 }
 
@@ -570,6 +580,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Remark(); ok {
 		_spec.SetField(channel.FieldRemark, field.TypeString, value)
 		_node.Remark = &value
+	}
+	if value, ok := _c.mutation.Endpoints(); ok {
+		_spec.SetField(channel.FieldEndpoints, field.TypeJSON, value)
+		_node.Endpoints = value
 	}
 	if nodes := _c.mutation.RequestsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1013,6 +1027,24 @@ func (u *ChannelUpsert) ClearRemark() *ChannelUpsert {
 	return u
 }
 
+// SetEndpoints sets the "endpoints" field.
+func (u *ChannelUpsert) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpsert {
+	u.Set(channel.FieldEndpoints, v)
+	return u
+}
+
+// UpdateEndpoints sets the "endpoints" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateEndpoints() *ChannelUpsert {
+	u.SetExcluded(channel.FieldEndpoints)
+	return u
+}
+
+// ClearEndpoints clears the value of the "endpoints" field.
+func (u *ChannelUpsert) ClearEndpoints() *ChannelUpsert {
+	u.SetNull(channel.FieldEndpoints)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -1398,6 +1430,27 @@ func (u *ChannelUpsertOne) UpdateRemark() *ChannelUpsertOne {
 func (u *ChannelUpsertOne) ClearRemark() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetEndpoints sets the "endpoints" field.
+func (u *ChannelUpsertOne) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetEndpoints(v)
+	})
+}
+
+// UpdateEndpoints sets the "endpoints" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateEndpoints() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateEndpoints()
+	})
+}
+
+// ClearEndpoints clears the value of the "endpoints" field.
+func (u *ChannelUpsertOne) ClearEndpoints() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearEndpoints()
 	})
 }
 
@@ -1952,6 +2005,27 @@ func (u *ChannelUpsertBulk) UpdateRemark() *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) ClearRemark() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetEndpoints sets the "endpoints" field.
+func (u *ChannelUpsertBulk) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetEndpoints(v)
+	})
+}
+
+// UpdateEndpoints sets the "endpoints" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateEndpoints() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateEndpoints()
+	})
+}
+
+// ClearEndpoints clears the value of the "endpoints" field.
+func (u *ChannelUpsertBulk) ClearEndpoints() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearEndpoints()
 	})
 }
 

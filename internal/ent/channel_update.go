@@ -347,6 +347,24 @@ func (_u *ChannelUpdate) ClearRemark() *ChannelUpdate {
 	return _u
 }
 
+// SetEndpoints sets the "endpoints" field.
+func (_u *ChannelUpdate) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpdate {
+	_u.mutation.SetEndpoints(v)
+	return _u
+}
+
+// AppendEndpoints appends value to the "endpoints" field.
+func (_u *ChannelUpdate) AppendEndpoints(v []objects.ChannelEndpoint) *ChannelUpdate {
+	_u.mutation.AppendEndpoints(v)
+	return _u
+}
+
+// ClearEndpoints clears the value of the "endpoints" field.
+func (_u *ChannelUpdate) ClearEndpoints() *ChannelUpdate {
+	_u.mutation.ClearEndpoints()
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *ChannelUpdate) AddRequestIDs(ids ...int) *ChannelUpdate {
 	_u.mutation.AddRequestIDs(ids...)
@@ -741,6 +759,17 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(channel.FieldRemark, field.TypeString)
+	}
+	if value, ok := _u.mutation.Endpoints(); ok {
+		_spec.SetField(channel.FieldEndpoints, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedEndpoints(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldEndpoints, value)
+		})
+	}
+	if _u.mutation.EndpointsCleared() {
+		_spec.ClearField(channel.FieldEndpoints, field.TypeJSON)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1328,6 +1357,24 @@ func (_u *ChannelUpdateOne) ClearRemark() *ChannelUpdateOne {
 	return _u
 }
 
+// SetEndpoints sets the "endpoints" field.
+func (_u *ChannelUpdateOne) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpdateOne {
+	_u.mutation.SetEndpoints(v)
+	return _u
+}
+
+// AppendEndpoints appends value to the "endpoints" field.
+func (_u *ChannelUpdateOne) AppendEndpoints(v []objects.ChannelEndpoint) *ChannelUpdateOne {
+	_u.mutation.AppendEndpoints(v)
+	return _u
+}
+
+// ClearEndpoints clears the value of the "endpoints" field.
+func (_u *ChannelUpdateOne) ClearEndpoints() *ChannelUpdateOne {
+	_u.mutation.ClearEndpoints()
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *ChannelUpdateOne) AddRequestIDs(ids ...int) *ChannelUpdateOne {
 	_u.mutation.AddRequestIDs(ids...)
@@ -1752,6 +1799,17 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(channel.FieldRemark, field.TypeString)
+	}
+	if value, ok := _u.mutation.Endpoints(); ok {
+		_spec.SetField(channel.FieldEndpoints, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedEndpoints(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldEndpoints, value)
+		})
+	}
+	if _u.mutation.EndpointsCleared() {
+		_spec.ClearField(channel.FieldEndpoints, field.TypeJSON)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

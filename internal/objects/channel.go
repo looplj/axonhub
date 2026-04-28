@@ -10,6 +10,14 @@ import (
 	"github.com/looplj/axonhub/llm/oauth"
 )
 
+// ChannelEndpoint represents an outbound API endpoint configuration within a Channel.
+// Each endpoint specifies the upstream API format and an optional custom path override.
+// Within a single channel, api_format must be unique.
+type ChannelEndpoint struct {
+	APIFormat string `json:"api_format"`
+	Path      string `json:"path,omitempty"`
+}
+
 type (
 	ProxyType   = httpclient.ProxyType
 	ProxyConfig = httpclient.ProxyConfig
