@@ -207,9 +207,9 @@ export default function DashboardChannelSuccessRates() {
                 <SelectItem value="successCount">{t('dashboard.channelSuccessRates.sortBySuccess')}</SelectItem>
                 <SelectItem value="failedCount">{t('dashboard.channelSuccessRates.sortByFailed')}</SelectItem>
                 <SelectItem value="successRate">{t('dashboard.channelSuccessRates.sortByRate')}</SelectItem>
-                <SelectItem value="inputTokens">Input Tokens</SelectItem>
-                <SelectItem value="outputTokens">Output Tokens</SelectItem>
-                <SelectItem value="totalTokens">Total Tokens</SelectItem>
+                <SelectItem value="inputTokens">{t('dashboard.channelSuccessRates.sortByInputTokens')}</SelectItem>
+                <SelectItem value="outputTokens">{t('dashboard.channelSuccessRates.sortByOutputTokens')}</SelectItem>
+                <SelectItem value="totalTokens">{t('dashboard.channelSuccessRates.sortByTotalTokens')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -243,50 +243,51 @@ export default function DashboardChannelSuccessRates() {
         {/* Channel cards grid */}
         {!isLoading && paginatedChannels.length > 0 && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedChannels.map((channel) => (
-              <div key={channel.channelId} className="rounded-lg border p-4 shadow-sm">
-                {/* Channel info */}
-                <div className="mb-3 flex items-center gap-3">
-                  <ActivityIcon className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="font-medium">{channel.channelName}</p>
-                    <span className="text-xs text-muted-foreground">{channel.channelType}</span>
-                  </div>
-                  {channel.channelDisabled && <AlertTriangleIcon className="h-5 w-5 text-red-500" />}
-                </div>
+            {paginatedChannels.map((channel) => {
+              const tokens = tokenByChannel.get(channel.channelName);
+              const showTokens = tokens && tokens.totalTokens > 0;
 
-                {/* Success rate display */}
-                <div className="mb-3">
-                  <div className="mb-1 flex items-baseline justify-between">
-                    <span className={`text-2xl font-bold ${getSuccessRateColor(channel.successRate)}`}>
-                      {channel.successRate.toFixed(1)}%
+              return (
+                <div key={channel.channelId} className="rounded-lg border p-4 shadow-sm">
+                  {/* Channel info */}
+                  <div className="mb-3 flex items-center gap-3">
+                    <ActivityIcon className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-medium">{channel.channelName}</p>
+                      <span className="text-xs text-muted-foreground">{channel.channelType}</span>
+                    </div>
+                    {channel.channelDisabled && <AlertTriangleIcon className="h-5 w-5 text-red-500" />}
+                  </div>
+
+                  {/* Success rate display */}
+                  <div className="mb-3">
+                    <div className="mb-1 flex items-baseline justify-between">
+                      <span className={`text-2xl font-bold ${getSuccessRateColor(channel.successRate)}`}>
+                        {channel.successRate.toFixed(1)}%
+                      </span>
+                      <span className="text-xs text-muted-foreground">{formatNumber(channel.totalCount)} total</span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div className={`h-full ${getProgressBarColor(channel.successRate)}`} style={{ width: `${channel.successRate}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Success/Failed counts */}
+                  <div className="flex gap-3 text-sm">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2Icon className="h-4 w-4 text-green-500" />
+                      {formatNumber(channel.successCount)}
                     </span>
-                    <span className="text-xs text-muted-foreground">{formatNumber(channel.totalCount)} total</span>
+                    <span className="flex items-center gap-1">
+                      <XCircleIcon className="h-4 w-4 text-red-500" />
+                      {formatNumber(channel.failedCount)}
+                    </span>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div className={`h-full ${getProgressBarColor(channel.successRate)}`} style={{ width: `${channel.successRate}%` }} />
-                  </div>
-                </div>
-
-                {/* Success/Failed counts */}
-                <div className="flex gap-3 text-sm">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-                    {formatNumber(channel.successCount)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <XCircleIcon className="h-4 w-4 text-red-500" />
-                    {formatNumber(channel.failedCount)}
-                  </span>
-                </div>
-
-                {/* Token consumption (from tokenStatsByChannel API) */}
-                {(() => {
-                  const tokens = tokenByChannel.get(channel.channelName);
-                  if (!tokens || tokens.totalTokens <= 0) return null;
-                  return (
+                  {/* Token consumption (from tokenStatsByChannel API) */}
+                  {showTokens && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                       <CoinsIcon className="h-3 w-3" />
                       <span>{t('dashboard.channelSuccessRates.inputTokens')}: {formatNumber(tokens.inputTokens)}</span>
@@ -295,10 +296,10 @@ export default function DashboardChannelSuccessRates() {
                       <span className="text-border">|</span>
                       <span>{t('dashboard.channelSuccessRates.totalTokens')}: {formatNumber(tokens.totalTokens)}</span>
                     </div>
-                  );
-                })()}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
