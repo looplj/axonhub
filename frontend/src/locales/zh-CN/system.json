@@ -287,6 +287,8 @@
   "quota.status.exhausted": "已耗尽",
   "quota.status.limited": "限额",
   "quota.status.unknown": "未知",
+  "quota.status.blocked": "已屏蔽",
+  "quota.status.deprioritized": "已降级",
   "quota.label.resets_in": "重置于",
   "quota.label.resets_in_time": "重置于 {{time}}",
   "quota.label.regenerates_in_time": "再生于 {{time}}",
@@ -357,7 +359,7 @@
   "system.quota.mode.label": "执行模式",
   "system.quota.mode.description": "选择当渠道的提供商配额耗尽时 AxonHub 的响应方式。",
   "system.quota.mode.placeholder": "选择执行模式",
-  "system.quota.mode.options.exhaustedOnly": "仅耗尽时",
+  "system.quota.mode.options.exhaustedOnly": "屏蔽耗尽",
   "system.quota.mode.options.dePrioritize": "降优先级",
   "system.quota.mode.documentation.EXHAUSTED_ONLY": "配额完全耗尽的渠道将被临时禁用。请求只会路由到仍有剩余配额的渠道。这是最严格的模式，确保不会将请求发送到已耗尽的渠道。",
   "system.quota.mode.documentation.DE_PRIORITIZE": "配额耗尽的渠道将在负载均衡中降低优先级，但不会被完全禁用。如果所有渠道都已耗尽，请求仍会被路由。这提供了一种更温和的方式来保持可用性。"
