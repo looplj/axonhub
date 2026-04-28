@@ -54,7 +54,7 @@ func (c *GithubCopilotQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Chan
 	status, lowestPercentage := c.calculateStatus(payload)
 	ready := status == "available" || status == "warning"
 
-	usageRatio := 0.0
+	usageRatio := 1.0
 	if lowestPercentage > 0 {
 		usageRatio = 1.0 - (lowestPercentage / 100.0)
 	}

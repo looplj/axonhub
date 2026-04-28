@@ -106,6 +106,25 @@ func TestQuotaChannelStatus_EffectiveStatus_BothExhausted(t *testing.T) {
 	assert.False(t, tknReady)
 }
 
+func TestQuotaChannelStatus_EffectiveStatus_AllLimitsUnknown(t *testing.T) {
+	s := &QuotaChannelStatus{
+		Status: providerquotastatus.StatusAvailable,
+		Ready:  true,
+		Limits: []provider_quota.QuotaLimitStatus{
+			{Type: provider_quota.QuotaLimitTypeToken, Status: "unknown", UsageRatio: 0, Ready: false},
+			{Type: provider_quota.QuotaLimitTypeImage, Status: "unknown", UsageRatio: 0, Ready: false},
+		},
+	}
+
+	tknStatus, tknReady := s.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
+	assert.Equal(t, providerquotastatus.StatusUnknown, tknStatus, "all-unknown limits should return unknown status")
+	assert.False(t, tknReady, "all-unknown limits should not be ready")
+
+	imgStatus, imgReady := s.EffectiveStatus(provider_quota.QuotaLimitTypeImage)
+	assert.Equal(t, providerquotastatus.StatusUnknown, imgStatus, "all-unknown limits should return unknown status")
+	assert.False(t, imgReady, "all-unknown limits should not be ready")
+}
+
 func TestProviderQuotaService_NextCheckIntervalForStatus(t *testing.T) {
 	svc := &ProviderQuotaService{
 		checkInterval: 20 * time.Minute,

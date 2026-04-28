@@ -5,6 +5,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
@@ -57,7 +58,11 @@ func (s *ProviderQuotaSelector) Select(ctx context.Context, req *llm.Request) ([
 		effectiveStatus, _ := quotaStatus.EffectiveStatus(limitType)
 
 		switch effectiveStatus {
-		case "exhausted":
+		case providerquotastatus.StatusAvailable,
+			providerquotastatus.StatusWarning,
+			providerquotastatus.StatusUnknown:
+			return true
+		case providerquotastatus.StatusExhausted:
 			return false
 		default:
 			return true

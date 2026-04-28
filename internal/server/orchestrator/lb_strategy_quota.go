@@ -2,8 +2,10 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
@@ -111,16 +113,16 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 	}
 
 	switch effectiveStatus {
-	case "unknown":
+	case providerquotastatus.StatusUnknown:
 		return 0, "status_unknown"
 
-	case "exhausted":
+	case providerquotastatus.StatusExhausted:
 		return quotaExhaustedScore, "quota_exhausted"
 
-	case "warning":
+	case providerquotastatus.StatusWarning:
 		if settings.Mode == biz.QuotaEnforcementModeDePrioritize {
 			usageRatio := s.usageRatioForLimit(quotaStatus, limitType)
-			score := -scaleScore(s.maxScore, 1-usageRatio)
+			score := -scaleScore(s.maxScore, usageRatio)
 			if details != nil {
 				details["usage_ratio"] = usageRatio
 				details["scaled_score"] = score
@@ -129,15 +131,11 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 		}
 		return 0, "warning_exhausted_only"
 
-	case "available":
+	case providerquotastatus.StatusAvailable:
 		return 0, "status_available"
 
 	default:
-		if details != nil {
-			details["quota_status"] = "unrecognized"
-			details["raw_status"] = effectiveStatus
-		}
-		return 0, "status_unrecognized"
+		return 0, fmt.Sprintf("status_unrecognized_%s", effectiveStatus)
 	}
 }
 

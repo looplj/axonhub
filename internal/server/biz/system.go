@@ -164,20 +164,19 @@ func (m *QuotaEnforcementMode) UnmarshalGQL(v any) error {
 
 func (m *QuotaEnforcementMode) UnmarshalJSON(data []byte) error {
 	var raw string
-	if json.Unmarshal(data, &raw) == nil {
-		switch raw {
-		case string(QuotaEnforcementModeExhaustedOnly), "EXHAUSTED_ONLY":
-			*m = QuotaEnforcementModeExhaustedOnly
-		case string(QuotaEnforcementModeDePrioritize), "DE_PRIORITIZE":
-			*m = QuotaEnforcementModeDePrioritize
-		default:
-			*m = QuotaEnforcementModeExhaustedOnly
-		}
-
-		return nil
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("invalid QuotaEnforcementMode: %w", err)
 	}
 
-	*m = QuotaEnforcementModeExhaustedOnly
+	switch raw {
+	case string(QuotaEnforcementModeExhaustedOnly), "EXHAUSTED_ONLY":
+		*m = QuotaEnforcementModeExhaustedOnly
+	case string(QuotaEnforcementModeDePrioritize), "DE_PRIORITIZE":
+		*m = QuotaEnforcementModeDePrioritize
+	default:
+		return fmt.Errorf("invalid QuotaEnforcementMode: %q", raw)
+	}
+
 	return nil
 }
 
@@ -1350,10 +1349,6 @@ func (s *SystemService) QuotaEnforcementSettings(ctx context.Context) (*QuotaEnf
 func (s *SystemService) QuotaEnforcementSettingsOrDefault(ctx context.Context) *QuotaEnforcementSettings {
 	settings, err := s.QuotaEnforcementSettings(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return lo.ToPtr(defaultQuotaEnforcementSettings)
-		}
-
 		log.Warn(ctx, "failed to get quota enforcement settings", log.Cause(err))
 
 		return lo.ToPtr(defaultQuotaEnforcementSettings)

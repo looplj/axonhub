@@ -124,8 +124,10 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	var usageRatio float64
 	if response.Subscription != nil && response.Subscription.KwhIncluded != nil && *response.Subscription.KwhIncluded > 0 {
-		if response.Subscription.KwhRemaining != nil {
-			usageRatio = *response.Subscription.KwhRemaining / *response.Subscription.KwhIncluded
+		if response.Subscription.KwhUsed != nil {
+			usageRatio = *response.Subscription.KwhUsed / *response.Subscription.KwhIncluded
+		} else if response.Subscription.KwhRemaining != nil {
+			usageRatio = 1.0 - (*response.Subscription.KwhRemaining / *response.Subscription.KwhIncluded)
 		}
 	}
 

@@ -38,7 +38,8 @@ type Config struct {
 }
 
 type providerQuotaConfig struct {
-	CheckInterval time.Duration `conf:"check_interval" yaml:"check_interval" json:"check_interval"`
+	CheckInterval             time.Duration `conf:"check_interval" yaml:"check_interval" json:"check_interval"`
+	WarningCheckIntervalRatio int           `conf:"warning_check_interval_ratio" yaml:"warning_check_interval_ratio" json:"warning_check_interval_ratio"`
 }
 
 // Load loads configuration from YAML file and environment variables.

@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-
-	"golang.org/x/sync/errgroup"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -35,7 +34,7 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 		return s.Status, s.Ready
 	}
 
-	worstStatus := providerquotastatus.StatusAvailable
+	var worstStatus providerquotastatus.Status
 	worstReady := true
 	found := false
 
@@ -44,9 +43,14 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 			continue
 		}
 
-		found = true
-
 		ls := providerquotastatus.Status(l.Status)
+		if !found {
+			worstStatus = ls
+			worstReady = l.Ready
+			found = true
+			continue
+		}
+
 		if quotaStatusRank(ls) > quotaStatusRank(worstStatus) {
 			worstStatus = ls
 			worstReady = l.Ready
@@ -225,19 +229,21 @@ func quotaStatusRank(s providerquotastatus.Status) int {
 type ProviderQuotaServiceParams struct {
 	fx.In
 
-	Ent           *ent.Client
-	SystemService *SystemService
-	HttpClient    *httpclient.HttpClient
-	CheckInterval time.Duration `name:"provider_quota_check_interval" optional:"true"`
+	Ent                       *ent.Client
+	SystemService             *SystemService
+	HttpClient                *httpclient.HttpClient
+	CheckInterval             time.Duration `name:"provider_quota_check_interval" optional:"true"`
+	WarningCheckIntervalRatio int           `name:"provider_quota_warning_check_interval_ratio" optional:"true"`
 }
 
 type ProviderQuotaService struct {
 	*AbstractService
 
-	SystemService *SystemService
-	Executor      executors.ScheduledExecutor
-	checkInterval time.Duration
-	httpClient    *httpclient.HttpClient
+	SystemService             *SystemService
+	Executor                  executors.ScheduledExecutor
+	checkInterval             time.Duration
+	warningCheckIntervalRatio int
+	httpClient                *httpclient.HttpClient
 
 	// Registry
 	checkers map[string]provider_quota.QuotaChecker
@@ -248,12 +254,13 @@ type ProviderQuotaService struct {
 
 func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaService {
 	svc := &ProviderQuotaService{
-		AbstractService: &AbstractService{db: params.Ent},
-		SystemService:   params.SystemService,
-		Executor:        executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
-		checkers:        make(map[string]provider_quota.QuotaChecker),
-		checkInterval:   params.CheckInterval,
-		httpClient:      params.HttpClient,
+		AbstractService:           &AbstractService{db: params.Ent},
+		SystemService:             params.SystemService,
+		Executor:                  executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
+		checkers:                  make(map[string]provider_quota.QuotaChecker),
+		checkInterval:             params.CheckInterval,
+		warningCheckIntervalRatio: params.WarningCheckIntervalRatio,
+		httpClient:                params.HttpClient,
 	}
 
 	svc.registerClaudeCodeSupport()
@@ -345,7 +352,11 @@ func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) stri
 }
 
 func (svc *ProviderQuotaService) getWarningCheckInterval() time.Duration {
-	return svc.getCheckInterval() / 4
+	ratio := svc.warningCheckIntervalRatio
+	if ratio <= 0 {
+		ratio = 4
+	}
+	return svc.getCheckInterval() / time.Duration(ratio)
 }
 
 func (svc *ProviderQuotaService) nextCheckIntervalForStatus(status string) time.Duration {
@@ -390,7 +401,13 @@ func (svc *ProviderQuotaService) GetQuotaStatus(channelID int) *QuotaChannelStat
 	if !ok {
 		return nil
 	}
-	return val.(*QuotaChannelStatus)
+
+	status, ok := val.(*QuotaChannelStatus)
+	if !ok {
+		return nil
+	}
+
+	return status
 }
 
 func (svc *ProviderQuotaService) updateQuotaCache(channelID int, status providerquotastatus.Status, ready bool, limits []provider_quota.QuotaLimitStatus) {
@@ -589,7 +606,8 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			return
 		}
 
-		svc.updateQuotaCache(ch.ID, existing.Status, existing.Ready, nil)
+		existingLimits := extractLimitsFromQuotaData(existing.QuotaData)
+		svc.updateQuotaCache(ch.ID, existing.Status, existing.Ready, existingLimits)
 
 		return
 	}
@@ -652,7 +670,7 @@ func (svc *ProviderQuotaService) mergeLimitsIntoQuotaData(quotaData provider_quo
 			m := map[string]any{
 				"type":       string(l.Type),
 				"status":     l.Status,
-				"usageRatio":  l.UsageRatio,
+				"usageRatio": l.UsageRatio,
 				"ready":      l.Ready,
 			}
 			if l.NextResetAt != nil {

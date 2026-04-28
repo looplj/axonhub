@@ -237,6 +237,8 @@ func buildNanoGPTLimitStatuses(imageWindow, dailyTokenWindow, weeklyTokenWindow 
 		if w.window.Remaining != nil && *w.window.Remaining <= 0 {
 			status = "exhausted"
 			usageRatio = 1.0
+		} else if usageRatio >= 1.0 {
+			status = "exhausted"
 		} else if usageRatio >= 0.8 {
 			status = "warning"
 		}

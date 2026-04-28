@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
+	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -141,4 +142,41 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 	assert.NotNil(t, status)
 	assert.Equal(t, providerquotastatus.StatusExhausted, status.Status)
 	assert.False(t, status.Ready)
+}
+
+func TestProviderQuotaService_UpdateQuotaCache_WithLimits(t *testing.T) {
+	svc := &ProviderQuotaService{
+		quotaCache: sync.Map{},
+	}
+
+	limits := []provider_quota.QuotaLimitStatus{
+		{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
+		{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
+	}
+
+	svc.updateQuotaCache(1, providerquotastatus.StatusWarning, true, limits)
+
+	status := svc.GetQuotaStatus(1)
+	assert.NotNil(t, status)
+	assert.Equal(t, providerquotastatus.StatusWarning, status.Status)
+	assert.True(t, status.Ready)
+	assert.Len(t, status.Limits, 2)
+
+	assert.Equal(t, provider_quota.QuotaLimitTypeToken, status.Limits[0].Type)
+	assert.Equal(t, "available", status.Limits[0].Status)
+	assert.InDelta(t, 0.3, status.Limits[0].UsageRatio, 0.001)
+	assert.True(t, status.Limits[0].Ready)
+
+	assert.Equal(t, provider_quota.QuotaLimitTypeImage, status.Limits[1].Type)
+	assert.Equal(t, "exhausted", status.Limits[1].Status)
+	assert.InDelta(t, 1.0, status.Limits[1].UsageRatio, 0.001)
+	assert.False(t, status.Limits[1].Ready)
+
+	effectiveStatus, ready := status.EffectiveStatus(provider_quota.QuotaLimitTypeImage)
+	assert.Equal(t, providerquotastatus.StatusExhausted, effectiveStatus)
+	assert.False(t, ready)
+
+	effectiveStatus, ready = status.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
+	assert.Equal(t, providerquotastatus.StatusAvailable, effectiveStatus)
+	assert.True(t, ready)
 }
