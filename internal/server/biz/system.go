@@ -125,7 +125,7 @@ type QuotaEnforcementMode string
 const (
 	// QuotaEnforcementModeExhaustedOnly filters out channels with exhausted quota only.
 	QuotaEnforcementModeExhaustedOnly QuotaEnforcementMode = "exhausted_only"
-	// QuotaEnforcementModeDePrioritize filters exhausted channels and penalizes warning channels.
+	// QuotaEnforcementModeDePrioritize deprioritizes exhausted channels and penalizes warning channels.
 	QuotaEnforcementModeDePrioritize QuotaEnforcementMode = "de_prioritize"
 )
 

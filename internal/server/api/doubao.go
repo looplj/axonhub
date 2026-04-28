@@ -84,9 +84,7 @@ func (h *DoubaoHandlers) CreateTask(c *gin.Context) {
 	if err != nil {
 		log.Error(ctx, "Error processing doubao create", log.Cause(err))
 
-		if writeQuotaExhaustedResponse(c, err) {
-			return
-		}
+		err = wrapQuotaExhaustedAsResponseError(err)
 
 		httpErr := h.CreateOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))

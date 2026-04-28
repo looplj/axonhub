@@ -154,12 +154,19 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["total_tokens"] = *response.TotalTokens
 	}
 
+	var usageRatio float64
+	if normalizedStatus == "exhausted" && response.CurrentPeriodUsedPercent == nil {
+		usageRatio = 1.0
+	} else {
+		usageRatio = getUsageRatio(response.CurrentPeriodUsedPercent)
+	}
+
 	limits := []QuotaLimitStatus{
 		{
-			Type:       QuotaLimitTypeToken,
-			Status:     normalizedStatus,
-			UsageRatio: getUsageRatio(response.CurrentPeriodUsedPercent),
-			Ready:      normalizedStatus == "available" || normalizedStatus == "warning",
+			Type:        QuotaLimitTypeToken,
+			Status:      normalizedStatus,
+			UsageRatio:  usageRatio,
+			Ready:       normalizedStatus == "available" || normalizedStatus == "warning",
 			NextResetAt: nextResetAt,
 		},
 	}

@@ -256,9 +256,7 @@ func (handlers *OpenAIHandlers) CreateVideo(c *gin.Context) {
 	if err != nil {
 		log.Error(ctx, "Error processing openai video create", log.Cause(err))
 
-		if writeQuotaExhaustedResponse(c, err) {
-			return
-		}
+		err = wrapQuotaExhaustedAsResponseError(err)
 
 		httpErr := handlers.VideoHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))

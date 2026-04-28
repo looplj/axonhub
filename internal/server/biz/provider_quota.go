@@ -362,7 +362,8 @@ func (svc *ProviderQuotaService) getWarningCheckInterval() time.Duration {
 	if ratio <= 0 {
 		ratio = 4
 	}
-	return svc.getCheckInterval() / time.Duration(ratio)
+
+	return svc.getCheckInterval() * time.Duration(ratio)
 }
 
 func (svc *ProviderQuotaService) nextCheckIntervalForStatus(status string) time.Duration {

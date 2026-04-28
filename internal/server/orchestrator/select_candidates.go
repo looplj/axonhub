@@ -6,8 +6,10 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/pipeline"
 )
@@ -107,9 +109,40 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 			return nil, fmt.Errorf("%w: %s", biz.ErrInvalidModel, llmRequest.Model)
 		}
 
+		if quotaSelector != nil {
+			settings := systemService.QuotaEnforcementSettingsOrDefault(ctx)
+			if settings.Enabled && settings.Mode == biz.QuotaEnforcementModeDePrioritize {
+				if areAllChannelsExhausted(candidates, quotaProvider, llmRequest) {
+					return nil, NewQuotaExhaustedError(llmRequest.Model)
+				}
+			}
+		}
+
 		// Store candidates directly (no need to extract channels)
 		inbound.state.ChannelModelsCandidates = candidates
 
 		return llmRequest, nil
 	})
+}
+
+func areAllChannelsExhausted(candidates []*ChannelModelsCandidate, quotaProvider ProviderQuotaStatusProvider, llmRequest *llm.Request) bool {
+	if len(candidates) == 0 || quotaProvider == nil {
+		return false
+	}
+
+	limitType := provider_quota.RequestModality(llmRequest.Image != nil)
+
+	for _, c := range candidates {
+		quotaStatus := quotaProvider.GetQuotaStatus(c.Channel.ID)
+		if quotaStatus == nil {
+			return false
+		}
+
+		effectiveStatus, _ := quotaStatus.EffectiveStatus(limitType)
+		if effectiveStatus != providerquotastatus.StatusExhausted {
+			return false
+		}
+	}
+
+	return true
 }

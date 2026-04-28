@@ -262,38 +262,23 @@ func TestFormatStreamError_HttpClientError(t *testing.T) {
 	assert.Equal(t, "", errorField["code"])
 }
 
-func TestWriteQuotaExhaustedResponse_QuotaExhausted_Returns503(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-
+func TestWrapQuotaExhaustedAsResponseError_QuotaError(t *testing.T) {
 	quotaErr := orchestrator.NewQuotaExhaustedError("gpt-4")
+	result := wrapQuotaExhaustedAsResponseError(quotaErr)
 
-	handled := writeQuotaExhaustedResponse(c, quotaErr)
-	assert.True(t, handled, "writeQuotaExhaustedResponse should handle QuotaExhaustedError")
-	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
-
-	var resp map[string]any
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
-	require.NoError(t, err, "response should be valid JSON")
-
-	errorField, ok := resp["error"].(map[string]any)
-	require.True(t, ok, "response should have 'error' field")
-	assert.Equal(t, "all channels quota exhausted for model gpt-4", errorField["message"])
-	assert.Equal(t, "server_error", errorField["type"])
-	assert.Equal(t, "quota_exhausted", errorField["code"])
+	respErr := &llm.ResponseError{}
+	ok := errors.As(result, &respErr)
+	require.True(t, ok, "should convert to *llm.ResponseError")
+	assert.Equal(t, http.StatusServiceUnavailable, respErr.StatusCode)
+	assert.Equal(t, "all channels quota exhausted for model gpt-4", respErr.Detail.Message)
+	assert.Equal(t, "quota_exhausted", respErr.Detail.Type)
+	assert.Equal(t, "quota_exhausted", respErr.Detail.Code)
 }
 
-func TestWriteQuotaExhaustedResponse_OtherError_ReturnsFalse(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-
-	otherErr := errors.New("some other error")
-	handled := writeQuotaExhaustedResponse(c, otherErr)
-	assert.False(t, handled, "writeQuotaExhaustedResponse should not handle non-quota errors")
+func TestWrapQuotaExhaustedAsResponseError_OtherError(t *testing.T) {
+	otherErr := errors.New("something else")
+	result := wrapQuotaExhaustedAsResponseError(otherErr)
+	assert.Equal(t, otherErr, result, "non-quota errors should pass through unchanged")
 }
 
 func TestPlaygroundHandleError_QuotaExhausted_Returns503(t *testing.T) {

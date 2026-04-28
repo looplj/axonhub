@@ -207,7 +207,7 @@ func setDefaults(v *viper.Viper) {
 
 	// Provider quota defaults
 	v.SetDefault("provider_quota.check_interval", "5m")
-	v.SetDefault("provider_quota.warning_check_interval_ratio", 4) // Warning interval = check_interval / ratio
+	v.SetDefault("provider_quota.warning_check_interval_ratio", 4) // Warning interval = check_interval * ratio
 
 	// Cache defaults
 	v.SetDefault("cache.mode", "memory")

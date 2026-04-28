@@ -174,7 +174,7 @@ func TestProviderQuotaService_NextCheckIntervalForStatus(t *testing.T) {
 	}
 
 	assert.Equal(t, 5*time.Minute, svc.nextCheckIntervalForStatus("available"), "available should use normal interval")
-	assert.Equal(t, 75*time.Second, svc.nextCheckIntervalForStatus("warning"), "warning should use quarter interval")
+	assert.Equal(t, 20*time.Minute, svc.nextCheckIntervalForStatus("warning"), "warning should use multiplied interval")
 	assert.Equal(t, 5*time.Minute, svc.nextCheckIntervalForStatus("exhausted"), "exhausted should use normal interval")
 	assert.Equal(t, 5*time.Minute, svc.nextCheckIntervalForStatus("unknown"), "unknown should use normal interval")
 }

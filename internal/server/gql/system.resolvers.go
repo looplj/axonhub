@@ -158,7 +158,10 @@ func (r *mutationResolver) UpdateVideoStorageSettings(ctx context.Context, input
 
 // UpdateQuotaEnforcementSettings is the resolver for the updateQuotaEnforcementSettings field.
 func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, input UpdateQuotaEnforcementSettingsInput) (bool, error) {
-	current := r.systemService.QuotaEnforcementSettingsOrDefault(ctx)
+	current, err := r.systemService.QuotaEnforcementSettings(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to read current quota enforcement settings: %w", err)
+	}
 	newSettings := biz.QuotaEnforcementSettings{
 		Enabled: current.Enabled,
 		Mode:    current.Mode,
@@ -170,7 +173,7 @@ func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, i
 		newSettings.Mode = *input.Mode
 	}
 
-	err := r.systemService.SetQuotaEnforcementSettings(ctx, newSettings)
+	err = r.systemService.SetQuotaEnforcementSettings(ctx, newSettings)
 	if err != nil {
 		return false, fmt.Errorf("failed to update quota enforcement settings: %w", err)
 	}

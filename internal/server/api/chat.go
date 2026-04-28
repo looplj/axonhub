@@ -63,9 +63,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
-		if writeQuotaExhaustedResponse(c, err) {
-			return
-		}
+		err = wrapQuotaExhaustedAsResponseError(err)
 
 		httpErr := handlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
@@ -170,6 +168,17 @@ func FormatStreamError(_ context.Context, err error) any {
 	errCode := ""
 	requestID := ""
 
+	var quotaErr *orchestrator.QuotaExhaustedError
+	if errors.As(err, &quotaErr) {
+		return gin.H{
+			"error": gin.H{
+				"message": quotaErr.Error(),
+				"type":    "quota_exhausted",
+				"code":    "quota_exhausted",
+			},
+		}
+	}
+
 	var respErr *llm.ResponseError
 	if errors.As(err, &respErr) {
 		if respErr.Detail.Type != "" {
@@ -214,17 +223,22 @@ func FormatStreamError(_ context.Context, err error) any {
 	}
 }
 
-func writeQuotaExhaustedResponse(c *gin.Context, err error) bool {
+func wrapQuotaExhaustedAsResponseError(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	var quotaErr *orchestrator.QuotaExhaustedError
 	if errors.As(err, &quotaErr) {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": gin.H{
-				"message": quotaErr.Error(),
-				"type":    "server_error",
-				"code":    "quota_exhausted",
+		return &llm.ResponseError{
+			StatusCode: http.StatusServiceUnavailable,
+			Detail: llm.ErrorDetail{
+				Message: quotaErr.Error(),
+				Type:    "quota_exhausted",
+				Code:    "quota_exhausted",
 			},
-		})
-		return true
+		}
 	}
-	return false
+
+	return err
 }
