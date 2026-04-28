@@ -217,10 +217,12 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
+			// Order by billable total (input + output). Reasoning is already inside
+			// completion_tokens, so adding it would double-count and bias the
+			// per-API-key top-N model ranking toward reasoning-heavy models.
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
 				s.C(usagelog.FieldPromptTokens),
-				s.C(usagelog.FieldCompletionTokens),
-				s.C(usagelog.FieldCompletionReasoningTokens)), "total_tokens"),
+				s.C(usagelog.FieldCompletionTokens)), "total_tokens"),
 		).GroupBy(s.C(usagelog.FieldAPIKeyID), s.C(usagelog.FieldModelID)).
 			OrderBy(sql.Desc("total_tokens"))
 	}).Scan(ctx, &allResults)

@@ -355,7 +355,7 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context, timeWindow *stri
 			s.GroupBy(s.C(usagelog.FieldAPIKeyID))
 
 			s.Select(
-				s.C(usagelog.FieldAPIKeyID),
+				sql.As(s.C(usagelog.FieldAPIKeyID), "api_key_id"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
