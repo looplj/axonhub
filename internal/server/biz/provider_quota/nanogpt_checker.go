@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+// NanoGPTUsageResponse matches the NanoGPT subscription usage API response.
 type NanoGPTUsageResponse struct {
 	Active            *bool               `json:"active,omitempty"`
 	Provider          *string             `json:"provider,omitempty"`
@@ -27,12 +28,14 @@ type NanoGPTUsageResponse struct {
 	GraceUntil        *string             `json:"graceUntil,omitempty"`
 }
 
+// NanoGPTLimits represents the quota limits from the NanoGPT API.
 type NanoGPTLimits struct {
 	WeeklyInputTokens *int64 `json:"weeklyInputTokens,omitempty"`
 	DailyInputTokens  *int64 `json:"dailyInputTokens,omitempty"`
 	DailyImages       *int64 `json:"dailyImages,omitempty"`
 }
 
+// NanoGPTQuotaWindow represents a single usage window from the NanoGPT API.
 type NanoGPTQuotaWindow struct {
 	Used        *int64   `json:"used,omitempty"`
 	Remaining   *int64   `json:"remaining,omitempty"`
@@ -40,6 +43,7 @@ type NanoGPTQuotaWindow struct {
 	ResetAt     *int64   `json:"resetAt,omitempty"`
 }
 
+// NanoGPTPeriod represents the subscription period from the NanoGPT API.
 type NanoGPTPeriod struct {
 	CurrentPeriodEnd *string `json:"currentPeriodEnd,omitempty"`
 }
@@ -55,6 +59,7 @@ func NewNanoGPTQuotaChecker(httpClient *httpclient.HttpClient) *NanoGPTQuotaChec
 }
 
 func (c *NanoGPTQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
+	// Extract API key: prefer APIKey field, then first from APIKeys
 	apiKey := strings.TrimSpace(ch.Credentials.APIKey)
 	if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
 		apiKey = ch.Credentials.APIKeys[0]
@@ -64,6 +69,7 @@ func (c *NanoGPTQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 		return QuotaData{}, fmt.Errorf("channel has no API key")
 	}
 
+	// Build quota URL from channel base URL scheme+host + path
 	quotaURL := buildNanoGPTQuotaURL(ch.BaseURL)
 
 	httpRequest := httpclient.NewRequestBuilder().
@@ -73,6 +79,7 @@ func (c *NanoGPTQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 		WithHeader("Content-Type", "application/json").
 		Build()
 
+	// Use proxy-configured HTTP client if available
 	hc := c.httpClient
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
 		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
@@ -93,6 +100,7 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		return QuotaData{}, fmt.Errorf("failed to parse nanogpt usage response: %w", err)
 	}
 
+	// Map state to normalized status
 	normalizedStatus := "unknown"
 
 	if response.State != nil {
