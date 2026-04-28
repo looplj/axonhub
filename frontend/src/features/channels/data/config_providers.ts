@@ -170,13 +170,13 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'volcengine',
     icon: Volcengine,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    channelTypes: ['volcengine'],
+    channelTypes: ['volcengine_anthropic', 'volcengine'],
   },
   aihubmix: {
     provider: 'aihubmix',
     icon: AiHubMix,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    channelTypes: ['aihubmix'],
+    channelTypes: ['aihubmix_anthropic', 'aihubmix'],
   },
   modelscope: {
     provider: 'modelscope',
@@ -200,7 +200,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'xiaomi',
     icon: XiaomiMiMo,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
-    channelTypes: ['xiaomi'],
+    channelTypes: ['xiaomi_anthropic', 'xiaomi'],
   },
   vercel: {
     provider: 'vercel',
