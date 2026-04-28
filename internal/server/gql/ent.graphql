@@ -1120,15 +1120,18 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   openai_fake
   openrouter
   xiaomi
+  xiaomi_anthropic
   xai
   ppio
   siliconflow
   volcengine
+  volcengine_anthropic
   longcat
   longcat_anthropic
   minimax
   minimax_anthropic
   aihubmix
+  aihubmix_anthropic
   burncloud
   modelscope
   bailian
