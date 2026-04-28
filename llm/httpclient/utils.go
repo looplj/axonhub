@@ -159,6 +159,10 @@ var sensitiveHeaders = map[string]bool{
 	"Www-Authenticate":    true,
 }
 
+func IsSensitiveHeader(key string) bool {
+	return sensitiveHeaders[http.CanonicalHeaderKey(key)]
+}
+
 var mergeWithAppendHeaders = map[string]bool{}
 
 // RegisterMergeWithAppendHeaders registers headers that should be appended instead of overwritten.
@@ -207,7 +211,7 @@ func MaskSensitiveHeaders(headers http.Header) http.Header {
 	result := make(http.Header, len(headers))
 	for key, values := range headers {
 		var newValues []string
-		if _, ok := sensitiveHeaders[key]; !ok {
+		if !IsSensitiveHeader(key) {
 			newValues = values
 		} else {
 			newValues = append(newValues, "******")
@@ -241,7 +245,7 @@ func FinalizeAuthHeaders(req *Request) (*Request, error) {
 // Blocked, sensitive, and library-managed headers are not merged.
 func MergeHTTPHeaders(dest, src http.Header) http.Header {
 	for k, v := range src {
-		if sensitiveHeaders[k] || libManagedHeaders[k] || isBlockedHeader(k) {
+		if IsSensitiveHeader(k) || libManagedHeaders[k] || isBlockedHeader(k) {
 			continue
 		}
 

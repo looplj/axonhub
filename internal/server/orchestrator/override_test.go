@@ -84,6 +84,115 @@ func TestOverrideParametersWithTemplate(t *testing.T) {
 	require.Equal(t, "header-gpt-4", processedRequestWithHeaders.Headers.Get("X-Custom-Model"))
 }
 
+func TestOverrideParametersWithRequestHeaderTemplate(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{
+		Model: "gpt-4",
+		RawRequest: &httpclient.Request{
+			Headers: http.Header{
+				"X-Trace-Id":       []string{"trace-123"},
+				"X-Multi-Value":    []string{"first", "second"},
+				"Authorization":    []string{"Bearer secret"},
+				"Api-Key":          []string{"secret-api-key"},
+				"X-Google-Api-Key": []string{"google-secret"},
+			},
+		},
+	}
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "request-header-template-test",
+			Settings: &objects.ChannelSettings{
+				OverrideParameters: `{
+					"trace_id_lower": "{{index .RequestHeader \"x-trace-id\"}}",
+					"trace_id_canonical": "{{index .RequestHeader \"X-Trace-Id\"}}",
+					"multi_value": "{{index .RequestHeader \"x-multi-value\"}}",
+					"authorization": "{{index .RequestHeader \"authorization\"}}",
+					"api_key": "{{index .RequestHeader \"api-key\"}}",
+					"x_google_api_key": "{{index .RequestHeader \"x-google-api-key\"}}"
+				}`,
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmRequest,
+		},
+	}
+
+	middleware := applyOverrideRequestBody(outbound)
+	rawRequest := &httpclient.Request{Body: []byte("{}")}
+
+	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+
+	bodyStr := string(processedRequest.Body)
+	require.Equal(t, "trace-123", gjson.Get(bodyStr, "trace_id_lower").String())
+	require.Equal(t, "trace-123", gjson.Get(bodyStr, "trace_id_canonical").String())
+	require.Equal(t, "first", gjson.Get(bodyStr, "multi_value").String())
+	require.Empty(t, gjson.Get(bodyStr, "authorization").String())
+	require.Empty(t, gjson.Get(bodyStr, "api_key").String())
+	require.Empty(t, gjson.Get(bodyStr, "x_google_api_key").String())
+}
+
+func TestOverrideParametersWithRequestHeaderTemplate_LowercaseSensitiveHeaders(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{
+		Model: "gpt-4",
+		RawRequest: &httpclient.Request{
+			Headers: http.Header{
+				"authorization":  []string{"Bearer secret"},
+				"api-key":        []string{"secret-api-key"},
+				"x-goog-api-key": []string{"goog-secret"},
+				"x-trace-id":     []string{"trace-lowercase"},
+			},
+		},
+	}
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "request-header-lowercase-sensitive-test",
+			Settings: &objects.ChannelSettings{
+				OverrideParameters: `{
+					"trace_id": "{{index .RequestHeader \"x-trace-id\"}}",
+					"authorization": "{{index .RequestHeader \"authorization\"}}",
+					"api_key": "{{index .RequestHeader \"api-key\"}}",
+					"x_goog_api_key": "{{index .RequestHeader \"x-goog-api-key\"}}"
+				}`,
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmRequest,
+		},
+	}
+
+	middleware := applyOverrideRequestBody(outbound)
+	rawRequest := &httpclient.Request{Body: []byte("{}")}
+
+	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+
+	bodyStr := string(processedRequest.Body)
+	require.Equal(t, "trace-lowercase", gjson.Get(bodyStr, "trace_id").String())
+	require.Empty(t, gjson.Get(bodyStr, "authorization").String())
+	require.Empty(t, gjson.Get(bodyStr, "api_key").String())
+	require.Empty(t, gjson.Get(bodyStr, "x_goog_api_key").String())
+}
+
 func TestOverrideParametersComplex(t *testing.T) {
 	ctx := context.Background()
 
@@ -282,6 +391,88 @@ func TestOverrideHeadersKeepJSONLikeString(t *testing.T) {
 	processedRequest, err := headerMiddleware.OnOutboundRawRequest(ctx, rawRequest)
 	require.NoError(t, err)
 	require.Equal(t, expectedValue, processedRequest.Headers.Get("Extra"))
+}
+
+func TestOverrideParametersWithRequestHeaderTemplate_NoRawRequest(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{Model: "gpt-4.1"}
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "body-request-header-no-raw-request-test",
+			Settings: &objects.ChannelSettings{
+				BodyOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "missing_header", Value: `{{index .RequestHeader "x-trace-id"}}`},
+					{Op: objects.OverrideOpSet, Path: "model_value", Value: `{{.Model}}`},
+				},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmRequest,
+		},
+	}
+
+	middleware := applyOverrideRequestBody(outbound)
+	rawRequest := &httpclient.Request{Body: []byte(`{}`)}
+
+	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+
+	bodyStr := string(processedRequest.Body)
+	require.Equal(t, "", gjson.Get(bodyStr, "missing_header").String())
+	require.Equal(t, "gpt-4.1", gjson.Get(bodyStr, "model_value").String())
+}
+
+func TestOverrideHeadersWithRequestHeaderTemplate(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{
+		Model: "gpt-4.1",
+		RawRequest: &httpclient.Request{
+			Headers: http.Header{
+				"X-Trace-Id": []string{"trace-123"},
+				"X-Api-Key":  []string{"secret-key"},
+			},
+		},
+	}
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "header-request-header-template-test",
+			Settings: &objects.ChannelSettings{
+				HeaderOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "X-Upstream-Trace", Value: `{{index .RequestHeader "X-Trace-Id"}}`},
+					{Op: objects.OverrideOpSet, Path: "X-Filtered-Api-Key", Value: `{{index .RequestHeader "x-api-key"}}`},
+				},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmRequest,
+		},
+	}
+
+	headerMiddleware := applyOverrideRequestHeaders(outbound)
+	rawRequest := &httpclient.Request{Headers: make(http.Header)}
+
+	processedRequest, err := headerMiddleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+	require.Equal(t, "trace-123", processedRequest.Headers.Get("X-Upstream-Trace"))
+	require.Equal(t, "", processedRequest.Headers.Get("X-Filtered-Api-Key"))
 }
 
 // TestOverrideParameters tests that TransformRequest works correctly.
