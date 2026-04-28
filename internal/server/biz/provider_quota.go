@@ -30,6 +30,10 @@ type QuotaChannelStatus struct {
 }
 
 func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimitType) (providerquotastatus.Status, bool) {
+	if s.Status == providerquotastatus.StatusExhausted {
+		return providerquotastatus.StatusExhausted, false
+	}
+
 	if len(s.Limits) == 0 {
 		return s.Status, s.Ready
 	}
@@ -54,11 +58,13 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 		if quotaStatusRank(ls) > quotaStatusRank(worstStatus) {
 			worstStatus = ls
 			worstReady = l.Ready
+		} else if quotaStatusRank(ls) == quotaStatusRank(worstStatus) {
+			worstReady = worstReady && l.Ready
 		}
 	}
 
 	if !found {
-		return s.Status, s.Ready
+		return providerquotastatus.StatusUnknown, true
 	}
 
 	return worstStatus, worstReady
@@ -690,19 +696,24 @@ func extractLimitsFromQuotaData(data map[string]any) []provider_quota.QuotaLimit
 		return nil
 	}
 
-	limitSlice, ok := rawLimits.([]any)
-	if !ok {
+	// Handle both []map[string]any (from mergeLimitsIntoQuotaData) and []any (from JSON unmarshaling)
+	var limitMaps []map[string]any
+	if directMaps, ok := rawLimits.([]map[string]any); ok {
+		limitMaps = directMaps
+	} else if anySlice, ok := rawLimits.([]any); ok {
+		limitMaps = make([]map[string]any, 0, len(anySlice))
+		for _, raw := range anySlice {
+			if m, ok := raw.(map[string]any); ok {
+				limitMaps = append(limitMaps, m)
+			}
+		}
+	} else {
 		return nil
 	}
 
 	var limits []provider_quota.QuotaLimitStatus
 
-	for _, raw := range limitSlice {
-		m, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-
+	for _, m := range limitMaps {
 		ls := provider_quota.QuotaLimitStatus{}
 
 		if t, ok := m["type"].(string); ok {

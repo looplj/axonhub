@@ -151,9 +151,9 @@ func (m *QuotaEnforcementMode) UnmarshalGQL(v any) error {
 	}
 
 	switch str {
-	case "EXHAUSTED_ONLY":
+	case "EXHAUSTED_ONLY", string(QuotaEnforcementModeExhaustedOnly):
 		*m = QuotaEnforcementModeExhaustedOnly
-	case "DE_PRIORITIZE":
+	case "DE_PRIORITIZE", string(QuotaEnforcementModeDePrioritize):
 		*m = QuotaEnforcementModeDePrioritize
 	default:
 		return fmt.Errorf("invalid QuotaEnforcementMode: %s", str)

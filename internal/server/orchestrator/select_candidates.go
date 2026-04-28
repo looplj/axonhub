@@ -62,12 +62,16 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 
 		selector = WithStreamPolicySelector(selector)
 
-		if inbound.state.LoadBalancer != nil {
-			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
-		}
+		var quotaSelector *ProviderQuotaSelector
 
-		quotaSelector := WithProviderQuotaSelector(selector, quotaProvider, systemService)
-		selector = quotaSelector
+		if inbound.state.LoadBalancer != nil {
+			quotaSelector = WithProviderQuotaSelector(selector, quotaProvider, systemService)
+			selector = quotaSelector
+			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
+		} else {
+			quotaSelector = WithProviderQuotaSelector(selector, quotaProvider, systemService)
+			selector = quotaSelector
+		}
 
 		candidates, err := selector.Select(ctx, llmRequest)
 		if err != nil {

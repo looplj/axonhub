@@ -83,7 +83,7 @@ func TestQuotaChannelStatus_EffectiveStatus_NoMatchingLimit_Fallback(t *testing.
 	}
 
 	status, ready := s.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
-	assert.Equal(t, providerquotastatus.StatusAvailable, status)
+	assert.Equal(t, providerquotastatus.StatusUnknown, status)
 	assert.True(t, ready)
 }
 
@@ -123,6 +123,49 @@ func TestQuotaChannelStatus_EffectiveStatus_AllLimitsUnknown(t *testing.T) {
 	imgStatus, imgReady := s.EffectiveStatus(provider_quota.QuotaLimitTypeImage)
 	assert.Equal(t, providerquotastatus.StatusUnknown, imgStatus, "all-unknown limits should return unknown status")
 	assert.False(t, imgReady, "all-unknown limits should not be ready")
+}
+
+func TestEffectiveStatus_ChannelExhaustedOverridesPerLimitAvailable(t *testing.T) {
+	s := &QuotaChannelStatus{
+		Status: providerquotastatus.StatusExhausted,
+		Ready:  false,
+		Limits: []provider_quota.QuotaLimitStatus{
+			{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
+		},
+	}
+
+	status, ready := s.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
+	assert.Equal(t, providerquotastatus.StatusExhausted, status)
+	assert.False(t, ready)
+}
+
+func TestEffectiveStatus_UnknownFallbackWhenNoMatchingLimitType(t *testing.T) {
+	s := &QuotaChannelStatus{
+		Status: providerquotastatus.StatusWarning,
+		Ready:  true,
+		Limits: []provider_quota.QuotaLimitStatus{
+			{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
+		},
+	}
+
+	status, ready := s.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
+	assert.Equal(t, providerquotastatus.StatusUnknown, status)
+	assert.True(t, ready)
+}
+
+func TestEffectiveStatus_EqualRankReadyAggregation(t *testing.T) {
+	s := &QuotaChannelStatus{
+		Status: providerquotastatus.StatusWarning,
+		Ready:  true,
+		Limits: []provider_quota.QuotaLimitStatus{
+			{Type: provider_quota.QuotaLimitTypeToken, Status: "warning", UsageRatio: 0.85, Ready: true},
+			{Type: provider_quota.QuotaLimitTypeToken, Status: "warning", UsageRatio: 0.90, Ready: false},
+		},
+	}
+
+	status, ready := s.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
+	assert.Equal(t, providerquotastatus.StatusWarning, status)
+	assert.False(t, ready)
 }
 
 func TestProviderQuotaService_NextCheckIntervalForStatus(t *testing.T) {

@@ -256,8 +256,8 @@ func TestProviderQuotaSelector_PerLimit_ImageExhausted_KeptForToken(t *testing.T
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
 			1: {
-				Status: providerquotastatus.StatusExhausted,
-				Ready:  false,
+				Status: providerquotastatus.StatusWarning,
+				Ready:  true,
 				Limits: []provider_quota.QuotaLimitStatus{
 					{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
 					{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
@@ -287,4 +287,63 @@ func TestProviderQuotaSelector_PerLimit_ImageExhausted_KeptForToken(t *testing.T
 	result, err = selector.Select(context.Background(), imageReq)
 	require.NoError(t, err)
 	require.Len(t, result, 0, "channel should be filtered for image request when image limit is exhausted")
+}
+
+func TestProviderQuotaSelector_FiltersExhaustedBeforeLoadBalancer(t *testing.T) {
+	provider := &mockQuotaStatusProvider{
+		statuses: map[int]*biz.QuotaChannelStatus{
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			2: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
+		},
+	}
+	settings := &mockQuotaEnforcementSettingsProvider{
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
+	}
+
+	inner := &mockSelector{
+		candidates: []*ChannelModelsCandidate{
+			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted-1"}}, Priority: 0},
+			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "exhausted-2"}}, Priority: 0},
+			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "available"}}, Priority: 1},
+		},
+	}
+
+	quotaSelector := WithProviderQuotaSelector(inner, provider, settings)
+	got, err := quotaSelector.Select(context.Background(), &llm.Request{})
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, 3, got[0].Channel.ID, "available channel should be preserved after quota filtering")
+}
+
+func TestProviderQuotaSelector_ChannelExhaustedOverridesPerLimitAvailable(t *testing.T) {
+	provider := &mockQuotaStatusProvider{
+		statuses: map[int]*biz.QuotaChannelStatus{
+			1: {
+				Status: providerquotastatus.StatusExhausted,
+				Ready:  false,
+				Limits: []provider_quota.QuotaLimitStatus{
+					{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
+				},
+			},
+		},
+	}
+
+	inner := &mockSelector{
+		candidates: []*ChannelModelsCandidate{
+			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
+		},
+	}
+
+	systemService := &mockQuotaEnforcementSettingsProvider{
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
+	}
+
+	selector := WithProviderQuotaSelector(inner, provider, systemService)
+
+	tokenReq := &llm.Request{Model: "gpt-4"}
+	result, err := selector.Select(context.Background(), tokenReq)
+	require.NoError(t, err)
+	require.Empty(t, result, "channel with Exhausted channel-level status must be filtered even if per-limit token status is available")
 }

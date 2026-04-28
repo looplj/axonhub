@@ -3,7 +3,9 @@ package biz
 import (
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/stretchr/testify/assert"
@@ -179,4 +181,73 @@ func TestProviderQuotaService_UpdateQuotaCache_WithLimits(t *testing.T) {
 	effectiveStatus, ready = status.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
 	assert.Equal(t, providerquotastatus.StatusAvailable, effectiveStatus)
 	assert.True(t, ready)
+}
+
+func TestMergeAndExtractLimitsRoundTrip(t *testing.T) {
+	svc := &ProviderQuotaService{}
+	resetAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	t.Run("basic round trip", func(t *testing.T) {
+		quotaData := provider_quota.QuotaData{
+			Status:       "available",
+			ProviderType: "test",
+			RawData:      map[string]any{"key": "value"},
+			Limits: []provider_quota.QuotaLimitStatus{
+				{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
+				{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false, NextResetAt: &resetAt},
+			},
+		}
+
+		merged := svc.mergeLimitsIntoQuotaData(quotaData)
+		extracted := extractLimitsFromQuotaData(merged)
+
+		assert.Len(t, extracted, 2)
+		tokenLimits := lo.Filter(extracted, func(l provider_quota.QuotaLimitStatus, _ int) bool {
+			return l.Type == provider_quota.QuotaLimitTypeToken
+		})
+		assert.Len(t, tokenLimits, 1)
+		assert.Equal(t, "available", tokenLimits[0].Status)
+		assert.InDelta(t, 0.3, tokenLimits[0].UsageRatio, 0.001)
+		assert.True(t, tokenLimits[0].Ready)
+		assert.Nil(t, tokenLimits[0].NextResetAt)
+
+		imageLimits := lo.Filter(extracted, func(l provider_quota.QuotaLimitStatus, _ int) bool {
+			return l.Type == provider_quota.QuotaLimitTypeImage
+		})
+		assert.Len(t, imageLimits, 1)
+		assert.Equal(t, "exhausted", imageLimits[0].Status)
+		assert.InDelta(t, 1.0, imageLimits[0].UsageRatio, 0.001)
+		assert.False(t, imageLimits[0].Ready)
+		assert.NotNil(t, imageLimits[0].NextResetAt)
+		assert.Equal(t, resetAt, *imageLimits[0].NextResetAt)
+
+		assert.Equal(t, "value", merged["key"])
+	})
+
+	t.Run("empty limits", func(t *testing.T) {
+		quotaData := provider_quota.QuotaData{
+			Status:       "available",
+			ProviderType: "test",
+		}
+
+		merged := svc.mergeLimitsIntoQuotaData(quotaData)
+		extracted := extractLimitsFromQuotaData(merged)
+
+		assert.Nil(t, extracted)
+	})
+
+	t.Run("preserves raw data", func(t *testing.T) {
+		quotaData := provider_quota.QuotaData{
+			Status:       "available",
+			ProviderType: "test",
+			RawData:      map[string]any{"existing": "data"},
+			Limits: []provider_quota.QuotaLimitStatus{
+				{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.5, Ready: true},
+			},
+		}
+
+		merged := svc.mergeLimitsIntoQuotaData(quotaData)
+		assert.Equal(t, "data", merged["existing"])
+		assert.NotNil(t, merged["_limits"])
+	})
 }

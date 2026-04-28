@@ -14,8 +14,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-const warningPercentRemaining = 20
-
 type SyntheticUsageResponse struct {
 	Subscription         *SyntheticSubscription         `json:"subscription,omitempty"`
 	Search               *SyntheticSearch               `json:"search,omitempty"`
@@ -195,7 +193,7 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 			usageRatio = 1.0
 		} else if fiveHour.TickPercent != nil {
 			usageRatio = *fiveHour.TickPercent
-			if usageRatio >= 0.8 {
+			if usageRatio > 0.8 {
 				status = "warning"
 			}
 		}
@@ -222,7 +220,7 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 
 		if weekly.PercentRemaining != nil {
 			usageRatio = 1.0 - (*weekly.PercentRemaining / 100.0)
-			if usageRatio >= 0.8 {
+			if usageRatio > 0.8 {
 				status = "warning"
 			}
 		}
