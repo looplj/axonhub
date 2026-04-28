@@ -97,23 +97,21 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 			)
 		}
 
+		settings := systemService.QuotaEnforcementSettingsOrDefault(ctx)
+
 		if len(candidates) == 0 {
-			settings := systemService.QuotaEnforcementSettingsOrDefault(ctx)
 			if settings.Enabled && quotaSelector.FilteredCount > 0 {
 				return nil, NewQuotaExhaustedError(llmRequest.Model)
 			}
 			return nil, fmt.Errorf("%w: %s", biz.ErrInvalidModel, llmRequest.Model)
 		}
 
-		if quotaSelector != nil {
-			settings := systemService.QuotaEnforcementSettingsOrDefault(ctx)
-			if settings.Enabled && settings.Mode == biz.QuotaEnforcementModeDePrioritize {
-				// In DePrioritize mode the quota selector doesn't filter candidates,
-				// so we must check quota status again here to determine if all
-				// remaining channels are exhausted.
-				if areAllChannelsExhausted(candidates, quotaProvider, llmRequest) {
-					return nil, NewQuotaExhaustedError(llmRequest.Model)
-				}
+		if settings.Enabled && settings.Mode == biz.QuotaEnforcementModeDePrioritize {
+			// In DePrioritize mode the quota selector doesn't filter candidates,
+			// so we must check quota status again here to determine if all
+			// remaining channels are exhausted.
+			if areAllChannelsExhausted(candidates, quotaProvider, llmRequest) {
+				return nil, NewQuotaExhaustedError(llmRequest.Model)
 			}
 		}
 

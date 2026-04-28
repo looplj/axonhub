@@ -25,18 +25,18 @@ const (
 type QuotaLimitStatus struct {
 	Type        QuotaLimitType `json:"type"`
 	Status      string         `json:"status"`
-	UsageRatio  float64       `json:"usage_ratio"`
+	UsageRatio  float64        `json:"usage_ratio"`
 	Ready       bool           `json:"ready"`
-	NextResetAt *time.Time    `json:"next_reset_at"`
+	NextResetAt *time.Time     `json:"next_reset_at"`
 }
 
 // QuotaData is the unified quota data structure.
 type QuotaData struct {
-	Status       string             `json:"status"`          // available, warning, exhausted, unknown
+	Status       string             `json:"status"` // available, warning, exhausted, unknown
 	ProviderType string             `json:"provider_type"`
 	RawData      map[string]any     `json:"raw_data"`
 	NextResetAt  *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
-	Ready        bool               `json:"ready"`          // True if status is available or warning
+	Ready        bool               `json:"ready"`         // True if status is available or warning
 	Limits       []QuotaLimitStatus `json:"limits"`
 }
 

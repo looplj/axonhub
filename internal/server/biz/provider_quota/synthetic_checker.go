@@ -37,10 +37,10 @@ type SyntheticSearchHourly struct {
 }
 
 type SyntheticWeeklyTokenLimit struct {
-	NextRegenAt      *string   `json:"nextRegenAt,omitempty"`
-	PercentRemaining *float64  `json:"percentRemaining,omitempty"`
-	MaxCredits       *string   `json:"maxCredits,omitempty"`
-	RemainingCredits *string   `json:"remainingCredits,omitempty"`
+	NextRegenAt      *string  `json:"nextRegenAt,omitempty"`
+	PercentRemaining *float64 `json:"percentRemaining,omitempty"`
+	MaxCredits       *string  `json:"maxCredits,omitempty"`
+	RemainingCredits *string  `json:"remainingCredits,omitempty"`
 }
 
 type SyntheticRollingFiveHourLimit struct {
@@ -215,33 +215,38 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 	}
 
 	if weekly != nil {
-		status := "available"
-		usageRatio := 0.0
-
-		if weekly.PercentRemaining != nil {
-			usageRatio = 1.0 - (*weekly.PercentRemaining / 100.0)
-			if usageRatio > WarningThresholdRatio {
-				status = "warning"
-			}
-		}
-
-		var resetAt *time.Time
-		if weekly.NextRegenAt != nil {
-			if t, err := time.Parse(time.RFC3339, *weekly.NextRegenAt); err == nil {
-				resetAt = &t
-			}
-		}
-
-		limits = append(limits, QuotaLimitStatus{
-			Type:        QuotaLimitTypeToken,
-			Status:      status,
-			UsageRatio:  usageRatio,
-			Ready:       status != "exhausted",
-			NextResetAt: resetAt,
-		})
+		limits = append(limits, weeklyTokenLimitStatus(weekly))
 	}
 
 	return limits
+}
+
+func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus {
+	status := "available"
+	usageRatio := 0.0
+
+	if weekly.PercentRemaining != nil {
+		usageRatio = 1.0 - (*weekly.PercentRemaining / 100.0)
+		if usageRatio > WarningThresholdRatio {
+			status = "warning"
+		}
+	}
+
+	var resetAt *time.Time
+
+	if weekly.NextRegenAt != nil {
+		if t, err := time.Parse(time.RFC3339, *weekly.NextRegenAt); err == nil {
+			resetAt = &t
+		}
+	}
+
+	return QuotaLimitStatus{
+		Type:        QuotaLimitTypeToken,
+		Status:      status,
+		UsageRatio:  usageRatio,
+		Ready:       true,
+		NextResetAt: resetAt,
+	}
 }
 
 func findEarliestSyntheticResetAt(
