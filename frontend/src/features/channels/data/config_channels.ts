@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { OpenAI, Anthropic, Google, DeepSeek, Doubao, Moonshot, Zhipu, OpenRouter, XAI, Volcengine, SiliconCloud, PPIO, ZAI, LongCat, Minimax, BurnCloud, Vercel, ModelScope, Bailian, Jina, DeepInfra, Github, Claude, Cerebras, XiaomiMiMo, Fireworks, Ollama } from '@lobehub/icons';
+import { OpenAI, Anthropic, Google, DeepSeek, Doubao, Moonshot, Zhipu, OpenRouter, XAI, Volcengine, SiliconCloud, PPIO, ZAI, LongCat, Minimax, BurnCloud, Vercel, ModelScope, Bailian, Jina, DeepInfra, Github, Claude, Cerebras, XiaomiMiMo, Fireworks, Ollama, AiHubMix } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -421,7 +421,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     ],
     apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: OpenAI,
+    icon: AiHubMix,
   },
   burncloud: {
     channelType: 'burncloud',
