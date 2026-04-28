@@ -1,17 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useChannelSuccessRates } from '../data/dashboard';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChannelSuccessRates, useTokensByChannel, type TokensByChannel } from '../data/dashboard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
+import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, CoinsIcon, XCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
 import ContentSection from '@/features/settings/components/content-section';
 
-type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate';
+type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate' | 'inputTokens' | 'outputTokens' | 'totalTokens';
 type SortOrder = 'asc' | 'desc';
 
 const PAGE_SIZE = 20;
@@ -29,6 +28,17 @@ export default function DashboardChannelSuccessRates() {
 
   // Fetch all data (limit = undefined)
   const { data: channels, isLoading, error } = useChannelSuccessRates(undefined, timeWindow);
+
+  // Fetch token stats by channel (reuse existing API)
+  const { data: tokenData } = useTokensByChannel(timeWindow);
+
+  // Build token map by channelName for matching
+  const tokenByChannel = useMemo(() => {
+    if (!tokenData) return new Map<string, TokensByChannel>();
+    const map = new Map<string, TokensByChannel>();
+    tokenData.forEach((t) => map.set(t.channelName, t));
+    return map;
+  }, [tokenData]);
 
   // Extract unique channel types
   const channelTypes = useMemo(() => {
@@ -75,13 +85,25 @@ export default function DashboardChannelSuccessRates() {
           aVal = a.successRate;
           bVal = b.successRate;
           break;
+        case 'inputTokens':
+          aVal = tokenByChannel.get(a.channelName)?.inputTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelName)?.inputTokens ?? 0;
+          break;
+        case 'outputTokens':
+          aVal = tokenByChannel.get(a.channelName)?.outputTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelName)?.outputTokens ?? 0;
+          break;
+        case 'totalTokens':
+          aVal = tokenByChannel.get(a.channelName)?.totalTokens ?? 0;
+          bVal = tokenByChannel.get(b.channelName)?.totalTokens ?? 0;
+          break;
         default:
           aVal = a.totalCount;
           bVal = b.totalCount;
       }
       return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
     });
-  }, [filteredChannels, sortField, sortOrder]);
+  }, [filteredChannels, sortField, sortOrder, tokenByChannel]);
 
   // Paginate channels
   const totalPages = Math.ceil(sortedChannels.length / PAGE_SIZE);
@@ -185,6 +207,9 @@ export default function DashboardChannelSuccessRates() {
                 <SelectItem value="successCount">{t('dashboard.channelSuccessRates.sortBySuccess')}</SelectItem>
                 <SelectItem value="failedCount">{t('dashboard.channelSuccessRates.sortByFailed')}</SelectItem>
                 <SelectItem value="successRate">{t('dashboard.channelSuccessRates.sortByRate')}</SelectItem>
+                <SelectItem value="inputTokens">Input Tokens</SelectItem>
+                <SelectItem value="outputTokens">Output Tokens</SelectItem>
+                <SelectItem value="totalTokens">Total Tokens</SelectItem>
               </SelectContent>
             </Select>
 
@@ -256,6 +281,22 @@ export default function DashboardChannelSuccessRates() {
                     {formatNumber(channel.failedCount)}
                   </span>
                 </div>
+
+                {/* Token consumption (from tokenStatsByChannel API) */}
+                {(() => {
+                  const tokens = tokenByChannel.get(channel.channelName);
+                  if (!tokens || tokens.totalTokens <= 0) return null;
+                  return (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      <CoinsIcon className="h-3 w-3" />
+                      <span>{t('dashboard.channelSuccessRates.inputTokens')}: {formatNumber(tokens.inputTokens)}</span>
+                      <span className="text-border">|</span>
+                      <span>{t('dashboard.channelSuccessRates.outputTokens')}: {formatNumber(tokens.outputTokens)}</span>
+                      <span className="text-border">|</span>
+                      <span>{t('dashboard.channelSuccessRates.totalTokens')}: {formatNumber(tokens.totalTokens)}</span>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
