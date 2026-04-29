@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // mockTransformer is a simple mock transformer for testing.
@@ -26,9 +27,14 @@ type mockTransformer struct {
 	aggregatedMeta     llm.ResponseMeta
 	aggregatedErr      error
 	apiFormat          llm.APIFormat
+	transformCalls     int
+	lastRequest        *llm.Request
 }
 
 func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
+	m.transformCalls++
+	m.lastRequest = req
+
 	body, err := json.Marshal(map[string]any{
 		"model":       req.Model,
 		"messages":    req.Messages,
@@ -293,6 +299,24 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		}
 
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
+	})
+
+	t.Run("responses-only data on non-responses outbound should not retry same channel", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+						{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo"},
+					},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		require.False(t, outbound.CanRetry(errResponsesOnlyDataRequiresResponsesOutbound))
 	})
 
 	t.Run("retryable error does not depend on model index", func(t *testing.T) {
@@ -594,7 +618,7 @@ func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t 
 	require.Equal(t, testChannel, processor.state.CurrentCandidate.Channel)
 }
 
-func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
+func TestEnsureResponsesOnlyDataAllowedForOutbound(t *testing.T) {
 	baseRequest := &llm.Request{
 		APIFormat: llm.APIFormatOpenAIResponse,
 		Messages: []llm.Message{
@@ -650,33 +674,41 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 		},
 	}
 
-	t.Run("filters when inbound is responses and outbound is not", func(t *testing.T) {
-		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion)
-		require.NotSame(t, baseRequest, got)
-		require.Len(t, got.Messages, 2)
-		require.Len(t, got.Messages[0].ToolCalls, 1)
-		require.Equal(t, llm.ToolTypeFunction, got.Messages[0].ToolCalls[0].Type)
-		require.NotNil(t, got.Messages[1].ToolCallID)
-		require.Equal(t, "call_function_1", *got.Messages[1].ToolCallID)
-		require.Nil(t, got.Messages[1].ProtocolExtensions)
+	t.Run("rejects when inbound is responses and outbound is not", func(t *testing.T) {
+		err := ensureResponsesOnlyDataAllowedForOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion)
+		require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 	})
 
-	t.Run("does not filter when outbound is responses", func(t *testing.T) {
-		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatOpenAIResponse)
-		require.Same(t, baseRequest, got)
+	t.Run("allows when outbound is responses", func(t *testing.T) {
+		err := ensureResponsesOnlyDataAllowedForOutbound(baseRequest, llm.APIFormatOpenAIResponse)
+		require.NoError(t, err)
 	})
 
-	t.Run("does not filter when inbound is not responses", func(t *testing.T) {
+	t.Run("allows when inbound is not responses", func(t *testing.T) {
 		nonResponsesReq := *baseRequest
 		nonResponsesReq.APIFormat = llm.APIFormatOpenAIChatCompletion
-		got := filterResponseCustomToolMessagesForNonResponsesOutbound(&nonResponsesReq, llm.APIFormatOpenAIChatCompletion)
-		require.Same(t, &nonResponsesReq, got)
+		err := ensureResponsesOnlyDataAllowedForOutbound(&nonResponsesReq, llm.APIFormatOpenAIChatCompletion)
+		require.NoError(t, err)
+	})
+
+	t.Run("allows dirty-only responses extensions for non-responses outbound", func(t *testing.T) {
+		dirtyOnlyReq := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+				InputDirty: true,
+			}},
+		}
+
+		err := ensureResponsesOnlyDataAllowedForOutbound(dirtyOnlyReq, llm.APIFormatOpenAIChatCompletion)
+		require.NoError(t, err)
 	})
 }
 
-func TestFilterResponsesOnlyDataForNonResponsesOutbound_StripsProtocolExtensionsAndTools(t *testing.T) {
+func TestPersistentOutboundTransformer_TransformRequest_RejectsResponsesOnlyDataForNonResponsesOutbound(t *testing.T) {
 	visible := "hello"
 	request := &llm.Request{
+		Model:     "gpt-4",
 		APIFormat: llm.APIFormatOpenAIResponse,
 		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
 			RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
@@ -705,15 +737,93 @@ func TestFilterResponsesOnlyDataForNonResponsesOutbound_StripsProtocolExtensions
 		},
 	}
 
-	got := filterResponsesOnlyDataForNonResponsesOutbound(request, llm.APIFormatOpenAIChatCompletion)
-	require.NotSame(t, request, got)
-	require.Nil(t, got.ProtocolExtensions)
-	require.Len(t, got.Messages, 1)
-	require.Nil(t, got.Messages[0].ProtocolExtensions)
-	require.Len(t, got.Tools, 1)
-	require.Equal(t, llm.ToolTypeFunction, got.Tools[0].Type)
-	require.Nil(t, got.Tools[0].ProtocolExtensions)
-	require.Equal(t, "get_weather", got.Tools[0].Function.Name)
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:       1,
+			Name:     "chat-only",
+			Settings: nil,
+		},
+		Outbound: chatOutbound,
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: chatOutbound,
+		state: &PersistenceState{
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+			},
+			CurrentCandidateIndex: 0,
+		},
+	}
+
+	_, err := processor.TransformRequest(context.Background(), request)
+	require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.Equal(t, 0, chatOutbound.transformCalls)
+}
+
+func TestResponsesOnlyDataSelector_PrefersResponsesOutbound(t *testing.T) {
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	responsesOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse}
+	channel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "mixed"},
+		Outbound: chatOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			string(llm.APIFormatOpenAIChatCompletion): chatOutbound,
+			string(llm.APIFormatOpenAIResponse):       responsesOutbound,
+		},
+	}
+	selector := WithResponsesOnlyDataSelector(&staticChannelSelector{candidates: []*ChannelModelsCandidate{
+		{
+			Channel:   channel,
+			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+			Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+		},
+	}})
+	request := &llm.Request{
+		Model:     "gpt-4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
+		}},
+	}
+
+	got, err := selector.Select(context.Background(), request)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, string(llm.APIFormatOpenAIResponse), got[0].APIFormat)
+}
+
+func TestResponsesOnlyDataSelector_RejectsWhenNoResponsesOutbound(t *testing.T) {
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	channel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "chat-only"},
+		Outbound: chatOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			string(llm.APIFormatOpenAIChatCompletion): chatOutbound,
+		},
+	}
+	selector := WithResponsesOnlyDataSelector(&staticChannelSelector{candidates: []*ChannelModelsCandidate{
+		{
+			Channel:   channel,
+			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+			Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+		},
+	}})
+	request := &llm.Request{
+		Model:     "gpt-4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
+		}},
+	}
+
+	_, err := selector.Select(context.Background(), request)
+	require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 }
 
 // ========== 429 Retry-After Tests ==========

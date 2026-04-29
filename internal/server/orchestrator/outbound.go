@@ -303,7 +303,13 @@ func isCompletedAggregated(meta llm.ResponseMeta) bool {
 	return meta.Usage != nil && meta.Usage.CompletionTokens > 0
 }
 
-var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit breaker")
+var (
+	errSkipCandidateByCircuitBreaker              = errors.New("skip candidate by circuit breaker")
+	errResponsesOnlyDataRequiresResponsesOutbound = fmt.Errorf(
+		"%w: responses-only request data requires an OpenAI Responses outbound",
+		transformer.ErrInvalidRequest,
+	)
+)
 
 // PersistentOutboundTransformer wraps an outbound transformer with shared persistence state.
 type PersistentOutboundTransformer struct {
@@ -358,37 +364,30 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
-	llmRequest = filterResponsesOnlyDataForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
+	if err := ensureResponsesOnlyDataAllowedForOutbound(llmRequest, p.wrapped.APIFormat()); err != nil {
+		return nil, err
+	}
 
 	return p.wrapped.TransformRequest(ctx, llmRequest)
 }
 
-func filterResponsesOnlyDataForNonResponsesOutbound(
+func ensureResponsesOnlyDataAllowedForOutbound(
 	llmRequest *llm.Request,
 	outboundFormat llm.APIFormat,
-) *llm.Request {
+) error {
 	if llmRequest == nil {
 		return nil
 	}
 
-	if !isResponsesFormat(llmRequest.APIFormat) || isResponsesFormat(outboundFormat) || !containsResponsesOnlyData(llmRequest) {
-		return llmRequest
+	if !requiresResponsesOutbound(llmRequest) || isResponsesFormat(outboundFormat) {
+		return nil
 	}
 
-	cloned := *llmRequest
-	// Non-Responses providers cannot safely carry Responses-only raw extensions or Codex tool shapes.
-	cloned.Messages = shared.FilterOutResponseCustomToolMessages(llmRequest.Messages)
-	cloned.Tools = shared.FilterOutResponsesOnlyTools(llmRequest.Tools)
-	cloned.ProtocolExtensions = nil
-
-	return &cloned
+	return fmt.Errorf("%w: outbound format %q", errResponsesOnlyDataRequiresResponsesOutbound, outboundFormat)
 }
 
-func filterResponseCustomToolMessagesForNonResponsesOutbound(
-	llmRequest *llm.Request,
-	outboundFormat llm.APIFormat,
-) *llm.Request {
-	return filterResponsesOnlyDataForNonResponsesOutbound(llmRequest, outboundFormat)
+func requiresResponsesOutbound(llmRequest *llm.Request) bool {
+	return llmRequest != nil && isResponsesFormat(llmRequest.APIFormat) && containsResponsesOnlyData(llmRequest)
 }
 
 func isResponsesFormat(format llm.APIFormat) bool {
@@ -402,7 +401,7 @@ func containsResponseCustomToolMessages(messages []llm.Message) bool {
 				return true
 			}
 		}
-		if msg.ProtocolExtensions != nil {
+		if hasResponsesOnlyExtensionData(msg.ProtocolExtensions) {
 			return true
 		}
 	}
@@ -414,15 +413,33 @@ func containsResponsesOnlyData(llmRequest *llm.Request) bool {
 	if llmRequest == nil {
 		return false
 	}
-	if llmRequest.ProtocolExtensions != nil {
+	if hasResponsesOnlyExtensionData(llmRequest.ProtocolExtensions) {
 		return true
 	}
 	for _, tool := range llmRequest.Tools {
-		if shared.IsResponsesOnlyTool(tool) || tool.ProtocolExtensions != nil {
+		if shared.IsResponsesOnlyTool(tool) || hasResponsesOnlyExtensionData(tool.ProtocolExtensions) {
 			return true
 		}
 	}
 	return containsResponseCustomToolMessages(llmRequest.Messages)
+}
+
+// Dirty 标记只说明语义内容已被改写；非 Responses 出站仍可按语义重建请求。
+// 只有真实 raw/lossless 数据存在时，才必须限制到 Responses 出站避免静默丢字段。
+func hasResponsesOnlyExtensionData(ext *llm.ProtocolExtensions) bool {
+	if ext == nil || ext.OpenAIResponses == nil {
+		return false
+	}
+
+	responsesExt := ext.OpenAIResponses
+	return len(responsesExt.RequestExtra) > 0 ||
+		len(responsesExt.InputItems) > 0 ||
+		len(responsesExt.Tools) > 0 ||
+		len(responsesExt.ResponseRaw) > 0 ||
+		len(responsesExt.ResponseExtra) > 0 ||
+		len(responsesExt.ResponseMetadata) > 0 ||
+		len(responsesExt.OutputItems) > 0 ||
+		responsesExt.RawEvent != nil
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {
@@ -547,6 +564,10 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	}
 
 	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
+		return false
+	}
+
+	if errors.Is(err, errResponsesOnlyDataRequiresResponsesOutbound) {
 		return false
 	}
 
