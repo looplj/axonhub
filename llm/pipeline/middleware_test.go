@@ -753,5 +753,6 @@ func TestMiddleware_RawRequest_Error_CleanupMiddlewares(t *testing.T) {
 	require.True(t, m1.outboundRawErrorCalled,
 		"already-executed middleware must receive OnOutboundRawError for cleanup")
 	require.True(t, m2.outboundRawErrorCalled)
-	require.True(t, m3.outboundRawErrorCalled)
+	require.True(t, m3.outboundRawErrorCalled,
+		"unexecuted middleware must receive OnOutboundRawError for unconditional cleanup")
 }

@@ -64,6 +64,8 @@ func (p *pipeline) checkEmptyResponse(
 	}
 
 	if err := llmStream.Err(); err != nil {
+		llmStream.Close()
+
 		return nil, err
 	}
 
@@ -146,8 +148,10 @@ func (p *pipeline) stream(
 
 	// Check for empty response if detection is enabled
 	if p.emptyResponseDetection {
+		rawLlmStream := llmStream
 		llmStream, err = p.checkEmptyResponse(ctx, llmStream)
 		if err != nil {
+			rawLlmStream.Close()
 			p.applyRawErrorResponseMiddlewares(ctx, err)
 
 			return nil, err
