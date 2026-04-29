@@ -246,8 +246,8 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer) pipeline.
 					return
 				}
 
-				// Use select with default to prevent deadlock when the pass-through
-				// consumer hasn't started reading yet. One channel won't block the other.
+				// Block on rawStreamCh send to prevent silent event drops.
+				// Only exit on attempt cancellation (retry).
 				select {
 				case rawStreamCh <- event:
 				case <-attemptCtx.Done():
@@ -255,7 +255,6 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer) pipeline.
 						log.String("channel", channel.Name))
 
 					return
-				default:
 				}
 			}
 		}()
