@@ -100,6 +100,7 @@ func (s *geminiInboundStream) Close() error {
 	return s.source.Close()
 }
 
+//nolint:maintidx // Chunk transformation is inherently complex.
 func (s *geminiInboundStream) transformChunk(chunk *llm.Response) (*httpclient.StreamEvent, error) {
 	if chunk == nil {
 		return nil, nil

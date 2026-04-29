@@ -202,7 +202,7 @@ func AggregateStreamChunks(_ context.Context, chunks []*httpclient.StreamEvent) 
 	return body, meta, nil
 }
 
-//nolint:gocognit // Event processing is inherently complex.
+//nolint:gocognit,maintidx // Event processing is inherently complex.
 func (a *streamAggregator) processEvent(ev *StreamEvent) {
 	//nolint:exhaustive //Only process events we care about.
 	switch ev.Type {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -137,8 +138,24 @@ func (s *VideoService) loadTask(ctx context.Context, requestID int) (*ent.Reques
 		return nil, nil, nil, err
 	}
 
-	outbound, ok := ch.Outbound.(transformer.VideoTaskOutbound)
-	if !ok {
+	var outbound transformer.VideoTaskOutbound
+
+	var videoKey string
+
+	switch ch.Type {
+	case channel.TypeDoubao:
+		videoKey = llm.APIFormatSeedanceVideo.String()
+	default:
+		videoKey = llm.APIFormatOpenAIVideo.String()
+	}
+
+	if ch.Outbounds != nil {
+		if out, ok := ch.Outbounds[videoKey]; ok {
+			outbound, _ = out.(transformer.VideoTaskOutbound)
+		}
+	}
+
+	if outbound == nil {
 		return nil, nil, nil, fmt.Errorf("%w: channel does not support video task operations", ErrInternal)
 	}
 

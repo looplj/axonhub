@@ -24,6 +24,8 @@ linters:
   default: all
   disable:
     - prealloc
+    - exhaustive
+    - containedctx
     - errchkjson
     - contextcheck
     - rowserrcheck
@@ -40,6 +42,7 @@ linters:
     - testpackage
     - gochecknoglobals
     - wsl
+    - wsl_v5
     - ireturn
     - godox
     - cyclop

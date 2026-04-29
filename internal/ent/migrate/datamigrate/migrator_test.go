@@ -146,8 +146,8 @@ func TestMigrator_Run_SkipNewerVersion(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Set system version to v0.5.0 (newer than migration)
-	err = systemService.SetVersion(ctx, "v0.5.0")
+	// Set system version to v1.0.0 (equal to migration)
+	err = systemService.SetVersion(ctx, "v1.0.0")
 	require.NoError(t, err)
 
 	// Create migrator with mock migration
@@ -226,7 +226,7 @@ func TestMigrator_Run_MultipleMigrations(t *testing.T) {
 	migrator := datamigrate.NewMigratorWithoutRegistrations(client)
 	mock1 := &mockMigrator{version: "v0.3.0"}
 	mock2 := &mockMigrator{version: "v0.4.0"}
-	mock3 := &mockMigrator{version: "v0.5.0"}
+	mock3 := &mockMigrator{version: "v1.0.0"}
 	migrator.Register(mock1).Register(mock2).Register(mock3)
 
 	// Run migrations
@@ -266,7 +266,7 @@ func TestMigrator_Run_PartialMigrations(t *testing.T) {
 	migrator := datamigrate.NewMigratorWithoutRegistrations(client)
 	mock1 := &mockMigrator{version: "v0.3.0"} // Should be skipped
 	mock2 := &mockMigrator{version: "v0.4.0"} // Should run
-	mock3 := &mockMigrator{version: "v0.5.0"} // Should run
+	mock3 := &mockMigrator{version: "v1.0.0"} // Should run
 	migrator.Register(mock1).Register(mock2).Register(mock3)
 
 	// Run migrations
@@ -276,7 +276,7 @@ func TestMigrator_Run_PartialMigrations(t *testing.T) {
 	// Verify only newer migrations were executed
 	assert.Equal(t, 0, mock1.migrateCalls, "v0.3.0 should be skipped")
 	assert.Equal(t, 1, mock2.migrateCalls, "v0.4.0 should run")
-	assert.Equal(t, 1, mock3.migrateCalls, "v0.5.0 should run")
+	assert.Equal(t, 1, mock3.migrateCalls, "v1.0.0 should run")
 }
 
 func TestMigrator_Run_EmptySystemVersion(t *testing.T) {

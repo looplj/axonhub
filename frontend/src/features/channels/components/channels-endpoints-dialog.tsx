@@ -1,17 +1,21 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Channel, ChannelEndpoint, ApiFormat, channelEndpointSchema } from '../data/schema';
 import { useSaveChannelEndpoints } from '../data/channels';
-import { apiFormatSchema } from '../data/schema';
-import { CHANNEL_TYPE_TO_DEFAULT_ENDPOINTS } from '../data/config_channels';
+import {
+  Channel,
+  ChannelEndpoint,
+  channelEndpointSchema,
+  configurableChannelEndpointApiFormats,
+  configurableChannelEndpointApiFormatSchema,
+} from '../data/schema';
 
 interface Props {
   channel: Channel;
@@ -24,23 +28,23 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const saveEndpoints = useSaveChannelEndpoints();
 
   const defaultEndpoints = useMemo(() => {
-    return CHANNEL_TYPE_TO_DEFAULT_ENDPOINTS[channel.type as keyof typeof CHANNEL_TYPE_TO_DEFAULT_ENDPOINTS] || [];
-  }, [channel.type]);
+    return channel.defaultEndpoints ?? [];
+  }, [channel.defaultEndpoints]);
 
   const [endpoints, setEndpoints] = useState<ChannelEndpoint[]>(() =>
-    channel.endpoints && channel.endpoints.length > 0 ? channel.endpoints : defaultEndpoints
+    channel.endpoints && channel.endpoints.length > 0 ? channel.endpoints : []
   );
   const [newApiFormat, setNewApiFormat] = useState<string>('');
   const [newPath, setNewPath] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const usedApiFormats = useMemo(() => new Set(endpoints.map((ep) => ep.apiFormat)), [endpoints]);
-
-  const defaultEndpointFormats = useMemo(() => new Set(defaultEndpoints.map((ep) => ep.apiFormat)), [defaultEndpoints]);
+  const defaultApiFormats = useMemo(() => new Set(defaultEndpoints.map((ep) => ep.apiFormat)), [defaultEndpoints]);
+  const allowedApiFormats = configurableChannelEndpointApiFormatSchema.options;
 
   const availableApiFormats = useMemo(() => {
-    return apiFormatSchema.options.filter((f) => !usedApiFormats.has(f));
-  }, [usedApiFormats]);
+    return configurableChannelEndpointApiFormats.filter((f) => !usedApiFormats.has(f) && !defaultApiFormats.has(f));
+  }, [defaultApiFormats, usedApiFormats]);
 
   const handleAddEndpoint = useCallback(() => {
     setError(null);
@@ -48,6 +52,16 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
     if (usedApiFormats.has(newApiFormat)) {
       setError(t('channels.endpoints.duplicateError'));
+      return;
+    }
+
+    if (!allowedApiFormats.includes(newApiFormat as (typeof allowedApiFormats)[number])) {
+      setError(t('channels.endpoints.invalidApiFormat', 'Unsupported API format'));
+      return;
+    }
+
+    if (defaultApiFormats.has(newApiFormat)) {
+      setError(t('channels.endpoints.defaultConflictError', 'Cannot override a default endpoint'));
       return;
     }
 
@@ -60,7 +74,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     setEndpoints((prev) => [...prev, parsed.data]);
     setNewApiFormat('');
     setNewPath('');
-  }, [newApiFormat, newPath, usedApiFormats, t]);
+  }, [allowedApiFormats, defaultApiFormats, newApiFormat, newPath, usedApiFormats, t]);
 
   const handleRemoveEndpoint = useCallback((apiFormat: string) => {
     setEndpoints((prev) => prev.filter((ep) => ep.apiFormat !== apiFormat));
@@ -77,6 +91,18 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
       return;
     }
 
+    const invalidApiFormat = apiFormats.find((format) => !allowedApiFormats.includes(format as (typeof allowedApiFormats)[number]));
+    if (invalidApiFormat) {
+      setError(t('channels.endpoints.invalidApiFormat', 'Unsupported API format'));
+      return;
+    }
+
+    const conflictingDefaultApiFormat = apiFormats.find((format) => defaultApiFormats.has(format));
+    if (conflictingDefaultApiFormat) {
+      setError(t('channels.endpoints.defaultConflictError', 'Cannot override a default endpoint'));
+      return;
+    }
+
     try {
       await saveEndpoints.mutateAsync({
         channelID: channel.id,
@@ -89,76 +115,117 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     } catch {
       // error handled by hook
     }
-  }, [endpoints, channel.id, saveEndpoints, onOpenChange, t]);
+  }, [allowedApiFormats, channel.id, defaultApiFormats, endpoints, onOpenChange, saveEndpoints, t]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newApiFormat) {
-      e.preventDefault();
-      handleAddEndpoint();
-    }
-  }, [newApiFormat, handleAddEndpoint]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && newApiFormat) {
+        e.preventDefault();
+        handleAddEndpoint();
+      }
+    },
+    [newApiFormat, handleAddEndpoint]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[90vh] max-h-[700px] flex-col w-full max-w-full sm:max-w-2xl">
-        <DialogHeader className="shrink-0">
+      <DialogContent className='flex h-[90vh] max-h-[700px] w-full max-w-full flex-col sm:max-w-2xl'>
+        <DialogHeader className='shrink-0'>
           <DialogTitle>{t('channels.endpoints.title')}</DialogTitle>
-          <DialogDescription>
-            {channel.name}
-          </DialogDescription>
+          <DialogDescription>{channel.name}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4 space-y-5 min-h-0">
-          {/* Existing endpoints */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">{t('channels.endpoints.currentEndpoints')}</label>
-              <span className="text-xs text-muted-foreground">
-                {endpoints.length > 0 && `${endpoints.length} configured`}
-              </span>
+        <div className='min-h-0 flex-1 space-y-5 overflow-y-auto py-4'>
+          {/* Default endpoints */}
+          <div className='space-y-3'>
+            <div className='flex items-center justify-between'>
+              <label className='text-sm font-medium'>{t('channels.endpoints.defaultEndpoints', 'Default endpoints')}</label>
+              <span className='text-muted-foreground text-xs'>{defaultEndpoints.length > 0 && `${defaultEndpoints.length} resolved`}</span>
             </div>
-            {endpoints.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-4">
-                <p className="text-sm text-muted-foreground text-center">{t('channels.endpoints.emptyHint')}</p>
+            {defaultEndpoints.length === 0 ? (
+              <div className='rounded-lg border border-dashed p-4'>
+                <p className='text-muted-foreground text-center text-sm'>
+                  {t('channels.endpoints.noDefaultEndpoints', 'No default endpoints resolved for this channel type.')}
+                </p>
               </div>
             ) : (
-              <div className="rounded-lg border overflow-hidden">
+              <div className='overflow-hidden rounded-lg border'>
                 {/* Table Header */}
-                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 bg-muted/50 border-b text-xs font-medium text-muted-foreground">
+                <div className='bg-muted/50 text-muted-foreground grid grid-cols-[1fr_1fr_auto] gap-2 border-b px-3 py-2 text-xs font-medium'>
                   <span>{t('channels.endpoints.apiFormat')}</span>
                   <span>{t('channels.endpoints.path')}</span>
-                  <span className="w-8"></span>
+                  <span className='w-8'></span>
                 </div>
                 {/* Table Body */}
-                <div className="divide-y">
-                  {endpoints.map((ep) => (
+                <div className='divide-y'>
+                  {defaultEndpoints.map((ep, index) => (
                     <div
-                      key={ep.apiFormat}
-                      className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors"
+                      key={`${ep.apiFormat}-${index}`}
+                      className='hover:bg-muted/30 grid grid-cols-[1fr_1fr_auto] items-center gap-2 px-3 py-2.5 text-sm transition-colors'
                     >
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="font-mono text-xs w-fit">
+                      <div className='flex items-center gap-2'>
+                        <Badge variant='secondary' className='w-fit font-mono text-xs'>
                           {ep.apiFormat}
                         </Badge>
-                        {defaultEndpointFormats.has(ep.apiFormat) && (
-                          <Badge variant="outline" className="text-[10px]">
-                            {t('channels.endpoints.defaultBadge')}
+                        {index === 0 && (
+                          <Badge variant='outline' className='text-[10px]'>
+                            {t('channels.endpoints.primaryBadge', 'Primary')}
                           </Badge>
                         )}
                       </div>
-                      <span className="text-muted-foreground text-xs font-mono truncate">
-                        {ep.path || '-'}
-                      </span>
+                      <span className='text-muted-foreground truncate font-mono text-xs'>{ep.path || '-'}</span>
+                      <span className='text-muted-foreground text-right text-[10px]'>{t('channels.endpoints.readOnly', 'Read-only')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Current configured endpoints */}
+          <div className='space-y-3'>
+            <div className='flex items-center justify-between'>
+              <label className='text-sm font-medium'>{t('channels.endpoints.currentEndpoints')}</label>
+              <span className='text-muted-foreground text-xs'>{endpoints.length > 0 && `${endpoints.length} configured`}</span>
+            </div>
+            {endpoints.length === 0 ? (
+              <div className='rounded-lg border border-dashed p-4'>
+                <p className='text-muted-foreground text-center text-sm'>
+                  {t('channels.endpoints.noOverridesHint', 'No custom endpoint overrides configured.')}
+                </p>
+              </div>
+            ) : (
+              <div className='overflow-hidden rounded-lg border'>
+                <div className='bg-muted/50 text-muted-foreground grid grid-cols-[1fr_1fr_auto] gap-2 border-b px-3 py-2 text-xs font-medium'>
+                  <span>{t('channels.endpoints.apiFormat')}</span>
+                  <span>{t('channels.endpoints.path')}</span>
+                  <span className='w-8'></span>
+                </div>
+                <div className='divide-y'>
+                  {endpoints.map((ep) => (
+                    <div
+                      key={ep.apiFormat}
+                      className='hover:bg-muted/30 grid grid-cols-[1fr_1fr_auto] items-center gap-2 px-3 py-2.5 text-sm transition-colors'
+                    >
+                      <div className='flex items-center gap-2'>
+                        <Badge variant='secondary' className='w-fit font-mono text-xs'>
+                          {ep.apiFormat}
+                        </Badge>
+                        {!allowedApiFormats.includes(ep.apiFormat as (typeof allowedApiFormats)[number]) && (
+                          <Badge variant='destructive' className='text-[10px]'>
+                            {t('channels.endpoints.unsupportedBadge', 'Unsupported')}
+                          </Badge>
+                        )}
+                      </div>
+                      <span className='text-muted-foreground truncate font-mono text-xs'>{ep.path || '-'}</span>
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 hover:text-destructive hover:bg-destructive/10"
+                        type='button'
+                        variant='ghost'
+                        size='sm'
+                        className='hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0'
                         onClick={() => handleRemoveEndpoint(ep.apiFormat)}
-                        disabled={defaultEndpointFormats.has(ep.apiFormat)}
-                        title={defaultEndpointFormats.has(ep.apiFormat) ? t('channels.endpoints.defaultLockedHint') : undefined}
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className='h-3.5 w-3.5' />
                       </Button>
                     </div>
                   ))}
@@ -168,18 +235,16 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           </div>
 
           {/* Add new endpoint */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium">{t('channels.endpoints.addEndpoint')}</label>
-            <div className="flex gap-2 items-start">
+          <div className='space-y-3'>
+            <label className='text-sm font-medium'>{t('channels.endpoints.addEndpoint')}</label>
+            <div className='flex items-start gap-2'>
               <Select value={newApiFormat} onValueChange={setNewApiFormat}>
-                <SelectTrigger className="flex-1">
+                <SelectTrigger className='flex-1'>
                   <SelectValue placeholder={t('channels.endpoints.apiFormat')} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableApiFormats.length === 0 ? (
-                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                      {t('channels.endpoints.allFormatsUsed')}
-                    </div>
+                    <div className='text-muted-foreground px-2 py-4 text-center text-sm'>{t('channels.endpoints.allFormatsUsed')}</div>
                   ) : (
                     availableApiFormats.map((format) => (
                       <SelectItem key={format} value={format}>
@@ -195,31 +260,24 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                 onChange={(e) => setNewPath(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={!newApiFormat}
-                className="flex-1 disabled:opacity-50"
+                className='flex-1 disabled:opacity-50'
               />
-              <Button
-                type="button"
-                variant="default"
-                size="icon"
-                onClick={handleAddEndpoint}
-                disabled={!newApiFormat}
-                className="shrink-0"
-              >
-                <Plus className="h-4 w-4" />
+              <Button type='button' variant='default' size='icon' onClick={handleAddEndpoint} disabled={!newApiFormat} className='shrink-0'>
+                <Plus className='h-4 w-4' />
               </Button>
             </div>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
-              <span className="text-base">⚠</span>
+            <div className='text-destructive bg-destructive/10 flex items-center gap-2 rounded-md px-3 py-2 text-sm'>
+              <span className='text-base'>⚠</span>
               <span>{error}</span>
             </div>
           )}
         </div>
 
-        <DialogFooter className="shrink-0 border-t pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className='shrink-0 border-t pt-4'>
+          <Button variant='outline' onClick={() => onOpenChange(false)}>
             {t('common.buttons.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={saveEndpoints.isPending}>

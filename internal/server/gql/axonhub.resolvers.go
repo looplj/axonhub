@@ -24,6 +24,20 @@ import (
 	"github.com/samber/lo"
 )
 
+// DefaultEndpoints is the resolver for the defaultEndpoints field.
+func (r *channelResolver) DefaultEndpoints(ctx context.Context, obj *ent.Channel) ([]*objects.ChannelEndpoint, error) {
+	if obj == nil {
+		return []*objects.ChannelEndpoint{}, nil
+	}
+
+	endpoints := biz.DefaultEndpointsForChannelType(obj.Type)
+	if len(endpoints) == 0 {
+		return []*objects.ChannelEndpoint{}, nil
+	}
+
+	return lo.ToSlicePtr(endpoints), nil
+}
+
 // AllModelEntries is the resolver for the allModelEntries field.
 func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel) ([]*biz.ChannelModelEntry, error) {
 	ch := biz.Channel{Channel: obj}
