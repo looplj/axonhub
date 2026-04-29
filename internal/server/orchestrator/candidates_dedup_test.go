@@ -31,9 +31,10 @@ func TestDefaultSelector_Select_Deduplication(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	selector := NewDefaultSelector(channelService, modelService, systemService)
 
 	// Create a model with a regex association that matches multiple RequestModels
@@ -91,9 +92,10 @@ func TestDefaultSelector_Select_AggregateSameChannelSamePriority(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	selector := NewDefaultSelector(channelService, modelService, systemService)
 
 	model, err := client.Model.Create().
@@ -157,9 +159,10 @@ func TestDefaultSelector_Select_DeduplicateAcrossConditionalAssociationsByActual
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	selector := NewDefaultSelector(channelService, modelService, systemService)
 
 	model, err := client.Model.Create().

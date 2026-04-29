@@ -53,6 +53,11 @@ func (APIKey) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
+		field.String("key_hash").Optional().Immutable().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			).
+			Comment("SHA-256 hash of the API key for secure verification"),
 		field.String("name"),
 		field.Enum("type").
 			Values("user", "service_account", "noauth").

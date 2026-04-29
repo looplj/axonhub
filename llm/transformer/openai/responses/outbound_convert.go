@@ -549,7 +549,7 @@ func convertOutputToMessage(output []Item, scope shared.TransportScope, transfor
 				Type: "function",
 				Function: llm.FunctionCall{
 					Name:      outputItem.Name,
-					Arguments: outputItem.Arguments,
+					Arguments: maybeSanitizeSpawnAgentArgs(outputItem.Name, outputItem.Arguments),
 				},
 			})
 		case "custom_tool_call":

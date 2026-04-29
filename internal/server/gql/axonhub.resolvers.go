@@ -140,6 +140,9 @@ func (r *channelSettingsResolver) BodyOverrideOperations(ctx context.Context, ob
 
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteChannels) {
+		return nil, fmt.Errorf("permission denied: requires %s scope", scopes.ScopeWriteChannels)
+	}
 	return r.channelService.CreateChannel(ctx, input)
 }
 
@@ -165,6 +168,9 @@ func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.G
 
 // DeleteChannel is the resolver for the deleteChannel field.
 func (r *mutationResolver) DeleteChannel(ctx context.Context, id objects.GUID) (bool, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteChannels) {
+		return false, fmt.Errorf("permission denied: requires %s scope", scopes.ScopeWriteChannels)
+	}
 	if err := r.channelService.DeleteChannel(ctx, id.ID); err != nil {
 		return false, err
 	}
@@ -412,6 +418,9 @@ func (r *mutationResolver) BulkArchiveAPIKeys(ctx context.Context, ids []*object
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteUsers) {
+		return nil, fmt.Errorf("permission denied: requires %s scope", scopes.ScopeWriteUsers)
+	}
 	return r.userService.CreateUser(ctx, input)
 }
 
@@ -446,6 +455,9 @@ func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, inpu
 
 // DeleteRole is the resolver for the deleteRole field.
 func (r *mutationResolver) DeleteRole(ctx context.Context, id objects.GUID) (bool, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteRoles) {
+		return false, fmt.Errorf("permission denied: requires %s scope", scopes.ScopeWriteRoles)
+	}
 	err := r.roleService.DeleteRole(ctx, id.ID)
 	if err != nil {
 		return false, err

@@ -531,7 +531,7 @@ func (a *streamAggregator) buildResponse() *Response {
 					Status:    lo.ToPtr(item.Status),
 					CallID:    item.CallID,
 					Name:      item.Name,
-					Arguments: item.Arguments.String(),
+					Arguments: maybeSanitizeSpawnAgentArgs(item.Name, item.Arguments.String()),
 				})
 
 			case "custom_tool_call":

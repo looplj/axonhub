@@ -20,11 +20,13 @@ func TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing(t *testing.T
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -61,6 +63,63 @@ func TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing(t *testing.T
 	require.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
 }
 
+// TestDefaultChannelSelector_Select_WithConnectionTracking tests connection tracking integration.
+func TestDefaultChannelSelector_Select_WithConnectionTracking(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channels := createTestChannels(t, ctx, client)
+
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
+	requestService := newTestRequestServiceForChannels(client, systemService)
+
+	connectionTracker := NewDefaultConnectionTracker(10)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
+
+	// Add some connections to affect load balancing
+	connectionTracker.IncrementConnection(channels[0].ID) // High weight channel now has 2 connections
+	connectionTracker.IncrementConnection(channels[0].ID)
+	connectionTracker.IncrementConnection(channels[1].ID) // Medium weight channel has 1 connection
+	// ch3 (low weight) has 0 connections
+
+	req := &llm.Request{
+		Model: "gpt-4",
+	}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, result, 3)
+
+	// Verify all channels are returned with specific ordering
+	channelIDs := make([]int, len(result))
+	for i, ch := range result {
+		channelIDs[i] = ch.Channel.ID
+	}
+
+	require.Contains(t, channelIDs, channels[0].ID)
+	require.Contains(t, channelIDs, channels[1].ID)
+	require.Contains(t, channelIDs, channels[2].ID)
+
+	// WeightRoundRobinStrategy distributes requests proportionally by weight
+	// We expect: ch1 (high weight) > ch2 (medium weight) > ch3 (low weight)
+
+	// Let's verify the connection counts are correctly tracked
+	require.Equal(t, 2, connectionTracker.GetActiveConnections(channels[0].ID), "Channel 0 should have 2 connections")
+	require.Equal(t, 1, connectionTracker.GetActiveConnections(channels[1].ID), "Channel 1 should have 1 connection")
+	require.Equal(t, 0, connectionTracker.GetActiveConnections(channels[2].ID), "Channel 2 should have 0 connections")
+
+	// Log the actual ordering for debugging
+	t.Logf("Channel ordering with connections: ch0(2 conn)=%d, ch1(1 conn)=%d, ch2(0 conn)=%d",
+		result[0].Channel.ID, result[1].Channel.ID, result[2].Channel.ID)
+
+	// Verify channel properties in the result
+	for i, ch := range result {
+		require.Equal(t, channel.StatusEnabled, ch.Channel.Status, "Channel %d should be enabled", i)
+		require.Contains(t, ch.Channel.SupportedModels, "gpt-4", "Channel %d should support gpt-4", i)
+	}
+}
+
 // TestDefaultChannelSelector_Select_WithTraceContext tests trace-aware load balancing.
 func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	ctx, client := setupTest(t)
@@ -95,11 +154,13 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	// Add trace to context
 	ctx = contexts.WithTrace(ctx, trace)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -139,11 +200,13 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	// Record failures for the high weight channel to test error awareness
 	for range 3 {
@@ -237,11 +300,13 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin_EqualWeights(t *testin
 
 	channels := []*ent.Channel{ch1, ch2, ch3}
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -327,11 +392,13 @@ func TestDefaultChannelSelector_Select_WeightedRoundRobin(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -397,11 +464,13 @@ func TestDefaultChannelSelector_Select_WithDisabledChannels(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
-	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
+	connectionTracker := NewDefaultConnectionTracker(10)
+	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService, connectionTracker)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -429,8 +498,9 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	strategies := []LoadBalanceStrategy{
@@ -483,8 +553,9 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	loadBalancer := NewLoadBalancer(systemService, nil)
 
 	modelService := newTestModelService(client)

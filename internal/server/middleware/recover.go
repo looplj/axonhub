@@ -2,10 +2,14 @@ package middleware
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,17 +28,24 @@ func RecoveryWithWriter() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Get stack trace
+				// Generate short panic ID for correlation
+				panicID := generatePanicID()
 				stack := stack(3)
 
-				// Log detailed error information
+				// Log error message with short ID at error level (no stack)
 				log.Error(
 					c.Request.Context(),
-					fmt.Sprintf("[PANIC] %s", err),
+					fmt.Sprintf("[PANIC-%s] %s", panicID, err),
 					log.String("path", c.Request.URL.Path),
 					log.String("method", c.Request.Method),
 					log.String("client_ip", c.ClientIP()),
 					log.String("user_agent", c.Request.UserAgent()),
+				)
+
+				// Log full sanitized stack trace at debug level only
+				log.Debug(
+					c.Request.Context(),
+					fmt.Sprintf("[PANIC-%s] Stack trace", panicID),
 					log.String("stack", string(stack)),
 				)
 
@@ -65,10 +76,14 @@ func stack(skip int) []byte {
 			continue
 		}
 
+		// Sanitize file path: extract only the last two path components
+		// to avoid leaking internal server file paths in production logs.
+		sanitizedFile := sanitizeFilePath(file)
+
 		// Only print the file name when it changes
-		if file != lastFile {
-			fmt.Fprintf(buf, "\n%s:", file)
-			lastFile = file
+		if sanitizedFile != lastFile {
+			fmt.Fprintf(buf, "\n%s:", sanitizedFile)
+			lastFile = sanitizedFile
 		}
 
 		// Print function name and line
@@ -79,4 +94,26 @@ func stack(skip int) []byte {
 	}
 
 	return buf.Bytes()
+}
+
+// sanitizeFilePath strips directory components from a file path,
+// keeping only the last two segments (e.g., "pkg/middleware/recover.go")
+// to avoid leaking internal server paths in log output.
+func sanitizeFilePath(path string) string {
+	lastSep := strings.LastIndex(path, "/")
+	if lastSep == -1 {
+		return path
+	}
+	secondLastSep := strings.LastIndex(path[:lastSep], "/")
+	if secondLastSep == -1 {
+		return path
+	}
+	return path[secondLastSep+1:]
+}
+
+// generatePanicID creates a short, unique identifier for a panic event
+// to correlate error logs with debug-level stack traces.
+func generatePanicID() string {
+	h := sha256.Sum256([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
+	return hex.EncodeToString(h[:])[:8]
 }

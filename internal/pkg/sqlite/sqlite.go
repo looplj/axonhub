@@ -31,6 +31,20 @@ func (d sqliteDriver) Open(name string) (driver.Conn, error) {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
+	if _, err := c.Exec("PRAGMA journal_mode=WAL;", nil); err != nil {
+		if err := conn.Close(); err != nil {
+			return nil, fmt.Errorf("failed to close connection: %w", err)
+		}
+		return nil, fmt.Errorf("failed to set journal_mode=WAL: %w", err)
+	}
+
+	if _, err := c.Exec("PRAGMA busy_timeout=5000;", nil); err != nil {
+		if err := conn.Close(); err != nil {
+			return nil, fmt.Errorf("failed to close connection: %w", err)
+		}
+		return nil, fmt.Errorf("failed to set busy_timeout=5000: %w", err)
+	}
+
 	return conn, nil
 }
 

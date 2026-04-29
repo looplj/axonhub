@@ -34,7 +34,12 @@ func WithThread(config tracing.Config, threadService *biz.ThreadService) gin.Han
 		}
 
 		// Bypass privacy policy so tokens without write_requests scope can still trigger thread tracking.
-		bypassCtx := authz.WithSystemBypass(c.Request.Context(), "thread-middleware")
+		bypassCtx, err := authz.WithSystemBypass(c.Request.Context(), "thread-middleware")
+		if err != nil {
+			log.Error(c.Request.Context(), "failed to create bypass context for thread middleware", log.Cause(err))
+			c.Next()
+			return
+		}
 
 		// Get or create thread (errors are logged but don't block the request)
 		thread, err := threadService.GetOrCreateThread(bypassCtx, projectID, threadID)

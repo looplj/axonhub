@@ -99,6 +99,7 @@ type ComplexityRoot struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Key       func(childComplexity int) int
+		KeyHash   func(childComplexity int) int
 		Name      func(childComplexity int) int
 		Profiles  func(childComplexity int) int
 		Project   func(childComplexity int) int
@@ -2200,6 +2201,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKey.Key(childComplexity), true
+	case "APIKey.keyHash":
+		if e.complexity.APIKey.KeyHash == nil {
+			break
+		}
+
+		return e.complexity.APIKey.KeyHash(childComplexity), true
 	case "APIKey.name":
 		if e.complexity.APIKey.Name == nil {
 			break
@@ -13230,6 +13237,35 @@ func (ec *executionContext) fieldContext_APIKey_key(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKey_keyHash(ctx context.Context, field graphql.CollectedField, obj *ent.APIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKey_keyHash,
+		func(ctx context.Context) (any, error) {
+			return obj.KeyHash, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKey_keyHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKey_name(ctx context.Context, field graphql.CollectedField, obj *ent.APIKey) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13697,6 +13733,8 @@ func (ec *executionContext) fieldContext_APIKeyEdge_node(_ context.Context, fiel
 				return ec.fieldContext_APIKey_projectID(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
+			case "keyHash":
+				return ec.fieldContext_APIKey_keyHash(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
 			case "type":
@@ -28023,6 +28061,8 @@ func (ec *executionContext) fieldContext_Mutation_createAPIKey(ctx context.Conte
 				return ec.fieldContext_APIKey_projectID(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
+			case "keyHash":
+				return ec.fieldContext_APIKey_keyHash(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
 			case "type":
@@ -28094,6 +28134,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKey(ctx context.Conte
 				return ec.fieldContext_APIKey_projectID(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
+			case "keyHash":
+				return ec.fieldContext_APIKey_keyHash(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
 			case "type":
@@ -28165,6 +28207,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyStatus(ctx context
 				return ec.fieldContext_APIKey_projectID(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
+			case "keyHash":
+				return ec.fieldContext_APIKey_keyHash(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
 			case "type":
@@ -28236,6 +28280,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyProfiles(ctx conte
 				return ec.fieldContext_APIKey_projectID(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
+			case "keyHash":
+				return ec.fieldContext_APIKey_keyHash(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
 			case "type":
@@ -40079,6 +40125,8 @@ func (ec *executionContext) fieldContext_Request_apiKey(_ context.Context, field
 				return ec.fieldContext_APIKey_projectID(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
+			case "keyHash":
+				return ec.fieldContext_APIKey_keyHash(ctx, field)
 			case "name":
 				return ec.fieldContext_APIKey_name(ctx, field)
 			case "type":
@@ -54334,7 +54382,7 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDIsNil", "userIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDIsNil", "userIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "keyHash", "keyHashNEQ", "keyHashIn", "keyHashNotIn", "keyHashGT", "keyHashGTE", "keyHashLT", "keyHashLTE", "keyHashContains", "keyHashHasPrefix", "keyHashHasSuffix", "keyHashIsNil", "keyHashNotNil", "keyHashEqualFold", "keyHashContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54755,6 +54803,111 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 				return it, err
 			}
 			it.KeyContainsFold = data
+		case "keyHash":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHash"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHash = data
+		case "keyHashNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashNEQ = data
+		case "keyHashIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashIn = data
+		case "keyHashNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashNotIn = data
+		case "keyHashGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashGT = data
+		case "keyHashGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashGTE = data
+		case "keyHashLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashLT = data
+		case "keyHashLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashLTE = data
+		case "keyHashContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashContains = data
+		case "keyHashHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashHasPrefix = data
+		case "keyHashHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashHasSuffix = data
+		case "keyHashIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashIsNil = data
+		case "keyHashNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashNotNil = data
+		case "keyHashEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashEqualFold = data
+		case "keyHashContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHashContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyHashContainsFold = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -70034,7 +70187,7 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 			it.AccessKey = data
 		case "secretKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secretKey"))
-			data, err := ec.unmarshalOString2string(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -77668,6 +77821,8 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "keyHash":
+			out.Values[i] = ec._APIKey_keyHash(ctx, field, obj)
 		case "name":
 			out.Values[i] = ec._APIKey_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

@@ -16,6 +16,12 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+// Default timeout values for HTTP client operations.
+const (
+	DefaultResponseHeaderTimeout = 60 * time.Second
+	DefaultRequestTimeout        = 300 * time.Second
+)
+
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
 	client      *http.Client
@@ -55,6 +61,7 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: DefaultResponseHeaderTimeout,
 	}
 
 	if options.insecureSkipVerify {
@@ -137,40 +144,43 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 		opt(&options)
 	}
 
-	client := &http.Client{}
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: DefaultResponseHeaderTimeout,
+	}
 
 	if options.insecureSkipVerify {
-		var transport *http.Transport
+		var baseTransport *http.Transport
 		if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
-			transport = defaultTransport.Clone()
+			baseTransport = defaultTransport.Clone()
 		} else {
-			// Fall back to a transport close to http.DefaultTransport when it has been replaced.
-			transport = (&http.Transport{
-				Proxy: getProxyFunc(nil),
-				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-				ForceAttemptHTTP2:     true,
-				MaxIdleConns:          100,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-			})
+			baseTransport = transport
 		}
 
-		if transport.TLSClientConfig == nil {
-			transport.TLSClientConfig = &tls.Config{}
+		if baseTransport.TLSClientConfig == nil {
+			baseTransport.TLSClientConfig = &tls.Config{}
 		} else {
-			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+			baseTransport.TLSClientConfig = baseTransport.TLSClientConfig.Clone()
 		}
+		baseTransport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
 
-		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
-		client.Transport = transport
+		return &HttpClient{
+			client: &http.Client{Transport: baseTransport},
+			opts:   opts,
+		}
 	}
 
 	return &HttpClient{
-		client: client,
+		client: &http.Client{Transport: transport},
 		opts:   opts,
 	}
 }
@@ -184,6 +194,12 @@ func NewHttpClientWithClient(client *http.Client) *HttpClient {
 
 // Do executes the HTTP request.
 func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, DefaultRequestTimeout)
+		defer cancel()
+	}
+
 	slog.DebugContext(ctx, "execute http request", slog.Any("request", request), slog.Any("proxy", hc.proxyConfig))
 
 	rawReq, err := hc.BuildHttpRequest(ctx, request)
@@ -205,7 +221,8 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}()
 
-	body, err := io.ReadAll(rawResp.Body)
+	const maxResponseBodySize = 100 * 1024 * 1024 // 100MB
+	body, err := io.ReadAll(io.LimitReader(rawResp.Body, maxResponseBodySize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -216,7 +233,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 				slog.String("method", rawReq.Method),
 				slog.String("url", rawReq.URL.String()),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.String("body", truncateBody(body)))
 		}
 
 		return nil, &Error{
@@ -234,7 +251,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 			slog.String("method", rawReq.Method),
 			slog.String("url", rawReq.URL.String()),
 			slog.Int("status_code", rawResp.StatusCode),
-			slog.String("body", string(body)))
+			slog.String("body", truncateBody(body)))
 	}
 
 	// Build generic response
@@ -291,7 +308,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 				slog.String("method", rawReq.Method),
 				slog.String("url", rawReq.URL.String()),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.String("body", truncateBody(body)))
 		}
 
 		return nil, &Error{
@@ -404,6 +421,17 @@ func applyAuth(headers http.Header, auth *AuthConfig) error {
 	}
 
 	return nil
+}
+
+// truncateBody limits the response body logged at debug level to prevent
+// leaking large or sensitive payloads. Bodies longer than 512 bytes are
+// truncated with an ellipsis suffix.
+func truncateBody(body []byte) string {
+	const maxLen = 512
+	if len(body) <= maxLen {
+		return string(body)
+	}
+	return string(body[:maxLen]) + "... (truncated)"
 }
 
 // extractHeaders extracts headers from HTTP response.

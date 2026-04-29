@@ -94,7 +94,11 @@ func (n *WebhookNotifier) NotifyChannelAutoDisabled(ctx context.Context, event C
 }
 
 func (n *WebhookNotifier) notify(ctx context.Context, eventName string, renderCtx WebhookRenderContext) {
-	ctx = authz.WithSystemBypass(context.WithoutCancel(ctx), "webhook-notifier")
+	ctx, err := authz.WithSystemBypass(context.WithoutCancel(ctx), "webhook-notifier")
+	if err != nil {
+		log.Error(context.Background(), "failed to create bypass context", log.Cause(err))
+		return
+	}
 	cfg := *n.SystemService.WebhookNotifierConfigOrDefault(ctx)
 	targets := n.selectTargets(cfg, eventName)
 

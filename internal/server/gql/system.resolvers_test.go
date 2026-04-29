@@ -18,7 +18,7 @@ func setupTestSystemMutationResolver(t *testing.T) (*mutationResolver, context.C
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	systemService := &biz.SystemService{
-		Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
+		Cache: xcache.MustNewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
 	}
 
 	ctx := context.Background()

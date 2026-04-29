@@ -183,7 +183,10 @@ func (svc *PromptProtectionRuleService) Stop() {
 }
 
 func (svc *PromptProtectionRuleService) onEnabledRulesRefreshed(ctx context.Context, _ []*ent.PromptProtectionRule, lastUpdate time.Time) ([]*ent.PromptProtectionRule, time.Time, bool, error) {
-	ctx = authz.WithSystemBypass(ctx, "prompt-protection-rule-cache")
+	ctx, err := authz.WithSystemBypass(ctx, "prompt-protection-rule-cache")
+	if err != nil {
+		return nil, time.Time{}, false, err
+	}
 	client := svc.entFromContext(ctx)
 
 	q := client.PromptProtectionRule.Query().

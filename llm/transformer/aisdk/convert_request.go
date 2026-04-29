@@ -252,8 +252,9 @@ func convertToLLMRequestWithAPIFormat(req *Request, options *ConvertToLLMRequest
 				}
 				// Build assistant message content and tool calls
 				var (
-					contentParts []llm.MessageContentPart
-					toolCalls    []llm.ToolCall
+					contentParts     []llm.MessageContentPart
+					toolCalls        []llm.ToolCall
+					reasoningContent string
 				)
 
 				var toolMessages []llm.Message // tool role messages following assistant
@@ -270,10 +271,9 @@ func convertToLLMRequestWithAPIFormat(req *Request, options *ConvertToLLMRequest
 							contentParts = append(contentParts, *cp)
 						}
 					case p.Type == "reasoning" && p.Text != "":
-						// Map reasoning as a special content type - use text type for now
-						reasoningPart := llm.MessageContentPart{Type: "text", Text: lo.ToPtr(p.Text)}
-						// TODO: Add provider metadata support when LLM structs support it
-						contentParts = append(contentParts, reasoningPart)
+						// Preserve thinking semantics by setting ReasoningContent
+						// on the message instead of mapping as plain text.
+						reasoningContent = p.Text
 					case p.Type == "dynamic-tool" || strings.HasPrefix(p.Type, "tool-"):
 						// Only include non-streaming tool input states
 						if p.State == "input-streaming" {
@@ -335,8 +335,8 @@ func convertToLLMRequestWithAPIFormat(req *Request, options *ConvertToLLMRequest
 					}
 				}
 
-				// Append assistant message if it has content or tool calls
-				if len(contentParts) > 0 || len(toolCalls) > 0 {
+				// Append assistant message if it has content, tool calls, or reasoning
+				if len(contentParts) > 0 || len(toolCalls) > 0 || reasoningContent != "" {
 					assistantMsg := llm.Message{
 						Role:    "assistant",
 						Content: llm.MessageContent{MultipleContent: contentParts},
@@ -347,6 +347,9 @@ func convertToLLMRequestWithAPIFormat(req *Request, options *ConvertToLLMRequest
 
 							return toolCalls
 						}(),
+					}
+					if reasoningContent != "" {
+						assistantMsg.ReasoningContent = lo.ToPtr(reasoningContent)
 					}
 					llmReq.Messages = append(llmReq.Messages, assistantMsg)
 				}

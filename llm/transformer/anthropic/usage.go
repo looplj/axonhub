@@ -42,8 +42,10 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 		return nil
 	}
 
-	// Handle moonshot's cached_tokens field
-	if usage.CachedTokens > 0 && usage.CacheCreationInputTokens == 0 {
+	// Handle Moonshot cached_tokens field (Moonshot uses "cached_tokens" instead of
+	// "cache_read_input_tokens"). Guard by platformType to avoid false positives
+	// on other providers that happen to return similar field patterns.
+	if platformType == PlatformMoonshot && usage.CachedTokens > 0 {
 		usage.CacheReadInputTokens = usage.CachedTokens
 	}
 
@@ -102,7 +104,7 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 			Ephemeral5mInputTokens: llmUsage.PromptTokensDetails.WriteCached5MinTokens,
 			Ephemeral1hInputTokens: llmUsage.PromptTokensDetails.WriteCached1HourTokens,
 		}
-		usage.InputTokens -= (usage.CacheReadInputTokens + usage.CacheCreationInputTokens)
+		usage.InputTokens = max(0, usage.InputTokens - usage.CacheReadInputTokens - usage.CacheCreationInputTokens)
 	}
 
 	// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API

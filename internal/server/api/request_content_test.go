@@ -42,13 +42,15 @@ func TestRequestContentHandlers_DownloadRequestContent(t *testing.T) {
 	executor := executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
 	t.Cleanup(func() { _ = executor.Shutdown(context.Background()) })
 
-	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig})
-	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig})
+	require.NoError(t, err)
+	dataStorageService, err := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
 		Executor:      executor,
 		Client:        client,
 	})
+	require.NoError(t, err)
 
 	h := NewRequestContentHandlers(RequestContentHandlersParams{
 		DataStorageService: dataStorageService,

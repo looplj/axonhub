@@ -31,6 +31,8 @@ func RequestFromLLM(r *llm.Request) *Request {
 		Metadata:            r.Metadata,
 		Modalities:          r.Modalities,
 		ReasoningEffort:     r.ReasoningEffort,
+		ReasoningBudget:     r.ReasoningBudget,
+		ReasoningSummary:    r.ReasoningSummary,
 		ServiceTier:         r.ServiceTier,
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,
@@ -223,10 +225,11 @@ func ToolFromLLM(t llm.Tool) Tool {
 	return Tool{
 		Type: t.Type,
 		Function: Function{
-			Name:        t.Function.Name,
-			Description: t.Function.Description,
-			Parameters:  t.Function.Parameters,
-			Strict:      t.Function.Strict,
+			Name:                t.Function.Name,
+			Description:         t.Function.Description,
+			Parameters:          t.Function.Parameters,
+			ParametersJsonSchema: t.Function.ParametersJsonSchema,
+			Strict:              t.Function.Strict,
 		},
 	}
 }

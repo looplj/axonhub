@@ -4,14 +4,17 @@ name: Lint
 on:
   push:
     branches:
+      - 'branch-2'
       - 'unstable'
       - 'release/**'
   pull_request:
     branches:
+      - 'branch-2'
       - 'unstable'
       - 'release/**'
 env:
   GO111MODULE: on
+  GOTOOLCHAIN: auto
 jobs:
   lint:
     runs-on: ubuntu-latest

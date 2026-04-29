@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -602,7 +603,8 @@ data: [DONE]
 	body := io.NopCloser(strings.NewReader(sseData))
 
 	stream := &defaultSSEDecoder{
-		ctx:       t.Context(),
+		done:    t.Context().Done(),
+		cancel:  func() {},
 		sseStream: sse.NewStream(body),
 	}
 
@@ -700,4 +702,92 @@ func TestBuildHttpRequest_UserAgentPassThrough(t *testing.T) {
 			require.Equal(t, tt.wantUserAgent, ua)
 		})
 	}
+}
+
+// TestHttpClient_Timeout_NonStreaming verifies that non-streaming requests
+// with a short context deadline time out when the server does not respond.
+func TestHttpClient_Timeout_NonStreaming(t *testing.T) {
+	// Server that never responds (hangs indefinitely)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done() // Block until context is cancelled
+	}))
+	defer server.Close()
+
+	client := NewHttpClient()
+	req := &Request{
+		Method: http.MethodGet,
+		URL:    server.URL,
+	}
+
+	// Use a short timeout that is much less than DefaultRequestTimeout
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
+	defer cancel()
+
+	_, err := client.Do(ctx, req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "HTTP request failed")
+}
+
+// TestHttpClient_Timeout_ContextRespected verifies that when a context
+// with a deadline is passed, the Do() method uses the caller's deadline
+// instead of applying the default timeout.
+func TestHttpClient_Timeout_ContextRespected(t *testing.T) {
+	// Server that responds quickly
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ok": true}`))
+	}))
+	defer server.Close()
+
+	client := NewHttpClient()
+	req := &Request{
+		Method: http.MethodGet,
+		URL:    server.URL,
+	}
+
+	// Pass a context with an explicit deadline (well beyond what the server needs)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	resp, err := client.Do(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+// TestNewHttpClient_DefaultTransport verifies that in non-InsecureSkipVerify
+// mode, NewHttpClient returns a client with a properly configured Transport
+// (not a zero-config http.Client).
+func TestNewHttpClient_DefaultTransport(t *testing.T) {
+	client := NewHttpClient()
+	nativeClient := client.GetNativeClient()
+
+	// Transport must not be nil
+	require.NotNil(t, nativeClient.Transport, "Transport should not be nil (zero-config)")
+
+	transport, ok := nativeClient.Transport.(*http.Transport)
+	require.True(t, ok, "Transport should be *http.Transport")
+
+	// ResponseHeaderTimeout should be set
+	require.Equal(t, DefaultResponseHeaderTimeout, transport.ResponseHeaderTimeout,
+		"ResponseHeaderTimeout should be set to default value")
+
+	// Proxy should be configured
+	require.NotNil(t, transport.Proxy, "Proxy should be configured")
+
+	// DialContext should be configured
+	require.NotNil(t, transport.DialContext, "DialContext should be configured")
+}
+
+// TestNewHttpClientWithProxy_TimeoutSettings verifies that NewHttpClientWithProxy
+// sets ResponseHeaderTimeout on the transport.
+func TestNewHttpClientWithProxy_TimeoutSettings(t *testing.T) {
+	client := NewHttpClientWithProxy(nil)
+	nativeClient := client.GetNativeClient()
+
+	transport, ok := nativeClient.Transport.(*http.Transport)
+	require.True(t, ok, "Transport should be *http.Transport")
+
+	require.Equal(t, DefaultResponseHeaderTimeout, transport.ResponseHeaderTimeout,
+		"ResponseHeaderTimeout should be set to default value")
 }

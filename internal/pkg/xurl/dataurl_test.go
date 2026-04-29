@@ -120,11 +120,11 @@ func TestParseDataURL(t *testing.T) {
 			},
 		},
 		{
-			name: "valid html content",
-			url:  "data:text/html;base64,PGh0bWw+PC9odG1sPg==",
+			name: "valid plain text with base64",
+			url:  "data:text/plain;base64,SGVsbG8gV29ybGQ=",
 			expected: &DataURL{
-				MediaType: "text/html",
-				Data:      "PGh0bWw+PC9odG1sPg==",
+				MediaType: "text/plain",
+				Data:      "SGVsbG8gV29ybGQ=",
 				IsBase64:  true,
 			},
 		},
@@ -140,20 +140,12 @@ func TestParseDataURL(t *testing.T) {
 		{
 			name: "valid pdf content",
 			url:  "data:application/pdf;base64,JVBERi0xLjQK",
-			expected: &DataURL{
-				MediaType: "application/pdf",
-				Data:      "JVBERi0xLjQK",
-				IsBase64:  true,
-			},
+			expected: nil,
 		},
 		{
 			name: "valid audio content",
 			url:  "data:audio/mp3;base64,//uQxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVV",
-			expected: &DataURL{
-				MediaType: "audio/mp3",
-				Data:      "//uQxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVV",
-				IsBase64:  true,
-			},
+			expected: nil,
 		},
 		{
 			name: "default media type when empty",
@@ -379,7 +371,7 @@ func TestExtractMediaTypeFromDataURL(t *testing.T) {
 		{
 			name:     "text/html",
 			url:      "data:text/html;base64,PGh0bWw+",
-			expected: "text/html",
+			expected: "",
 		},
 		{
 			name:     "application/json",
@@ -389,12 +381,12 @@ func TestExtractMediaTypeFromDataURL(t *testing.T) {
 		{
 			name:     "application/pdf",
 			url:      "data:application/pdf;base64,JVBERi0=",
-			expected: "application/pdf",
+			expected: "",
 		},
 		{
 			name:     "audio/mp3",
 			url:      "data:audio/mp3;base64,//uQxAA=",
-			expected: "audio/mp3",
+			expected: "",
 		},
 		{
 			name:     "default media type when empty",

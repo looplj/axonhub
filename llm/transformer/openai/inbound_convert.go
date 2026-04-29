@@ -148,17 +148,20 @@ func (m Message) ToLLMMessage() llm.Message {
 
 	// Convert ToolCalls
 	if m.ToolCalls != nil {
-		msg.ToolCalls = lo.Map(m.ToolCalls, func(tc ToolCall, _ int) llm.ToolCall {
-			return tc.ToLLMToolCall()
-		})
+		msg.ToolCalls = make([]llm.ToolCall, len(m.ToolCalls))
+		for i, tc := range m.ToolCalls {
+			msg.ToolCalls[i] = tc.ToLLMToolCall()
 
-		firstThoughtSignature := lo.FindOrElse(msg.ToolCalls, llm.ToolCall{}, func(tc llm.ToolCall) bool {
-			raw, ok := tc.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string)
-			return ok && raw != ""
-		})
-
-		if raw, ok := firstThoughtSignature.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string); ok {
-			msg.ReasoningSignature = lo.ToPtr(raw)
+			// Extract ReasoningSignature once from the first tool call that carries it.
+			if msg.ReasoningSignature == nil {
+				extraContent := tc.ExtraContent
+				if extraContent == nil && tc.ExtraFields != nil {
+					extraContent = tc.ExtraFields.ExtraContent
+				}
+				if extraContent != nil && extraContent.Google != nil && extraContent.Google.ThoughtSignature != "" {
+					msg.ReasoningSignature = lo.ToPtr(extraContent.Google.ThoughtSignature)
+				}
+			}
 		}
 	}
 

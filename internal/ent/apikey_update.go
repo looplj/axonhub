@@ -259,6 +259,9 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(apikey.FieldDeletedAt, field.TypeInt, value)
 	}
+	if _u.mutation.KeyHashCleared() {
+		_spec.ClearField(apikey.FieldKeyHash, field.TypeString)
+	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
 	}
@@ -608,6 +611,9 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(apikey.FieldDeletedAt, field.TypeInt, value)
+	}
+	if _u.mutation.KeyHashCleared() {
+		_spec.ClearField(apikey.FieldKeyHash, field.TypeString)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)

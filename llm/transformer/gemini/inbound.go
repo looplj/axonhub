@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
@@ -27,26 +28,38 @@ func NewInboundTransformer() *InboundTransformer {
 
 // extractRequestParams extracts the model and stream flag from the request URL.
 func extractRequestParams(httpReq *httpclient.Request) (string, bool, error) {
-	urlParts := strings.Split(httpReq.Path, "/")
-	if len(urlParts) < 1 {
+	// Use url.Parse for robust handling of non-standard endpoints
+	var rawPath string
+	if u, err := url.Parse(httpReq.Path); err == nil {
+		rawPath = u.Path
+	} else {
+		rawPath = httpReq.Path
+	}
+
+	// Trim trailing slash and extract the last path segment
+	rawPath = strings.TrimRight(rawPath, "/")
+	segments := strings.Split(rawPath, "/")
+	if len(segments) == 0 || segments[len(segments)-1] == "" {
 		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
 	}
 
-	suffix := urlParts[len(urlParts)-1]
+	last := segments[len(segments)-1]
 
-	suffixParts := strings.Split(suffix, ":")
-	if len(suffixParts) < 2 {
-		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
+	// Check for colon-separated action suffix (e.g., model-name:generateContent)
+	if idx := strings.LastIndex(last, ":"); idx >= 0 {
+		model := last[:idx]
+		action := last[idx+1:]
+		switch action {
+		case "generateContent":
+			return model, false, nil
+		case "streamGenerateContent":
+			return model, true, nil
+		}
 	}
 
-	switch suffixParts[1] {
-	case "generateContent":
-		return suffixParts[0], false, nil
-	case "streamGenerateContent":
-		return suffixParts[0], true, nil
-	default:
-		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
-	}
+	// Fallback: treat the entire last segment as the model name,
+	// defaulting to non-streaming for non-standard endpoints.
+	return last, false, nil
 }
 
 // TransformRequest transforms Gemini HTTP request to unified Request format.

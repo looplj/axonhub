@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -73,7 +74,7 @@ type TokenExchanger interface {
 // - Polling for access token
 // - Token refresh (if refresh_token is available)
 // - Optional token exchange (for two-step flows like Copilot)
-// - Auto-refresh and OnRefreshed callbacks for persistence.
+// - Auto-refresh and OnRefreshed callbacks for persistence
 type DeviceFlowProvider struct {
 	config     DeviceFlowConfig
 	httpClient *httpclient.HttpClient
@@ -142,7 +143,6 @@ func (p *DeviceFlowProvider) Start(ctx context.Context) (*DeviceFlowResponse, er
 	// Build the device authorization request
 	form := url.Values{}
 	form.Set("client_id", p.config.ClientID)
-
 	if len(p.config.Scopes) > 0 {
 		form.Set("scope", strings.Join(p.config.Scopes, " "))
 	}
@@ -178,7 +178,6 @@ func (p *DeviceFlowProvider) Start(ctx context.Context) (*DeviceFlowResponse, er
 		if err := json.Unmarshal(resp.Body, &tokenErr); err == nil && tokenErr.Error != "" {
 			return nil, fmt.Errorf("device authorization failed: %s - %s", tokenErr.Error, tokenErr.ErrorDescription)
 		}
-
 		return nil, errors.New("device authorization response missing device_code")
 	}
 
@@ -192,7 +191,7 @@ func (p *DeviceFlowProvider) Start(ctx context.Context) (*DeviceFlowResponse, er
 // - authorization_pending: user hasn't authorized yet (caller should retry)
 // - slow_down: polling too fast (caller should increase interval)
 // - expired_token: device code expired
-// - access_denied: user denied authorization.
+// - access_denied: user denied authorization
 func (p *DeviceFlowProvider) Poll(ctx context.Context, deviceCode string) (*OAuthCredentials, error) {
 	if p.httpClient == nil {
 		return nil, errors.New("http client is nil")
@@ -303,7 +302,6 @@ func (p *DeviceFlowProvider) getExchangedToken(ctx context.Context, accessToken 
 		if err != nil {
 			return nil, fmt.Errorf("token exchange failed: %w", err)
 		}
-
 		return token, nil
 	})
 	if err != nil {
@@ -365,7 +363,7 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 
 		if onRefreshed != nil {
 			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", sanitizeOAuthError(err)))
 			}
 		}
 
@@ -388,12 +386,10 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 func (p *DeviceFlowProvider) GetCredentials() *OAuthCredentials {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-
 	if p.creds != nil {
 		c := *p.creds
 		return &c
 	}
-
 	return nil
 }
 
@@ -403,7 +399,6 @@ func (p *DeviceFlowProvider) GetCredentials() *OAuthCredentials {
 func (p *DeviceFlowProvider) UpdateCredentials(creds *OAuthCredentials) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-
 	if creds != nil {
 		c := *creds
 		p.creds = &c
@@ -516,10 +511,8 @@ func (p *DeviceFlowProvider) scheduleNextAutoRefresh(
 
 		// Ensure credentials are fresh
 		refreshFailed := false
-
 		if _, err := p.GetToken(autoCtx); err != nil {
-			slog.WarnContext(autoCtx, "failed to auto refresh device flow token", slog.Any("error", err))
-
+			slog.WarnContext(autoCtx, "failed to auto refresh device flow token", slog.Any("error", sanitizeOAuthError(err)))
 			refreshFailed = true
 		}
 
@@ -543,7 +536,6 @@ func (p *DeviceFlowProvider) scheduleNextAutoRefresh(
 	if p.autoCancel == nil || p.autoExecutor == nil || exec != p.autoExecutor {
 		p.autoMu.Unlock()
 		cancelFunc()
-
 		return
 	}
 
@@ -594,7 +586,6 @@ func (p *DeviceFlowProvider) scheduleNextAutoRefreshWithDelay(
 	if p.autoCancel == nil || p.autoExecutor == nil || exec != p.autoExecutor {
 		p.autoMu.Unlock()
 		cancelFunc()
-
 		return
 	}
 
@@ -679,3 +670,17 @@ func (p *DeviceFlowProvider) refresh(ctx context.Context, creds *OAuthCredential
 
 	return refreshed, nil
 }
+
+// sanitizeOAuthError masks token-like values in error strings to prevent
+// accidental propagation of secrets in logs.
+func sanitizeOAuthError(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	msg = reTokenPattern.ReplaceAllString(msg, "***")
+	return errors.New(msg)
+}
+
+// reTokenPattern matches common token patterns in error messages.
+var reTokenPattern = regexp.MustCompile(`(?i)(bearer\s+|token[=:]\s*|access_token[=:]\s*|refresh_token[=:]\s*)[A-Za-z0-9_\-\.]{10,}`)

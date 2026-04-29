@@ -10,7 +10,7 @@ import (
 	"github.com/tmaxmax/go-sse"
 )
 
-// decoderRegistry holds registered stream decoders.
+// decoderRegistry holds registered stream decodings.
 type decoderRegistry struct {
 	mu       sync.RWMutex
 	decoders map[string]StreamDecoderFactory
@@ -41,10 +41,10 @@ func GetDecoder(contentType string) (StreamDecoderFactory, bool) {
 
 // NewDefaultSSEDecoder creates a new default SSE decoder.
 func NewDefaultSSEDecoder(ctx context.Context, rc io.ReadCloser) StreamDecoder {
+	ctx, cancel := context.WithCancel(ctx)
 	return &defaultSSEDecoder{
-		ctx: ctx,
-		// sseStream: sse.NewStream(rc),
-		// 图片生成需要大量数据，设置最大事件大小
+		done: ctx.Done(),
+		cancel: cancel,
 		sseStream: sse.NewStreamWithConfig(rc, &sse.StreamConfig{
 			MaxEventSize: 32 * 1024 * 1024,
 		}),
@@ -55,10 +55,9 @@ func NewDefaultSSEDecoder(ctx context.Context, rc io.ReadCloser) StreamDecoder {
 var _ StreamDecoder = (*defaultSSEDecoder)(nil)
 
 // defaultSSEDecoder implements streams.Stream for Server-Sent Events using go-sse Stream.
-//
-//nolint:containedctx // Checked.
 type defaultSSEDecoder struct {
-	ctx       context.Context
+	done      <-chan struct{}
+	cancel    context.CancelFunc
 	sseStream *sse.Stream
 	current   *StreamEvent
 	err       error
@@ -81,42 +80,49 @@ func (s *defaultSSEDecoder) Next() bool {
 
 	// Check context cancellation
 	select {
-	case <-s.ctx.Done():
-		slog.DebugContext(s.ctx, "SSE stream closed")
-
-		s.err = s.ctx.Err()
+	case <-s.done:
+		s.err = context.Canceled
 		_ = s.Close()
 
 		return false
 	default:
 	}
 
-	// Receive next event from go-sse Stream
-	event, err := s.sseStream.Recv()
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			slog.DebugContext(s.ctx, "SSE stream closed")
-			_ = s.Close()
+	// Receive next event from go-sse Stream.
+	// Recv() blocks on I/O, so we run it in a goroutine and select
+	// against s.done to allow context cancellation to interrupt.
+	type recvResult struct {
+		event sse.Event
+		err   error
+	}
+	ch := make(chan recvResult, 1)
+	go func() {
+		event, err := s.sseStream.Recv()
+		ch <- recvResult{event: event, err: err}
+	}()
 
+	select {
+	case <-s.done:
+		s.err = context.Canceled
+		_ = s.Close()
+		return false
+	case result := <-ch:
+		if result.err != nil {
+			if errors.Is(result.err, io.EOF) {
+				_ = s.Close()
+				return false
+			}
+			s.err = result.err
+			_ = s.Close()
 			return false
 		}
-
-		s.err = err
-		_ = s.Close()
-
-		return false
+		s.current = &StreamEvent{
+			LastEventID: result.event.LastEventID,
+			Type:        result.event.Type,
+			Data:        []byte(result.event.Data),
+		}
+		return true
 	}
-
-	slog.DebugContext(s.ctx, "SSE event received", slog.Any("event", event))
-
-	// Create stream event for this event
-	s.current = &StreamEvent{
-		LastEventID: event.LastEventID,
-		Type:        event.Type,
-		Data:        []byte(event.Data),
-	}
-
-	return true
 }
 
 // Current returns the current event data.
@@ -137,9 +143,12 @@ func (s *defaultSSEDecoder) Close() error {
 	}
 
 	s.closed = true
+	if s.cancel != nil {
+		s.cancel()
+	}
 	if s.sseStream != nil {
 		s.closeErr = s.sseStream.Close()
-		slog.DebugContext(s.ctx, "SSE stream closed")
+		slog.Debug("SSE stream closed")
 	}
 
 	return s.closeErr

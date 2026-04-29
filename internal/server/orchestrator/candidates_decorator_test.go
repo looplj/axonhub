@@ -14,8 +14,9 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	strategies := []LoadBalanceStrategy{
@@ -58,8 +59,9 @@ func TestSelectedChannelsSelector_WithAllowedChannels(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	baseSelector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
@@ -95,9 +97,10 @@ func TestSelectedChannelsSelector_WithEmptyFilter(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
 	req := &llm.Request{

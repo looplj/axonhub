@@ -218,6 +218,13 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*Channe
 	// Extract top k sorted candidates
 	result := lo.Map(scored[:topK], func(ch candidateScore, _ int) *ChannelModelsCandidate { return ch.candidate })
 
+	// Check if the top candidate is rate-limit exhausted; if so, block routing.
+	if len(result) > 0 && result[0] != nil && result[0].Channel != nil {
+		if lb.isRateLimitExhausted(result[0].Channel) {
+			return nil
+		}
+	}
+
 	// Increment selection count for the top candidate to ensure subsequent
 	// concurrent requests see the updated count and select different channels
 	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
@@ -297,6 +304,13 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 		return nil
 	})
 
+	// Check if the top candidate is rate-limit exhausted; if so, block routing.
+	if len(result) > 0 && result[0] != nil && result[0].Channel != nil {
+		if lb.isRateLimitExhausted(result[0].Channel) {
+			return nil
+		}
+	}
+
 	// Increment selection count for the top candidate to ensure subsequent
 	// concurrent requests see the updated count and select different channels
 	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
@@ -304,6 +318,17 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 	}
 
 	return result
+}
+
+// isRateLimitExhausted checks if a channel's rate limit strategy reports exhaustion.
+// Returns true only if a RateLimitAwareStrategy is registered and reports the channel as exhausted.
+func (lb *LoadBalancer) isRateLimitExhausted(channel *biz.Channel) bool {
+	for _, strategy := range lb.strategies {
+		if rl, ok := strategy.(*RateLimitAwareStrategy); ok {
+			return rl.IsExhausted(channel)
+		}
+	}
+	return false
 }
 
 // calculateTopK determines how many candidates to select based on retry policy.

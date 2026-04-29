@@ -14,14 +14,22 @@ import (
 
 // startPerformanceProcess starts the background goroutine to flush metrics to database.
 func (svc *ChannelService) startPerformanceProcess() {
-	ctx := authz.WithSystemBypass(context.Background(), "channel-record-performance")
+	ctx, err := authz.WithSystemBypass(context.Background(), "channel-record-performance")
+	if err != nil {
+		log.Error(context.Background(), "failed to create bypass context", log.Cause(err))
+		return
+	}
 	for perf := range svc.perfCh {
 		svc.RecordPerformance(ctx, perf)
 	}
 }
 
 func (svc *ChannelService) runSyncChannelModelsPeriodically(ctx context.Context) {
-	ctx = authz.WithSystemBypass(ctx, "channel-run-model-sync")
+	ctx, err := authz.WithSystemBypass(ctx, "channel-run-model-sync")
+	if err != nil {
+		log.Error(context.Background(), "failed to create bypass context", log.Cause(err))
+		return
+	}
 	setting := svc.SystemService.ChannelSettingOrDefault(ctx)
 	if !svc.shouldRunModelSync(xtime.UTCNow(), setting.AutoSync.Frequency) {
 		return
@@ -59,26 +67,40 @@ func getIntervalMinutesFromAutoSyncFrequency(frequency AutoSyncFrequency) int {
 }
 
 func (svc *ChannelService) onCacheRefreshed(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
-	ctx = authz.WithSystemBypass(ctx, "channel-refresh-cache")
+	ctx, err := authz.WithSystemBypass(ctx, "channel-refresh-cache")
+	if err != nil {
+		return nil, time.Time{}, false, err
+	}
 	return svc.reloadEnabledChannels(ctx, current, lastUpdate)
 }
 
 func (svc *ChannelService) onTokenRefreshed(ch *ent.Channel) func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
 	return func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
-		ctx = authz.WithSystemBypass(ctx, "channel-refresh-cache")
+		ctx, err := authz.WithSystemBypass(ctx, "channel-refresh-cache")
+		if err != nil {
+			return err
+		}
 		return svc.refreshOAuthToken(ctx, ch, refreshed)
 	}
 }
 
 func (svc *ChannelService) initChannelPerformances(ctx context.Context) {
-	ctx = authz.WithSystemBypass(ctx, "int-channel-load-performances")
+	ctx, err := authz.WithSystemBypass(ctx, "int-channel-load-performances")
+	if err != nil {
+		log.Error(context.Background(), "failed to create bypass context", log.Cause(err))
+		return
+	}
 	if err := svc.loadChannelPerformances(ctx); err != nil {
 		log.Warn(ctx, "failed to load channel performances", log.Cause(err))
 	}
 }
 
 func (svc *ChannelService) ReloadEnabledChannelsCache(ctx context.Context) error {
-	ctx = authz.WithSystemBypass(ctx, "channel-reload-enabled-channels-cache")
+	ctx, err := authz.WithSystemBypass(ctx, "channel-reload-enabled-channels-cache")
+	if err != nil {
+		log.Error(context.Background(), "failed to create bypass context", log.Cause(err))
+		return err
+	}
 	if err := svc.enabledChannelsCache.Load(ctx, true); err != nil {
 		return fmt.Errorf("failed to reload enabled channels cache: %w", err)
 	}

@@ -98,6 +98,23 @@ type APIKeyWhereInput struct {
 	KeyEqualFold    *string  `json:"keyEqualFold,omitempty"`
 	KeyContainsFold *string  `json:"keyContainsFold,omitempty"`
 
+	// "key_hash" field predicates.
+	KeyHash             *string  `json:"keyHash,omitempty"`
+	KeyHashNEQ          *string  `json:"keyHashNEQ,omitempty"`
+	KeyHashIn           []string `json:"keyHashIn,omitempty"`
+	KeyHashNotIn        []string `json:"keyHashNotIn,omitempty"`
+	KeyHashGT           *string  `json:"keyHashGT,omitempty"`
+	KeyHashGTE          *string  `json:"keyHashGTE,omitempty"`
+	KeyHashLT           *string  `json:"keyHashLT,omitempty"`
+	KeyHashLTE          *string  `json:"keyHashLTE,omitempty"`
+	KeyHashContains     *string  `json:"keyHashContains,omitempty"`
+	KeyHashHasPrefix    *string  `json:"keyHashHasPrefix,omitempty"`
+	KeyHashHasSuffix    *string  `json:"keyHashHasSuffix,omitempty"`
+	KeyHashIsNil        bool     `json:"keyHashIsNil,omitempty"`
+	KeyHashNotNil       bool     `json:"keyHashNotNil,omitempty"`
+	KeyHashEqualFold    *string  `json:"keyHashEqualFold,omitempty"`
+	KeyHashContainsFold *string  `json:"keyHashContainsFold,omitempty"`
+
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
 	NameNEQ          *string  `json:"nameNEQ,omitempty"`
@@ -349,6 +366,51 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	}
 	if i.KeyContainsFold != nil {
 		predicates = append(predicates, apikey.KeyContainsFold(*i.KeyContainsFold))
+	}
+	if i.KeyHash != nil {
+		predicates = append(predicates, apikey.KeyHashEQ(*i.KeyHash))
+	}
+	if i.KeyHashNEQ != nil {
+		predicates = append(predicates, apikey.KeyHashNEQ(*i.KeyHashNEQ))
+	}
+	if len(i.KeyHashIn) > 0 {
+		predicates = append(predicates, apikey.KeyHashIn(i.KeyHashIn...))
+	}
+	if len(i.KeyHashNotIn) > 0 {
+		predicates = append(predicates, apikey.KeyHashNotIn(i.KeyHashNotIn...))
+	}
+	if i.KeyHashGT != nil {
+		predicates = append(predicates, apikey.KeyHashGT(*i.KeyHashGT))
+	}
+	if i.KeyHashGTE != nil {
+		predicates = append(predicates, apikey.KeyHashGTE(*i.KeyHashGTE))
+	}
+	if i.KeyHashLT != nil {
+		predicates = append(predicates, apikey.KeyHashLT(*i.KeyHashLT))
+	}
+	if i.KeyHashLTE != nil {
+		predicates = append(predicates, apikey.KeyHashLTE(*i.KeyHashLTE))
+	}
+	if i.KeyHashContains != nil {
+		predicates = append(predicates, apikey.KeyHashContains(*i.KeyHashContains))
+	}
+	if i.KeyHashHasPrefix != nil {
+		predicates = append(predicates, apikey.KeyHashHasPrefix(*i.KeyHashHasPrefix))
+	}
+	if i.KeyHashHasSuffix != nil {
+		predicates = append(predicates, apikey.KeyHashHasSuffix(*i.KeyHashHasSuffix))
+	}
+	if i.KeyHashIsNil {
+		predicates = append(predicates, apikey.KeyHashIsNil())
+	}
+	if i.KeyHashNotNil {
+		predicates = append(predicates, apikey.KeyHashNotNil())
+	}
+	if i.KeyHashEqualFold != nil {
+		predicates = append(predicates, apikey.KeyHashEqualFold(*i.KeyHashEqualFold))
+	}
+	if i.KeyHashContainsFold != nil {
+		predicates = append(predicates, apikey.KeyHashContainsFold(*i.KeyHashContainsFold))
 	}
 	if i.Name != nil {
 		predicates = append(predicates, apikey.NameEQ(*i.Name))

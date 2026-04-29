@@ -507,7 +507,7 @@ func convertToGeminiUsage(chatUsage *llm.Usage) *UsageMetadata {
 
 	if chatUsage.CompletionTokensDetails != nil {
 		usage.ThoughtsTokenCount = chatUsage.CompletionTokensDetails.ReasoningTokens
-		usage.CandidatesTokenCount = chatUsage.CompletionTokens - usage.ThoughtsTokenCount
+		usage.CandidatesTokenCount = max(0, chatUsage.CompletionTokens - usage.ThoughtsTokenCount)
 	}
 
 	if len(chatUsage.CompletionModalityTokenDetails) > 0 {

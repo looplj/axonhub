@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -141,6 +142,7 @@ type recordPerformanceStream struct {
 	stream streams.Stream[*llm.Response]
 	state  *PersistenceState
 
+	mu     sync.Mutex
 	firstTokenSet     bool
 	reasoningStartSet bool
 	reasoningEndSet   bool
@@ -152,6 +154,8 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 		return event
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if !s.firstTokenSet && s.state.Perf != nil {
 		s.state.Perf.MarkFirstToken()
 		s.firstTokenSet = true

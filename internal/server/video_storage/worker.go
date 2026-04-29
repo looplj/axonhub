@@ -59,7 +59,10 @@ func (w *Worker) Start(ctx context.Context) error {
 		return nil
 	}
 
-	ctx = authz.WithSystemBypass(ctx, "video-storage-start")
+	ctx, err := authz.WithSystemBypass(ctx, "video-storage-start")
+	if err != nil {
+		return err
+	}
 	settings, err := w.systemService.VideoStorageSettings(ctx)
 	if err != nil {
 		return err
@@ -95,7 +98,11 @@ func (w *Worker) Stop(ctx context.Context) error {
 }
 
 func (w *Worker) runScanWithSystemContext(ctx context.Context) {
-	ctx = authz.WithSystemBypass(ctx, "video-storage-scan")
+	ctx, err := authz.WithSystemBypass(ctx, "video-storage-scan")
+	if err != nil {
+		log.Error(context.Background(), "failed to create bypass context", log.Cause(err))
+		return
+	}
 	ctx = ent.NewContext(ctx, w.ent)
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)

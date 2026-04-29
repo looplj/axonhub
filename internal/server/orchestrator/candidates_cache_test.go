@@ -49,9 +49,10 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		SaveX(ctx)
 
 	// Create real services
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 
 	// Create selector
 	selector := NewDefaultSelector(channelService, modelService, systemService)
@@ -326,7 +327,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 			}).
 			SaveX(ctx)
 
-		selector.ChannelService = newTestChannelServiceForChannels(client)
+		selector.ChannelService = newTestChannelServiceForChannels(t, client)
 
 		smallReq := &llm.Request{
 			Model: conditionalModelID,
@@ -411,7 +412,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 			}).
 			SaveX(ctx)
 
-		selector.ChannelService = newTestChannelServiceForChannels(client)
+		selector.ChannelService = newTestChannelServiceForChannels(t, client)
 
 		streamTrue := true
 		streamFalse := false
@@ -496,7 +497,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create a new channel service to see the new channels
-		newChannelService := newTestChannelServiceForChannels(client)
+		newChannelService := newTestChannelServiceForChannels(t, client)
 		selector.ChannelService = newChannelService
 
 		// First call to populate cache

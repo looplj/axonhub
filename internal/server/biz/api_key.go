@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -25,12 +26,14 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"entgo.io/ent/dialect/sql"
+
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
 const (
 	//nolint:gosec // Checked.
-	NoAuthAPIKeyValue = "AXONHUB_API_KEY_NO_AUTH"
+	NoAuthAPIKeyValue = ""
 
 	//nolint:gosec // Checked.
 	NoAuthAPIKeyName = "No Auth System Key"
@@ -120,18 +123,25 @@ func (s *APIKeyService) loadAPIKeyByKey(ctx context.Context, cacheKey string) (*
 	}
 
 	client := s.entFromContext(ctx)
+	keyHash := hashKey(originalKey)
 
-	item, err := client.APIKey.Query().Where(apikey.KeyEQ(originalKey), apikey.DeletedAtEQ(0)).First(ctx)
+	item, err := client.APIKey.Query().Where(apikey.KeyHashEQ(keyHash), apikey.DeletedAtEQ(0)).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, live.ErrKeyNotFound
+			// Migration path: fall back to plaintext key lookup for keys
+			// stored before key_hash was introduced.
+			item, err = client.APIKey.Query().Where(apikey.KeyEQ(originalKey), apikey.DeletedAtEQ(0)).First(ctx)
+			if err != nil {
+				if ent.IsNotFound(err) {
+					return nil, live.ErrKeyNotFound
+				}
+				return nil, err
+			}
+			// Backfill the hash on read.
+			_, _ = client.APIKey.UpdateOne(item).Modify(func(u *sql.UpdateBuilder) { u.Set(apikey.FieldKeyHash, keyHash) }).Save(ctx)
+		} else {
+			return nil, err
 		}
-
-		return nil, err
-	}
-
-	if buildAPIKeyCacheKey(item.Key) != cacheKey {
-		return nil, live.ErrKeyNotFound
 	}
 
 	return item, nil
@@ -179,6 +189,12 @@ func GenerateAPIKey(prefix string) (string, error) {
 	return prefix + "-" + hex.EncodeToString(bytes), nil
 }
 
+// hashKey computes the SHA-256 hash of an API key for secure storage.
+func hashKey(key string) string {
+	h := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(h[:])
+}
+
 // CreateLLMAPIKey creates a new API key for LLM calls using a service account API key.
 func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, name string) (*ent.APIKey, error) {
 	name = strings.TrimSpace(name)
@@ -196,6 +212,7 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 	create := client.APIKey.Create().
 		SetName(name).
 		SetKey(generatedKey).
+		SetKeyHash(hashKey(generatedKey)).
 		SetUserID(owner.UserID).
 		SetProjectID(owner.ProjectID).
 		SetType(apikey.TypeUser).
@@ -245,6 +262,7 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 	create := client.APIKey.Create().
 		SetName(input.Name).
 		SetKey(generatedKey).
+		SetKeyHash(hashKey(generatedKey)).
 		SetUserID(user.ID).
 		SetProjectID(input.ProjectID)
 
@@ -637,13 +655,21 @@ func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error
 }
 
 func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, error) {
-	existing, err := s.GetAPIKey(ctx, NoAuthAPIKeyValue)
+	// Check if noauth API key already exists by querying by type.
+	existing, err := s.entFromContext(ctx).APIKey.Query().
+		Where(apikey.TypeEQ(apikey.TypeNoauth), apikey.DeletedAtEQ(0)).
+		First(ctx)
 	if err == nil {
+		// Load with project edge for compatibility.
+		project, projErr := s.ProjectService.GetProjectByID(ctx, existing.ProjectID)
+		if projErr == nil {
+			existing.Edges.Project = project
+		}
 		return existing, nil
 	}
 
-	if !errors.Is(err, ErrInvalidAPIKey) {
-		return nil, fmt.Errorf("failed to query noauth api key from cache: %w", err)
+	if !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to query noauth api key: %w", err)
 	}
 
 	client := s.entFromContext(ctx)
@@ -659,9 +685,15 @@ func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, er
 		return nil, fmt.Errorf("failed to get owner user for noauth api key: %w", err)
 	}
 
+	generatedKey, err := GenerateAPIKey(s.keyPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate noauth api key: %w", err)
+	}
+
 	apiKey, err := client.APIKey.Create().
 		SetName(NoAuthAPIKeyName).
-		SetKey(NoAuthAPIKeyValue).
+		SetKey(generatedKey).
+		SetKeyHash(hashKey(generatedKey)).
 		SetUserID(owner.ID).
 		SetProjectID(proj.ID).
 		SetType(apikey.TypeNoauth).

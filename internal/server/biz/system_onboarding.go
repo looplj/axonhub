@@ -29,7 +29,10 @@ type OnboardingRecord struct {
 // OnboardingInfo retrieves the onboarding information from system settings.
 // Returns nil if not set.
 func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingRecord, error) {
-	ctx = authz.WithSystemBypass(ctx, "read-onboarding-info")
+	ctx, err := authz.WithSystemBypass(ctx, "read-onboarding-info")
+	if err != nil {
+		return nil, err
+	}
 
 	value, err := s.getSystemValue(ctx, SystemKeyOnboarded)
 	if err != nil {

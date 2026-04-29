@@ -22,6 +22,7 @@ type redisWatcher[T any] struct {
 	channel string
 	buffer  int
 
+	ctx    context.Context
 	mu     sync.Mutex
 	nextID uint64
 	subs   map[uint64]chan T
@@ -32,6 +33,10 @@ type redisWatcher[T any] struct {
 }
 
 func NewRedisWatcher[T any](client *redis.Client, opts RedisWatcherOptions) (Notifier[T], error) {
+	return NewRedisWatcherWithContext[T](context.Background(), client, opts)
+}
+
+func NewRedisWatcherWithContext[T any](ctx context.Context, client *redis.Client, opts RedisWatcherOptions) (Notifier[T], error) {
 	if client == nil {
 		return nil, errors.New("watcher.RedisWatcher: redis client is required")
 	}
@@ -46,6 +51,7 @@ func NewRedisWatcher[T any](client *redis.Client, opts RedisWatcherOptions) (Not
 	}
 
 	return &redisWatcher[T]{
+		ctx:     ctx,
 		client:  client,
 		channel: opts.Channel,
 		buffer:  buffer,
@@ -110,7 +116,7 @@ func (w *redisWatcher[T]) startLocked() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(w.ctx)
 	w.cancel = cancel
 
 	w.pubsub = w.client.Subscribe(ctx, w.channel)
@@ -125,7 +131,7 @@ func (w *redisWatcher[T]) startLocked() {
 					return
 				}
 
-				log.Warn(context.Background(), "watcher redis watcher receive failed",
+				log.Warn(w.ctx, "watcher redis watcher receive failed",
 					log.String("channel", w.channel),
 					log.Cause(err))
 
@@ -134,7 +140,7 @@ func (w *redisWatcher[T]) startLocked() {
 
 			var v T
 			if err := json.Unmarshal([]byte(msg.Payload), &v); err != nil {
-				log.Warn(context.Background(), "watcher redis watcher decode failed",
+				log.Warn(w.ctx, "watcher redis watcher decode failed",
 					log.String("channel", w.channel),
 					log.String("payload", msg.Payload),
 					log.Cause(err))

@@ -37,7 +37,7 @@ func NewUserService(params UserServiceParams) *UserService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		UserCache:           xcache.NewFromConfig[ent.User](params.CacheConfig),
+		UserCache:           xcache.MustNewFromConfig[ent.User](params.CacheConfig),
 		permissionValidator: NewPermissionValidator(),
 	}
 }

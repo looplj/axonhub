@@ -186,7 +186,7 @@ func TestCopilotHandlers_StartOAuth_EmptyDeviceCode(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusBadGateway, w.Code)
-	require.Contains(t, w.Body.String(), "device code not received")
+	require.Contains(t, w.Body.String(), "internal server error")
 }
 
 func TestCopilotHandlers_StartOAuth_WithProxy(t *testing.T) {
@@ -860,7 +860,7 @@ func TestCopilotHandlers_PollOAuth_UnknownError(t *testing.T) {
 	router.ServeHTTP(pollW, pollReq)
 
 	require.Equal(t, http.StatusBadGateway, pollW.Code)
-	require.Contains(t, pollW.Body.String(), "OAuth error")
+	require.Contains(t, pollW.Body.String(), "internal server error")
 }
 
 func TestCopilotHandlers_PollOAuth_WithProxy(t *testing.T) {
