@@ -25,8 +25,9 @@ func TestDefaultChannelSelector_Select_SingleChannel(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
@@ -48,9 +49,10 @@ func TestDefaultSelector_Select(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	selector := NewDefaultSelector(channelService, modelService, systemService)
 
 	req := &llm.Request{
@@ -79,8 +81,9 @@ func TestDefaultSelector_Select(t *testing.T) {
 func TestDefaultChannelSelector_Select_NoChannelsAvailable(t *testing.T) {
 	ctx, client := setupTest(t)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
@@ -111,8 +114,9 @@ func TestDefaultChannelSelector_Select_ModelNotSupported(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
@@ -133,8 +137,9 @@ func TestDefaultChannelSelector_Select_EmptyRequest(t *testing.T) {
 
 	createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
-	systemService := newTestSystemService(client)
+	channelService := newTestChannelServiceForChannels(t, client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	connectionTracker := NewDefaultConnectionTracker(10)
@@ -164,7 +169,7 @@ func TestSpecifiedChannelSelector_Select_ValidChannel(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	selector := NewSpecifiedChannelSelector(channelService, objects.GUID{ID: ch.ID})
 
 	req := &llm.Request{
@@ -192,7 +197,7 @@ func TestSpecifiedChannelSelector_Select_ModelNotSupported(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	selector := NewSpecifiedChannelSelector(channelService, objects.GUID{ID: ch.ID})
 
 	req := &llm.Request{
@@ -209,7 +214,7 @@ func TestSpecifiedChannelSelector_Select_ModelNotSupported(t *testing.T) {
 func TestSpecifiedChannelSelector_Select_ChannelNotFound(t *testing.T) {
 	ctx, client := setupTest(t)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	selector := NewSpecifiedChannelSelector(channelService, objects.GUID{ID: 999}) // Non-existent ID
 
 	req := &llm.Request{
@@ -228,9 +233,10 @@ func TestSelectedChannelsSelector_Select_WithFilter(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
 	// Only allow channels 0 and 2
@@ -263,9 +269,10 @@ func TestSelectedChannelsSelector_Select_EmptyFilter(t *testing.T) {
 
 	channels := createTestChannels(t, ctx, client)
 
-	channelService := newTestChannelServiceForChannels(client)
+	channelService := newTestChannelServiceForChannels(t, client)
 	modelService := newTestModelService(client)
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
 	// Empty filter should return all channels

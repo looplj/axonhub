@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -13,6 +14,13 @@ import (
 // (currently ~1530: Trace=1000 + Error=200 + WeightRR=150 + Latency=80 + RateLimit=100)
 // so that exhausted channels always rank last, while still remaining as fallback candidates.
 const rateLimitExhaustedScore = -10000
+
+// ErrRateLimitExhausted is returned when all available channels are rate-limited or in cooldown.
+var ErrRateLimitExhausted = fmt.Errorf("all channels are rate-limited or in cooldown")
+
+// rateLimitBlockThreshold defines the score below which a channel is considered blocked.
+// Channels scoring at or below this threshold will prevent routing entirely.
+const rateLimitBlockThreshold = rateLimitExhaustedScore
 
 // RateLimitAwareStrategy adjusts channel scores based on configured RPM/TPM rate limits and concurrency limits.
 // Channels that have exhausted their rate limits receive a heavily negative score to be ranked last.
@@ -136,6 +144,51 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 	}
 
 	return score
+}
+
+// IsExhausted returns true if the channel is rate-limited or in cooldown and should be blocked from routing.
+func (s *RateLimitAwareStrategy) IsExhausted(channel *biz.Channel) bool {
+	if s.requestTracker.IsCoolingDown(channel.ID) {
+		return true
+	}
+
+	settings := channel.Settings
+	if settings == nil || settings.RateLimit == nil {
+		if s.connectionTracker != nil {
+			if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
+				concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+				if int64(concurrent) >= concurrencyLimit {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	rl := settings.RateLimit
+
+	if rl.RPM != nil && *rl.RPM > 0 {
+		if s.requestTracker.GetRequestCount(channel.ID) >= *rl.RPM {
+			return true
+		}
+	}
+
+	if rl.TPM != nil && *rl.TPM > 0 {
+		if s.requestTracker.GetTokenCount(channel.ID) >= *rl.TPM {
+			return true
+		}
+	}
+
+	if s.connectionTracker != nil {
+		if concurrencyLimit, _, _ := s.resolveConcurrencyLimit(channel); concurrencyLimit > 0 {
+			concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+			if int64(concurrent) >= concurrencyLimit {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // ScoreWithDebug calculates the score with detailed debug information.

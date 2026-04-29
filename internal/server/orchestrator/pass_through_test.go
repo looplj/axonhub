@@ -1007,10 +1007,11 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			ctx, client := setupTest(t)
 
 			// Create real system service with test database
-			systemService := newTestSystemService(client)
+			systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 
 			// Set global User-Agent pass-through setting
-			err := systemService.SetUserAgentPassThrough(ctx, tt.globalUAEnabled)
+			err = systemService.SetUserAgentPassThrough(ctx, tt.globalUAEnabled)
 			require.NoError(t, err)
 
 			// Create mock channel with optional pass-through setting
@@ -1078,7 +1079,8 @@ func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
 	ctx, client := setupTest(t)
 
 	// Create real system service with test database
-	systemService := newTestSystemService(client)
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 
 	// Create outbound without a channel
 	outbound := &PersistentOutboundTransformer{

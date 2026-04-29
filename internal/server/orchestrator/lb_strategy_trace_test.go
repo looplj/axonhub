@@ -130,7 +130,7 @@ func TestTraceAwareStrategy_Score_WithLastSuccessChannel(t *testing.T) {
 	ctx = contexts.WithTrace(ctx, &ent.Trace{ID: trace.ID})
 	ctx = ent.NewContext(ctx, client)
 
-	requestService := newTestRequestService(client)
+	requestService := newTestRequestService(t, client)
 	strategy := NewTraceAwareStrategy(requestService)
 
 	channel := &biz.Channel{Channel: ch}
@@ -189,7 +189,7 @@ func TestTraceAwareStrategy_Score_DifferentChannel(t *testing.T) {
 
 	ctx = contexts.WithTrace(ctx, &ent.Trace{ID: trace.ID})
 
-	requestService := newTestRequestService(client)
+	requestService := newTestRequestService(t, client)
 	strategy := NewTraceAwareStrategy(requestService)
 
 	// Test with ch2 (different channel)

@@ -61,8 +61,10 @@ func TestMigrator_Run_WithInitializedSystem(t *testing.T) {
 	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+	var err error
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
+	err = systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -121,7 +123,8 @@ func TestMigrator_Run_WithEmptyVersionValue(t *testing.T) {
 	// Verify migration was executed and version upgraded
 	assert.Equal(t, 1, mock.migrateCalls)
 
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
 	version, err := systemService.Version(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, build.Version, version)
@@ -136,8 +139,10 @@ func TestMigrator_Run_SkipNewerVersion(t *testing.T) {
 	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+	var err error
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
+	err = systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -172,8 +177,10 @@ func TestMigrator_Run_SkipEqualVersion(t *testing.T) {
 	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+	var err error
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
+	err = systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -208,8 +215,10 @@ func TestMigrator_Run_MultipleMigrations(t *testing.T) {
 	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+	var err error
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
+	err = systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -248,8 +257,10 @@ func TestMigrator_Run_PartialMigrations(t *testing.T) {
 	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+	var err error
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
+	err = systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -344,8 +355,10 @@ func TestMigrator_IntegrationTest(t *testing.T) {
 	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
-	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+	var err error
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
+	err = systemService.Initialize(ctx, &biz.InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -406,7 +419,8 @@ func TestMigrator_UpgradeFromV0_3_0(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Primary", primaryDS.Name)
 
-	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{})
+	require.NoError(t, err)
 	defaultID, err := systemService.DefaultDataStorageID(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, primaryDS.ID, defaultID)

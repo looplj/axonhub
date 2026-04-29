@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"sync/atomic"
 )
 
 // InboundPersistentStream wraps a stream and tracks all responses for final saving to database.
@@ -28,7 +29,7 @@ type InboundPersistentStream struct {
 	transformer    transformer.Inbound
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
-	closed         bool
+	closed         atomic.Bool
 	state          *PersistenceState
 }
 
@@ -53,7 +54,6 @@ func NewInboundPersistentStream(
 		transformer:    transformer,
 		perf:           perf,
 		responseChunks: make([]*httpclient.StreamEvent, 0),
-		closed:         false,
 		state:          state,
 	}
 
@@ -92,11 +92,11 @@ func (ts *InboundPersistentStream) Err() error {
 }
 
 func (ts *InboundPersistentStream) Close() error {
-	if ts.closed {
+	if ts.closed.Load() {
 		return nil
 	}
 
-	ts.closed = true
+	ts.closed.Store(true)
 	ctx := ts.ctx
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))

@@ -44,7 +44,10 @@ func NewPromptService(params PromptServiceParams) *PromptService {
 }
 
 func (svc *PromptService) Initialize(ctx context.Context) error {
-	ctx = authz.WithSystemBypass(ctx, "prompt-initialize")
+	ctx, err := authz.WithSystemBypass(ctx, "prompt-initialize")
+	if err != nil {
+		return err
+	}
 
 	projects, err := svc.entFromContext(ctx).Project.Query().All(ctx)
 	if err != nil {
@@ -362,7 +365,10 @@ func (svc *PromptService) BulkDisablePrompts(ctx context.Context, ids []int) err
 }
 
 func (svc *PromptService) loadPrompts(ctx context.Context, projectID int) error {
-	ctx = authz.WithSystemBypass(ctx, "prompt-load-cache")
+	ctx, err := authz.WithSystemBypass(ctx, "prompt-load-cache")
+	if err != nil {
+		return err
+	}
 	// Check if there are updates for this project
 	latestUpdatedPrompt, err := svc.entFromContext(ctx).Prompt.Query().
 		Where(prompt.ProjectID(projectID)).

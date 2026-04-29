@@ -6,7 +6,7 @@ import (
 )
 
 // ChannelRequestTracker tracks per-channel request and token counts
-// within a fixed 1-minute sliding window for rate limiting.
+// within a 1-minute sliding window for rate limiting.
 // It also manages cooldown periods for channels that received 429 errors.
 type ChannelRequestTracker struct {
 	mu        sync.RWMutex
@@ -14,10 +14,16 @@ type ChannelRequestTracker struct {
 	cooldowns map[int]time.Time        // channelID -> cooldown expiration time
 }
 
+// rateLimitWindow holds counters for the current and previous minute window.
 type rateLimitWindow struct {
 	requests    int64
 	tokens      int64
 	windowStart time.Time
+
+	// Previous window counters, used for sliding window calculation.
+	prevRequests    int64
+	prevTokens      int64
+	prevWindowStart time.Time
 }
 
 // NewChannelRequestTracker creates a new rate limit tracker.
@@ -29,14 +35,23 @@ func NewChannelRequestTracker() *ChannelRequestTracker {
 }
 
 // getOrResetWindow returns the current window for a channel, resetting if expired.
+// When the minute boundary crosses, current counters are rotated into prev.
 func (t *ChannelRequestTracker) getOrResetWindow(channelID int) *rateLimitWindow {
 	now := time.Now()
 	windowStart := now.Truncate(time.Minute)
 
 	w, ok := t.counters[channelID]
-	if !ok || w.windowStart != windowStart {
+	if !ok {
 		w = &rateLimitWindow{windowStart: windowStart}
 		t.counters[channelID] = w
+	} else if w.windowStart != windowStart {
+		// Window flipped: rotate current → previous
+		w.prevRequests = w.requests
+		w.prevTokens = w.tokens
+		w.prevWindowStart = w.windowStart
+		w.requests = 0
+		w.tokens = 0
+		w.windowStart = windowStart
 	}
 
 	return w
@@ -64,7 +79,8 @@ func (t *ChannelRequestTracker) AddTokens(channelID int, tokens int64) {
 	w.tokens += tokens
 }
 
-// GetRequestCount returns the current request count for a channel in the current window.
+// GetRequestCount returns the effective request count for a channel
+// using a sliding window: effective = prev * (1 - elapsed/60s) + curr.
 func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -76,13 +92,25 @@ func (t *ChannelRequestTracker) GetRequestCount(channelID int) int64 {
 
 	windowStart := time.Now().Truncate(time.Minute)
 	if w.windowStart != windowStart {
+		// Expired and no rotate happened; treat as empty.
 		return 0
+	}
+
+	// Sliding window: weighted decay of previous window.
+	if w.prevWindowStart == windowStart.Add(-time.Minute) {
+		elapsed := time.Since(windowStart).Seconds()
+		weight := 1.0 - elapsed/60.0
+		if weight < 0 {
+			weight = 0
+		}
+		return int64(float64(w.prevRequests)*weight) + w.requests
 	}
 
 	return w.requests
 }
 
-// GetTokenCount returns the current token count for a channel in the current window.
+// GetTokenCount returns the effective token count for a channel
+// using a sliding window: effective = prev * (1 - elapsed/60s) + curr.
 func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -95,6 +123,16 @@ func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
 	windowStart := time.Now().Truncate(time.Minute)
 	if w.windowStart != windowStart {
 		return 0
+	}
+
+	// Sliding window: weighted decay of previous window.
+	if w.prevWindowStart == windowStart.Add(-time.Minute) {
+		elapsed := time.Since(windowStart).Seconds()
+		weight := 1.0 - elapsed/60.0
+		if weight < 0 {
+			weight = 0
+		}
+		return int64(float64(w.prevTokens)*weight) + w.tokens
 	}
 
 	return w.tokens

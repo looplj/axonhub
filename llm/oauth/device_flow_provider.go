@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -362,7 +363,7 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 
 		if onRefreshed != nil {
 			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", sanitizeOAuthError(err)))
 			}
 		}
 
@@ -511,7 +512,7 @@ func (p *DeviceFlowProvider) scheduleNextAutoRefresh(
 		// Ensure credentials are fresh
 		refreshFailed := false
 		if _, err := p.GetToken(autoCtx); err != nil {
-			slog.WarnContext(autoCtx, "failed to auto refresh device flow token", slog.Any("error", err))
+			slog.WarnContext(autoCtx, "failed to auto refresh device flow token", slog.Any("error", sanitizeOAuthError(err)))
 			refreshFailed = true
 		}
 
@@ -669,3 +670,17 @@ func (p *DeviceFlowProvider) refresh(ctx context.Context, creds *OAuthCredential
 
 	return refreshed, nil
 }
+
+// sanitizeOAuthError masks token-like values in error strings to prevent
+// accidental propagation of secrets in logs.
+func sanitizeOAuthError(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	msg = reTokenPattern.ReplaceAllString(msg, "***")
+	return errors.New(msg)
+}
+
+// reTokenPattern matches common token patterns in error messages.
+var reTokenPattern = regexp.MustCompile(`(?i)(bearer\s+|token[=:]\s*|access_token[=:]\s*|refresh_token[=:]\s*)[A-Za-z0-9_\-\.]{10,}`)

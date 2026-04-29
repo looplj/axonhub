@@ -47,7 +47,7 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 	}
 
 	// Build HTTP request using Bearer auth like ClaudeCode transformers
-	httpRequest := httpclient.NewRequestBuilder().
+	builder := httpclient.NewRequestBuilder().
 		WithMethod("POST").
 		WithURL(getEndpointURL(ch.BaseURL)).
 		WithAuth(&httpclient.AuthConfig{
@@ -58,18 +58,23 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 		WithHeader("anthropic-version", claudecode.ClaudeCodeVersionHeader).
 		WithHeader("anthropic-dangerous-direct-browser-access", claudecode.ClaudeCodeBrowserAccessHeader).
 		WithHeader("x-app", claudecode.ClaudeCodeAppHeader).
-		WithHeader("content-type", "application/json").
-		WithBody(map[string]any{
-			"model": claudecode.ClaudeCodeQuotaCheckModel,
-			"messages": []map[string]any{
-				{
-					"role":    "user",
-					"content": "limit",
-				},
+		WithHeader("content-type", "application/json")
+
+	builder, err := builder.WithBody(map[string]any{
+		"model": claudecode.ClaudeCodeQuotaCheckModel,
+		"messages": []map[string]any{
+			{
+				"role":    "user",
+				"content": "limit",
 			},
-			"max_tokens": 1,
-		}).
-		Build()
+		},
+		"max_tokens": 1,
+	})
+	if err != nil {
+		return QuotaData{}, fmt.Errorf("failed to build request body: %w", err)
+	}
+
+	httpRequest := builder.Build()
 
 	// Use proxy-configured HTTP client if available
 	httpClient := c.httpClient

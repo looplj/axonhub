@@ -108,7 +108,7 @@ func TestErrorAwareStrategy_Score_ConsecutiveFailures(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 
 	// Record consecutive failures
 	for range 3 {
@@ -149,7 +149,7 @@ func TestErrorAwareStrategy_Score_RecentSuccess(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 
 	// Record a recent success
 	perf := &biz.PerformanceRecord{
@@ -259,7 +259,7 @@ func TestConnectionAwareStrategy_Name(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 	tracker := NewDefaultConnectionTracker(10)
 	strategy := NewConnectionAwareStrategy(channelService, tracker)
 	assert.Equal(t, "ConnectionAware", strategy.Name())
@@ -271,7 +271,7 @@ func TestConnectionAwareStrategy_Score_NoTracker(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 	strategy := NewConnectionAwareStrategy(channelService, nil)
 
 	channel := &biz.Channel{
@@ -288,7 +288,7 @@ func TestConnectionAwareStrategy_Score_NoConnections(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 	tracker := NewDefaultConnectionTracker(10)
 	strategy := NewConnectionAwareStrategy(channelService, tracker)
 
@@ -306,7 +306,7 @@ func TestConnectionAwareStrategy_Score_PartialUtilization(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 	tracker := NewDefaultConnectionTracker(10)
 	strategy := NewConnectionAwareStrategy(channelService, tracker)
 
@@ -329,7 +329,7 @@ func TestConnectionAwareStrategy_Score_FullUtilization(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 	tracker := NewDefaultConnectionTracker(10)
 	strategy := NewConnectionAwareStrategy(channelService, tracker)
 
@@ -352,7 +352,7 @@ func TestConnectionAwareStrategy_ScoreConsistency(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 
 	testCases := []struct {
 		name              string

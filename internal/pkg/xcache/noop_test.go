@@ -43,7 +43,7 @@ func TestNoopCache(t *testing.T) {
 
 func TestNewFromConfigWithEmptyMode(t *testing.T) {
 	cfg := Config{} // Empty config with no mode set
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	// Should return noop cache
 	assert.Equal(t, "noop", cache.GetType())
@@ -59,7 +59,7 @@ func TestNewFromConfigWithInvalidMode(t *testing.T) {
 	cfg := Config{
 		Mode: "invalid-mode",
 	}
-	cache := NewFromConfig[string](cfg)
+	cache, _ := NewFromConfig[string](cfg)
 
 	// Should return noop cache
 	assert.Equal(t, "noop", cache.GetType())

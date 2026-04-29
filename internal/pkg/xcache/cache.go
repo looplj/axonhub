@@ -65,10 +65,10 @@ func NewMemoryWithOptions[T any](defaultExpiration, cleanupInterval time.Duratio
 //
 // Memory and Redis expiration can be configured separately.
 // If mode is not set or invalid, returns a noop cache that does nothing.
-func NewFromConfig[T any](cfg Config) Cache[T] {
+func NewFromConfig[T any](cfg Config) (Cache[T], error) {
 	// If mode is not set or empty, return noop cache
 	if cfg.Mode == "" {
-		return NewNoop[T]()
+		return NewNoop[T](), nil
 	}
 
 	// Build memory setter cache with separate expiration settings
@@ -85,7 +85,7 @@ func NewFromConfig[T any](cfg Config) Cache[T] {
 	if (cfg.Redis.Addr != "" || cfg.Redis.URL != "") && cfg.Mode != ModeMemory {
 		client, err := xredis.NewClient(cfg.Redis)
 		if err != nil {
-			panic(fmt.Errorf("invalid redis config: %w", err))
+			return nil, fmt.Errorf("invalid redis config: %w", err)
 		}
 
 		redisExpiration := defaultIfZero(cfg.Redis.Expiration, 30*time.Minute) // Default longer for Redis
@@ -97,26 +97,36 @@ func NewFromConfig[T any](cfg Config) Cache[T] {
 	case ModeTwoLevel:
 		if rds != nil {
 			log.Info(context.Background(), "Using two-level cache")
-			return cachelib.NewChain[T](mem, rds)
+			return cachelib.NewChain[T](mem, rds), nil
 		}
 
-		return mem
+		return mem, nil
 	case ModeRedis:
 		if rds == nil {
-			panic(errors.New("redis cache config is invalid"))
+			return nil, errors.New("redis cache config is invalid")
 		}
 
 		log.Info(context.Background(), "Using redis cache")
 
-		return rds
+		return rds, nil
 	case ModeMemory:
 		log.Info(context.Background(), "Using memory cache")
-		return mem
+		return mem, nil
 	default:
 		log.Info(context.Background(), "Disable cache")
 		// Return noop cache for invalid modes
-		return NewNoop[T]()
+		return NewNoop[T](), nil
 	}
+}
+
+// MustNewFromConfig is like NewFromConfig but panics on error.
+// Use this in tests or initialisation where the config is known-good.
+func MustNewFromConfig[T any](cfg Config) Cache[T] {
+	c, err := NewFromConfig[T](cfg)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func defaultIfZero(d, def time.Duration) time.Duration {

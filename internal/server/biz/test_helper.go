@@ -13,7 +13,7 @@ func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 		AbstractService: &AbstractService{
 			db: client,
 		},
-		Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
+		Cache: xcache.MustNewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
 	}
 
 	svc := NewChannelService(ChannelServiceParams{

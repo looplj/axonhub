@@ -9,6 +9,7 @@ import (
 var Module = fx.Module("biz",
 	fx.Provide(NewLiveStreamRegistry),
 	fx.Provide(NewSystemService),
+	fx.Provide(NewTokenRevocationService),
 	fx.Provide(NewWebhookNotifier),
 	fx.Provide(NewAuthService),
 	fx.Provide(NewChannelService),
@@ -84,6 +85,18 @@ var Module = fx.Module("biz",
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, svc *PromptProtectionRuleService) {
 		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				svc.Stop()
+				return nil
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *TokenRevocationService) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				svc.StartSweeper(ctx)
+				return nil
+			},
 			OnStop: func(ctx context.Context) error {
 				svc.Stop()
 				return nil

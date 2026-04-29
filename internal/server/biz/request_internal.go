@@ -8,7 +8,10 @@ import (
 )
 
 func (s *RequestService) getDataStorage(ctx context.Context, dataStorageID int) (*ent.DataStorage, error) {
-	ctx = authz.WithSystemBypass(ctx, "request-get-datastorage")
+	ctx, err := authz.WithSystemBypass(ctx, "request-get-datastorage")
+	if err != nil {
+		return nil, err
+	}
 	if dataStorageID == 0 {
 		return s.DataStorageService.GetPrimaryDataStorage(ctx)
 	}

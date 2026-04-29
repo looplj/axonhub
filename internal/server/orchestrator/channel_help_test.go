@@ -25,8 +25,11 @@ import (
 )
 
 // newTestChannelServiceForChannels creates a minimal channel service for testing.
-func newTestChannelServiceForChannels(client *ent.Client) *biz.ChannelService {
-	systemService := newTestSystemService(client)
+func newTestChannelServiceForChannels(t *testing.T, client *ent.Client) *biz.ChannelService {
+	t.Helper()
+
+	systemService, err := newTestSystemService(t, client)
+	require.NoError(t, err)
 
 	return biz.NewChannelService(biz.ChannelServiceParams{
 		Executor:      executors.NewPoolScheduleExecutor(),
@@ -65,7 +68,9 @@ func newTestLoadBalancedSelector(
 }
 
 // newTestSystemService creates a minimal system service for testing.
-func newTestSystemService(client *ent.Client) *biz.SystemService {
+func newTestSystemService(t *testing.T, client *ent.Client) (*biz.SystemService, error) {
+	t.Helper()
+
 	return biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
 		Ent:         client,
@@ -77,7 +82,7 @@ func newTestRequestServiceForChannels(client *ent.Client, systemService *biz.Sys
 	dataStorageService := &biz.DataStorageService{
 		AbstractService: &biz.AbstractService{},
 		SystemService:   systemService,
-		Cache:           xcache.NewFromConfig[ent.DataStorage](xcache.Config{Mode: xcache.ModeMemory}),
+		Cache:           xcache.MustNewFromConfig[ent.DataStorage](xcache.Config{Mode: xcache.ModeMemory}),
 	}
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
@@ -217,15 +222,16 @@ func setupTestServices(t *testing.T, client *ent.Client) (*biz.ChannelService, *
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: cacheConfig,
 		Ent:         client,
 	})
+	require.NoError(t, err)
 
 	dataStorageService := &biz.DataStorageService{
 		AbstractService: &biz.AbstractService{},
 		SystemService:   systemService,
-		Cache:           xcache.NewFromConfig[ent.DataStorage](cacheConfig),
+		Cache:           xcache.MustNewFromConfig[ent.DataStorage](cacheConfig),
 	}
 
 	channelService := biz.NewChannelServiceForTest(client)

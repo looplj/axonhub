@@ -58,21 +58,19 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 		return QuotaCheckResult{}, err
 	}
 
-	if quota.Requests != nil {
-		reqCount, err := authz.RunWithSystemBypass(ctx, "quota-request-count", func(bypassCtx context.Context) (int64, error) {
-			return s.requestCount(bypassCtx, apiKeyID, window)
-		})
-		if err != nil {
-			return QuotaCheckResult{}, err
-		}
+	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
+		return s.usageAgg(bypassCtx, apiKeyID, window, quota.Requests != nil, quota.TotalTokens != nil, quota.Cost != nil)
+	})
+	if err != nil {
+		return QuotaCheckResult{}, err
+	}
 
-		if reqCount >= *quota.Requests {
-			return QuotaCheckResult{
-				Allowed: false,
-				Message: fmt.Sprintf("requests quota exceeded: %d/%d", reqCount, *quota.Requests),
-				Window:  window,
-			}, nil
-		}
+	if quota.Requests != nil && usageAgg.RequestCount >= *quota.Requests {
+		return QuotaCheckResult{
+			Allowed: false,
+			Message: fmt.Sprintf("requests quota exceeded: %d/%d", usageAgg.RequestCount, *quota.Requests),
+			Window:  window,
+		}, nil
 	}
 
 	if quota.TotalTokens == nil && quota.Cost == nil {
@@ -80,13 +78,6 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 			Allowed: true,
 			Window:  window,
 		}, nil
-	}
-
-	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
-		return s.usageAgg(bypassCtx, apiKeyID, window, quota.TotalTokens != nil, quota.Cost != nil)
-	})
-	if err != nil {
-		return QuotaCheckResult{}, err
 	}
 
 	if quota.TotalTokens != nil && usageAgg.TotalTokens >= *quota.TotalTokens {
@@ -123,15 +114,8 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 		return QuotaResult{}, err
 	}
 
-	reqCount, err := authz.RunWithSystemBypass(ctx, "quota-request-count", func(bypassCtx context.Context) (int64, error) {
-		return s.requestCount(bypassCtx, apiKeyID, window)
-	})
-	if err != nil {
-		return QuotaResult{}, err
-	}
-
 	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
-		return s.usageAgg(bypassCtx, apiKeyID, window, true, true)
+		return s.usageAgg(bypassCtx, apiKeyID, window, true, true, true)
 	})
 	if err != nil {
 		return QuotaResult{}, err
@@ -140,7 +124,7 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 	return QuotaResult{
 		Window: window,
 		Usage: QuotaUsage{
-			RequestCount: reqCount,
+			RequestCount: usageAgg.RequestCount,
 			TotalTokens:  usageAgg.TotalTokens,
 			TotalCost:    usageAgg.TotalCost,
 		},
@@ -232,12 +216,13 @@ func (s *QuotaService) requestCount(ctx context.Context, apiKeyID int, window Qu
 }
 
 type usageAggResult struct {
-	TotalTokens int64
-	TotalCost   decimal.Decimal
+	RequestCount int64
+	TotalTokens  int64
+	TotalCost    decimal.Decimal
 }
 
-func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaWindow, needTokens bool, needCost bool) (usageAggResult, error) {
-	if !needTokens && !needCost {
+func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaWindow, needCount bool, needTokens bool, needCost bool) (usageAggResult, error) {
+	if !needCount && !needTokens && !needCost {
 		return usageAggResult{}, nil
 	}
 
@@ -253,14 +238,16 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 		switch {
 		case needTokens && needCost:
 			type row struct {
-				TotalTokens int64   `json:"total_tokens"`
-				TotalCost   float64 `json:"total_cost"`
+				RequestCount int64   `json:"request_count"`
+				TotalTokens  int64   `json:"total_tokens"`
+				TotalCost    float64 `json:"total_cost"`
 			}
 
 			var rows []row
 
 			err := q.Modify(func(s *sql.Selector) {
 				s.Select(
+					sql.As("COUNT(*)", "request_count"),
 					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
 					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
 				)
@@ -274,18 +261,21 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 			}
 
 			return usageAggResult{
-				TotalTokens: rows[0].TotalTokens,
-				TotalCost:   decimal.NewFromFloat(rows[0].TotalCost),
+				RequestCount: rows[0].RequestCount,
+				TotalTokens:  rows[0].TotalTokens,
+				TotalCost:    decimal.NewFromFloat(rows[0].TotalCost),
 			}, nil
 		case needTokens:
 			type row struct {
-				TotalTokens int64 `json:"total_tokens"`
+				RequestCount int64 `json:"request_count"`
+				TotalTokens  int64 `json:"total_tokens"`
 			}
 
 			var rows []row
 
 			err := q.Modify(func(s *sql.Selector) {
 				s.Select(
+					sql.As("COUNT(*)", "request_count"),
 					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
 				)
 			}).Scan(ctx, &rows)
@@ -297,16 +287,18 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 				return usageAggResult{TotalCost: decimal.Zero}, nil
 			}
 
-			return usageAggResult{TotalTokens: rows[0].TotalTokens, TotalCost: decimal.Zero}, nil
+			return usageAggResult{RequestCount: rows[0].RequestCount, TotalTokens: rows[0].TotalTokens, TotalCost: decimal.Zero}, nil
 		default:
 			type row struct {
-				TotalCost float64 `json:"total_cost"`
+				RequestCount int64   `json:"request_count"`
+				TotalCost    float64 `json:"total_cost"`
 			}
 
 			var rows []row
 
 			err := q.Modify(func(s *sql.Selector) {
 				s.Select(
+					sql.As("COUNT(*)", "request_count"),
 					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
 				)
 			}).Scan(ctx, &rows)
@@ -318,7 +310,7 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 				return usageAggResult{TotalCost: decimal.Zero}, nil
 			}
 
-			return usageAggResult{TotalCost: decimal.NewFromFloat(rows[0].TotalCost)}, nil
+			return usageAggResult{RequestCount: rows[0].RequestCount, TotalCost: decimal.NewFromFloat(rows[0].TotalCost)}, nil
 		}
 	}
 

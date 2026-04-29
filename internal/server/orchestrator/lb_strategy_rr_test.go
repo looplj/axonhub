@@ -337,7 +337,7 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 		channels[i] = ch
 	}
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 
 	// Record different numbers of requests for each channel
 	// IncrementChannelSelection is called at selection time in production,

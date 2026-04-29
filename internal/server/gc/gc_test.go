@@ -142,13 +142,15 @@ func setupWorkerWithFSStorage(t *testing.T) (*Worker, context.Context, *ent.Data
 		client.Close()
 	})
 
-	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig})
-	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig})
+	require.NoError(t, err)
+	dataStorageService, err := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
 		Executor:      executor,
 		Client:        client,
 	})
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
@@ -250,13 +252,14 @@ func TestWorker_cleanupWithZeroDays(t *testing.T) {
 	ctx := context.Background()
 
 	// Test with 0 days - should not error
-	err := worker.cleanupRequests(ctx, 0, false)
+	stats := &CleanupStats{}
+	err := worker.cleanupRequests(ctx, 0, false, stats)
 	if err != nil {
 		t.Fatalf("cleanupRequests with 0 days failed: %v", err)
 	}
 
 	// Test with negative days - should not error
-	err = worker.cleanupUsageLogs(ctx, -1, false)
+	err = worker.cleanupUsageLogs(ctx, -1, false, stats)
 	if err != nil {
 		t.Fatalf("cleanupUsageLogs with negative days failed: %v", err)
 	}

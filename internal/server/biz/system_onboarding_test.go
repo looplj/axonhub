@@ -15,7 +15,10 @@ func TestSystemService_OnboardingInfo_NotSet(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
@@ -30,13 +33,16 @@ func TestSystemService_OnboardingInfo_InvalidJSON(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// Manually insert invalid JSON
-	_, err := client.System.Create().
+	_, err = client.System.Create().
 		SetKey(SystemKeyOnboarded).
 		SetValue("invalid-json").
 		Save(ctx)
@@ -52,7 +58,10 @@ func TestSystemService_SetOnboardingInfo(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
@@ -62,7 +71,7 @@ func TestSystemService_SetOnboardingInfo(t *testing.T) {
 		Onboarded: true,
 	}
 
-	err := service.SetOnboardingInfo(ctx, info)
+	err = service.SetOnboardingInfo(ctx, info)
 	require.NoError(t, err)
 
 	// Verify it was saved correctly
@@ -76,13 +85,16 @@ func TestSystemService_CompleteOnboarding_FirstTime(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// Complete onboarding for the first time
-	err := service.CompleteOnboarding(ctx)
+	err = service.CompleteOnboarding(ctx)
 	require.NoError(t, err)
 
 	// Verify onboarding is completed
@@ -102,13 +114,16 @@ func TestSystemService_CompleteOnboarding_PreservesExistingModules(t *testing.T)
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// First, complete system model setting onboarding
-	err := service.CompleteSystemModelSettingOnboarding(ctx)
+	err = service.CompleteSystemModelSettingOnboarding(ctx)
 	require.NoError(t, err)
 
 	// Then complete main onboarding
@@ -130,13 +145,16 @@ func TestSystemService_CompleteOnboarding_DoesNotOverwriteAutoDisableChannel(t *
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// First complete main onboarding (this sets AutoDisableChannel)
-	err := service.CompleteOnboarding(ctx)
+	err = service.CompleteOnboarding(ctx)
 	require.NoError(t, err)
 
 	info1, err := service.OnboardingInfo(ctx)
@@ -159,13 +177,16 @@ func TestSystemService_CompleteSystemModelSettingOnboarding_FirstTime(t *testing
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// Complete system model setting onboarding
-	err := service.CompleteSystemModelSettingOnboarding(ctx)
+	err = service.CompleteSystemModelSettingOnboarding(ctx)
 	require.NoError(t, err)
 
 	// Verify it's completed
@@ -181,13 +202,16 @@ func TestSystemService_CompleteSystemModelSettingOnboarding_PreservesOtherFields
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// First complete main onboarding
-	err := service.CompleteOnboarding(ctx)
+	err = service.CompleteOnboarding(ctx)
 	require.NoError(t, err)
 
 	// Then complete system model setting onboarding
@@ -208,13 +232,16 @@ func TestSystemService_CompleteAutoDisableChannelOnboarding_FirstTime(t *testing
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// Complete auto-disable channel onboarding
-	err := service.CompleteAutoDisableChannelOnboarding(ctx)
+	err = service.CompleteAutoDisableChannelOnboarding(ctx)
 	require.NoError(t, err)
 
 	// Verify it's completed
@@ -230,13 +257,16 @@ func TestSystemService_CompleteAutoDisableChannelOnboarding_PreservesOtherFields
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// First complete main onboarding
-	err := service.CompleteOnboarding(ctx)
+	err = service.CompleteOnboarding(ctx)
 	require.NoError(t, err)
 
 	// Then complete system model setting onboarding
@@ -263,7 +293,10 @@ func TestSystemService_OnboardingInfo_FullWorkflow(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
@@ -314,7 +347,10 @@ func TestSystemService_OnboardingInfo_JSONSerialization(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)

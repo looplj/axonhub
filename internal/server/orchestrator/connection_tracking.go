@@ -3,6 +3,8 @@ package orchestrator
 import (
 	"context"
 
+	"sync"
+
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -97,7 +99,7 @@ type connectionTrackingStream struct {
 	stream   streams.Stream[*llm.Response]
 	tracker  ConnectionTracker
 	outbound *PersistentOutboundTransformer
-	closed   bool
+	closeOnce sync.Once
 }
 
 func (s *connectionTrackingStream) Current() *llm.Response {
@@ -105,14 +107,15 @@ func (s *connectionTrackingStream) Current() *llm.Response {
 }
 
 func (s *connectionTrackingStream) Next() bool {
-	return s.stream.Next()
+	ok := s.stream.Next()
+	if !ok {
+		s.closeOnce.Do(s.decrementConnection)
+	}
+	return ok
 }
 
 func (s *connectionTrackingStream) Close() error {
-	if !s.closed {
-		s.closed = true
-		s.decrementConnection()
-	}
+	s.closeOnce.Do(s.decrementConnection)
 
 	return s.stream.Close()
 }

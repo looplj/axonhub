@@ -15,6 +15,11 @@ type BackupData struct {
 	Models             []*BackupModel             `json:"models"`
 	ChannelModelPrices []*BackupChannelModelPrice `json:"channel_model_prices,omitempty"`
 	APIKeys            []*BackupAPIKey            `json:"api_keys,omitempty"`
+	Users              []*BackupUser              `json:"users,omitempty"`
+	Roles              []*BackupRole              `json:"roles,omitempty"`
+	UserProjects       []*BackupUserProject       `json:"user_projects,omitempty"`
+	UserRoles          []*BackupUserRole          `json:"user_roles,omitempty"`
+	SystemConfig       []BackupSystemConfig       `json:"system_config,omitempty"`
 }
 
 type BackupProject struct {
@@ -76,4 +81,52 @@ type RestoreOptions struct {
 	ModelConflictStrategy      ConflictStrategy
 	ModelPriceConflictStrategy ConflictStrategy
 	APIKeyConflictStrategy     ConflictStrategy
+}
+
+type BackupUser struct {
+	ID             int       `json:"id"`
+	Email          string    `json:"email"`
+	Status         string    `json:"status"`
+	PreferLanguage string    `json:"prefer_language"`
+	Password       string    `json:"password"`
+	FirstName      string    `json:"first_name"`
+	LastName       string    `json:"last_name"`
+	Avatar         string    `json:"avatar"`
+	IsOwner        bool      `json:"is_owner"`
+	Scopes         []string  `json:"scopes"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type BackupRole struct {
+	ID        int      `json:"id"`
+	Name      string   `json:"name"`
+	Level     string   `json:"level"`
+	ProjectID *int     `json:"project_id,omitempty"`
+	Scopes    []string `json:"scopes"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type BackupUserProject struct {
+	ID        int      `json:"id"`
+	UserID    int      `json:"user_id"`
+	ProjectID int      `json:"project_id"`
+	IsOwner   bool     `json:"is_owner"`
+	Scopes    []string `json:"scopes"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type BackupUserRole struct {
+	ID        int        `json:"id"`
+	UserID    int        `json:"user_id"`
+	RoleID    int        `json:"role_id"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+}
+
+type BackupSystemConfig struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }

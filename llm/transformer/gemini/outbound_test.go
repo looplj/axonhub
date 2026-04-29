@@ -14,7 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
-func TestClenupConfig(t *testing.T) {
+func TestCleanupConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    Config
@@ -104,7 +104,7 @@ func TestClenupConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := clenupConfig(tt.input)
+			result := cleanupConfig(tt.input)
 			require.Equal(t, tt.expected, result)
 		})
 	}

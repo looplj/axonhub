@@ -54,7 +54,10 @@ func (r *queryResolver) MyProjects(ctx context.Context) ([]*ent.Project, error) 
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	ctx = authz.WithSystemBypass(ctx, "read-my-projects")
+	ctx, err := authz.WithSystemBypass(ctx, "read-my-projects")
+	if err != nil {
+		return nil, err
+	}
 
 	return r.client.Project.Query().
 		Where(project.HasUsersWith(user.IDEQ(u.ID))).

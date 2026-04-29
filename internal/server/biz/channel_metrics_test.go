@@ -350,7 +350,7 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 			AbstractService: &AbstractService{
 				db: client,
 			},
-			Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
+			Cache: xcache.MustNewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
 		},
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),

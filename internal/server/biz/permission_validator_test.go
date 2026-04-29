@@ -21,7 +21,7 @@ func setupTestPermissionValidator(t *testing.T) (*PermissionValidator, *ent.Clie
 	validator := NewPermissionValidator()
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 	userService := &UserService{
-		UserCache:           xcache.NewFromConfig[ent.User](cacheConfig),
+		UserCache:           xcache.MustNewFromConfig[ent.User](cacheConfig),
 		permissionValidator: validator,
 	}
 

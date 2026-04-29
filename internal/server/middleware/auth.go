@@ -26,7 +26,9 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, config)
 		// DO NOT ALLOW USE NO AUTH API KEY DIRECTLY.
-		if key == biz.NoAuthAPIKeyValue {
+		// Only reject empty keys when one was actually extracted (err == nil).
+		// When err == ErrAPIKeyRequired, let the flow continue to AuthenticateNoAuth.
+		if err == nil && key == biz.NoAuthAPIKeyValue {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
 			return
 		}
@@ -153,15 +155,10 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 // https://ai.google.dev/api/generate-content?hl=zh-cn#text_gen_text_only_prompt-SHELL
 func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := c.Query("key")
-		if key == "" {
-			var err error
-
-			key, err = ExtractAPIKeyFromRequest(c.Request, nil)
-			if err != nil {
-				AbortWithError(c, http.StatusUnauthorized, err)
-				return
-			}
+		key, err := ExtractAPIKeyFromRequest(c.Request, nil)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, err)
+			return
 		}
 
 		apiKey, err := auth.AuthenticateAPIKey(c.Request.Context(), key)

@@ -2,6 +2,8 @@ package backup
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -303,6 +305,28 @@ func (svc *BackupService) restoreProjects(ctx context.Context, db *ent.Client, p
 	return nil
 }
 
+// closeOverlappingPriceWindows closes any active price version windows that overlap
+// with the new effective start time, by setting their EffectiveEndAt to the new start time.
+// F-D62: Prevents time window overlap when restoring with overwrite strategy.
+func closeOverlappingPriceWindows(ctx context.Context, db *ent.Client, chID int, modelID string, newStart time.Time) error {
+	// Find active versions whose window overlaps with [newStart, ...):
+	//   EffectiveStartAt < newStart AND (EffectiveEndAt IS NULL OR EffectiveEndAt > newStart)
+	_, err := db.ChannelModelPriceVersion.Update().
+		Where(
+			channelmodelpriceversion.ChannelID(chID),
+			channelmodelpriceversion.ModelID(modelID),
+			channelmodelpriceversion.StatusEQ(channelmodelpriceversion.StatusActive),
+			channelmodelpriceversion.EffectiveStartAtLT(newStart),
+			channelmodelpriceversion.Or(
+				channelmodelpriceversion.EffectiveEndAtIsNil(),
+				channelmodelpriceversion.EffectiveEndAtGT(newStart),
+			),
+		).
+		SetEffectiveEndAt(newStart).
+		Save(ctx)
+	return err
+}
+
 func (svc *BackupService) restoreChannelModelPrices(
 	ctx context.Context,
 	db *ent.Client,
@@ -388,6 +412,11 @@ func (svc *BackupService) restoreChannelModelPrices(
 			case ConflictStrategyError:
 				return fmt.Errorf("channel model price already exists: channel=%s model_id=%s", pData.ChannelName, pData.ModelID)
 			case ConflictStrategyOverwrite:
+				// F-D62: Close any overlapping time windows before inserting the new version.
+				if err := closeOverlappingPriceWindows(ctx, db, ch.ID, pData.ModelID, now); err != nil {
+					return fmt.Errorf("failed to close overlapping price windows: %w", err)
+				}
+
 				// Archive old versions
 				_, err = db.ChannelModelPriceVersion.Update().
 					Where(
@@ -651,11 +680,42 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 
 		remapAPIKeyProfilesChannelIDs(akData.Profiles, channelIDMap)
 
-		existing, err := db.APIKey.Query().
+		// F-D27: First try exact key match, then fall back to prefix matching
+		// for cases where backup data contains masked/truncated keys.
+		var existing *ent.APIKey
+
+		// Step 1: Try exact match first.
+		exact, err := db.APIKey.Query().
 			Where(apikey.Key(akData.Key)).
 			First(ctx)
 		if err != nil && !ent.IsNotFound(err) {
 			return err
+		}
+		if exact != nil {
+			existing = exact
+		} else {
+			// Step 2: Prefix match for masked/truncated keys.
+			// Use name as a confidence check: only accept a prefix-match candidate
+			// when the name confirms it is the correct key.
+			prefixLen := 8
+			if len(akData.Key) < prefixLen {
+				prefixLen = len(akData.Key)
+			}
+			prefix := akData.Key[:prefixLen]
+
+			candidates, err := db.APIKey.Query().
+				Where(apikey.KeyHasPrefix(prefix)).
+				All(ctx)
+			if err != nil && !ent.IsNotFound(err) {
+				return err
+			}
+
+			for _, c := range candidates {
+				if c.Name == akData.Name && c.Type == akData.Type {
+					existing = c
+					break
+				}
+			}
 		}
 
 		if existing != nil {
@@ -707,6 +767,7 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 
 			create := db.APIKey.Create().
 				SetKey(akData.Key).
+				SetKeyHash(hashAPIKey(akData.Key)).
 				SetName(akData.Name).
 				SetType(akData.Type).
 				SetStatus(akData.Status).
@@ -726,4 +787,11 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 	}
 
 	return nil
+}
+
+// hashAPIKey computes the SHA-256 hash of an API key for secure storage.
+// Mirrors biz.hashKey to avoid cross-package import in the backup layer.
+func hashAPIKey(key string) string {
+	h := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(h[:])
 }

@@ -6,8 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -72,7 +74,9 @@ func (d *Dumper) DumpStruct(ctx context.Context, data any, filename string) {
 		return
 	}
 
-	fmt.Printf("Successfully dumped struct to file: %s\n", fullPath)
+	d.cleanup()
+
+	slog.Info("dumped struct to file", "path", fullPath)
 }
 
 // DumpStreamEvents dumps a slice of interface{} as JSONL (JSON Lines) to a file.
@@ -130,7 +134,9 @@ func (d *Dumper) DumpStreamEvents(ctx context.Context, events []*httpclient.Stre
 		}
 	}
 
-	fmt.Printf("Successfully dumped stream events to file: %s (count: %d)\n", fullPath, len(events))
+	d.cleanup()
+
+	slog.Info("dumped stream events to file", "path", fullPath, "count", len(events))
 }
 
 // DumpBytes dumps raw byte data to a file.
@@ -171,5 +177,92 @@ func (d *Dumper) DumpBytes(ctx context.Context, data []byte, filename string) {
 		return
 	}
 
-	fmt.Printf("Successfully dumped bytes to file: %s (size: %d)\n", fullPath, len(data))
+	d.cleanup()
+
+	slog.Info("dumped bytes to file", "path", fullPath, "size", len(data))
+}
+
+// cleanup enforces retention policy on dump files: total size, backup count, and max age.
+func (d *Dumper) cleanup() {
+	entries, err := os.ReadDir(d.config.DumpPath)
+	if err != nil {
+		return
+	}
+
+	type fileEntry struct {
+		path    string
+		modTime time.Time
+		size    int64
+	}
+
+	var files []fileEntry
+	var totalSize int64
+	maxBytes := int64(d.config.MaxSize) * 1024 * 1024
+	cutoff := time.Now().Add(-d.config.MaxAge)
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, fileEntry{
+			path:    filepath.Join(d.config.DumpPath, e.Name()),
+			modTime: info.ModTime(),
+			size:    info.Size(),
+		})
+		totalSize += info.Size()
+	}
+
+	// Sort by modification time, oldest first.
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].modTime.Before(files[j].modTime)
+	})
+
+	toDelete := make(map[string]struct{})
+
+	// 1. Remove files exceeding MaxAge.
+	for _, f := range files {
+		if d.config.MaxAge > 0 && f.modTime.Before(cutoff) {
+			toDelete[f.path] = struct{}{}
+		}
+	}
+
+	// 2. Remove oldest files until total size is within MaxSize.
+	if maxBytes > 0 {
+		remaining := totalSize
+		for _, f := range files {
+			if _, ok := toDelete[f.path]; ok {
+				continue
+			}
+			if remaining <= maxBytes {
+				break
+			}
+			toDelete[f.path] = struct{}{}
+			remaining -= f.size
+		}
+	}
+
+	// 3. Remove oldest files if count exceeds MaxBackups.
+	if d.config.MaxBackups > 0 {
+		kept := 0
+		for i := len(files) - 1; i >= 0; i-- {
+			if _, ok := toDelete[files[i].path]; ok {
+				continue
+			}
+			if kept >= d.config.MaxBackups {
+				toDelete[files[i].path] = struct{}{}
+				continue
+			}
+			kept++
+		}
+	}
+
+	for path := range toDelete {
+		if err := os.Remove(path); err != nil {
+			slog.Warn("failed to remove old dump file", "path", path, "error", err)
+		}
+	}
 }

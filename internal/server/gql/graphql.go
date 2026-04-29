@@ -119,6 +119,8 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
+	// Limit query complexity to prevent DoS via deeply nested or expensive queries.
+	gqlSrv.Use(extension.FixedComplexityLimit(10_000))
 	gqlSrv.Use(&loggingTracer{})
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,

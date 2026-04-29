@@ -16,17 +16,13 @@ import (
 )
 
 func wrapHttpError(err error) error {
-	const maxBodyLen = 200
 	if err == nil {
 		return nil
 	}
 	var httpErr *httpclient.Error
 	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
-		bodyStr := string(httpErr.Body)
-		if len(bodyStr) > maxBodyLen {
-			bodyStr = bodyStr[:maxBodyLen] + "...(truncated)"
-		}
-		return fmt.Errorf("%w (response body: %s)", err, bodyStr)
+		slog.Debug("oauth http error response body", "body", string(httpErr.Body))
+		return fmt.Errorf("oauth http error: status %d", httpErr.StatusCode)
 	}
 	return err
 }
@@ -43,14 +39,15 @@ type TokenGetter interface {
 // TokenProvider manages OAuth2 credentials for a transformer instance.
 // Each transformer has its own provider, so we can keep the credentials in memory.
 type TokenProvider struct {
-	httpClient  *httpclient.HttpClient
-	oauthUrls   OAuthUrls
-	strategy    ExchangeStrategy
-	sf          singleflight.Group
-	mu          sync.RWMutex
-	creds       *OAuthCredentials
-	userAgent   string
-	onRefreshed func(ctx context.Context, refreshed *OAuthCredentials) error
+	httpClient           *httpclient.HttpClient
+	oauthUrls            OAuthUrls
+	strategy             ExchangeStrategy
+	sf                   singleflight.Group
+	mu                   sync.RWMutex
+	creds                *OAuthCredentials
+	userAgent            string
+	onRefreshed          func(ctx context.Context, refreshed *OAuthCredentials) error
+	allowedRedirectURIs  map[string]struct{}
 
 	autoMu         sync.Mutex
 	autoCancel     context.CancelFunc
@@ -68,6 +65,9 @@ type TokenProviderParams struct {
 	// ExchangeStrategy defines how to format token requests (form-encoded or JSON)
 	// If not provided, defaults to FormEncodedStrategy
 	ExchangeStrategy ExchangeStrategy
+	// AllowedRedirectURIs is a server-side allowlist of valid redirect URIs.
+	// When non-nil, Exchange rejects requests with unrecognized redirect URIs.
+	AllowedRedirectURIs []string
 }
 type ExchangeParams struct {
 	Code         string
@@ -88,13 +88,19 @@ func NewTokenProvider(params TokenProviderParams) *TokenProvider {
 		strategy = &FormEncodedStrategy{UserAgent: params.UserAgent}
 	}
 
+	allowedRedirectURIs := make(map[string]struct{})
+	for _, uri := range params.AllowedRedirectURIs {
+		allowedRedirectURIs[uri] = struct{}{}
+	}
+
 	return &TokenProvider{
-		httpClient:  params.HTTPClient,
-		oauthUrls:   params.OAuthUrls,
-		strategy:    strategy,
-		userAgent:   params.UserAgent,
-		creds:       params.Credentials,
-		onRefreshed: params.OnRefreshed,
+		httpClient:           params.HTTPClient,
+		oauthUrls:            params.OAuthUrls,
+		strategy:             strategy,
+		userAgent:            params.UserAgent,
+		creds:                params.Credentials,
+		onRefreshed:          params.OnRefreshed,
+		allowedRedirectURIs:  allowedRedirectURIs,
 	}
 }
 
@@ -122,6 +128,13 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 
 	if params.RedirectURI == "" {
 		return nil, errors.New("redirect_uri is empty")
+	}
+
+	// Server-side redirect URI allowlist check
+	if len(p.allowedRedirectURIs) > 0 {
+		if _, ok := p.allowedRedirectURIs[params.RedirectURI]; !ok {
+			return nil, fmt.Errorf("redirect_uri %q is not in the allowed list", params.RedirectURI)
+		}
 	}
 
 	req, err := p.strategy.BuildExchangeRequest(params, p.oauthUrls.TokenUrl)

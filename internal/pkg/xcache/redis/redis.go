@@ -8,8 +8,29 @@ import (
 	"time"
 
 	lib_store "github.com/eko/gocache/lib/v4/store"
+	"github.com/looplj/axonhub/internal/log"
 	redis "github.com/redis/go-redis/v9"
 )
+
+// safeUnmarshal wraps json.Unmarshal with panic recovery.
+// On decode failure it logs a warning and returns an error,
+// allowing callers to treat corrupted cache data as a miss.
+func safeUnmarshal[T any](ctx context.Context, key string, data []byte, dest *T) error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warn(ctx, "Redis cache data caused unmarshal panic, treating as cache miss",
+				log.String("cache_key", key),
+				log.Any("panic", r))
+		}
+	}()
+	if err := json.Unmarshal(data, dest); err != nil {
+		log.Warn(ctx, "Redis cache data failed to unmarshal, treating as cache miss",
+			log.String("cache_key", key),
+			log.Cause(err))
+		return err
+	}
+	return nil
+}
 
 // RedisClientInterface represents a go-redis/redis client.
 type RedisClientInterface interface {
@@ -49,8 +70,12 @@ func NewRedisStore[T any](client RedisClientInterface, options ...lib_store.Opti
 func (gs *RedisStore[T]) Get(ctx context.Context, key any) (any, error) {
 	var result T
 
-	//nolint:forcetypeassert // Expected type is string.
-	object, err := gs.client.Get(ctx, key.(string)).Result()
+	keyString, ok := key.(string)
+	if !ok {
+		return result, lib_store.NotFoundWithCause(fmt.Errorf("expected string key, got %T", key))
+	}
+
+	object, err := gs.client.Get(ctx, keyString).Result()
 	if errors.Is(err, redis.Nil) {
 		return result, lib_store.NotFoundWithCause(err)
 	}
@@ -60,10 +85,9 @@ func (gs *RedisStore[T]) Get(ctx context.Context, key any) (any, error) {
 	}
 
 	// JSON object or array - unmarshal into the target type
-	if err := json.Unmarshal([]byte(object), &result); err != nil {
+	if err := safeUnmarshal(ctx, keyString, []byte(object), &result); err != nil {
 		var zero T
-		// If JSON decoding fails, return error
-		return zero, err
+		return zero, lib_store.NotFoundWithCause(err)
 	}
 
 	return result, nil
@@ -88,10 +112,9 @@ func (gs *RedisStore[T]) GetWithTTL(ctx context.Context, key any) (any, time.Dur
 	}
 
 	// JSON object or array - unmarshal into the target type
-	if err := json.Unmarshal([]byte(object), &result); err != nil {
+	if err := safeUnmarshal(ctx, keyString, []byte(object), &result); err != nil {
 		var zero T
-		// If JSON decoding fails, return error
-		return zero, 0, err
+		return zero, 0, lib_store.NotFoundWithCause(err)
 	}
 
 	ttl, err := gs.client.TTL(ctx, keyString).Result()
@@ -107,6 +130,11 @@ func (gs *RedisStore[T]) GetWithTTL(ctx context.Context, key any) (any, time.Dur
 func (s *RedisStore[T]) Set(ctx context.Context, key any, value any, options ...lib_store.Option) error {
 	opts := lib_store.ApplyOptionsWithDefault(s.options, options...)
 
+	keyString, ok := key.(string)
+	if !ok {
+		return fmt.Errorf("expected string key, got %T", key)
+	}
+
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -114,8 +142,7 @@ func (s *RedisStore[T]) Set(ctx context.Context, key any, value any, options ...
 
 	encodedValue := string(raw)
 
-	//nolint:forcetypeassert // Expected type is string.
-	err = s.client.Set(ctx, key.(string), encodedValue, opts.Expiration).Err()
+	err = s.client.Set(ctx, keyString, encodedValue, opts.Expiration).Err()
 	if err != nil {
 		return err
 	}
@@ -132,22 +159,28 @@ func (s *RedisStore[T]) Set(ctx context.Context, key any, value any, options ...
 }
 
 func (s *RedisStore[T]) setTagsWithTTL(ctx context.Context, key any, tags []string, ttl time.Duration) {
+	keyString, ok := key.(string)
+	if !ok {
+		return
+	}
 	for _, tag := range tags {
 		tagKey := fmt.Sprintf(RedisTagPattern, tag)
-		//nolint:forcetypeassert // Expected type is string.
-		s.client.SAdd(ctx, tagKey, key.(string))
+		s.client.SAdd(ctx, tagKey, keyString)
 		s.client.Expire(ctx, tagKey, ttl)
 	}
 }
 
 func (s *RedisStore[T]) setTags(ctx context.Context, key any, tags []string) {
-	s.setTagsWithTTL(ctx, key, tags, 720*time.Hour)
+	s.setTagsWithTTL(ctx, key, tags, 168*time.Hour)
 }
 
 // Delete removes data from Redis for given key identifier.
 func (gs *RedisStore[T]) Delete(ctx context.Context, key any) error {
-	//nolint:forcetypeassert // Expected type is string.
-	return gs.client.Del(ctx, key.(string)).Err()
+	keyString, ok := key.(string)
+	if !ok {
+		return fmt.Errorf("expected string key, got %T", key)
+	}
+	return gs.client.Del(ctx, keyString).Err()
 }
 
 // GetType returns the store type.

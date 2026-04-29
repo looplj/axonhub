@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -48,7 +49,7 @@ func (rb *RequestBuilder) WithHeaders(headers map[string]string) *RequestBuilder
 }
 
 // WithBody sets the request body.
-func (rb *RequestBuilder) WithBody(body any) *RequestBuilder {
+func (rb *RequestBuilder) WithBody(body any) (*RequestBuilder, error) {
 	switch v := body.(type) {
 	case []byte:
 		rb.request.Body = v
@@ -57,13 +58,13 @@ func (rb *RequestBuilder) WithBody(body any) *RequestBuilder {
 	default:
 		b, err := json.Marshal(v)
 		if err != nil {
-			panic(err)
+			return rb, fmt.Errorf("json marshal failed: %w", err)
 		}
 
 		rb.request.Body = b
 	}
 
-	return rb
+	return rb, nil
 }
 
 // WithAuth sets authentication.

@@ -6,14 +6,17 @@ on:
       - unstable
       - development
       - 'release/**'
+      - branch-2
   pull_request:
     branches:
       - unstable
       - development
       - 'release/**'
+      - branch-2
 
 env:
   GO111MODULE: on
+  GOTOOLCHAIN: auto
 
 jobs:
   build-backend:

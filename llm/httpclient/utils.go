@@ -239,22 +239,32 @@ func FinalizeAuthHeaders(req *Request) (*Request, error) {
 // If a header is in the mergeWithAppendHeaders list, it adds non-duplicate values from the source.
 // Otherwise, it overwrites the destination header with the source values.
 // Blocked, sensitive, and library-managed headers are not merged.
+// Returns a new map to avoid data races when dest is shared across goroutines.
 func MergeHTTPHeaders(dest, src http.Header) http.Header {
+	if len(src) == 0 {
+		return dest
+	}
+
+	result := make(http.Header, len(dest)+len(src))
+	for k, v := range dest {
+		result[k] = v
+	}
+
 	for k, v := range src {
 		if sensitiveHeaders[k] || libManagedHeaders[k] || isBlockedHeader(k) {
 			continue
 		}
 
 		if mergeWithAppendHeaders[k] {
-			if existingValues, ok := dest[k]; ok {
-				dest[k] = lo.Uniq(append(existingValues, v...))
+			if existingValues, ok := result[k]; ok {
+				result[k] = lo.Uniq(append(existingValues, v...))
 			} else {
-				dest[k] = v
+				result[k] = v
 			}
 		} else {
-			dest[k] = v
+			result[k] = v
 		}
 	}
 
-	return dest
+	return result
 }

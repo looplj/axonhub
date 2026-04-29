@@ -22,7 +22,8 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	require.NoError(t, err)
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 
@@ -40,7 +41,7 @@ func setupTestSystemService(t *testing.T, cacheConfig xcache.Config) (*SystemSer
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	systemService := &SystemService{
-		Cache: xcache.NewFromConfig[ent.System](cacheConfig),
+		Cache: xcache.MustNewFromConfig[ent.System](cacheConfig),
 	}
 
 	return systemService, client
@@ -688,12 +689,13 @@ func TestSystemService_Initialize_DataMigrationIdempotency(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	require.NoError(t, err)
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 
 	// First initialization
-	err := service.Initialize(ctx, &InitializeSystemParams{
+	err = service.Initialize(ctx, &InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -733,12 +735,13 @@ func TestSystemService_Initialize_CreatesDefaultProject(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	require.NoError(t, err)
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 
 	// Initialize system
-	err := service.Initialize(ctx, &InitializeSystemParams{
+	err = service.Initialize(ctx, &InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -769,12 +772,13 @@ func TestSystemService_Initialize_SetsAllSystemKeys(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	require.NoError(t, err)
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 
 	// Initialize system
-	err := service.Initialize(ctx, &InitializeSystemParams{
+	err = service.Initialize(ctx, &InitializeSystemParams{
 		OwnerEmail:     "owner@example.com",
 		OwnerPassword:  "password123",
 		OwnerFirstName: "System",
@@ -815,13 +819,15 @@ func TestSystemService_DefaultDataStorageID(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	require.NoError(t, err)
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// Test getting default data storage ID when not set (should return 0)
-	defaultID, err := service.DefaultDataStorageID(ctx)
+	var defaultID int
+	defaultID, err = service.DefaultDataStorageID(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 0, defaultID)
 
@@ -850,13 +856,14 @@ func TestSystemService_Initialize_TransactionRollback(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{})
+	service, err := NewSystemService(SystemServiceParams{})
+	require.NoError(t, err)
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
 	// First, create a user with the same email to cause a constraint violation
-	_, err := client.User.Create().
+	_, err = client.User.Create().
 		SetEmail("owner@example.com").
 		SetPassword("hashedpassword").
 		SetFirstName("Existing").

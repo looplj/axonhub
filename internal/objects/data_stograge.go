@@ -22,7 +22,8 @@ type S3 struct {
 	Endpoint   string `json:"endpoint"`
 	Region     string `json:"region"`
 	AccessKey  string `json:"accessKey"`
-	SecretKey  string `json:"secretKey"`
+	// SecretKey uses a pointer to distinguish "no change" (nil) from "clear the key" ("").
+	SecretKey *string `json:"secretKey"`
 	// PathStyle enables Path Style access for S3 compatible storage services (e.g., MinIO, Ceph RGW).
 	// When enabled, uses https://s3.amazonaws.com/<bucket-name>/object format instead of Virtual Hosted Style.
 	PathStyle bool `json:"pathStyle"`

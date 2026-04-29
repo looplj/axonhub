@@ -26,16 +26,18 @@ func setupTestThreadMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Thr
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
-	systemService := biz.NewSystemService(biz.SystemServiceParams{
+	systemService, err := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
 	})
-	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
+	require.NoError(t, err)
+	dataStorageService, err := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		Client:        client,
 		SystemService: systemService,
 		CacheConfig:   xcache.Config{},
 		Executor:      executors.NewPoolScheduleExecutor(),
 	})
+	require.NoError(t, err)
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 	traceService := biz.NewTraceService(biz.TraceServiceParams{

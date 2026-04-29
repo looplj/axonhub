@@ -357,10 +357,11 @@ func (t Tool) ToLLMTool() llm.Tool {
 
 // Function represents a function definition.
 type Function struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	Parameters  json.RawMessage `json:"parameters"`
-	Strict      *bool           `json:"strict,omitempty"`
+	Name                string          `json:"name"`
+	Description         string          `json:"description,omitempty"`
+	Parameters          json.RawMessage `json:"parameters"`
+	ParametersJsonSchema json.RawMessage `json:"parameters_json_schema,omitempty"`
+	Strict              *bool           `json:"strict,omitempty"`
 }
 
 // FunctionCall represents a function call.

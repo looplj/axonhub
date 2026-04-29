@@ -69,7 +69,10 @@ func BenchmarkQuotaService_CheckAPIKeyQuota_PastDurationMinute_RequestsOnly(b *t
 		}
 	}
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	if err != nil {
+		b.Fatal(err)
+	}
 	svc := NewQuotaService(client, systemService)
 
 	quota := &objects.APIKeyQuota{
@@ -144,7 +147,10 @@ func BenchmarkQuotaService_CheckAPIKeyQuota_PastDurationMinute_TokensAndCost(b *
 		}
 	}
 
-	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	systemService, err := NewSystemService(SystemServiceParams{Ent: client})
+	if err != nil {
+		b.Fatal(err)
+	}
 	svc := NewQuotaService(client, systemService)
 
 	quota := &objects.APIKeyQuota{

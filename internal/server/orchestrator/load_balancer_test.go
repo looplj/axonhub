@@ -284,7 +284,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 
 	// Record consecutive failures for ch2
 	for range 3 {
@@ -364,7 +364,7 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 
 	// Record a recent failure for ch1 (within cooldown period)
 	perf := &biz.PerformanceRecord{
@@ -473,7 +473,7 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 	ctx = contexts.WithTrace(ctx, trace) // Use the trace entity directly
 	ctx = ent.NewContext(ctx, client)
 
-	requestService := newTestRequestService(client)
+	requestService := newTestRequestService(t, client)
 	traceStrategy := NewTraceAwareStrategy(requestService)
 	weightStrategy := NewWeightStrategy()
 	// Mock SystemService for testing
@@ -538,7 +538,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	channelService := newTestChannelService(client)
+	channelService := newTestChannelService(t, client)
 
 	// Record consecutive failures for ch2
 	for range 2 {
@@ -576,7 +576,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 
 	// Create load balancer with both strategies
-	requestService := newTestRequestService(client)
+	requestService := newTestRequestService(t, client)
 	traceStrategy := NewTraceAwareStrategy(requestService)
 	errorStrategy := NewErrorAwareStrategy(channelService)
 	weightStrategy := NewWeightStrategy()
