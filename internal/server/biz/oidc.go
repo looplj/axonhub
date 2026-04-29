@@ -435,6 +435,7 @@ func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 			IconURL:     p.IconURL,
 			ButtonColor: p.ButtonColor,
 		}
+
 		ok, lastCheck := s.getProviderInfo(providerID)
 		if ok {
 			info.Active = true
@@ -458,6 +459,7 @@ func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerIdentifier st
 	p, _, ok := s.getProviderByIdentifier(providerIdentifier)
 	if !ok {
 		log.Error(ctx, "OIDC provider not found in map", log.String("provider", providerIdentifier))
+
 		cfgProvider, providerID, found := findOIDCProviderConfig(s.cfg.Providers, providerIdentifier)
 		if !found {
 			return "", "", fmt.Errorf("Provider not found")
@@ -579,6 +581,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 	_ = s.cache.Delete(ctx, "oidc_state:"+state) // Consume state
 
 	var opts []oauth2.AuthCodeOption
+
 	if p.config.EnablePKCE {
 		verifierBytes, err := s.cache.Get(ctx, "oidc_pkce:"+state)
 		if err != nil || len(verifierBytes) == 0 {
@@ -649,21 +652,27 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 			if userInfoClaims.Email != "" {
 				claims.Email = userInfoClaims.Email
 			}
+
 			if userInfoClaims.EmailVerified {
 				claims.EmailVerified = userInfoClaims.EmailVerified
 			}
+
 			if userInfoClaims.Name != "" {
 				claims.Name = userInfoClaims.Name
 			}
+
 			if userInfoClaims.GivenName != "" {
 				claims.GivenName = userInfoClaims.GivenName
 			}
+
 			if userInfoClaims.FamilyName != "" {
 				claims.FamilyName = userInfoClaims.FamilyName
 			}
+
 			if userInfoClaims.Picture != "" {
 				claims.Picture = userInfoClaims.Picture
 			}
+
 			if len(userInfoClaims.Groups) > 0 {
 				claims.Groups = userInfoClaims.Groups
 			}
@@ -878,7 +887,6 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		).
 		WithUser().
 		Only(ctx)
-
 	if err == nil {
 		// Update last login
 		_, _ = identity.Update().SetLastLoginAt(time.Now()).Save(ctx)
@@ -946,9 +954,11 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 
 	firstName := givenName
 	lastName := familyName
+
 	if firstName == "" && lastName == "" && name != "" {
 		parts := strings.SplitN(name, " ", 2)
 		firstName = parts[0]
+
 		if len(parts) > 1 {
 			lastName = parts[1]
 		}

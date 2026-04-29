@@ -165,6 +165,7 @@ func TestOIDC_ExtractGroups(t *testing.T) {
 func TestOIDC_ApplyRoleMappings_SyncStrategies(t *testing.T) {
 	svc, client := setupTestOIDCService(t)
 	defer client.Close()
+
 	ctx := context.Background()
 
 	ctx = ent.NewContext(ctx, client)
