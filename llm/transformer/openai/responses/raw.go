@@ -105,7 +105,6 @@ var itemJSONKeys = keys(
 	"id",
 	"type",
 	"annotations",
-	"logprobs",
 	"role",
 	"content",
 	"status",
@@ -183,4 +182,10 @@ var streamEventJSONKeys = keys(
 	"code",
 	"message",
 	"param",
+)
+
+var streamEventContentPartJSONKeys = keys(
+	"type",
+	"text",
+	"refusal",
 )

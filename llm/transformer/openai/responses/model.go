@@ -402,7 +402,7 @@ func (i Input) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.Items)
 }
 
-type Annotation struct{}
+type Annotation map[string]any
 
 // Item is a unified structure for both input and output items in the Responses API.
 // This follows the openai-go pattern where input and output items share the same structure.

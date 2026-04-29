@@ -168,6 +168,59 @@ func TestCodexMCPRequestRoundTrip_InputDirtyPreservesUnmodifiedCodexItems(t *tes
 	require.Contains(t, mcpOutput, "result")
 }
 
+func TestCodexMCPRequestRoundTrip_InputDirtyPreservesNestedInputParts(t *testing.T) {
+	rawRequest := []byte(`{
+		"model": "gpt-5.1-codex-mini",
+		"input": [
+			{
+				"type": "message",
+				"role": "user",
+				"content": [
+					{"type": "input_text", "text": "Read this file"},
+					{
+						"type": "input_file",
+						"file_id": "file_codex_123",
+						"codex_part_extra": {"kept": true}
+					}
+				]
+			}
+		],
+		"stream": true,
+		"store": false
+	}`)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: rawRequest})
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.Messages[0].ProtocolExtensions)
+
+	injected := "Injected prompt"
+	llmReq.Messages = append([]llm.Message{{
+		Role:    "developer",
+		Content: llm.MessageContent{Content: &injected},
+	}}, llmReq.Messages...)
+	llm.MarkOpenAIResponsesInputDirty(llmReq)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &body))
+
+	input := body["input"].([]any)
+	require.Len(t, input, 2)
+	require.Equal(t, "Injected prompt", input[0].(map[string]any)["content"].([]any)[0].(map[string]any)["text"])
+
+	content := input[1].(map[string]any)["content"].([]any)
+	require.Len(t, content, 2)
+	inputFile := content[1].(map[string]any)
+	require.Equal(t, "input_file", inputFile["type"])
+	require.Equal(t, "file_codex_123", inputFile["file_id"])
+	require.Equal(t, map[string]any{"kept": true}, inputFile["codex_part_extra"])
+}
+
 func TestCodexMCPRequestRoundTrip_InputDirtyDoesNotRestoreMaskedRawMessage(t *testing.T) {
 	rawRequest := []byte(`{
 		"model": "gpt-5.1-codex-mini",
@@ -287,6 +340,61 @@ func TestCodexMCPResponseRoundTrip_NonPassThroughPreservesResponseMetadata(t *te
 	require.Len(t, output, 1)
 	require.Equal(t, "tool_search_call", output[0].(map[string]any)["type"])
 	require.Equal(t, "filesystem tools", output[0].(map[string]any)["query"])
+}
+
+func TestCodexMCPResponseRoundTrip_PreservesNestedOutputTextFields(t *testing.T) {
+	upstreamBody := []byte(`{
+		"id": "resp_codex_output_text",
+		"object": "response",
+		"created_at": 1770000000,
+		"status": "completed",
+		"model": "gpt-5.1-codex-mini",
+		"output": [
+			{
+				"id": "msg_output_text",
+				"type": "message",
+				"status": "completed",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "output_text",
+						"text": "done",
+						"annotations": [{"type": "container_file_citation", "file_id": "file_codex_1"}],
+						"logprobs": []
+					}
+				]
+			}
+		],
+		"usage": {
+			"input_tokens": 10,
+			"output_tokens": 5,
+			"total_tokens": 15
+		}
+	}`)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmResp, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: 200,
+		Body:       upstreamBody,
+	})
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	httpResp, err := inbound.TransformResponse(context.Background(), llmResp)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpResp.Body, &body))
+
+	output := body["output"].([]any)
+	require.Len(t, output, 1)
+	content := output[0].(map[string]any)["content"].([]any)
+	require.Len(t, content, 1)
+	outputText := content[0].(map[string]any)
+	require.Equal(t, "output_text", outputText["type"])
+	require.Equal(t, []any{map[string]any{"type": "container_file_citation", "file_id": "file_codex_1"}}, outputText["annotations"])
+	require.Equal(t, []any{}, outputText["logprobs"])
 }
 
 func TestCodexMCPStreamRoundTrip_RawEventsUpdateCompletedOutputAndSequence(t *testing.T) {
@@ -809,6 +917,89 @@ func TestCodexMCPStreamRoundTrip_PreservesKnownDeltaRawFields(t *testing.T) {
 	require.NotNil(t, argsDeltaRaw)
 	require.Equal(t, "args-obfuscation", argsDeltaRaw["obfuscation"])
 	require.Equal(t, map[string]any{"kept": true}, argsDeltaRaw["codex_args_extra"])
+}
+
+func TestCodexMCPStreamRoundTrip_PreservesContentPartRawFields(t *testing.T) {
+	rawEvent := func(raw string) *httpclient.StreamEvent {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(raw), &ev))
+		return &httpclient.StreamEvent{Type: string(ev.Type), Data: []byte(raw)}
+	}
+
+	upstream := streams.SliceStream([]*httpclient.StreamEvent{
+		rawEvent(`{
+			"type": "response.created",
+			"sequence_number": 0,
+			"response": {
+				"id": "resp_stream_part",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"output": []
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.content_part.added",
+			"sequence_number": 1,
+			"item_id": "msg_stream_part",
+			"output_index": 0,
+			"content_index": 0,
+			"part": {
+				"type": "output_text",
+				"text": "",
+				"annotations": [{"type": "container_file_citation", "file_id": "file_codex_1"}],
+				"logprobs": [],
+				"codex_part_extra": {"kept": true}
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.content_part.done",
+			"sequence_number": 2,
+			"item_id": "msg_stream_part",
+			"output_index": 0,
+			"content_index": 1,
+			"part": {
+				"type": "refusal",
+				"refusal": "not allowed"
+			}
+		}`),
+	})
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmStream, err := outbound.TransformStream(context.Background(), upstream)
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	out, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	var addedRaw map[string]any
+	var doneRaw map[string]any
+	for out.Next() {
+		event := out.Current()
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &ev))
+		switch ev.Type {
+		case StreamEventTypeContentPartAdded:
+			require.NoError(t, json.Unmarshal(event.Data, &addedRaw))
+		case StreamEventTypeContentPartDone:
+			require.NoError(t, json.Unmarshal(event.Data, &doneRaw))
+		}
+	}
+	require.NoError(t, out.Err())
+
+	require.NotNil(t, addedRaw)
+	addedPart := addedRaw["part"].(map[string]any)
+	require.Equal(t, []any{map[string]any{"type": "container_file_citation", "file_id": "file_codex_1"}}, addedPart["annotations"])
+	require.Equal(t, []any{}, addedPart["logprobs"])
+	require.Equal(t, map[string]any{"kept": true}, addedPart["codex_part_extra"])
+
+	require.NotNil(t, doneRaw)
+	donePart := doneRaw["part"].(map[string]any)
+	require.Equal(t, "refusal", donePart["type"])
+	require.Equal(t, "not allowed", donePart["refusal"])
 }
 
 func TestCodexMCPStreamRoundTrip_PreservesLifecycleRawEvents(t *testing.T) {

@@ -211,6 +211,15 @@ func shouldPreserveItem(item Item) bool {
 	if len(item.Extra) > 0 {
 		return true
 	}
+	if len(item.Annotations) > 0 {
+		return true
+	}
+	if item.Content != nil && shouldPreserveInput(*item.Content) {
+		return true
+	}
+	if item.Output != nil && shouldPreserveInput(*item.Output) {
+		return true
+	}
 	switch item.Type {
 	case "message", "input_text", "input_image", "output_text", "function_call", "function_call_output", "custom_tool_call", "custom_tool_call_output", "reasoning", "image_generation_call", "compaction", "compaction_summary", "":
 		return false

@@ -107,12 +107,38 @@ type StreamEvent struct {
 
 // StreamEventContentPart represents a content part in streaming events.
 type StreamEventContentPart struct {
+	Raw   json.RawMessage            `json:"-"`
+	Extra map[string]json.RawMessage `json:"-"`
+
 	// Any of "output_text", "reasoning", "refusal".
 	Type string `json:"type"`
 	// The text of the part, for output_text.
 	Text *string `json:"text,omitempty"`
 	// The refusal reason, for refusal.
 	Refusal *string `json:"refusal,omitempty"`
+}
+
+func (p *StreamEventContentPart) UnmarshalJSON(data []byte) error {
+	type partAlias StreamEventContentPart
+	var alias partAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	*p = StreamEventContentPart(alias)
+	p.Raw = cloneRaw(data)
+	p.Extra = extraFields(data, streamEventContentPartJSONKeys)
+	return nil
+}
+
+func (p StreamEventContentPart) MarshalJSON() ([]byte, error) {
+	type partAlias StreamEventContentPart
+	structured, err := json.Marshal(partAlias(p))
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeJSONObjects(p.Raw, p.Extra, structured)
 }
 
 // MarshalStreamEvent marshals a StreamEvent to JSON bytes suitable for SSE.

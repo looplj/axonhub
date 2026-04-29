@@ -383,7 +383,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return nil // Intentionally skip this event
 
 	case StreamEventTypeContentPartAdded:
-		// Content part added - skip, no meaningful content to emit
+		if shouldPreserveKnownStreamEventRaw(&streamEvent, event.Data) {
+			resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
+			break
+		}
+
 		return nil // Intentionally skip this event
 
 	case StreamEventTypeOutputTextDelta:
@@ -434,8 +438,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil // Intentionally skip empty done events
 		}
 
-	case StreamEventTypeContentPartDone,
-		StreamEventTypeReasoningSummaryPartAdded, StreamEventTypeReasoningSummaryPartDone:
+	case StreamEventTypeContentPartDone:
+		if shouldPreserveKnownStreamEventRaw(&streamEvent, event.Data) {
+			resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
+			break
+		}
+
+		return nil // Intentionally skip this event
+
+	case StreamEventTypeReasoningSummaryPartAdded, StreamEventTypeReasoningSummaryPartDone:
 		// These events don't need special handling - skip
 		return nil // Intentionally skip this event
 
@@ -574,10 +585,32 @@ func shouldPreserveKnownStreamEventRaw(ev *StreamEvent, rawData []byte) bool {
 		StreamEventTypeFunctionCallArgumentsDelta,
 		StreamEventTypeCustomToolCallInputDelta:
 		return len(extraFields(rawData, streamEventJSONKeys)) > 0
+	case StreamEventTypeContentPartAdded, StreamEventTypeContentPartDone:
+		return len(extraFields(rawData, streamEventJSONKeys)) > 0 ||
+			shouldPreserveStreamContentPart(ev.Part)
 	case StreamEventTypeOutputItemAdded, StreamEventTypeOutputItemDone:
-		return ev.Item != nil && len(ev.Item.Extra) > 0
+		return ev.Item != nil && shouldPreserveItem(*ev.Item)
 	default:
 		return false
+	}
+}
+
+func shouldPreserveStreamContentPart(part *StreamEventContentPart) bool {
+	if part == nil {
+		return false
+	}
+	if len(part.Extra) > 0 {
+		return true
+	}
+	if part.Refusal != nil {
+		return true
+	}
+
+	switch part.Type {
+	case "", "output_text":
+		return false
+	default:
+		return true
 	}
 }
 
@@ -623,10 +656,7 @@ func hasTerminalResponseLosslessFields(resp *Response) bool {
 
 func hasUnknownTerminalOutputItem(output []Item) bool {
 	for _, item := range output {
-		switch item.Type {
-		case "message", "output_text", "function_call", "custom_tool_call", "reasoning", "image_generation_call", "compaction", "compaction_summary", "":
-			continue
-		default:
+		if shouldPreserveItem(item) {
 			return true
 		}
 	}

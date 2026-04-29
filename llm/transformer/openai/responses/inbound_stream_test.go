@@ -16,7 +16,7 @@ var ignoreFields = cmp.FilterPath(func(p cmp.Path) bool {
 	// Ignore dynamic fields that are generated at runtime
 	if sf, ok := p.Last().(cmp.StructField); ok {
 		switch sf.Name() {
-		case "ID", "ItemID", "Obfuscation", "Logprobs", "Response":
+		case "ID", "ItemID", "Obfuscation", "Logprobs", "Response", "Raw", "Extra":
 			return true
 		}
 	}
@@ -122,7 +122,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				responseIgnoreFields := cmp.FilterPath(func(p cmp.Path) bool {
 					if sf, ok := p.Last().(cmp.StructField); ok {
 						switch sf.Name() {
-						case "ID", "ItemID", "Obfuscation", "Logprobs":
+						case "ID", "ItemID", "Obfuscation", "Logprobs", "Raw", "Extra":
 							return true
 						}
 					}
