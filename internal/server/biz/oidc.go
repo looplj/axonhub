@@ -11,27 +11,27 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"regexp"
-	"sort"
-	"github.com/looplj/axonhub/internal/ent/role"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/go-viper/mapstructure/v2"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
-	"go.uber.org/zap"
 )
 
 type ProviderInfo struct {
@@ -49,17 +49,17 @@ type ProviderInfo struct {
 }
 
 type OIDCProvider struct {
-	ID                    string            `conf:"id" yaml:"id" json:"id"`
-	Name                  string            `conf:"name" yaml:"name" json:"name"`
-	DisplayName           string            `conf:"display_name" yaml:"display_name" json:"display_name"`
-	IssuerURL             string            `conf:"issuer_url" yaml:"issuer_url" json:"issuer_url"`
-	ClientID              string            `conf:"client_id" yaml:"client_id" json:"client_id"`
-	ClientSecret          string            `conf:"client_secret" yaml:"client_secret" json:"client_secret"`
-	ExtraScopes           []string          `conf:"extra_scopes" yaml:"extra_scopes" json:"extra_scopes"`
-	JITEnabled            bool              `conf:"jit_enabled" yaml:"jit_enabled" json:"jit_enabled"`
-	AutoLinkByEmail       bool              `conf:"auto_link_by_email" yaml:"auto_link_by_email" json:"auto_link_by_email"`
-	RequireEmailVerified  bool              `conf:"require_email_verified" yaml:"require_email_verified" json:"require_email_verified"`
-	EnablePKCE            bool              `conf:"enable_pkce" yaml:"enable_pkce" json:"enable_pkce"`
+	ID                   string   `conf:"id" yaml:"id" json:"id"`
+	Name                 string   `conf:"name" yaml:"name" json:"name"`
+	DisplayName          string   `conf:"display_name" yaml:"display_name" json:"display_name"`
+	IssuerURL            string   `conf:"issuer_url" yaml:"issuer_url" json:"issuer_url"`
+	ClientID             string   `conf:"client_id" yaml:"client_id" json:"client_id"`
+	ClientSecret         string   `conf:"client_secret" yaml:"client_secret" json:"client_secret"`
+	ExtraScopes          []string `conf:"extra_scopes" yaml:"extra_scopes" json:"extra_scopes"`
+	JITEnabled           bool     `conf:"jit_enabled" yaml:"jit_enabled" json:"jit_enabled"`
+	AutoLinkByEmail      bool     `conf:"auto_link_by_email" yaml:"auto_link_by_email" json:"auto_link_by_email"`
+	RequireEmailVerified bool     `conf:"require_email_verified" yaml:"require_email_verified" json:"require_email_verified"`
+	EnablePKCE           bool     `conf:"enable_pkce" yaml:"enable_pkce" json:"enable_pkce"`
 	// UI customization
 	IconURL      string `conf:"icon_url" yaml:"icon_url" json:"icon_url"`
 	ButtonColor  string `conf:"button_color" yaml:"button_color" json:"button_color"`
@@ -78,7 +78,7 @@ type OIDCProvider struct {
 	RoleMappingRules   []RoleMappingRule `conf:"role_mappings" yaml:"role_mappings" json:"role_mappings"`
 	DefaultRoles       []string          `conf:"default_roles" yaml:"default_roles" json:"default_roles"`
 	DefaultScopes      []string          `conf:"default_scopes" yaml:"default_scopes" json:"default_scopes"`
-	SyncRoleStrategy   string            `conf:"sync_role_strategy" yaml:"sync_role_strategy" json:"sync_role_strategy"` // "always", "create_only", "merge", "manual_first"
+	SyncRoleStrategy   string            `conf:"sync_role_strategy" yaml:"sync_role_strategy" json:"sync_role_strategy"`       // "always", "create_only", "merge", "manual_first"
 	RolePrecedenceMode string            `conf:"role_precedence_mode" yaml:"role_precedence_mode" json:"role_precedence_mode"` // "merge", "highest"
 }
 
@@ -615,19 +615,21 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 			log.Warn(ctx, "Failed to fetch UserInfo", log.String("provider", providerIdentifier), zap.Error(err))
 		} else {
 			if subject == "" {
-			if subject == "" {
-				subject = userInfoClaims.Sub
-			}
-			// Merge claims (UserInfo usually has more up-to-date data)
-			if userInfoClaims.Email != "" {
-				claims.Email = userInfoClaims.Email
-			}
-			if userInfoClaims.EmailVerified {
-				claims.EmailVerified = userInfoClaims.EmailVerified
-			}
-			if userInfoClaims.Name != "" {
-				claims.Name = userInfoClaims.Name
-			}
+				if subject == "" {
+					subject = userInfoClaims.Sub
+				}
+				// Merge claims (UserInfo usually has more up-to-date data)
+				if userInfoClaims.Email != "" {
+					claims.Email = userInfoClaims.Email
+				}
+
+				if userInfoClaims.EmailVerified {
+					claims.EmailVerified = userInfoClaims.EmailVerified
+				}
+
+				if userInfoClaims.Name != "" {
+					claims.Name = userInfoClaims.Name
+				}
 			}
 		}
 	}
@@ -752,7 +754,6 @@ func (s *OIDCService) fetchUserInfo(ctx context.Context, p *oidcProvider, token 
 
 	return &claims, nil
 }
-
 
 func (s *OIDCService) extractGroups(raw map[string]any, p *oidcProvider) []string {
 	var claims []string
@@ -1013,7 +1014,7 @@ func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, gro
 					matched = true
 				}
 			}
-			
+
 			if matched {
 				matchedAnyGroup = true
 				matchedRules = append(matchedRules, rule)
@@ -1026,8 +1027,8 @@ func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, gro
 		// Apply defaults
 		scopes = append(scopes, cfg.DefaultScopes...)
 		for _, dr := range cfg.DefaultRoles {
-            matchedRules = append(matchedRules, RoleMappingRule{DBRole: dr, Priority: 0})
-        }
+			matchedRules = append(matchedRules, RoleMappingRule{DBRole: dr, Priority: 0})
+		}
 	} else {
 		// Precedence logic on matched rules
 		if cfg.RolePrecedenceMode == "highest" && len(matchedRules) > 0 {
@@ -1079,7 +1080,7 @@ func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, gro
 			if strategy == "" {
 				strategy = "always"
 			}
-			
+
 			if isCreate {
 				um.AddRoleIDs(roleIDs...)
 			} else {
@@ -1093,12 +1094,12 @@ func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, gro
 					// Manual first approach: we check if user has existing project-based roles or something, but realistically we would need to inspect existing manually set roles.
 					// Since we can't easily differentiate manual vs provider here without complex schema, we will treat it as a skip if they have any roles.
 					userID, exists := um.ID()
-                    if exists {
-                        existingRolesCount, _ := client.Role.Query().Where(role.HasUsersWith(user.IDEQ(userID))).Count(ctx)
-                        if existingRolesCount == 0 {
-                            um.AddRoleIDs(roleIDs...)
-                        }
-                    }
+					if exists {
+						existingRolesCount, _ := client.Role.Query().Where(role.HasUsersWith(user.IDEQ(userID))).Count(ctx)
+						if existingRolesCount == 0 {
+							um.AddRoleIDs(roleIDs...)
+						}
+					}
 				}
 			}
 		}

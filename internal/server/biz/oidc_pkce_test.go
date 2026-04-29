@@ -32,7 +32,7 @@ func TestOIDCService_PKCE_Flow(t *testing.T) {
 
 	authURL, err := url.Parse(authURLStr)
 	require.NoError(t, err)
-	
+
 	query := authURL.Query()
 	require.NotEmpty(t, query.Get("code_challenge"), "code_challenge should be present in the authorize URL")
 	require.Equal(t, "S256", query.Get("code_challenge_method"), "code_challenge_method should be S256")
@@ -43,7 +43,7 @@ func TestOIDCService_PKCE_Flow(t *testing.T) {
 	require.NotEmpty(t, verifierBytes, "PKCE verifier should be stored in cache")
 
 	// 3. Test Callback PKCE verification logic
-	
+
 	// Case A: Missing state/verifier in cache should fail
 	_, _, err = svc.Callback(ctx, providerID, "test-code", "non-existent-state", "")
 	require.Error(t, err)
@@ -55,7 +55,7 @@ func TestOIDCService_PKCE_Flow(t *testing.T) {
 	require.Error(t, err)
 	// It should fail at exchange because p.oauth2 is empty/uninitialized for a real exchange
 	require.Contains(t, err.Error(), "failed to exchange authorization code")
-	
+
 	// Verify verifier is consumed from cache
 	verifierBytes, err = svc.cache.Get(ctx, "oidc_pkce:"+state)
 	require.Error(t, err, "PKCE verifier should be consumed from cache after use")

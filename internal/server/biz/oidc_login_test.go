@@ -12,8 +12,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-	"github.com/looplj/axonhub/internal/pkg/xcache"
 	_ "github.com/looplj/axonhub/internal/pkg/sqlite" // Register custom sqlite driver with FK support
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func setupTestOIDCService(t *testing.T) (*OIDCService, *ent.Client) {
