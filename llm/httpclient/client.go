@@ -222,9 +222,18 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	}()
 
 	const maxResponseBodySize = 100 * 1024 * 1024 // 100MB
-	body, err := io.ReadAll(io.LimitReader(rawResp.Body, maxResponseBodySize))
+	limitedBody := io.LimitReader(rawResp.Body, maxResponseBodySize)
+	body, err := io.ReadAll(limitedBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Detect silent truncation: try to read one more byte from the underlying body.
+	// LimitReader returns io.EOF at the limit, but the underlying reader may still
+	// have data — meaning the response exceeded maxResponseBodySize.
+	var peek [1]byte
+	if n, _ := rawResp.Body.Read(peek[:]); n > 0 {
+		return nil, fmt.Errorf("response body exceeded maximum size limit (%d bytes), truncated", maxResponseBodySize)
 	}
 
 	if rawResp.StatusCode >= 400 {
