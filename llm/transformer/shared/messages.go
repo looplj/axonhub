@@ -16,6 +16,7 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 	}
 
 	removedToolCallIDs := make(map[string]struct{})
+	retainedToolCallIDs := make(map[string]struct{})
 	filtered := make([]llm.Message, 0, len(messages))
 
 	for _, msg := range messages {
@@ -23,6 +24,13 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 			if _, removed := removedToolCallIDs[*msg.ToolCallID]; removed {
 				continue
 			}
+			if msg.ProtocolExtensions != nil {
+				if _, retained := retainedToolCallIDs[*msg.ToolCallID]; !retained {
+					continue
+				}
+			}
+		} else if msg.Role == "tool" && msg.ProtocolExtensions != nil {
+			continue
 		}
 
 		if len(msg.ToolCalls) == 0 {
@@ -47,6 +55,9 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 			}
 
 			toolCall.ProtocolExtensions = nil
+			if toolCall.ID != "" {
+				retainedToolCallIDs[toolCall.ID] = struct{}{}
+			}
 			cloned.ToolCalls = append(cloned.ToolCalls, toolCall)
 		}
 

@@ -633,6 +633,19 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 				Content: llm.MessageContent{
 					Content: func() *string { v := "function"; return &v }(),
 				},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "function_call_output"}},
+				}},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: func() *string { v := "call_mcp_1"; return &v }(),
+				Content: llm.MessageContent{
+					Content: func() *string { v := "mcp raw output"; return &v }(),
+				},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "mcp_tool_call_output"}},
+				}},
 			},
 		},
 	}
@@ -645,6 +658,7 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 		require.Equal(t, llm.ToolTypeFunction, got.Messages[0].ToolCalls[0].Type)
 		require.NotNil(t, got.Messages[1].ToolCallID)
 		require.Equal(t, "call_function_1", *got.Messages[1].ToolCallID)
+		require.Nil(t, got.Messages[1].ProtocolExtensions)
 	})
 
 	t.Run("does not filter when outbound is responses", func(t *testing.T) {
