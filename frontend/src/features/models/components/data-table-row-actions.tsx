@@ -1,6 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { IconEdit, IconArchive, IconTrash, IconNote } from '@tabler/icons-react';
+import { IconEdit, IconArchive, IconTrash, IconNote, IconArchiveOff } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
             {channelPermissions.canRead && <DropdownMenuSeparator />}
 
-            {model.status !== 'archived' && (
+            {model.status !== 'archived' ? (
               <DropdownMenuItem
                 onClick={() => {
                   setCurrentRow(row.original);
@@ -85,6 +85,17 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               >
                 <IconArchive size={16} className='mr-2' />
                 {t('common.buttons.archive')}
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => {
+                  setCurrentRow(row.original);
+                  setOpen('archive');
+                }}
+                className='text-green-500!'
+              >
+                <IconArchiveOff size={16} className='mr-2' />
+                {t('common.buttons.restore')}
               </DropdownMenuItem>
             )}
 
