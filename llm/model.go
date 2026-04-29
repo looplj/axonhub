@@ -249,6 +249,7 @@ type Request struct {
 	// - "prompt_cache_retention": *string - retention policy for the prompt cache ("in-memory", "24h")
 	// - "truncation": *string - truncation strategy ("auto", "disabled")
 	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
+	// - "background": *bool - whether the Responses API request should run in the background
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 
 	ProtocolExtensions *ProtocolExtensions `json:"protocol_extensions,omitempty"`

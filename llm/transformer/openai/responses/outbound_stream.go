@@ -173,7 +173,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeResponseInProgress:
-		// Update state but don't emit an event
+		// Update state and keep the lifecycle event lossless for Responses clients.
 		if streamEvent.Response != nil {
 			s.state.responseID = streamEvent.Response.ID
 			s.state.responseModel = streamEvent.Response.Model
@@ -185,7 +185,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 		}
 
-		return nil // Intentionally skip this event
+		resp.ID = s.state.responseID
+		resp.Model = s.state.responseModel
+		resp.Created = s.state.created
+		resp.PreviousResponseID = s.state.previousResponseID
+		resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
 	case StreamEventTypeOutputItemAdded:
 		// Output item added - check type to determine how to handle
 		if streamEvent.Item == nil {
@@ -548,9 +552,33 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
 	}
 
+	if resp.ProtocolExtensions == nil && shouldPreserveKnownStreamEventRaw(&streamEvent, event.Data) {
+		resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
+	}
+
 	s.enqueue(resp)
 
 	return nil
+}
+
+func shouldPreserveKnownStreamEventRaw(ev *StreamEvent, rawData []byte) bool {
+	if ev == nil {
+		return false
+	}
+
+	switch ev.Type {
+	case StreamEventTypeResponseCreated, StreamEventTypeResponseInProgress:
+		return true
+	case StreamEventTypeOutputTextDelta,
+		StreamEventTypeReasoningSummaryTextDelta,
+		StreamEventTypeFunctionCallArgumentsDelta,
+		StreamEventTypeCustomToolCallInputDelta:
+		return len(extraFields(rawData, streamEventJSONKeys)) > 0
+	case StreamEventTypeOutputItemAdded, StreamEventTypeOutputItemDone:
+		return ev.Item != nil && len(ev.Item.Extra) > 0
+	default:
+		return false
+	}
 }
 
 func shouldPreserveTerminalResponseEvent(ev *StreamEvent) bool {

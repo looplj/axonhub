@@ -77,11 +77,13 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				}
 			}
 
-			require.Len(t, actualLLMResponses, len(expectedEvents))
+			actualComparable := stripRawOnlyAndRawEventExtensions(actualLLMResponses)
+
+			require.Len(t, actualComparable, len(expectedEvents))
 
 			// exclude the last DONE event
 			for i, expectedEvent := range expectedEvents[:len(expectedEvents)-1] {
-				actualEvent := withoutCompletedRawEventExtension(actualLLMResponses[i])
+				actualEvent := withoutRawEventExtension(actualComparable[i])
 				if !xtest.Equal(expectedEvent, actualEvent) {
 					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, actualEvent))
 				}
@@ -118,13 +120,34 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	}
 }
 
-func withoutCompletedRawEventExtension(resp *llm.Response) *llm.Response {
+func stripRawOnlyAndRawEventExtensions(responses []*llm.Response) []*llm.Response {
+	comparable := make([]*llm.Response, 0, len(responses))
+	for _, resp := range responses {
+		if isRawOnlyStreamResponse(resp) {
+			continue
+		}
+		comparable = append(comparable, withoutRawEventExtension(resp))
+	}
+	return comparable
+}
+
+func isRawOnlyStreamResponse(resp *llm.Response) bool {
+	if resp == nil || resp == llm.DoneResponse {
+		return false
+	}
+	if rawEventFromResponse(resp) == nil {
+		return false
+	}
+	return len(resp.Choices) == 0 && resp.Usage == nil
+}
+
+func withoutRawEventExtension(resp *llm.Response) *llm.Response {
 	if resp == nil || resp.ProtocolExtensions == nil || resp.ProtocolExtensions.OpenAIResponses == nil {
 		return resp
 	}
 
 	rawEvent := resp.ProtocolExtensions.OpenAIResponses.RawEvent
-	if rawEvent == nil || rawEvent.Type != string(StreamEventTypeResponseCompleted) {
+	if rawEvent == nil {
 		return resp
 	}
 

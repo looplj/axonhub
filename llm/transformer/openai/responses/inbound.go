@@ -206,6 +206,10 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		chatReq.TransformerMetadata["truncation"] = req.Truncation
 	}
 
+	if req.Background != nil {
+		chatReq.TransformerMetadata["background"] = req.Background
+	}
+
 	// Convert reasoning
 	if req.Reasoning != nil {
 		if req.Reasoning.Effort != "" {

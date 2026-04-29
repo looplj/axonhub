@@ -182,6 +182,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
+		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, "background"),
 		Stream:               llmReq.Stream,
 		Text:                 convertToTextOptions(llmReq),
 		Store:                llmReq.Store,

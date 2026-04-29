@@ -63,6 +63,7 @@ func TestCodexMCPRequestRoundTrip_NonPassThroughPreservesResponsesExtensions(t *
 			{"type": "local_shell"}
 		],
 		"client_metadata": {"x-codex-installation-id": "install_123"},
+		"background": true,
 		"stream": true,
 		"store": false
 	}`)
@@ -82,6 +83,7 @@ func TestCodexMCPRequestRoundTrip_NonPassThroughPreservesResponsesExtensions(t *
 	require.NoError(t, json.Unmarshal(httpReq.Body, &body))
 
 	require.Equal(t, map[string]any{"x-codex-installation-id": "install_123"}, body["client_metadata"])
+	require.Equal(t, true, body["background"])
 
 	tools := body["tools"].([]any)
 	require.Len(t, tools, 3)
@@ -701,4 +703,211 @@ func TestCodexMCPStreamRoundTrip_OutboundCarriesKnownTerminalResponseFields(t *t
 	require.Equal(t, true, responseRaw["parallel_tool_calls"])
 	require.Equal(t, "default", responseRaw["service_tier"])
 	require.Equal(t, "auto", responseRaw["truncation"])
+}
+
+func TestCodexMCPStreamRoundTrip_PreservesKnownDeltaRawFields(t *testing.T) {
+	rawEvent := func(raw string) *httpclient.StreamEvent {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(raw), &ev))
+		return &httpclient.StreamEvent{Type: string(ev.Type), Data: []byte(raw)}
+	}
+
+	upstream := streams.SliceStream([]*httpclient.StreamEvent{
+		rawEvent(`{
+			"type": "response.created",
+			"sequence_number": 0,
+			"response": {
+				"id": "resp_stream_delta",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"output": []
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.output_text.delta",
+			"sequence_number": 1,
+			"item_id": "msg_stream_delta",
+			"output_index": 0,
+			"content_index": 0,
+			"delta": "hello",
+			"logprobs": [],
+			"obfuscation": "text-obfuscation",
+			"codex_delta_extra": {"kept": true}
+		}`),
+		rawEvent(`{
+			"type": "response.output_item.added",
+			"sequence_number": 2,
+			"output_index": 1,
+			"item": {
+				"id": "fc_stream_delta",
+				"type": "function_call",
+				"status": "in_progress",
+				"call_id": "call_stream_delta",
+				"name": "read_file"
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.function_call_arguments.delta",
+			"sequence_number": 3,
+			"item_id": "fc_stream_delta",
+			"output_index": 1,
+			"content_index": 0,
+			"delta": "{\"path\":\"README.md\"}",
+			"obfuscation": "args-obfuscation",
+			"codex_args_extra": {"kept": true}
+		}`),
+		rawEvent(`{
+			"type": "response.completed",
+			"sequence_number": 4,
+			"response": {
+				"id": "resp_stream_delta",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "completed",
+				"output": [],
+				"usage": {
+					"input_tokens": 10,
+					"output_tokens": 5,
+					"total_tokens": 15
+				}
+			}
+		}`),
+	})
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmStream, err := outbound.TransformStream(context.Background(), upstream)
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	out, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	var textDeltaRaw map[string]any
+	var argsDeltaRaw map[string]any
+	for out.Next() {
+		event := out.Current()
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &ev))
+		switch ev.Type {
+		case StreamEventTypeOutputTextDelta:
+			require.NoError(t, json.Unmarshal(event.Data, &textDeltaRaw))
+		case StreamEventTypeFunctionCallArgumentsDelta:
+			require.NoError(t, json.Unmarshal(event.Data, &argsDeltaRaw))
+		}
+	}
+	require.NoError(t, out.Err())
+
+	require.NotNil(t, textDeltaRaw)
+	require.Equal(t, "text-obfuscation", textDeltaRaw["obfuscation"])
+	require.Equal(t, []any{}, textDeltaRaw["logprobs"])
+	require.Equal(t, map[string]any{"kept": true}, textDeltaRaw["codex_delta_extra"])
+
+	require.NotNil(t, argsDeltaRaw)
+	require.Equal(t, "args-obfuscation", argsDeltaRaw["obfuscation"])
+	require.Equal(t, map[string]any{"kept": true}, argsDeltaRaw["codex_args_extra"])
+}
+
+func TestCodexMCPStreamRoundTrip_PreservesLifecycleRawEvents(t *testing.T) {
+	rawEvent := func(raw string) *httpclient.StreamEvent {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(raw), &ev))
+		return &httpclient.StreamEvent{Type: string(ev.Type), Data: []byte(raw)}
+	}
+
+	upstream := streams.SliceStream([]*httpclient.StreamEvent{
+		rawEvent(`{
+			"type": "response.created",
+			"sequence_number": 0,
+			"response": {
+				"id": "resp_stream_lifecycle",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"background": false,
+				"store": false,
+				"service_tier": "default",
+				"tools": [{"type": "local_shell"}],
+				"metadata": {"codex_session_id": "s1"},
+				"codex_created_extra": {"kept": true},
+				"output": []
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.in_progress",
+			"sequence_number": 1,
+			"response": {
+				"id": "resp_stream_lifecycle",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"background": false,
+				"store": false,
+				"service_tier": "default",
+				"tools": [{"type": "local_shell"}],
+				"metadata": {"codex_session_id": "s1"},
+				"codex_progress_extra": {"kept": true},
+				"output": []
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.completed",
+			"sequence_number": 2,
+			"response": {
+				"id": "resp_stream_lifecycle",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "completed",
+				"output": []
+			}
+		}`),
+	})
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmStream, err := outbound.TransformStream(context.Background(), upstream)
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	out, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	var createdRaw map[string]any
+	var inProgressRaw map[string]any
+	for out.Next() {
+		event := out.Current()
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &ev))
+		switch ev.Type {
+		case StreamEventTypeResponseCreated:
+			require.NoError(t, json.Unmarshal(event.Data, &createdRaw))
+		case StreamEventTypeResponseInProgress:
+			require.NoError(t, json.Unmarshal(event.Data, &inProgressRaw))
+		}
+	}
+	require.NoError(t, out.Err())
+
+	require.NotNil(t, createdRaw)
+	createdResponse := createdRaw["response"].(map[string]any)
+	require.Equal(t, false, createdResponse["background"])
+	require.Equal(t, false, createdResponse["store"])
+	require.Equal(t, "default", createdResponse["service_tier"])
+	require.Equal(t, map[string]any{"codex_session_id": "s1"}, createdResponse["metadata"])
+	require.Equal(t, map[string]any{"kept": true}, createdResponse["codex_created_extra"])
+	require.Len(t, createdResponse["tools"].([]any), 1)
+
+	require.NotNil(t, inProgressRaw)
+	inProgressResponse := inProgressRaw["response"].(map[string]any)
+	require.Equal(t, false, inProgressResponse["background"])
+	require.Equal(t, false, inProgressResponse["store"])
+	require.Equal(t, "default", inProgressResponse["service_tier"])
+	require.Equal(t, map[string]any{"codex_session_id": "s1"}, inProgressResponse["metadata"])
+	require.Equal(t, map[string]any{"kept": true}, inProgressResponse["codex_progress_extra"])
+	require.Len(t, inProgressResponse["tools"].([]any), 1)
 }
