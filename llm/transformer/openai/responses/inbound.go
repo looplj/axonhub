@@ -797,20 +797,23 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 
 // convertToResponsesAPIResponse converts llm.Response to Responses API Response.
 func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
-	resp := &Response{
-		Object:             "response",
-		ID:                 chatResp.ID,
-		Model:              chatResp.Model,
-		CreatedAt:          chatResp.Created,
-		Output:             make([]Item, 0),
-		Status:             lo.ToPtr("completed"),
-		PreviousResponseID: chatResp.PreviousResponseID,
-	}
+	resp := &Response{Output: make([]Item, 0)}
+	ext := openAIResponsesExtensions(chatResp.ProtocolExtensions)
+	// Start from lossless response data, then overwrite semantic fields with the current llm.Response.
+	applyResponseExtensions(resp, ext)
+
+	resp.Object = "response"
+	resp.ID = chatResp.ID
+	resp.Model = chatResp.Model
+	resp.CreatedAt = chatResp.Created
+	resp.Status = lo.ToPtr("completed")
+	resp.PreviousResponseID = chatResp.PreviousResponseID
 
 	// Convert usage
 	resp.Usage = ConvertLLMUsageToResponsesUsage(chatResp.Usage)
 
-	if ext := openAIResponsesExtensions(chatResp.ProtocolExtensions); ext != nil && !ext.Dirty {
+	if ext != nil && !llm.OpenAIResponsesOutputDirty(chatResp.ProtocolExtensions) {
+		// Reuse raw output only when no middleware changed the semantic response output.
 		if rawOutput := outputFromRawItems(ext.OutputItems); len(rawOutput) > 0 {
 			resp.Output = rawOutput
 		}

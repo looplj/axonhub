@@ -376,6 +376,7 @@ func filterResponsesOnlyDataForNonResponsesOutbound(
 	}
 
 	cloned := *llmRequest
+	// Non-Responses providers cannot safely carry Responses-only raw extensions or Codex tool shapes.
 	cloned.Messages = shared.FilterOutResponseCustomToolMessages(llmRequest.Messages)
 	cloned.Tools = shared.FilterOutResponsesOnlyTools(llmRequest.Tools)
 	cloned.ProtocolExtensions = nil

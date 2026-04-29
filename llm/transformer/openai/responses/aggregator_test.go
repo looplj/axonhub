@@ -90,10 +90,19 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 			err = xtest.LoadTestData(t, tt.expectedFile, &expected)
 			require.NoError(t, err)
 
-			// Compare using xtest.Equal with cmp.Diff output on mismatch
-			if !xtest.Equal(expected, actual) {
-				t.Fatalf("response mismatch:\n%s", cmp.Diff(expected, actual))
+			// Compare using xtest.Equal with cmp.Diff output on mismatch.
+			// Unknown terminal response fields now live in Extra; the semantic body still matches the snapshot.
+			ignoreLosslessExtra := cmp.FilterPath(func(p cmp.Path) bool {
+				if sf, ok := p.Last().(cmp.StructField); ok {
+					return sf.Name() == "Extra"
+				}
+				return false
+			}, cmp.Ignore())
+			if !xtest.Equal(expected, actual, ignoreLosslessExtra) {
+				t.Fatalf("response mismatch:\n%s", cmp.Diff(expected, actual, ignoreLosslessExtra))
 			}
+			require.JSONEq(t, `null`, string(actual.Extra["content_filters"]))
+			require.JSONEq(t, `true`, string(actual.Extra["store"]))
 
 			// Verify meta
 			require.Equal(t, tt.expectedMetaID, meta.ID)

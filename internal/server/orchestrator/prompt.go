@@ -69,6 +69,8 @@ func injectPrompts(inbound *PersistentInboundTransformer) pipeline.Middleware {
 		)
 
 		llmRequest = matcher.ApplyPrompts(llmRequest, matchingPrompts)
+		// Prompt injection changes the message list, so Responses raw input has to be rebuilt.
+		llm.MarkOpenAIResponsesInputDirty(llmRequest)
 
 		return llmRequest, nil
 	})

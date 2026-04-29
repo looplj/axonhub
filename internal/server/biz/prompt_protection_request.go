@@ -64,6 +64,10 @@ func ApplyPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionR
 	}
 
 	req.Messages = messages
+	if len(matchedRules) > 0 {
+		// Masking changes the semantic input, so raw Responses input must not be reused.
+		llm.MarkOpenAIResponsesInputDirty(req)
+	}
 
 	return PromptProtectionResult{
 		Request:      req,
@@ -115,6 +119,8 @@ func applyPromptProtectionRuleToMessage(msg llm.Message, rule *ent.PromptProtect
 		if rule.Settings.Action == objects.PromptProtectionActionMask {
 			masked := ReplacePromptProtectionRule(rule.Pattern, *msg.Content.Content, rule.Settings.Replacement)
 			msg.Content = llm.MessageContent{Content: &masked}
+			// Drop lossless raw input that may still contain the unmasked text.
+			msg.ProtocolExtensions = nil
 		}
 
 		matched = true
@@ -132,6 +138,9 @@ func applyPromptProtectionRuleToMessage(msg llm.Message, rule *ent.PromptProtect
 		if rule.Settings.Action == objects.PromptProtectionActionMask {
 			masked := ReplacePromptProtectionRule(rule.Pattern, *part.Text, rule.Settings.Replacement)
 			msg.Content.MultipleContent[i].Text = &masked
+			// Part metadata is tied to the original text representation and is unsafe after masking.
+			msg.Content.MultipleContent[i].TransformerMetadata = nil
+			msg.ProtocolExtensions = nil
 		}
 
 		matched = true

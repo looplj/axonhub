@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -14,10 +15,23 @@ func TestApplyTransformOptions_ReplaceDeveloperRoleWithSystem(t *testing.T) {
 	developerContent := "dev"
 	userContent := "hi"
 	req := &llm.Request{
-		Model: "test-model",
+		Model:     "test-model",
+		APIFormat: llm.APIFormatOpenAIResponse,
 		Messages: []llm.Message{
-			{Role: "developer", Content: llm.MessageContent{Content: &developerContent}},
-			{Role: "user", Content: llm.MessageContent{Content: &userContent}},
+			{
+				Role:    "developer",
+				Content: llm.MessageContent{Content: &developerContent},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "message"}},
+				}},
+			},
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: &userContent},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "message"}},
+				}},
+			},
 		},
 	}
 
@@ -32,6 +46,9 @@ func TestApplyTransformOptions_ReplaceDeveloperRoleWithSystem(t *testing.T) {
 	require.NotSame(t, req, result)
 	require.Equal(t, "system", result.Messages[0].Role)
 	require.Equal(t, "user", result.Messages[1].Role)
+	require.Nil(t, result.Messages[0].ProtocolExtensions)
+	require.NotNil(t, result.Messages[1].ProtocolExtensions)
+	require.True(t, llm.OpenAIResponsesInputDirty(result.ProtocolExtensions))
 }
 
 func TestApplyTransformOptions_KeepDeveloperRoleWhenDisabled(t *testing.T) {
@@ -79,7 +96,7 @@ func TestApplyTransformOptions_ForceArrayInstructions(t *testing.T) {
 }
 
 func TestApplyTransformOptions_ForceArrayInputs(t *testing.T) {
-	req := &llm.Request{Model: "test-model"}
+	req := &llm.Request{Model: "test-model", APIFormat: llm.APIFormatOpenAIResponse}
 
 	settings := &objects.ChannelSettings{
 		TransformOptions: objects.TransformOptions{
@@ -91,6 +108,37 @@ func TestApplyTransformOptions_ForceArrayInputs(t *testing.T) {
 
 	require.NotSame(t, req, result)
 	require.Equal(t, lo.ToPtr(true), result.TransformOptions.ArrayInputs)
+	require.True(t, llm.OpenAIResponsesInputDirty(result.ProtocolExtensions))
+}
+
+func TestApplyTransformOptions_DirtyMarkDoesNotMutateOriginalProtocolExtensions(t *testing.T) {
+	req := &llm.Request{
+		Model:     "test-model",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			RequestExtra: map[string]json.RawMessage{
+				"client_metadata": json.RawMessage(`{"session":"s1"}`),
+			},
+		}},
+	}
+
+	settings := &objects.ChannelSettings{
+		TransformOptions: objects.TransformOptions{
+			ForceArrayInputs: true,
+		},
+	}
+
+	result := applyTransformOptions(req, settings)
+
+	require.NotSame(t, req, result)
+	require.False(t, llm.OpenAIResponsesInputDirty(req.ProtocolExtensions))
+	require.True(t, llm.OpenAIResponsesInputDirty(result.ProtocolExtensions))
+	require.NotSame(t, req.ProtocolExtensions, result.ProtocolExtensions)
+	require.NotSame(t, req.ProtocolExtensions.OpenAIResponses, result.ProtocolExtensions.OpenAIResponses)
+	require.JSONEq(t,
+		string(req.ProtocolExtensions.OpenAIResponses.RequestExtra["client_metadata"]),
+		string(result.ProtocolExtensions.OpenAIResponses.RequestExtra["client_metadata"]),
+	)
 }
 
 func TestReplaceDeveloperRoleWithSystem(t *testing.T) {

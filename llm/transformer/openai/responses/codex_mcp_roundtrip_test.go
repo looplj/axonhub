@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 func TestCodexMCPRequestRoundTrip_NonPassThroughPreservesResponsesExtensions(t *testing.T) {
@@ -97,4 +100,605 @@ func TestCodexMCPRequestRoundTrip_NonPassThroughPreservesResponsesExtensions(t *
 	mcpOutput := input[2].(map[string]any)
 	require.Equal(t, "mcp_tool_call_output", mcpOutput["type"])
 	require.Contains(t, mcpOutput, "result")
+}
+
+func TestCodexMCPRequestRoundTrip_InputDirtyPreservesUnmodifiedCodexItems(t *testing.T) {
+	rawRequest := []byte(`{
+		"model": "gpt-5.1-codex-mini",
+		"input": [
+			{
+				"type": "message",
+				"role": "user",
+				"content": [{"type": "input_text", "text": "Use MCP"}]
+			},
+			{
+				"type": "function_call",
+				"call_id": "call_mcp_1",
+				"name": "read_file",
+				"namespace": "filesystem",
+				"arguments": "{\"path\":\"README.md\"}"
+			},
+			{
+				"type": "mcp_tool_call_output",
+				"call_id": "call_mcp_1",
+				"result": {
+					"content": [{"type": "text", "text": "ok"}],
+					"isError": false
+				}
+			}
+		],
+		"tools": [
+			{"type": "namespace", "name": "filesystem", "tools": [{"type": "function", "name": "read_file", "defer_loading": true}]}
+		],
+		"stream": true,
+		"store": false
+	}`)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: rawRequest})
+	require.NoError(t, err)
+
+	injected := "Injected prompt"
+	llmReq.Messages = append([]llm.Message{{
+		Role:    "developer",
+		Content: llm.MessageContent{Content: &injected},
+	}}, llmReq.Messages...)
+	llm.MarkOpenAIResponsesInputDirty(llmReq)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &body))
+
+	input := body["input"].([]any)
+	require.Len(t, input, 4)
+	require.Equal(t, "Injected prompt", input[0].(map[string]any)["content"].([]any)[0].(map[string]any)["text"])
+
+	functionCall := input[2].(map[string]any)
+	require.Equal(t, "function_call", functionCall["type"])
+	require.Equal(t, "filesystem", functionCall["namespace"])
+
+	mcpOutput := input[3].(map[string]any)
+	require.Equal(t, "mcp_tool_call_output", mcpOutput["type"])
+	require.Contains(t, mcpOutput, "result")
+}
+
+func TestCodexMCPRequestRoundTrip_InputDirtyDoesNotRestoreMaskedRawMessage(t *testing.T) {
+	rawRequest := []byte(`{
+		"model": "gpt-5.1-codex-mini",
+		"input": [
+			{
+				"type": "message",
+				"role": "user",
+				"content": [{"type": "input_text", "text": "token is secret-123"}],
+				"codex_extra": true
+			}
+		],
+		"stream": false,
+		"store": false
+	}`)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: rawRequest})
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.Messages[0].ProtocolExtensions)
+
+	masked := "token is [MASKED]"
+	llmReq.Messages[0].Content = llm.MessageContent{Content: &masked}
+	// The masked message must drop raw extensions, otherwise dirty rebuild would restore the sensitive original text.
+	llmReq.Messages[0].ProtocolExtensions = nil
+	llm.MarkOpenAIResponsesInputDirty(llmReq)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	require.NotContains(t, string(httpReq.Body), "secret-123")
+	require.Contains(t, string(httpReq.Body), "[MASKED]")
+}
+
+func TestCodexMCPRequestRoundTrip_ToolsDirtyRebuildsTools(t *testing.T) {
+	rawRequest := []byte(`{
+		"model": "gpt-5.1-codex-mini",
+		"input": "hello",
+		"tools": [
+			{"type": "namespace", "name": "filesystem"},
+			{"type": "tool_search"},
+			{"type": "local_shell"}
+		]
+	}`)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: rawRequest})
+	require.NoError(t, err)
+
+	llmReq.Tools = []llm.Tool{{
+		Type: llm.ToolTypeFunction,
+		Function: llm.Function{
+			Name:       "safe_tool",
+			Parameters: json.RawMessage(`{"type":"object"}`),
+		},
+	}}
+	llm.MarkOpenAIResponsesToolsDirty(llmReq)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &body))
+
+	tools := body["tools"].([]any)
+	require.Len(t, tools, 1)
+	require.Equal(t, "function", tools[0].(map[string]any)["type"])
+	require.Equal(t, "safe_tool", tools[0].(map[string]any)["name"])
+}
+
+func TestCodexMCPResponseRoundTrip_NonPassThroughPreservesResponseMetadata(t *testing.T) {
+	upstreamBody := []byte(`{
+		"id": "resp_codex_1",
+		"object": "response",
+		"created_at": 1770000000,
+		"status": "completed",
+		"model": "gpt-5.1-codex-mini",
+		"metadata": {"codex_session_id": "s1"},
+		"codex_response_extra": {"kept": true},
+		"output": [
+			{
+				"id": "search_1",
+				"type": "tool_search_call",
+				"status": "completed",
+				"query": "filesystem tools",
+				"result": {"tools": ["read_file"]}
+			}
+		],
+		"usage": {
+			"input_tokens": 10,
+			"output_tokens": 5,
+			"total_tokens": 15
+		}
+	}`)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmResp, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: 200,
+		Body:       upstreamBody,
+	})
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	httpResp, err := inbound.TransformResponse(context.Background(), llmResp)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpResp.Body, &body))
+	require.Equal(t, map[string]any{"codex_session_id": "s1"}, body["metadata"])
+	require.Equal(t, map[string]any{"kept": true}, body["codex_response_extra"])
+
+	output := body["output"].([]any)
+	require.Len(t, output, 1)
+	require.Equal(t, "tool_search_call", output[0].(map[string]any)["type"])
+	require.Equal(t, "filesystem tools", output[0].(map[string]any)["query"])
+}
+
+func TestCodexMCPStreamRoundTrip_RawEventsUpdateCompletedOutputAndSequence(t *testing.T) {
+	rawChunk := func(raw string) *llm.Response {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(raw), &ev))
+		return &llm.Response{
+			ProtocolExtensions: rawEventProtocolExtensionsFromRaw(&ev, []byte(raw)),
+		}
+	}
+
+	source := streams.SliceStream([]*llm.Response{
+		rawChunk(`{
+			"type": "response.created",
+			"sequence_number": 0,
+			"response": {
+				"id": "resp_stream_1",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"output": []
+			}
+		}`),
+		rawChunk(`{
+			"type": "response.in_progress",
+			"sequence_number": 1,
+			"response": {
+				"id": "resp_stream_1",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"output": []
+			}
+		}`),
+		rawChunk(`{
+			"type": "response.output_item.added",
+			"sequence_number": 2,
+			"output_index": 0,
+			"item": {
+				"id": "mcp_out_1",
+				"type": "mcp_tool_call_output",
+				"call_id": "call_mcp_1",
+				"status": "in_progress",
+				"result": {"content": [{"type": "text", "text": "searching"}]}
+			}
+		}`),
+		rawChunk(`{
+			"type": "response.output_item.done",
+			"sequence_number": 3,
+			"output_index": 0,
+			"item": {
+				"id": "mcp_out_1",
+				"type": "mcp_tool_call_output",
+				"call_id": "call_mcp_1",
+				"status": "completed",
+				"result": {"content": [{"type": "text", "text": "ok"}], "isError": false}
+			}
+		}`),
+		{
+			ID:      "resp_stream_1",
+			Object:  "chat.completion.chunk",
+			Model:   "gpt-5.1-codex-mini",
+			Created: 1770000000,
+			Choices: []llm.Choice{{
+				Delta: &llm.Message{
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: lo.ToPtr("done")},
+				},
+			}},
+		},
+		{
+			ID:      "resp_stream_1",
+			Object:  "chat.completion.chunk",
+			Model:   "gpt-5.1-codex-mini",
+			Created: 1770000000,
+			Choices: []llm.Choice{{
+				FinishReason: lo.ToPtr("stop"),
+			}},
+		},
+		{
+			ID:      "resp_stream_1",
+			Object:  "chat.completion.chunk",
+			Model:   "gpt-5.1-codex-mini",
+			Created: 1770000000,
+			Usage: &llm.Usage{
+				PromptTokens:     10,
+				CompletionTokens: 5,
+				TotalTokens:      15,
+			},
+		},
+	})
+
+	inbound := NewInboundTransformer()
+	out, err := inbound.TransformStream(context.Background(), source)
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for out.Next() {
+		event := out.Current()
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &ev))
+		events = append(events, ev)
+	}
+	require.NoError(t, out.Err())
+
+	require.GreaterOrEqual(t, len(events), 5)
+	require.Equal(t, 0, events[0].SequenceNumber)
+	require.Equal(t, 1, events[1].SequenceNumber)
+	require.Equal(t, 2, events[2].SequenceNumber)
+	require.Equal(t, 3, events[3].SequenceNumber)
+	require.Equal(t, StreamEventTypeOutputItemAdded, events[4].Type)
+	require.Equal(t, 4, events[4].SequenceNumber)
+
+	createdCount := 0
+	inProgressCount := 0
+	for _, event := range events {
+		switch event.Type {
+		case StreamEventTypeResponseCreated:
+			createdCount++
+		case StreamEventTypeResponseInProgress:
+			inProgressCount++
+		}
+	}
+	require.Equal(t, 1, createdCount)
+	require.Equal(t, 1, inProgressCount)
+
+	completed := events[len(events)-1]
+	require.Equal(t, StreamEventTypeResponseCompleted, completed.Type)
+	require.NotNil(t, completed.Response)
+	require.GreaterOrEqual(t, len(completed.Response.Output), 2)
+	require.Equal(t, "mcp_tool_call_output", completed.Response.Output[0].Type)
+	require.NotNil(t, completed.Response.Output[0].Result)
+	require.Equal(t, "message", completed.Response.Output[1].Type)
+}
+
+func TestCodexMCPStreamRoundTrip_OutboundCarriesTerminalResponseRawEvent(t *testing.T) {
+	rawEvent := func(raw string) *httpclient.StreamEvent {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(raw), &ev))
+		return &httpclient.StreamEvent{Type: string(ev.Type), Data: []byte(raw)}
+	}
+
+	upstream := streams.SliceStream([]*httpclient.StreamEvent{
+		rawEvent(`{
+			"type": "response.created",
+			"sequence_number": 0,
+			"response": {
+				"id": "resp_stream_terminal",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"output": []
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.output_item.added",
+			"sequence_number": 1,
+			"output_index": 0,
+			"item": {
+				"id": "search_1",
+				"type": "tool_search_call",
+				"status": "in_progress",
+				"query": "filesystem tools"
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.completed",
+			"sequence_number": 2,
+			"response": {
+				"id": "resp_stream_terminal",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "completed",
+				"metadata": {"codex_session_id": "s1"},
+				"codex_terminal_extra": {"kept": true},
+				"output": [
+					{
+						"id": "search_1",
+						"type": "tool_search_call",
+						"status": "completed",
+						"query": "filesystem tools",
+						"result": {"tools": ["read_file"]}
+					}
+				],
+				"usage": {
+					"input_tokens": 10,
+					"output_tokens": 5,
+					"total_tokens": 15
+				}
+			}
+		}`),
+	})
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmStream, err := outbound.TransformStream(context.Background(), upstream)
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	out, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	var completed *StreamEvent
+	var completedRaw map[string]any
+	for out.Next() {
+		event := out.Current()
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &ev))
+		if ev.Type != StreamEventTypeResponseCompleted {
+			continue
+		}
+
+		completed = &ev
+		require.NoError(t, json.Unmarshal(event.Data, &completedRaw))
+	}
+	require.NoError(t, out.Err())
+	require.NotNil(t, completed)
+	require.Equal(t, 2, completed.SequenceNumber)
+	require.NotNil(t, completed.Response)
+	require.Equal(t, map[string]string{"codex_session_id": "s1"}, completed.Response.Metadata)
+	require.Len(t, completed.Response.Output, 1)
+	require.Equal(t, "tool_search_call", completed.Response.Output[0].Type)
+
+	responseRaw := completedRaw["response"].(map[string]any)
+	require.Equal(t, map[string]any{"kept": true}, responseRaw["codex_terminal_extra"])
+}
+
+func TestCodexMCPStreamRoundTrip_RawTerminalEventClosesSyntheticTextItem(t *testing.T) {
+	rawEvent := func(raw string) *httpclient.StreamEvent {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(raw), &ev))
+		return &httpclient.StreamEvent{Type: string(ev.Type), Data: []byte(raw)}
+	}
+
+	upstream := streams.SliceStream([]*httpclient.StreamEvent{
+		rawEvent(`{
+			"type": "response.created",
+			"sequence_number": 0,
+			"response": {
+				"id": "resp_stream_close",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"output": []
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.output_item.added",
+			"sequence_number": 1,
+			"output_index": 0,
+			"item": {
+				"id": "msg_stream_close",
+				"type": "message",
+				"status": "in_progress",
+				"role": "assistant"
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.content_part.added",
+			"sequence_number": 2,
+			"item_id": "msg_stream_close",
+			"output_index": 0,
+			"content_index": 0,
+			"part": {"type": "output_text", "text": ""}
+		}`),
+		rawEvent(`{
+			"type": "response.output_text.delta",
+			"sequence_number": 3,
+			"item_id": "msg_stream_close",
+			"output_index": 0,
+			"content_index": 0,
+			"delta": "done"
+		}`),
+		rawEvent(`{
+			"type": "response.completed",
+			"sequence_number": 4,
+			"response": {
+				"id": "resp_stream_close",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "completed",
+				"metadata": {"codex_session_id": "s1"},
+				"output": [
+					{
+						"id": "msg_stream_close",
+						"type": "message",
+						"status": "completed",
+						"role": "assistant",
+						"content": [{"type": "output_text", "text": "done"}]
+					}
+				],
+				"usage": {
+					"input_tokens": 10,
+					"output_tokens": 5,
+					"total_tokens": 15
+				}
+			}
+		}`),
+	})
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmStream, err := outbound.TransformStream(context.Background(), upstream)
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	out, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for out.Next() {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(out.Current().Data, &ev))
+		events = append(events, ev)
+	}
+	require.NoError(t, out.Err())
+
+	indexByType := map[StreamEventType]int{}
+	for i, event := range events {
+		if i > 0 {
+			require.Greater(t, event.SequenceNumber, events[i-1].SequenceNumber)
+		}
+		if _, exists := indexByType[event.Type]; !exists {
+			indexByType[event.Type] = i
+		}
+	}
+
+	completedIndex, ok := indexByType[StreamEventTypeResponseCompleted]
+	require.True(t, ok)
+	outputTextDoneIndex, ok := indexByType[StreamEventTypeOutputTextDone]
+	require.True(t, ok)
+	contentPartDoneIndex, ok := indexByType[StreamEventTypeContentPartDone]
+	require.True(t, ok)
+	outputItemDoneIndex, ok := indexByType[StreamEventTypeOutputItemDone]
+	require.True(t, ok)
+	require.Less(t, outputTextDoneIndex, completedIndex)
+	require.Less(t, contentPartDoneIndex, completedIndex)
+	require.Less(t, outputItemDoneIndex, completedIndex)
+	require.Equal(t, map[string]string{"codex_session_id": "s1"}, events[completedIndex].Response.Metadata)
+}
+
+func TestCodexMCPStreamRoundTrip_OutboundCarriesKnownTerminalResponseFields(t *testing.T) {
+	rawEvent := func(raw string) *httpclient.StreamEvent {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(raw), &ev))
+		return &httpclient.StreamEvent{Type: string(ev.Type), Data: []byte(raw)}
+	}
+
+	upstream := streams.SliceStream([]*httpclient.StreamEvent{
+		rawEvent(`{
+			"type": "response.created",
+			"sequence_number": 0,
+			"response": {
+				"id": "resp_stream_known_fields",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "in_progress",
+				"output": []
+			}
+		}`),
+		rawEvent(`{
+			"type": "response.completed",
+			"sequence_number": 1,
+			"response": {
+				"id": "resp_stream_known_fields",
+				"object": "response",
+				"created_at": 1770000000,
+				"model": "gpt-5.1-codex-mini",
+				"status": "completed",
+				"instructions": "Keep exact terminal fields.",
+				"parallel_tool_calls": true,
+				"service_tier": "default",
+				"truncation": "auto",
+				"output": [],
+				"usage": {
+					"input_tokens": 10,
+					"output_tokens": 5,
+					"total_tokens": 15
+				}
+			}
+		}`),
+	})
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmStream, err := outbound.TransformStream(context.Background(), upstream)
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	out, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	var completedRaw map[string]any
+	for out.Next() {
+		event := out.Current()
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &ev))
+		if ev.Type == StreamEventTypeResponseCompleted {
+			require.NoError(t, json.Unmarshal(event.Data, &completedRaw))
+		}
+	}
+	require.NoError(t, out.Err())
+	require.NotNil(t, completedRaw)
+
+	responseRaw := completedRaw["response"].(map[string]any)
+	require.Equal(t, "Keep exact terminal fields.", responseRaw["instructions"])
+	require.Equal(t, true, responseRaw["parallel_tool_calls"])
+	require.Equal(t, "default", responseRaw["service_tier"])
+	require.Equal(t, "auto", responseRaw["truncation"])
 }

@@ -16,7 +16,13 @@ func TestApplyPromptProtectionRulesMaskContent(t *testing.T) {
 	content := "token is secret-123"
 	request := &llm.Request{
 		Messages: []llm.Message{
-			{Role: "user", Content: llm.MessageContent{Content: &content}},
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: &content},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "message"}},
+				}},
+			},
 		},
 	}
 
@@ -39,6 +45,8 @@ func TestApplyPromptProtectionRulesMaskContent(t *testing.T) {
 	assert.Equal(t, "mask-secret", result.MatchedRules[0].Name)
 	assert.Equal(t, "token is [MASKED]", *result.Request.Messages[0].Content.Content)
 	assert.Equal(t, "token is [MASKED]", *request.Messages[0].Content.Content)
+	assert.True(t, llm.OpenAIResponsesInputDirty(result.Request.ProtocolExtensions))
+	assert.Nil(t, result.Request.Messages[0].ProtocolExtensions)
 }
 
 func TestApplyPromptProtectionRulesRejectContent(t *testing.T) {
@@ -100,9 +108,12 @@ func TestApplyPromptProtectionRulesMaskMultipleContent(t *testing.T) {
 				Role: "user",
 				Content: llm.MessageContent{
 					MultipleContent: []llm.MessageContentPart{
-						{Type: "text", Text: &partText},
+						{Type: "text", Text: &partText, TransformerMetadata: map[string]any{"raw": true}},
 					},
 				},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "message"}},
+				}},
 			},
 		},
 	}
@@ -125,6 +136,9 @@ func TestApplyPromptProtectionRulesMaskMultipleContent(t *testing.T) {
 	assert.Equal(t, "mask-part", result.MatchedRules[0].Name)
 	assert.Equal(t, "[MASKED] text", *result.Request.Messages[0].Content.MultipleContent[0].Text)
 	assert.Equal(t, "[MASKED] text", *request.Messages[0].Content.MultipleContent[0].Text)
+	assert.True(t, llm.OpenAIResponsesInputDirty(result.Request.ProtocolExtensions))
+	assert.Nil(t, result.Request.Messages[0].ProtocolExtensions)
+	assert.Nil(t, result.Request.Messages[0].Content.MultipleContent[0].TransformerMetadata)
 }
 
 func TestApplyPromptProtectionRules_AppliesMultipleRulesInOrder(t *testing.T) {
@@ -249,6 +263,7 @@ func TestPromptProtectionRuleService_ProtectMask(t *testing.T) {
 	require.NotNil(t, result)
 	require.NotNil(t, result.Messages[0].Content.Content)
 	assert.Equal(t, "token is [MASKED]", *result.Messages[0].Content.Content)
+	assert.True(t, llm.OpenAIResponsesInputDirty(result.ProtocolExtensions))
 }
 
 func TestPromptProtectionRuleService_ProtectReject(t *testing.T) {

@@ -618,7 +618,7 @@ func (a *streamAggregator) buildResponse() *Response {
 		}
 	}
 
-	return &Response{
+	resp := &Response{
 		Object:             "response",
 		ID:                 a.responseID,
 		Model:              a.model,
@@ -628,6 +628,15 @@ func (a *streamAggregator) buildResponse() *Response {
 		Usage:              a.usage,
 		PreviousResponseID: a.previousResponseID,
 	}
+
+	if a.terminalResponse != nil {
+		// Keep terminal response-level data that has no semantic llm.Response field.
+		resp.Raw = cloneRaw(a.terminalResponse.Raw)
+		resp.Extra = cloneRawMap(a.terminalResponse.Extra)
+		resp.Metadata = cloneStringMap(a.terminalResponse.Metadata)
+	}
+
+	return resp
 }
 
 func (a *streamAggregator) shouldUseTerminalResponse() bool {

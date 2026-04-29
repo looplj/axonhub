@@ -168,7 +168,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 	}
 
-	if ext := openAIResponsesExtensions(llmReq.ProtocolExtensions); ext != nil && !ext.Dirty {
+	if ext := openAIResponsesExtensions(llmReq.ProtocolExtensions); ext != nil &&
+		!llm.OpenAIResponsesToolsDirty(llmReq.ProtocolExtensions) {
+		// Raw Responses tools may contain Codex-only tool shapes that have no llm.Tool equivalent.
 		if rawTools := toolsFromRawItems(ext.Tools); len(rawTools) > 0 {
 			tools = rawTools
 		}
@@ -201,10 +203,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
-	if ext := openAIResponsesExtensions(llmReq.ProtocolExtensions); ext != nil && !ext.Dirty {
+	if ext := openAIResponsesExtensions(llmReq.ProtocolExtensions); ext != nil {
 		payload.Extra = cloneRawMap(ext.RequestExtra)
-		if rawInput := inputFromRawItems(ext.InputItems); len(rawInput.Items) > 0 {
-			payload.Input = rawInput
+		if !llm.OpenAIResponsesInputDirty(llmReq.ProtocolExtensions) {
+			// Reuse raw input only while prompt/role/masking middleware has not changed message semantics.
+			if rawInput := inputFromRawItems(ext.InputItems); len(rawInput.Items) > 0 {
+				payload.Input = rawInput
+			}
 		}
 	}
 
@@ -308,6 +313,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 	if err := json.Unmarshal(httpResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal responses api response: %w", err)
 	}
+	resp.Raw = cloneRaw(httpResp.Body)
 
 	// Validate that we got a valid response
 	if resp.ID == "" && resp.Model == "" && len(resp.Output) == 0 {
@@ -321,7 +327,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 		Created:            resp.CreatedAt,
 		PreviousResponseID: resp.PreviousResponseID,
 		Choices:            make([]llm.Choice, 0),
-		ProtocolExtensions: protocolExtensionsForOutput(resp.Output),
+		ProtocolExtensions: protocolExtensionsForResponse(&resp),
 	}
 
 	// Convert usage if present

@@ -40,6 +40,19 @@ func cloneRawMap(src map[string]json.RawMessage) map[string]json.RawMessage {
 	return dst
 }
 
+func cloneStringMap(src map[string]string) map[string]string {
+	if len(src) == 0 {
+		return nil
+	}
+
+	dst := make(map[string]string, len(src))
+	for key, value := range src {
+		dst[key] = value
+	}
+
+	return dst
+}
+
 func rawItemsFromInput(input Input) []llm.OpenAIResponsesRawItem {
 	if len(input.Items) == 0 {
 		return nil
@@ -130,6 +143,32 @@ func protocolExtensionsForOutput(output []Item) *llm.ProtocolExtensions {
 			OutputItems: items,
 		},
 	}
+}
+
+func protocolExtensionsForResponse(resp *Response) *llm.ProtocolExtensions {
+	if resp == nil {
+		return nil
+	}
+
+	// Store response-level fields that would otherwise disappear in the semantic llm.Response view.
+	ext := &llm.OpenAIResponsesExtensions{
+		ResponseRaw:      cloneRaw(resp.Raw),
+		ResponseExtra:    cloneRawMap(resp.Extra),
+		ResponseMetadata: cloneStringMap(resp.Metadata),
+	}
+
+	if shouldPreserveOutput(resp.Output) {
+		ext.OutputItems = rawItemsFromInput(Input{Items: resp.Output})
+	}
+
+	if len(ext.ResponseRaw) == 0 &&
+		len(ext.ResponseExtra) == 0 &&
+		len(ext.ResponseMetadata) == 0 &&
+		len(ext.OutputItems) == 0 {
+		return nil
+	}
+
+	return &llm.ProtocolExtensions{OpenAIResponses: ext}
 }
 
 func shouldPreserveInput(input Input) bool {
@@ -243,6 +282,8 @@ func toolsFromRawItems(rawItems []llm.OpenAIResponsesRawItem) []Tool {
 		if err := json.Unmarshal(rawItem.Raw, &tool); err != nil {
 			continue
 		}
+		// Preserve the exact JSON so a later round trip can keep provider-private fields.
+		tool.Raw = cloneRaw(rawItem.Raw)
 		tools = append(tools, tool)
 	}
 	return tools
@@ -262,6 +303,8 @@ func inputFromRawItems(rawItems []llm.OpenAIResponsesRawItem) Input {
 		if err := json.Unmarshal(rawItem.Raw, &item); err != nil {
 			continue
 		}
+		// Keep Raw attached after decoding so terminal/event preservation can replay the original shape.
+		item.Raw = cloneRaw(rawItem.Raw)
 		items = append(items, item)
 	}
 	if len(items) == 0 {
@@ -284,4 +327,17 @@ func rawEventFromResponse(resp *llm.Response) *llm.OpenAIResponsesRawEvent {
 		return nil
 	}
 	return rawEvent
+}
+
+func applyResponseExtensions(resp *Response, ext *llm.OpenAIResponsesExtensions) {
+	if resp == nil || ext == nil {
+		return
+	}
+
+	resp.Raw = cloneRaw(ext.ResponseRaw)
+	resp.Extra = cloneRawMap(ext.ResponseExtra)
+	if len(ext.ResponseMetadata) > 0 && len(resp.Metadata) == 0 {
+		// Semantic metadata wins when it was already rebuilt from current response state.
+		resp.Metadata = cloneStringMap(ext.ResponseMetadata)
+	}
 }

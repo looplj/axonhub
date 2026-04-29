@@ -660,6 +660,48 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 	})
 }
 
+func TestFilterResponsesOnlyDataForNonResponsesOutbound_StripsProtocolExtensionsAndTools(t *testing.T) {
+	visible := "hello"
+	request := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
+		}},
+		Messages: []llm.Message{
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: &visible},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "message"}},
+				}},
+			},
+		},
+		Tools: []llm.Tool{
+			{Type: "namespace", ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{}}},
+			{Type: "tool_search"},
+			{Type: "local_shell"},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:       "get_weather",
+					Parameters: json.RawMessage(`{"type":"object"}`),
+				},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{}},
+			},
+		},
+	}
+
+	got := filterResponsesOnlyDataForNonResponsesOutbound(request, llm.APIFormatOpenAIChatCompletion)
+	require.NotSame(t, request, got)
+	require.Nil(t, got.ProtocolExtensions)
+	require.Len(t, got.Messages, 1)
+	require.Nil(t, got.Messages[0].ProtocolExtensions)
+	require.Len(t, got.Tools, 1)
+	require.Equal(t, llm.ToolTypeFunction, got.Tools[0].Type)
+	require.Nil(t, got.Tools[0].ProtocolExtensions)
+	require.Equal(t, "get_weather", got.Tools[0].Function.Name)
+}
+
 // ========== 429 Retry-After Tests ==========
 
 func TestPersistentOutboundTransformer_CanRetry_429_WithRetryAfter(t *testing.T) {

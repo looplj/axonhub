@@ -109,6 +109,13 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 	toolResultItemTypeByCallID := map[string]string{}
 
 	for _, msg := range msgs {
+		if rawItems, ok := inputItemsFromMessageExtension(msg); ok {
+			// Prefer exact per-message raw items unless middleware has stripped them from the message.
+			items = append(items, rawItems...)
+			recordToolResultTypes(rawItems, toolResultItemTypeByCallID)
+			continue
+		}
+
 		switch msg.Role {
 		case "user", "developer":
 			items = append(items, convertUserMessage(msg))
@@ -144,6 +151,33 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 
 	return Input{
 		Items: items,
+	}
+}
+
+func inputItemsFromMessageExtension(msg llm.Message) ([]Item, bool) {
+	ext := openAIResponsesExtensions(msg.ProtocolExtensions)
+	if ext == nil || len(ext.InputItems) == 0 {
+		return nil, false
+	}
+
+	raw := inputFromRawItems(ext.InputItems)
+	return raw.Items, len(raw.Items) > 0
+}
+
+func recordToolResultTypes(items []Item, target map[string]string) {
+	for _, item := range items {
+		switch item.Type {
+		case "function_call":
+			if item.CallID != "" {
+				// Raw assistant items still define how later tool outputs must be encoded.
+				target[item.CallID] = "function_call_output"
+			}
+		case "custom_tool_call":
+			if item.CallID != "" {
+				// Codex custom tool outputs need the Responses-only output item type.
+				target[item.CallID] = "custom_tool_call_output"
+			}
+		}
 	}
 }
 

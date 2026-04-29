@@ -81,8 +81,9 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 			// exclude the last DONE event
 			for i, expectedEvent := range expectedEvents[:len(expectedEvents)-1] {
-				if !xtest.Equal(expectedEvent, actualLLMResponses[i]) {
-					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, actualLLMResponses[i]))
+				actualEvent := withoutCompletedRawEventExtension(actualLLMResponses[i])
+				if !xtest.Equal(expectedEvent, actualEvent) {
+					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, actualEvent))
 				}
 			}
 
@@ -115,6 +116,21 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func withoutCompletedRawEventExtension(resp *llm.Response) *llm.Response {
+	if resp == nil || resp.ProtocolExtensions == nil || resp.ProtocolExtensions.OpenAIResponses == nil {
+		return resp
+	}
+
+	rawEvent := resp.ProtocolExtensions.OpenAIResponses.RawEvent
+	if rawEvent == nil || rawEvent.Type != string(StreamEventTypeResponseCompleted) {
+		return resp
+	}
+
+	cloned := *resp
+	cloned.ProtocolExtensions = nil
+	return &cloned
 }
 
 func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {

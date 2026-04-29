@@ -100,6 +100,156 @@ func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
 	return nil
 }
 
+func (s *responsesInboundStream) observeRawSequence(seq int) {
+	if seq >= s.sequenceNumber {
+		s.sequenceNumber = seq + 1
+	}
+}
+
+func (s *responsesInboundStream) observeRawOutputIndex(ev *StreamEvent) {
+	if ev == nil {
+		return
+	}
+
+	switch ev.Type {
+	case StreamEventTypeOutputItemAdded, StreamEventTypeOutputItemDone:
+		if ev.OutputIndex >= s.outputIndex {
+			s.outputIndex = ev.OutputIndex + 1
+		}
+	}
+}
+
+func (s *responsesInboundStream) observeRawLifecycleState(ev *StreamEvent) {
+	if ev == nil {
+		return
+	}
+
+	switch ev.Type {
+	case StreamEventTypeResponseCreated, StreamEventTypeResponseInProgress:
+		s.hasResponseCreated = true
+	case StreamEventTypeResponseCompleted, StreamEventTypeResponseFailed, StreamEventTypeResponseIncomplete:
+		s.hasResponseCreated = true
+		s.hasFinished = true
+		s.responseCompleted = true
+	}
+}
+
+func (s *responsesInboundStream) processRawEvent(rawEvent *llm.OpenAIResponsesRawEvent) {
+	if rawEvent == nil {
+		return
+	}
+
+	// Raw replay must still advance local counters so later synthetic events do not collide.
+	if rawEvent.SequenceNumber != nil {
+		s.observeRawSequence(*rawEvent.SequenceNumber)
+	}
+
+	var ev StreamEvent
+	if err := json.Unmarshal(rawEvent.Raw, &ev); err != nil {
+		return
+	}
+
+	s.observeRawSequence(ev.SequenceNumber)
+	s.observeRawOutputIndex(&ev)
+	s.observeRawLifecycleState(&ev)
+
+	if s.aggregator == nil {
+		s.aggregator = newStreamAggregator()
+	}
+	s.aggregator.processEvent(&ev)
+}
+
+func (s *responsesInboundStream) prepareRawEventReplay(
+	chunk *llm.Response,
+	rawEvent *llm.OpenAIResponsesRawEvent,
+) (*llm.OpenAIResponsesRawEvent, error) {
+	if rawEvent == nil || !isTerminalRawEvent(rawEvent) || !chunkHasFinishReason(chunk) {
+		return rawEvent, nil
+	}
+
+	if !s.hasFinished {
+		s.hasFinished = true
+		// A raw terminal event can share the chunk with FinishReason; close synthetic items first.
+		if err := s.closeCurrentContentPart(); err != nil {
+			return nil, err
+		}
+		if err := s.closeCurrentOutputItem(); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.normalizeRawEventSequence(rawEvent), nil
+}
+
+func isTerminalRawEvent(rawEvent *llm.OpenAIResponsesRawEvent) bool {
+	if rawEvent == nil {
+		return false
+	}
+
+	switch rawEvent.Type {
+	case string(StreamEventTypeResponseCompleted),
+		string(StreamEventTypeResponseFailed),
+		string(StreamEventTypeResponseIncomplete):
+		return true
+	default:
+		return false
+	}
+}
+
+func chunkHasFinishReason(chunk *llm.Response) bool {
+	if chunk == nil {
+		return false
+	}
+
+	for _, choice := range chunk.Choices {
+		if choice.FinishReason != nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *responsesInboundStream) normalizeRawEventSequence(
+	rawEvent *llm.OpenAIResponsesRawEvent,
+) *llm.OpenAIResponsesRawEvent {
+	if rawEvent == nil {
+		return nil
+	}
+
+	if rawEvent.SequenceNumber != nil && *rawEvent.SequenceNumber >= s.sequenceNumber {
+		return rawEvent
+	}
+
+	seq := s.sequenceNumber
+	cloned := *rawEvent
+	cloned.SequenceNumber = &seq
+	// If synthetic close events were emitted first, the replayed raw terminal event needs a later sequence.
+	cloned.Raw = rawEventDataWithSequence(rawEvent.Raw, seq)
+
+	return &cloned
+}
+
+func rawEventDataWithSequence(raw json.RawMessage, seq int) json.RawMessage {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil || len(obj) == 0 {
+		return cloneRaw(raw)
+	}
+
+	seqData, err := json.Marshal(seq)
+	if err != nil {
+		return cloneRaw(raw)
+	}
+	obj["sequence_number"] = seqData
+
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return cloneRaw(raw)
+	}
+
+	return data
+}
+
 //nolint:maintidx,gocognit // It is complex and hard to split.
 func (s *responsesInboundStream) Next() bool {
 	// If we have events in the queue, return them first
@@ -122,6 +272,13 @@ func (s *responsesInboundStream) Next() bool {
 	}
 
 	if rawEvent := rawEventFromResponse(chunk); rawEvent != nil {
+		var err error
+		rawEvent, err = s.prepareRawEventReplay(chunk, rawEvent)
+		if err != nil {
+			s.err = fmt.Errorf("failed to prepare raw responses event: %w", err)
+			return false
+		}
+		s.processRawEvent(rawEvent)
 		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
 			Type: rawEvent.Type,
 			Data: cloneRaw(rawEvent.Raw),

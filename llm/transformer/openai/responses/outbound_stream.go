@@ -441,6 +441,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
 		}
+		if shouldPreserveTerminalResponseEvent(&streamEvent) {
+			// The terminal response can carry top-level fields that no streaming delta represents.
+			resp.ProtocolExtensions = rawEventProtocolExtensionsFromRaw(&streamEvent, event.Data)
+		}
 
 		finishReason := "stop"
 		if len(s.state.toolCalls) > 0 {
@@ -547,6 +551,59 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	s.enqueue(resp)
 
 	return nil
+}
+
+func shouldPreserveTerminalResponseEvent(ev *StreamEvent) bool {
+	if ev == nil || ev.Type != StreamEventTypeResponseCompleted || ev.Response == nil {
+		return false
+	}
+
+	// Preserve only when the terminal event carries data the semantic stream would otherwise lose.
+	return hasTerminalResponseLosslessFields(ev.Response) || hasUnknownTerminalOutputItem(ev.Response.Output)
+}
+
+func hasTerminalResponseLosslessFields(resp *Response) bool {
+	if resp == nil {
+		return false
+	}
+
+	return len(resp.Metadata) > 0 ||
+		len(resp.Extra) > 0 ||
+		resp.Error != nil ||
+		resp.IncompleteDetails != nil ||
+		resp.Instructions != nil ||
+		resp.ParallelToolCalls != nil ||
+		resp.Temperature != nil ||
+		resp.ToolChoice != nil ||
+		len(resp.Tools) > 0 ||
+		resp.TopP != nil ||
+		resp.Background != nil ||
+		resp.Conversation != nil ||
+		resp.MaxOutputTokens != nil ||
+		resp.MaxToolCalls != nil ||
+		resp.Prompt != nil ||
+		resp.PromptCacheKey != nil ||
+		resp.PromptCacheRetention != nil ||
+		resp.Reasoning != nil ||
+		resp.SafetyIdentifier != nil ||
+		resp.ServiceTier != nil ||
+		resp.Text != nil ||
+		resp.TopLogprobs != nil ||
+		resp.Truncation != nil ||
+		resp.User != nil
+}
+
+func hasUnknownTerminalOutputItem(output []Item) bool {
+	for _, item := range output {
+		switch item.Type {
+		case "message", "output_text", "function_call", "custom_tool_call", "reasoning", "image_generation_call", "compaction", "compaction_summary", "":
+			continue
+		default:
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {
