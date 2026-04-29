@@ -615,26 +615,19 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 			log.Warn(ctx, "Failed to fetch UserInfo", log.String("provider", providerIdentifier), zap.Error(err))
 		} else {
 			if subject == "" {
+			if subject == "" {
 				subject = userInfoClaims.Sub
 			}
 			// Merge claims (UserInfo usually has more up-to-date data)
 			if userInfoClaims.Email != "" {
 				claims.Email = userInfoClaims.Email
 			}
+			if userInfoClaims.EmailVerified {
+				claims.EmailVerified = userInfoClaims.EmailVerified
+			}
 			if userInfoClaims.Name != "" {
 				claims.Name = userInfoClaims.Name
 			}
-			if userInfoClaims.Picture != "" {
-				claims.Picture = userInfoClaims.Picture
-			}
-			if userInfoClaims.GivenName != "" {
-				claims.GivenName = userInfoClaims.GivenName
-			}
-			if userInfoClaims.FamilyName != "" {
-				claims.FamilyName = userInfoClaims.FamilyName
-			}
-			if len(userInfoClaims.Groups) > 0 {
-				claims.Groups = userInfoClaims.Groups
 			}
 		}
 	}
