@@ -720,3 +720,39 @@ func (f *failingExecutor) Do(ctx context.Context, request *httpclient.Request) (
 func (f *failingExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	return nil, errors.New("executor stream error")
 }
+
+func TestMiddleware_RawRequest_Error_CleanupMiddlewares(t *testing.T) {
+	ctx := context.Background()
+	callOrder := []string{}
+
+	m1 := newTrackingMiddleware("M1", &callOrder)
+	m2 := newTrackingMiddleware("M2", &callOrder)
+	m2.shouldFailOnRawRequest = true
+	m3 := newTrackingMiddleware("M3", &callOrder)
+
+	exec := &testExecutor{}
+	factory := NewFactory(exec)
+
+	p := factory.Pipeline(
+		&testInbound{},
+		&testOutbound{},
+		WithMiddlewares(m1, m2, m3),
+	)
+
+	request := &httpclient.Request{}
+	result, err := p.Process(ctx, request)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "raw request middleware error")
+
+	require.True(t, m1.outboundRequestCalled)
+	require.True(t, m2.outboundRequestCalled)
+	require.False(t, m3.outboundRequestCalled)
+
+	require.True(t, m1.outboundRawErrorCalled,
+		"already-executed middleware must receive OnOutboundRawError for cleanup")
+	require.True(t, m2.outboundRawErrorCalled)
+	require.True(t, m3.outboundRawErrorCalled,
+		"unexecuted middleware must receive OnOutboundRawError for unconditional cleanup")
+}
