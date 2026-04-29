@@ -28,6 +28,7 @@ func StripBillingHeaderCCH() pipeline.Middleware {
 		}
 
 		var capturedCCH string
+
 		changed := false
 
 		for i := range request.Messages {
@@ -41,6 +42,7 @@ func StripBillingHeaderCCH() pipeline.Middleware {
 				if didChange {
 					changed = true
 					*msg.Content.Content = newText
+
 					if capturedCCH == "" && cch != "" {
 						capturedCCH = cch
 					}
@@ -58,6 +60,7 @@ func StripBillingHeaderCCH() pipeline.Middleware {
 					if didChange {
 						changed = true
 						*part.Text = newText
+
 						if capturedCCH == "" && cch != "" {
 							capturedCCH = cch
 						}
@@ -74,6 +77,7 @@ func StripBillingHeaderCCH() pipeline.Middleware {
 			if request.TransformerMetadata == nil {
 				request.TransformerMetadata = make(map[string]any)
 			}
+
 			if _, exists := request.TransformerMetadata[BillingCCHKey]; !exists {
 				request.TransformerMetadata[BillingCCHKey] = capturedCCH
 			}
@@ -103,6 +107,7 @@ func stripBillingHeaderCCHFromText(text string) (string, string, bool) {
 
 	parts := strings.Split(rest, ";")
 	kept := make([]string, 0, len(parts))
+
 	var cch string
 
 	for _, p := range parts {
@@ -116,6 +121,7 @@ func stripBillingHeaderCCHFromText(text string) (string, string, bool) {
 			if cch == "" {
 				cch = strings.TrimSpace(p[len("cch="):])
 			}
+
 			continue
 		}
 
@@ -133,4 +139,3 @@ func stripBillingHeaderCCHFromText(text string) (string, string, bool) {
 
 	return out, cch, true
 }
-

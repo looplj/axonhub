@@ -238,6 +238,7 @@ func (t *OutboundTransformer) buildRerankURL() string {
 	if t.config.EndpointPath != "" {
 		return t.config.BaseURL + t.config.EndpointPath
 	}
+
 	return t.config.BaseURL + "/rerank"
 }
 
@@ -246,6 +247,7 @@ func (t *OutboundTransformer) buildEmbeddingURL() string {
 	if t.config.EndpointPath != "" {
 		return t.config.BaseURL + t.config.EndpointPath
 	}
+
 	return t.config.BaseURL + "/embeddings"
 }
 

@@ -39,5 +39,3 @@ type RerankResult struct {
 type RerankDocument struct {
 	Text string `json:"text"`
 }
-
-

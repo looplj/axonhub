@@ -171,6 +171,7 @@ func ParseTokenResponse(respBody []byte, clientID string) (*OAuthCredentials, er
 		if err := json.Unmarshal(respBody, &tokenErr); err == nil && tokenErr.Error != "" {
 			return nil, fmt.Errorf("token request failed: %s - %s", tokenErr.Error, tokenErr.ErrorDescription)
 		}
+
 		return nil, errors.New("token response missing access_token")
 	}
 

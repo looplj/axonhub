@@ -446,6 +446,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message, scope shared.TransportSc
 		if (len(msg.ToolCalls) > 0 || msg.ReasoningContent != nil) && msgThoughtSignature == nil {
 			msgThoughtSignature = lo.ToPtr(ContextEngineeringThoughtSignature)
 		}
+
 		if msgThoughtSignature != nil && (firstFunctionCallPart != nil || lastPart != nil) {
 			if firstFunctionCallPart != nil {
 				firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
@@ -518,10 +519,12 @@ func isPreviousContentToolResponse(contents []*Content) bool {
 	if len(contents) == 0 {
 		return false
 	}
+
 	lastContent := contents[len(contents)-1]
 	if lastContent.Role != "user" || len(lastContent.Parts) == 0 {
 		return false
 	}
+
 	return lastContent.Parts[0].FunctionResponse != nil
 }
 
@@ -721,5 +724,6 @@ func extractJSONSchema(raw json.RawMessage) json.RawMessage {
 	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Schema) > 0 {
 		return wrapper.Schema
 	}
+
 	return raw
 }

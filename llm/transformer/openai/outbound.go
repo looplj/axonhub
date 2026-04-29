@@ -312,6 +312,7 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 		if detail.Message == "" && errObj.Exists() {
 			detail.Message = errObj.String()
 		}
+
 		if detail.Message == "" {
 			detail.Message = "stream error"
 		}
@@ -362,6 +363,7 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 	if t.config.EndpointPath != "" {
 		return t.config.BaseURL + t.config.EndpointPath, nil
 	}
+
 	return t.config.BaseURL + "/chat/completions", nil
 }
 

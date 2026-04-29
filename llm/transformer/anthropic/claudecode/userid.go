@@ -22,7 +22,7 @@ type UserID struct {
 }
 
 // legacyPattern matches the old Claude Code user_id format:
-// user_<64hex>_account__session_<uuid-v4>
+// user_<64hex>_account__session_<uuid-v4>.
 var legacyPattern = regexp.MustCompile(
 	`^user_([a-fA-F0-9]{64})_account__session_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$`,
 )
@@ -77,8 +77,10 @@ func BuildUserID(uid UserID) string {
 // deterministically so the same channel always produces the same identity.
 // When accountIdentity is empty, random values are used as a fallback.
 func GenerateUserID(ctx context.Context, accountIdentity string) string {
-	var deviceID string
-	var accountUUID string
+	var (
+		deviceID    string
+		accountUUID string
+	)
 
 	if accountIdentity != "" {
 		h := sha256.Sum256([]byte(accountIdentity))

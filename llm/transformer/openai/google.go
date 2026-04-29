@@ -21,6 +21,7 @@ func stripUnsupportedToolCallExtraContent(req *Request) {
 			tc := req.Messages[i].ToolCalls[j]
 
 			var changed bool
+
 			if tc.ExtraContent != nil {
 				// Keep empty google extra content (does not serialize thought_signature) for compatibility,
 				// but strip when it carries an actual thought_signature value.

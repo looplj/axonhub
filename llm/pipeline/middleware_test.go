@@ -116,6 +116,7 @@ func (m *trackingMiddleware) OnInboundRawResponse(ctx context.Context, response 
 func (m *trackingMiddleware) OnInboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
 	m.inboundRawStreamCalled = true
 	*m.callOrder = append(*m.callOrder, m.name+":OnInboundRawStream")
+
 	return stream, nil
 }
 

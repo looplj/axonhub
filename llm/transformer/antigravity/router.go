@@ -133,7 +133,7 @@ func ShouldRetryWithDifferentEndpoint(statusCode int) bool {
 
 // transformModelForAntigravity transforms model names to match Antigravity API requirements.
 // The Antigravity API requires tier suffixes for gemini-3-pro models (e.g., gemini-3-pro-low).
-// Reference: opencode-antigravity-auth/src/plugin/transform/model-resolver.ts lines 196-217
+// Reference: opencode-antigravity-auth/src/plugin/transform/model-resolver.ts lines 196-217.
 func transformModelForAntigravity(modelName string) string {
 	// First normalize to remove any existing prefixes/suffixes
 	normalized := NormalizeModelName(modelName)

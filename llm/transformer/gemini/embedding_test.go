@@ -18,6 +18,7 @@ func newTestEmbeddingTransformer() *OutboundTransformer {
 		BaseURL:        "https://generativelanguage.googleapis.com",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	})
+
 	return t.(*OutboundTransformer)
 }
 
@@ -42,6 +43,7 @@ func TestTransformEmbeddingRequest_SingleText(t *testing.T) {
 	require.Equal(t, string(llm.APIFormatGeminiEmbedding), httpReq.APIFormat)
 
 	var geminiReq EmbedContentRequest
+
 	err = json.Unmarshal(httpReq.Body, &geminiReq)
 	require.NoError(t, err)
 	require.Equal(t, "models/gemini-embedding-001", geminiReq.Model)
@@ -68,6 +70,7 @@ func TestTransformEmbeddingRequest_BatchTexts(t *testing.T) {
 	require.Contains(t, httpReq.URL, "models/gemini-embedding-001:batchEmbedContents")
 
 	var batchReq BatchEmbedContentsRequest
+
 	err = json.Unmarshal(httpReq.Body, &batchReq)
 	require.NoError(t, err)
 	require.Len(t, batchReq.Requests, 3)
@@ -93,6 +96,7 @@ func TestTransformEmbeddingRequest_WithDimensions(t *testing.T) {
 	require.NoError(t, err)
 
 	var geminiReq EmbedContentRequest
+
 	err = json.Unmarshal(httpReq.Body, &geminiReq)
 	require.NoError(t, err)
 	require.NotNil(t, geminiReq.OutputDimensionality)
@@ -115,6 +119,7 @@ func TestTransformEmbeddingRequest_WithTaskType(t *testing.T) {
 	require.NoError(t, err)
 
 	var geminiReq EmbedContentRequest
+
 	err = json.Unmarshal(httpReq.Body, &geminiReq)
 	require.NoError(t, err)
 	require.Equal(t, "RETRIEVAL_QUERY", geminiReq.TaskType)

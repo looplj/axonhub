@@ -138,6 +138,7 @@ func TestOutboundTransformer_TransformRequest_Integration(t *testing.T) {
 				t.Helper()
 
 				var req Request
+
 				err := json.Unmarshal(result.Body, &req)
 				require.NoError(t, err)
 
@@ -200,6 +201,7 @@ func TestCompactTransformer_TransformResponse_Integration(t *testing.T) {
 	inbound := NewCompactInboundTransformer()
 
 	var responseData json.RawMessage
+
 	err = xtest.LoadTestData(t, "compact.response.json", &responseData)
 	require.NoError(t, err)
 
@@ -233,10 +235,12 @@ func TestCompactTransformer_TransformResponse_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	var actual CompactAPIResponse
+
 	err = json.Unmarshal(roundTripResp.Body, &actual)
 	require.NoError(t, err)
 
 	var expected CompactAPIResponse
+
 	err = xtest.LoadTestData(t, "compact.response.json", &expected)
 	require.NoError(t, err)
 
@@ -244,6 +248,7 @@ func TestCompactTransformer_TransformResponse_Integration(t *testing.T) {
 	require.Equal(t, expected.CreatedAt, actual.CreatedAt)
 	require.Equal(t, expected.Object, actual.Object)
 	require.Equal(t, expected.Usage, actual.Usage)
+
 	opts := []cmp.Option{
 		cmpopts.IgnoreFields(Item{}, "Annotations"),
 		cmpopts.EquateEmpty(),
@@ -260,6 +265,7 @@ func TestResponsesTransformer_TransformResponse_Integration(t *testing.T) {
 	inbound := NewInboundTransformer()
 
 	var responseData json.RawMessage
+
 	err = xtest.LoadTestData(t, "stop.response.json", &responseData)
 	require.NoError(t, err)
 
@@ -280,10 +286,12 @@ func TestResponsesTransformer_TransformResponse_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	var actual Response
+
 	err = json.Unmarshal(roundTripResp.Body, &actual)
 	require.NoError(t, err)
 
 	var expected Response
+
 	err = xtest.LoadTestData(t, "stop.response.json", &expected)
 	require.NoError(t, err)
 
@@ -293,6 +301,7 @@ func TestResponsesTransformer_TransformResponse_Integration(t *testing.T) {
 	require.Equal(t, expected.Status, actual.Status)
 	require.Equal(t, expected.Model, actual.Model)
 	require.Equal(t, expected.Usage, actual.Usage)
+
 	opts := []cmp.Option{
 		cmpopts.IgnoreFields(Item{}, "Annotations"),
 		cmpopts.EquateEmpty(),

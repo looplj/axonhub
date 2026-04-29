@@ -49,6 +49,7 @@ func (d *ndjsonDecoder) Next() bool {
 	case <-d.ctx.Done():
 		d.err = d.ctx.Err()
 		_ = d.Close()
+
 		return false
 	default:
 	}
@@ -62,14 +63,18 @@ func (d *ndjsonDecoder) Next() bool {
 				d.current = &httpclient.StreamEvent{
 					Data: line,
 				}
+
 				return true
 			}
+
 			slog.DebugContext(d.ctx, "NDJSON stream closed")
 		} else {
 			d.err = err
 			slog.ErrorContext(d.ctx, "NDJSON read error", slog.Any("error", err))
 		}
+
 		_ = d.Close()
+
 		return false
 	}
 
@@ -77,6 +82,7 @@ func (d *ndjsonDecoder) Next() bool {
 	if len(line) > 0 && line[len(line)-1] == '\n' {
 		line = line[:len(line)-1]
 	}
+
 	if len(line) > 0 && line[len(line)-1] == '\r' {
 		line = line[:len(line)-1]
 	}
@@ -103,9 +109,11 @@ func (d *ndjsonDecoder) Close() error {
 	if d.closed {
 		return nil
 	}
+
 	d.closed = true
 	if d.body != nil {
 		return d.body.Close()
 	}
+
 	return nil
 }

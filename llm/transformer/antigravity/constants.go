@@ -24,7 +24,6 @@ const (
 	// EndpointProd is the production endpoint.
 	EndpointProd = "https://cloudcode-pa.googleapis.com"
 
-
 	// ApiClient used for X-Goog-Api-Client header.
 	ApiClient = "google-cloud-sdk vscode_cloudshelleditor/0.1"
 

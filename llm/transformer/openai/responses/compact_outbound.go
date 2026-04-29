@@ -68,6 +68,7 @@ func (t *OutboundTransformer) buildCompactURL() string {
 	if t.config.RawURL {
 		return t.config.BaseURL
 	}
+
 	return t.config.BaseURL + "/responses/compact"
 }
 

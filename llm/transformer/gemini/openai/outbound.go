@@ -403,6 +403,7 @@ func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *ope
 		}
 
 		hasToolCallThoughtSignature := false
+
 		for j := range srcMsg.ToolCalls {
 			raw, ok := srcMsg.ToolCalls[j].TransformerMetadata[openai.TransformerMetadataKeyGoogleThoughtSignature].(string)
 			if !ok || raw == "" {
@@ -410,6 +411,7 @@ func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *ope
 			}
 
 			dstToolCallIndex := -1
+
 			if srcMsg.ToolCalls[j].ID != "" {
 				if idx, exists := dstToolCallIndexByID[srcMsg.ToolCalls[j].ID]; exists {
 					dstToolCallIndex = idx

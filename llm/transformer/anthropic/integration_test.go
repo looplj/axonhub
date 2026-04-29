@@ -349,6 +349,7 @@ func TestTransformRequest_Integration(t *testing.T) {
 			require.NoError(t, err)
 
 			var gotReq MessageRequest
+
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 

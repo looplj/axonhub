@@ -3,6 +3,7 @@ package fireworks
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,12 +23,15 @@ func TestIntegration_TransformRequest(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+
 		capturedBody, err = io.ReadAll(r.Body)
 		if err != nil {
 			t.Errorf("Failed to read request body: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
+
 		r.Body.Close()
 
 		if r.Header.Get("Content-Type") != "application/json" {
@@ -118,6 +122,7 @@ func TestIntegration_TransformRequest(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	rawHTTPResp, err := client.Do(rawHTTPReq)
 	require.NoError(t, err, "HTTP request should not fail")
+
 	defer rawHTTPResp.Body.Close()
 
 	assert.Equal(t, http.StatusOK, rawHTTPResp.StatusCode, "Expected 200 OK from test server")
@@ -125,6 +130,7 @@ func TestIntegration_TransformRequest(t *testing.T) {
 	require.NotEmpty(t, capturedBody, "Captured request body should not be empty")
 
 	var capturedRequest map[string]any
+
 	err = json.Unmarshal(capturedBody, &capturedRequest)
 	require.NoError(t, err, "Captured body should be valid JSON")
 
@@ -162,6 +168,7 @@ func TestIntegration_TransformRequest_NoReasoningFields(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+
 		capturedBody, err = io.ReadAll(r.Body)
 		require.NoError(t, err)
 		r.Body.Close()
@@ -215,11 +222,13 @@ func TestIntegration_TransformRequest_NoReasoningFields(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	rawHTTPResp, err := client.Do(rawHTTPReq)
 	require.NoError(t, err)
+
 	defer rawHTTPResp.Body.Close()
 
 	assert.Equal(t, http.StatusOK, rawHTTPResp.StatusCode)
 
 	var capturedRequest map[string]any
+
 	err = json.Unmarshal(capturedBody, &capturedRequest)
 	require.NoError(t, err)
 
@@ -233,6 +242,7 @@ func TestIntegration_TransformRequest_NoReasoningFields(t *testing.T) {
 
 	_, hasReasoning := msg["reasoning"]
 	assert.False(t, hasReasoning, "Should not have reasoning field")
+
 	_, hasReasoningContent := msg["reasoning_content"]
 	assert.False(t, hasReasoningContent, "Should not have reasoning_content field")
 }
@@ -296,6 +306,7 @@ func TestIntegration_TransformResponse(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	rawHTTPResp, err := client.Do(rawHTTPReq)
 	require.NoError(t, err)
+
 	defer rawHTTPResp.Body.Close()
 
 	body, err := io.ReadAll(rawHTTPResp.Body)
@@ -322,15 +333,19 @@ func TestIntegration_TransformResponse(t *testing.T) {
 
 func TestIntegration_EndToEnd_ReasoningStripping(t *testing.T) {
 	var capturedBody []byte
+
 	bodyReceived := make(chan bool, 1)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+
 		capturedBody, err = io.ReadAll(r.Body)
 		if err != nil {
 			t.Errorf("Failed to read request body: %v", err)
 		}
+
 		r.Body.Close()
+
 		bodyReceived <- true
 
 		response := map[string]any{
@@ -397,6 +412,7 @@ func TestIntegration_EndToEnd_ReasoningStripping(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	rawHTTPResp, err := client.Do(rawHTTPReq)
 	require.NoError(t, err)
+
 	defer rawHTTPResp.Body.Close()
 
 	select {
@@ -408,6 +424,7 @@ func TestIntegration_EndToEnd_ReasoningStripping(t *testing.T) {
 	require.NotEmpty(t, capturedBody, "Request body should have been captured")
 
 	var requestBody map[string]any
+
 	err = json.Unmarshal(capturedBody, &requestBody)
 	require.NoError(t, err)
 
@@ -465,6 +482,7 @@ func TestIntegration_RequestBodyJSONIntegrity(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+
 		capturedBody, err = io.ReadAll(r.Body)
 		require.NoError(t, err)
 		r.Body.Close()
@@ -515,6 +533,7 @@ func TestIntegration_RequestBodyJSONIntegrity(t *testing.T) {
 	require.NotEmpty(t, capturedBody)
 
 	var bodyMap map[string]any
+
 	err = json.Unmarshal(capturedBody, &bodyMap)
 	require.NoError(t, err)
 
@@ -522,6 +541,7 @@ func TestIntegration_RequestBodyJSONIntegrity(t *testing.T) {
 	require.NoError(t, err)
 
 	var reDecoded map[string]any
+
 	err = json.Unmarshal(reEncoded, &reDecoded)
 	require.NoError(t, err)
 
@@ -539,6 +559,7 @@ func TestIntegration_EmptyReasoningFields(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+
 		capturedBody, err = io.ReadAll(r.Body)
 		require.NoError(t, err)
 		r.Body.Close()
@@ -590,6 +611,7 @@ func TestIntegration_EmptyReasoningFields(t *testing.T) {
 	require.NotEmpty(t, capturedBody)
 
 	var bodyMap map[string]any
+
 	err = json.Unmarshal(capturedBody, &bodyMap)
 	require.NoError(t, err)
 
@@ -612,6 +634,7 @@ func TestIntegration_LargeRequestWithReasoning(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+
 		capturedBody, err = io.ReadAll(r.Body)
 		require.NoError(t, err)
 		r.Body.Close()
@@ -634,7 +657,7 @@ func TestIntegration_LargeRequestWithReasoning(t *testing.T) {
 	transformer := transformerInterface.(*OutboundTransformer)
 
 	messages := make([]llm.Message, 0, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		messages = append(messages, llm.Message{
 			Role: "user",
 			Content: llm.MessageContent{
@@ -671,6 +694,7 @@ func TestIntegration_LargeRequestWithReasoning(t *testing.T) {
 	require.NotEmpty(t, capturedBody)
 
 	var bodyMap map[string]any
+
 	err = json.Unmarshal(capturedBody, &bodyMap)
 	require.NoError(t, err)
 
@@ -688,8 +712,10 @@ func TestIntegration_LargeRequestWithReasoning(t *testing.T) {
 }
 
 func TestIntegration_RequestHeadersAndAuth(t *testing.T) {
-	var receivedHeaders http.Header
-	var receivedAuth string
+	var (
+		receivedHeaders http.Header
+		receivedAuth    string
+	)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedHeaders = r.Header
@@ -812,12 +838,14 @@ func TestIntegration_ServerError(t *testing.T) {
 
 		var capturedBody map[string]any
 		json.Unmarshal(body, &capturedBody)
+
 		messages := capturedBody["messages"].([]any)
 		for _, msg := range messages {
 			msgMap := msg.(map[string]any)
 			if _, ok := msgMap["reasoning"]; ok {
 				t.Errorf("Request body should not contain reasoning field")
 			}
+
 			if _, ok := msgMap["reasoning_content"]; ok {
 				t.Errorf("Request body should not contain reasoning_content field")
 			}
@@ -858,7 +886,9 @@ func TestIntegration_ServerError(t *testing.T) {
 	_, err = httpClient.Do(t.Context(), httpClientReq)
 
 	assert.Error(t, err)
-	httpErr, ok := err.(*httpclient.Error)
+
+	httpErr := &httpclient.Error{}
+	ok := errors.As(err, &httpErr)
 	require.True(t, ok, "Error should be httpclient.Error")
 	assert.Equal(t, http.StatusInternalServerError, httpErr.StatusCode)
 }
@@ -869,6 +899,7 @@ func TestIntegration_RequestBodySize(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		bodySize = len(body)
+
 		r.Body.Close()
 
 		w.Header().Set("Content-Type", "application/json")
@@ -889,7 +920,7 @@ func TestIntegration_RequestBodySize(t *testing.T) {
 	transformer := transformerInterface.(*OutboundTransformer)
 
 	largeContent := ""
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		largeContent += "This is a test message. "
 	}
 
@@ -921,6 +952,7 @@ func TestIntegration_RequestBodySize(t *testing.T) {
 	assert.Greater(t, bodySize, 0)
 
 	var capturedBody map[string]any
+
 	bodyReader := bytes.NewReader(httpReq.Body)
 	err = json.NewDecoder(bodyReader).Decode(&capturedBody)
 	require.NoError(t, err)

@@ -43,7 +43,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("injects Claude Code system message with cache_control", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
@@ -68,7 +67,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("sets all Claude Code headers", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
@@ -91,7 +89,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("adds beta=true query parameter", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
@@ -108,7 +105,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("applies tool prefix for OAuth tokens from non-CLI clients", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{
 			TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token"),
 			IsOfficial:    true,
@@ -139,7 +135,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("does not apply tool prefix for Claude CLI clients", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token")})
 		require.NoError(t, err)
 
@@ -170,7 +165,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("injects fake user ID", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
@@ -190,7 +184,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("does not add billing cch when not official", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{
 			TokenProvider: newMockTokenProvider("test-api-key"),
 			IsOfficial:    false,
@@ -222,7 +215,6 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 
 	t.Run("restores billing cch when official and stripped", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{
 			TokenProvider: newMockTokenProvider("test-api-key"),
 			IsOfficial:    true,
@@ -250,17 +242,18 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.True(t, system.Exists())
 
 		foundCCH := false
+
 		for _, item := range system.Array() {
 			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") &&
 				strings.Contains(item.Get("text").String(), "cch=38a80;") {
 				foundCCH = true
 			}
 		}
+
 		assert.True(t, foundCCH, "billing system message should restore cch for official channels")
 	})
 
 	t.Run("disables thinking when tool_choice forces tool use", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
@@ -299,7 +292,6 @@ func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("strips tool prefix when it was applied", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
@@ -342,7 +334,6 @@ func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {
 	})
 
 	t.Run("does not strip when prefix was not applied", func(t *testing.T) {
-
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
 
@@ -415,6 +406,7 @@ func TestClaudeCodeTransformer_TransformStream(t *testing.T) {
 
 		// Read from the stream and verify prefix is stripped
 		responses := []*llm.Response{}
+
 		for llmStream.Next() {
 			resp := llmStream.Current()
 			if resp != nil {
@@ -426,13 +418,16 @@ func TestClaudeCodeTransformer_TransformStream(t *testing.T) {
 
 		// Verify we got responses and tool names are stripped
 		require.NotEmpty(t, responses)
+
 		foundToolCall := false
+
 		for _, resp := range responses {
 			for _, choice := range resp.Choices {
 				if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
 					for _, toolCall := range choice.Delta.ToolCalls {
 						if toolCall.Function.Name != "" {
 							foundToolCall = true
+
 							assert.Equal(t, "bash", toolCall.Function.Name, "tool prefix should be stripped")
 							assert.NotContains(t, toolCall.Function.Name, "proxy_", "proxy_ prefix should be removed")
 						}
@@ -440,6 +435,7 @@ func TestClaudeCodeTransformer_TransformStream(t *testing.T) {
 				}
 			}
 		}
+
 		assert.True(t, foundToolCall, "should have found at least one tool call")
 	})
 
@@ -469,12 +465,12 @@ func TestClaudeCodeTransformer_TransformStream(t *testing.T) {
 		for llmStream.Next() {
 			_ = llmStream.Current()
 		}
+
 		require.NoError(t, llmStream.Err())
 	})
 }
 
 func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
-
 	transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 	require.NoError(t, err)
 
@@ -522,7 +518,7 @@ func (t *fakeOutbound) AggregateStreamChunks(_ context.Context, _ []*httpclient.
 
 var _ llmtransformer.Outbound = (*fakeOutbound)(nil)
 
-// mockTokenProvider is a test implementation of oauth.TokenGetter
+// mockTokenProvider is a test implementation of oauth.TokenGetter.
 type mockTokenProvider struct {
 	accessToken string
 }
@@ -539,7 +535,7 @@ func newMockTokenProvider(token string) *mockTokenProvider {
 	return &mockTokenProvider{accessToken: token}
 }
 
-// mockHTTPStream is a simple mock implementation of streams.Stream[*httpclient.StreamEvent]
+// mockHTTPStream is a simple mock implementation of streams.Stream[*httpclient.StreamEvent].
 type mockHTTPStream struct {
 	events  []*httpclient.StreamEvent
 	index   int
@@ -558,7 +554,9 @@ func (m *mockHTTPStream) Next() bool {
 	if m.index >= len(m.events) {
 		return false
 	}
+
 	m.current = m.events[m.index]
+
 	return true
 }
 

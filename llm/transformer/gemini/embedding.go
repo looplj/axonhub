@@ -75,6 +75,7 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 	// Map dimensions
 	var outputDim *int32
+
 	if llmReq.Embedding.Dimensions != nil {
 		d := int32(*llmReq.Embedding.Dimensions)
 		outputDim = &d
@@ -82,9 +83,11 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 	modelRef := "models/" + llmReq.Model
 
-	var body []byte
-	var url string
-	var err error
+	var (
+		body []byte
+		url  string
+		err  error
+	)
 
 	if len(texts) == 1 {
 		// Single text: use embedContent
@@ -306,5 +309,6 @@ func float32sToFloat64s(f32s []float32) []float64 {
 	for i, v := range f32s {
 		f64s[i] = float64(v)
 	}
+
 	return f64s
 }

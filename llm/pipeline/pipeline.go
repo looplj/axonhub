@@ -107,12 +107,12 @@ func (f *Factory) Pipeline(
 
 // pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
-	Executor              Executor
-	Inbound               transformer.Inbound
-	Outbound              transformer.Outbound
-	middlewares           []Middleware
-	maxChannelRetries     int
-	maxSameChannelRetries int
+	Executor               Executor
+	Inbound                transformer.Inbound
+	Outbound               transformer.Outbound
+	middlewares            []Middleware
+	maxChannelRetries      int
+	maxSameChannelRetries  int
 	retryDelay             time.Duration
 	emptyResponseDetection bool
 }

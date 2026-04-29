@@ -38,6 +38,7 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 				if toolCall.ID != "" {
 					removedToolCallIDs[toolCall.ID] = struct{}{}
 				}
+
 				if toolCall.ResponseCustomToolCall != nil && toolCall.ResponseCustomToolCall.CallID != "" {
 					removedToolCallIDs[toolCall.ResponseCustomToolCall.CallID] = struct{}{}
 				}

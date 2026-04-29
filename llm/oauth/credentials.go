@@ -31,6 +31,7 @@ func (t *TokenResponse) ExpiresAt() time.Time {
 	if t.ExpiresIn > 0 {
 		return time.Now().Add(time.Duration(t.ExpiresIn) * time.Second)
 	}
+
 	return time.Time{}
 }
 

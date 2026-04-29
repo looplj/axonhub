@@ -34,6 +34,7 @@ func DecodeOpenAIEncryptedContent(content *string, footprint string) *string {
 	}
 
 	decoded := (*content)[prefixLength:]
+
 	return &decoded
 }
 
@@ -53,6 +54,7 @@ func EncodeOpenAIEncryptedContent(content *string, footprint string) *string {
 
 	prefix := OpenAIEncryptedContentPrefix + base64.StdEncoding.EncodeToString([]byte(footprint))
 	encoded := prefix + *content
+
 	return &encoded
 }
 

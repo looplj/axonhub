@@ -86,7 +86,7 @@ func OnRawResponse(name string, handler func(ctx context.Context, response *http
 
 func OnRawStream(name string, handler func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)) Middleware {
 	return &simpleMiddleware{
-		name:                   name,
+		name:                     name,
 		outboundRawStreamHandler: handler,
 	}
 }

@@ -75,6 +75,7 @@ func TestGenerateUserID_Stable(t *testing.T) {
 
 	uid1 := ParseUserID(raw1)
 	uid2 := ParseUserID(raw2)
+
 	require.NotNil(t, uid1)
 	require.NotNil(t, uid2)
 
@@ -87,6 +88,7 @@ func TestGenerateUserID_Stable(t *testing.T) {
 func TestGenerateUserID_DifferentIdentities(t *testing.T) {
 	uid1 := ParseUserID(GenerateUserID(context.Background(), "1"))
 	uid2 := ParseUserID(GenerateUserID(context.Background(), "2"))
+
 	require.NotNil(t, uid1)
 	require.NotNil(t, uid2)
 

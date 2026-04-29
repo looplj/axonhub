@@ -142,6 +142,7 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 		// Use pending signature if available, otherwise generate a random one.
 		sig := s.pendingSignature
 		s.pendingSignature = nil
+
 		if sig == nil {
 			rs := generateSignature()
 			sig = &rs

@@ -39,6 +39,7 @@ func (e *copilotTokenCacheEntry) isExpired(now time.Time) bool {
 	if e == nil || e.expiresAt.IsZero() {
 		return true
 	}
+
 	return now.After(e.expiresAt.Add(-tokenExpiryBuffer))
 }
 
@@ -91,6 +92,7 @@ func (e *TokenExchanger) ExchangeWithClient(ctx context.Context, httpClient *htt
 	}
 
 	cacheKey := tokenCacheKey(accessToken)
+
 	e.mu.RLock()
 	entry, ok := e.cache[cacheKey]
 	e.mu.RUnlock()
@@ -102,6 +104,7 @@ func (e *TokenExchanger) ExchangeWithClient(ctx context.Context, httpClient *htt
 				slog.Time("cached_at", entry.cachedAt),
 			)
 		}
+
 		return entry.copilotToken, entry.expiresAt.Unix(), nil
 	}
 
@@ -112,6 +115,7 @@ func (e *TokenExchanger) ExchangeWithClient(ctx context.Context, httpClient *htt
 	}
 
 	sfKey := exchangeSingleflightKey(accessToken, client, e.endpoint)
+
 	v, err, _ := e.sf.Do(sfKey, func() (any, error) {
 		// Avoid one caller's cancellation canceling the shared in-flight exchange.
 		return e.exchange(context.WithoutCancel(ctx), client, accessToken)
@@ -127,6 +131,7 @@ func (e *TokenExchanger) ExchangeWithClient(ctx context.Context, httpClient *htt
 
 	now := time.Now()
 	expiresAt := time.Unix(resp.ExpiresAt, 0)
+
 	e.mu.Lock()
 	e.cache[cacheKey] = &copilotTokenCacheEntry{
 		copilotToken: resp.Token,
@@ -168,6 +173,7 @@ func (e *TokenExchanger) exchange(ctx context.Context, httpClient *httpclient.Ht
 	if err != nil {
 		return nil, fmt.Errorf("token exchange request failed: %w", err)
 	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("token exchange returned non-2xx status: %d", resp.StatusCode)
 	}
@@ -176,9 +182,11 @@ func (e *TokenExchanger) exchange(ctx context.Context, httpClient *httpclient.Ht
 	if err := json.Unmarshal(resp.Body, &tokenResp); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
+
 	if tokenResp.Token == "" {
 		return nil, errors.New("copilot token is empty in response")
 	}
+
 	if tokenResp.ExpiresAt == 0 {
 		return nil, errors.New("expires_at is missing in response")
 	}

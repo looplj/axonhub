@@ -300,6 +300,7 @@ func (t *OutboundTransformer) buildFullRequestURL(chatReq *llm.Request) (string,
 		if t.config.EndpointPath != "" {
 			return t.config.BaseURL + t.config.EndpointPath, nil
 		}
+
 		return t.config.BaseURL + "/messages", nil
 	}
 }

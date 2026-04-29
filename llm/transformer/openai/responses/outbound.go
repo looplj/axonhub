@@ -250,6 +250,7 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 	if t.config.EndpointPath != "" {
 		return t.config.BaseURL + t.config.EndpointPath, nil
 	}
+
 	return t.config.BaseURL + "/responses", nil
 }
 

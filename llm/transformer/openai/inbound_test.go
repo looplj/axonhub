@@ -530,6 +530,7 @@ func TestInboundTransformer_TransformStream_SkipsPureReasoningSignatureChunk(t *
 	for stream.Next() {
 		events = append(events, stream.Current())
 	}
+
 	require.NoError(t, stream.Err())
 	require.Len(t, events, 2)
 
@@ -797,6 +798,7 @@ func TestInboundTransformer_TransformResponse_WithCitations(t *testing.T) {
 
 				// Parse the response body
 				var chatResp Response
+
 				err := json.Unmarshal(resp.Body, &chatResp)
 				if err != nil {
 					return false
@@ -838,6 +840,7 @@ func TestInboundTransformer_TransformResponse_WithCitations(t *testing.T) {
 
 				// Parse the response body
 				var chatResp Response
+
 				err := json.Unmarshal(resp.Body, &chatResp)
 				if err != nil {
 					return false

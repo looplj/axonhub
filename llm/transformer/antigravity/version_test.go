@@ -19,6 +19,7 @@ func resetVersionState(t *testing.T) {
 	versionMu.Lock()
 	currentVersion = UserAgentVersionFallback
 	versionMu.Unlock()
+
 	initOnce = sync.Once{}
 }
 
@@ -27,10 +28,12 @@ func newFetcher(versionSrv, changelogSrv *httptest.Server) *versionFetcher {
 	if versionSrv != nil {
 		vURL = versionSrv.URL
 	}
+
 	cURL := ""
 	if changelogSrv != nil {
 		cURL = changelogSrv.URL
 	}
+
 	return &versionFetcher{
 		versionURL:   vURL,
 		changelogURL: cURL,
@@ -116,14 +119,16 @@ func TestFetchVersion_NoSemverInResponse(t *testing.T) {
 	assert.Equal(t, "2.0.1", GetVersion())
 }
 
-// TestInitVersion_OnceGuard verifies that InitVersion only initialises once even
+// TestInitVersion_OnceGuard verifies that InitVersion only initializes once even
 // when called concurrently multiple times.
 func TestInitVersion_OnceGuard(t *testing.T) {
 	resetVersionState(t)
 
 	callCount := 0
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
+
 		fmt.Fprint(w, "1.50.0")
 	}))
 	defer srv.Close()
@@ -135,13 +140,12 @@ func TestInitVersion_OnceGuard(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 10 {
+		wg.Go(func() {
 			initOnce.Do(func() { f.init(context.Background()) })
-		}()
+		})
 	}
+
 	wg.Wait()
 
 	assert.Equal(t, "1.50.0", GetVersion())

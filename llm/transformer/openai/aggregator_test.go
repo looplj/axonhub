@@ -176,6 +176,7 @@ func TestAggregateStreamChunks_WithCitations(t *testing.T) {
 	require.NoError(t, err)
 
 	var got llm.Response
+
 	err = json.Unmarshal(gotBytes, &got)
 	require.NoError(t, err)
 
@@ -194,7 +195,7 @@ func TestAggregateStreamChunks_WithCitations(t *testing.T) {
 	require.True(t, ok)
 
 	// After JSON marshaling/unmarshaling, the citations will be []interface{}
-	citationsSlice, ok := citationsRaw.([]interface{})
+	citationsSlice, ok := citationsRaw.([]any)
 	require.True(t, ok)
 	require.Len(t, citationsSlice, 2)
 
@@ -203,6 +204,7 @@ func TestAggregateStreamChunks_WithCitations(t *testing.T) {
 	for i, v := range citationsSlice {
 		citations[i] = v.(string)
 	}
+
 	require.Contains(t, citations, "https://example.com/source1")
 	require.Contains(t, citations, "https://example.com/source2")
 }
@@ -222,6 +224,7 @@ func TestAggregateStreamChunks_WithoutCitations(t *testing.T) {
 	require.NoError(t, err)
 
 	var got llm.Response
+
 	err = json.Unmarshal(gotBytes, &got)
 	require.NoError(t, err)
 
@@ -247,6 +250,7 @@ func TestAggregateStreamChunks_WithAnnotations(t *testing.T) {
 	require.NoError(t, err)
 
 	var got llm.Response
+
 	err = json.Unmarshal(gotBytes, &got)
 	require.NoError(t, err)
 
@@ -283,6 +287,7 @@ func TestAggregateStreamChunks_WithAnnotationsInMessage(t *testing.T) {
 	require.NoError(t, err)
 
 	var got llm.Response
+
 	err = json.Unmarshal(gotBytes, &got)
 	require.NoError(t, err)
 
@@ -307,6 +312,7 @@ func TestAggregateStreamChunks_WithInvalidAnnotations(t *testing.T) {
 	require.NoError(t, err)
 
 	var got llm.Response
+
 	err = json.Unmarshal(gotBytes, &got)
 	require.NoError(t, err)
 

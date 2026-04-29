@@ -91,6 +91,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	rawOriginator := ""
 	rawUserAgent := ""
 	rawTurnMetadata := ""
+
 	var rawHeaders http.Header
 
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
@@ -121,6 +122,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	default:
 		reqCopy.Stream = lo.ToPtr(true)
 	}
+
 	reqCopy.Store = lo.ToPtr(false)
 
 	// Codex recommends parallel tool calls.
@@ -130,9 +132,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if reqCopy.TransformerMetadata == nil {
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
+
 	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
 		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
 	}
+
 	if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
 		// Enable reasoning summary for Codex CLI requests.
 		reqCopy.ReasoningSummary = lo.ToPtr("auto")
@@ -145,6 +149,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reqCopy.Metadata = nil
 
 	reqCopy.TransformOptions.ArrayInputs = lo.ToPtr(true)
+
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
@@ -158,12 +163,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	} else {
 		hreq.Headers.Set("Accept", "text/event-stream")
 	}
+
 	hreq.Headers.Del("User-Agent")
+
 	if rawOriginator != "" {
 		hreq.Headers.Set("Originator", rawOriginator)
 	} else {
 		hreq.Headers.Set("Originator", AxonHubOriginator)
 	}
+
 	if rawUserAgent != "" {
 		hreq.Headers.Set("User-Agent", rawUserAgent)
 	}
@@ -192,6 +200,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	return hreq, nil
 }
+
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	// Codex upstream returns Responses API response.
 	return t.responsesOutbound.TransformResponse(ctx, httpResp)
@@ -221,6 +230,7 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	if request.RequestType == string(llm.RequestTypeCompact) {
 		return e.inner.Do(ctx, request)
 	}
+
 	stream, err := e.inner.DoStream(ctx, request)
 	if err != nil {
 		return nil, err
@@ -231,6 +241,7 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	}()
 
 	var chunks []*httpclient.StreamEvent
+
 	for stream.Next() {
 		ev := stream.Current()
 		if ev == nil {

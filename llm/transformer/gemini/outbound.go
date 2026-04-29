@@ -266,6 +266,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 
 	// Convert to unified response (non-streaming)
 	scope, _ := shared.GetTransportScope(ctx)
+
 	return convertGeminiToLLMResponse(&geminiResp, false, scope), nil
 }
 
@@ -321,6 +322,7 @@ func clearFunctionIDsForVertexAI(req *GenerateContentRequest) {
 			if part.FunctionCall != nil {
 				part.FunctionCall.ID = ""
 			}
+
 			if part.FunctionResponse != nil {
 				part.FunctionResponse.ID = ""
 			}

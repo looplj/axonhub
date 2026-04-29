@@ -299,6 +299,7 @@ func TestAggregateStreamChunks_PreservesPreviousResponseID(t *testing.T) {
 	require.NoError(t, err)
 
 	var resp Response
+
 	err = json.Unmarshal(resultBytes, &resp)
 	require.NoError(t, err)
 	require.NotNil(t, resp.PreviousResponseID)
@@ -487,6 +488,7 @@ func TestAggregateStreamChunks_ReasoningSummaryMultipleParts(t *testing.T) {
 	require.NotNil(t, resultBytes)
 
 	var resp Response
+
 	err = json.Unmarshal(resultBytes, &resp)
 	require.NoError(t, err)
 
