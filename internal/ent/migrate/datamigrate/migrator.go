@@ -146,10 +146,6 @@ func (m *Migrator) Run(ctx context.Context) error {
 
 		if err := migration.Migrate(ctx, m.client); err != nil {
 			log.Error(ctx, "migration failed", log.String("version", version), log.Cause(err))
-			// Record failed version for rollback diagnostics.
-			m.mu.Lock()
-			m.completed = append(m.completed, version)
-			m.mu.Unlock()
 			// Attempt rollback of previously completed migrations.
 			if rbErr := m.Rollback(ctx); rbErr != nil {
 				log.Error(ctx, "rollback also failed after migration error",
