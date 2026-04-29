@@ -271,7 +271,7 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 			BaseURL:        "https://api.openai.com/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -300,7 +300,7 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 			BaseURL:        "https://api.openai.com/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		_, err = transformer.TransformRequest(context.Background(), nil)
@@ -314,7 +314,7 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 			BaseURL:        "https://api.openai.com/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -334,7 +334,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 		BaseURL:        "https://api.openai.com/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	t.Run("valid response", func(t *testing.T) {
@@ -421,8 +421,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 
 		_, err := transformer.TransformResponse(context.Background(), httpResp)
 		require.Error(t, err)
-		// Error is returned from transformEmbeddingResponse
-		require.Contains(t, err.Error(), "400")
+		require.Contains(t, err.Error(), "Bad Request")
 	})
 
 	t.Run("http error 500", func(t *testing.T) {
@@ -436,8 +435,7 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 
 		_, err := transformer.TransformResponse(context.Background(), httpResp)
 		require.Error(t, err)
-		// Error is returned from transformEmbeddingResponse
-		require.Contains(t, err.Error(), "500")
+		require.Contains(t, err.Error(), "Internal Server Error")
 	})
 
 	t.Run("empty response body", func(t *testing.T) {
@@ -567,9 +565,9 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 		BaseURL:        "https://api.openai.com/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
-	outbound, err := NewOutboundTransformerWithConfig(config)
+	outbound, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
-	require.Equal(t, llm.APIFormatOpenAIChatCompletion, outbound.APIFormat())
+	require.Equal(t, llm.APIFormatOpenAIEmbedding, outbound.APIFormat())
 }
 
 func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
@@ -578,7 +576,7 @@ func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
 		BaseURL:        "https://api.openai.com/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	t.Run("nil error", func(t *testing.T) {
@@ -667,7 +665,7 @@ func TestEmbeddingOutboundTransformer_URLBuilding(t *testing.T) {
 				BaseURL:        tc.baseURL,
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			}
-			transformer, err := NewOutboundTransformerWithConfig(config)
+			transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 			require.NoError(t, err)
 
 			llmReq := &llm.Request{
@@ -751,12 +749,10 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformerInterface, err := NewOutboundTransformerWithConfig(tt.config)
+			transformer, err := NewEmbeddingOutboundTransformerWithConfig(tt.config)
 			if err != nil {
 				t.Fatalf("Failed to create transformer: %v", err)
 			}
-
-			transformer := transformerInterface.(*OutboundTransformer)
 
 			result, err := transformer.TransformRequest(t.Context(), tt.request)
 			if err != nil {
@@ -778,7 +774,7 @@ func TestEmbeddingOutboundTransformer_CustomEndpointPath(t *testing.T) {
 		EndpointPath:   "/custom/embeddings",
 	}
 
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	llmReq := &llm.Request{

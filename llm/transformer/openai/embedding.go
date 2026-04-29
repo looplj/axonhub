@@ -37,8 +37,9 @@ type EmbeddingUsage struct {
 }
 
 // transformEmbeddingRequest transforms unified llm.Request to HTTP embedding request.
-func (t *OutboundTransformer) transformEmbeddingRequest(
+func transformEmbeddingRequest(
 	ctx context.Context,
+	config *Config,
 	llmReq *llm.Request,
 ) (*httpclient.Request, error) {
 	if llmReq == nil {
@@ -69,10 +70,10 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	headers.Set("Accept", "application/json")
 
 	// Build URL, reuse same logic as chat
-	url := t.buildEmbeddingURL()
+	url := buildEmbeddingURL(config)
 
 	// Get API key from provider
-	apiKey := t.config.APIKeyProvider.Get(ctx)
+	apiKey := config.APIKeyProvider.Get(ctx)
 
 	// Build auth config
 	auth := &httpclient.AuthConfig{
@@ -94,18 +95,19 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 }
 
 // buildEmbeddingURL constructs the embedding API URL.
-func (t *OutboundTransformer) buildEmbeddingURL() string {
-	if t.config.EndpointPath != "" {
-		return t.config.BaseURL + t.config.EndpointPath
+func buildEmbeddingURL(config *Config) string {
+	if config.EndpointPath != "" {
+		return config.BaseURL + config.EndpointPath
 	}
 
-	return t.config.BaseURL + "/embeddings"
+	return config.BaseURL + "/embeddings"
 }
 
 // transformEmbeddingResponse transforms HTTP embedding response to unified llm.Response.
-func (t *OutboundTransformer) transformEmbeddingResponse(
+func transformEmbeddingResponse(
 	ctx context.Context,
 	httpResp *httpclient.Response,
+	transformError func(context.Context, *httpclient.Error) *llm.ResponseError,
 ) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
@@ -115,7 +117,7 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 	// Note: httpclient usually already returns *httpclient.Error for 4xx/5xx,
 	// this is defensive code to ensure error format conforms to OpenAI spec
 	if httpResp.StatusCode >= 400 {
-		return nil, t.TransformError(ctx, &httpclient.Error{
+		return nil, transformError(ctx, &httpclient.Error{
 			StatusCode: httpResp.StatusCode,
 			Body:       httpResp.Body,
 		})

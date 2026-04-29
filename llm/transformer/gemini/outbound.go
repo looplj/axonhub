@@ -121,8 +121,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
-	case llm.RequestTypeEmbedding:
-		return t.transformEmbeddingRequest(ctx, llmReq)
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationRequest(ctx, llmReq)
 	case llm.RequestTypeChat, "":
@@ -239,12 +237,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		return nil, fmt.Errorf("http response is nil")
 	}
 
-	// Check if this is an embedding request
-	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatGeminiEmbedding) {
-		return t.transformEmbeddingResponse(ctx, httpResp)
-	}
-
-	// Check if this is an image generation request
+	// Image generation/edit requests are still served by the gemini/contents API surface.
 	if httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
 		return transformImageGenerationResponse(httpResp)
 	}

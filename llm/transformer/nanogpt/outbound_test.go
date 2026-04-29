@@ -146,61 +146,6 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name: "embedding request routes to embedded OpenAI transformer",
-			httpResp: &httpclient.Response{
-				StatusCode: http.StatusOK,
-				Body: []byte(`{
-					"object": "list",
-					"data": [{
-						"object": "embedding",
-						"embedding": [0.1, 0.2, 0.3],
-						"index": 0
-					}],
-					"model": "text-embedding-3-small",
-					"usage": {
-						"prompt_tokens": 10,
-						"total_tokens": 10
-					}
-				}`),
-				Request: &httpclient.Request{
-					APIFormat: string(llm.APIFormatOpenAIEmbedding),
-				},
-			},
-			expectedErr: false,
-			validateResp: func(t *testing.T, resp *llm.Response) {
-				require.NotNil(t, resp)
-				require.NotNil(t, resp.Embedding)
-				require.Len(t, resp.Embedding.Data, 1)
-				require.NotNil(t, resp.Embedding.Data[0].Embedding)
-				assert.Len(t, resp.Embedding.Data[0].Embedding.Embedding, 3)
-			},
-		},
-		{
-			name: "image generation request routes to embedded OpenAI transformer",
-			httpResp: &httpclient.Response{
-				StatusCode: http.StatusOK,
-				Body: []byte(`{
-					"created": 1234567890,
-					"data": [{
-						"b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-						"revised_prompt": "A sunset over mountains"
-					}]
-				}`),
-				Request: &httpclient.Request{
-					APIFormat: string(llm.APIFormatOpenAIImageGeneration),
-				},
-			},
-			expectedErr: false,
-
-			validateResp: func(t *testing.T, resp *llm.Response) {
-				require.NotNil(t, resp)
-				require.NotNil(t, resp.Image)
-				require.NotNil(t, resp.Image.Data)
-				require.Len(t, resp.Image.Data, 1)
-				assert.NotEmpty(t, resp.Image.Data[0].B64JSON)
-			},
-		},
-		{
 			name: "chat request uses NanoGPT-specific parsing",
 			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,

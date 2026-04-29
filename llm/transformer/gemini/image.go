@@ -94,6 +94,7 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 		Body:                  body,
 		Auth:                  auth,
 		RequestType:           llm.RequestTypeImage.String(),
+		APIFormat:             llm.APIFormatGeminiContents.String(),
 		SkipInboundQueryMerge: true,
 	}
 
@@ -268,6 +269,7 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 		Created:     created,
 		Model:       model,
 		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatGeminiContents,
 	}
 
 	// Convert usage information

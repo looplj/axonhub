@@ -135,16 +135,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
-	case llm.RequestTypeEmbedding:
-		return t.transformEmbeddingRequest(ctx, llmReq)
-	case llm.RequestTypeImage:
-		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeVideo:
 		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeCompact:
 		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	case llm.RequestTypeRerank:
 		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
+	case llm.RequestTypeEmbedding, llm.RequestTypeImage:
+		return nil, fmt.Errorf("%w: %s is not supported by %s outbound transformer", transformer.ErrInvalidRequest, llmReq.RequestType, t.APIFormat())
 	}
 
 	if len(llmReq.Messages) == 0 {
@@ -198,6 +196,27 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}, nil
 }
 
+func (t *OutboundTransformer) transformEmbeddingRequest(
+	ctx context.Context,
+	llmReq *llm.Request,
+) (*httpclient.Request, error) {
+	return transformEmbeddingRequest(ctx, t.config, llmReq)
+}
+
+func (t *OutboundTransformer) transformEmbeddingResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
+	return transformEmbeddingResponse(ctx, httpResp, t.TransformError)
+}
+
+func (t *OutboundTransformer) buildImageGenerationAPIRequest(
+	ctx context.Context,
+	chatReq *llm.Request,
+) (*httpclient.Request, error) {
+	return buildImageGenerationAPIRequest(ctx, t.config, chatReq)
+}
+
 // TransformResponse transforms Response to ChatCompletionResponse.
 func (t *OutboundTransformer) TransformResponse(
 	ctx context.Context,
@@ -217,18 +236,8 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	// Route to specialized transformers based on request APIFormat
-	if httpResp.Request != nil && httpResp.Request.APIFormat != "" {
-		switch httpResp.Request.APIFormat {
-		case string(llm.APIFormatOpenAIImageGeneration),
-			string(llm.APIFormatOpenAIImageEdit),
-			string(llm.APIFormatOpenAIImageVariation):
-			return transformImageGenerationResponse(httpResp)
-		case string(llm.APIFormatOpenAIEmbedding):
-			return t.transformEmbeddingResponse(ctx, httpResp)
-		case string(llm.APIFormatOpenAIVideo):
-			return transformVideoResponse(httpResp)
-		}
+	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatOpenAIVideo) {
+		return transformVideoResponse(httpResp)
 	}
 
 	// Parse into OpenAI Response type

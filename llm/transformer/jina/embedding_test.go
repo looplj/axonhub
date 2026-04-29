@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	llmtransformer "github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestEmbeddingInboundTransformer_TransformRequest(t *testing.T) {
@@ -246,7 +248,7 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 			BaseURL:        "https://api.jina.ai/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -278,7 +280,7 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 			BaseURL:        "https://api.jina.ai",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -299,7 +301,7 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 			BaseURL:        "https://api.jina.ai/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -326,7 +328,7 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 			BaseURL:        "https://api.jina.ai/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -353,7 +355,7 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 			BaseURL:        "https://api.jina.ai/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		_, err = transformer.TransformRequest(context.Background(), nil)
@@ -366,7 +368,7 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 			BaseURL:        "https://api.jina.ai/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -384,7 +386,7 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 			BaseURL:        "https://api.jina.ai/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
-		transformer, err := NewOutboundTransformerWithConfig(config)
+		transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 		require.NoError(t, err)
 
 		llmReq := &llm.Request{
@@ -396,6 +398,39 @@ func TestOutboundTransformer_TransformRequest_Embedding(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "is not supported")
 	})
+
+	t.Run("rerank request nil llm request", func(t *testing.T) {
+		config := &Config{
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+		}
+		transformer, err := NewRerankOutboundTransformerWithConfig(config)
+		require.NoError(t, err)
+
+		_, err = transformer.TransformRequest(context.Background(), nil)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, llmtransformer.ErrInvalidRequest)
+		require.Contains(t, err.Error(), "request is nil")
+	})
+
+	t.Run("rerank request wrong request type", func(t *testing.T) {
+		config := &Config{
+			BaseURL:        "https://api.jina.ai/v1",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+		}
+		transformer, err := NewRerankOutboundTransformerWithConfig(config)
+		require.NoError(t, err)
+
+		llmReq := &llm.Request{
+			Model:       "jina-reranker-v2-base-multilingual",
+			RequestType: llm.RequestTypeChat,
+		}
+
+		_, err = transformer.TransformRequest(context.Background(), llmReq)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, llmtransformer.ErrInvalidRequest)
+		require.Contains(t, err.Error(), "is not supported")
+	})
 }
 
 func TestOutboundTransformer_TransformResponse_Embedding(t *testing.T) {
@@ -403,7 +438,7 @@ func TestOutboundTransformer_TransformResponse_Embedding(t *testing.T) {
 		BaseURL:        "https://api.jina.ai/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	t.Run("valid embedding response", func(t *testing.T) {
@@ -542,9 +577,9 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 		BaseURL:        "https://api.jina.ai/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
-	outbound, err := NewOutboundTransformerWithConfig(config)
+	outbound, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
-	require.Equal(t, llm.APIFormatJinaRerank, outbound.APIFormat())
+	require.Equal(t, llm.APIFormatJinaEmbedding, outbound.APIFormat())
 }
 
 func TestOutboundTransformer_TransformError_Embedding(t *testing.T) {
@@ -552,7 +587,7 @@ func TestOutboundTransformer_TransformError_Embedding(t *testing.T) {
 		BaseURL:        "https://api.jina.ai/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	t.Run("nil error", func(t *testing.T) {
@@ -590,7 +625,7 @@ func TestOutboundTransformer_StreamNotSupported_Embedding(t *testing.T) {
 		BaseURL:        "https://api.jina.ai/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
-	transformer, err := NewOutboundTransformerWithConfig(config)
+	transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 	require.NoError(t, err)
 
 	t.Run("transform stream returns error", func(t *testing.T) {
@@ -635,7 +670,7 @@ func TestOutboundTransformer_URLBuilding_Embedding(t *testing.T) {
 				BaseURL:        tc.baseURL,
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			}
-			transformer, err := NewOutboundTransformerWithConfig(config)
+			transformer, err := NewEmbeddingOutboundTransformerWithConfig(config)
 			require.NoError(t, err)
 
 			llmReq := &llm.Request{

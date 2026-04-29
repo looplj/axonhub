@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -51,12 +52,14 @@ func TestImageInboundTransformer_TransformRequest_Generation_JSON(t *testing.T) 
 	assert.Equal(t, "url", llmReq.Image.ResponseFormat)
 	assert.Equal(t, "1024x1024", llmReq.Image.Size)
 
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	tr, err := NewImageGenerationOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
 	require.NoError(t, err)
 
-	ot := tr.(*OutboundTransformer)
-
-	outReq, err := ot.TransformRequest(context.Background(), llmReq)
+	outReq, err := tr.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", outReq.URL)
@@ -98,12 +101,14 @@ func TestImageInboundTransformer_TransformRequest_Edit_Multipart_WithMask(t *tes
 	assert.Len(t, llmReq.Image.Images, 1)
 	assert.NotNil(t, llmReq.Image.Mask)
 
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	tr, err := NewImageEditOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
 	require.NoError(t, err)
 
-	ot := tr.(*OutboundTransformer)
-
-	outReq, err := ot.TransformRequest(context.Background(), llmReq)
+	outReq, err := tr.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
 	assert.Equal(t, "https://api.openai.com/v1/images/edits", outReq.URL)
@@ -139,12 +144,14 @@ func TestImageInboundTransformer_TransformRequest_Variation_Multipart(t *testing
 	assert.Equal(t, lo.ToPtr(int64(2)), llmReq.Image.N)
 	assert.Len(t, llmReq.Image.Images, 1)
 
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	tr, err := NewImageVariationOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
 	require.NoError(t, err)
 
-	ot := tr.(*OutboundTransformer)
-
-	outReq, err := ot.TransformRequest(context.Background(), llmReq)
+	outReq, err := tr.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
 	assert.Equal(t, "https://api.openai.com/v1/images/variations", outReq.URL)

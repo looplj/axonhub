@@ -11,6 +11,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
 )
 
 // GetBodyOverrideOperations returns the cached override operations for the channel.
@@ -216,20 +217,20 @@ func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 
 // SupportedAPIFormats lists the API formats that are recognized as valid endpoint api_format values.
 var SupportedAPIFormats = map[string]struct{}{
-	"openai/chat_completions":  {},
-	"openai/responses":         {},
-	"openai/responses_compact": {},
-	"openai/embeddings":        {},
-	"openai/image_generation":  {},
-	"openai/image_edit":        {},
-	"openai/image_variation":   {},
-	"openai/video":             {},
-	"anthropic/messages":       {},
-	"gemini/contents":          {},
-	"gemini/embeddings":        {},
-	"jina/rerank":              {},
-	"jina/embeddings":          {},
-	"ollama/chat":              {},
+	llm.APIFormatOpenAIChatCompletion.String():  {},
+	llm.APIFormatOpenAIResponse.String():        {},
+	llm.APIFormatOpenAIResponseCompact.String(): {},
+	llm.APIFormatOpenAIEmbedding.String():       {},
+	llm.APIFormatOpenAIImageGeneration.String(): {},
+	llm.APIFormatOpenAIImageEdit.String():       {},
+	llm.APIFormatOpenAIImageVariation.String():  {},
+	llm.APIFormatOpenAIVideo.String():           {},
+	llm.APIFormatAnthropicMessage.String():      {},
+	llm.APIFormatGeminiContents.String():        {},
+	llm.APIFormatGeminiEmbedding.String():       {},
+	llm.APIFormatJinaRerank.String():            {},
+	llm.APIFormatJinaEmbedding.String():         {},
+	llm.APIFormatOllamaChat.String():            {},
 }
 
 // ValidateEndpoints validates channel endpoint configurations.

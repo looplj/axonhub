@@ -13,13 +13,13 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-func newTestEmbeddingTransformer() *OutboundTransformer {
-	t, _ := NewOutboundTransformerWithConfig(Config{
+func newTestEmbeddingTransformer() *EmbeddingOutboundTransformer {
+	t, _ := NewEmbeddingOutboundTransformerWithConfig(Config{
 		BaseURL:        "https://generativelanguage.googleapis.com",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	})
 
-	return t.(*OutboundTransformer)
+	return t.(*EmbeddingOutboundTransformer)
 }
 
 func TestTransformEmbeddingRequest_SingleText(t *testing.T) {
@@ -236,12 +236,12 @@ func TestBuildEmbeddingURL(t *testing.T) {
 	})
 
 	t.Run("vertex AI", func(t *testing.T) {
-		vt, _ := NewOutboundTransformerWithConfig(Config{
+		vt, _ := NewEmbeddingOutboundTransformerWithConfig(Config{
 			BaseURL:        "https://us-central1-aiplatform.googleapis.com",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			PlatformType:   PlatformVertex,
 		})
-		tr := vt.(*OutboundTransformer)
+		tr := vt.(*EmbeddingOutboundTransformer)
 		url := tr.buildEmbeddingURL("gemini-embedding-001", false)
 		require.Equal(t, "https://us-central1-aiplatform.googleapis.com/v1/publishers/google/models/gemini-embedding-001:embedContent", url)
 	})

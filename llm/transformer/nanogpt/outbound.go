@@ -27,6 +27,7 @@ type Config struct {
 // It embeds the OpenAI transformer and overrides response handling.
 type OutboundTransformer struct {
 	transformer.Outbound
+	config *Config
 }
 
 // NewOutboundTransformer creates a new NanoGPT OutboundTransformer with legacy parameters.
@@ -54,10 +55,14 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 
 	return &OutboundTransformer{
 		Outbound: t,
+		config:   config,
 	}, nil
 }
 
 // TransformResponse transforms the HTTP response to llm.Response.
+// NanoGPT only handles openai/chat_completions responses with reasoning field.
+// Embedding and image responses are handled by dedicated outbound transformers
+// resolved from Channel.Outbounds[api_format].
 func (t *OutboundTransformer) TransformResponse(
 	ctx context.Context,
 	httpResp *httpclient.Response,
@@ -67,7 +72,6 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	if httpResp.StatusCode >= 400 {
-		// Read response body for diagnostic details
 		body := string(httpResp.Body)
 
 		var errResp struct {
@@ -76,7 +80,6 @@ func (t *OutboundTransformer) TransformResponse(
 		if err := json.Unmarshal(httpResp.Body, &errResp); err == nil && errResp.Error != "" {
 			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, errResp.Error)
 		}
-		// Fallback to raw body if JSON parse fails or no error field
 		if len(body) > 0 {
 			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, body)
 		}
@@ -86,17 +89,6 @@ func (t *OutboundTransformer) TransformResponse(
 
 	if len(httpResp.Body) == 0 {
 		return nil, fmt.Errorf("response body is empty")
-	}
-
-	// Route to embedded OpenAI transformer for embedding and image-related responses
-	if httpResp.Request != nil {
-		switch httpResp.Request.APIFormat {
-		case string(llm.APIFormatOpenAIEmbedding),
-			string(llm.APIFormatOpenAIImageGeneration),
-			string(llm.APIFormatOpenAIImageEdit),
-			string(llm.APIFormatOpenAIImageVariation):
-			return t.Outbound.TransformResponse(ctx, httpResp)
-		}
 	}
 
 	var nanoResp Response

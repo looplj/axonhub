@@ -83,10 +83,10 @@ func validateConfig(config *Config) error {
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatJinaRerank // Primary format, routing handled in methods
+	return llm.APIFormatJinaRerank
 }
 
-// TransformRequest transforms unified llm.Request to HTTP request (rerank or embedding).
+// TransformRequest transforms unified llm.Request to HTTP request.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
 	llmReq *llm.Request,
@@ -95,7 +95,6 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("llm request is nil")
 	}
 
-	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeRerank:
 		return t.transformRerankRequest(ctx, llmReq)
@@ -251,7 +250,7 @@ func (t *OutboundTransformer) buildEmbeddingURL() string {
 	return t.config.BaseURL + "/embeddings"
 }
 
-// TransformResponse transforms HTTP response to unified llm.Response (rerank or embedding).
+// TransformResponse transforms HTTP response to unified llm.Response.
 func (t *OutboundTransformer) TransformResponse(
 	ctx context.Context,
 	httpResp *httpclient.Response,
@@ -273,16 +272,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	// Route to specialized transformers based on request APIFormat
-	//nolint:exhaustive // Checked.
-	switch httpResp.Request.APIFormat {
-	case string(llm.APIFormatJinaEmbedding):
+	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatJinaEmbedding) {
 		return t.transformEmbeddingResponse(ctx, httpResp)
-	case string(llm.APIFormatJinaRerank):
-		fallthrough
-	default:
-		return t.transformRerankResponse(ctx, httpResp)
 	}
+
+	return t.transformRerankResponse(ctx, httpResp)
 }
 
 // transformRerankResponse handles rerank response transformation.

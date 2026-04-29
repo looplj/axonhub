@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // mockTransformer is a simple mock transformer for testing.
@@ -224,6 +225,92 @@ func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {
 		require.Equal(t, 1, processor.state.CurrentModelIndex)
 		require.Nil(t, processor.state.RequestExec)
 	})
+}
+
+func TestPersistentOutboundTransformer_PrepareForRetry_UsesCandidateAPIFormatOutbound(t *testing.T) {
+	ctx := context.Background()
+
+	primaryOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	embeddingOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIEmbedding}
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: primaryOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound,
+		},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: primaryOutbound,
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{
+				Channel:   channel,
+				APIFormat: llm.APIFormatOpenAIEmbedding.String(),
+				Models: []biz.ChannelModelEntry{
+					{RequestModel: "text-embedding-3-small", ActualModel: "text-embedding-3-small"},
+					{RequestModel: "text-embedding-3-large", ActualModel: "text-embedding-3-large"},
+				},
+			},
+			CurrentModelIndex: 0,
+			RequestExec:       &ent.RequestExecution{ID: 1},
+		},
+	}
+
+	err := processor.PrepareForRetry(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, processor.state.CurrentModelIndex)
+	require.Same(t, embeddingOutbound, processor.wrapped)
+}
+
+func TestPersistentOutboundTransformer_NextChannel_UsesCandidateAPIFormatOutbound(t *testing.T) {
+	ctx := context.Background()
+
+	primaryOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	embeddingOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIEmbedding}
+	chatChannel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "chat-channel",
+		},
+		Outbound: primaryOutbound,
+	}
+	embeddingChannel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   2,
+			Name: "embedding-channel",
+		},
+		Outbound: primaryOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound,
+		},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: primaryOutbound,
+		state: &PersistenceState{
+			CurrentCandidateIndex: 0,
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{
+					Channel: chatChannel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4o-mini", ActualModel: "gpt-4o-mini"}},
+				},
+				{
+					Channel:   embeddingChannel,
+					APIFormat: llm.APIFormatOpenAIEmbedding.String(),
+					Models:    []biz.ChannelModelEntry{{RequestModel: "text-embedding-3-small", ActualModel: "text-embedding-3-small"}},
+				},
+			},
+		},
+	}
+
+	err := processor.NextChannel(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, processor.state.CurrentCandidateIndex)
+	require.Same(t, embeddingChannel, processor.state.CurrentCandidate.Channel)
+	require.Same(t, embeddingOutbound, processor.wrapped)
 }
 
 func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {

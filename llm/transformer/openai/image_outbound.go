@@ -21,7 +21,7 @@ import (
 
 // buildImageGenerationAPIRequest builds the HTTP request to call the OpenAI Image Generation API.
 // based on whether images are present in the request.
-func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
+func buildImageGenerationAPIRequest(ctx context.Context, config *Config, chatReq *llm.Request) (*httpclient.Request, error) {
 	chatReq.Stream = lo.ToPtr(false)
 
 	if chatReq.Image == nil {
@@ -29,7 +29,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 	}
 
 	// Get API key from provider
-	apiKey := t.config.APIKeyProvider.Get(ctx)
+	apiKey := config.APIKeyProvider.Get(ctx)
 
 	var (
 		rawReq  *httpclient.Request
@@ -40,13 +40,13 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 	//nolint:exhaustive // Only image-related API formats are handled here
 	switch chatReq.APIFormat {
 	case llm.APIFormatOpenAIImageVariation:
-		rawReq, err = t.buildImageVariationRequest(chatReq, apiKey)
+		rawReq, err = buildImageVariationRequest(config, chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageVariation
 	case llm.APIFormatOpenAIImageEdit:
-		rawReq, err = t.buildImageEditRequest(chatReq, apiKey)
+		rawReq, err = buildImageEditRequest(config, chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageEdit
 	default:
-		rawReq, err = t.buildImageGenerateRequest(chatReq, apiKey)
+		rawReq, err = buildImageGenerateRequest(config, chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageGeneration
 	}
 
@@ -71,7 +71,7 @@ func isModelSupportResponseFormat(model string) bool {
 }
 
 // buildImageGenerateRequest builds request for Image Generation API (images/generations).
-func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
+func buildImageGenerateRequest(config *Config, chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	model := chatReq.Model
 
 	prompt := chatReq.Image.Prompt
@@ -144,9 +144,9 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 	headers.Set("Accept", "application/json")
 
 	// Build URL
-	url := t.config.BaseURL + "/images/generations"
-	if t.config.EndpointPath != "" {
-		url = t.config.BaseURL + t.config.EndpointPath
+	url := config.BaseURL + "/images/generations"
+	if config.EndpointPath != "" {
+		url = config.BaseURL + config.EndpointPath
 	}
 
 	// Build auth config
@@ -167,7 +167,7 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 // buildImageEditRequest builds request for Image Edit API (images/edits).
 //
 //nolint:maintidx // Complex function for building multipart form data
-func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
+func buildImageEditRequest(config *Config, chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	model := chatReq.Model
 
 	prompt := chatReq.Image.Prompt
@@ -363,9 +363,9 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	headers.Set("Accept", "application/json")
 
 	// Build URL
-	url := t.config.BaseURL + "/images/edits"
-	if t.config.EndpointPath != "" {
-		url = t.config.BaseURL + t.config.EndpointPath
+	url := config.BaseURL + "/images/edits"
+	if config.EndpointPath != "" {
+		url = config.BaseURL + config.EndpointPath
 	}
 
 	// Build auth config
@@ -391,7 +391,7 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	}, nil
 }
 
-func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
+func buildImageVariationRequest(config *Config, chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	model := chatReq.Model
 
 	var formFiles []FormFile
@@ -487,9 +487,9 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, a
 	headers.Set("Content-Type", writer.FormDataContentType())
 	headers.Set("Accept", "application/json")
 
-	url := t.config.BaseURL + "/images/variations"
-	if t.config.EndpointPath != "" {
-		url = t.config.BaseURL + t.config.EndpointPath
+	url := config.BaseURL + "/images/variations"
+	if config.EndpointPath != "" {
+		url = config.BaseURL + config.EndpointPath
 	}
 
 	auth := &httpclient.AuthConfig{

@@ -14,15 +14,19 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestTransformRequest_RoutesToImageGenerationAPI_WhenImageRequestPresent(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	tr, err := NewImageGenerationOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
 	if err != nil {
 		t.Fatalf("failed to create transformer: %v", err)
 	}
 
-	ot := tr.(*OutboundTransformer)
 	req := &llm.Request{
 		Model:       "gpt-4o-mini",
 		RequestType: llm.RequestTypeImage,
@@ -34,18 +38,20 @@ func TestTransformRequest_RoutesToImageGenerationAPI_WhenImageRequestPresent(t *
 		},
 	}
 
-	hreq, err := ot.TransformRequest(context.Background(), req)
+	hreq, err := tr.TransformRequest(context.Background(), req)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", hreq.URL)
 }
 
 func TestTransformRequest_RoutesToImageGenerationAPI_WhenModelIsImageCapable(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	tr, err := NewImageGenerationOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
 	if err != nil {
 		t.Fatalf("failed to create transformer: %v", err)
 	}
-
-	ot := tr.(*OutboundTransformer)
 
 	req := &llm.Request{
 		Model:       "gpt-image-1",
@@ -56,7 +62,7 @@ func TestTransformRequest_RoutesToImageGenerationAPI_WhenModelIsImageCapable(t *
 		},
 	}
 
-	hreq, err := ot.TransformRequest(context.Background(), req)
+	hreq, err := tr.TransformRequest(context.Background(), req)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", hreq.URL)
 }
@@ -85,10 +91,11 @@ func TestTransformRequest_RoutesToChatCompletions_WhenTextOnly(t *testing.T) {
 // Test Image Generation API (images/generations)
 
 func TestBuildImageGenerateRequest_BasicPrompt(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
-
-	ot := tr.(*OutboundTransformer)
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	}
 	req := &llm.Request{
 		Model: "dall-e-3",
 		Image: &llm.ImageRequest{
@@ -96,7 +103,7 @@ func TestBuildImageGenerateRequest_BasicPrompt(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
+	httpReq, err := buildImageGenerateRequest(config, req, "test-key")
 	require.NoError(t, err)
 	require.NotNil(t, httpReq)
 
@@ -118,10 +125,11 @@ func TestBuildImageGenerateRequest_BasicPrompt(t *testing.T) {
 }
 
 func TestBuildImageGenerateRequest_WithParameters(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
-
-	ot := tr.(*OutboundTransformer)
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	}
 	req := &llm.Request{
 		Model:      "gpt-image-1",
 		Modalities: []string{"image"},
@@ -135,7 +143,7 @@ func TestBuildImageGenerateRequest_WithParameters(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
+	httpReq, err := buildImageGenerateRequest(config, req, "test-key")
 	require.NoError(t, err)
 
 	// Verify body
@@ -152,10 +160,11 @@ func TestBuildImageGenerateRequest_WithParameters(t *testing.T) {
 }
 
 func TestBuildImageGenerateRequest_NoPrompt(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
-
-	ot := tr.(*OutboundTransformer)
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	}
 	req := &llm.Request{
 		Model: "dall-e-3",
 		Image: &llm.ImageRequest{
@@ -163,7 +172,7 @@ func TestBuildImageGenerateRequest_NoPrompt(t *testing.T) {
 		},
 	}
 
-	_, err = ot.buildImageGenerateRequest(req, "test-key")
+	_, err := buildImageGenerateRequest(config, req, "test-key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt is required")
 }
@@ -171,10 +180,11 @@ func TestBuildImageGenerateRequest_NoPrompt(t *testing.T) {
 // Test Image Edit API (images/edits)
 
 func TestBuildImageEditRequest_WithImage(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
-
-	ot := tr.(*OutboundTransformer)
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	}
 	// Simple 1x1 red pixel PNG in base64 (decoded to bytes)
 	imageData, _ := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
 
@@ -187,7 +197,7 @@ func TestBuildImageEditRequest_WithImage(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.buildImageEditRequest(req, "test-key")
+	httpReq, err := buildImageEditRequest(config, req, "test-key")
 	require.NoError(t, err)
 	require.NotNil(t, httpReq)
 
@@ -200,10 +210,11 @@ func TestBuildImageEditRequest_WithImage(t *testing.T) {
 }
 
 func TestBuildImageEditRequest_NoImage(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
-
-	ot := tr.(*OutboundTransformer)
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	}
 	req := &llm.Request{
 		Model:     "gpt-image-1",
 		APIFormat: llm.APIFormatOpenAIImageEdit,
@@ -213,16 +224,17 @@ func TestBuildImageEditRequest_NoImage(t *testing.T) {
 		},
 	}
 
-	_, err = ot.buildImageEditRequest(req, "test-key")
+	_, err := buildImageEditRequest(config, req, "test-key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "at least one image is required")
 }
 
 func TestBuildImageEditRequest_NoPrompt(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
-
-	ot := tr.(*OutboundTransformer)
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	}
 	imageData, _ := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
 
 	req := &llm.Request{
@@ -234,7 +246,7 @@ func TestBuildImageEditRequest_NoPrompt(t *testing.T) {
 		},
 	}
 
-	_, err = ot.buildImageEditRequest(req, "test-key")
+	_, err := buildImageEditRequest(config, req, "test-key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt is required")
 }
@@ -303,16 +315,28 @@ func TestImageRequests_UseCustomEndpointPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformerInterface, err := NewOutboundTransformerWithConfig(&Config{
+			var (
+				transformerInterface transformer.Outbound
+				err                  error
+			)
+
+			config := &Config{
 				PlatformType:   PlatformOpenAI,
 				BaseURL:        "https://custom.api.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 				EndpointPath:   tt.endpoint,
-			})
-			require.NoError(t, err)
+			}
+			switch tt.apiFormat {
+			case llm.APIFormatOpenAIImageGeneration:
+				transformerInterface, err = NewImageGenerationOutboundTransformerWithConfig(config)
+			case llm.APIFormatOpenAIImageEdit:
+				transformerInterface, err = NewImageEditOutboundTransformerWithConfig(config)
+			case llm.APIFormatOpenAIImageVariation:
+				transformerInterface, err = NewImageVariationOutboundTransformerWithConfig(config)
+			}
 
-			transformer := transformerInterface.(*OutboundTransformer)
-			httpReq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+			require.NoError(t, err)
+			httpReq, err := transformerInterface.TransformRequest(context.Background(), &llm.Request{
 				Model:       "gpt-image-1",
 				RequestType: llm.RequestTypeImage,
 				APIFormat:   tt.apiFormat,
@@ -320,6 +344,42 @@ func TestImageRequests_UseCustomEndpointPath(t *testing.T) {
 			})
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedURL, httpReq.URL)
+		})
+	}
+}
+
+func TestImageOutboundTransformers_RejectNilRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		new  func(*Config) (transformer.Outbound, error)
+	}{
+		{
+			name: "generation",
+			new:  NewImageGenerationOutboundTransformerWithConfig,
+		},
+		{
+			name: "edit",
+			new:  NewImageEditOutboundTransformerWithConfig,
+		},
+		{
+			name: "variation",
+			new:  NewImageVariationOutboundTransformerWithConfig,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tr, err := tt.new(&Config{
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://api.openai.com/v1",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			})
+			require.NoError(t, err)
+
+			_, err = tr.TransformRequest(context.Background(), nil)
+			require.Error(t, err)
+			assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
+			assert.Contains(t, err.Error(), "llm request is nil")
 		})
 	}
 }
@@ -607,10 +667,13 @@ func TestExtractImageData_JPEGFormat(t *testing.T) {
 // Integration test with TransformRequest
 
 func TestTransformRequest_ImageGeneration_Integration(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	tr, err := NewImageGenerationOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
 	require.NoError(t, err)
 
-	ot := tr.(*OutboundTransformer)
 	req := &llm.Request{
 		Model:       "dall-e-3",
 		RequestType: llm.RequestTypeImage,
@@ -619,17 +682,20 @@ func TestTransformRequest_ImageGeneration_Integration(t *testing.T) {
 		},
 	}
 
-	httpReq, err := ot.TransformRequest(context.Background(), req)
+	httpReq, err := tr.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", httpReq.URL)
 	assert.Equal(t, string(llm.APIFormatOpenAIImageGeneration), httpReq.APIFormat)
 }
 
 func TestTransformResponse_ImageGeneration_Integration(t *testing.T) {
-	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	tr, err := NewImageGenerationOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
 	require.NoError(t, err)
 
-	ot := tr.(*OutboundTransformer)
 	body := []byte(`{
 		"created": 1730000000,
 		"data": [
@@ -647,7 +713,7 @@ func TestTransformResponse_ImageGeneration_Integration(t *testing.T) {
 		},
 	}
 
-	resp, err := ot.TransformResponse(context.Background(), httpResp)
+	resp, err := tr.TransformResponse(context.Background(), httpResp)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	// Image generation responses now use resp.Image instead of resp.Choices
