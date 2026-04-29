@@ -594,7 +594,7 @@ export function useUpdateModelStatus() {
   const { handleError } = useErrorHandler();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: 'enabled' | 'disabled' | 'archived' }) => {
+    mutationFn: async ({ id, status }: { id: string; status: 'enabled' | 'archived' }) => {
       const data = await graphqlRequest<{ updateModelStatus: boolean }>(UPDATE_MODEL_STATUS_MUTATION, { id, status });
       return data.updateModelStatus;
     },
