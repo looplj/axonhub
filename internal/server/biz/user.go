@@ -52,6 +52,7 @@ func (s *UserService) CreateUser(ctx context.Context, input ent.CreateUserInput)
 		hashedPassword = OIDC_ONLY_PLACEHOLDER
 	} else {
 		var err error
+
 		hashedPassword, err = HashPassword(input.Password)
 		if err != nil {
 			return nil, err

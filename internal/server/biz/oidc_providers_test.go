@@ -42,6 +42,7 @@ func TestOIDCService_GetProviders_IsLinked(t *testing.T) {
 	// 2. Authenticated request, no identities
 	u, err := client.User.Create().SetEmail("test@example.com").SetPassword("pw").Save(ctx)
 	require.NoError(t, err)
+
 	ctx = contexts.WithUser(ctx, u)
 
 	providers = svc.GetProviders(ctx)
@@ -58,6 +59,7 @@ func TestOIDCService_GetProviders_IsLinked(t *testing.T) {
 
 	// Find google provider
 	var google, github ProviderInfo
+
 	for _, p := range providers {
 		if p.ID == "google" {
 			google = p

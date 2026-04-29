@@ -138,6 +138,7 @@ func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) 
 				return decoded, nil
 			}
 		}
+
 		return data, nil
 
 	default:

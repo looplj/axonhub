@@ -7,9 +7,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/fx"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"go.uber.org/fx"
 )
 
 type OIDCHandlers struct {
@@ -48,8 +49,7 @@ func (h *OIDCHandlers) GetProviders(c *gin.Context) {
 
 	// Try to extract user from Authorization header if present for is_linked check
 	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
 		if u, err := h.auth.AuthenticateJWTToken(ctx, token); err == nil {
 			ctx = contexts.WithUser(ctx, u)
 		}
@@ -97,6 +97,7 @@ func (h *OIDCHandlers) GetLinkAuthorizeURL(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
+
 	userID := user.ID
 
 	// Get the base URL (priority: config public URL > request host)
@@ -151,6 +152,7 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 	if err != nil {
 		baseURL := h.getBaseURL(c)
 		c.Redirect(http.StatusFound, fmt.Sprintf("%s/oauth/oidc/idp-callback?error=auth_failed&error_description=%s", baseURL, url.QueryEscape(err.Error())))
+
 		return
 	}
 
@@ -175,6 +177,7 @@ func (h *OIDCHandlers) getBaseURL(c *gin.Context) string {
 	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
 		scheme = "https"
 	}
+
 	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 }
 
@@ -194,7 +197,9 @@ func (h *OIDCHandlers) Exchange(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+
 		return
 	}
 

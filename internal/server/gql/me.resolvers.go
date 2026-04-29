@@ -49,6 +49,7 @@ func (r *mutationResolver) UpdateMyPassword(ctx context.Context, input UpdateMyP
 		if input.OldPassword == nil {
 			return false, fmt.Errorf("current password is required")
 		}
+
 		err := biz.VerifyPassword(user.Password, *input.OldPassword)
 		if err != nil {
 			return false, fmt.Errorf("incorrect old password")
@@ -92,6 +93,7 @@ func (r *mutationResolver) UnlinkOIDCIdentity(ctx context.Context, id objects.GU
 		if err != nil {
 			return false, fmt.Errorf("failed to count identities: %w", err)
 		}
+
 		if identityCount <= 1 {
 			return false, fmt.Errorf("please set a local password before unlinking your last OIDC identity")
 		}
@@ -152,6 +154,7 @@ func (r *userInfoResolver) OidcIdentities(ctx context.Context, obj *objects.User
 			Email:   identity.Email,
 		})
 	}
+
 	return result, nil
 }
 
