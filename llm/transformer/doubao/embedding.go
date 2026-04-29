@@ -11,19 +11,19 @@ import (
 )
 
 // multimodalEmbeddingRequest represents the Doubao multimodal embedding request format.
-// Endpoint: POST /embeddings/multimodal
+// Endpoint: POST /embeddings/multimodal.
 type multimodalEmbeddingRequest struct {
-	Model          string                        `json:"model"`
+	Model          string                         `json:"model"`
 	Input          []multimodalEmbeddingInputItem `json:"input"`
-	EncodingFormat string                        `json:"encoding_format,omitempty"`
-	Dimensions     *int                          `json:"dimensions,omitempty"`
+	EncodingFormat string                         `json:"encoding_format,omitempty"`
+	Dimensions     *int                           `json:"dimensions,omitempty"`
 }
 
 // multimodalEmbeddingInputItem represents a single input item in the multimodal embedding request.
 type multimodalEmbeddingInputItem struct {
-	Type     string                          `json:"type"`
-	Text     string                          `json:"text,omitempty"`
-	ImageURL *multimodalEmbeddingImageURL     `json:"image_url,omitempty"`
+	Type     string                       `json:"type"`
+	Text     string                       `json:"text,omitempty"`
+	ImageURL *multimodalEmbeddingImageURL `json:"image_url,omitempty"`
 }
 
 type multimodalEmbeddingImageURL struct {
@@ -79,22 +79,22 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 // multimodalEmbeddingResponse represents the Doubao multimodal embedding response format.
 type multimodalEmbeddingResponse struct {
-	ID     string                        `json:"id"`
-	Object string                        `json:"object"`
-	Data   multimodalEmbeddingData       `json:"data"`
-	Model  string                        `json:"model"`
-	Usage  multimodalEmbeddingUsage      `json:"usage"`
+	ID     string                   `json:"id"`
+	Object string                   `json:"object"`
+	Data   multimodalEmbeddingData  `json:"data"`
+	Model  string                   `json:"model"`
+	Usage  multimodalEmbeddingUsage `json:"usage"`
 }
 
 type multimodalEmbeddingData struct {
-	Object         string        `json:"object"`
-	Embedding      llm.Embedding `json:"embedding"`
+	Object          string          `json:"object"`
+	Embedding       llm.Embedding   `json:"embedding"`
 	SparseEmbedding json.RawMessage `json:"sparse_embedding,omitempty"`
 }
 
 type multimodalEmbeddingUsage struct {
-	PromptTokens        int64                                `json:"prompt_tokens"`
-	TotalTokens         int64                                `json:"total_tokens"`
+	PromptTokens        int64                                   `json:"prompt_tokens"`
+	TotalTokens         int64                                   `json:"total_tokens"`
 	PromptTokensDetails *multimodalEmbeddingPromptTokensDetails `json:"prompt_tokens_details,omitempty"`
 }
 
@@ -117,6 +117,7 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 		if err != nil {
 			return nil, err
 		}
+
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
 

@@ -601,6 +601,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 func TestOutboundTransformer_TransformRequest_StripsPrefixedThoughtSignatureForGemini(t *testing.T) {
 	transformerInterface, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-api-key")
 	require.NoError(t, err)
+
 	transformer := transformerInterface.(*OutboundTransformer)
 
 	httpReq, err := transformer.TransformRequest(t.Context(), &llm.Request{
@@ -642,6 +643,7 @@ func TestOutboundTransformer_TransformRequest_StripsPrefixedThoughtSignatureForG
 func TestOutboundTransformer_TransformRequest_KeepToolCallSignaturePosition(t *testing.T) {
 	transformerInterface, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-api-key")
 	require.NoError(t, err)
+
 	transformer := transformerInterface.(*OutboundTransformer)
 
 	httpReq, err := transformer.TransformRequest(t.Context(), &llm.Request{

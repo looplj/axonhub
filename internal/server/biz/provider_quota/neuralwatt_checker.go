@@ -122,12 +122,26 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["subscription"] = convertNeuralWattSubscriptionToMap(response.Subscription)
 	}
 
+	var usageRatio float64
+	if response.Subscription != nil && response.Subscription.KwhIncluded != nil && *response.Subscription.KwhIncluded > 0 {
+		if response.Subscription.KwhUsed != nil {
+			usageRatio = *response.Subscription.KwhUsed / *response.Subscription.KwhIncluded
+		} else if response.Subscription.KwhRemaining != nil {
+			usageRatio = 1.0 - (*response.Subscription.KwhRemaining / *response.Subscription.KwhIncluded)
+		}
+	}
+
+	limits := []QuotaLimitStatus{
+		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt),
+	}
+
 	return QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "neuralwatt",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
+		Limits:       limits,
 	}, nil
 }
 

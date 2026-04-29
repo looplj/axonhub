@@ -1377,3 +1377,65 @@ export function useUpdateUserAgentPassThroughSettings() {
     },
   });
 }
+
+const QUOTA_ENFORCEMENT_SETTINGS_QUERY = `
+  query QuotaEnforcementSettings {
+    quotaEnforcementSettings {
+      enabled
+      mode
+    }
+  }
+`;
+
+const UPDATE_QUOTA_ENFORCEMENT_SETTINGS_MUTATION = `
+  mutation UpdateQuotaEnforcementSettings($input: UpdateQuotaEnforcementSettingsInput!) {
+    updateQuotaEnforcementSettings(input: $input)
+  }
+`;
+
+export type QuotaEnforcementMode = 'EXHAUSTED_ONLY' | 'DE_PRIORITIZE';
+
+export interface QuotaEnforcementSettings {
+  enabled: boolean;
+  mode: QuotaEnforcementMode;
+}
+
+export interface UpdateQuotaEnforcementSettingsInput {
+  enabled?: boolean;
+  mode?: QuotaEnforcementMode;
+}
+
+export function useQuotaEnforcementSettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['quotaEnforcementSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ quotaEnforcementSettings: QuotaEnforcementSettings }>(QUOTA_ENFORCEMENT_SETTINGS_QUERY);
+        return data.quotaEnforcementSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateQuotaEnforcementSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateQuotaEnforcementSettingsInput) => {
+      const data = await graphqlRequest<{ updateQuotaEnforcementSettings: boolean }>(UPDATE_QUOTA_ENFORCEMENT_SETTINGS_MUTATION, { input });
+      return data.updateQuotaEnforcementSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotaEnforcementSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}

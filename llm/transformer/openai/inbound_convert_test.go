@@ -10,7 +10,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-// TestToLLMMessage_ReasoningField tests parsing of reasoning field from JSON
+// TestToLLMMessage_ReasoningField tests parsing of reasoning field from JSON.
 func TestToLLMMessage_ReasoningField(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -114,16 +114,19 @@ func TestMessageContent_VideoURLRoundTrip(t *testing.T) {
 	raw := []byte(`[{"type":"video_url","video_url":{"url":"https://example.com/example.mp4"}}]`)
 
 	var content MessageContent
+
 	err := json.Unmarshal(raw, &content)
 	assert.NoError(t, err)
 	assert.Len(t, content.MultipleContent, 1)
 	assert.Equal(t, "video_url", content.MultipleContent[0].Type)
+
 	if assert.NotNil(t, content.MultipleContent[0].VideoURL) {
 		assert.Equal(t, "https://example.com/example.mp4", content.MultipleContent[0].VideoURL.URL)
 	}
 
 	llmContent := content.ToLLMContent()
 	assert.Len(t, llmContent.MultipleContent, 1)
+
 	if assert.NotNil(t, llmContent.MultipleContent[0].VideoURL) {
 		assert.Equal(t, "https://example.com/example.mp4", llmContent.MultipleContent[0].VideoURL.URL)
 	}
@@ -134,7 +137,7 @@ func TestMessageContent_VideoURLRoundTrip(t *testing.T) {
 	}
 }
 
-// TestMessageFromLLM_ReasoningSync tests outbound sync of reasoning_content to reasoning
+// TestMessageFromLLM_ReasoningSync tests outbound sync of reasoning_content to reasoning.
 func TestMessageFromLLM_ReasoningSync(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -234,7 +237,7 @@ func TestMessageFromLLM_ReasoningSync(t *testing.T) {
 	}
 }
 
-// TestMessageFromLLM_ReasoningFallback tests fallback logic for reasoning field
+// TestMessageFromLLM_ReasoningFallback tests fallback logic for reasoning field.
 func TestMessageFromLLM_ReasoningFallback(t *testing.T) {
 	tests := []struct {
 		name    string

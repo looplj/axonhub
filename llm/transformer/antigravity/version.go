@@ -38,18 +38,21 @@ var (
 func GetUserAgent() string {
 	versionMu.RLock()
 	defer versionMu.RUnlock()
+
 	return "antigravity/" + currentVersion + " windows/amd64"
 }
 
 func GetVersion() string {
 	versionMu.RLock()
 	defer versionMu.RUnlock()
+
 	return currentVersion
 }
 
 func setVersion(v string) {
 	versionMu.Lock()
 	defer versionMu.Unlock()
+
 	currentVersion = v
 }
 
@@ -80,7 +83,9 @@ func (f *versionFetcher) init(ctx context.Context) {
 		} else {
 			slog.DebugContext(ctx, "antigravity: version unchanged", "version", v, "source", "api")
 		}
+
 		setVersion(v)
+
 		return
 	}
 
@@ -90,7 +95,9 @@ func (f *versionFetcher) init(ctx context.Context) {
 		} else {
 			slog.DebugContext(ctx, "antigravity: version unchanged", "version", v, "source", "changelog")
 		}
+
 		setVersion(v)
+
 		return
 	}
 
@@ -118,6 +125,7 @@ func (f *versionFetcher) fetchVersion(ctx context.Context, url string, maxBytes 
 	}
 
 	var body []byte
+
 	if maxBytes > 0 {
 		buf := make([]byte, maxBytes)
 		n, _ := io.ReadFull(resp.Body, buf)
@@ -135,5 +143,6 @@ func (f *versionFetcher) fetchVersion(ctx context.Context, url string, maxBytes 
 		slog.DebugContext(ctx, "antigravity: no version found in response", "url", url)
 		return ""
 	}
+
 	return string(match)
 }

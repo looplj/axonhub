@@ -40,7 +40,13 @@ type Channel struct {
 	*ent.Channel
 
 	// Outbound is the outbound transformer for the channel.
+	// DEPRECATED: Use Outbounds[key] for multi-endpoint channels.
+	// For backward compat, this holds the first resolved endpoint's outbound.
 	Outbound transformer.Outbound
+
+	// Outbounds maps APIFormat to its corresponding outbound transformer.
+	// Populated from channel endpoints. Keyed by api_format string value.
+	Outbounds map[string]transformer.Outbound
 
 	// HTTPClient is the custom HTTP client for this channel with proxy support
 	HTTPClient *httpclient.HttpClient
@@ -218,7 +224,7 @@ func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []
 	var channels []*Channel
 
 	for _, c := range entities {
-		channel, err := svc.buildChannelWithTransformer(c)
+		channel, err := svc.buildChannelWithOutbounds(c)
 		if err != nil {
 			log.Warn(ctx, "failed to build channel",
 				log.String("channel", c.Name),
@@ -321,7 +327,7 @@ func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Chan
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	return svc.buildChannelWithTransformer(entity)
+	return svc.buildChannelWithOutbounds(entity)
 }
 
 // ListModelsInput represents the input for listing models with filters.
@@ -336,6 +342,12 @@ type ListModelsInput struct {
 type ModelIdentityWithStatus struct {
 	ID     string
 	Status channel.Status
+}
+
+// SaveChannelEndpointsInput represents input for saving channel endpoints.
+type SaveChannelEndpointsInput struct {
+	ChannelID objects.GUID              `json:"channelID"`
+	Endpoints []objects.ChannelEndpoint `json:"endpoints"`
 }
 
 var statusPriority = map[channel.Status]int{
@@ -442,6 +454,12 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		}
 	}
 
+	if input.Endpoints != nil {
+		if err := ValidateEndpoints(input.Endpoints); err != nil {
+			return nil, fmt.Errorf("invalid endpoints: %w", err)
+		}
+	}
+
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
@@ -454,6 +472,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels).
 		SetNillableAutoSyncModelPattern(input.AutoSyncModelPattern).
 		SetSettings(input.Settings)
+
+	if input.Endpoints != nil {
+		createBuilder.SetEndpoints(input.Endpoints)
+	}
 
 	if input.Tags != nil {
 		createBuilder.SetTags(input.Tags)
@@ -579,6 +601,14 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		mut.SetAutoSyncModelPattern(*input.AutoSyncModelPattern)
 	}
 
+	if input.Endpoints != nil {
+		if err := ValidateEndpoints(input.Endpoints); err != nil {
+			return nil, fmt.Errorf("invalid endpoints: %w", err)
+		}
+
+		mut.SetEndpoints(input.Endpoints)
+	}
+
 	if input.ClearErrorMessage {
 		mut.ClearErrorMessage()
 	}
@@ -623,6 +653,26 @@ func (svc *ChannelService) asyncReloadChannels() {
 	if err := svc.channelNotifier.Notify(context.Background(), live.NewForceRefreshEvent[struct{}]()); err != nil {
 		log.Warn(context.Background(), "channel cache watcher notify failed", log.Cause(err))
 	}
+}
+
+// SaveChannelEndpoints updates the endpoints field for a channel.
+// Validates that api_format values are unique and do not conflict with the
+// channel type's default endpoints.
+func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveChannelEndpointsInput) (*ent.Channel, error) {
+	if err := ValidateEndpoints(input.Endpoints); err != nil {
+		return nil, fmt.Errorf("invalid endpoints: %w", err)
+	}
+
+	ch, err := svc.entFromContext(ctx).Channel.UpdateOneID(input.ChannelID.ID).
+		SetEndpoints(input.Endpoints).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel endpoints: %w", err)
+	}
+
+	svc.asyncReloadChannels()
+
+	return ch, nil
 }
 
 // DeleteChannel deletes a channel by ID.

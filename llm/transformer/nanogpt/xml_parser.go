@@ -13,32 +13,35 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
-// Maximum content length to prevent ReDoS attacks
+// Maximum content length to prevent ReDoS attacks.
 const maxXMLParseLength = 100000 // 100KB
 
 // toolCallPattern matches XML-like tool calls with content: <Tag>content</Tag>
 // Uses [^<] to match content safely without ReDoS backtracking
-// Allows optional whitespace after tag name for formats like <Write_File>{...}</Write_File>
+// Allows optional whitespace after tag name for formats like <Write_File>{...}</Write_File>.
 var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)>([^<]*)</([a-zA-Z_][a-zA-Z0-9_-]*)>`)
 
 // selfClosingPattern matches self-closing XML tags: <Tag attr="val" />
-// Allows optional space between tag name and attributes
+// Allows optional space between tag name and attributes.
 var selfClosingPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)/>`)
 
 // attrPattern matches attributes like name="value" or name='value'
-// Handles both single and double quotes, allows empty values
+// Handles both single and double quotes, allows empty values.
 var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([^"']*)["']`)
 
-// normalizeTagPattern matches tags without space before />
+// normalizeTagPattern matches tags without space before />.
 var normalizeTagPattern = regexp.MustCompile(`([^\s])/>`)
-// nestedXMLPattern matches nested XML like <Write><file_path>X</file_path><content>Y</content></Write>
+
+// nestedXMLPattern matches nested XML like <Write><file_path>X</file_path><content>Y</content></Write>.
 var nestedXMLPattern = regexp.MustCompile(`<(Write|Read)[^>]*>\s*<file_path>([^<]*)</file_path>\s*<content>([\s\S]*?)</content>\s*</(Write|Read)>`)
+
 // mismatchTagPattern matches <Write>content</use_tool> type patterns
-// Uses [^<] to match content safely without ReDoS backtracking
+// Uses [^<] to match content safely without ReDoS backtracking.
 var mismatchTagPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)>([^<]*)</use_tool>`)
 
-// unclosedPattern matches unclosed opening tags like <Write attr="..."\n</use_tool>
+// unclosedPattern matches unclosed opening tags like <Write attr="..."\n</use_tool>.
 var unclosedPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)\n([\s\S]*?)</use_tool>`)
+
 // MaybeHasXMLToolCalls is a fast pre-check to determine if content likely contains XML tool calls.
 func MaybeHasXMLToolCalls(content string) bool {
 	// Limit content length to prevent ReDoS
@@ -72,8 +75,11 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 	// Normalize common malformed variations
 	content = normalizeXML(content)
 
-	var toolCalls []llm.ToolCall
-	var remainingContent strings.Builder
+	var (
+		toolCalls        []llm.ToolCall
+		remainingContent strings.Builder
+	)
+
 	lastEnd := 0
 
 	// Find all matches from both patterns
@@ -162,7 +168,9 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 			if lastEnd < match.start {
 				remainingContent.WriteString(content[lastEnd:match.start])
 			}
+
 			lastEnd = match.end
+
 			continue
 		}
 
@@ -186,6 +194,7 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 		if lastEnd < match.start {
 			remainingContent.WriteString(content[lastEnd:match.start])
 		}
+
 		lastEnd = match.end
 	}
 
@@ -199,10 +208,11 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 	}
 
 	remaining := strings.TrimSpace(remainingContent.String())
+
 	return toolCalls, remaining, nil
 }
 
-// normalizeXML fixes common XML malformations from NanoGPT
+// normalizeXML fixes common XML malformations from NanoGPT.
 func normalizeXML(content string) string {
 	// Fix unclosed opening tags: <Write attr="..."\ncontent</use_tool> -> <Write attr="...">\ncontent</use_tool>
 	// NanoGPT sometimes omits the closing > on the opening tag
@@ -211,6 +221,7 @@ func normalizeXML(content string) string {
 		if len(parts) >= 4 {
 			return "<" + parts[1] + parts[2] + ">\n" + parts[3] + "</use_tool>"
 		}
+
 		return match
 	})
 	// Fix mismatched closing tags - handle variations like </use_tool>, </use_use>, etc.
@@ -229,8 +240,10 @@ func normalizeXML(content string) string {
 			tagName := parts[1]
 			attrs := parts[2]
 			innerContent := parts[3]
+
 			return "<" + tagName + attrs + ">" + innerContent + "</" + tagName + ">"
 		}
+
 		return match
 	})
 
@@ -240,7 +253,7 @@ func normalizeXML(content string) string {
 	return content
 }
 
-// extractToolName determines the tool name from tag name and attributes
+// extractToolName determines the tool name from tag name and attributes.
 func extractToolName(tagName, attrs string) string {
 	tagName = strings.TrimSpace(strings.ToLower(tagName))
 
@@ -266,9 +279,9 @@ func extractToolName(tagName, attrs string) string {
 	return ""
 }
 
-// extractToolArguments extracts arguments from attributes and/or inner content
+// extractToolArguments extracts arguments from attributes and/or inner content.
 func extractToolArguments(toolName, attrs, innerContent string) string {
-	args := make(map[string]interface{})
+	args := make(map[string]any)
 
 	// Extract attributes
 	attrMatches := attrPattern.FindAllStringSubmatch(attrs, -1)
@@ -280,6 +293,7 @@ func extractToolArguments(toolName, attrs, innerContent string) string {
 			if strings.ToLower(key) == "name" && toolName != "" {
 				continue
 			}
+
 			args[key] = value
 		}
 	}
@@ -288,10 +302,10 @@ func extractToolArguments(toolName, attrs, innerContent string) string {
 	innerContent = strings.TrimSpace(innerContent)
 	if innerContent != "" {
 		// Try to parse as JSON first
-		var jsonContent interface{}
+		var jsonContent any
 		if err := json.Unmarshal([]byte(innerContent), &jsonContent); err == nil {
 			// If valid JSON, merge with args
-			if jsonMap, ok := jsonContent.(map[string]interface{}); ok {
+			if jsonMap, ok := jsonContent.(map[string]any); ok {
 				for k, v := range jsonMap {
 					if _, exists := args[k]; !exists {
 						args[k] = v
@@ -325,6 +339,7 @@ func generateToolCallID(name, args string) string {
 	hasher.Write([]byte(name))
 	hasher.Write([]byte(args))
 	hash := hasher.Sum(nil)
+
 	return "nanogpt_" + hex.EncodeToString(hash)[:16]
 }
 
@@ -346,6 +361,7 @@ func ToOpenAIToolCalls(toolCalls []llm.ToolCall) []openai.ToolCall {
 			},
 		}
 	}
+
 	return result
 }
 
@@ -355,4 +371,3 @@ func ToOpenAIMessageContent(content string) openai.MessageContent {
 		Content: &content,
 	}
 }
-

@@ -93,6 +93,10 @@ const (
 	// SystemKeyUserAgentPassThrough is the key used to store the user agent pass-through setting.
 	// When set to true, the system will pass through the original User-Agent header to upstream AI providers.
 	SystemKeyUserAgentPassThrough = "system_user_agent_pass_through"
+
+	// SystemKeyQuotaEnforcementSettings is the key used to store the quota enforcement settings.
+	// The value is JSON-encoded QuotaEnforcementSettings struct.
+	SystemKeyQuotaEnforcementSettings = "quota_enforcement_settings"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -113,6 +117,75 @@ type VideoStorageSettings struct {
 	ScanIntervalMinutes int `json:"scan_interval_minutes"`
 	// ScanLimit is the max number of requests processed per scan.
 	ScanLimit int `json:"scan_limit"`
+}
+
+// QuotaEnforcementMode defines how quota enforcement is applied.
+type QuotaEnforcementMode string
+
+const (
+	// QuotaEnforcementModeExhaustedOnly filters out channels with exhausted quota only.
+	QuotaEnforcementModeExhaustedOnly QuotaEnforcementMode = "exhausted_only"
+	// QuotaEnforcementModeDePrioritize deprioritizes exhausted channels and penalizes warning channels.
+	QuotaEnforcementModeDePrioritize QuotaEnforcementMode = "de_prioritize"
+)
+
+func (m QuotaEnforcementMode) MarshalGQL(w io.Writer) {
+	var s string
+
+	switch m {
+	case QuotaEnforcementModeExhaustedOnly:
+		s = "EXHAUSTED_ONLY"
+	case QuotaEnforcementModeDePrioritize:
+		s = "DE_PRIORITIZE"
+	default:
+		s = "EXHAUSTED_ONLY"
+	}
+
+	_, _ = io.WriteString(w, `"`+s+`"`)
+}
+
+func (m *QuotaEnforcementMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("QuotaEnforcementMode must be a string")
+	}
+
+	switch str {
+	case "EXHAUSTED_ONLY":
+		*m = QuotaEnforcementModeExhaustedOnly
+	case "DE_PRIORITIZE":
+		*m = QuotaEnforcementModeDePrioritize
+	default:
+		return fmt.Errorf("invalid QuotaEnforcementMode: %s", str)
+	}
+
+	return nil
+}
+
+func (m *QuotaEnforcementMode) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("invalid QuotaEnforcementMode: %w", err)
+	}
+
+	switch raw {
+	case "EXHAUSTED_ONLY", string(QuotaEnforcementModeExhaustedOnly):
+		*m = QuotaEnforcementModeExhaustedOnly
+	case "DE_PRIORITIZE", string(QuotaEnforcementModeDePrioritize):
+		*m = QuotaEnforcementModeDePrioritize
+	default:
+		return fmt.Errorf("invalid QuotaEnforcementMode: %q", raw)
+	}
+
+	return nil
+}
+
+// QuotaEnforcementSettings represents quota enforcement configuration.
+type QuotaEnforcementSettings struct {
+	// Enabled controls whether quota enforcement is active.
+	Enabled bool `json:"enabled"`
+	// Mode defines how quota is enforced.
+	Mode QuotaEnforcementMode `json:"mode"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -1247,6 +1320,59 @@ func (s *SystemService) SetUserAgentPassThrough(ctx context.Context, enabled boo
 	}
 
 	return s.setSystemValue(ctx, SystemKeyUserAgentPassThrough, strValue)
+}
+
+// QuotaEnforcementSettings retrieves the quota enforcement settings.
+func (s *SystemService) QuotaEnforcementSettings(ctx context.Context) (*QuotaEnforcementSettings, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyQuotaEnforcementSettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultQuotaEnforcementSettings), nil
+		}
+
+		return nil, fmt.Errorf("failed to get quota enforcement settings: %w", err)
+	}
+
+	var settings QuotaEnforcementSettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal quota enforcement settings: %w", err)
+	}
+
+	if settings.Mode == "" {
+		settings.Mode = defaultQuotaEnforcementSettings.Mode
+	}
+
+	return &settings, nil
+}
+
+// QuotaEnforcementSettingsOrDefault retrieves the quota enforcement settings or returns the default.
+func (s *SystemService) QuotaEnforcementSettingsOrDefault(ctx context.Context) *QuotaEnforcementSettings {
+	settings, err := s.QuotaEnforcementSettings(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to get quota enforcement settings", log.Cause(err))
+
+		return lo.ToPtr(defaultQuotaEnforcementSettings)
+	}
+
+	return settings
+}
+
+// SetQuotaEnforcementSettings sets the quota enforcement settings.
+func (s *SystemService) SetQuotaEnforcementSettings(ctx context.Context, settings QuotaEnforcementSettings) error {
+	if settings.Mode == "" {
+		settings.Mode = defaultQuotaEnforcementSettings.Mode
+	}
+
+	if settings.Mode != QuotaEnforcementModeExhaustedOnly && settings.Mode != QuotaEnforcementModeDePrioritize {
+		return fmt.Errorf("invalid quota enforcement mode: %q", settings.Mode)
+	}
+
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal quota enforcement settings: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyQuotaEnforcementSettings, string(jsonBytes))
 }
 
 // UpdateAutoBackupLastRun updates the last backup timestamp and error status.

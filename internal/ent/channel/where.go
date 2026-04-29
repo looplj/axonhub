@@ -800,6 +800,16 @@ func RemarkContainsFold(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldContainsFold(FieldRemark, v))
 }
 
+// EndpointsIsNil applies the IsNil predicate on the "endpoints" field.
+func EndpointsIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldEndpoints))
+}
+
+// EndpointsNotNil applies the NotNil predicate on the "endpoints" field.
+func EndpointsNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldEndpoints))
+}
+
 // HasRequests applies the HasEdge predicate on the "requests" edge.
 func HasRequests() predicate.Channel {
 	return predicate.Channel(func(s *sql.Selector) {

@@ -25,6 +25,7 @@ func (t *OutboundTransformer) TransformStream(
 	streamWithDone := streams.AppendStream(stream, doneEvent)
 
 	scope, _ := shared.GetTransportScope(ctx)
+
 	return streams.NoNil(newResponsesOutboundStream(streamWithDone, scope)), nil
 }
 

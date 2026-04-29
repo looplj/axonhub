@@ -769,3 +769,27 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 		})
 	}
 }
+
+func TestEmbeddingOutboundTransformer_CustomEndpointPath(t *testing.T) {
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://custom.api.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+		EndpointPath:   "/custom/embeddings",
+	}
+
+	transformer, err := NewOutboundTransformerWithConfig(config)
+	require.NoError(t, err)
+
+	llmReq := &llm.Request{
+		Model:       "text-embedding-3-large",
+		RequestType: llm.RequestTypeEmbedding,
+		Embedding: &llm.EmbeddingRequest{
+			Input: llm.EmbeddingInput{String: "Hello world"},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.Equal(t, "https://custom.api.com/custom/embeddings", httpReq.URL)
+}

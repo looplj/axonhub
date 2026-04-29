@@ -144,7 +144,7 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 		fiveHourUtilization := parseFloat(headers.Get("Anthropic-Ratelimit-Unified-5h-Utilization"))
 
 		sevenDayUtilization := parseFloat(headers.Get("Anthropic-Ratelimit-Unified-7d-Utilization"))
-		if fiveHourUtilization >= 0.8 || sevenDayUtilization >= 0.8 {
+		if fiveHourUtilization >= WarningThresholdRatio || sevenDayUtilization >= WarningThresholdRatio {
 			normalizedStatus = "warning"
 		}
 	}
@@ -168,17 +168,59 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 		}
 	}
 
+	limits := []QuotaLimitStatus{
+		c.buildTokenLimit("5h", headers),
+		c.buildTokenLimit("7d", headers),
+	}
+
 	return QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "claudecode",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
+		Limits:       limits,
 	}, nil
 }
 
 func (c *ClaudeCodeQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return ch.Type == channel.TypeClaudecode
+}
+
+func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.Header) QuotaLimitStatus {
+	var utilizationKey, resetKey string
+	switch windowKey {
+	case "5h":
+		utilizationKey = "Anthropic-Ratelimit-Unified-5h-Utilization"
+		resetKey = "Anthropic-Ratelimit-Unified-5h-Reset"
+	case "7d":
+		utilizationKey = "Anthropic-Ratelimit-Unified-7d-Utilization"
+		resetKey = "Anthropic-Ratelimit-Unified-7d-Reset"
+	}
+
+	utilization := parseFloat(headers.Get(utilizationKey))
+	resetTs := parseUnixTimestamp(headers.Get(resetKey))
+
+	status := "available"
+	if utilization >= 1.0 {
+		status = "exhausted"
+	} else if utilization >= WarningThresholdRatio {
+		status = "warning"
+	}
+
+	var nextReset *time.Time
+	if resetTs > 0 {
+		t := time.Unix(resetTs, 0)
+		nextReset = &t
+	}
+
+	return QuotaLimitStatus{
+		Type:        QuotaLimitTypeToken,
+		Status:      status,
+		UsageRatio:  utilization,
+		Ready:       status != "exhausted",
+		NextResetAt: nextReset,
+	}
 }
 
 func getEndpointURL(baseURL string) string {

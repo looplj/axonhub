@@ -142,6 +142,10 @@ func (Channel) Fields() []ent.Field {
 		field.String("remark").
 			Optional().Nillable().
 			Comment("User-defined remark or note for the channel"),
+		field.JSON("endpoints", []objects.ChannelEndpoint{}).
+			Default([]objects.ChannelEndpoint{}).
+			Optional().
+			Comment("Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type."),
 	}
 }
 

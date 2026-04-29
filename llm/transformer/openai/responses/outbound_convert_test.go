@@ -215,6 +215,7 @@ func TestConvertToolMessage(t *testing.T) {
 			if tt.expected.Type != "" {
 				itemType = tt.expected.Type
 			}
+
 			result := convertToolMessageWithType(tt.msg, itemType)
 			require.Equal(t, tt.expected, result)
 		})

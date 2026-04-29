@@ -262,12 +262,15 @@ func TestMergeHTTPHeaders_BlocksAllHardcodedHeaders(t *testing.T) {
 	for k := range blockedHeaders {
 		src.Set(k, "blocked-val")
 	}
+
 	for k := range sensitiveHeaders {
 		src.Set(k, "sensitive-val")
 	}
+
 	for k := range libManagedHeaders {
 		src.Set(k, "lib-val")
 	}
+
 	src.Set("X-Custom", "keep-me")
 
 	dest := make(http.Header)
@@ -276,12 +279,15 @@ func TestMergeHTTPHeaders_BlocksAllHardcodedHeaders(t *testing.T) {
 	for k := range blockedHeaders {
 		require.Empty(t, got.Values(k), "blockedHeaders %q should not be merged", k)
 	}
+
 	for k := range sensitiveHeaders {
 		require.Empty(t, got.Values(k), "sensitiveHeaders %q should not be merged", k)
 	}
+
 	for k := range libManagedHeaders {
 		require.Empty(t, got.Values(k), "libManagedHeaders %q should not be merged", k)
 	}
+
 	require.Equal(t, "keep-me", got.Get("X-Custom"), "non-blocked header should be merged")
 }
 
@@ -292,6 +298,7 @@ func TestMaskSensitiveHeaders_MasksAllHardcodedHeaders(t *testing.T) {
 	for k := range sensitiveHeaders {
 		headers.Set(k, "secret-value")
 	}
+
 	headers.Set("X-Custom", "visible")
 
 	got := MaskSensitiveHeaders(headers)
@@ -300,6 +307,7 @@ func TestMaskSensitiveHeaders_MasksAllHardcodedHeaders(t *testing.T) {
 		require.Equal(t, []string{"******"}, got.Values(k),
 			"sensitiveHeaders %q should be masked", k)
 	}
+
 	require.Equal(t, []string{"visible"}, got.Values("X-Custom"))
 }
 
@@ -379,12 +387,12 @@ func TestMergeInboundRequest(t *testing.T) {
 		}
 		src := &Request{
 			Headers: http.Header{
-				"Cf-Ray":          []string{"abc123"},
+				"Cf-Ray":           []string{"abc123"},
 				"Cf-Connecting-Ip": []string{"1.2.3.4"},
-				"Cf-Ipcountry":    []string{"US"},
-				"Cf-Visitor":      []string{`{"scheme":"https"}`},
-				"Cdn-Loop":        []string{"cloudflare; loops=1"},
-				"User-Agent":      []string{"Test/1.0"},
+				"Cf-Ipcountry":     []string{"US"},
+				"Cf-Visitor":       []string{`{"scheme":"https"}`},
+				"Cdn-Loop":         []string{"cloudflare; loops=1"},
+				"User-Agent":       []string{"Test/1.0"},
 			},
 			Query: url.Values{},
 		}

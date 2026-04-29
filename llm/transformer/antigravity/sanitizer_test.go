@@ -171,10 +171,12 @@ func TestSanitizeJSONSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var inputSchema map[string]any
+
 			err := json.Unmarshal([]byte(tt.input), &inputSchema)
 			assert.NoError(t, err)
 
 			var expectedSchema map[string]any
+
 			err = json.Unmarshal([]byte(tt.expected), &expectedSchema)
 			assert.NoError(t, err)
 
@@ -213,6 +215,7 @@ func checkExpected(t *testing.T, expected, actual any) {
 			assert.Contains(t, actMap, k)
 			checkExpected(t, v, actMap[k])
 		}
+
 		return
 	}
 
@@ -221,9 +224,11 @@ func checkExpected(t *testing.T, expected, actual any) {
 
 	if okExpS && okActS {
 		assert.Equal(t, len(expSlice), len(actSlice))
+
 		for i := range expSlice {
 			checkExpected(t, expSlice[i], actSlice[i])
 		}
+
 		return
 	}
 

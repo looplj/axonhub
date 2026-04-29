@@ -146,10 +146,13 @@ gc:
 
 # Provider Quota configuration
 provider_quota:
-  check_interval: "20m"          # Interval for checking provider quota status (env: AXONHUB_PROVIDER_QUOTA_CHECK_INTERVAL)
+  check_interval: "5m"          # Interval for checking provider quota status (env: AXONHUB_PROVIDER_QUOTA_CHECK_INTERVAL)
                                  # Supported values: 1m, 2m, 3m, 4m, 5m, 6m, 10m, 12m, 15m, 20m, 30m, 1h, 2h, etc.
-                                 # Default: 20m
+                                 # Default: 5m
                                  # Longer intervals reduce API calls but show less fresh quota data
+  warning_check_interval_ratio: 4 # Ratio for reduced warning-state check interval (env: AXONHUB_PROVIDER_QUOTA_WARNING_CHECK_INTERVAL_RATIO)
+                                 # Warning channels are checked at check_interval / ratio
+                                 # Default: 4 (warning channels checked every 20m with 5m base interval)
 
 # Environment Variable Examples:
 # export AXONHUB_SERVER_PORT=8080

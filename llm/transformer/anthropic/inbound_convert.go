@@ -405,15 +405,16 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 				if thinkingContent == nil {
 					thinkingContent = lo.ToPtr("")
 				}
+
 				thinkingBlock := MessageContentBlock{
 					Type:     "thinking",
 					Thinking: thinkingContent,
 				}
-			if message.ReasoningSignature != nil {
-				thinkingBlock.Signature = message.ReasoningSignature
-			} else {
-				thinkingBlock.Signature = lo.ToPtr(generateSignature())
-			}
+				if message.ReasoningSignature != nil {
+					thinkingBlock.Signature = message.ReasoningSignature
+				} else {
+					thinkingBlock.Signature = lo.ToPtr(generateSignature())
+				}
 
 				contentBlocks = append(contentBlocks, thinkingBlock)
 			}

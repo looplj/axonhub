@@ -97,6 +97,7 @@ type CreateChannelInput struct {
 	Settings                *objects.ChannelSettings
 	OrderingWeight          *int
 	Remark                  *string
+	Endpoints               []objects.ChannelEndpoint
 }
 
 // Mutate applies the CreateChannelInput on the ChannelMutation builder.
@@ -135,6 +136,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	if v := i.Remark; v != nil {
 		m.SetRemark(*v)
 	}
+	if v := i.Endpoints; v != nil {
+		m.SetEndpoints(v)
+	}
 }
 
 // SetInput applies the change-set in the CreateChannelInput on the ChannelCreate builder.
@@ -172,6 +176,9 @@ type UpdateChannelInput struct {
 	ErrorMessage              *string
 	ClearRemark               bool
 	Remark                    *string
+	ClearEndpoints            bool
+	Endpoints                 []objects.ChannelEndpoint
+	AppendEndpoints           []objects.ChannelEndpoint
 }
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
@@ -256,6 +263,15 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.Remark; v != nil {
 		m.SetRemark(*v)
+	}
+	if i.ClearEndpoints {
+		m.ClearEndpoints()
+	}
+	if v := i.Endpoints; v != nil {
+		m.SetEndpoints(v)
+	}
+	if i.AppendEndpoints != nil {
+		m.AppendEndpoints(i.Endpoints)
 	}
 }
 

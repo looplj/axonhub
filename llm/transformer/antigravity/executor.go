@@ -246,6 +246,7 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 		// Check if we should try the next endpoint for streaming
 		// httpclient.DoStream returns nil stream and error for status >= 400
 		statusCode := 0
+
 		if err != nil {
 			var httpErr *httpclient.Error
 			if errors.As(err, &httpErr) {
@@ -265,6 +266,7 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 				slog.Int("status_code", statusCode),
 				slog.Int("attempt", i+1),
 			)
+
 			continue
 		}
 

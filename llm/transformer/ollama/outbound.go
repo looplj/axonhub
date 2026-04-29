@@ -17,6 +17,11 @@ import (
 type Config struct {
 	BaseURL        string              `json:"base_url,omitempty"`
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/api/chat").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
 }
 
 type OutboundTransformer struct {
@@ -120,6 +125,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	headers.Set("Accept", "application/json")
 
 	var authConfig *httpclient.AuthConfig
+
 	if t.config.APIKeyProvider != nil {
 		apiKey := t.config.APIKeyProvider.Get(ctx)
 		if apiKey != "" {
@@ -130,7 +136,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 	}
 
-	url := strings.TrimSuffix(t.config.BaseURL, "/") + "/api/chat"
+	base := strings.TrimSuffix(t.config.BaseURL, "/")
+	defaultPath := "/api/chat"
+
+	path := defaultPath
+	if t.config.EndpointPath != "" {
+		path = t.config.EndpointPath
+	}
+
+	url := base + path
 
 	return &httpclient.Request{
 		Method:    http.MethodPost,
@@ -146,15 +160,19 @@ func getContentString(content llm.MessageContent) string {
 	if content.Content != nil {
 		return *content.Content
 	}
+
 	if len(content.MultipleContent) > 0 {
 		var parts []string
+
 		for _, part := range content.MultipleContent {
 			if part.Type == "text" && part.Text != nil {
 				parts = append(parts, *part.Text)
 			}
 		}
+
 		return strings.Join(parts, "")
 	}
+
 	return ""
 }
 
@@ -165,6 +183,7 @@ func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
 		if opts == nil {
 			opts = &Options{}
 		}
+
 		opts.Temperature = llmReq.Temperature
 	}
 
@@ -172,6 +191,7 @@ func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
 		if opts == nil {
 			opts = &Options{}
 		}
+
 		opts.TopP = llmReq.TopP
 	}
 
@@ -179,6 +199,7 @@ func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
 		if opts == nil {
 			opts = &Options{}
 		}
+
 		numPredict := int(*llmReq.MaxTokens)
 		opts.NumPredict = &numPredict
 	}
@@ -190,10 +211,12 @@ func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
 		} else if len(llmReq.Stop.MultipleStop) > 0 {
 			stops = llmReq.Stop.MultipleStop
 		}
+
 		if len(stops) > 0 {
 			if opts == nil {
 				opts = &Options{}
 			}
+
 			opts.Stop = stops
 		}
 	}
@@ -212,7 +235,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	}
 
 	content := ""
+
 	var reasoningContent *string
+
 	if ollamaResp.Message != nil {
 		content = ollamaResp.Message.Content
 		if ollamaResp.Message.Thinking != "" {
@@ -269,7 +294,9 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 
 	// Extract content and thinking from the message
 	content := ""
+
 	var reasoningContent *string
+
 	if ollamaResp.Message != nil {
 		content = ollamaResp.Message.Content
 		if ollamaResp.Message.Thinking != "" {
@@ -296,10 +323,12 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 					if ollamaResp.Done && ollamaResp.DoneReason != "" {
 						return &ollamaResp.DoneReason
 					}
+
 					if ollamaResp.Done {
 						reason := "stop"
 						return &reason
 					}
+
 					return nil
 				}(),
 			},
@@ -326,11 +355,13 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 		return nil, llm.ResponseMeta{}, fmt.Errorf("no chunks to aggregate")
 	}
 
-	var fullContent strings.Builder
-	var fullThinking strings.Builder
-	var model string
-	var promptEvalCount, evalCount int
-	var finishReason string
+	var (
+		fullContent                strings.Builder
+		fullThinking               strings.Builder
+		model                      string
+		promptEvalCount, evalCount int
+		finishReason               string
+	)
 
 	for _, chunk := range chunks {
 		var ollamaResp ChatResponse
@@ -341,16 +372,20 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 		if ollamaResp.Model != "" {
 			model = ollamaResp.Model
 		}
+
 		if ollamaResp.Message != nil {
 			fullContent.WriteString(ollamaResp.Message.Content)
 			fullThinking.WriteString(ollamaResp.Message.Thinking)
 		}
+
 		if ollamaResp.PromptEvalCount > 0 {
 			promptEvalCount = ollamaResp.PromptEvalCount
 		}
+
 		if ollamaResp.EvalCount > 0 {
 			evalCount = ollamaResp.EvalCount
 		}
+
 		if ollamaResp.Done && ollamaResp.DoneReason != "" {
 			finishReason = ollamaResp.DoneReason
 		}
@@ -361,6 +396,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 	}
 
 	contentStr := fullContent.String()
+
 	var reasoningContent *string
 	if thinkingStr := fullThinking.String(); thinkingStr != "" {
 		reasoningContent = &thinkingStr

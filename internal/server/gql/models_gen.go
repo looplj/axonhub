@@ -438,12 +438,13 @@ type TokenStatsByAPIKey struct {
 
 // Token usage statistics grouped by channel
 type TokenStatsByChannel struct {
-	ChannelName     string `json:"channelName"`
-	InputTokens     int    `json:"inputTokens"`
-	OutputTokens    int    `json:"outputTokens"`
-	CachedTokens    int    `json:"cachedTokens"`
-	ReasoningTokens int    `json:"reasoningTokens"`
-	TotalTokens     int    `json:"totalTokens"`
+	ChannelID       objects.GUID `json:"channelId"`
+	ChannelName     string       `json:"channelName"`
+	InputTokens     int          `json:"inputTokens"`
+	OutputTokens    int          `json:"outputTokens"`
+	CachedTokens    int          `json:"cachedTokens"`
+	ReasoningTokens int          `json:"reasoningTokens"`
+	TotalTokens     int          `json:"totalTokens"`
 }
 
 // Token usage statistics grouped by model
@@ -511,6 +512,11 @@ type UpdateProjectUserInput struct {
 	Scopes        []string        `json:"scopes,omitempty"`
 	AddRoleIDs    []*objects.GUID `json:"addRoleIDs,omitempty"`
 	RemoveRoleIDs []*objects.GUID `json:"removeRoleIDs,omitempty"`
+}
+
+type UpdateQuotaEnforcementSettingsInput struct {
+	Enabled *bool                     `json:"enabled,omitempty"`
+	Mode    *biz.QuotaEnforcementMode `json:"mode,omitempty"`
 }
 
 type UpdateUserAgentPassThroughSettingsInput struct {

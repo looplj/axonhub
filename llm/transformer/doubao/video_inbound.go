@@ -24,8 +24,13 @@ func NewVideoInboundTransformer() *VideoInboundTransformer {
 	return &VideoInboundTransformer{}
 }
 
+// APIFormat returns the API format of the transformer.
+func (t *VideoInboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatSeedanceVideo
+}
+
 type seedanceCreateRequest struct {
-	Model   string           `json:"model"`
+	Model   string             `json:"model"`
 	Content []llm.VideoContent `json:"content"`
 
 	Duration   *int64 `json:"duration,omitempty"`
@@ -46,6 +51,7 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 	if httpReq == nil {
 		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
 	}
+
 	if len(httpReq.Body) == 0 {
 		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
 	}
@@ -54,6 +60,7 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 	if contentType == "" {
 		contentType = "application/json"
 	}
+
 	if !strings.Contains(strings.ToLower(contentType), "application/json") {
 		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
 	}
@@ -66,6 +73,7 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 	if strings.TrimSpace(req.Model) == "" {
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
+
 	if len(req.Content) == 0 {
 		return nil, fmt.Errorf("%w: content is required", transformer.ErrInvalidRequest)
 	}
@@ -151,15 +159,15 @@ func (t *VideoInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	}
 
 	resp := seedanceGetResponseInbound{
-		ID:         v.ID,
-		Model:      v.Model,
-		Status:     v.Status,
-		CreatedAt:  v.CreatedAt,
-		UpdatedAt:  lo.Ternary(v.CompletedAt != 0, v.CompletedAt, time.Now().Unix()),
-		Seed:       v.Seed,
-		Resolution: v.Resolution,
-		Ratio:      v.Ratio,
-		Duration:   v.Duration,
+		ID:          v.ID,
+		Model:       v.Model,
+		Status:      v.Status,
+		CreatedAt:   v.CreatedAt,
+		UpdatedAt:   lo.Ternary(v.CompletedAt != 0, v.CompletedAt, time.Now().Unix()),
+		Seed:        v.Seed,
+		Resolution:  v.Resolution,
+		Ratio:       v.Ratio,
+		Duration:    v.Duration,
 		ServiceTier: "",
 	}
 

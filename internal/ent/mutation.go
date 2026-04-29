@@ -1268,6 +1268,8 @@ type ChannelMutation struct {
 	addordering_weight           *int
 	error_message                *string
 	remark                       *string
+	endpoints                    *[]objects.ChannelEndpoint
+	appendendpoints              []objects.ChannelEndpoint
 	clearedFields                map[string]struct{}
 	requests                     map[int]struct{}
 	removedrequests              map[int]struct{}
@@ -2329,6 +2331,71 @@ func (m *ChannelMutation) ResetRemark() {
 	delete(m.clearedFields, channel.FieldRemark)
 }
 
+// SetEndpoints sets the "endpoints" field.
+func (m *ChannelMutation) SetEndpoints(oe []objects.ChannelEndpoint) {
+	m.endpoints = &oe
+	m.appendendpoints = nil
+}
+
+// Endpoints returns the value of the "endpoints" field in the mutation.
+func (m *ChannelMutation) Endpoints() (r []objects.ChannelEndpoint, exists bool) {
+	v := m.endpoints
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEndpoints returns the old "endpoints" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldEndpoints(ctx context.Context) (v []objects.ChannelEndpoint, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEndpoints is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEndpoints requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEndpoints: %w", err)
+	}
+	return oldValue.Endpoints, nil
+}
+
+// AppendEndpoints adds oe to the "endpoints" field.
+func (m *ChannelMutation) AppendEndpoints(oe []objects.ChannelEndpoint) {
+	m.appendendpoints = append(m.appendendpoints, oe...)
+}
+
+// AppendedEndpoints returns the list of values that were appended to the "endpoints" field in this mutation.
+func (m *ChannelMutation) AppendedEndpoints() ([]objects.ChannelEndpoint, bool) {
+	if len(m.appendendpoints) == 0 {
+		return nil, false
+	}
+	return m.appendendpoints, true
+}
+
+// ClearEndpoints clears the value of the "endpoints" field.
+func (m *ChannelMutation) ClearEndpoints() {
+	m.endpoints = nil
+	m.appendendpoints = nil
+	m.clearedFields[channel.FieldEndpoints] = struct{}{}
+}
+
+// EndpointsCleared returns if the "endpoints" field was cleared in this mutation.
+func (m *ChannelMutation) EndpointsCleared() bool {
+	_, ok := m.clearedFields[channel.FieldEndpoints]
+	return ok
+}
+
+// ResetEndpoints resets all changes to the "endpoints" field.
+func (m *ChannelMutation) ResetEndpoints() {
+	m.endpoints = nil
+	m.appendendpoints = nil
+	delete(m.clearedFields, channel.FieldEndpoints)
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
 func (m *ChannelMutation) AddRequestIDs(ids ...int) {
 	if m.requests == nil {
@@ -2672,7 +2739,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 21)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -2733,6 +2800,9 @@ func (m *ChannelMutation) Fields() []string {
 	if m.remark != nil {
 		fields = append(fields, channel.FieldRemark)
 	}
+	if m.endpoints != nil {
+		fields = append(fields, channel.FieldEndpoints)
+	}
 	return fields
 }
 
@@ -2781,6 +2851,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.ErrorMessage()
 	case channel.FieldRemark:
 		return m.Remark()
+	case channel.FieldEndpoints:
+		return m.Endpoints()
 	}
 	return nil, false
 }
@@ -2830,6 +2902,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldErrorMessage(ctx)
 	case channel.FieldRemark:
 		return m.OldRemark(ctx)
+	case channel.FieldEndpoints:
+		return m.OldEndpoints(ctx)
 	}
 	return nil, fmt.Errorf("unknown Channel field %s", name)
 }
@@ -2979,6 +3053,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRemark(v)
 		return nil
+	case channel.FieldEndpoints:
+		v, ok := value.([]objects.ChannelEndpoint)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEndpoints(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Channel field %s", name)
 }
@@ -3063,6 +3144,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldRemark) {
 		fields = append(fields, channel.FieldRemark)
 	}
+	if m.FieldCleared(channel.FieldEndpoints) {
+		fields = append(fields, channel.FieldEndpoints)
+	}
 	return fields
 }
 
@@ -3103,6 +3187,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldRemark:
 		m.ClearRemark()
+		return nil
+	case channel.FieldEndpoints:
+		m.ClearEndpoints()
 		return nil
 	}
 	return fmt.Errorf("unknown Channel nullable field %s", name)
@@ -3171,6 +3258,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldRemark:
 		m.ResetRemark()
+		return nil
+	case channel.FieldEndpoints:
+		m.ResetEndpoints()
 		return nil
 	}
 	return fmt.Errorf("unknown Channel field %s", name)

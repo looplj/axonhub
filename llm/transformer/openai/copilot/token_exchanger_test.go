@@ -18,6 +18,7 @@ func newTestExchanger(t *testing.T, srv *httptest.Server) *TokenExchanger {
 	t.Helper()
 
 	hc := httpclient.NewHttpClientWithClient(srv.Client())
+
 	return NewTokenExchanger(TokenExchangerParams{
 		HTTPClient: hc,
 		Endpoint:   srv.URL + "/copilot_internal/v2/token",
@@ -54,6 +55,7 @@ func TestTokenExchanger_Exchange_CacheHit(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(copilotTokenResponse{
 			Token:     "copilot_token_cached",
@@ -80,6 +82,7 @@ func TestTokenExchanger_Exchange_ExpiryBuffer(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(copilotTokenResponse{
 			Token:     "copilot_token_v" + string(rune('0'+requestCount)),

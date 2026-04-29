@@ -89,6 +89,11 @@ func NewImageVariationInboundTransformer() *ImageInboundTransformer {
 	}
 }
 
+// APIFormat returns the API format of the transformer.
+func (t *ImageInboundTransformer) APIFormat() llm.APIFormat {
+	return t.apiFormat
+}
+
 func (t *ImageInboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
@@ -146,6 +151,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 				CachedTokens: llmResp.Usage.PromptTokensDetails.CachedTokens,
 			}
 		}
+
 		if llmResp.Usage.CompletionTokensDetails != nil {
 			oaiResp.Usage.OutputTokensDetails = &ImagesResponseUsageOutputTokensDetails{
 				ReasoningTokens: llmResp.Usage.CompletionTokensDetails.ReasoningTokens,
@@ -499,6 +505,7 @@ func buildMultipartJSONBody(fields map[string]string, images []multipartFile, ma
 		for i, img := range images {
 			urls[i] = multipartFileToDataURL(img)
 		}
+
 		body["image"] = urls
 	}
 

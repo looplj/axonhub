@@ -44,6 +44,7 @@ export const tokensByAPIKeySchema = z.object({
 });
 
 export const tokensByChannelSchema = z.object({
+  channelId: z.string(),
   channelName: z.string(),
   inputTokens: z.number(),
   outputTokens: z.number(),
@@ -222,6 +223,7 @@ const TOKENS_BY_API_KEY_QUERY = `
 const TOKENS_BY_CHANNEL_QUERY = `
   query GetTokensByChannel($timeWindow: String) {
     tokenStatsByChannel(timeWindow: $timeWindow) {
+      channelId
       channelName
       inputTokens
       outputTokens

@@ -889,7 +889,7 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 
 	var results []channelExecutionStats
 
-	// Use raw SQL to aggregate execution stats by channel
+	// Step 1: Get success/failure counts from request_execution
 	err := r.client.RequestExecution.Query().
 		Modify(func(s *sql.Selector) {
 			s.Select(
@@ -1451,6 +1451,7 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type channelTokenStats struct {
+		ChannelID       int    `json:"channel_id"`
 		ChannelName     string `json:"channel_name"`
 		InputTokens     int64  `json:"input_tokens"`
 		OutputTokens    int64  `json:"output_tokens"`
@@ -1475,9 +1476,10 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
 			}
 
-			s.GroupBy(channelTable.C(channel.FieldName))
+			s.GroupBy(channelTable.C(channel.FieldID), channelTable.C(channel.FieldName))
 
 			s.Select(
+				sql.As(channelTable.C(channel.FieldID), "channel_id"),
 				sql.As(channelTable.C(channel.FieldName), "channel_name"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
@@ -1501,6 +1503,7 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 		totalTokens := item.InputTokens + item.OutputTokens
 
 		return &TokenStatsByChannel{
+			ChannelID:       objects.GUID{Type: "Channel", ID: item.ChannelID},
 			ChannelName:     item.ChannelName,
 			InputTokens:     int(item.InputTokens),
 			OutputTokens:    int(item.OutputTokens),

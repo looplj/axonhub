@@ -8,13 +8,14 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
-	"github.com/samber/lo"
 )
 
 const (
@@ -85,6 +86,7 @@ func NewOutboundTransformer(params Params) (*ClaudeCodeTransformer, error) {
 // It wraps an OutboundTransformer and adds Claude Code specific headers and system message.
 type ClaudeCodeTransformer struct {
 	transformer.Outbound
+
 	tokens          oauth.TokenGetter
 	isOfficial      bool
 	accountIdentity string
@@ -101,6 +103,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 
 	rawUA := ""
 	keepClientUA := false
+
 	var rawHeaders http.Header
 
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
@@ -121,14 +124,17 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get oauth token: %w", err)
 	}
+
 	apiKey := creds.AccessToken
 
 	// Apply structured transformations before serialization
 	reqCopy = *disableThinkingIfToolChoiceForcedStructured(&reqCopy)
+
 	reqCopy = *injectClaudeCodeSystemMessageStructured(&reqCopy)
 	if t.isOfficial {
 		reqCopy = *ensureBillingSystemMessageCCH(&reqCopy)
 	}
+
 	reqCopy = injectFakeUserIDStructured(ctx, reqCopy, t.accountIdentity)
 	if t.isOfficial && !keepClientUA {
 		reqCopy = *applyClaudeToolPrefixStructured(&reqCopy, toolPrefix)
@@ -280,6 +286,7 @@ func (s *toolPrefixStripperStream) Next() bool {
 	}
 
 	s.current = resp
+
 	return true
 }
 

@@ -44,6 +44,11 @@ func NewVideoInboundTransformer() *VideoInboundTransformer {
 	return &VideoInboundTransformer{}
 }
 
+// APIFormat returns the API format of the transformer.
+func (t *VideoInboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIVideo
+}
+
 func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
@@ -59,6 +64,7 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 	}
 
 	var req VideoCreateRequest
+
 	switch {
 	case strings.Contains(strings.ToLower(contentType), "application/json"):
 		if err := json.Unmarshal(httpReq.Body, &req); err != nil {
@@ -69,6 +75,7 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 		if err != nil {
 			return nil, err
 		}
+
 		req = *parsed
 	default:
 		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
@@ -77,6 +84,7 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 	if strings.TrimSpace(req.Model) == "" {
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
+
 	if strings.TrimSpace(req.Prompt) == "" {
 		return nil, fmt.Errorf("%w: prompt is required", transformer.ErrInvalidRequest)
 	}
@@ -117,6 +125,7 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 	}
 
 	contentType := httpReq.Headers.Get("Content-Type")
+
 	mediaType, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return nil, fmt.Errorf("%w: invalid content-type", transformer.ErrInvalidRequest)
@@ -134,6 +143,7 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 	reader := multipart.NewReader(bytes.NewReader(httpReq.Body), boundary)
 
 	fields := map[string]string{}
+
 	var referenceFile *multipartFile
 
 	for {
@@ -141,6 +151,7 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 		if errors.Is(err, io.EOF) {
 			break
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("%w: failed to read multipart", transformer.ErrInvalidRequest)
 		}
@@ -154,10 +165,13 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 			if err != nil {
 				return nil, fmt.Errorf("%w: failed to read multipart field", transformer.ErrInvalidRequest)
 			}
+
 			if len(value) > maxVideoFieldValueSize {
 				return nil, fmt.Errorf("%w: multipart field too large", transformer.ErrInvalidRequest)
 			}
+
 			fields[fieldName] = string(value)
+
 			continue
 		}
 
@@ -171,10 +185,12 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 		}
 
 		contentType := strings.TrimSpace(part.Header.Get("Content-Type"))
+
 		data, err := io.ReadAll(io.LimitReader(part, maxVideoReferenceSize+1))
 		if err != nil {
 			return nil, fmt.Errorf("%w: failed to read multipart file", transformer.ErrInvalidRequest)
 		}
+
 		if len(data) > maxVideoReferenceSize {
 			return nil, fmt.Errorf("%w: file too large", transformer.ErrInvalidRequest)
 		}
@@ -182,6 +198,7 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 		if contentType == "" {
 			contentType = http.DetectContentType(lo.Ternary(len(data) > 512, data[:512], data))
 		}
+
 		if !isAllowedImageType(contentType) {
 			return nil, fmt.Errorf("%w: unsupported image type", transformer.ErrInvalidRequest)
 		}
@@ -197,6 +214,7 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 	size := strings.TrimSpace(fields["size"])
 
 	var seconds *int64
+
 	if s := strings.TrimSpace(fields["seconds"]); s != "" {
 		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
 			seconds = &v
@@ -269,6 +287,7 @@ func (t *VideoInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	if v.CompletedAt != 0 {
 		completedAt = lo.ToPtr(v.CompletedAt)
 	}
+
 	var expiresAt *int64
 	if v.ExpiresAt != 0 {
 		expiresAt = lo.ToPtr(v.ExpiresAt)
@@ -300,6 +319,7 @@ func (t *VideoInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			Message: v.Error.Message,
 		}
 	}
+
 	if llmResp.Usage != nil {
 		oai.Usage = &OpenAIVideoUsage{
 			CompletionTokens: llmResp.Usage.CompletionTokens,

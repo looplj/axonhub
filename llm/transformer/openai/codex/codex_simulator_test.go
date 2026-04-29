@@ -187,7 +187,6 @@ func newCodexSimulatorWithToken(t *testing.T, accessToken string) *simulator.Sim
 	require.NoError(t, err)
 
 	return simulator.NewSimulator(inbound, outbound)
-
 }
 
 func newCodexChatCompletionRequest(t *testing.T) *http.Request {

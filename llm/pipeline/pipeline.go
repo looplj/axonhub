@@ -107,12 +107,12 @@ func (f *Factory) Pipeline(
 
 // pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
-	Executor              Executor
-	Inbound               transformer.Inbound
-	Outbound              transformer.Outbound
-	middlewares           []Middleware
-	maxChannelRetries     int
-	maxSameChannelRetries int
+	Executor               Executor
+	Inbound                transformer.Inbound
+	Outbound               transformer.Outbound
+	middlewares            []Middleware
+	maxChannelRetries      int
+	maxSameChannelRetries  int
 	retryDelay             time.Duration
 	emptyResponseDetection bool
 }
@@ -353,6 +353,8 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 	// Apply raw request middlewares
 	httpReq, err = p.applyRawRequestMiddlewares(ctx, httpReq)
 	if err != nil {
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to apply raw request middlewares: %w", err)
 	}
 

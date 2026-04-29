@@ -745,6 +745,7 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 	require.NoError(t, err)
 
 	var payload Request
+
 	err = json.Unmarshal(httpReq.Body, &payload)
 	require.NoError(t, err)
 	require.NotNil(t, payload.PromptCacheKey)

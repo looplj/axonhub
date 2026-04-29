@@ -86,6 +86,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 
 		// Check Body (Envelope)
 		var envelope AntigravityEnvelope
+
 		err = json.Unmarshal(httpReq.Body, &envelope)
 		require.NoError(t, err)
 
@@ -95,7 +96,9 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 		// Check Inner Request
 		// Request is interface{}, marshal and unmarshal to specific type
 		innerBytes, _ := json.Marshal(envelope.Request)
+
 		var innerReq gemini.GenerateContentRequest
+
 		err = json.Unmarshal(innerBytes, &innerReq)
 		require.NoError(t, err)
 
@@ -128,6 +131,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 
 		innerBytes, err := json.Marshal(envelope.Request)
 		require.NoError(t, err)
+
 		var innerReq gemini.GenerateContentRequest
 
 		err = json.Unmarshal(innerBytes, &innerReq)
@@ -175,6 +179,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 
 		innerBytes, err := json.Marshal(envelope.Request)
 		require.NoError(t, err)
+
 		var innerReq gemini.GenerateContentRequest
 
 		err = json.Unmarshal(innerBytes, &innerReq)
@@ -217,6 +222,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 
 		innerBytes, err := json.Marshal(envelope.Request)
 		require.NoError(t, err)
+
 		var innerReq gemini.GenerateContentRequest
 
 		err = json.Unmarshal(innerBytes, &innerReq)
@@ -258,6 +264,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 		require.NoError(t, err)
 
 		var envelope AntigravityEnvelope
+
 		err = json.Unmarshal(httpReq.Body, &envelope)
 		require.NoError(t, err)
 
@@ -267,6 +274,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 
 		// Parse as raw JSON to check exact field names
 		var rawInner map[string]any
+
 		err = json.Unmarshal(innerBytes, &rawInner)
 		require.NoError(t, err)
 
@@ -300,7 +308,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 	})
 }
 
-// TestOAuthFailureNoFallback verifies that when OAuth token retrieval fails, an error is returned (not fallback to API key)
+// TestOAuthFailureNoFallback verifies that when OAuth token retrieval fails, an error is returned (not fallback to API key).
 func TestOAuthFailureNoFallback(t *testing.T) {
 	config := Config{
 		BaseURL: "https://api.antigravity.dev",
@@ -314,6 +322,7 @@ func TestOAuthFailureNoFallback(t *testing.T) {
 			if req.URL.String() == TokenURL {
 				return nil, fmt.Errorf("token retrieval failed")
 			}
+
 			return &http.Response{StatusCode: http.StatusNotFound}, nil
 		},
 	}
@@ -336,7 +345,7 @@ func TestOAuthFailureNoFallback(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get OAuth token")
 }
 
-// TestNoAPIKeyAuthConfig verifies that AuthConfig is never set to api_key type
+// TestNoAPIKeyAuthConfig verifies that AuthConfig is never set to api_key type.
 func TestNoAPIKeyAuthConfig(t *testing.T) {
 	config := Config{
 		BaseURL: "https://api.antigravity.dev",
@@ -358,6 +367,7 @@ func TestNoAPIKeyAuthConfig(t *testing.T) {
 					Header: make(http.Header),
 				}, nil
 			}
+
 			return &http.Response{StatusCode: http.StatusNotFound}, nil
 		},
 	}
@@ -387,7 +397,7 @@ func TestNoAPIKeyAuthConfig(t *testing.T) {
 	assert.Empty(t, httpReq.Headers.Get("X-Goog-Api-Key"))
 }
 
-// TestOAuthOnlyHeaders verifies that X-Goog-Api-Key header is never sent
+// TestOAuthOnlyHeaders verifies that X-Goog-Api-Key header is never sent.
 func TestOAuthOnlyHeaders(t *testing.T) {
 	config := Config{
 		BaseURL: "https://api.antigravity.dev",
@@ -409,6 +419,7 @@ func TestOAuthOnlyHeaders(t *testing.T) {
 					Header: make(http.Header),
 				}, nil
 			}
+
 			return &http.Response{StatusCode: http.StatusNotFound}, nil
 		},
 	}

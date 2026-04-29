@@ -41,6 +41,7 @@ func ensureAssistantThinkingBlocks(messages []MessageParam) {
 		if msg.Role != "assistant" {
 			continue
 		}
+
 		if hasThinkingBlock(msg) {
 			continue
 		}
@@ -76,6 +77,7 @@ func hasThinkingBlock(msg MessageParam) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -101,9 +103,11 @@ func prepareAnthropicReasoning(reasoningContent, reasoningSignature *string, sco
 		if scope.Footprint() == "" {
 			return reasoningContent, reasoningSignature
 		}
+
 		if decoded := shared.DecodeAnthropicSignatureInScope(reasoningSignature, scope); decoded != nil {
 			return reasoningContent, decoded
 		}
+
 		return nil, nil
 	}
 

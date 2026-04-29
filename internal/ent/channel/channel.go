@@ -59,6 +59,8 @@ const (
 	FieldErrorMessage = "error_message"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
+	// FieldEndpoints holds the string denoting the endpoints field in the database.
+	FieldEndpoints = "endpoints"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
 	// EdgeExecutions holds the string denoting the executions edge name in mutations.
@@ -140,6 +142,7 @@ var Columns = []string{
 	FieldOrderingWeight,
 	FieldErrorMessage,
 	FieldRemark,
+	FieldEndpoints,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -185,6 +188,8 @@ var (
 	DefaultSettings *objects.ChannelSettings
 	// DefaultOrderingWeight holds the default value on creation for the "ordering_weight" field.
 	DefaultOrderingWeight int
+	// DefaultEndpoints holds the default value on creation for the "endpoints" field.
+	DefaultEndpoints []objects.ChannelEndpoint
 )
 
 // Type defines the type for the "type" enum field.

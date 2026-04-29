@@ -14,8 +14,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-const warningPercentRemaining = 20
-
 type SyntheticUsageResponse struct {
 	Subscription         *SyntheticSubscription         `json:"subscription,omitempty"`
 	Search               *SyntheticSearch               `json:"search,omitempty"`
@@ -39,10 +37,10 @@ type SyntheticSearchHourly struct {
 }
 
 type SyntheticWeeklyTokenLimit struct {
-	NextRegenAt       *string  `json:"nextRegenAt,omitempty"`
-	PercentRemaining  *float64 `json:"percentRemaining,omitempty"`
-	MaxCredits        *string  `json:"maxCredits,omitempty"`
-	RemainingCredits  *string  `json:"remainingCredits,omitempty"`
+	NextRegenAt      *string  `json:"nextRegenAt,omitempty"`
+	PercentRemaining *float64 `json:"percentRemaining,omitempty"`
+	MaxCredits       *string  `json:"maxCredits,omitempty"`
+	RemainingCredits *string  `json:"remainingCredits,omitempty"`
 }
 
 type SyntheticRollingFiveHourLimit struct {
@@ -107,13 +105,19 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	}
 
 	normalizedStatus := "unknown"
+	limits := buildSyntheticLimitStatuses(response.WeeklyTokenLimit, response.RollingFiveHourLimit)
 
-	if response.RollingFiveHourLimit != nil && response.RollingFiveHourLimit.Limited != nil && *response.RollingFiveHourLimit.Limited {
-		normalizedStatus = "exhausted"
-	} else if response.WeeklyTokenLimit != nil && response.WeeklyTokenLimit.PercentRemaining != nil && *response.WeeklyTokenLimit.PercentRemaining < warningPercentRemaining {
-		normalizedStatus = "warning"
-	} else if response.RollingFiveHourLimit != nil || response.WeeklyTokenLimit != nil {
+	if len(limits) > 0 {
 		normalizedStatus = "available"
+		for i := range limits {
+			if limits[i].Status == "exhausted" {
+				normalizedStatus = "exhausted"
+				break
+			}
+			if limits[i].Status == "warning" {
+				normalizedStatus = "warning"
+			}
+		}
 	}
 
 	nextResetAt := findEarliestSyntheticResetAt(
@@ -145,7 +149,8 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		ProviderType: "synthetic",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
+		Limits:       limits,
 	}, nil
 }
 
@@ -174,6 +179,74 @@ func buildSyntheticQuotaURL(baseURL string) string {
 	}
 
 	return fmt.Sprintf("%s://%s/v2/quotas", scheme, parsed.Host)
+}
+
+func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *SyntheticRollingFiveHourLimit) []QuotaLimitStatus {
+	var limits []QuotaLimitStatus
+
+	if fiveHour != nil {
+		status := "available"
+		usageRatio := 0.0
+
+		if fiveHour.Limited != nil && *fiveHour.Limited {
+			status = "exhausted"
+			usageRatio = 1.0
+		} else if fiveHour.TickPercent != nil {
+			usageRatio = *fiveHour.TickPercent
+			if usageRatio > WarningThresholdRatio {
+				status = "warning"
+			}
+		}
+
+		var resetAt *time.Time
+		if fiveHour.NextTickAt != nil {
+			if t, err := time.Parse(time.RFC3339, *fiveHour.NextTickAt); err == nil {
+				resetAt = &t
+			}
+		}
+
+		limits = append(limits, QuotaLimitStatus{
+			Type:        QuotaLimitTypeToken,
+			Status:      status,
+			UsageRatio:  usageRatio,
+			Ready:       status != "exhausted",
+			NextResetAt: resetAt,
+		})
+	}
+
+	if weekly != nil {
+		limits = append(limits, weeklyTokenLimitStatus(weekly))
+	}
+
+	return limits
+}
+
+func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus {
+	status := "available"
+	usageRatio := 0.0
+
+	if weekly.PercentRemaining != nil {
+		usageRatio = 1.0 - (*weekly.PercentRemaining / 100.0)
+		if usageRatio > WarningThresholdRatio {
+			status = "warning"
+		}
+	}
+
+	var resetAt *time.Time
+
+	if weekly.NextRegenAt != nil {
+		if t, err := time.Parse(time.RFC3339, *weekly.NextRegenAt); err == nil {
+			resetAt = &t
+		}
+	}
+
+	return QuotaLimitStatus{
+		Type:        QuotaLimitTypeToken,
+		Status:      status,
+		UsageRatio:  usageRatio,
+		Ready:       true,
+		NextResetAt: resetAt,
+	}
 }
 
 func findEarliestSyntheticResetAt(

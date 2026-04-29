@@ -32,6 +32,8 @@ func (p *pipeline) notStream(
 	// Apply raw response middlewares
 	httpResp, err = p.applyRawResponseMiddlewares(ctx, httpResp)
 	if err != nil {
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to apply raw response middlewares: %w", err)
 	}
 
@@ -41,16 +43,22 @@ func (p *pipeline) notStream(
 
 	llmResp, err := p.Outbound.TransformResponse(ctx, httpResp)
 	if err != nil {
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to transform response: %w", err)
 	}
 
 	// Apply LLM response middlewares
 	llmResp, err = p.applyLlmResponseMiddlewares(ctx, llmResp)
 	if err != nil {
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to apply llm response middlewares: %w", err)
 	}
 
 	if p.emptyResponseDetection && !hasResponseContent(llmResp) {
+		p.applyRawErrorResponseMiddlewares(ctx, ErrEmptyResponse)
+
 		return nil, ErrEmptyResponse
 	}
 
@@ -58,12 +66,16 @@ func (p *pipeline) notStream(
 
 	finalResp, err := p.Inbound.TransformResponse(ctx, llmResp)
 	if err != nil {
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to transform final response: %w", err)
 	}
 
 	// Apply inbound raw response middlewares after final response transformation
 	finalResp, err = p.applyInboundRawResponseMiddlewares(ctx, finalResp)
 	if err != nil {
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		return nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
 	}
 

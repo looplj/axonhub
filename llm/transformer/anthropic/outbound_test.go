@@ -216,6 +216,7 @@ func TestOutboundTransformer_TransformRequest_DeepSeekReasoningEffortUsesOutputC
 	require.NotNil(t, result)
 
 	var anthropicReq MessageRequest
+
 	err = json.Unmarshal(result.Body, &anthropicReq)
 	require.NoError(t, err)
 

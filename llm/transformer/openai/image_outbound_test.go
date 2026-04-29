@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -257,6 +258,70 @@ func TestBuildImageGenerationAPIRequest_RoutesToGenerate(t *testing.T) {
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", httpReq.URL)
 	assert.Equal(t, string(llm.APIFormatOpenAIImageGeneration), httpReq.APIFormat)
 	assert.Equal(t, "dall-e-3", httpReq.TransformerMetadata["model"])
+}
+
+func TestImageRequests_UseCustomEndpointPath(t *testing.T) {
+	imageData, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		apiFormat   llm.APIFormat
+		endpoint    string
+		image       *llm.ImageRequest
+		expectedURL string
+	}{
+		{
+			name:      "generation",
+			apiFormat: llm.APIFormatOpenAIImageGeneration,
+			endpoint:  "/custom/images/generations",
+			image: &llm.ImageRequest{
+				Prompt: "Generate a skyline",
+			},
+			expectedURL: "https://custom.api.com/custom/images/generations",
+		},
+		{
+			name:      "edit",
+			apiFormat: llm.APIFormatOpenAIImageEdit,
+			endpoint:  "/custom/images/edits",
+			image: &llm.ImageRequest{
+				Prompt: "Edit the image",
+				Images: [][]byte{imageData},
+			},
+			expectedURL: "https://custom.api.com/custom/images/edits",
+		},
+		{
+			name:      "variation",
+			apiFormat: llm.APIFormatOpenAIImageVariation,
+			endpoint:  "/custom/images/variations",
+			image: &llm.ImageRequest{
+				Images: [][]byte{imageData},
+			},
+			expectedURL: "https://custom.api.com/custom/images/variations",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformerInterface, err := NewOutboundTransformerWithConfig(&Config{
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom.api.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+				EndpointPath:   tt.endpoint,
+			})
+			require.NoError(t, err)
+
+			transformer := transformerInterface.(*OutboundTransformer)
+			httpReq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+				Model:       "gpt-image-1",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   tt.apiFormat,
+				Image:       tt.image,
+			})
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedURL, httpReq.URL)
+		})
+	}
 }
 
 func TestBuildImageGenerationAPIRequest_RoutesToGeneration(t *testing.T) {

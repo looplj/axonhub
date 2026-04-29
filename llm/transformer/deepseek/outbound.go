@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
-	"github.com/samber/lo"
 )
 
 // Config holds all configuration for the DeepSeek outbound transformer.
@@ -106,6 +107,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// DeepSeek defaults thinking to enabled unless explicitly disabled.
 	thinkingDisabled := llmReq.ReasoningEffort == "none"
+
 	dsReq.Thinking = &Thinking{
 		Type: "enabled",
 	}

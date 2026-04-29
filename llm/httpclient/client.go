@@ -138,6 +138,7 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 	}
 
 	client := &http.Client{}
+
 	if options.insecureSkipVerify {
 		var transport *http.Transport
 		if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
@@ -163,6 +164,7 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 		} else {
 			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
 		}
+
 		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
 		client.Transport = transport
 	}

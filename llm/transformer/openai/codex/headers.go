@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	SessionHeader          = "Session_id"
-	TurnMetadataHeader     = "X-Codex-Turn-Metadata"
-	WindowIDHeader         = "X-Codex-Window-Id"
-	ClientRequestIDHeader  = "X-Client-Request-Id"
-	BetaFeaturesHeader     = "X-Codex-Beta-Features"
+	SessionHeader         = "Session_id"
+	TurnMetadataHeader    = "X-Codex-Turn-Metadata"
+	WindowIDHeader        = "X-Codex-Window-Id"
+	ClientRequestIDHeader = "X-Client-Request-Id"
+	BetaFeaturesHeader    = "X-Codex-Beta-Features"
 )
 
 type TurnMetadata struct {

@@ -69,6 +69,7 @@ func (t *OutboundTransformer) TransformResponse(
 	if httpResp.StatusCode >= 400 {
 		// Read response body for diagnostic details
 		body := string(httpResp.Body)
+
 		var errResp struct {
 			Error string `json:"error"`
 		}
@@ -79,6 +80,7 @@ func (t *OutboundTransformer) TransformResponse(
 		if len(body) > 0 {
 			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, body)
 		}
+
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
 

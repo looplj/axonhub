@@ -114,6 +114,12 @@ models:
   CapabilityPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.CapabilityPolicy
+  ChannelEndpoint:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelEndpoint
+  ChannelEndpointInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelEndpoint
   ChannelPolicies:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelPolicies
@@ -147,6 +153,9 @@ models:
   BulkCreateChannelsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.BulkCreateChannelsInput
+  SaveChannelEndpointsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SaveChannelEndpointsInput
   QueryChannelInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QueryChannelsInput
@@ -606,6 +615,9 @@ models:
   AutoSyncFrequency:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoSyncFrequency
+  QuotaEnforcementMode:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
   PromptSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptSettings

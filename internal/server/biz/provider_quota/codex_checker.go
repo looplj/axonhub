@@ -140,12 +140,26 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["code_review_rate_limit"] = convertRateLimitToMap(response.CodeReviewRateLimit)
 	}
 
+	usageRatio := 0.0
+	if normalizedStatus == "exhausted" {
+		usageRatio = 1.0
+	}
+
+	limits := []QuotaLimitStatus{
+		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt),
+	}
+
+	if primaryWindowUsedPercent != nil {
+		limits[0].UsageRatio = *primaryWindowUsedPercent / 100.0
+	}
+
 	return QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "codex",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
+		Limits:       limits,
 	}, nil
 }
 

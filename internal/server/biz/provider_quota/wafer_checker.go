@@ -154,12 +154,24 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["total_tokens"] = *response.TotalTokens
 	}
 
+	var usageRatio float64
+	if normalizedStatus == "exhausted" && response.CurrentPeriodUsedPercent == nil {
+		usageRatio = 1.0
+	} else {
+		usageRatio = getUsageRatio(response.CurrentPeriodUsedPercent)
+	}
+
+	limits := []QuotaLimitStatus{
+		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt),
+	}
+
 	return QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "wafer",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
-		Ready:        normalizedStatus == "available" || normalizedStatus == "warning",
+		Ready:        IsReadyStatus(normalizedStatus),
+		Limits:       limits,
 	}, nil
 }
 
@@ -169,6 +181,13 @@ func (c *WaferQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	}
 
 	return DetectProviderFromURL(ch.BaseURL) == "wafer"
+}
+
+func getUsageRatio(percent *float64) float64 {
+	if percent == nil {
+		return 0.0
+	}
+	return *percent / 100.0
 }
 
 func buildWaferQuotaURL(baseURL string) string {

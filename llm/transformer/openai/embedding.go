@@ -95,6 +95,10 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 // buildEmbeddingURL constructs the embedding API URL.
 func (t *OutboundTransformer) buildEmbeddingURL() string {
+	if t.config.EndpointPath != "" {
+		return t.config.BaseURL + t.config.EndpointPath
+	}
+
 	return t.config.BaseURL + "/embeddings"
 }
 

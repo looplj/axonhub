@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestExecutor_RetryOnNilResponseWithError(t *testing.T) {
@@ -60,6 +61,7 @@ func TestExecutor_NoRetryOnNonRetryableNilResponseWithError(t *testing.T) {
 	mockClient := &mockHTTPClient{
 		doFunc: func(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
 			callCount++
+
 			return nil, &httpclient.Error{
 				Method:     request.Method,
 				URL:        request.URL,

@@ -148,6 +148,7 @@ func TestOutboundTransformer_StreamTransformation_UsesFinalPromptTokensWhenPrese
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	})
 	require.NoError(t, err)
+
 	stopReason := "end_turn"
 
 	messageStartData, err := json.Marshal(StreamEvent{

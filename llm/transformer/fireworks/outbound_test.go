@@ -166,9 +166,11 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				if tt.errContains != "" {
 					assert.Contains(t, err.Error(), tt.errContains)
 				}
+
 				return
 			}
 
@@ -189,6 +191,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create transformer: %v", err)
 		}
+
 		return transformerInterface.(*OutboundTransformer)
 	}
 
@@ -305,9 +308,11 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					t.Errorf("TransformRequest() expected error but got none")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformRequest() error = %v, want error containing %v", err, tt.errContains)
 				}
+
 				return
 			}
 
@@ -328,6 +333,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			// Validate that body can be unmarshaled back to original request
 			if len(result.Body) > 0 {
 				var unmarshaled openai.Request
+
 				err := json.Unmarshal(result.Body, &unmarshaled)
 				if err != nil {
 					t.Errorf("TransformRequest() body is not valid JSON: %v", err)
@@ -482,9 +488,11 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 					t.Errorf("TransformResponse() expected error but got none")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformResponse() error = %v, want error containing %v", err, tt.errContains)
 				}
+
 				return
 			}
 
@@ -543,5 +551,6 @@ func mustMarshal(v any) []byte {
 	if err != nil {
 		panic(err)
 	}
+
 	return data
 }

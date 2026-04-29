@@ -100,8 +100,8 @@ type StreamEvent struct {
 	PartialImageIndex *int   `json:"partial_image_index,omitempty"`
 
 	// For error events
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+	Code    string  `json:"code,omitempty"`
+	Message string  `json:"message,omitempty"`
 	Param   *string `json:"param,omitempty"`
 }
 

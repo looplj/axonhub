@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -32,8 +33,9 @@ func (p *StreamProcessor) Recv(ctx context.Context) (*llm.Response, error) {
 	for {
 		line, err := p.reader.ReadBytes('\n')
 		handleEOF := false
+
 		if err != nil {
-			if err == io.EOF && len(line) > 0 {
+			if errors.Is(err, io.EOF) && len(line) > 0 {
 				// We have a partial line (final chunk without newline) - process it
 				handleEOF = true
 			} else {
@@ -47,6 +49,7 @@ func (p *StreamProcessor) Recv(ctx context.Context) (*llm.Response, error) {
 			if handleEOF {
 				return nil, io.EOF
 			}
+
 			continue
 		}
 
@@ -54,6 +57,7 @@ func (p *StreamProcessor) Recv(ctx context.Context) (*llm.Response, error) {
 			if handleEOF {
 				return nil, io.EOF
 			}
+
 			continue
 		}
 

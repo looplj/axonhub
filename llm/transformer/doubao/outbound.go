@@ -281,6 +281,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(llmReq *llm.Request
 	if request.TransformerMetadata == nil {
 		request.TransformerMetadata = map[string]any{}
 	}
+
 	request.TransformerMetadata["model"] = llmReq.Model
 
 	return request, nil

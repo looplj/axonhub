@@ -335,12 +335,23 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	entry := candidate.Models[p.state.CurrentModelIndex]
 
 	p.state.CurrentCandidate = candidate
-	p.wrapped = candidate.Channel.Outbound
+
+	// Select outbound based on candidate's endpoint API format
+	if candidate.APIFormat != "" && candidate.Channel.Outbounds != nil {
+		if out, ok := candidate.Channel.Outbounds[candidate.APIFormat]; ok {
+			p.wrapped = out
+		} else {
+			p.wrapped = candidate.Channel.Outbound
+		}
+	} else {
+		p.wrapped = candidate.Channel.Outbound
+	}
 
 	log.Debug(ctx, "using candidate",
 		log.String("channel", candidate.Channel.Name),
 		log.String("request_model", p.state.OriginalModel),
 		log.String("actual_model", entry.ActualModel),
+		log.String("api_format", candidate.APIFormat),
 	)
 
 	llmRequest.Model = entry.ActualModel

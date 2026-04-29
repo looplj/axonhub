@@ -36,6 +36,7 @@ func DecodeAnthropicSignature(signature *string, footprint string) *string {
 	}
 
 	decoded := (*signature)[prefixLength:]
+
 	return &decoded
 }
 

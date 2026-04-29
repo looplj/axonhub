@@ -80,9 +80,9 @@ type VideoResponse struct {
 	// Prompt is a human-readable prompt for convenience.
 	Prompt string `json:"prompt,omitempty"`
 
-	Duration *int64 `json:"duration,omitempty"`
-	Size     string `json:"size,omitempty"`
-	Ratio    string `json:"ratio,omitempty"`
+	Duration   *int64 `json:"duration,omitempty"`
+	Size       string `json:"size,omitempty"`
+	Ratio      string `json:"ratio,omitempty"`
 	Resolution string `json:"resolution,omitempty"`
 
 	FPS  *int64 `json:"fps,omitempty"`
@@ -95,9 +95,7 @@ type VideoResponse struct {
 	ExpiresAt   int64 `json:"expires_at,omitempty"`
 }
 
-
 type VideoError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
-

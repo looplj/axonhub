@@ -71,6 +71,7 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := tt.response.ToOpenAIResponse()
 			assert.Len(t, resp.Choices, tt.wantLen)
+
 			if tt.validate != nil {
 				tt.validate(t, resp)
 			}

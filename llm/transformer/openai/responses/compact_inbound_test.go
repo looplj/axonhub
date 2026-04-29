@@ -154,6 +154,7 @@ func TestCompactInboundTransformer_TransformResponse(t *testing.T) {
 		assert.Equal(t, http.StatusOK, httpResp.StatusCode)
 
 		var compactResp CompactAPIResponse
+
 		err = json.Unmarshal(httpResp.Body, &compactResp)
 		require.NoError(t, err)
 
@@ -208,6 +209,7 @@ func TestCompactInboundTransformer_TransformResponse(t *testing.T) {
 		require.NoError(t, err)
 
 		var compactResp CompactAPIResponse
+
 		err = json.Unmarshal(httpResp.Body, &compactResp)
 		require.NoError(t, err)
 

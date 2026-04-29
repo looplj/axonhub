@@ -51,6 +51,7 @@ func withReasoningSignature(sig string) func(*llm.Response) {
 		if r.Choices[0].Delta == nil {
 			r.Choices[0].Delta = &llm.Message{Role: "assistant"}
 		}
+
 		r.Choices[0].Delta.ReasoningSignature = lo.ToPtr(sig)
 	}
 }
@@ -69,6 +70,7 @@ func withToolCall(index int, id, name, args string) func(*llm.Response) {
 		if r.Choices[0].Delta == nil {
 			r.Choices[0].Delta = &llm.Message{Role: "assistant"}
 		}
+
 		r.Choices[0].Delta.ToolCalls = append(r.Choices[0].Delta.ToolCalls, llm.ToolCall{
 			Index: index,
 			ID:    id,

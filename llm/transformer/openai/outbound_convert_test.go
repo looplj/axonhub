@@ -77,7 +77,7 @@ func TestRequestFromLLM(t *testing.T) {
 
 func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
 	req := RequestFromLLM(&llm.Request{
-		Model: "gpt-4o",
+		Model:    "gpt-4o",
 		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
 		Tools: []llm.Tool{
 			{

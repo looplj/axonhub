@@ -90,9 +90,11 @@ func ensureSummaryPart(item *aggregatedItem, summaryIndex int) *aggregatedSummar
 		if part.Text == nil {
 			part.Text = &strings.Builder{}
 		}
+
 		if part.Type == "" {
 			part.Type = "summary_text"
 		}
+
 		return part
 	}
 
@@ -101,6 +103,7 @@ func ensureSummaryPart(item *aggregatedItem, summaryIndex int) *aggregatedSummar
 		Text: &strings.Builder{},
 	}
 	item.SummaryParts[summaryIndex] = part
+
 	return part
 }
 
@@ -221,6 +224,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		if ev.Item != nil && ev.Item.ID != "" {
 			item = a.outputItemsByID[ev.Item.ID]
 		}
+
 		if item == nil {
 			item = newAggregatedItem()
 			item.Status = "in_progress"
@@ -330,20 +334,24 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		if item == nil {
 			item = newAggregatedItem()
 			item.Type = "reasoning"
+
 			item.Status = "in_progress"
 			if ev.ItemID != nil && *ev.ItemID != "" {
 				item.ID = *ev.ItemID
 				a.outputItemsByID[item.ID] = item
 			}
+
 			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
 		}
 
 		summaryIndex := lo.FromPtr(ev.SummaryIndex)
 		part := ensureSummaryPart(item, summaryIndex)
+
 		if ev.Part != nil {
 			if ev.Part.Type != "" {
 				part.Type = ev.Part.Type
 			}
+
 			if ev.Part.Text != nil {
 				part.Text.WriteString(*ev.Part.Text)
 			}
@@ -354,24 +362,29 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		if item == nil {
 			item = newAggregatedItem()
 			item.Type = "reasoning"
+
 			item.Status = "in_progress"
 			if ev.ItemID != nil && *ev.ItemID != "" {
 				item.ID = *ev.ItemID
 				a.outputItemsByID[item.ID] = item
 			}
+
 			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
 		}
 
 		summaryIndex := lo.FromPtr(ev.SummaryIndex)
 		part := ensureSummaryPart(item, summaryIndex)
+
 		if ev.Part != nil {
 			if ev.Part.Type != "" {
 				part.Type = ev.Part.Type
 			}
+
 			if ev.Part.Text != nil {
 				applyDoneText(part.Text, *ev.Part.Text)
 			}
 		}
+
 		part.Final = true
 
 	case StreamEventTypeReasoningSummaryTextDelta:
@@ -379,13 +392,16 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		if item == nil {
 			item = newAggregatedItem()
 			item.Type = "reasoning"
+
 			item.Status = "in_progress"
 			if ev.ItemID != nil && *ev.ItemID != "" {
 				item.ID = *ev.ItemID
 				a.outputItemsByID[item.ID] = item
 			}
+
 			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
 		}
+
 		summaryIndex := lo.FromPtr(ev.SummaryIndex)
 		part := ensureSummaryPart(item, summaryIndex)
 		part.Text.WriteString(ev.Delta)
@@ -395,13 +411,16 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		if item == nil {
 			item = newAggregatedItem()
 			item.Type = "reasoning"
+
 			item.Status = "in_progress"
 			if ev.ItemID != nil && *ev.ItemID != "" {
 				item.ID = *ev.ItemID
 				a.outputItemsByID[item.ID] = item
 			}
+
 			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
 		}
+
 		summaryIndex := lo.FromPtr(ev.SummaryIndex)
 		part := ensureSummaryPart(item, summaryIndex)
 		applyDoneText(part.Text, ev.Text)
@@ -414,6 +433,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			if item == nil {
 				item = a.lastItemByOutputIndex(ev.OutputIndex)
 			}
+
 			if item != nil {
 				if ev.Item.Status != nil {
 					item.Status = *ev.Item.Status
@@ -526,6 +546,7 @@ func (a *streamAggregator) buildResponse() *Response {
 
 			case "reasoning":
 				var summary []ReasoningSummary
+
 				if len(item.SummaryParts) > 0 {
 					maxSummaryIndex := -1
 					for idx := range item.SummaryParts {
@@ -551,6 +572,7 @@ func (a *streamAggregator) buildResponse() *Response {
 						if sp.Text != nil {
 							text = sp.Text.String()
 						}
+
 						summary = append(summary, ReasoningSummary{Type: summaryType, Text: text})
 					}
 				}

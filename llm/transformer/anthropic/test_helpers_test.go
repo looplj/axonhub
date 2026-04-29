@@ -24,6 +24,7 @@ var ignoreCacheControlWithNormalize = append(
 			mc.MultipleContent[0].Type == "text" && mc.MultipleContent[0].Text != nil {
 			return MessageContent{Content: mc.MultipleContent[0].Text}
 		}
+
 		return mc
 	}),
 	cmp.Transformer("normalizeSystemPrompt", func(sp *SystemPrompt) *SystemPrompt {
@@ -36,6 +37,7 @@ var ignoreCacheControlWithNormalize = append(
 			text := sp.MultiplePrompts[0].Text
 			return &SystemPrompt{Prompt: &text}
 		}
+
 		return sp
 	}),
 )

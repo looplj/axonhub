@@ -70,6 +70,21 @@ type ProxyConfig {
   password: String
 }
 
+type ChannelEndpoint {
+  apiFormat: String!
+  path: String
+}
+
+input ChannelEndpointInput {
+  apiFormat: String!
+  path: String
+}
+
+input SaveChannelEndpointsInput {
+  channelID: ID!
+  endpoints: [ChannelEndpointInput!]!
+}
+
 input ProxyConfigInput {
   type: ProxyType!
   url: String
@@ -720,6 +735,7 @@ type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   bulkCreateChannels(input: BulkCreateChannelsInput!): [Channel!]!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
+  saveChannelEndpoints(input: SaveChannelEndpointsInput!): Channel!
   updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
   deleteChannel(id: ID!): Boolean!
   bulkArchiveChannels(ids: [ID!]!): Boolean!
