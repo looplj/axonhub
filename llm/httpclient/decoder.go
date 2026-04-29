@@ -39,16 +39,25 @@ func GetDecoder(contentType string) (StreamDecoderFactory, bool) {
 	return factory, exists
 }
 
+// recvResult carries the outcome of a single Recv() call.
+type recvResult struct {
+	event sse.Event
+	err   error
+}
+
 // NewDefaultSSEDecoder creates a new default SSE decoder.
 func NewDefaultSSEDecoder(ctx context.Context, rc io.ReadCloser) StreamDecoder {
 	ctx, cancel := context.WithCancel(ctx)
-	return &defaultSSEDecoder{
-		done: ctx.Done(),
+	d := &defaultSSEDecoder{
+		done:   ctx.Done(),
 		cancel: cancel,
 		sseStream: sse.NewStreamWithConfig(rc, &sse.StreamConfig{
 			MaxEventSize: 32 * 1024 * 1024,
 		}),
+		recvCh: make(chan recvResult, 1),
 	}
+	go d.recvLoop()
+	return d
 }
 
 // Ensure defaultSSEDecoder implements StreamDecoder.
@@ -59,6 +68,7 @@ type defaultSSEDecoder struct {
 	done      <-chan struct{}
 	cancel    context.CancelFunc
 	sseStream *sse.Stream
+	recvCh    chan recvResult
 	current   *StreamEvent
 	err       error
 
@@ -66,6 +76,23 @@ type defaultSSEDecoder struct {
 	// Close is made idempotent (safe to call multiple times sequentially).
 	closed   bool
 	closeErr error
+}
+
+// recvLoop runs in a dedicated goroutine, forwarding Recv() results to recvCh.
+// It exits when s.done is cancelled or when Recv() returns an error/EOF.
+func (s *defaultSSEDecoder) recvLoop() {
+	defer close(s.recvCh)
+	for {
+		event, err := s.sseStream.Recv()
+		select {
+		case <-s.done:
+			return
+		case s.recvCh <- recvResult{event: event, err: err}:
+			if err != nil {
+				return
+			}
+		}
+	}
 }
 
 // Next advances to the next event in the stream.
@@ -78,51 +105,40 @@ func (s *defaultSSEDecoder) Next() bool {
 		return false
 	}
 
-	// Check context cancellation
+	// Check context cancellation before consuming from channel.
 	select {
 	case <-s.done:
 		s.err = context.Canceled
 		_ = s.Close()
-
 		return false
 	default:
 	}
 
-	// Receive next event from go-sse Stream.
-	// Recv() blocks on I/O, so we run it in a goroutine and select
-	// against s.done to allow context cancellation to interrupt.
-	type recvResult struct {
-		event sse.Event
-		err   error
-	}
-	ch := make(chan recvResult, 1)
-	go func() {
-		event, err := s.sseStream.Recv()
-		ch <- recvResult{event: event, err: err}
-	}()
-
-	select {
-	case <-s.done:
-		s.err = context.Canceled
-		_ = s.Close()
+	result, ok := <-s.recvCh
+	if !ok {
+		// Channel closed — stream ended or context cancelled.
+		if s.err == nil {
+			s.err = io.EOF
+		}
 		return false
-	case result := <-ch:
-		if result.err != nil {
-			if errors.Is(result.err, io.EOF) {
-				_ = s.Close()
-				return false
-			}
-			s.err = result.err
+	}
+
+	if result.err != nil {
+		if errors.Is(result.err, io.EOF) {
 			_ = s.Close()
 			return false
 		}
-		s.current = &StreamEvent{
-			LastEventID: result.event.LastEventID,
-			Type:        result.event.Type,
-			Data:        []byte(result.event.Data),
-		}
-		return true
+		s.err = result.err
+		_ = s.Close()
+		return false
 	}
+
+	s.current = &StreamEvent{
+		LastEventID: result.event.LastEventID,
+		Type:        result.event.Type,
+		Data:        []byte(result.event.Data),
+	}
+	return true
 }
 
 // Current returns the current event data.
