@@ -1,5 +1,6 @@
 import { useModels } from '../context/models-context';
 import { ModelsActionDialog } from './models-action-dialog';
+import { ModelsArchiveDialog } from './models-archive-dialog';
 import { ModelsAssociationDialog } from './models-association-dialog';
 import { ModelsBatchCreateDialog } from './models-batch-create-dialog';
 import { ModelsBulkDisableDialog } from './models-bulk-disable-dialog';
@@ -16,6 +17,7 @@ export function ModelsDialogs() {
       {(open === 'create' || open === 'edit') && <ModelsActionDialog />}
       {open === 'batchCreate' && <ModelsBatchCreateDialog />}
       {open === 'delete' && <ModelsDeleteDialog />}
+      {open === 'archive' && <ModelsArchiveDialog />}
       {open === 'association' && <ModelsAssociationDialog />}
       {open === 'settings' && <ModelSettingsDialog />}
       {open === 'unassociated' && <ModelsUnassociatedDialog />}
