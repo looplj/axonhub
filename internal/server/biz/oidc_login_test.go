@@ -65,9 +65,10 @@ func TestResolveUser_AccountFirstAndMultipleOIDC(t *testing.T) {
 	// 2. Test Account First (Matching by Email): Existing user, new OIDC provider
 	p2 := &oidcProvider{
 		config: OIDCProvider{
-			ID:        "github",
-			Name:      "github",
-			IssuerURL: "https://github.com",
+			ID:              "github",
+			Name:            "github",
+			IssuerURL:       "https://github.com",
+			AutoLinkByEmail: true,
 		},
 	}
 	subject2 := "sub-github-1"
