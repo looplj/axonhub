@@ -22,6 +22,9 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 )
 
+// TokenTTL is the default lifetime for JWT tokens and their revocation records.
+const TokenTTL = 24 * time.Hour
+
 // TokenRevocationService maintains an in-memory revocation list for JWT tokens.
 type TokenRevocationService struct {
 	mu       sync.RWMutex
@@ -42,7 +45,7 @@ func NewTokenRevocationService() *TokenRevocationService {
 func (s *TokenRevocationService) Revoke(jti string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.revoked[jti] = time.Now().Add(24 * time.Hour)
+	s.revoked[jti] = time.Now().Add(TokenTTL)
 }
 
 // IsRevoked checks whether a token jti has been revoked.
@@ -166,7 +169,7 @@ func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (str
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"exp":     time.Now().Add(TokenTTL).Unix(),
 		"jti":     jti,
 	})
 
