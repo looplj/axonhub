@@ -3,8 +3,6 @@ package orchestrator
 import (
 	"context"
 
-	"github.com/zhenzou/executors"
-
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -97,7 +95,6 @@ func newTestChannelService(client *ent.Client) *biz.ChannelService {
 	})
 
 	return biz.NewChannelService(biz.ChannelServiceParams{
-		Executor:      executors.NewPoolScheduleExecutor(),
 		Ent:           client,
 		SystemService: systemService,
 	})
@@ -113,7 +110,6 @@ func newTestRequestService(client *ent.Client) *biz.RequestService {
 		Client:        client,
 		SystemService: systemService,
 		CacheConfig:   xcache.Config{},
-		Executor:      executors.NewPoolScheduleExecutor(),
 	})
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)

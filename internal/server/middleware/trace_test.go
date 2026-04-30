@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
-	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -39,7 +38,6 @@ func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Trac
 		Client:        client,
 		SystemService: systemService,
 		CacheConfig:   xcache.Config{},
-		Executor:      executors.NewPoolScheduleExecutor(),
 	})
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)

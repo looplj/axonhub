@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -29,7 +28,6 @@ func newTestChannelServiceForChannels(client *ent.Client) *biz.ChannelService {
 	systemService := newTestSystemService(client)
 
 	return biz.NewChannelService(biz.ChannelServiceParams{
-		Executor:      executors.NewPoolScheduleExecutor(),
 		Ent:           client,
 		SystemService: systemService,
 	})

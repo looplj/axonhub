@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -47,7 +46,6 @@ func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *en
 		DataStorageServiceParams{
 			SystemService: systemService,
 			CacheConfig:   xcache.Config{},
-			Executor:      executors.NewPoolScheduleExecutor(),
 			Client:        client,
 		},
 	)

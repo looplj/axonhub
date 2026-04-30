@@ -143,6 +143,8 @@ func (r *mutationResolver) UpdateSystemGeneralSettings(ctx context.Context, inpu
 		return false, fmt.Errorf("failed to update general settings: %w", err)
 	}
 
+	r.backupService.Reschedule(ctx, r.scheduler)
+
 	return true, nil
 }
 
@@ -152,6 +154,8 @@ func (r *mutationResolver) UpdateVideoStorageSettings(ctx context.Context, input
 	if err != nil {
 		return false, fmt.Errorf("failed to update video storage settings: %w", err)
 	}
+
+	r.videoWorker.Reschedule(ctx, r.scheduler)
 
 	return true, nil
 }

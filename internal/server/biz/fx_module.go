@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"go.uber.org/fx"
+
+	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
 var Module = fx.Module("biz",
@@ -30,16 +32,6 @@ var Module = fx.Module("biz",
 	fx.Provide(NewQuotaService),
 	fx.Provide(NewProviderQuotaService),
 	fx.Provide(NewOIDCService),
-	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService) {
-		lc.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				return svc.Start(ctx)
-			},
-			OnStop: func(ctx context.Context) error {
-				return svc.Stop(ctx)
-			},
-		})
-	}),
 	fx.Invoke(func(lc fx.Lifecycle, svc *APIKeyService) {
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
@@ -65,21 +57,35 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
-	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelService) {
+	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return svc.RegisterScheduledTasks(ctx, s)
+			},
 			OnStop: func(ctx context.Context) error {
 				svc.Stop()
 				return nil
 			},
 		})
 	}),
-	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelProbeService) {
+	fx.Invoke(func(lc fx.Lifecycle, svc *DataStorageService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
-				return svc.Start(ctx)
+				return svc.RegisterScheduledTasks(ctx, s)
 			},
-			OnStop: func(ctx context.Context) error {
-				return svc.Stop(ctx)
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelProbeService, s *scheduler.Scheduler) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return svc.RegisterScheduledTasks(ctx, s)
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *PromptService, s *scheduler.Scheduler) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return svc.RegisterScheduledTasks(ctx, s)
 			},
 		})
 	}),
@@ -88,6 +94,13 @@ var Module = fx.Module("biz",
 			OnStop: func(ctx context.Context) error {
 				svc.Stop()
 				return nil
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService, s *scheduler.Scheduler) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return svc.RegisterScheduledTasks(ctx, s)
 			},
 		})
 	}),

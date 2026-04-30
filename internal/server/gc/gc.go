@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -21,10 +20,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
-// defaultBatchSize is the default batch size for cleanup operations
-// This can be overridden for testing.
 var defaultBatchSize = 500
 
 type Config struct {
@@ -33,14 +31,11 @@ type Config struct {
 	VacuumFull    bool   `json:"vacuum_full" yaml:"vacuum_full" conf:"vacuum_full"`
 }
 
-// Worker handles garbage collection and cleanup operations.
 type Worker struct {
 	SystemService      *biz.SystemService
 	DataStorageService *biz.DataStorageService
-	Executor           executors.ScheduledExecutor
 	Ent                *ent.Client
 	Config             Config
-	CancelFunc         context.CancelFunc
 }
 
 type Params struct {
@@ -52,31 +47,37 @@ type Params struct {
 	Client             *ent.Client
 }
 
-// NewWorker creates a new GCService with daily cleanup scheduling.
 func NewWorker(params Params) *Worker {
-	return &Worker{
+	w := &Worker{
 		SystemService:      params.SystemService,
 		DataStorageService: params.DataStorageService,
-		Executor:           executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
 		Ent:                params.Client,
 		Config:             params.Config,
 	}
+
+	return w
 }
 
-// deleteInBatches deletes records in batches to avoid memory issues
-// This function repeatedly executes the delete query until no more records are deleted.
+func (w *Worker) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
+	return s.Register(ctx, scheduler.TaskSpec{
+		Name:        "gc",
+		Description: "Garbage collection — cleanup old requests, traces, usage logs, and channel probes",
+		CronExpr:    w.Config.CRON,
+		Timezone:    "UTC",
+	}, w.runCleanupWithSystemContext)
+}
+
+// deleteInBatches deletes records in batches to avoid memory issues.
 func (w *Worker) deleteInBatches(ctx context.Context, deleteFunc func() (int, error)) (int, error) {
 	totalDeleted := 0
 
 	for {
-		// Delete a batch of records
 		deleted, err := deleteFunc()
 		if err != nil {
 			return totalDeleted, fmt.Errorf("failed to delete batch: %w", err)
 		}
 
 		if deleted == 0 {
-			// No more records to delete
 			break
 		}
 
@@ -87,43 +88,9 @@ func (w *Worker) deleteInBatches(ctx context.Context, deleteFunc func() (int, er
 	return totalDeleted, nil
 }
 
-// getBatchSize returns the appropriate batch size for cleanup operations
-// Returns 10 for test environment, 500 for production.
+// getBatchSize returns the appropriate batch size for cleanup operations.
 func (w *Worker) getBatchSize() int {
-	// Check if running in test mode by checking context or environment
-	// For now, use a default batch size that can be overridden via config if needed
-	// In production, this should return 500
-	// In tests, it can be overridden to 10
 	return defaultBatchSize
-}
-
-func (w *Worker) Start(ctx context.Context) error {
-	cancelFunc, err := w.Executor.ScheduleFuncAtCronRate(
-		w.runCleanupWithSystemContext,
-		executors.CRONRule{Expr: w.Config.CRON},
-	)
-	if err != nil {
-		return err
-	}
-
-	w.CancelFunc = cancelFunc
-
-	log.Info(ctx, "GC worker started", log.String("cron", w.Config.CRON),
-		log.Bool("cancel_func", w.CancelFunc != nil),
-		log.Bool("ent", w.Ent != nil),
-		log.Bool("executor", w.Executor != nil),
-		log.Bool("system_service", w.SystemService != nil),
-	)
-
-	return nil
-}
-
-func (w *Worker) Stop(ctx context.Context) error {
-	if w.CancelFunc != nil {
-		w.CancelFunc()
-	}
-
-	return w.Executor.Shutdown(ctx)
 }
 
 // runCleanup executes the cleanup process based on storage policy.
@@ -133,7 +100,6 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 	ctx = ent.NewContext(ctx, w.Ent)
 	ctx = schematype.SkipSoftDelete(ctx)
 
-	// Get storage policy
 	policy, err := w.SystemService.StoragePolicy(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to get storage policy for cleanup", log.Cause(err))
@@ -142,7 +108,6 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 
 	log.Debug(ctx, "Storage policy for cleanup", log.Any("policy", policy))
 
-	// Execute cleanup for each resource type
 	for _, option := range policy.CleanupOptions {
 		if option.Enabled {
 			switch option.ResourceType {
@@ -197,7 +162,6 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 		}
 	}
 
-	// Always cleanup channel probe data older than 3 days
 	err = w.cleanupChannelProbes(ctx, 3, manual)
 	if err != nil {
 		log.Error(ctx, "Failed to cleanup channel probes",
@@ -207,7 +171,6 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 			log.Int("cleanup_days", 3))
 	}
 
-	// Run VACUUM after cleanup to reclaim storage space (SQLite and PostgreSQL)
 	if w.Config.VacuumEnabled {
 		if err := w.runVacuum(ctx); err != nil {
 			log.Error(ctx, "Failed to run VACUUM after cleanup",
@@ -222,7 +185,7 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for requests")
-		return nil // No cleanup needed
+		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
@@ -425,7 +388,7 @@ func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int
 // cleanupUsageLogs deletes usage logs older than the specified number of days.
 func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual bool) error {
 	if !manual && cleanupDays <= 0 {
-		return nil // No cleanup needed
+		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
@@ -433,7 +396,6 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 		cutoffTime = time.Now()
 	}
 
-	// Delete usage logs in batches
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.UsageLog.Delete().Where(usagelog.CreatedAtLT(cutoffTime)).Exec(ctx)
 	})
@@ -452,7 +414,7 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual bool) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for threads")
-		return nil // No cleanup needed
+		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
@@ -460,7 +422,6 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 		cutoffTime = time.Now()
 	}
 
-	// Delete threads in batches
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.Thread.Delete().Where(thread.CreatedAtLT(cutoffTime)).Exec(ctx)
 	})
@@ -479,7 +440,7 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for traces")
-		return nil // No cleanup needed
+		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
@@ -487,7 +448,6 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 		cutoffTime = time.Now()
 	}
 
-	// Delete traces in batches
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.Trace.Delete().Where(trace.CreatedAtLT(cutoffTime)).Exec(ctx)
 	})
@@ -506,7 +466,7 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manual bool) error {
 	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for channel probes")
-		return nil // No cleanup needed
+		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
@@ -528,28 +488,24 @@ func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manu
 	return nil
 }
 
-// runVacuum executes VACUUM command on SQLite/PostgreSQL database to reclaim storage space.
-// This should be called after cleanup operations to defragment the database file.
+// runVacuum executes VACUUM command on SQLite/PostgreSQL database.
 func (w *Worker) runVacuum(ctx context.Context) error {
 	if !w.Config.VacuumEnabled {
 		log.Debug(ctx, "VACUUM is disabled, skipping")
 		return nil
 	}
 
-	// Get the underlying SQL driver to check if it's SQLite
 	dbDriver := w.Ent.Driver()
 	if dbDriver == nil {
 		return fmt.Errorf("failed to get database driver")
 	}
 
-	// Try to cast to *entsql.Driver to access underlying *sql.DB
 	sqlDriver, ok := dbDriver.(*entsql.Driver)
 	if !ok {
 		log.Debug(ctx, "Database driver is not *entsql.Driver, skipping VACUUM")
 		return nil
 	}
 
-	// Check if this is SQLite or PostgreSQL
 	if sqlDriver.Dialect() != dialect.SQLite && sqlDriver.Dialect() != dialect.Postgres {
 		log.Debug(ctx, "Database does not support VACUUM, skipping",
 			log.String("dialect", sqlDriver.Dialect()))
@@ -563,7 +519,6 @@ func (w *Worker) runVacuum(ctx context.Context) error {
 
 	startTime := time.Now()
 
-	// Execute VACUUM using raw SQL
 	var vacuumSQL string
 	if sqlDriver.Dialect() == dialect.Postgres && w.Config.VacuumFull {
 		vacuumSQL = "VACUUM FULL"
@@ -585,13 +540,11 @@ func (w *Worker) runVacuum(ctx context.Context) error {
 }
 
 // RunVacuumNow manually triggers the VACUUM operation.
-// This can be useful for testing or manual execution.
 func (w *Worker) RunVacuumNow(ctx context.Context) error {
 	return w.runVacuum(ctx)
 }
 
 // RunCleanupNow manually triggers the cleanup process.
-// This can be useful for testing or manual execution.
 func (w *Worker) RunCleanupNow(ctx context.Context) error {
 	w.runCleanup(ctx, true)
 	return nil

@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -20,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -80,7 +80,6 @@ type ChannelServiceParams struct {
 	fx.In
 
 	CacheConfig     xcache.Config
-	Executor        executors.ScheduledExecutor
 	Ent             *ent.Client
 	SystemService   *SystemService
 	WebhookNotifier *WebhookNotifier
@@ -92,7 +91,6 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		Executors:          params.Executor,
 		SystemService:      params.SystemService,
 		WebhookNotifier:    params.WebhookNotifier,
 		httpClient:         params.HttpClient,
@@ -135,9 +133,6 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	})
 	xerrors.NoErr(svc.enabledChannelsCache.Load(context.Background(), true))
 
-	// Schedule model sync every hour
-	xerrors.NoErr2(svc.Executors.ScheduleFuncAtCronRate(svc.runSyncChannelModelsPeriodically, executors.CRONRule{Expr: "11 * * * *"}))
-
 	// Start performance metrics background flush
 	go svc.startPerformanceProcess()
 
@@ -151,7 +146,6 @@ func (svc *ChannelService) Stop() {
 type ChannelService struct {
 	*AbstractService
 
-	Executors       executors.ScheduledExecutor
 	SystemService   *SystemService
 	WebhookNotifier *WebhookNotifier
 
@@ -194,6 +188,15 @@ type ChannelService struct {
 
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
+}
+
+func (svc *ChannelService) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
+	return s.Register(ctx, scheduler.TaskSpec{
+		Name:        "channel-model-sync",
+		Description: "Sync channel models every hour",
+		CronExpr:    "11 * * * *",
+		Timezone:    "UTC",
+	}, svc.runSyncChannelModelsPeriodically)
 }
 
 func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
@@ -347,7 +350,7 @@ type ModelIdentityWithStatus struct {
 
 // SaveChannelEndpointsInput represents input for saving channel endpoints.
 type SaveChannelEndpointsInput struct {
-	ChannelID objects.GUID              `json:"channelID"`
+	ChannelID objects.GUID `json:"channelID"`
 	// Endpoints are user-configured endpoint overrides.
 	// Default endpoints are resolved dynamically from the channel type and are read-only.
 	Endpoints []objects.ChannelEndpoint `json:"endpoints"`

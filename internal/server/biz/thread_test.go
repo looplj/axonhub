@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -33,7 +32,6 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 					DataStorageServiceParams{
 						SystemService: systemService,
 						CacheConfig:   xcache.Config{},
-						Executor:      executors.NewPoolScheduleExecutor(),
 						Client:        client,
 					},
 				),

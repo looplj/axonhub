@@ -99,6 +99,8 @@ func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input U
 		return false, err
 	}
 
+	r.backupService.Reschedule(ctx, r.scheduler)
+
 	return true, nil
 }
 

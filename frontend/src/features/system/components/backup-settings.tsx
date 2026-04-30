@@ -457,16 +457,25 @@ export function BackupSettings() {
             <p className="text-sm text-muted-foreground">{t('system.autoBackup.retentionDaysDescription')}</p>
           </div>
 
-          {autoBackupSettings.data?.lastBackupAt && (
+          {autoBackupSettings.data?.lastBackupAt && (() => {
+            const lastBackupDate = new Date(autoBackupSettings.data.lastBackupAt);
+            const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const offsetMinutes = -lastBackupDate.getTimezoneOffset();
+            const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+            const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60).toString().padStart(2, '0');
+            const offsetMins = (Math.abs(offsetMinutes) % 60).toString().padStart(2, '0');
+            const offsetStr = `UTC${offsetSign}${offsetHours}:${offsetMins}`;
+            return (
             <div className="rounded-md bg-muted p-3 text-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                 <span>
-                  {t('system.autoBackup.lastBackup.time')}: {new Date(autoBackupSettings.data.lastBackupAt).toLocaleString()}
+                  {t('system.autoBackup.lastBackup.time')}: {lastBackupDate.toLocaleString()} ({timezoneName}, {offsetStr})
                 </span>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {autoBackupSettings.data?.lastBackupError && (
             <div className="flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200">

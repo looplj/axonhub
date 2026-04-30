@@ -45,7 +45,6 @@ func setupDataStorageTest(t *testing.T) (*ent.Client, *DataStorageService, conte
 	service := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
-		Executor:      executor,
 		Client:        client,
 	})
 
@@ -83,7 +82,6 @@ func setupDataStorageTestWithRedis(t *testing.T) (*ent.Client, *DataStorageServi
 	service := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
-		Executor:      executor,
 		Client:        client,
 	})
 
@@ -714,7 +712,6 @@ func TestDataStorageService_CacheExpiration(t *testing.T) {
 	service := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
-		Executor:      executors.NewPoolScheduleExecutor(),
 		Client:        client,
 	})
 

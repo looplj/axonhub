@@ -10,6 +10,8 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/internal/server/scheduler"
+	"github.com/looplj/axonhub/internal/server/video_storage"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -41,12 +43,14 @@ type Resolver struct {
 	promptService                  *biz.PromptService
 	promptProtectionRuleService    *biz.PromptProtectionRuleService
 	providerQuotaService           *biz.ProviderQuotaService
+	scheduler                      *scheduler.Scheduler
 	modelFetcher                   *biz.ModelFetcher
 	defaultSelector                *orchestrator.DefaultSelector
 	candidateSelectorDiagnostics   *orchestrator.CandidateSelectorDiagnostics
 	channelLimiterManager          *orchestrator.ChannelLimiterManager
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
 	gcWorker                       *gc.Worker
+	videoWorker                    *video_storage.Worker
 }
 
 // NewSchema creates a graphql executable schema.
@@ -71,11 +75,13 @@ func NewSchema(
 	promptService *biz.PromptService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	providerQuotaService *biz.ProviderQuotaService,
+	scheduler *scheduler.Scheduler,
 	defaultSelector *orchestrator.DefaultSelector,
 	candidateSelectorDiagnostics *orchestrator.CandidateSelectorDiagnostics,
 	channelLimiterManager *orchestrator.ChannelLimiterManager,
 	httpClient *httpclient.HttpClient,
 	gcWorker *gc.Worker,
+	videoWorker *video_storage.Worker,
 ) graphql.ExecutableSchema {
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
 
@@ -100,12 +106,14 @@ func NewSchema(
 			promptService:                  promptService,
 			promptProtectionRuleService:    promptProtectionRuleService,
 			providerQuotaService:           providerQuotaService,
+			scheduler:                      scheduler,
 			modelFetcher:                   modelFetcher,
 			defaultSelector:                defaultSelector,
 			candidateSelectorDiagnostics:   candidateSelectorDiagnostics,
 			channelLimiterManager:          channelLimiterManager,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
 			gcWorker:                       gcWorker,
+			videoWorker:                    videoWorker,
 		},
 	})
 }
