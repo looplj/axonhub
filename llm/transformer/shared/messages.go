@@ -118,11 +118,28 @@ func FilterOutResponsesOnlyTools(tools []llm.Tool) []llm.Tool {
 
 func IsResponsesOnlyTool(tool llm.Tool) bool {
 	switch tool.Type {
-	case llm.ToolTypeResponsesCustomTool, "namespace", "tool_search", "local_shell", "mcp", "shell", "apply_patch", "file_search", "code_interpreter", "computer_use_preview":
+	case llm.ToolTypeResponsesCustomTool,
+		llm.ToolTypeWebSearch,
+		"web_search_preview",
+		"namespace",
+		"tool_search",
+		"local_shell",
+		"mcp",
+		"shell",
+		"apply_patch",
+		"file_search",
+		"code_interpreter",
+		"computer_use_preview":
 		return true
-	default:
+	case llm.ToolTypeFunction, llm.ToolTypeImageGeneration:
 		return false
+	default:
+		return hasOpenAIResponsesToolExtension(tool.ProtocolExtensions)
 	}
+}
+
+func hasOpenAIResponsesToolExtension(ext *llm.ProtocolExtensions) bool {
+	return ext != nil && ext.OpenAIResponses != nil
 }
 
 func IsResponsesOnlyToolCall(toolCall llm.ToolCall) bool {

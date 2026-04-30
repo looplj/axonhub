@@ -36,6 +36,29 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled() bool {
 	return true
 }
 
+// isPassThroughRequestBodyEnabled narrows request-body pass-through for Responses.
+// Response and stream pass-through can still use raw provider data when the request
+// has been semantically rebuilt, but the request body itself must not overwrite
+// prompt injection, prompt protection, or transform-option edits.
+func (p *PersistentOutboundTransformer) isPassThroughRequestBodyEnabled() bool {
+	if !p.isPassThroughEnabled() {
+		return false
+	}
+
+	llmReq := p.state.LlmRequest
+	if llmReq == nil {
+		return false
+	}
+
+	if isResponsesFormat(llmReq.APIFormat) &&
+		(llm.OpenAIResponsesInputDirty(llmReq.ProtocolExtensions) ||
+			llm.OpenAIResponsesToolsDirty(llmReq.ProtocolExtensions)) {
+		return false
+	}
+
+	return true
+}
+
 // applyPassThroughRequestBody creates a middleware that reuses the original inbound request body when
 // the channel enables pass-through and the inbound and outbound API formats are identical.
 // For formats that encode the selected model in the request body, the mapped llmReq.Model is
@@ -45,7 +68,7 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer) pipeli
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		outbound.state.RawProviderRequest = request
 
-		if !outbound.isPassThroughEnabled() {
+		if !outbound.isPassThroughRequestBodyEnabled() {
 			return request, nil
 		}
 

@@ -410,12 +410,53 @@ func sanitizeResponsesOnlyDataForNonResponsesOutbound(req *llm.Request) *llm.Req
 	cloned.Tools = shared.FilterOutResponsesOnlyTools(req.Tools)
 	cloned.Messages = shared.FilterOutResponseCustomToolMessages(req.Messages)
 	cloned.ProtocolExtensions = dirtyOnlyOpenAIResponsesProtocolExtensions(req.ProtocolExtensions)
+	cloned.PreviousResponseID = nil
+	cloned.TransformerMetadata = sanitizeResponsesOnlyTransformerMetadata(req.TransformerMetadata)
 	cloned.ToolChoice = sanitizeToolChoiceForRetainedTools(req.ToolChoice, cloned.Tools)
 	if len(cloned.Tools) == 0 {
 		cloned.ParallelToolCalls = nil
 	}
 
 	return &cloned
+}
+
+var responsesOnlyTransformerMetadataKeys = map[string]struct{}{
+	"include":                {},
+	"max_tool_calls":         {},
+	"prompt_cache_retention": {},
+	"truncation":             {},
+	"background":             {},
+	"include_obfuscation":    {},
+}
+
+func hasResponsesOnlyTransformerMetadata(metadata map[string]any) bool {
+	for key := range responsesOnlyTransformerMetadataKeys {
+		if _, ok := metadata[key]; ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func sanitizeResponsesOnlyTransformerMetadata(metadata map[string]any) map[string]any {
+	if len(metadata) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		if _, responsesOnly := responsesOnlyTransformerMetadataKeys[key]; responsesOnly {
+			continue
+		}
+		cloned[key] = value
+	}
+
+	if len(cloned) == 0 {
+		return nil
+	}
+
+	return cloned
 }
 
 func dirtyOnlyOpenAIResponsesProtocolExtensions(ext *llm.ProtocolExtensions) *llm.ProtocolExtensions {
@@ -506,6 +547,12 @@ func containsResponseCustomToolMessages(messages []llm.Message) bool {
 func containsResponsesOnlyData(llmRequest *llm.Request) bool {
 	if llmRequest == nil {
 		return false
+	}
+	if llmRequest.PreviousResponseID != nil && *llmRequest.PreviousResponseID != "" {
+		return true
+	}
+	if hasResponsesOnlyTransformerMetadata(llmRequest.TransformerMetadata) {
+		return true
 	}
 	if hasResponsesOnlyExtensionData(llmRequest.ProtocolExtensions) {
 		return true

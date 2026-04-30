@@ -101,6 +101,13 @@ var toolJSONKeys = keys(
 	"size",
 )
 
+var toolChoiceJSONKeys = keys(
+	"mode",
+	"type",
+	"name",
+	"tools",
+)
+
 var itemJSONKeys = keys(
 	"id",
 	"type",

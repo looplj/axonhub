@@ -294,6 +294,96 @@ func TestCodexMCPRequestRoundTrip_ToolsDirtyRebuildsTools(t *testing.T) {
 	require.Equal(t, "safe_tool", tools[0].(map[string]any)["name"])
 }
 
+func TestCodexMCPRequestRoundTrip_PreservesToolChoiceTools(t *testing.T) {
+	rawRequest := []byte(`{
+		"model": "gpt-5.1-codex-mini",
+		"input": "hello",
+		"tools": [
+			{"type": "function", "name": "read_file", "parameters": {"type": "object"}},
+			{"type": "function", "name": "write_file", "parameters": {"type": "object"}}
+		],
+		"tool_choice": {
+			"mode": "required",
+			"tools": [
+				{"type": "function", "name": "read_file"},
+				{"type": "function", "name": "write_file"}
+			],
+			"codex_tool_choice_extra": {"kept": true}
+		}
+	}`)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: rawRequest})
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.ProtocolExtensions)
+	require.NotNil(t, llmReq.ProtocolExtensions.OpenAIResponses)
+	require.NotEmpty(t, llmReq.ProtocolExtensions.OpenAIResponses.ToolChoice)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &body))
+
+	toolChoice := body["tool_choice"].(map[string]any)
+	require.Equal(t, "required", toolChoice["mode"])
+	require.Equal(t, map[string]any{"kept": true}, toolChoice["codex_tool_choice_extra"])
+
+	choices := toolChoice["tools"].([]any)
+	require.Len(t, choices, 2)
+	require.Equal(t, "read_file", choices[0].(map[string]any)["name"])
+	require.Equal(t, "write_file", choices[1].(map[string]any)["name"])
+}
+
+func TestCodexMCPRequestRoundTrip_ToolsDirtyDoesNotRestoreToolChoiceTools(t *testing.T) {
+	rawRequest := []byte(`{
+		"model": "gpt-5.1-codex-mini",
+		"input": "hello",
+		"tools": [
+			{"type": "function", "name": "read_file", "parameters": {"type": "object"}},
+			{"type": "function", "name": "write_file", "parameters": {"type": "object"}}
+		],
+		"tool_choice": {
+			"mode": "required",
+			"tools": [
+				{"type": "function", "name": "read_file"},
+				{"type": "function", "name": "write_file"}
+			]
+		}
+	}`)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: rawRequest})
+	require.NoError(t, err)
+
+	llmReq.Tools = []llm.Tool{{
+		Type: llm.ToolTypeFunction,
+		Function: llm.Function{
+			Name:       "safe_tool",
+			Parameters: json.RawMessage(`{"type":"object"}`),
+		},
+	}}
+	llm.MarkOpenAIResponsesToolsDirty(llmReq)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &body))
+
+	tools := body["tools"].([]any)
+	require.Len(t, tools, 1)
+	require.Equal(t, "safe_tool", tools[0].(map[string]any)["name"])
+
+	toolChoice := body["tool_choice"].(map[string]any)
+	require.Equal(t, "required", toolChoice["mode"])
+	require.NotContains(t, toolChoice, "tools")
+}
+
 func TestCodexMCPResponseRoundTrip_NonPassThroughPreservesResponseMetadata(t *testing.T) {
 	upstreamBody := []byte(`{
 		"id": "resp_codex_1",

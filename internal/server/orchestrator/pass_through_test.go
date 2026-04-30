@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -102,6 +103,44 @@ func TestApplyPassThroughResponse_Enabled_ReturnsRaw(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+		state:   state,
+	}
+
+	mw := applyPassThroughResponse(outbound)
+	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
+	rawResp := &httpclient.Response{
+		StatusCode: 200,
+		Body:       []byte("raw"),
+	}
+	state.RawProviderResponse = rawResp
+
+	result, err := mw.OnInboundRawResponse(ctx, transformed)
+	require.NoError(t, err)
+	assert.Equal(t, rawResp, result)
+}
+
+func TestApplyPassThroughResponse_ResponsesInputDirtyStillReturnsRaw(t *testing.T) {
+	ctx := context.Background()
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+	req := &llm.Request{APIFormat: llm.APIFormatOpenAIResponse}
+	llm.MarkOpenAIResponsesInputDirty(req)
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest:       req,
+		RawProviderRequest: &httpclient.Request{
+			APIFormat: string(llm.APIFormatOpenAIResponse),
+		},
+	}
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse},
 		state:   state,
 	}
 
@@ -532,6 +571,57 @@ func TestApplyPassThroughStream_ReturnsRawEvents(t *testing.T) {
 	assert.Equal(t, rawEvents, passthroughEvents)
 }
 
+func TestApplyPassThroughStream_ResponsesInputDirtyStillReturnsRawEvents(t *testing.T) {
+	ctx := context.Background()
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+	rawCh := make(chan *httpclient.StreamEvent, 8)
+	req := &llm.Request{APIFormat: llm.APIFormatOpenAIResponse}
+	llm.MarkOpenAIResponsesInputDirty(req)
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		RawStreamCh:      rawCh,
+		LlmRequest:       req,
+		RawProviderRequest: &httpclient.Request{
+			APIFormat: string(llm.APIFormatOpenAIResponse),
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	transformed := testHTTPStream([]*httpclient.StreamEvent{
+		{Data: json.RawMessage(`{"id":"t1"}`)},
+	})
+	rawEvents := []*httpclient.StreamEvent{
+		{Data: json.RawMessage(`{"id":"r1"}`)},
+		{Data: json.RawMessage(`{"id":"r2"}`)},
+	}
+
+	go func() {
+		for _, ev := range rawEvents {
+			rawCh <- ev
+		}
+		close(rawCh)
+	}()
+
+	result, err := applyPassThroughStream(outbound).OnInboundRawStream(ctx, transformed)
+	require.NoError(t, err)
+
+	var passthroughEvents []*httpclient.StreamEvent
+	for result.Next() {
+		passthroughEvents = append(passthroughEvents, result.Current())
+	}
+
+	require.Len(t, passthroughEvents, 2)
+	assert.Equal(t, rawEvents, passthroughEvents)
+}
+
 func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 	ctx := context.Background()
 	channel := &biz.Channel{
@@ -868,6 +958,192 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 
 	processed.Body[0] = '['
 	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
+}
+
+func TestApplyPassThroughBodyPreservesMappedModelForResponsesWhenClean(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-responses-clean",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "gpt-4o",
+				APIFormat: llm.APIFormatOpenAIResponse,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIResponse),
+					Body:      []byte(`{"model":"my-alias","input":"raw input","metadata":{"trace":"raw"}}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body:      []byte(`{"model":"gpt-4o","input":"rebuilt input"}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, "raw input", gjson.GetBytes(processed.Body, "input").String())
+	require.Equal(t, "raw", gjson.GetBytes(processed.Body, "metadata.trace").String())
+}
+
+func TestApplyPassThroughBodySkipsResponsesInputDirty(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-responses-input-dirty",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+	llmReq := &llm.Request{
+		Model:     "gpt-4o",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		RawRequest: &httpclient.Request{
+			APIFormat: string(llm.APIFormatOpenAIResponse),
+			Body:      []byte(`{"model":"my-alias","input":"raw stale input"}`),
+		},
+	}
+	llm.MarkOpenAIResponsesInputDirty(llmReq)
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmReq,
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body:      []byte(`{"model":"gpt-4o","input":"rebuilt safe input"}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, request, processed)
+	require.Equal(t, request, outbound.state.RawProviderRequest)
+	require.Equal(t, "rebuilt safe input", gjson.GetBytes(processed.Body, "input").String())
+	require.NotContains(t, string(processed.Body), "raw stale input")
+}
+
+func TestApplyPassThroughBodySkipsResponsesToolsDirty(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-responses-tools-dirty",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+	llmReq := &llm.Request{
+		Model:     "gpt-4o",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		RawRequest: &httpclient.Request{
+			APIFormat: string(llm.APIFormatOpenAIResponse),
+			Body:      []byte(`{"model":"my-alias","tools":[{"type":"function","name":"stale_tool"}]}`),
+		},
+	}
+	llm.MarkOpenAIResponsesToolsDirty(llmReq)
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmReq,
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body:      []byte(`{"model":"gpt-4o","tools":[{"type":"function","name":"rebuilt_tool"}]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, request, processed)
+	require.Contains(t, string(processed.Body), "rebuilt_tool")
+	require.NotContains(t, string(processed.Body), "stale_tool")
+}
+
+func TestApplyPassThroughBodySkipsPromptInjectedResponsesInput(t *testing.T) {
+	ctx := contexts.WithProjectID(context.Background(), 1)
+
+	prompts := []*ent.Prompt{
+		{
+			ID:      1,
+			Role:    "system",
+			Content: "Injected prompt",
+			Settings: objects.PromptSettings{
+				Action: objects.PromptAction{Type: objects.PromptActionTypePrepend},
+			},
+		},
+	}
+	inbound := &PersistentInboundTransformer{
+		state: &PersistenceState{
+			PromptProvider: &stubPromptProvider{prompts: prompts},
+		},
+	}
+
+	userContent := "User input"
+	llmReq := &llm.Request{
+		Model:     "gpt-4o",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		RawRequest: &httpclient.Request{
+			APIFormat: string(llm.APIFormatOpenAIResponse),
+			Body:      []byte(`{"model":"my-alias","input":"raw stale input"}`),
+		},
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: &userContent}},
+		},
+	}
+
+	injectedReq, err := injectPrompts(inbound).OnInboundLlmRequest(ctx, llmReq)
+	require.NoError(t, err)
+	require.True(t, llm.OpenAIResponsesInputDirty(injectedReq.ProtocolExtensions))
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-responses-prompt-injection",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       injectedReq,
+		},
+	}
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body: []byte(`{"model":"gpt-4o","input":[` +
+			`{"role":"system","content":"Injected prompt"},` +
+			`{"role":"user","content":"User input"}]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, request, processed)
+	require.Contains(t, string(processed.Body), "Injected prompt")
+	require.Contains(t, string(processed.Body), "User input")
+	require.NotContains(t, string(processed.Body), "raw stale input")
 }
 
 func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {

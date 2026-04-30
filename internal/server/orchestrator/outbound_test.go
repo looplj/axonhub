@@ -900,6 +900,59 @@ func TestPrepareResponsesOnlyDataForOutbound(t *testing.T) {
 		require.Len(t, baseRequest.Messages[0].ToolCalls, 2)
 	})
 
+	t.Run("previous response id requires responses outbound", func(t *testing.T) {
+		prevID := "resp_previous"
+		req := &llm.Request{
+			APIFormat:          llm.APIFormatOpenAIResponse,
+			PreviousResponseID: &prevID,
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyReject)
+		require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+		require.Nil(t, got)
+	})
+
+	t.Run("discards responses-only top-level fields without mutating original request", func(t *testing.T) {
+		prevID := "resp_previous"
+		req := &llm.Request{
+			APIFormat:          llm.APIFormatOpenAIResponse,
+			PreviousResponseID: &prevID,
+			TransformerMetadata: map[string]any{
+				"include":                []string{"file_search_call.results"},
+				"max_tool_calls":         int64(8),
+				"prompt_cache_retention": "24h",
+				"truncation":             "auto",
+				"background":             true,
+				"include_obfuscation":    false,
+				"gemini_safety":          "keep",
+			},
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyDiscard)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Nil(t, got.PreviousResponseID)
+		require.Equal(t, map[string]any{"gemini_safety": "keep"}, got.TransformerMetadata)
+
+		require.NotNil(t, req.PreviousResponseID)
+		require.Equal(t, "resp_previous", *req.PreviousResponseID)
+		require.Contains(t, req.TransformerMetadata, "include")
+		require.Contains(t, req.TransformerMetadata, "background")
+	})
+
+	t.Run("include metadata requires responses outbound", func(t *testing.T) {
+		req := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			TransformerMetadata: map[string]any{
+				"include": []string{"reasoning.encrypted_content"},
+			},
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyReject)
+		require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+		require.Nil(t, got)
+	})
+
 	t.Run("discards tool choice and parallel calls when all tools are responses-only", func(t *testing.T) {
 		req := &llm.Request{
 			APIFormat:         llm.APIFormatOpenAIResponse,

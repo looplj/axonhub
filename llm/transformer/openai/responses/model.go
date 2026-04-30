@@ -211,6 +211,10 @@ type StreamOptions struct {
 
 // ToolChoice represents how the model should select which tool to use (for requests).
 type ToolChoice struct {
+	Raw       json.RawMessage            `json:"-"`
+	Extra     map[string]json.RawMessage `json:"-"`
+	PreferRaw bool                       `json:"-"`
+
 	// Mode can be "none", "auto", "required".
 	Mode *string `json:"mode,omitempty"`
 	// Type for specific tool choice. Any of "function", "file_search", "web_search", "shell" etc.
@@ -232,13 +236,18 @@ type ToolChoiceAlias ToolChoice
 func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	mode, err := xjson.To[string](data)
 	if err == nil {
-		t.Mode = &mode
+		*t = ToolChoice{
+			Mode: &mode,
+			Raw:  cloneRaw(data),
+		}
 		return nil
 	}
 
 	tc, err := xjson.To[ToolChoiceAlias](data)
 	if err == nil {
 		*t = ToolChoice(tc)
+		t.Raw = cloneRaw(data)
+		t.Extra = extraFields(data, toolChoiceJSONKeys)
 		return nil
 	}
 
@@ -246,14 +255,18 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 }
 
 func (t *ToolChoice) MarshalJSON() ([]byte, error) {
-	if t.Mode != nil && *t.Mode == "auto" {
+	if t.PreferRaw && len(t.Raw) > 0 {
+		return cloneRaw(t.Raw), nil
+	}
+
+	if t.Mode != nil && *t.Mode == "auto" && len(t.Tools) == 0 && len(t.Extra) == 0 {
 		return json.Marshal("auto")
 	}
 
 	// For other cases, marshal as object
 	type Alias ToolChoice
 
-	return json.Marshal(&struct {
+	structured, err := json.Marshal(&struct {
 		Mode  *string      `json:"mode,omitempty"`
 		Type  *string      `json:"type,omitempty"`
 		Name  *string      `json:"name,omitempty"`
@@ -264,6 +277,11 @@ func (t *ToolChoice) MarshalJSON() ([]byte, error) {
 		Name:  t.Name,
 		Tools: t.Tools,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeJSONObjects(t.Raw, t.Extra, structured)
 }
 
 // ResponseToolChoice represents tool_choice in responses, which can be a string or object.

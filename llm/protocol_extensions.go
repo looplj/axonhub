@@ -13,6 +13,7 @@ type OpenAIResponsesExtensions struct {
 	RequestExtra map[string]json.RawMessage `json:"request_extra,omitempty"`
 	InputItems   []OpenAIResponsesRawItem   `json:"input_items,omitempty"`
 	Tools        []OpenAIResponsesRawItem   `json:"tools,omitempty"`
+	ToolChoice   json.RawMessage            `json:"tool_choice,omitempty"`
 
 	ResponseRaw      json.RawMessage            `json:"response_raw,omitempty"`
 	ResponseExtra    map[string]json.RawMessage `json:"response_extra,omitempty"`
@@ -64,6 +65,7 @@ func cloneOpenAIResponsesExtensions(ext *OpenAIResponsesExtensions) *OpenAIRespo
 		RequestExtra:        cloneRawMap(ext.RequestExtra),
 		InputItems:          cloneOpenAIResponsesRawItems(ext.InputItems),
 		Tools:               cloneOpenAIResponsesRawItems(ext.Tools),
+		ToolChoice:          cloneRawMessage(ext.ToolChoice),
 		ResponseRaw:         cloneRawMessage(ext.ResponseRaw),
 		ResponseExtra:       cloneRawMap(ext.ResponseExtra),
 		ResponseMetadata:    cloneStringMap(ext.ResponseMetadata),

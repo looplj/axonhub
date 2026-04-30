@@ -206,6 +206,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	if ext := openAIResponsesExtensions(llmReq.ProtocolExtensions); ext != nil {
 		payload.Extra = cloneRawMap(ext.RequestExtra)
+		if !llm.OpenAIResponsesToolsDirty(llmReq.ProtocolExtensions) {
+			// tool_choice.tools binds to the original Responses tools set, so only replay it before tool filtering/mutation.
+			if rawToolChoice := toolChoiceFromRaw(ext.ToolChoice); rawToolChoice != nil {
+				payload.ToolChoice = rawToolChoice
+			}
+		}
 		if !llm.OpenAIResponsesInputDirty(llmReq.ProtocolExtensions) {
 			// Reuse raw input only while prompt/role/masking middleware has not changed message semantics.
 			if rawInput := inputFromRawItems(ext.InputItems); len(rawInput.Items) > 0 {

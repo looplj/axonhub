@@ -20,8 +20,11 @@ func protocolExtensionsFromRequest(req *Request) *llm.ProtocolExtensions {
 	if shouldPreserveTools(req.Tools) {
 		ext.Tools = rawToolsFromTools(req.Tools)
 	}
+	if shouldPreserveToolChoice(req.ToolChoice) {
+		ext.ToolChoice = rawToolChoiceFromToolChoice(req.ToolChoice)
+	}
 
-	if len(ext.RequestExtra) == 0 && len(ext.InputItems) == 0 && len(ext.Tools) == 0 {
+	if len(ext.RequestExtra) == 0 && len(ext.InputItems) == 0 && len(ext.Tools) == 0 && len(ext.ToolChoice) == 0 {
 		return nil
 	}
 
@@ -82,6 +85,21 @@ func rawToolsFromTools(tools []Tool) []llm.OpenAIResponsesRawItem {
 		})
 	}
 	return items
+}
+
+func rawToolChoiceFromToolChoice(toolChoice *ToolChoice) json.RawMessage {
+	if toolChoice == nil {
+		return nil
+	}
+	if len(toolChoice.Raw) > 0 {
+		return cloneRaw(toolChoice.Raw)
+	}
+
+	raw, err := json.Marshal(toolChoice)
+	if err != nil {
+		return nil
+	}
+	return cloneRaw(raw)
 }
 
 func rawItemFromItem(item Item) llm.OpenAIResponsesRawItem {
@@ -207,6 +225,16 @@ func shouldPreserveTools(tools []Tool) bool {
 	return false
 }
 
+func shouldPreserveToolChoice(toolChoice *ToolChoice) bool {
+	if toolChoice == nil {
+		return false
+	}
+	if len(toolChoice.Tools) > 0 {
+		return true
+	}
+	return len(toolChoice.Extra) > 0
+}
+
 func shouldPreserveItem(item Item) bool {
 	if len(item.Extra) > 0 {
 		return true
@@ -296,6 +324,20 @@ func toolsFromRawItems(rawItems []llm.OpenAIResponsesRawItem) []Tool {
 		tools = append(tools, tool)
 	}
 	return tools
+}
+
+func toolChoiceFromRaw(raw json.RawMessage) *ToolChoice {
+	if len(raw) == 0 {
+		return nil
+	}
+
+	var toolChoice ToolChoice
+	if err := json.Unmarshal(raw, &toolChoice); err != nil {
+		return nil
+	}
+	toolChoice.Raw = cloneRaw(raw)
+	toolChoice.PreferRaw = true
+	return &toolChoice
 }
 
 func inputFromRawItems(rawItems []llm.OpenAIResponsesRawItem) Input {
