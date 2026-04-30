@@ -13,7 +13,7 @@ import { useModels } from '../context/models-context';
 import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useBulkCreateModels } from '../data/models';
 import { useDevelopersData } from '../data/providers';
-import { type Provider, type ProviderModel } from '../data/providers.schema';
+import { type Provider, type ProviderModel, resolveVision } from '../data/providers.schema';
 import { CreateModelInput, ModelCard, ModelType, modelTypeSchema } from '../data/schema';
 
 interface ModelRow {
@@ -158,7 +158,7 @@ export function ModelsBatchCreateDialog() {
                 input: selectedModel.modalities?.input || [],
                 output: selectedModel.modalities?.output || [],
               },
-              vision: selectedModel.attachment || false,
+              vision: resolveVision(selectedModel),
               cost: {
                 input: selectedModel.cost?.input || 0,
                 output: selectedModel.cost?.output || 0,
