@@ -1104,12 +1104,17 @@ func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, gro
 	// Flatten matching groups
 	for _, group := range groups {
 		for _, rule := range cfg.RoleMappingRules {
+			matchGroup := rule.MatchGroup
+			if !cfg.GroupParser.CaseSensitive {
+				matchGroup = strings.ToLower(matchGroup)
+			}
+
 			matched := false
 			if rule.IsRegex {
-				matched, _ = regexp.MatchString(rule.MatchGroup, group)
+				matched, _ = regexp.MatchString(matchGroup, group)
 			} else {
-				matched, _ = filepath.Match(rule.MatchGroup, group)
-				if !matched && rule.MatchGroup == group {
+				matched, _ = filepath.Match(matchGroup, group)
+				if !matched && matchGroup == group {
 					// Fallback to strict string match if glob syntax fails
 					matched = true
 				}
