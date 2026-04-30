@@ -161,6 +161,66 @@ func TestHasCredentialsForProvider_NonOpenaiNoCreds(t *testing.T) {
 	require.False(t, hasCredentialsForProvider(ch))
 }
 
+func TestHasCredentialsForProvider_CodexWithOAuth(t *testing.T) {
+	ch := &ent.Channel{
+		Type: channel.TypeCodex,
+		Credentials: objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{AccessToken: "token"},
+		},
+	}
+	require.True(t, hasCredentialsForProvider(ch))
+}
+
+func TestHasCredentialsForProvider_CodexWithOAuthJSON(t *testing.T) {
+	ch := &ent.Channel{
+		Type: channel.TypeCodex,
+		Credentials: objects.ChannelCredentials{
+			APIKey: `{"access_token": "token", "refresh_token": "refresh"}`,
+		},
+	}
+	require.True(t, hasCredentialsForProvider(ch))
+}
+
+func TestHasCredentialsForProvider_CodexWithPlainAPIKey(t *testing.T) {
+	ch := &ent.Channel{
+		Type: channel.TypeCodex,
+		Credentials: objects.ChannelCredentials{
+			APIKey: "sk-plain-api-key",
+		},
+	}
+	require.False(t, hasCredentialsForProvider(ch))
+}
+
+func TestHasCredentialsForProvider_ClaudeCodeWithOAuth(t *testing.T) {
+	ch := &ent.Channel{
+		Type: channel.TypeClaudecode,
+		Credentials: objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{AccessToken: "token"},
+		},
+	}
+	require.True(t, hasCredentialsForProvider(ch))
+}
+
+func TestHasCredentialsForProvider_ClaudeCodeWithOAuthJSON(t *testing.T) {
+	ch := &ent.Channel{
+		Type: channel.TypeClaudecode,
+		Credentials: objects.ChannelCredentials{
+			APIKey: `{"access_token": "token", "refresh_token": "refresh"}`,
+		},
+	}
+	require.True(t, hasCredentialsForProvider(ch))
+}
+
+func TestHasCredentialsForProvider_ClaudeCodeWithPlainAPIKey(t *testing.T) {
+	ch := &ent.Channel{
+		Type: channel.TypeClaudecode,
+		Credentials: objects.ChannelCredentials{
+			APIKey: "sk-plain-api-key",
+		},
+	}
+	require.False(t, hasCredentialsForProvider(ch))
+}
+
 func TestGetProviderType_OpenaiWithWaferURLPort(t *testing.T) {
 	svc := &ProviderQuotaService{
 		checkers: make(map[string]provider_quota.QuotaChecker),

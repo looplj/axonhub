@@ -132,18 +132,30 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	// DeepSeek Anthropic format supports output_config.effort. When reasoning_effort
 	// is present, prefer output_config over thinking so suffix-based effort routing
 	// (for example deepseek-chat-max) preserves the explicit effort level.
-	if config != nil && config.Type == PlatformDeepSeek && chatReq.ReasoningEffort != "" {
+	// Note: "none" is not a valid effort value, so skip it (it means disabled thinking).
+	if config != nil && config.Type == PlatformDeepSeek && chatReq.ReasoningEffort != "" && chatReq.ReasoningEffort != "none" {
 		req.OutputConfig = &OutputConfig{Effort: chatReq.ReasoningEffort}
 	}
 
-	// Determine thinking config priority: adaptive > enabled > disabled
+	// Determine thinking config priority: disabled > adaptive > enabled
 	if chatReq.TransformerMetadata != nil {
-		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
-			req.Thinking = &Thinking{Type: "adaptive"}
+		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok {
+			switch v {
+			case "disabled":
+				req.Thinking = &Thinking{Type: "disabled"}
+			case "adaptive":
+				req.Thinking = &Thinking{Type: "adaptive"}
+			}
 		}
 	}
 
-	if req.OutputConfig == nil && req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
+	// Handle ReasoningEffort="none" as disabled thinking (e.g., from OpenAI inbound)
+	// This check is needed when TransformerMetadata is not set but ReasoningEffort is "none"
+	if req.Thinking == nil && chatReq.ReasoningEffort == "none" {
+		req.Thinking = &Thinking{Type: "disabled"}
+	}
+
+	if req.OutputConfig == nil && req.Thinking == nil && chatReq.ReasoningEffort != "none" && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
 		req.Thinking = buildThinking(chatReq, config)
 	}
 

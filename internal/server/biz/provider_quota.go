@@ -667,6 +667,10 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 		}
 	}
 
+	if ch.Type == channel.TypeCodex || ch.Type == channel.TypeClaudecode {
+		return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey)
+	}
+
 	return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey) ||
 		strings.TrimSpace(ch.Credentials.APIKey) != "" || len(ch.Credentials.APIKeys) > 0
 }

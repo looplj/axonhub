@@ -21,6 +21,7 @@ type Config struct {
 	// API configuration
 	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
 	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
+	Version        string              `json:"version,omitempty"`  // API version (default: "v4")
 }
 
 // OutboundTransformer implements transformer.Outbound for Zai format.
@@ -54,7 +55,11 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid Zai transformer configuration: %w", err)
 	}
 
-	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v4")
+	version := config.Version
+	if version == "" {
+		version = "v4"
+	}
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, version)
 
 	return &OutboundTransformer{
 		BaseURL:        baseURL,
@@ -145,8 +150,15 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert ReasoningEffort to Thinking if present
 	if llmReq.ReasoningEffort != "" {
+		var thinkingType string
+		switch llmReq.ReasoningEffort {
+		case "none":
+			thinkingType = "disabled"
+		default:
+			thinkingType = "enabled"
+		}
 		zaiReq.Thinking = &Thinking{
-			Type: "enabled",
+			Type: thinkingType,
 		}
 	}
 
