@@ -1218,7 +1218,7 @@ func (s *OIDCService) applyRoleMappings(ctx context.Context, m ent.Mutation, gro
 			strategy = "always"
 		}
 
-		if !isCreate && strategy == "always" {
+		if !isCreate && strategy == "always" && (len(cfg.RoleMappingRules) > 0 || len(cfg.DefaultRoles) > 0) {
 			um.ClearRoles()
 		}
 	}
