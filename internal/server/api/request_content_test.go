@@ -46,7 +46,6 @@ func TestRequestContentHandlers_DownloadRequestContent(t *testing.T) {
 	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
-		Executor:      executor,
 		Client:        client,
 	})
 

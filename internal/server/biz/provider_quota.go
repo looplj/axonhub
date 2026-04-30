@@ -9,7 +9,6 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
-	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -256,7 +256,6 @@ type ProviderQuotaService struct {
 	*AbstractService
 
 	SystemService             *SystemService
-	Executor                  executors.ScheduledExecutor
 	checkInterval             time.Duration
 	warningCheckIntervalRatio int
 	httpClient                *httpclient.HttpClient
@@ -272,7 +271,6 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc := &ProviderQuotaService{
 		AbstractService:           &AbstractService{db: params.Ent},
 		SystemService:             params.SystemService,
-		Executor:                  executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
 		checkers:                  make(map[string]provider_quota.QuotaChecker),
 		checkInterval:             params.CheckInterval,
 		warningCheckIntervalRatio: params.WarningCheckIntervalRatio,
@@ -287,7 +285,19 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerSyntheticSupport()
 	svc.registerNeuralWattSupport()
 
+	go svc.loadQuotaCache(context.Background())
+
 	return svc
+}
+
+func (svc *ProviderQuotaService) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
+	cronExpr := svc.intervalToCronExpr(svc.getCheckInterval())
+	return s.Register(ctx, scheduler.TaskSpec{
+		Name:        "provider-quota-check",
+		Description: "Check provider quota usage periodically",
+		CronExpr:    cronExpr,
+		Timezone:    "UTC",
+	}, svc.runQuotaCheckScheduled)
 }
 
 func (svc *ProviderQuotaService) registerClaudeCodeSupport() {
@@ -316,19 +326,6 @@ func (svc *ProviderQuotaService) registerSyntheticSupport() {
 
 func (svc *ProviderQuotaService) registerNeuralWattSupport() {
 	svc.checkers["neuralwatt"] = provider_quota.NewNeuralWattQuotaChecker(svc.httpClient)
-}
-
-func (svc *ProviderQuotaService) Start(ctx context.Context) error {
-	go svc.loadQuotaCache(ctx)
-
-	cronExpr := svc.intervalToCronExpr(svc.getCheckInterval())
-
-	_, err := svc.Executor.ScheduleFuncAtCronRate(
-		svc.runQuotaCheckScheduled,
-		executors.CRONRule{Expr: cronExpr},
-	)
-
-	return err
 }
 
 func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) string {
@@ -389,10 +386,6 @@ func (svc *ProviderQuotaService) getCheckInterval() time.Duration {
 	}
 
 	return 5 * time.Minute
-}
-
-func (svc *ProviderQuotaService) Stop(ctx context.Context) error {
-	return svc.Executor.Shutdown(ctx)
 }
 
 func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {

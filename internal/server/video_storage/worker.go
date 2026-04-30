@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -21,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -31,7 +31,6 @@ type Params struct {
 	SystemService      *biz.SystemService
 	DataStorageService *biz.DataStorageService
 	VideoService       *biz.VideoService
-	Executor           executors.ScheduledExecutor
 }
 
 type Worker struct {
@@ -39,30 +38,24 @@ type Worker struct {
 	systemService      *biz.SystemService
 	dataStorageService *biz.DataStorageService
 	videoService       *biz.VideoService
-	executor           executors.ScheduledExecutor
-
-	cancelFunc context.CancelFunc
 }
 
 func NewWorker(params Params) *Worker {
-	return &Worker{
+	w := &Worker{
 		ent:                params.Ent,
 		systemService:      params.SystemService,
 		dataStorageService: params.DataStorageService,
 		videoService:       params.VideoService,
-		executor:           params.Executor,
 	}
+
+	return w
 }
 
-func (w *Worker) Start(ctx context.Context) error {
-	if w.cancelFunc != nil {
-		return nil
-	}
-
-	ctx = authz.WithSystemBypass(ctx, "video-storage-start")
+func (w *Worker) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
+	ctx = authz.WithSystemBypass(ctx, "video-storage-register")
 	settings, err := w.systemService.VideoStorageSettings(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("get video storage settings for registration: %w", err)
 	}
 
 	intervalMinutes := settings.ScanIntervalMinutes
@@ -70,28 +63,35 @@ func (w *Worker) Start(ctx context.Context) error {
 		intervalMinutes = 1
 	}
 
-	cancelFunc, err := w.executor.ScheduleFuncAtFixRate(
-		w.runScanWithSystemContext,
-		time.Duration(intervalMinutes)*time.Minute,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to schedule video storage worker: %w", err)
-	}
-
-	w.cancelFunc = cancelFunc
-
-	log.Info(ctx, "Video storage worker scheduled", log.Int("interval_minutes", intervalMinutes))
-
-	return nil
+	return s.Register(ctx, scheduler.TaskSpec{
+		Name:        "video-storage",
+		Description: "Scan and save generated video requests to external storage",
+		FixRate:     time.Duration(intervalMinutes) * time.Minute,
+	}, w.runScanWithSystemContext)
 }
 
-func (w *Worker) Stop(ctx context.Context) error {
-	if w.cancelFunc != nil {
-		w.cancelFunc()
-		w.cancelFunc = nil
+// Reschedule cancels and re-creates the video storage scan task. Call after
+// the scan interval setting changes.
+func (w *Worker) Reschedule(ctx context.Context, s *scheduler.Scheduler) {
+	ctx = authz.WithSystemBypass(ctx, "video-storage-reschedule")
+	settings, err := w.systemService.VideoStorageSettings(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to get video storage settings for reschedule", log.Cause(err))
+		return
 	}
 
-	return nil
+	intervalMinutes := settings.ScanIntervalMinutes
+	if intervalMinutes <= 0 {
+		intervalMinutes = 1
+	}
+
+	if err := s.Reschedule(ctx, "video-storage", scheduler.TaskSpec{
+		Name:        "video-storage",
+		Description: "Scan and save generated video requests to external storage",
+		FixRate:     time.Duration(intervalMinutes) * time.Minute,
+	}); err != nil {
+		log.Error(ctx, "Failed to reschedule video storage worker", log.Cause(err))
+	}
 }
 
 func (w *Worker) runScanWithSystemContext(ctx context.Context) {
@@ -134,7 +134,6 @@ func (w *Worker) scanAndSave(ctx context.Context) error {
 		limit = 50
 	}
 
-	// Find video requests (completed or in-progress) not saved yet.
 	reqs, err := w.ent.Request.Query().
 		Where(
 			request.StatusIn(request.StatusProcessing, request.StatusCompleted),
@@ -161,19 +160,16 @@ func (w *Worker) scanAndSave(ctx context.Context) error {
 func (w *Worker) processOne(ctx context.Context, ds *ent.DataStorage, req *ent.Request) error {
 	var videoURL string
 
-	// First try to parse cached snapshot (unified VideoResponse format stored by outbound transformer).
 	if v, err := extractVideoURLFromResponseBody(req.ResponseBody); err == nil && strings.TrimSpace(v) != "" {
 		videoURL = v
 	}
 
-	// If missing, poll provider once to refresh snapshot via outbound transformer.
 	if strings.TrimSpace(videoURL) == "" {
 		resp, err := w.videoService.GetTask(ctx, req.ID)
 		if err != nil {
 			return err
 		}
 
-		// Only save when provider confirms it succeeded.
 		if resp.Video == nil || strings.ToLower(strings.TrimSpace(resp.Video.Status)) != "succeeded" {
 			return nil
 		}
@@ -194,7 +190,6 @@ func (w *Worker) processOne(ctx context.Context, ds *ent.DataStorage, req *ent.R
 	}
 	defer resp.Close()
 
-	// Limit to 512MB to avoid OOM for pathological URLs.
 	const maxBytes = 512 * 1024 * 1024
 	reader := io.LimitReader(resp, maxBytes)
 
@@ -235,8 +230,6 @@ func GenerateVideoKey(projectID, requestID int, filename string) string {
 	return fmt.Sprintf("/%d/requests/%d/video/%s", projectID, requestID, name)
 }
 
-// extractVideoURLFromResponseBody parses the unified VideoResponse format
-// stored by the outbound transformer to extract the video URL.
 func extractVideoURLFromResponseBody(raw []byte) (string, error) {
 	if len(raw) == 0 {
 		return "", nil
@@ -250,16 +243,12 @@ func extractVideoURLFromResponseBody(raw []byte) (string, error) {
 	return v.VideoURL, nil
 }
 
-// openVideoStream opens an HTTP GET to the video URL and returns the response body
-// as an io.ReadCloser for streaming. The caller must close the returned reader.
 func openVideoStream(ctx context.Context, videoURL string) (io.ReadCloser, string, error) {
-	// Validate URL to prevent SSRF attacks
 	parsedURL, err := url.Parse(videoURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid video URL: %w", err)
 	}
 
-	// Only allow http and https schemes
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
 		return nil, "", fmt.Errorf("invalid URL scheme: %s", parsedURL.Scheme)
 	}
@@ -269,7 +258,7 @@ func openVideoStream(ctx context.Context, videoURL string) (io.ReadCloser, strin
 		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// nolint:gosec // URL has been validated above
+	// nolint:gosec
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to download video: %w", err)
@@ -287,7 +276,6 @@ func openVideoStream(ctx context.Context, videoURL string) (io.ReadCloser, strin
 func filenameFromResponse(resp *http.Response, fallbackURL string) string {
 	if resp != nil {
 		if cd := resp.Header.Get("Content-Disposition"); cd != "" {
-			// Best-effort: look for filename=
 			if _, after, ok := strings.Cut(cd, "filename="); ok {
 				after = strings.TrimSpace(after)
 				after = strings.Trim(after, "\"")
@@ -298,7 +286,6 @@ func filenameFromResponse(resp *http.Response, fallbackURL string) string {
 		}
 	}
 
-	// Try URL path segment
 	u := fallbackURL
 	if idx := strings.Index(u, "?"); idx >= 0 {
 		u = u[:idx]

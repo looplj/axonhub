@@ -9,49 +9,25 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
-func (svc *BackupService) Start(ctx context.Context) error {
-	return svc.runBackupPeriodic(ctx)
-}
-
-func (svc *BackupService) Stop(ctx context.Context) error {
-	if svc.cancelFunc != nil {
-		svc.cancelFunc()
+// Reschedule cancels and re-creates the backup cron job. Call after the
+// system timezone or backup settings change.
+func (svc *BackupService) Reschedule(ctx context.Context, s *scheduler.Scheduler) {
+	tz := svc.systemService.TimeLocation(ctx).String()
+	if err := s.Reschedule(ctx, "backup", scheduler.TaskSpec{
+		Name:        "backup",
+		Description: "Auto backup to configured data storage",
+		CronExpr:    "0 2 * * *",
+		Timezone:    tz,
+	}); err != nil {
+		log.Error(ctx, "Failed to reschedule backup cron", log.Cause(err))
 	}
-
-	if svc.executor == nil {
-		return nil
-	}
-
-	return svc.executor.Shutdown(ctx)
-}
-
-func (svc *BackupService) runBackupPeriodic(ctx context.Context) error {
-	if svc.cancelFunc != nil {
-		return nil
-	}
-
-	cronExpr := "0 2 * * *" // Always run daily at 2 AM
-
-	cancelFunc, err := svc.executor.ScheduleFuncAtCronRate(
-		svc.runBackupPeriodically,
-		executors.CRONRule{Expr: cronExpr},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to schedule backup: %w", err)
-	}
-
-	svc.cancelFunc = cancelFunc
-
-	log.Info(ctx, "Auto backup scheduled", log.String("cron", cronExpr))
-
-	return nil
 }
 
 func (svc *BackupService) triggerAutoBackup(ctx context.Context) {
@@ -104,7 +80,6 @@ func (svc *BackupService) shouldRunBackup(now time.Time, settings *biz.AutoBacku
 	case biz.BackupFrequencyMonthly:
 		return now.Day() == 1
 	default:
-		// Unknown frequency, default to daily to be safe.
 		return true
 	}
 }
@@ -193,8 +168,6 @@ func (svc *BackupService) cleanupOldBackups(ctx context.Context, ds *ent.DataSto
 
 // RunBackupNow triggers an immediate backup.
 func (svc *BackupService) RunBackupNow(ctx context.Context) error {
-	// Inject a fresh ent client so callers using a transactional context (e.g. HTTP resolvers)
-	// don't break when their transaction is closed before the backup finishes.
 	ctx = ent.NewContext(ctx, svc.db)
 
 	settings, err := svc.systemService.AutoBackupSettings(ctx)
@@ -206,5 +179,15 @@ func (svc *BackupService) RunBackupNow(ctx context.Context) error {
 		return fmt.Errorf("data storage not configured for backup")
 	}
 
-	return svc.performBackup(ctx, settings)
+	err = svc.performBackup(ctx, settings)
+
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	}
+	if updateErr := svc.systemService.UpdateAutoBackupLastRun(ctx, errMsg); updateErr != nil {
+		log.Error(ctx, "Failed to update auto backup status", log.Cause(updateErr))
+	}
+
+	return err
 }

@@ -41,6 +41,8 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/internal/server/scheduler"
+	"github.com/looplj/axonhub/internal/server/video_storage"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -67,11 +69,13 @@ type Dependencies struct {
 	PromptService                  *biz.PromptService
 	PromptProtectionRuleService    *biz.PromptProtectionRuleService
 	ProviderQuotaService           *biz.ProviderQuotaService
+	Scheduler                      *scheduler.Scheduler
 	DefaultSelector                *orchestrator.DefaultSelector
 	CandidateSelectorDiagnostics   *orchestrator.CandidateSelectorDiagnostics
 	ChannelLimiterManager          *orchestrator.ChannelLimiterManager
 	HttpClient                     *httpclient.HttpClient
 	GCWorker                       *gc.Worker
+	VideoWorker                    *video_storage.Worker
 }
 
 type GraphqlHandler struct {
@@ -102,11 +106,13 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.PromptService,
 			deps.PromptProtectionRuleService,
 			deps.ProviderQuotaService,
+			deps.Scheduler,
 			deps.DefaultSelector,
 			deps.CandidateSelectorDiagnostics,
 			deps.ChannelLimiterManager,
 			deps.HttpClient,
 			deps.GCWorker,
+			deps.VideoWorker,
 		),
 	)
 

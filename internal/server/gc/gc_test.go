@@ -146,7 +146,6 @@ func setupWorkerWithFSStorage(t *testing.T) (*Worker, context.Context, *ent.Data
 	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
-		Executor:      executor,
 		Client:        client,
 	})
 

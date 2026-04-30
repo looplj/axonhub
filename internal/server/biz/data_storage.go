@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/afero/gcsfs"
 	"github.com/studio-b12/gowebdav"
-	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 	"golang.org/x/oauth2/google"
 
@@ -35,6 +34,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
 // DataStorageService handles data storage operations.
@@ -43,7 +43,6 @@ type DataStorageService struct {
 
 	SystemService *SystemService
 	Cache         xcache.Cache[ent.DataStorage]
-	Executors     executors.ScheduledExecutor
 
 	// fsCache caches afero filesystem instances by data storage ID
 	fsCache      map[int]afero.Fs
@@ -57,7 +56,6 @@ type DataStorageServiceParams struct {
 
 	SystemService *SystemService
 	CacheConfig   xcache.Config
-	Executor      executors.ScheduledExecutor
 	Client        *ent.Client
 }
 
@@ -69,19 +67,20 @@ func NewDataStorageService(params DataStorageServiceParams) *DataStorageService 
 		},
 		SystemService: params.SystemService,
 		Cache:         xcache.NewFromConfig[ent.DataStorage](params.CacheConfig),
-		Executors:     params.Executor,
 		fsCache:       make(map[int]afero.Fs),
 	}
 	svc.reloadFileSystemsPeriodically(context.Background())
 
-	if _, err := svc.Executors.ScheduleFuncAtCronRate(
-		svc.reloadFileSystemsPeriodically,
-		executors.CRONRule{Expr: "*/1 * * * *"},
-	); err != nil {
-		log.Error(context.Background(), "failed to schedule data storage filesystem refresh", log.Cause(err))
-	}
-
 	return svc
+}
+
+func (s *DataStorageService) RegisterScheduledTasks(ctx context.Context, sched *scheduler.Scheduler) error {
+	return sched.Register(ctx, scheduler.TaskSpec{
+		Name:        "datastorage-fs-reload",
+		Description: "Refresh data storage filesystem cache every minute",
+		CronExpr:    "*/1 * * * *",
+		Timezone:    "UTC",
+	}, s.reloadFileSystemsPeriodically)
 }
 
 func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {

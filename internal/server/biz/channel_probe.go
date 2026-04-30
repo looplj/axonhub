@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -21,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
+	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
 // ChannelProbePoint represents a single probe data point for a channel.
@@ -51,7 +51,6 @@ type ChannelProbeService struct {
 	*AbstractService
 
 	SystemService     *SystemService
-	Executor          executors.ScheduledExecutor
 	mu                sync.Mutex
 	lastExecutionTime time.Time
 }
@@ -63,26 +62,19 @@ func NewChannelProbeService(params ChannelProbeServiceParams) *ChannelProbeServi
 			db: params.Ent,
 		},
 		SystemService:     params.SystemService,
-		Executor:          executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
 		lastExecutionTime: time.Time{},
 	}
 
 	return svc
 }
 
-// Start starts the channel probe service with scheduled task.
-func (svc *ChannelProbeService) Start(ctx context.Context) error {
-	_, err := svc.Executor.ScheduleFuncAtCronRate(
-		svc.runProbePeriodically,
-		executors.CRONRule{Expr: "* * * * *"},
-	)
-
-	return err
-}
-
-// Stop stops the channel probe service.
-func (svc *ChannelProbeService) Stop(ctx context.Context) error {
-	return svc.Executor.Shutdown(ctx)
+func (svc *ChannelProbeService) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
+	return s.Register(ctx, scheduler.TaskSpec{
+		Name:        "channel-probe",
+		Description: "Collect channel performance metrics every minute",
+		CronExpr:    "* * * * *",
+		Timezone:    "UTC",
+	}, svc.runProbePeriodically)
 }
 
 // shouldRunProbe determines if a probe should be executed based on frequency, current time, and last execution time.
