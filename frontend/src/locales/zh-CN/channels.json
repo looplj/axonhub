@@ -654,5 +654,15 @@
   "channels.endpoints.allFormatsUsed": "已使用所有支持的格式。",
   "channels.endpoints.selectFormatFirst": "请先选择 API 格式",
   "channels.endpoints.defaultBadge": "默认",
-  "channels.endpoints.defaultLockedHint": "默认端点不可删除。"
+  "channels.endpoints.defaultLockedHint": "默认端点不可删除。",
+  "channels.endpoints.defaultEndpoints": "默认端点",
+  "channels.endpoints.noDefaultEndpoints": "此渠道类型未解析默认端点。",
+  "channels.endpoints.resolvedCount": "已解析 {{count}} 个",
+  "channels.endpoints.configuredCount": "已配置 {{count}} 个",
+  "channels.endpoints.primaryBadge": "主端点",
+  "channels.endpoints.readOnly": "只读",
+  "channels.endpoints.noOverridesHint": "未配置自定义端点覆盖。",
+  "channels.endpoints.unsupportedBadge": "不支持",
+  "channels.endpoints.defaultConflictError": "无法覆盖默认端点",
+  "channels.endpoints.invalidApiFormat": "不支持的 API 格式"
 }

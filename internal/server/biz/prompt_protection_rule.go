@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/dlclark/regexp2"
+	"github.com/dlclark/regexp2/v2"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 

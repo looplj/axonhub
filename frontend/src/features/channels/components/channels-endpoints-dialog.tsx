@@ -140,7 +140,9 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           <div className='space-y-3'>
             <div className='flex items-center justify-between'>
               <label className='text-sm font-medium'>{t('channels.endpoints.defaultEndpoints', 'Default endpoints')}</label>
-              <span className='text-muted-foreground text-xs'>{defaultEndpoints.length > 0 && `${defaultEndpoints.length} resolved`}</span>
+              {defaultEndpoints.length > 0 && (
+                <span className='text-muted-foreground text-xs'>{t('channels.endpoints.resolvedCount', { count: defaultEndpoints.length })}</span>
+              )}
             </div>
             {defaultEndpoints.length === 0 ? (
               <div className='rounded-lg border border-dashed p-4'>
@@ -186,7 +188,9 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           <div className='space-y-3'>
             <div className='flex items-center justify-between'>
               <label className='text-sm font-medium'>{t('channels.endpoints.currentEndpoints')}</label>
-              <span className='text-muted-foreground text-xs'>{endpoints.length > 0 && `${endpoints.length} configured`}</span>
+              {endpoints.length > 0 && (
+                <span className='text-muted-foreground text-xs'>{t('channels.endpoints.configuredCount', { count: endpoints.length })}</span>
+              )}
             </div>
             {endpoints.length === 0 ? (
               <div className='rounded-lg border border-dashed p-4'>
