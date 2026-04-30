@@ -303,6 +303,17 @@ type OnboardingInfo struct {
 	AutoDisableChannel *AutoDisableChannelOnboarding `json:"autoDisableChannel,omitempty"`
 }
 
+type PromptProtectionRulePreviewInput struct {
+	Pattern  string                            `json:"pattern"`
+	TestText string                            `json:"testText"`
+	Settings *objects.PromptProtectionSettings `json:"settings"`
+}
+
+type PromptProtectionRulePreviewResult struct {
+	Result   string `json:"result"`
+	HasMatch bool   `json:"hasMatch"`
+}
+
 type QueryModelsInput struct {
 	StatusIn                []channel.Status `json:"statusIn,omitempty"`
 	IncludeMapping          *bool            `json:"includeMapping,omitempty"`

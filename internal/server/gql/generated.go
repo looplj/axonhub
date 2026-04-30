@@ -872,6 +872,7 @@ type ComplexityRoot struct {
 		EnableAllChannelAPIKeys              func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
 		EnableSelectedChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
+		PreviewPromptProtectionRule          func(childComplexity int, input PromptProtectionRulePreviewInput) int
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
 		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		SaveChannelEndpoints                 func(childComplexity int, input biz.SaveChannelEndpointsInput) int
@@ -1066,6 +1067,11 @@ type ComplexityRoot struct {
 	PromptProtectionRuleEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	PromptProtectionRulePreviewResult struct {
+		HasMatch func(childComplexity int) int
+		Result   func(childComplexity int) int
 	}
 
 	PromptProtectionSettings struct {
@@ -1986,6 +1992,7 @@ type MutationResolver interface {
 	BulkDeletePromptProtectionRules(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkEnablePromptProtectionRules(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDisablePromptProtectionRules(ctx context.Context, ids []*objects.GUID) (bool, error)
+	PreviewPromptProtectionRule(ctx context.Context, input PromptProtectionRulePreviewInput) (*PromptProtectionRulePreviewResult, error)
 	SaveChannelModelPrices(ctx context.Context, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) ([]*ent.ChannelModelPrice, error)
 }
 type ProjectResolver interface {
@@ -5428,6 +5435,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.EnableSelectedChannelAPIKeys(childComplexity, args["channelID"].(objects.GUID), args["keys"].([]string)), true
+	case "Mutation.previewPromptProtectionRule":
+		if e.complexity.Mutation.PreviewPromptProtectionRule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_previewPromptProtectionRule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PreviewPromptProtectionRule(childComplexity, args["input"].(PromptProtectionRulePreviewInput)), true
 	case "Mutation.removeUserFromProject":
 		if e.complexity.Mutation.RemoveUserFromProject == nil {
 			break
@@ -6502,6 +6520,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PromptProtectionRuleEdge.Node(childComplexity), true
+
+	case "PromptProtectionRulePreviewResult.hasMatch":
+		if e.complexity.PromptProtectionRulePreviewResult.HasMatch == nil {
+			break
+		}
+
+		return e.complexity.PromptProtectionRulePreviewResult.HasMatch(childComplexity), true
+	case "PromptProtectionRulePreviewResult.result":
+		if e.complexity.PromptProtectionRulePreviewResult.Result == nil {
+			break
+		}
+
+		return e.complexity.PromptProtectionRulePreviewResult.Result(childComplexity), true
 
 	case "PromptProtectionSettings.action":
 		if e.complexity.PromptProtectionSettings.Action == nil {
@@ -9918,6 +9949,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPromptActivationConditionInput,
 		ec.unmarshalInputPromptOrder,
 		ec.unmarshalInputPromptProtectionRuleOrder,
+		ec.unmarshalInputPromptProtectionRulePreviewInput,
 		ec.unmarshalInputPromptProtectionRuleWhereInput,
 		ec.unmarshalInputPromptProtectionSettingsInput,
 		ec.unmarshalInputPromptSettingsInput,
@@ -10964,6 +10996,17 @@ func (ec *executionContext) field_Mutation_enableSelectedChannelAPIKeys_args(ctx
 		return nil, err
 	}
 	args["keys"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_previewPromptProtectionRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNPromptProtectionRulePreviewInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPromptProtectionRulePreviewInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -32025,6 +32068,53 @@ func (ec *executionContext) fieldContext_Mutation_bulkDisablePromptProtectionRul
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_previewPromptProtectionRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_previewPromptProtectionRule,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PreviewPromptProtectionRule(ctx, fc.Args["input"].(PromptProtectionRulePreviewInput))
+		},
+		nil,
+		ec.marshalNPromptProtectionRulePreviewResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPromptProtectionRulePreviewResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_previewPromptProtectionRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "result":
+				return ec.fieldContext_PromptProtectionRulePreviewResult_result(ctx, field)
+			case "hasMatch":
+				return ec.fieldContext_PromptProtectionRulePreviewResult_hasMatch(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PromptProtectionRulePreviewResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_previewPromptProtectionRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_saveChannelModelPrices(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -35102,6 +35192,64 @@ func (ec *executionContext) fieldContext_PromptProtectionRuleEdge_cursor(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PromptProtectionRulePreviewResult_result(ctx context.Context, field graphql.CollectedField, obj *PromptProtectionRulePreviewResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PromptProtectionRulePreviewResult_result,
+		func(ctx context.Context) (any, error) {
+			return obj.Result, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PromptProtectionRulePreviewResult_result(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PromptProtectionRulePreviewResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PromptProtectionRulePreviewResult_hasMatch(ctx context.Context, field graphql.CollectedField, obj *PromptProtectionRulePreviewResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PromptProtectionRulePreviewResult_hasMatch,
+		func(ctx context.Context) (any, error) {
+			return obj.HasMatch, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PromptProtectionRulePreviewResult_hasMatch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PromptProtectionRulePreviewResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -64384,6 +64532,47 @@ func (ec *executionContext) unmarshalInputPromptProtectionRuleOrder(ctx context.
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPromptProtectionRulePreviewInput(ctx context.Context, obj any) (PromptProtectionRulePreviewInput, error) {
+	var it PromptProtectionRulePreviewInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"pattern", "testText", "settings"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "pattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pattern"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Pattern = data
+		case "testText":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testText"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TestText = data
+		case "settings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("settings"))
+			data, err := ec.unmarshalNPromptProtectionSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptProtectionSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Settings = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPromptProtectionRuleWhereInput(ctx context.Context, obj any) (ent.PromptProtectionRuleWhereInput, error) {
 	var it ent.PromptProtectionRuleWhereInput
 	asMap := map[string]any{}
@@ -84763,6 +84952,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "previewPromptProtectionRule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_previewPromptProtectionRule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "saveChannelModelPrices":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveChannelModelPrices(ctx, field)
@@ -86191,6 +86387,50 @@ func (ec *executionContext) _PromptProtectionRuleEdge(ctx context.Context, sel a
 			out.Values[i] = ec._PromptProtectionRuleEdge_node(ctx, field, obj)
 		case "cursor":
 			out.Values[i] = ec._PromptProtectionRuleEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var promptProtectionRulePreviewResultImplementors = []string{"PromptProtectionRulePreviewResult"}
+
+func (ec *executionContext) _PromptProtectionRulePreviewResult(ctx context.Context, sel ast.SelectionSet, obj *PromptProtectionRulePreviewResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, promptProtectionRulePreviewResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PromptProtectionRulePreviewResult")
+		case "result":
+			out.Values[i] = ec._PromptProtectionRulePreviewResult_result(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasMatch":
+			out.Values[i] = ec._PromptProtectionRulePreviewResult_hasMatch(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -98680,6 +98920,25 @@ func (ec *executionContext) marshalNPromptProtectionRuleOrderField2ᚖgithubᚗc
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalNPromptProtectionRulePreviewInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPromptProtectionRulePreviewInput(ctx context.Context, v any) (PromptProtectionRulePreviewInput, error) {
+	res, err := ec.unmarshalInputPromptProtectionRulePreviewInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPromptProtectionRulePreviewResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPromptProtectionRulePreviewResult(ctx context.Context, sel ast.SelectionSet, v PromptProtectionRulePreviewResult) graphql.Marshaler {
+	return ec._PromptProtectionRulePreviewResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPromptProtectionRulePreviewResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPromptProtectionRulePreviewResult(ctx context.Context, sel ast.SelectionSet, v *PromptProtectionRulePreviewResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PromptProtectionRulePreviewResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNPromptProtectionRuleStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋpromptprotectionruleᚐStatus(ctx context.Context, v any) (promptprotectionrule.Status, error) {

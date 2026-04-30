@@ -35,9 +35,15 @@ export const promptProtectionRuleConnectionSchema = z.object({
   totalCount: z.number(),
 });
 
+export const promptProtectionRulePreviewResultSchema = z.object({
+  result: z.string(),
+  hasMatch: z.boolean(),
+});
+
 export type PromptProtectionSettings = z.infer<typeof promptProtectionSettingsSchema>;
 export type PromptProtectionRule = z.infer<typeof promptProtectionRuleSchema>;
 export type PromptProtectionRuleConnection = z.infer<typeof promptProtectionRuleConnectionSchema>;
+export type PromptProtectionRulePreviewResult = z.infer<typeof promptProtectionRulePreviewResultSchema>;
 
 export interface CreatePromptProtectionRuleInput {
   name: string;
@@ -56,6 +62,16 @@ export interface UpdatePromptProtectionRuleInput {
   pattern?: string;
   status?: 'enabled' | 'disabled' | 'archived';
   settings?: {
+    action: 'mask' | 'reject';
+    replacement?: string;
+    scopes?: string[];
+  };
+}
+
+export interface PreviewPromptProtectionRuleInput {
+  pattern: string;
+  testText: string;
+  settings: {
     action: 'mask' | 'reject';
     replacement?: string;
     scopes?: string[];
