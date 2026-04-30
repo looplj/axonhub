@@ -56,6 +56,7 @@ type AuthServiceParams struct {
 	SystemService *SystemService
 	APIKeyService *APIKeyService
 	UserService   *UserService
+	OIDCService   *OIDCService
 	Ent           *ent.Client
 	AllowNoAuth   bool `name:"allow_no_auth"`
 }
@@ -68,6 +69,7 @@ func NewAuthService(params AuthServiceParams) *AuthService {
 		SystemService: params.SystemService,
 		APIKeyService: params.APIKeyService,
 		UserService:   params.UserService,
+		OIDCService:   params.OIDCService,
 		AllowNoAuth:   params.AllowNoAuth,
 	}
 }
@@ -78,6 +80,7 @@ type AuthService struct {
 	SystemService *SystemService
 	APIKeyService *APIKeyService
 	UserService   *UserService
+	OIDCService   *OIDCService
 	AllowNoAuth   bool
 }
 
@@ -137,6 +140,10 @@ func (s *AuthService) AuthenticateUser(
 		log.Error(ctx, "failed to get user", log.Cause(err))
 
 		return nil, ErrInternal
+	}
+
+	if s.OIDCService != nil && s.OIDCService.IsUserRestrictedToOIDC(ctx, u) {
+		return nil, ErrOIDCLoginRequired
 	}
 
 	err = VerifyPassword(u.Password, password)

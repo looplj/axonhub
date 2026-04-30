@@ -28,6 +28,10 @@ type OIDCHandlerParams struct {
 }
 
 func NewOIDCHandlers(params OIDCHandlerParams) *OIDCHandlers {
+	if params.OIDCService.CountProviders() > 0 && params.PublicURL == "" {
+		log.Warn(contexts.WithUser(context.Background(), &ent.User{IsOwner: true}), "OIDC is enabled but server.public_url is not configured. This is insecure and can lead to Host header injection attacks in production.")
+	}
+
 	return &OIDCHandlers{
 		oidc:      params.OIDCService,
 		auth:      params.AuthService,

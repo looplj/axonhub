@@ -42,6 +42,7 @@ type ProviderInfo struct {
 	IconURL          string `json:"icon_url"`
 	ButtonColor      string `json:"button_color"`
 	Active           bool   `json:"active"`
+	OIDCLoginOnly    bool   `json:"oidc_login_only"`
 	LastCheck        int64  `json:"last_check,omitempty"`
 	IsLinked         bool   `json:"is_linked"`
 	LinkedIdentityID string `json:"linked_identity_id,omitempty"`
@@ -434,6 +435,7 @@ func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 			JITEnabled:  p.JITEnabled,
 			IconURL:     p.IconURL,
 			ButtonColor: p.ButtonColor,
+			OIDCLoginOnly: p.OIDCLoginOnly,
 		}
 
 		ok, lastCheck := s.getProviderInfo(providerID)
@@ -453,6 +455,43 @@ func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 	}
 
 	return providers
+}
+
+// IsUserRestrictedToOIDC checks if the user is required to login via OIDC only
+// because they are linked to an OIDC provider that has OIDCLoginOnly enabled.
+func (s *OIDCService) IsUserRestrictedToOIDC(ctx context.Context, u *ent.User) bool {
+	if u == nil {
+		return false
+	}
+
+	// 1. Check if user's password is the magic placeholder
+	if u.Password == OIDC_ONLY_PLACEHOLDER {
+		return true
+	}
+
+	// 2. Check if any of the user's linked OIDC providers have OIDCLoginOnly enabled
+	identities := u.Edges.OidcIdentities
+	if len(identities) == 0 {
+		// Try to fetch them if not loaded
+		var err error
+		identities, err = s.entFromContext(ctx).OIDCIdentity.Query().
+			Where(oidcidentity.UserID(u.ID)).
+			All(ctx)
+		if err != nil {
+			log.Error(ctx, "failed to query user OIDC identities", zap.Error(err), log.Int("user_id", u.ID))
+			return false
+		}
+	}
+
+	for _, id := range identities {
+		for _, p := range s.cfg.Providers {
+			if p.issuer() == id.Issuer && p.OIDCLoginOnly {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerIdentifier string, baseURL string) (string, string, error) {
@@ -1035,11 +1074,6 @@ func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, given
 
 	if picture != "" {
 		update.SetAvatar(picture)
-	}
-
-	// Enforce OIDC Only if configured, but ONLY if the user doesn't already have a local password set
-	if cfg.OIDCLoginOnly && (u.Password == "" || u.Password == OIDC_ONLY_PLACEHOLDER) {
-		update.SetPassword(OIDC_ONLY_PLACEHOLDER)
 	}
 
 	// Sync roles/scopes

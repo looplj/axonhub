@@ -154,6 +154,7 @@ export const authApi = {
       icon_url: string;
       button_color: string;
       active?: boolean;
+      oidc_login_only: boolean;
       is_linked: boolean;
       linked_identity_id?: string;
       linked_email?: string;
