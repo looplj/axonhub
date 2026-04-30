@@ -1952,6 +1952,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                             className='min-h-[80px] resize-y pr-10 font-mono text-sm md:col-span-6'
                                             autoComplete='new-password'
                                             data-form-type='other'
+                                            spellCheck={false}
                                             aria-invalid={!!fieldState.error}
                                             data-testid='channel-api-key-input'
                                           />
@@ -2028,6 +2029,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         className='min-h-[80px] resize-y font-mono text-sm md:col-span-6'
                                         autoComplete='new-password'
                                         data-form-type='other'
+                                        spellCheck={false}
                                         aria-invalid={!!fieldState.error}
                                         data-testid='channel-api-key-input'
                                       />
