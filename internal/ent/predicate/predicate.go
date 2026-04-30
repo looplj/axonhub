@@ -30,6 +30,9 @@ type DataStorage func(*sql.Selector)
 // Model is the predicate function for model builders.
 type Model func(*sql.Selector)
 
+// OIDCIdentity is the predicate function for oidcidentity builders.
+type OIDCIdentity func(*sql.Selector)
+
 // Project is the predicate function for project builders.
 type Project func(*sql.Selector)
 

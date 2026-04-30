@@ -539,6 +539,88 @@ func (c *ModelUpdateOne) SetInput(i UpdateModelInput) *ModelUpdateOne {
 	return c
 }
 
+// CreateOIDCIdentityInput represents a mutation input for creating oidcidentities.
+type CreateOIDCIdentityInput struct {
+	Issuer      string
+	Subject     string
+	Email       *string
+	IdpName     *string
+	LastLoginAt *time.Time
+}
+
+// Mutate applies the CreateOIDCIdentityInput on the OIDCIdentityMutation builder.
+func (i *CreateOIDCIdentityInput) Mutate(m *OIDCIdentityMutation) {
+	m.SetIssuer(i.Issuer)
+	m.SetSubject(i.Subject)
+	if v := i.Email; v != nil {
+		m.SetEmail(*v)
+	}
+	if v := i.IdpName; v != nil {
+		m.SetIdpName(*v)
+	}
+	if v := i.LastLoginAt; v != nil {
+		m.SetLastLoginAt(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateOIDCIdentityInput on the OIDCIdentityCreate builder.
+func (c *OIDCIdentityCreate) SetInput(i CreateOIDCIdentityInput) *OIDCIdentityCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateOIDCIdentityInput represents a mutation input for updating oidcidentities.
+type UpdateOIDCIdentityInput struct {
+	Issuer           *string
+	Subject          *string
+	ClearEmail       bool
+	Email            *string
+	ClearIdpName     bool
+	IdpName          *string
+	ClearLastLoginAt bool
+	LastLoginAt      *time.Time
+}
+
+// Mutate applies the UpdateOIDCIdentityInput on the OIDCIdentityMutation builder.
+func (i *UpdateOIDCIdentityInput) Mutate(m *OIDCIdentityMutation) {
+	if v := i.Issuer; v != nil {
+		m.SetIssuer(*v)
+	}
+	if v := i.Subject; v != nil {
+		m.SetSubject(*v)
+	}
+	if i.ClearEmail {
+		m.ClearEmail()
+	}
+	if v := i.Email; v != nil {
+		m.SetEmail(*v)
+	}
+	if i.ClearIdpName {
+		m.ClearIdpName()
+	}
+	if v := i.IdpName; v != nil {
+		m.SetIdpName(*v)
+	}
+	if i.ClearLastLoginAt {
+		m.ClearLastLoginAt()
+	}
+	if v := i.LastLoginAt; v != nil {
+		m.SetLastLoginAt(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateOIDCIdentityInput on the OIDCIdentityUpdate builder.
+func (c *OIDCIdentityUpdate) SetInput(i UpdateOIDCIdentityInput) *OIDCIdentityUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateOIDCIdentityInput on the OIDCIdentityUpdateOne builder.
+func (c *OIDCIdentityUpdateOne) SetInput(i UpdateOIDCIdentityInput) *OIDCIdentityUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateProjectInput represents a mutation input for creating projects.
 type CreateProjectInput struct {
 	Name        string

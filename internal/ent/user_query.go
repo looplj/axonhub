@@ -15,6 +15,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
+	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -34,6 +35,7 @@ type UserQuery struct {
 	withAPIKeys                       *APIKeyQuery
 	withRoles                         *RoleQuery
 	withChannelOverrideTemplates      *ChannelOverrideTemplateQuery
+	withOidcIdentities                *OIDCIdentityQuery
 	withProjectUsers                  *UserProjectQuery
 	withUserRoles                     *UserRoleQuery
 	loadTotal                         []func(context.Context, []*User) error
@@ -42,6 +44,7 @@ type UserQuery struct {
 	withNamedAPIKeys                  map[string]*APIKeyQuery
 	withNamedRoles                    map[string]*RoleQuery
 	withNamedChannelOverrideTemplates map[string]*ChannelOverrideTemplateQuery
+	withNamedOidcIdentities           map[string]*OIDCIdentityQuery
 	withNamedProjectUsers             map[string]*UserProjectQuery
 	withNamedUserRoles                map[string]*UserRoleQuery
 	// intermediate query (i.e. traversal path).
@@ -161,6 +164,28 @@ func (_q *UserQuery) QueryChannelOverrideTemplates() *ChannelOverrideTemplateQue
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(channeloverridetemplate.Table, channeloverridetemplate.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.ChannelOverrideTemplatesTable, user.ChannelOverrideTemplatesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryOidcIdentities chains the current query on the "oidc_identities" edge.
+func (_q *UserQuery) QueryOidcIdentities() *OIDCIdentityQuery {
+	query := (&OIDCIdentityClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(oidcidentity.Table, oidcidentity.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, user.OidcIdentitiesTable, user.OidcIdentitiesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -408,6 +433,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withAPIKeys:                  _q.withAPIKeys.Clone(),
 		withRoles:                    _q.withRoles.Clone(),
 		withChannelOverrideTemplates: _q.withChannelOverrideTemplates.Clone(),
+		withOidcIdentities:           _q.withOidcIdentities.Clone(),
 		withProjectUsers:             _q.withProjectUsers.Clone(),
 		withUserRoles:                _q.withUserRoles.Clone(),
 		// clone intermediate query.
@@ -458,6 +484,17 @@ func (_q *UserQuery) WithChannelOverrideTemplates(opts ...func(*ChannelOverrideT
 		opt(query)
 	}
 	_q.withChannelOverrideTemplates = query
+	return _q
+}
+
+// WithOidcIdentities tells the query-builder to eager-load the nodes that are connected to
+// the "oidc_identities" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithOidcIdentities(opts ...func(*OIDCIdentityQuery)) *UserQuery {
+	query := (&OIDCIdentityClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withOidcIdentities = query
 	return _q
 }
 
@@ -567,11 +604,12 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [7]bool{
 			_q.withProjects != nil,
 			_q.withAPIKeys != nil,
 			_q.withRoles != nil,
 			_q.withChannelOverrideTemplates != nil,
+			_q.withOidcIdentities != nil,
 			_q.withProjectUsers != nil,
 			_q.withUserRoles != nil,
 		}
@@ -627,6 +665,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			return nil, err
 		}
 	}
+	if query := _q.withOidcIdentities; query != nil {
+		if err := _q.loadOidcIdentities(ctx, query, nodes,
+			func(n *User) { n.Edges.OidcIdentities = []*OIDCIdentity{} },
+			func(n *User, e *OIDCIdentity) { n.Edges.OidcIdentities = append(n.Edges.OidcIdentities, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withProjectUsers; query != nil {
 		if err := _q.loadProjectUsers(ctx, query, nodes,
 			func(n *User) { n.Edges.ProjectUsers = []*UserProject{} },
@@ -666,6 +711,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadChannelOverrideTemplates(ctx, query, nodes,
 			func(n *User) { n.appendNamedChannelOverrideTemplates(name) },
 			func(n *User, e *ChannelOverrideTemplate) { n.appendNamedChannelOverrideTemplates(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedOidcIdentities {
+		if err := _q.loadOidcIdentities(ctx, query, nodes,
+			func(n *User) { n.appendNamedOidcIdentities(name) },
+			func(n *User, e *OIDCIdentity) { n.appendNamedOidcIdentities(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -858,6 +910,36 @@ func (_q *UserQuery) loadChannelOverrideTemplates(ctx context.Context, query *Ch
 	}
 	query.Where(predicate.ChannelOverrideTemplate(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.ChannelOverrideTemplatesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadOidcIdentities(ctx context.Context, query *OIDCIdentityQuery, nodes []*User, init func(*User), assign func(*User, *OIDCIdentity)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(oidcidentity.FieldUserID)
+	}
+	query.Where(predicate.OIDCIdentity(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.OidcIdentitiesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -1080,6 +1162,20 @@ func (_q *UserQuery) WithNamedChannelOverrideTemplates(name string, opts ...func
 		_q.withNamedChannelOverrideTemplates = make(map[string]*ChannelOverrideTemplateQuery)
 	}
 	_q.withNamedChannelOverrideTemplates[name] = query
+	return _q
+}
+
+// WithNamedOidcIdentities tells the query-builder to eager-load the nodes that are connected to the "oidc_identities"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedOidcIdentities(name string, opts ...func(*OIDCIdentityQuery)) *UserQuery {
+	query := (&OIDCIdentityClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedOidcIdentities == nil {
+		_q.withNamedOidcIdentities = make(map[string]*OIDCIdentityQuery)
+	}
+	_q.withNamedOidcIdentities[name] = query
 	return _q
 }
 

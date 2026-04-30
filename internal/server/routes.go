@@ -34,6 +34,7 @@ type Handlers struct {
 	Antigravity    *api.AntigravityHandlers
 	Copilot        *api.CopilotHandlers
 	RequestContent *api.RequestContentHandlers
+	OIDC           *api.OIDCHandlers
 	RequestPreview *api.RequestPreviewHandlers
 }
 
@@ -86,6 +87,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
 
+	oauthGroup := server.Group("/oauth", middleware.WithTimeout(server.Config.RequestTimeout))
+	{
+		handlers.OIDC.RegisterRoutes(oauthGroup)
+	}
+
 	adminGroup := server.Group("/admin", middleware.WithJWTAuth(services.AuthService), middleware.WithProjectID())
 	// 管理员路由 - 使用 JWT 认证
 	{
@@ -108,6 +114,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 		adminGroup.POST("/copilot/oauth/start", handlers.Copilot.StartOAuth)
 		adminGroup.POST("/copilot/oauth/poll", handlers.Copilot.PollOAuth)
+
+		// OIDC Manual Linking
+		adminGroup.GET("/oidc/link/:provider", handlers.OIDC.GetLinkAuthorizeURL)
 
 		// Playground API with channel specification support
 		adminGroup.POST(

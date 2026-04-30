@@ -47,9 +47,16 @@ func (s *UserService) CreateUser(ctx context.Context, input ent.CreateUserInput)
 	client := s.entFromContext(ctx)
 
 	// Hash the password
-	hashedPassword, err := HashPassword(input.Password)
-	if err != nil {
-		return nil, err
+	var hashedPassword string
+	if input.Password == OIDC_ONLY_PLACEHOLDER {
+		hashedPassword = OIDC_ONLY_PLACEHOLDER
+	} else {
+		var err error
+
+		hashedPassword, err = HashPassword(input.Password)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	mut := client.User.Create().
@@ -189,6 +196,7 @@ func (s *UserService) GetUserByID(ctx context.Context, id int) (*ent.User, error
 		WithRoles().
 		WithProjects().
 		WithProjectUsers().
+		WithOidcIdentities().
 		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -281,6 +289,18 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 		})
 	}
 
+	// Convert OIDC identities
+	oidcIdentities := make([]objects.OIDCIdentityInfo, 0, len(u.Edges.OidcIdentities))
+	for _, identity := range u.Edges.OidcIdentities {
+		oidcIdentities = append(oidcIdentities, objects.OIDCIdentityInfo{
+			ID:      objects.GUID{Type: ent.TypeOIDCIdentity, ID: identity.ID},
+			IdpName: identity.IdpName,
+			Issuer:  identity.Issuer,
+			Subject: identity.Subject,
+			Email:   identity.Email,
+		})
+	}
+
 	return &objects.UserInfo{
 		ID:             objects.GUID{Type: ent.TypeUser, ID: u.ID},
 		Email:          u.Email,
@@ -292,6 +312,8 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 		Scopes:         lo.Keys(allScopes),
 		Roles:          userRoles,
 		Projects:       userProjects,
+		OIDCIdentities: oidcIdentities,
+		HasPassword:    u.Password != OIDC_ONLY_PLACEHOLDER,
 	}
 }
 

@@ -102,3 +102,74 @@ export function useSignOut() {
     router.navigate({ to: '/sign-in' });
   };
 }
+
+
+export function useOIDCProviders() {
+  return useQuery({
+    queryKey: ['oidc-providers'],
+    queryFn: async () => {
+      const response = await authApi.getOIDCProviders();
+      return response.data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
+}
+
+export function useOIDCAuthorize() {
+  return useMutation({
+    mutationFn: async (providerId: string) => {
+      return await authApi.getOIDCAuthorizeURL(providerId);
+    },
+    onSuccess: (response) => {
+      if (response && response.data && response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        toast.error('Invalid authorization URL received');
+      }
+    },
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize SSO login';
+      toast.error(errorMessage);
+    },
+  });
+}
+
+export function useOIDCExchange() {
+  const { setUser, setAccessToken } = useAuthStore((state) => state.auth);
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (code: string) => {
+      return await authApi.exchangeOIDCCode(code);
+    },
+    onSuccess: (response) => {
+      const data = response.data;
+      
+      // Store token in localStorage
+      setTokenToStorage(data.token);
+
+      const userLanguage = data.user.preferLanguage || 'en';
+
+      // Update auth store
+      setAccessToken(data.token);
+      setUser(data.user);
+
+      // Initialize i18n with user's preferred language
+      if (userLanguage !== i18n.language) {
+        i18n.changeLanguage(userLanguage);
+      }
+
+      toast.success(i18n.t('common.success.signedIn'));
+
+      // Redirect based on user role
+      const redirectPath = data.user.isOwner ? '/' : '/project/playground';
+      router.navigate({ to: redirectPath });
+    },
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'SSO login failed';
+      toast.error(errorMessage);
+      router.navigate({ to: '/sign-in' });
+    },
+  });
+}

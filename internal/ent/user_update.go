@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
+	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -259,6 +260,21 @@ func (_u *UserUpdate) AddChannelOverrideTemplates(v ...*ChannelOverrideTemplate)
 	return _u.AddChannelOverrideTemplateIDs(ids...)
 }
 
+// AddOidcIdentityIDs adds the "oidc_identities" edge to the OIDCIdentity entity by IDs.
+func (_u *UserUpdate) AddOidcIdentityIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddOidcIdentityIDs(ids...)
+	return _u
+}
+
+// AddOidcIdentities adds the "oidc_identities" edges to the OIDCIdentity entity.
+func (_u *UserUpdate) AddOidcIdentities(v ...*OIDCIdentity) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddOidcIdentityIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *UserUpdate) AddProjectUserIDs(ids ...int) *UserUpdate {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -376,6 +392,27 @@ func (_u *UserUpdate) RemoveChannelOverrideTemplates(v ...*ChannelOverrideTempla
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveChannelOverrideTemplateIDs(ids...)
+}
+
+// ClearOidcIdentities clears all "oidc_identities" edges to the OIDCIdentity entity.
+func (_u *UserUpdate) ClearOidcIdentities() *UserUpdate {
+	_u.mutation.ClearOidcIdentities()
+	return _u
+}
+
+// RemoveOidcIdentityIDs removes the "oidc_identities" edge to OIDCIdentity entities by IDs.
+func (_u *UserUpdate) RemoveOidcIdentityIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveOidcIdentityIDs(ids...)
+	return _u
+}
+
+// RemoveOidcIdentities removes "oidc_identities" edges to OIDCIdentity entities.
+func (_u *UserUpdate) RemoveOidcIdentities(v ...*OIDCIdentity) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveOidcIdentityIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -741,6 +778,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.OidcIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.OidcIdentitiesTable,
+			Columns: []string{user.OidcIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oidcidentity.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedOidcIdentitiesIDs(); len(nodes) > 0 && !_u.mutation.OidcIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.OidcIdentitiesTable,
+			Columns: []string{user.OidcIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oidcidentity.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.OidcIdentitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.OidcIdentitiesTable,
+			Columns: []string{user.OidcIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oidcidentity.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ProjectUsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1076,6 +1158,21 @@ func (_u *UserUpdateOne) AddChannelOverrideTemplates(v ...*ChannelOverrideTempla
 	return _u.AddChannelOverrideTemplateIDs(ids...)
 }
 
+// AddOidcIdentityIDs adds the "oidc_identities" edge to the OIDCIdentity entity by IDs.
+func (_u *UserUpdateOne) AddOidcIdentityIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddOidcIdentityIDs(ids...)
+	return _u
+}
+
+// AddOidcIdentities adds the "oidc_identities" edges to the OIDCIdentity entity.
+func (_u *UserUpdateOne) AddOidcIdentities(v ...*OIDCIdentity) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddOidcIdentityIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *UserUpdateOne) AddProjectUserIDs(ids ...int) *UserUpdateOne {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -1193,6 +1290,27 @@ func (_u *UserUpdateOne) RemoveChannelOverrideTemplates(v ...*ChannelOverrideTem
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveChannelOverrideTemplateIDs(ids...)
+}
+
+// ClearOidcIdentities clears all "oidc_identities" edges to the OIDCIdentity entity.
+func (_u *UserUpdateOne) ClearOidcIdentities() *UserUpdateOne {
+	_u.mutation.ClearOidcIdentities()
+	return _u
+}
+
+// RemoveOidcIdentityIDs removes the "oidc_identities" edge to OIDCIdentity entities by IDs.
+func (_u *UserUpdateOne) RemoveOidcIdentityIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveOidcIdentityIDs(ids...)
+	return _u
+}
+
+// RemoveOidcIdentities removes "oidc_identities" edges to OIDCIdentity entities.
+func (_u *UserUpdateOne) RemoveOidcIdentities(v ...*OIDCIdentity) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveOidcIdentityIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -1581,6 +1699,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(channeloverridetemplate.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.OidcIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.OidcIdentitiesTable,
+			Columns: []string{user.OidcIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oidcidentity.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedOidcIdentitiesIDs(); len(nodes) > 0 && !_u.mutation.OidcIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.OidcIdentitiesTable,
+			Columns: []string{user.OidcIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oidcidentity.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.OidcIdentitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.OidcIdentitiesTable,
+			Columns: []string{user.OidcIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oidcidentity.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

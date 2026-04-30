@@ -37,6 +37,15 @@ export default defineConfig({
         target: process.env.VITE_API_URL || 'http://localhost:8090',
         changeOrigin: true,
       },
+      '/oauth': {
+        target: process.env.VITE_API_URL || 'http://localhost:8090',
+        changeOrigin: true,
+        bypass: (req) => {
+          if (req.url?.includes('idp-callback')) {
+            return req.url;
+          }
+        },
+      },
       '/v1': {
         target: process.env.VITE_API_URL || 'http://localhost:8090',
         changeOrigin: true,

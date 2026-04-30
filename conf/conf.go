@@ -3,6 +3,7 @@ package conf
 import (
 	"context"
 	"encoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -18,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/db"
 	"github.com/looplj/axonhub/internal/server/gc"
 )
@@ -32,6 +34,7 @@ type Config struct {
 	GC               gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
 	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
 	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
+	OIDC             biz.OIDCConfig      `conf:"oidc" yaml:"oidc" json:"oidc"`
 	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
 	AllowNoAuth      bool                `name:"allow_no_auth" yaml:"-" json:"-"`
 	APIKeyPrefix     string              `name:"api_key_prefix" yaml:"-" json:"-"`
@@ -125,6 +128,19 @@ func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) 
 			return time.Duration(0), nil
 		}
 		return time.ParseDuration(str)
+
+	case dstType.Kind() == reflect.Slice || dstType.Kind() == reflect.Map || dstType.Kind() == reflect.Struct:
+		// Attempt to parse as JSON for environment variable support
+		text := strings.TrimSpace(str)
+		if strings.HasPrefix(text, "[") || strings.HasPrefix(text, "{") {
+			var decoded any
+			if err := json.Unmarshal([]byte(text), &decoded); err == nil {
+				return decoded, nil
+			}
+		}
+
+		return data, nil
+
 	default:
 		return data, nil
 	}
@@ -135,6 +151,7 @@ func setDefaults(v *viper.Viper) {
 	// Server defaults
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", 8090)
+	v.SetDefault("server.public_url", "")
 	v.SetDefault("server.name", "AxonHub")
 	v.SetDefault("server.base_path", "")
 	v.SetDefault("server.request_timeout", "30s")
@@ -220,6 +237,9 @@ func setDefaults(v *viper.Viper) {
 	// Note: cache.redis.db has no default value to allow explicit override to 0
 	v.SetDefault("cache.redis.tls", false)
 	v.SetDefault("cache.redis.tls_insecure_skip_verify", false)
+
+	// OIDC defaults
+	v.SetDefault("oidc.providers", []biz.OIDCProvider{})
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.

@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
+	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
@@ -2651,6 +2652,320 @@ func (_m *Model) ToEdge(order *ModelOrder) *ModelEdge {
 		order = DefaultModelOrder
 	}
 	return &ModelEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// OIDCIdentityEdge is the edge representation of OIDCIdentity.
+type OIDCIdentityEdge struct {
+	Node   *OIDCIdentity `json:"node"`
+	Cursor Cursor        `json:"cursor"`
+}
+
+// OIDCIdentityConnection is the connection containing edges to OIDCIdentity.
+type OIDCIdentityConnection struct {
+	Edges      []*OIDCIdentityEdge `json:"edges"`
+	PageInfo   PageInfo            `json:"pageInfo"`
+	TotalCount int                 `json:"totalCount"`
+}
+
+func (c *OIDCIdentityConnection) build(nodes []*OIDCIdentity, pager *oidcidentityPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *OIDCIdentity
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *OIDCIdentity {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *OIDCIdentity {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*OIDCIdentityEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &OIDCIdentityEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// OIDCIdentityPaginateOption enables pagination customization.
+type OIDCIdentityPaginateOption func(*oidcidentityPager) error
+
+// WithOIDCIdentityOrder configures pagination ordering.
+func WithOIDCIdentityOrder(order *OIDCIdentityOrder) OIDCIdentityPaginateOption {
+	if order == nil {
+		order = DefaultOIDCIdentityOrder
+	}
+	o := *order
+	return func(pager *oidcidentityPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultOIDCIdentityOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithOIDCIdentityFilter configures pagination filter.
+func WithOIDCIdentityFilter(filter func(*OIDCIdentityQuery) (*OIDCIdentityQuery, error)) OIDCIdentityPaginateOption {
+	return func(pager *oidcidentityPager) error {
+		if filter == nil {
+			return errors.New("OIDCIdentityQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type oidcidentityPager struct {
+	reverse bool
+	order   *OIDCIdentityOrder
+	filter  func(*OIDCIdentityQuery) (*OIDCIdentityQuery, error)
+}
+
+func newOIDCIdentityPager(opts []OIDCIdentityPaginateOption, reverse bool) (*oidcidentityPager, error) {
+	pager := &oidcidentityPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultOIDCIdentityOrder
+	}
+	return pager, nil
+}
+
+func (p *oidcidentityPager) applyFilter(query *OIDCIdentityQuery) (*OIDCIdentityQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *oidcidentityPager) toCursor(_m *OIDCIdentity) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *oidcidentityPager) applyCursors(query *OIDCIdentityQuery, after, before *Cursor) (*OIDCIdentityQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultOIDCIdentityOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *oidcidentityPager) applyOrder(query *OIDCIdentityQuery) *OIDCIdentityQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultOIDCIdentityOrder.Field {
+		query = query.Order(DefaultOIDCIdentityOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *oidcidentityPager) orderExpr(query *OIDCIdentityQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultOIDCIdentityOrder.Field {
+			b.Comma().Ident(DefaultOIDCIdentityOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to OIDCIdentity.
+func (_m *OIDCIdentityQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...OIDCIdentityPaginateOption,
+) (*OIDCIdentityConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newOIDCIdentityPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &OIDCIdentityConnection{Edges: []*OIDCIdentityEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// OIDCIdentityOrderFieldCreatedAt orders OIDCIdentity by created_at.
+	OIDCIdentityOrderFieldCreatedAt = &OIDCIdentityOrderField{
+		Value: func(_m *OIDCIdentity) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: oidcidentity.FieldCreatedAt,
+		toTerm: oidcidentity.ByCreatedAt,
+		toCursor: func(_m *OIDCIdentity) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// OIDCIdentityOrderFieldUpdatedAt orders OIDCIdentity by updated_at.
+	OIDCIdentityOrderFieldUpdatedAt = &OIDCIdentityOrderField{
+		Value: func(_m *OIDCIdentity) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: oidcidentity.FieldUpdatedAt,
+		toTerm: oidcidentity.ByUpdatedAt,
+		toCursor: func(_m *OIDCIdentity) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f OIDCIdentityOrderField) String() string {
+	var str string
+	switch f.column {
+	case OIDCIdentityOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case OIDCIdentityOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f OIDCIdentityOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *OIDCIdentityOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("OIDCIdentityOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *OIDCIdentityOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *OIDCIdentityOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid OIDCIdentityOrderField", str)
+	}
+	return nil
+}
+
+// OIDCIdentityOrderField defines the ordering field of OIDCIdentity.
+type OIDCIdentityOrderField struct {
+	// Value extracts the ordering value from the given OIDCIdentity.
+	Value    func(*OIDCIdentity) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) oidcidentity.OrderOption
+	toCursor func(*OIDCIdentity) Cursor
+}
+
+// OIDCIdentityOrder defines the ordering of OIDCIdentity.
+type OIDCIdentityOrder struct {
+	Direction OrderDirection          `json:"direction"`
+	Field     *OIDCIdentityOrderField `json:"field"`
+}
+
+// DefaultOIDCIdentityOrder is the default ordering of OIDCIdentity.
+var DefaultOIDCIdentityOrder = &OIDCIdentityOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &OIDCIdentityOrderField{
+		Value: func(_m *OIDCIdentity) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: oidcidentity.FieldID,
+		toTerm: oidcidentity.ByID,
+		toCursor: func(_m *OIDCIdentity) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts OIDCIdentity into OIDCIdentityEdge.
+func (_m *OIDCIdentity) ToEdge(order *OIDCIdentityOrder) *OIDCIdentityEdge {
+	if order == nil {
+		order = DefaultOIDCIdentityOrder
+	}
+	return &OIDCIdentityEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

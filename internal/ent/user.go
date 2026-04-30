@@ -58,20 +58,23 @@ type UserEdges struct {
 	Roles []*Role `json:"roles,omitempty"`
 	// ChannelOverrideTemplates holds the value of the channel_override_templates edge.
 	ChannelOverrideTemplates []*ChannelOverrideTemplate `json:"channel_override_templates,omitempty"`
+	// OidcIdentities holds the value of the oidc_identities edge.
+	OidcIdentities []*OIDCIdentity `json:"oidc_identities,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// UserRoles holds the value of the user_roles edge.
 	UserRoles []*UserRole `json:"user_roles,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [7]bool
 	// totalCount holds the count of the edges above.
-	totalCount [6]map[string]int
+	totalCount [7]map[string]int
 
 	namedProjects                 map[string][]*Project
 	namedAPIKeys                  map[string][]*APIKey
 	namedRoles                    map[string][]*Role
 	namedChannelOverrideTemplates map[string][]*ChannelOverrideTemplate
+	namedOidcIdentities           map[string][]*OIDCIdentity
 	namedProjectUsers             map[string][]*UserProject
 	namedUserRoles                map[string][]*UserRole
 }
@@ -112,10 +115,19 @@ func (e UserEdges) ChannelOverrideTemplatesOrErr() ([]*ChannelOverrideTemplate, 
 	return nil, &NotLoadedError{edge: "channel_override_templates"}
 }
 
+// OidcIdentitiesOrErr returns the OidcIdentities value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OidcIdentitiesOrErr() ([]*OIDCIdentity, error) {
+	if e.loadedTypes[4] {
+		return e.OidcIdentities, nil
+	}
+	return nil, &NotLoadedError{edge: "oidc_identities"}
+}
+
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -124,7 +136,7 @@ func (e UserEdges) ProjectUsersOrErr() ([]*UserProject, error) {
 // UserRolesOrErr returns the UserRoles value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UserRolesOrErr() ([]*UserRole, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.UserRoles, nil
 	}
 	return nil, &NotLoadedError{edge: "user_roles"}
@@ -271,6 +283,11 @@ func (_m *User) QueryRoles() *RoleQuery {
 // QueryChannelOverrideTemplates queries the "channel_override_templates" edge of the User entity.
 func (_m *User) QueryChannelOverrideTemplates() *ChannelOverrideTemplateQuery {
 	return NewUserClient(_m.config).QueryChannelOverrideTemplates(_m)
+}
+
+// QueryOidcIdentities queries the "oidc_identities" edge of the User entity.
+func (_m *User) QueryOidcIdentities() *OIDCIdentityQuery {
+	return NewUserClient(_m.config).QueryOidcIdentities(_m)
 }
 
 // QueryProjectUsers queries the "project_users" edge of the User entity.
@@ -437,6 +454,30 @@ func (_m *User) appendNamedChannelOverrideTemplates(name string, edges ...*Chann
 		_m.Edges.namedChannelOverrideTemplates[name] = []*ChannelOverrideTemplate{}
 	} else {
 		_m.Edges.namedChannelOverrideTemplates[name] = append(_m.Edges.namedChannelOverrideTemplates[name], edges...)
+	}
+}
+
+// NamedOidcIdentities returns the OidcIdentities named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedOidcIdentities(name string) ([]*OIDCIdentity, error) {
+	if _m.Edges.namedOidcIdentities == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedOidcIdentities[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedOidcIdentities(name string, edges ...*OIDCIdentity) {
+	if _m.Edges.namedOidcIdentities == nil {
+		_m.Edges.namedOidcIdentities = make(map[string][]*OIDCIdentity)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedOidcIdentities[name] = []*OIDCIdentity{}
+	} else {
+		_m.Edges.namedOidcIdentities[name] = append(_m.Edges.namedOidcIdentities[name], edges...)
 	}
 }
 

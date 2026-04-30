@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
+	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
@@ -60,6 +61,8 @@ type Client struct {
 	DataStorage *DataStorageClient
 	// Model is the client for interacting with the Model builders.
 	Model *ModelClient
+	// OIDCIdentity is the client for interacting with the OIDCIdentity builders.
+	OIDCIdentity *OIDCIdentityClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Prompt is the client for interacting with the Prompt builders.
@@ -109,6 +112,7 @@ func (c *Client) init() {
 	c.ChannelProbe = NewChannelProbeClient(c.config)
 	c.DataStorage = NewDataStorageClient(c.config)
 	c.Model = NewModelClient(c.config)
+	c.OIDCIdentity = NewOIDCIdentityClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Prompt = NewPromptClient(c.config)
 	c.PromptProtectionRule = NewPromptProtectionRuleClient(c.config)
@@ -223,6 +227,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ChannelProbe:             NewChannelProbeClient(cfg),
 		DataStorage:              NewDataStorageClient(cfg),
 		Model:                    NewModelClient(cfg),
+		OIDCIdentity:             NewOIDCIdentityClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
 		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
@@ -264,6 +269,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ChannelProbe:             NewChannelProbeClient(cfg),
 		DataStorage:              NewDataStorageClient(cfg),
 		Model:                    NewModelClient(cfg),
+		OIDCIdentity:             NewOIDCIdentityClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
 		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
@@ -308,10 +314,10 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Channel, c.ChannelModelPrice, c.ChannelModelPriceVersion,
-		c.ChannelOverrideTemplate, c.ChannelProbe, c.DataStorage, c.Model, c.Project,
-		c.Prompt, c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.ChannelOverrideTemplate, c.ChannelProbe, c.DataStorage, c.Model,
+		c.OIDCIdentity, c.Project, c.Prompt, c.PromptProtectionRule,
+		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.System,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -322,10 +328,10 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Channel, c.ChannelModelPrice, c.ChannelModelPriceVersion,
-		c.ChannelOverrideTemplate, c.ChannelProbe, c.DataStorage, c.Model, c.Project,
-		c.Prompt, c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.ChannelOverrideTemplate, c.ChannelProbe, c.DataStorage, c.Model,
+		c.OIDCIdentity, c.Project, c.Prompt, c.PromptProtectionRule,
+		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.System,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -350,6 +356,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DataStorage.mutate(ctx, m)
 	case *ModelMutation:
 		return c.Model.mutate(ctx, m)
+	case *OIDCIdentityMutation:
+		return c.OIDCIdentity.mutate(ctx, m)
 	case *ProjectMutation:
 		return c.Project.mutate(ctx, m)
 	case *PromptMutation:
@@ -1713,6 +1721,157 @@ func (c *ModelClient) mutate(ctx context.Context, m *ModelMutation) (Value, erro
 		return (&ModelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Model mutation op: %q", m.Op())
+	}
+}
+
+// OIDCIdentityClient is a client for the OIDCIdentity schema.
+type OIDCIdentityClient struct {
+	config
+}
+
+// NewOIDCIdentityClient returns a client for the OIDCIdentity from the given config.
+func NewOIDCIdentityClient(c config) *OIDCIdentityClient {
+	return &OIDCIdentityClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `oidcidentity.Hooks(f(g(h())))`.
+func (c *OIDCIdentityClient) Use(hooks ...Hook) {
+	c.hooks.OIDCIdentity = append(c.hooks.OIDCIdentity, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `oidcidentity.Intercept(f(g(h())))`.
+func (c *OIDCIdentityClient) Intercept(interceptors ...Interceptor) {
+	c.inters.OIDCIdentity = append(c.inters.OIDCIdentity, interceptors...)
+}
+
+// Create returns a builder for creating a OIDCIdentity entity.
+func (c *OIDCIdentityClient) Create() *OIDCIdentityCreate {
+	mutation := newOIDCIdentityMutation(c.config, OpCreate)
+	return &OIDCIdentityCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of OIDCIdentity entities.
+func (c *OIDCIdentityClient) CreateBulk(builders ...*OIDCIdentityCreate) *OIDCIdentityCreateBulk {
+	return &OIDCIdentityCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *OIDCIdentityClient) MapCreateBulk(slice any, setFunc func(*OIDCIdentityCreate, int)) *OIDCIdentityCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &OIDCIdentityCreateBulk{err: fmt.Errorf("calling to OIDCIdentityClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*OIDCIdentityCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &OIDCIdentityCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for OIDCIdentity.
+func (c *OIDCIdentityClient) Update() *OIDCIdentityUpdate {
+	mutation := newOIDCIdentityMutation(c.config, OpUpdate)
+	return &OIDCIdentityUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *OIDCIdentityClient) UpdateOne(_m *OIDCIdentity) *OIDCIdentityUpdateOne {
+	mutation := newOIDCIdentityMutation(c.config, OpUpdateOne, withOIDCIdentity(_m))
+	return &OIDCIdentityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *OIDCIdentityClient) UpdateOneID(id int) *OIDCIdentityUpdateOne {
+	mutation := newOIDCIdentityMutation(c.config, OpUpdateOne, withOIDCIdentityID(id))
+	return &OIDCIdentityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for OIDCIdentity.
+func (c *OIDCIdentityClient) Delete() *OIDCIdentityDelete {
+	mutation := newOIDCIdentityMutation(c.config, OpDelete)
+	return &OIDCIdentityDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *OIDCIdentityClient) DeleteOne(_m *OIDCIdentity) *OIDCIdentityDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *OIDCIdentityClient) DeleteOneID(id int) *OIDCIdentityDeleteOne {
+	builder := c.Delete().Where(oidcidentity.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &OIDCIdentityDeleteOne{builder}
+}
+
+// Query returns a query builder for OIDCIdentity.
+func (c *OIDCIdentityClient) Query() *OIDCIdentityQuery {
+	return &OIDCIdentityQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeOIDCIdentity},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a OIDCIdentity entity by its id.
+func (c *OIDCIdentityClient) Get(ctx context.Context, id int) (*OIDCIdentity, error) {
+	return c.Query().Where(oidcidentity.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *OIDCIdentityClient) GetX(ctx context.Context, id int) *OIDCIdentity {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a OIDCIdentity.
+func (c *OIDCIdentityClient) QueryUser(_m *OIDCIdentity) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(oidcidentity.Table, oidcidentity.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, oidcidentity.UserTable, oidcidentity.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *OIDCIdentityClient) Hooks() []Hook {
+	hooks := c.hooks.OIDCIdentity
+	return append(hooks[:len(hooks):len(hooks)], oidcidentity.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *OIDCIdentityClient) Interceptors() []Interceptor {
+	inters := c.inters.OIDCIdentity
+	return append(inters[:len(inters):len(inters)], oidcidentity.Interceptors[:]...)
+}
+
+func (c *OIDCIdentityClient) mutate(ctx context.Context, m *OIDCIdentityMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&OIDCIdentityCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&OIDCIdentityUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&OIDCIdentityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&OIDCIdentityDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown OIDCIdentity mutation op: %q", m.Op())
 	}
 }
 
@@ -3879,6 +4038,22 @@ func (c *UserClient) QueryChannelOverrideTemplates(_m *User) *ChannelOverrideTem
 	return query
 }
 
+// QueryOidcIdentities queries the oidc_identities edge of a User.
+func (c *UserClient) QueryOidcIdentities(_m *User) *OIDCIdentityQuery {
+	query := (&OIDCIdentityClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(oidcidentity.Table, oidcidentity.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, user.OidcIdentitiesTable, user.OidcIdentitiesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryProjectUsers queries the project_users edge of a User.
 func (c *UserClient) QueryProjectUsers(_m *User) *UserProjectQuery {
 	query := (&UserProjectClient{config: c.config}).Query()
@@ -4273,14 +4448,16 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 type (
 	hooks struct {
 		APIKey, Channel, ChannelModelPrice, ChannelModelPriceVersion,
-		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, Project, Prompt,
-		PromptProtectionRule, ProviderQuotaStatus, Request, RequestExecution, Role,
-		System, Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, OIDCIdentity,
+		Project, Prompt, PromptProtectionRule, ProviderQuotaStatus, Request,
+		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, Channel, ChannelModelPrice, ChannelModelPriceVersion,
-		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, Project, Prompt,
-		PromptProtectionRule, ProviderQuotaStatus, Request, RequestExecution, Role,
-		System, Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
+		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, OIDCIdentity,
+		Project, Prompt, PromptProtectionRule, ProviderQuotaStatus, Request,
+		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Interceptor
 	}
 )

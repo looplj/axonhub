@@ -95,6 +95,7 @@ func Run(opts ...fx.Option) {
 			backup.Module,
 			video_storage.Module,
 			api.Module,
+			fx.Provide(fx.Annotate(func(cfg Config) string { return cfg.PublicURL }, fx.ResultTags(`name:"public_url"`))),
 			fx.Invoke(func(cfg log.Config) {
 				log.SetGlobalConfig(cfg)
 				tracing.SetupLogger(log.GetGlobalLogger())

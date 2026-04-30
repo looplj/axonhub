@@ -303,6 +303,30 @@ func (f ModelMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation)
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ModelMutation", m)
 }
 
+// The OIDCIdentityQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type OIDCIdentityQueryRuleFunc func(context.Context, *ent.OIDCIdentityQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f OIDCIdentityQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OIDCIdentityQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.OIDCIdentityQuery", q)
+}
+
+// The OIDCIdentityMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type OIDCIdentityMutationRuleFunc func(context.Context, *ent.OIDCIdentityMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f OIDCIdentityMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.OIDCIdentityMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.OIDCIdentityMutation", m)
+}
+
 // The ProjectQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type ProjectQueryRuleFunc func(context.Context, *ent.ProjectQuery) error
@@ -690,6 +714,8 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.ModelQuery:
 		return q.Filter(), nil
+	case *ent.OIDCIdentityQuery:
+		return q.Filter(), nil
 	case *ent.ProjectQuery:
 		return q.Filter(), nil
 	case *ent.PromptQuery:
@@ -740,6 +766,8 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.DataStorageMutation:
 		return m.Filter(), nil
 	case *ent.ModelMutation:
+		return m.Filter(), nil
+	case *ent.OIDCIdentityMutation:
 		return m.Filter(), nil
 	case *ent.ProjectMutation:
 		return m.Filter(), nil

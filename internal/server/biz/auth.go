@@ -20,12 +20,43 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 )
 
+const OIDC_ONLY_PLACEHOLDER = "!OIDC_SSO_ONLY!"
+
+// HashPassword hashes a password using bcrypt.
+func HashPassword(password string) (string, error) {
+	if password == OIDC_ONLY_PLACEHOLDER {
+		return OIDC_ONLY_PLACEHOLDER, nil
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return hex.EncodeToString(hashedPassword), nil
+}
+
+// VerifyPassword verifies a password against a hash.
+func VerifyPassword(hashedPassword, password string) error {
+	if hashedPassword == OIDC_ONLY_PLACEHOLDER {
+		return ErrOIDCLoginRequired
+	}
+
+	decodedHashedPassword, err := hex.DecodeString(hashedPassword)
+	if err != nil {
+		return fmt.Errorf("failed to decode hashed password: %w", err)
+	}
+
+	return bcrypt.CompareHashAndPassword(decodedHashedPassword, []byte(password))
+}
+
 type AuthServiceParams struct {
 	fx.In
 
 	SystemService *SystemService
 	APIKeyService *APIKeyService
 	UserService   *UserService
+	OIDCService   *OIDCService
 	Ent           *ent.Client
 	AllowNoAuth   bool `name:"allow_no_auth"`
 }
@@ -38,6 +69,7 @@ func NewAuthService(params AuthServiceParams) *AuthService {
 		SystemService: params.SystemService,
 		APIKeyService: params.APIKeyService,
 		UserService:   params.UserService,
+		OIDCService:   params.OIDCService,
 		AllowNoAuth:   params.AllowNoAuth,
 	}
 }
@@ -48,27 +80,8 @@ type AuthService struct {
 	SystemService *SystemService
 	APIKeyService *APIKeyService
 	UserService   *UserService
+	OIDCService   *OIDCService
 	AllowNoAuth   bool
-}
-
-// HashPassword hashes a password using bcrypt.
-func HashPassword(password string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	return hex.EncodeToString(hashedPassword), nil
-}
-
-// VerifyPassword verifies a password against a hash.
-func VerifyPassword(hashedPassword, password string) error {
-	decodedHashedPassword, err := hex.DecodeString(hashedPassword)
-	if err != nil {
-		return fmt.Errorf("failed to decode hashed password: %w", err)
-	}
-
-	return bcrypt.CompareHashAndPassword(decodedHashedPassword, []byte(password))
 }
 
 // GenerateSecretKey generates a random secret key for JWT.
@@ -127,6 +140,10 @@ func (s *AuthService) AuthenticateUser(
 		log.Error(ctx, "failed to get user", log.Cause(err))
 
 		return nil, ErrInternal
+	}
+
+	if s.OIDCService != nil && s.OIDCService.IsUserRestrictedToOIDC(ctx, u) {
+		return nil, ErrOIDCLoginRequired
 	}
 
 	err = VerifyPassword(u.Password, password)

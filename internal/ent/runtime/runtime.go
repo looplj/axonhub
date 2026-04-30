@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
+	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
@@ -344,6 +345,41 @@ func init() {
 	modelDescDeletedAt := modelMixinFields1[0].Descriptor()
 	// model.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	model.DefaultDeletedAt = modelDescDeletedAt.Default.(int)
+	oidcidentityMixin := schema.OIDCIdentity{}.Mixin()
+	oidcidentity.Policy = privacy.NewPolicies(schema.OIDCIdentity{})
+	oidcidentity.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := oidcidentity.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	oidcidentityMixinHooks1 := oidcidentityMixin[1].Hooks()
+
+	oidcidentity.Hooks[1] = oidcidentityMixinHooks1[0]
+	oidcidentityMixinInters1 := oidcidentityMixin[1].Interceptors()
+	oidcidentity.Interceptors[0] = oidcidentityMixinInters1[0]
+	oidcidentityMixinFields0 := oidcidentityMixin[0].Fields()
+	_ = oidcidentityMixinFields0
+	oidcidentityMixinFields1 := oidcidentityMixin[1].Fields()
+	_ = oidcidentityMixinFields1
+	oidcidentityFields := schema.OIDCIdentity{}.Fields()
+	_ = oidcidentityFields
+	// oidcidentityDescCreatedAt is the schema descriptor for created_at field.
+	oidcidentityDescCreatedAt := oidcidentityMixinFields0[0].Descriptor()
+	// oidcidentity.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oidcidentity.DefaultCreatedAt = oidcidentityDescCreatedAt.Default.(func() time.Time)
+	// oidcidentityDescUpdatedAt is the schema descriptor for updated_at field.
+	oidcidentityDescUpdatedAt := oidcidentityMixinFields0[1].Descriptor()
+	// oidcidentity.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oidcidentity.DefaultUpdatedAt = oidcidentityDescUpdatedAt.Default.(func() time.Time)
+	// oidcidentity.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oidcidentity.UpdateDefaultUpdatedAt = oidcidentityDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// oidcidentityDescDeletedAt is the schema descriptor for deleted_at field.
+	oidcidentityDescDeletedAt := oidcidentityMixinFields1[0].Descriptor()
+	// oidcidentity.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	oidcidentity.DefaultDeletedAt = oidcidentityDescDeletedAt.Default.(int)
 	projectMixin := schema.Project{}.Mixin()
 	project.Policy = privacy.NewPolicies(schema.Project{})
 	project.Hooks[0] = func(next ent.Mutator) ent.Mutator {

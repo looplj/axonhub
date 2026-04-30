@@ -154,6 +154,7 @@
   "common.buttons.openMenu": "打开菜单",
   "common.buttons.close": "关闭",
   "common.buttons.retry": "重试",
+  "common.status.inactiveRetry": "连接失败 - 点击重试",
   "common.actions.openMenu": "打开菜单",
   "common.actions.edit": "编辑",
   "common.actions.duplicate": "复制",

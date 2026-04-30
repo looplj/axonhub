@@ -200,6 +200,22 @@ func (r *modelResolver) ID(ctx context.Context, obj *ent.Model) (*objects.GUID, 
 }
 
 // ID is the resolver for the id field.
+func (r *oIDCIdentityResolver) ID(ctx context.Context, obj *ent.OIDCIdentity) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeOIDCIdentity,
+		ID:   obj.ID,
+	}, nil
+}
+
+// UserID is the resolver for the userID field.
+func (r *oIDCIdentityResolver) UserID(ctx context.Context, obj *ent.OIDCIdentity) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   obj.UserID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *projectResolver) ID(ctx context.Context, obj *ent.Project) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeProject,
@@ -327,6 +343,18 @@ func (r *queryResolver) Models(ctx context.Context, after *entgql.Cursor[int], f
 	return r.client.Model.Query().Paginate(ctx, after, first, before, last,
 		ent.WithModelOrder(orderBy),
 		ent.WithModelFilter(where.Filter),
+	)
+}
+
+// OidcIdentities is the resolver for the oidcIdentities field.
+func (r *queryResolver) OidcIdentities(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.OIDCIdentityOrder, where *ent.OIDCIdentityWhereInput) (*ent.OIDCIdentityConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	return r.client.OIDCIdentity.Query().Paginate(ctx, after, first, before, last,
+		ent.WithOIDCIdentityOrder(orderBy),
+		ent.WithOIDCIdentityFilter(where.Filter),
 	)
 }
 
@@ -874,6 +902,9 @@ func (r *Resolver) DataStorage() DataStorageResolver { return &dataStorageResolv
 // Model returns ModelResolver implementation.
 func (r *Resolver) Model() ModelResolver { return &modelResolver{r} }
 
+// OIDCIdentity returns OIDCIdentityResolver implementation.
+func (r *Resolver) OIDCIdentity() OIDCIdentityResolver { return &oIDCIdentityResolver{r} }
+
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 
@@ -931,6 +962,7 @@ type channelOverrideTemplateResolver struct{ *Resolver }
 type channelProbeResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
+type oIDCIdentityResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type promptResolver struct{ *Resolver }
 type promptProtectionRuleResolver struct{ *Resolver }

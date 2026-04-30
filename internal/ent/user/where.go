@@ -757,6 +757,29 @@ func HasChannelOverrideTemplatesWith(preds ...predicate.ChannelOverrideTemplate)
 	})
 }
 
+// HasOidcIdentities applies the HasEdge predicate on the "oidc_identities" edge.
+func HasOidcIdentities() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, OidcIdentitiesTable, OidcIdentitiesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOidcIdentitiesWith applies the HasEdge predicate on the "oidc_identities" edge with a given conditions (other predicates).
+func HasOidcIdentitiesWith(preds ...predicate.OIDCIdentity) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOidcIdentitiesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasProjectUsers applies the HasEdge predicate on the "project_users" edge.
 func HasProjectUsers() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

@@ -50,6 +50,8 @@ const (
 	EdgeRoles = "roles"
 	// EdgeChannelOverrideTemplates holds the string denoting the channel_override_templates edge name in mutations.
 	EdgeChannelOverrideTemplates = "channel_override_templates"
+	// EdgeOidcIdentities holds the string denoting the oidc_identities edge name in mutations.
+	EdgeOidcIdentities = "oidc_identities"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// EdgeUserRoles holds the string denoting the user_roles edge name in mutations.
@@ -80,6 +82,13 @@ const (
 	ChannelOverrideTemplatesInverseTable = "channel_override_templates"
 	// ChannelOverrideTemplatesColumn is the table column denoting the channel_override_templates relation/edge.
 	ChannelOverrideTemplatesColumn = "user_id"
+	// OidcIdentitiesTable is the table that holds the oidc_identities relation/edge.
+	OidcIdentitiesTable = "oidc_identities"
+	// OidcIdentitiesInverseTable is the table name for the OIDCIdentity entity.
+	// It exists in this package in order to avoid circular dependency with the "oidcidentity" package.
+	OidcIdentitiesInverseTable = "oidc_identities"
+	// OidcIdentitiesColumn is the table column denoting the oidc_identities relation/edge.
+	OidcIdentitiesColumn = "user_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -306,6 +315,20 @@ func ByChannelOverrideTemplates(term sql.OrderTerm, terms ...sql.OrderTerm) Orde
 	}
 }
 
+// ByOidcIdentitiesCount orders the results by oidc_identities count.
+func ByOidcIdentitiesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOidcIdentitiesStep(), opts...)
+	}
+}
+
+// ByOidcIdentities orders the results by oidc_identities terms.
+func ByOidcIdentities(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOidcIdentitiesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -359,6 +382,13 @@ func newChannelOverrideTemplatesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ChannelOverrideTemplatesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ChannelOverrideTemplatesTable, ChannelOverrideTemplatesColumn),
+	)
+}
+func newOidcIdentitiesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OidcIdentitiesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, OidcIdentitiesTable, OidcIdentitiesColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {
