@@ -20,7 +20,7 @@ func ComputeFootprint(baseURL, accountIdentity string) string {
 
 	key := baseURL + "\x00" + accountIdentity
 	if v, ok := footprintCache.Load(key); ok {
-		return v.(string)
+		return v.(string) //nolint:forcetypeassert
 	}
 
 	fp := computeFootprint(baseURL, accountIdentity)

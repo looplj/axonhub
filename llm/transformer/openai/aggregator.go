@@ -51,6 +51,8 @@ func DefaultTransformChunk(ctx context.Context, chunk *httpclient.StreamEvent) (
 }
 
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
+//
+//nolint:maintidx // Stream aggregation is inherently complex.
 func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent, chunkTransformer ChunkTransformFunc) ([]byte, llm.ResponseMeta, error) {
 	if len(chunks) == 0 {
 		data, err := json.Marshal(&llm.Response{})

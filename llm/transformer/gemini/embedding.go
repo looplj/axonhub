@@ -77,7 +77,7 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	var outputDim *int32
 
 	if llmReq.Embedding.Dimensions != nil {
-		d := int32(*llmReq.Embedding.Dimensions)
+		d := int32(*llmReq.Embedding.Dimensions) //nolint:gosec
 		outputDim = &d
 	}
 

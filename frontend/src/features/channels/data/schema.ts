@@ -10,6 +10,7 @@ export const apiFormatSchema = z.enum([
   'openai/embeddings',
   'anthropic/messages',
   'gemini/contents',
+  'gemini/embeddings',
   'aisdk/text',
   'aisdk/datastream',
   'jina/rerank',
@@ -18,6 +19,22 @@ export const apiFormatSchema = z.enum([
 ]);
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
+
+export const configurableChannelEndpointApiFormats = [
+  'openai/chat_completions',
+  'openai/responses',
+  'openai/image_generation',
+  'openai/image_edit',
+  'openai/image_variation',
+  'openai/embeddings',
+  'anthropic/messages',
+  'gemini/contents',
+  'gemini/embeddings',
+  'jina/rerank',
+  'jina/embeddings',
+] as const;
+
+export const configurableChannelEndpointApiFormatSchema = z.enum(configurableChannelEndpointApiFormats);
 
 // Channel Endpoint
 export const channelEndpointSchema = z.object({
@@ -119,8 +136,8 @@ export const overrideOperationSchema = z.object({
   condition: z.string().optional(),
   index: z.number().int().nullish(),
   splat: z.boolean().nullish(),
-})
-export type OverrideOperation = z.infer<typeof overrideOperationSchema>
+});
+export type OverrideOperation = z.infer<typeof overrideOperationSchema>;
 
 // Proxy Type
 export const proxyTypeSchema = z.enum(['disabled', 'environment', 'url']);
@@ -266,6 +283,7 @@ export const channelSchema = z.object({
   allModelEntries: z.array(channelModelEntrySchema).optional(),
   liveLimiterStats: channelLimiterStatsSchema.optional().nullable(),
   endpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
+  defaultEndpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
 });
 export type Channel = z.infer<typeof channelSchema>;
 
@@ -344,11 +362,7 @@ export const saveChannelModelPriceInputSchema = z.object({
 });
 export type SaveChannelModelPriceInput = z.infer<typeof saveChannelModelPriceInputSchema>;
 // Helper function to validate OAuth credentials
-function validateOAuthCredentials(
-  type: string,
-  apiKey: string | undefined,
-  ctx: z.RefinementCtx
-) {
+function validateOAuthCredentials(type: string, apiKey: string | undefined, ctx: z.RefinementCtx) {
   if (!apiKey) return;
 
   // For GitHub Copilot, enforce JSON format
@@ -425,7 +439,8 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
+    const isOAuthType =
+      data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
     const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
     const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
 
@@ -519,7 +534,8 @@ export const updateChannelInputSchema = z
 
     // For OAuth validation on updates: validate if type is OAuth, or if credentials.apiKey is provided
     // (which indicates OAuth credentials are being set)
-    const isOAuthType = effectiveType === 'codex' || effectiveType === 'claudecode' || effectiveType === 'antigravity' || effectiveType === 'github_copilot';
+    const isOAuthType =
+      effectiveType === 'codex' || effectiveType === 'claudecode' || effectiveType === 'antigravity' || effectiveType === 'github_copilot';
 
     // Derive type from parent context if not available
     let derivedType = effectiveType;
@@ -534,7 +550,7 @@ export const updateChannelInputSchema = z
     // If we have an OAuth key but no type, check if it looks like Copilot credentials
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
 
-    if (isOAuthType || (derivedType === 'github_copilot') || isCopilotKey) {
+    if (isOAuthType || derivedType === 'github_copilot' || isCopilotKey) {
       if (isCopilotKey && !derivedType) {
         try {
           const parsed = JSON.parse(data.credentials.apiKey);

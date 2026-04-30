@@ -98,6 +98,7 @@ func (p *pipeline) stream(
 
 	// Apply raw stream middlewares
 	rawStream := outboundStream
+
 	outboundStream, err = p.applyRawStreamMiddlewares(ctx, outboundStream)
 	if err != nil {
 		rawStream.Close()
@@ -125,6 +126,7 @@ func (p *pipeline) stream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
+
 		return nil, err
 	}
 
@@ -149,6 +151,7 @@ func (p *pipeline) stream(
 	// Check for empty response if detection is enabled
 	if p.emptyResponseDetection {
 		rawLlmStream := llmStream
+
 		llmStream, err = p.checkEmptyResponse(ctx, llmStream)
 		if err != nil {
 			rawLlmStream.Close()
@@ -164,6 +167,7 @@ func (p *pipeline) stream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
+
 		return nil, err
 	}
 
