@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
 import { extractNumberIDAsNumber } from '@/lib/utils';
@@ -253,6 +257,17 @@ export function ModelsAssociationDialog() {
 
   const isOpen = open === 'association';
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     if (isOpen) {
       fetchModels({
@@ -292,10 +307,20 @@ export function ModelsAssociationDialog() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, move, remove } = useFieldArray({
     control: form.control,
     name: 'associations',
   });
+
+  const syncAssociationPriorities = useCallback(() => {
+    const currentAssociations = form.getValues('associations');
+
+    currentAssociations.forEach((association, index) => {
+      if (association.priority !== index) {
+        form.setValue(`associations.${index}.priority`, index, { shouldDirty: true });
+      }
+    });
+  }, [form]);
 
   // Watch associations for debounced preview - useWatch triggers re-renders
   const watchedAssociations = useWatch({
@@ -444,9 +469,8 @@ export function ModelsAssociationDialog() {
 
   useEffect(() => {
     if (isOpen && currentRow) {
-      const associations = currentRow.settings?.associations || [];
-      form.reset({
-        associations: associations.map((assoc) => {
+      const associations = (currentRow.settings?.associations || [])
+        .map((assoc) => {
           const exclude = assoc.regex?.exclude?.[0] || assoc.modelId?.exclude?.[0];
           const promptTokensCondition = readPromptTokensCondition(assoc.when);
           return {
@@ -465,7 +489,10 @@ export function ModelsAssociationDialog() {
             excludeChannelIds: exclude?.channelIds || [],
             excludeChannelTags: exclude?.channelTags || [],
           };
-        }),
+        })
+        .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+      form.reset({
+        associations,
       });
     }
   }, [isOpen, currentRow, form]);
@@ -625,14 +652,9 @@ export function ModelsAssociationDialog() {
   const handleAddAssociation = useCallback(() => {
     if (fields.length >= 10) return;
 
-    // Get the priority of the last rule (highest priority)
-    const currentAssociations = form.getValues('associations') || [];
-    const lastPriority =
-      currentAssociations.length > 0 ? Math.max(...currentAssociations.map((a) => a.priority ?? 0)) : 0;
-
     append({
       type: 'channel_model',
-      priority: lastPriority,
+      priority: fields.length,
       disabled: false,
       whenEnabled: false,
       whenCondition: DEFAULT_WHEN_CONDITION,
@@ -644,7 +666,35 @@ export function ModelsAssociationDialog() {
       excludeChannelIds: [],
       excludeChannelTags: [],
     });
-  }, [append, fields.length, form]);
+  }, [append, fields.length]);
+
+  const handleRemove = useCallback(
+    (id: string) => {
+      const index = fields.findIndex((field) => field.id === id);
+
+      if (index === -1) return;
+
+      remove(index);
+      syncAssociationPriorities();
+    },
+    [fields, remove, syncAssociationPriorities]
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = fields.findIndex((f) => f.id === active.id);
+      const newIndex = fields.findIndex((f) => f.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      move(oldIndex, newIndex);
+      syncAssociationPriorities();
+    },
+    [fields, move, syncAssociationPriorities]
+  );
 
   // Filter connections by channel name
   const filteredConnections = useMemo(() => {
@@ -682,25 +732,23 @@ export function ModelsAssociationDialog() {
                     </div>
                   )}
 
-                  {fields
-                    .map((field, index) => ({ field, index }))
-                    .sort((a, b) => {
-                      const priorityA = form.getValues(`associations.${a.index}.priority`) ?? 0;
-                      const priorityB = form.getValues(`associations.${b.index}.priority`) ?? 0;
-                      return priorityA - priorityB;
-                    })
-                    .map(({ field, index }) => (
-                      <AssociationRow
-                        key={field.id}
-                        index={index}
-                        form={form}
-                        channelOptions={channelOptions}
-                        allModelOptions={allModelOptions}
-                        allTags={allTags}
-                        onRemove={() => remove(index)}
-                        portalContainer={dialogContentRef.current}
-                      />
-                    ))}
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                      {fields.map((field, index) => (
+                        <AssociationRow
+                          key={field.id}
+                          id={field.id}
+                          index={index}
+                          form={form}
+                          channelOptions={channelOptions}
+                          allModelOptions={allModelOptions}
+                          allTags={allTags}
+                          onRemove={() => handleRemove(field.id)}
+                          portalContainer={dialogContentRef.current}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </form>
               </Form>
             </div>
@@ -866,6 +914,7 @@ function buildAssociationWhen(enabled?: boolean, value?: FilterBuilderGroupListV
 }
 
 interface AssociationRowProps {
+  id: string;
   index: number;
   form: ReturnType<typeof useForm<AssociationFormData>>;
   channelOptions: { value: number; label: string; allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }> }[];
@@ -875,8 +924,15 @@ interface AssociationRowProps {
   portalContainer: HTMLElement | null;
 }
 
-function AssociationRow({ index, form, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
+function AssociationRow({ id, index, form, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
   const { t } = useTranslation();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+  };
 
   const type = form.watch(`associations.${index}.type`);
   const channelId = form.watch(`associations.${index}.channelId`);
@@ -952,7 +1008,11 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
   }, [channelId, channelOptions, allModelOptions, showModel, type]);
 
   return (
-    <div className={`flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''}`}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''} ${isDragging ? 'ring-primary/20 relative z-50 shadow-xl ring-2' : ''}`}
+    >
       <div className='grid grid-cols-[2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
         {/* Enable/Disable Switch */}
         <div className='flex items-center justify-center'>
@@ -963,27 +1023,17 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           />
         </div>
 
-        {/* Priority Input */}
-        <FormField
-          control={form.control}
-          name={`associations.${index}.priority`}
-          render={({ field }) => (
-            <FormItem className='min-w-0 gap-0'>
-              <FormControl>
-                <Input
-                  type='number'
-                  min={0}
-                  max={10}
-                  {...field}
-                  value={field.value ?? 0}
-                  onChange={(e) => field.onChange(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
-                  className='h-10 sm:h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
-                  placeholder='0'
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
+        {/* Drag Handle + Priority Display */}
+        <div className='flex items-center justify-center gap-1'>
+          <div
+            className='text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing flex items-center justify-center p-1'
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className='h-4 w-4' />
+          </div>
+          <span className='text-muted-foreground text-xs w-4 text-center'>{index + 1}</span>
+        </div>
 
         {/* Type Select */}
         <FormField
