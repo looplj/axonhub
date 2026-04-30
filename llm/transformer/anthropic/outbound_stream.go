@@ -16,6 +16,7 @@ import (
 
 func (t *OutboundTransformer) TransformStream(
 	ctx context.Context,
+	req *httpclient.Request,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) (streams.Stream[*llm.Response], error) {
 	// Filter out unnecessary stream events to optimize performance

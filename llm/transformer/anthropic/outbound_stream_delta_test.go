@@ -57,7 +57,7 @@ func TestOutboundTransformer_FinishReason_AlwaysIncludesDelta(t *testing.T) {
 		BaseURL:         ot.config.BaseURL,
 		AccountIdentity: accountIdentity,
 	})
-	transformedStream, err := transformer.TransformStream(ctx, mockStream)
+	transformedStream, err := transformer.TransformStream(ctx, nil, mockStream)
 	require.NoError(t, err)
 
 	var responses []*llm.Response
@@ -126,7 +126,7 @@ func TestOutboundTransformer_AllStreamingChunks_HaveDelta(t *testing.T) {
 				BaseURL:         ot.config.BaseURL,
 				AccountIdentity: accountIdentity,
 			})
-			transformedStream, err := transformer.TransformStream(ctx, mockStream)
+			transformedStream, err := transformer.TransformStream(ctx, nil, mockStream)
 			require.NoError(t, err)
 
 			var responses []*llm.Response

@@ -321,7 +321,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	return oaiResp.ToLLMResponse(), nil
 }
 
-func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	// Check if this is a Responses API format stream (Codex) or Chat Completions format
 	// Peek at the first event to determine the format
 	var (
@@ -363,7 +363,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 			}
 		}
 
-		return t.openAITransformer.TransformStream(ctx, stream)
+		return t.openAITransformer.TransformStream(ctx, req, stream)
 	}
 
 	// Codex model: process the Responses API format stream
@@ -404,7 +404,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	})
 
 	// Delegate to the responses transformer's stream handling
-	return t.responses.TransformStream(ctx, filteredStream)
+	return t.responses.TransformStream(ctx, req, filteredStream)
 }
 
 // convertCopilotStreamEvent fixes up Copilot's standard Responses API stream events.
@@ -565,7 +565,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 }
 
 // AggregateStreamChunks aggregates streaming chunks into a complete response.
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	// Check if chunks are in Responses API format (used by Codex models)
 	if isResponsesAPIStream(chunks) {
 		return responses.AggregateStreamChunks(ctx, chunks)

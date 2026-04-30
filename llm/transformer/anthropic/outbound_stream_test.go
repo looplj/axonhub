@@ -66,7 +66,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				BaseURL:         ot.config.BaseURL,
 				AccountIdentity: accountIdentity,
 			})
-			transformedStream, err := transformer.TransformStream(ctx, mockStream)
+			transformedStream, err := transformer.TransformStream(ctx, nil, mockStream)
 			require.NoError(t, err)
 
 			var actualResponses []*llm.Response
@@ -133,7 +133,7 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 		BaseURL:         ot.config.BaseURL,
 		AccountIdentity: accountIdentity,
 	})
-	transformedStream, err := transformer.TransformStream(ctx, mockStream)
+	transformedStream, err := transformer.TransformStream(ctx, nil, mockStream)
 	require.NoError(t, err)
 
 	_, err = streams.All(transformedStream)
@@ -194,7 +194,7 @@ func TestOutboundTransformer_StreamTransformation_UsesFinalPromptTokensWhenPrese
 	ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
 		BaseURL: ot.config.BaseURL,
 	})
-	transformedStream, err := transformer.TransformStream(ctx, mockStream)
+	transformedStream, err := transformer.TransformStream(ctx, nil, mockStream)
 	require.NoError(t, err)
 
 	var actualResponses []*llm.Response

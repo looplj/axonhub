@@ -206,12 +206,12 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	return t.responsesOutbound.TransformResponse(ctx, httpResp)
 }
 
-func (t *OutboundTransformer) TransformStream(ctx context.Context, streamIn streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-	return t.responsesOutbound.TransformStream(ctx, streamIn)
+func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, streamIn streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	return t.responsesOutbound.TransformStream(ctx, req, streamIn)
 }
 
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
-	return t.responsesOutbound.AggregateStreamChunks(ctx, chunks)
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	return t.responsesOutbound.AggregateStreamChunks(ctx, req, chunks)
 }
 
 func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
@@ -259,7 +259,7 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 		return nil, err
 	}
 
-	body, _, err := e.transformer.AggregateStreamChunks(ctx, chunks)
+	body, _, err := e.transformer.AggregateStreamChunks(ctx, request, chunks)
 	if err != nil {
 		return nil, err
 	}

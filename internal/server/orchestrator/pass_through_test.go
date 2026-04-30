@@ -669,7 +669,7 @@ func (t *passthroughOutbound) TransformResponse(ctx context.Context, resp *httpc
 	return &llm.Response{}, nil
 }
 
-func (t *passthroughOutbound) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *passthroughOutbound) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.Map(stream, func(ev *httpclient.StreamEvent) *llm.Response {
 		return &llm.Response{Model: string(ev.Data)}
 	}), nil
@@ -679,7 +679,7 @@ func (t *passthroughOutbound) TransformError(ctx context.Context, err *httpclien
 	return nil
 }
 
-func (t *passthroughOutbound) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *passthroughOutbound) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return nil, llm.ResponseMeta{}, nil
 }
 
@@ -755,7 +755,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	require.NotNil(t, state.RawStreamCh)
 
 	// Step 2: Outbound TransformStream (raw → llm)
-	llmStream, err := outbound.wrapped.TransformStream(ctx, pipelineStream)
+	llmStream, err := outbound.wrapped.TransformStream(ctx, nil, pipelineStream)
 	require.NoError(t, err)
 
 	// Step 3: tracking middleware wraps LLM stream

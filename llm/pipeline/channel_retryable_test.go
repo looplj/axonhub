@@ -65,8 +65,8 @@ func (w *ChannelRetryableWrapper) TransformResponse(ctx context.Context, respons
 }
 
 // TransformStream delegates to the underlying transformer.
-func (w *ChannelRetryableWrapper) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-	return w.transformer.TransformStream(ctx, stream)
+func (w *ChannelRetryableWrapper) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	return w.transformer.TransformStream(ctx, req, stream)
 }
 
 // TransformError delegates to the underlying transformer.
@@ -75,8 +75,8 @@ func (w *ChannelRetryableWrapper) TransformError(ctx context.Context, err *httpc
 }
 
 // AggregateStreamChunks delegates to the underlying transformer.
-func (w *ChannelRetryableWrapper) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
-	return w.transformer.AggregateStreamChunks(ctx, chunks)
+func (w *ChannelRetryableWrapper) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	return w.transformer.AggregateStreamChunks(ctx, req, chunks)
 }
 
 // ExtractStatusCodeFromError attempts to extract HTTP status code from various error types.
@@ -171,7 +171,7 @@ func (m *mockOutboundTransformer) TransformResponse(ctx context.Context, respons
 	return &llm.Response{}, nil
 }
 
-func (m *mockOutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (m *mockOutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.SliceStream([]*llm.Response{}), nil
 }
 
@@ -179,7 +179,7 @@ func (m *mockOutboundTransformer) TransformError(ctx context.Context, err *httpc
 	return &llm.ResponseError{}
 }
 
-func (m *mockOutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (m *mockOutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 
@@ -285,13 +285,13 @@ func TestChannelRetryableWrapper_Delegation(t *testing.T) {
 	_, err = wrapper.TransformResponse(ctx, &httpclient.Response{})
 	require.NoError(t, err)
 
-	_, err = wrapper.TransformStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{}))
+	_, err = wrapper.TransformStream(ctx, nil, streams.SliceStream([]*httpclient.StreamEvent{}))
 	require.NoError(t, err)
 
 	result := wrapper.TransformError(ctx, &httpclient.Error{})
 	require.NotNil(t, result)
 
-	_, _, err = wrapper.AggregateStreamChunks(ctx, []*httpclient.StreamEvent{})
+	_, _, err = wrapper.AggregateStreamChunks(ctx, nil, []*httpclient.StreamEvent{})
 	require.NoError(t, err)
 }
 

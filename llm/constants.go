@@ -3,12 +3,13 @@ package llm
 type RequestType string
 
 const (
-	RequestTypeChat      RequestType = "chat"
-	RequestTypeEmbedding RequestType = "embedding"
-	RequestTypeRerank    RequestType = "rerank"
-	RequestTypeImage     RequestType = "image"
-	RequestTypeVideo     RequestType = "video"
-	RequestTypeCompact   RequestType = "compact"
+	RequestTypeChat       RequestType = "chat"
+	RequestTypeEmbedding  RequestType = "embedding"
+	RequestTypeRerank     RequestType = "rerank"
+	RequestTypeImage      RequestType = "image"
+	RequestTypeVideo      RequestType = "video"
+	RequestTypeCompact    RequestType = "compact"
+	RequestTypeCompletion RequestType = "completion"
 )
 
 func (r RequestType) String() string {
@@ -19,6 +20,7 @@ type APIFormat string
 
 const (
 	APIFormatOpenAIChatCompletion  APIFormat = "openai/chat_completions"
+	APIFormatOpenAICompletion      APIFormat = "openai/completions"
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
 	APIFormatOpenAIResponseCompact APIFormat = "openai/responses_compact"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"

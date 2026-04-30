@@ -1,6 +1,7 @@
 package llm
 
 // RerankRequest represents a rerank request.
+// Note: Common fields like Model are in the parent Request struct, not here.
 type RerankRequest struct {
 	// Query is the search query to compare documents against.
 	Query string `json:"query" binding:"required"`
@@ -16,6 +17,7 @@ type RerankRequest struct {
 }
 
 // RerankResponse represents the response from a rerank request.
+// Note: Common fields like Usage are in the parent Response struct, not here.
 type RerankResponse struct {
 	// Object is the object type, typically "list".
 	Object string `json:"object"`

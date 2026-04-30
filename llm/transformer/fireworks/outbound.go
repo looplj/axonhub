@@ -159,17 +159,18 @@ func (t *OutboundTransformer) TransformResponse(
 // TransformStream transforms the streaming response.
 func (t *OutboundTransformer) TransformStream(
 	ctx context.Context,
+	req *httpclient.Request,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) (streams.Stream[*llm.Response], error) {
-	return t.Outbound.TransformStream(ctx, stream)
+	return t.Outbound.TransformStream(ctx, req, stream)
 }
 
 // AggregateStreamChunks aggregates streaming chunks into a complete response.
 func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
+	ctx context.Context, req *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
-	return t.Outbound.AggregateStreamChunks(ctx, chunks)
+	return t.Outbound.AggregateStreamChunks(ctx, req, chunks)
 }
 
 // TransformError transforms HTTP error response to unified error response.

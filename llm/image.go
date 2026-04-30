@@ -1,6 +1,7 @@
 package llm
 
 // ImageRequest is the unified image request structure (similar to EmbeddingRequest).
+// Note: Common fields like Model are in the parent Request struct, not here.
 type ImageRequest struct {
 	// Prompt is the text prompt for image generation.
 	Prompt string `json:"prompt,omitempty"`
@@ -48,7 +49,8 @@ type ImageRequest struct {
 	Style string `json:"style,omitempty"`
 }
 
-// ImageResponse is the unified image response structure.
+// ImageResponse represents the unified image response model.
+// Note: Common fields like Usage are in the parent Response struct, not here.
 type ImageResponse struct {
 	Created      int64       `json:"created"`
 	Data         []ImageData `json:"data"`

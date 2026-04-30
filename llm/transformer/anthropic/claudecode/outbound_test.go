@@ -401,7 +401,7 @@ func TestClaudeCodeTransformer_TransformStream(t *testing.T) {
 		mockStream := newMockHTTPStream(events)
 
 		// Transform the stream
-		llmStream, err := transformer.TransformStream(ctx, mockStream)
+		llmStream, err := transformer.TransformStream(ctx, nil, mockStream)
 		require.NoError(t, err)
 
 		// Read from the stream and verify prefix is stripped
@@ -458,7 +458,7 @@ func TestClaudeCodeTransformer_TransformStream(t *testing.T) {
 		}
 
 		mockStream := newMockHTTPStream(events)
-		llmStream, err := transformer.TransformStream(ctx, mockStream)
+		llmStream, err := transformer.TransformStream(ctx, nil, mockStream)
 		require.NoError(t, err)
 
 		// Should not error
@@ -504,7 +504,7 @@ func (t *fakeOutbound) TransformResponse(_ context.Context, _ *httpclient.Respon
 	return nil, nil
 }
 
-func (t *fakeOutbound) TransformStream(_ context.Context, _ streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *fakeOutbound) TransformStream(_ context.Context, _ *httpclient.Request, _ streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return nil, nil
 }
 
@@ -512,7 +512,7 @@ func (t *fakeOutbound) TransformError(_ context.Context, _ *httpclient.Error) *l
 	return nil
 }
 
-func (t *fakeOutbound) AggregateStreamChunks(_ context.Context, _ []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *fakeOutbound) AggregateStreamChunks(_ context.Context, _ *httpclient.Request, _ []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return nil, llm.ResponseMeta{}, nil
 }
 

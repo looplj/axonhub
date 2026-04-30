@@ -50,7 +50,7 @@ func (t *testOutbound) TransformResponse(ctx context.Context, response *httpclie
 	return &llm.Response{}, nil
 }
 
-func (t *testOutbound) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *testOutbound) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.SliceStream([]*llm.Response{}), nil
 }
 
@@ -58,7 +58,7 @@ func (t *testOutbound) TransformError(ctx context.Context, err *httpclient.Error
 	return &llm.ResponseError{}
 }
 
-func (t *testOutbound) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *testOutbound) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 

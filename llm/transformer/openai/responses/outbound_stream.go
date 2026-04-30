@@ -18,6 +18,7 @@ import (
 // TransformStream transforms OpenAI Responses API SSE events to unified llm.Response stream.
 func (t *OutboundTransformer) TransformStream(
 	ctx context.Context,
+	req *httpclient.Request,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) (streams.Stream[*llm.Response], error) {
 	// Append the DONE event to the stream
@@ -558,7 +559,7 @@ func (s *responsesOutboundStream) Close() error {
 
 // AggregateStreamChunks aggregates OpenAI Responses API streaming chunks into a complete response.
 func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
+	ctx context.Context, _ *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
 	return AggregateStreamChunks(ctx, chunks)

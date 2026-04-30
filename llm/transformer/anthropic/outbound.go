@@ -340,7 +340,7 @@ func (t *OutboundTransformer) TransformResponse(
 
 // AggregateStreamChunks aggregates Anthropic streaming response chunks into a complete response.
 func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
+	ctx context.Context, _ *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
 	return AggregateStreamChunks(ctx, chunks, t.config.Type)

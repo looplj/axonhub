@@ -120,7 +120,7 @@ func (p *pipeline) stream(
 		ctx = shared.ContextWithTransportScope(ctx, shared.ScopeFromMetadata(request.Metadata))
 	}
 
-	llmStream, err := p.Outbound.TransformStream(ctx, outboundStream)
+	llmStream, err := p.Outbound.TransformStream(ctx, request, outboundStream)
 	if err != nil {
 		outboundStream.Close()
 		p.applyRawErrorResponseMiddlewares(ctx, err)
