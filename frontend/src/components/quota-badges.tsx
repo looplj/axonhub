@@ -629,7 +629,8 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
               const label = t(`quota.window.${key}`);
               const pct = (window.percentUsed ?? 0) * 100;
               const usedStr = isTokens ? formatTokenCount(window.used ?? 0) : `${window.used ?? 0}`;
-              const remStr = isTokens ? formatTokenCount(window.remaining ?? 0) : `${window.remaining ?? 0}`;
+              const total = (window.used ?? 0) + (window.remaining ?? 0);
+              const totalStr = isTokens ? formatTokenCount(total) : `${total}`;
 
               items.push(
                 <div key={key} className={idx > 0 ? 'border-border/60 space-y-2.5 border-t border-dashed pt-3' : 'space-y-2.5'}>
@@ -638,7 +639,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                       <span className='text-muted-foreground font-medium'>
                         {label}{' '}
                         <span className='font-normal opacity-70'>
-                          ({usedStr}/{remStr})
+                          ({usedStr}/{totalStr})
                         </span>
                       </span>
                       <span className='text-foreground font-medium'>{Math.round(pct)}%</span>
