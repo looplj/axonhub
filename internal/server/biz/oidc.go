@@ -1252,7 +1252,11 @@ func (s *OIDCService) ExchangeCode(ctx context.Context, code string) (*ent.User,
 
 	actual, loaded := s.exchangeLocks.LoadOrStore(cacheKey, lock)
 	if loaded {
-		lock = actual.(*sync.Mutex)
+		var ok bool
+		lock, ok = actual.(*sync.Mutex)
+		if !ok {
+			return nil, fmt.Errorf("internal error: invalid exchange lock type")
+		}
 	}
 
 	lock.Lock()
