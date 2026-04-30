@@ -39,13 +39,14 @@ type ChannelModelEntry struct {
 type Channel struct {
 	*ent.Channel
 
-	// Outbound is the outbound transformer for the channel.
+	// Outbound is the primary outbound transformer for the channel.
+	// The primary outbound corresponds to the channel's primary default endpoint.
 	// DEPRECATED: Use Outbounds[key] for multi-endpoint channels.
-	// For backward compat, this holds the first resolved endpoint's outbound.
+	// For backward compatibility, this holds the first resolved default endpoint's outbound.
 	Outbound transformer.Outbound
 
-	// Outbounds maps APIFormat to its corresponding outbound transformer.
-	// Populated from channel endpoints. Keyed by api_format string value.
+	// Outbounds maps default endpoint API formats to their corresponding outbound transformers.
+	// Populated from the channel's resolved default endpoints. Keyed by api_format string value.
 	Outbounds map[string]transformer.Outbound
 
 	// HTTPClient is the custom HTTP client for this channel with proxy support
@@ -347,6 +348,8 @@ type ModelIdentityWithStatus struct {
 // SaveChannelEndpointsInput represents input for saving channel endpoints.
 type SaveChannelEndpointsInput struct {
 	ChannelID objects.GUID              `json:"channelID"`
+	// Endpoints are user-configured endpoint overrides.
+	// Default endpoints are resolved dynamically from the channel type and are read-only.
 	Endpoints []objects.ChannelEndpoint `json:"endpoints"`
 }
 
@@ -663,7 +666,21 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 		return nil, fmt.Errorf("invalid endpoints: %w", err)
 	}
 
-	ch, err := svc.entFromContext(ctx).Channel.UpdateOneID(input.ChannelID.ID).
+	ch, err := svc.entFromContext(ctx).Channel.Get(ctx, input.ChannelID.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel: %w", err)
+	}
+
+	defaults := DefaultEndpointsForChannelType(ch.Type)
+	for _, userEP := range input.Endpoints {
+		for _, defaultEP := range defaults {
+			if userEP.APIFormat == defaultEP.APIFormat {
+				return nil, fmt.Errorf("endpoint api_format %q conflicts with default endpoint for channel type %s", userEP.APIFormat, ch.Type)
+			}
+		}
+	}
+
+	ch, err = svc.entFromContext(ctx).Channel.UpdateOne(ch).
 		SetEndpoints(input.Endpoints).
 		Save(ctx)
 	if err != nil {

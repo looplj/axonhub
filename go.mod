@@ -27,7 +27,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.0
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/dlclark/regexp2 v1.11.5
+	github.com/dlclark/regexp2/v2 v2.0.0-beta.2
 	github.com/eko/gocache/lib/v4 v4.2.2
 	github.com/eko/gocache/store/go_cache/v4 v4.2.3
 	github.com/expr-lang/expr v1.17.8

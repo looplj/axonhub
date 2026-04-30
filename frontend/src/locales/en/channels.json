@@ -654,5 +654,15 @@
   "channels.endpoints.allFormatsUsed": "All supported formats are already in use.",
   "channels.endpoints.selectFormatFirst": "Select API format first",
   "channels.endpoints.defaultBadge": "Default",
-  "channels.endpoints.defaultLockedHint": "Default endpoints cannot be removed."
+  "channels.endpoints.defaultLockedHint": "Default endpoints cannot be removed.",
+  "channels.endpoints.defaultEndpoints": "Default endpoints",
+  "channels.endpoints.noDefaultEndpoints": "No default endpoints resolved for this channel type.",
+  "channels.endpoints.resolvedCount": "{{count}} resolved",
+  "channels.endpoints.configuredCount": "{{count}} configured",
+  "channels.endpoints.primaryBadge": "Primary",
+  "channels.endpoints.readOnly": "Read-only",
+  "channels.endpoints.noOverridesHint": "No custom endpoint overrides configured.",
+  "channels.endpoints.unsupportedBadge": "Unsupported",
+  "channels.endpoints.defaultConflictError": "Cannot override a default endpoint",
+  "channels.endpoints.invalidApiFormat": "Unsupported API format"
 }

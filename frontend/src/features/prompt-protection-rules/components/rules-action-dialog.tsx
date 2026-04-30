@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { usePromptProtectionRules } from '../context/rules-context';
-import { useCreatePromptProtectionRule, useUpdatePromptProtectionRule } from '../data/rules';
+import { useCreatePromptProtectionRule, usePreviewPromptProtectionRule, useUpdatePromptProtectionRule } from '../data/rules';
 
 const defaultValues = {
   name: '',
@@ -52,6 +52,8 @@ export function RulesActionDialog() {
   const { open, setOpen, currentRow, setCurrentRow, resetRowSelection } = usePromptProtectionRules();
   const createMutation = useCreatePromptProtectionRule();
   const updateMutation = useUpdatePromptProtectionRule();
+  const previewMutation = usePreviewPromptProtectionRule();
+  const { mutate: previewPromptProtectionRule, reset: resetPreviewPromptProtectionRule } = previewMutation;
 
   const isEdit = open === 'edit';
   const isOpen = open === 'create' || open === 'edit';
@@ -85,28 +87,29 @@ export function RulesActionDialog() {
   const action = form.watch('action');
   const pattern = form.watch('pattern');
   const replacement = form.watch('replacement');
+  const scopes = form.watch('scopes');
   const [testText, setTestText] = useState('');
 
-  // Calculate preview result
-  const previewResult = useMemo(() => {
+  useEffect(() => {
     if (!testText || !pattern) {
-      return null;
+      resetPreviewPromptProtectionRule();
+      return;
     }
 
-    try {
-      const regex = new RegExp(pattern, 'g');
-      if (action === 'mask') {
-        const result = testText.replace(regex, replacement || '[MASKED]');
-        const hasMatch = regex.test(testText);
-        return { result, hasMatch, error: null };
-      } else {
-        const hasMatch = regex.test(testText);
-        return { result: hasMatch ? t('promptProtectionRules.actions.reject') : testText, hasMatch, error: null };
-      }
-    } catch (err) {
-      return { result: '', hasMatch: false, error: t('promptProtectionRules.test.invalidPattern') };
-    }
-  }, [testText, pattern, replacement, action, t]);
+    const timeout = window.setTimeout(() => {
+      previewPromptProtectionRule({
+        pattern,
+        testText,
+        settings: {
+          action,
+          replacement: action === 'mask' ? replacement || '[MASKED]' : undefined,
+          scopes,
+        },
+      });
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [action, pattern, previewPromptProtectionRule, replacement, resetPreviewPromptProtectionRule, scopes, testText]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -300,16 +303,18 @@ export function RulesActionDialog() {
                     {t('promptProtectionRules.test.previewResult')}
                   </label>
                   <div className='rounded-md bg-muted p-3 text-sm'>
-                    {previewResult?.error ? (
+                    {previewMutation.isError ? (
                       <div className='flex items-start gap-2 text-destructive'>
                         <AlertCircle className='h-4 w-4 mt-0.5 flex-shrink-0' />
-                        <span>{previewResult.error}</span>
+                        <span>{previewMutation.error instanceof Error ? previewMutation.error.message : t('promptProtectionRules.test.invalidPattern')}</span>
                       </div>
-                    ) : previewResult?.hasMatch ? (
+                    ) : previewMutation.data?.hasMatch ? (
                       <div className='flex items-start gap-2 text-green-600 dark:text-green-400'>
                         <CheckCircle2 className='h-4 w-4 mt-0.5 flex-shrink-0' />
-                        <pre className='whitespace-pre-wrap font-mono text-xs'>{previewResult.result}</pre>
+                        <pre className='whitespace-pre-wrap font-mono text-xs'>{previewMutation.data.result}</pre>
                       </div>
+                    ) : previewMutation.isPending ? (
+                      <div className='text-muted-foreground'>{t('common.loading')}</div>
                     ) : (
                       <div className='text-muted-foreground'>
                         {t('promptProtectionRules.test.noMatch')}
