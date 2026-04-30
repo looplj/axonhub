@@ -100,6 +100,7 @@ func TestFilterOutResponsesOnlyTools(t *testing.T) {
 		},
 		{Type: llm.ToolTypeWebSearch},
 		{Type: "web_search_preview"},
+		{Type: llm.ToolTypeImageGeneration},
 		{
 			Type: "future_codex_tool",
 			ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
@@ -131,6 +132,11 @@ func TestIsResponsesOnlyTool(t *testing.T) {
 		{
 			name: "web_search_preview",
 			tool: llm.Tool{Type: "web_search_preview"},
+			want: true,
+		},
+		{
+			name: "image_generation",
+			tool: llm.Tool{Type: llm.ToolTypeImageGeneration},
 			want: true,
 		},
 		{

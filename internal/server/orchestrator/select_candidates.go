@@ -71,10 +71,10 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		}
 
 		selector = WithStreamPolicySelector(selector)
-		selector = WithResponsesOnlyDataSelector(selector, responsesOnlyDataPolicy)
 
 		quotaSelector := WithProviderQuotaSelector(selector, quotaProvider, systemService)
 		selector = quotaSelector
+		selector = WithResponsesOnlyDataSelector(selector, responsesOnlyDataPolicy)
 
 		if inbound.state.LoadBalancer != nil {
 			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)

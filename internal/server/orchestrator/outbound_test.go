@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -953,6 +954,25 @@ func TestPrepareResponsesOnlyDataForOutbound(t *testing.T) {
 		require.Nil(t, got)
 	})
 
+	t.Run("image generation tool requires responses outbound", func(t *testing.T) {
+		req := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			Tools: []llm.Tool{
+				{
+					Type: llm.ToolTypeImageGeneration,
+					ImageGeneration: &llm.ImageGeneration{
+						Quality: "high",
+						Size:    "1024x1024",
+					},
+				},
+			},
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyReject)
+		require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+		require.Nil(t, got)
+	})
+
 	t.Run("discards tool choice and parallel calls when all tools are responses-only", func(t *testing.T) {
 		req := &llm.Request{
 			APIFormat:         llm.APIFormatOpenAIResponse,
@@ -960,6 +980,7 @@ func TestPrepareResponsesOnlyDataForOutbound(t *testing.T) {
 			ParallelToolCalls: boolPtr(true),
 			Tools: []llm.Tool{
 				{Type: llm.ToolTypeResponsesCustomTool},
+				{Type: llm.ToolTypeImageGeneration},
 				{Type: "tool_search"},
 				{Type: "local_shell"},
 			},
@@ -975,7 +996,7 @@ func TestPrepareResponsesOnlyDataForOutbound(t *testing.T) {
 		require.NotNil(t, req.ToolChoice)
 		require.NotNil(t, req.ParallelToolCalls)
 		require.True(t, *req.ParallelToolCalls)
-		require.Len(t, req.Tools, 3)
+		require.Len(t, req.Tools, 4)
 	})
 
 	t.Run("discards named tool choice when selected tool was removed", func(t *testing.T) {
@@ -1283,6 +1304,74 @@ func TestResponsesOnlyDataSelector_WhenNoResponsesOutbound(t *testing.T) {
 		got, err := selector.Select(context.Background(), request)
 		require.NoError(t, err)
 		require.Equal(t, candidates, got)
+	})
+}
+
+func TestResponsesOnlyDataSelector_AfterQuotaFilter(t *testing.T) {
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	responsesOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse}
+	responsesChannel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "responses-exhausted"},
+		Outbound: chatOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			string(llm.APIFormatOpenAIChatCompletion): chatOutbound,
+			string(llm.APIFormatOpenAIResponse):       responsesOutbound,
+		},
+	}
+	chatChannel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 2, Name: "chat-available"},
+		Outbound: chatOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			string(llm.APIFormatOpenAIChatCompletion): chatOutbound,
+		},
+	}
+	candidates := []*ChannelModelsCandidate{
+		{
+			Channel:   responsesChannel,
+			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+			Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+		},
+		{
+			Channel:   chatChannel,
+			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+			Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+		},
+	}
+	request := &llm.Request{
+		Model:     "gpt-4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
+		}},
+	}
+	provider := &mockQuotaStatusProvider{
+		statuses: map[int]*biz.QuotaChannelStatus{
+			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
+			2: {Status: providerquotastatus.StatusAvailable, Ready: true},
+		},
+	}
+	settings := &mockQuotaEnforcementSettingsProvider{
+		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
+	}
+
+	t.Run("discard falls back to available non-responses candidate", func(t *testing.T) {
+		quotaSelector := WithProviderQuotaSelector(&staticChannelSelector{candidates: candidates}, provider, settings)
+		selector := WithResponsesOnlyDataSelector(quotaSelector, biz.ResponsesOnlyDataPolicyDiscard)
+
+		got, err := selector.Select(context.Background(), request)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		require.Equal(t, 2, got[0].Channel.ID)
+		require.Equal(t, string(llm.APIFormatOpenAIChatCompletion), got[0].APIFormat)
+	})
+
+	t.Run("reject still rejects after responses candidate is quota-filtered", func(t *testing.T) {
+		quotaSelector := WithProviderQuotaSelector(&staticChannelSelector{candidates: candidates}, provider, settings)
+		selector := WithResponsesOnlyDataSelector(quotaSelector, biz.ResponsesOnlyDataPolicyReject)
+
+		_, err := selector.Select(context.Background(), request)
+		require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 	})
 }
 

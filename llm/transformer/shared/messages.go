@@ -119,6 +119,7 @@ func FilterOutResponsesOnlyTools(tools []llm.Tool) []llm.Tool {
 func IsResponsesOnlyTool(tool llm.Tool) bool {
 	switch tool.Type {
 	case llm.ToolTypeResponsesCustomTool,
+		llm.ToolTypeImageGeneration,
 		llm.ToolTypeWebSearch,
 		"web_search_preview",
 		"namespace",
@@ -131,7 +132,7 @@ func IsResponsesOnlyTool(tool llm.Tool) bool {
 		"code_interpreter",
 		"computer_use_preview":
 		return true
-	case llm.ToolTypeFunction, llm.ToolTypeImageGeneration:
+	case llm.ToolTypeFunction:
 		return false
 	default:
 		return hasOpenAIResponsesToolExtension(tool.ProtocolExtensions)
