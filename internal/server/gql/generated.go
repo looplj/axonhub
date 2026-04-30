@@ -910,7 +910,7 @@ type ComplexityRoot struct {
 		UpdateStoragePolicy                  func(childComplexity int, input biz.StoragePolicy) int
 		UpdateSystemChannelSettings          func(childComplexity int, input biz.SystemChannelSettings) int
 		UpdateSystemGeneralSettings          func(childComplexity int, input biz.SystemGeneralSettings) int
-		UpdateSystemModelSettings            func(childComplexity int, input biz.SystemModelSettings) int
+		UpdateSystemModelSettings            func(childComplexity int, input biz.UpdateSystemModelSettingsInput) int
 		UpdateUser                           func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
 		UpdateUserAgentPassThroughSettings   func(childComplexity int, input UpdateUserAgentPassThroughSettingsInput) int
 		UpdateUserStatus                     func(childComplexity int, id objects.GUID, status user.Status) int
@@ -1497,6 +1497,7 @@ type ComplexityRoot struct {
 		DefaultModelAPIIncludeAll         func(childComplexity int) int
 		FallbackToChannelsOnModelNotFound func(childComplexity int) int
 		QueryAllChannelModels             func(childComplexity int) int
+		ResponsesOnlyDataPolicy           func(childComplexity int) int
 	}
 
 	SystemStatus struct {
@@ -1950,7 +1951,7 @@ type MutationResolver interface {
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
 	UpdateRetryPolicy(ctx context.Context, input biz.RetryPolicy) (bool, error)
 	UpdateWebhookNotifierConfig(ctx context.Context, input biz.WebhookNotifierConfig) (bool, error)
-	UpdateSystemModelSettings(ctx context.Context, input biz.SystemModelSettings) (bool, error)
+	UpdateSystemModelSettings(ctx context.Context, input biz.UpdateSystemModelSettingsInput) (bool, error)
 	UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error)
 	CompleteOnboarding(ctx context.Context, input CompleteOnboardingInput) (bool, error)
 	CompleteSystemModelSettingOnboarding(ctx context.Context, input CompleteSystemModelSettingOnboardingInput) (bool, error)
@@ -5853,7 +5854,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateSystemModelSettings(childComplexity, args["input"].(biz.SystemModelSettings)), true
+		return e.complexity.Mutation.UpdateSystemModelSettings(childComplexity, args["input"].(biz.UpdateSystemModelSettingsInput)), true
 	case "Mutation.updateUser":
 		if e.complexity.Mutation.UpdateUser == nil {
 			break
@@ -8465,6 +8466,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SystemModelSettings.QueryAllChannelModels(childComplexity), true
+	case "SystemModelSettings.responsesOnlyDataPolicy":
+		if e.complexity.SystemModelSettings.ResponsesOnlyDataPolicy == nil {
+			break
+		}
+
+		return e.complexity.SystemModelSettings.ResponsesOnlyDataPolicy(childComplexity), true
 
 	case "SystemStatus.isInitialized":
 		if e.complexity.SystemStatus.IsInitialized == nil {
@@ -11503,7 +11510,7 @@ func (ec *executionContext) field_Mutation_updateSystemGeneralSettings_args(ctx 
 func (ec *executionContext) field_Mutation_updateSystemModelSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateSystemModelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemModelSettings)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateSystemModelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpdateSystemModelSettingsInput)
 	if err != nil {
 		return nil, err
 	}
@@ -30184,7 +30191,7 @@ func (ec *executionContext) _Mutation_updateSystemModelSettings(ctx context.Cont
 		ec.fieldContext_Mutation_updateSystemModelSettings,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateSystemModelSettings(ctx, fc.Args["input"].(biz.SystemModelSettings))
+			return ec.resolvers.Mutation().UpdateSystemModelSettings(ctx, fc.Args["input"].(biz.UpdateSystemModelSettingsInput))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -38551,6 +38558,8 @@ func (ec *executionContext) fieldContext_Query_systemModelSettings(_ context.Con
 				return ec.fieldContext_SystemModelSettings_defaultModelAPIIncludeAll(ctx, field)
 			case "autoReasoningEffort":
 				return ec.fieldContext_SystemModelSettings_autoReasoningEffort(ctx, field)
+			case "responsesOnlyDataPolicy":
+				return ec.fieldContext_SystemModelSettings_responsesOnlyDataPolicy(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemModelSettings", field.Name)
 		},
@@ -45536,6 +45545,35 @@ func (ec *executionContext) fieldContext_SystemModelSettings_autoReasoningEffort
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemModelSettings_responsesOnlyDataPolicy(ctx context.Context, field graphql.CollectedField, obj *biz.SystemModelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemModelSettings_responsesOnlyDataPolicy,
+		func(ctx context.Context) (any, error) {
+			return obj.ResponsesOnlyDataPolicy, nil
+		},
+		nil,
+		ec.marshalNResponsesOnlyDataPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐResponsesOnlyDataPolicy,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemModelSettings_responsesOnlyDataPolicy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemModelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ResponsesOnlyDataPolicy does not have child fields")
 		},
 	}
 	return fc, nil
@@ -73739,14 +73777,14 @@ func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx context.Context, obj any) (biz.SystemModelSettings, error) {
-	var it biz.SystemModelSettings
+func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx context.Context, obj any) (biz.UpdateSystemModelSettingsInput, error) {
+	var it biz.UpdateSystemModelSettingsInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"fallbackToChannelsOnModelNotFound", "queryAllChannelModels", "defaultModelAPIIncludeAll", "autoReasoningEffort"}
+	fieldsInOrder := [...]string{"fallbackToChannelsOnModelNotFound", "queryAllChannelModels", "defaultModelAPIIncludeAll", "autoReasoningEffort", "responsesOnlyDataPolicy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73755,32 +73793,39 @@ func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx con
 		switch k {
 		case "fallbackToChannelsOnModelNotFound":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fallbackToChannelsOnModelNotFound"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.FallbackToChannelsOnModelNotFound = data
 		case "queryAllChannelModels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("queryAllChannelModels"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.QueryAllChannelModels = data
 		case "defaultModelAPIIncludeAll":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultModelAPIIncludeAll"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.DefaultModelAPIIncludeAll = data
 		case "autoReasoningEffort":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoReasoningEffort"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AutoReasoningEffort = data
+		case "responsesOnlyDataPolicy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responsesOnlyDataPolicy"))
+			data, err := ec.unmarshalOResponsesOnlyDataPolicy2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐResponsesOnlyDataPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponsesOnlyDataPolicy = data
 		}
 	}
 
@@ -91316,6 +91361,11 @@ func (ec *executionContext) _SystemChannelSettings(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "responsesOnlyDataPolicy":
+			out.Values[i] = ec._SystemModelSettings_responsesOnlyDataPolicy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99530,6 +99580,16 @@ func (ec *executionContext) unmarshalNRequestWhereInput2ᚖgithubᚗcomᚋlooplj
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNResponsesOnlyDataPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐResponsesOnlyDataPolicy(ctx context.Context, v any) (biz.ResponsesOnlyDataPolicy, error) {
+	var res biz.ResponsesOnlyDataPolicy
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNResponsesOnlyDataPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐResponsesOnlyDataPolicy(ctx context.Context, sel ast.SelectionSet, v biz.ResponsesOnlyDataPolicy) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNRestoreOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐRestoreOptions(ctx context.Context, v any) (backup.RestoreOptions, error) {
 	res, err := ec.unmarshalInputRestoreOptionsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -100532,7 +100592,7 @@ func (ec *executionContext) unmarshalNUpdateSystemGeneralSettingsInput2githubᚗ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNUpdateSystemModelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemModelSettings(ctx context.Context, v any) (biz.SystemModelSettings, error) {
+func (ec *executionContext) unmarshalNUpdateSystemModelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpdateSystemModelSettingsInput(ctx context.Context, v any) (biz.UpdateSystemModelSettingsInput, error) {
 	res, err := ec.unmarshalInputUpdateSystemModelSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -105739,6 +105799,22 @@ func (ec *executionContext) unmarshalORequestWhereInput2ᚖgithubᚗcomᚋlooplj
 	}
 	res, err := ec.unmarshalInputRequestWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOResponsesOnlyDataPolicy2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐResponsesOnlyDataPolicy(ctx context.Context, v any) (*biz.ResponsesOnlyDataPolicy, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(biz.ResponsesOnlyDataPolicy)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOResponsesOnlyDataPolicy2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐResponsesOnlyDataPolicy(ctx context.Context, sel ast.SelectionSet, v *biz.ResponsesOnlyDataPolicy) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalORole2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRole(ctx context.Context, sel ast.SelectionSet, v *ent.Role) graphql.Marshaler {

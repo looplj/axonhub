@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Loader2, Settings2, RefreshCcw, Layers, ListTree, BrainCircuit } from 'lucide-react';
+import { Loader2, Settings2, RefreshCcw, Layers, ListTree, BrainCircuit, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useModelSettings, useUpdateModelSettings, type UpdateModelSettingsInput } from '@/features/system/data/system';
+import { useModelSettings, useUpdateModelSettings, type ResponsesOnlyDataPolicy, type UpdateModelSettingsInput } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
 
 export function ModelSettingsDialog() {
@@ -22,6 +23,7 @@ export function ModelSettingsDialog() {
   const [queryAllChannelModels, setQueryAllChannelModels] = React.useState(false);
   const [defaultModelAPIIncludeAll, setDefaultModelAPIIncludeAll] = React.useState(false);
   const [autoReasoningEffort, setAutoReasoningEffort] = React.useState(false);
+  const [responsesOnlyDataPolicy, setResponsesOnlyDataPolicy] = React.useState<ResponsesOnlyDataPolicy>('DISCARD');
 
   React.useEffect(() => {
     if (settings) {
@@ -29,6 +31,7 @@ export function ModelSettingsDialog() {
       setQueryAllChannelModels(settings.queryAllChannelModels);
       setDefaultModelAPIIncludeAll(settings.defaultModelAPIIncludeAll);
       setAutoReasoningEffort(settings.autoReasoningEffort);
+      setResponsesOnlyDataPolicy(settings.responsesOnlyDataPolicy);
     }
   }, [settings]);
 
@@ -38,10 +41,11 @@ export function ModelSettingsDialog() {
       queryAllChannelModels: queryAllChannelModels,
       defaultModelAPIIncludeAll: defaultModelAPIIncludeAll,
       autoReasoningEffort: autoReasoningEffort,
+      responsesOnlyDataPolicy: responsesOnlyDataPolicy,
     };
     await updateModelSettings.mutateAsync(input);
     setOpen(null);
-  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, autoReasoningEffort, setOpen]);
+  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, autoReasoningEffort, responsesOnlyDataPolicy, setOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(null);
@@ -144,6 +148,33 @@ export function ModelSettingsDialog() {
                     disabled={updateModelSettings.isPending}
                     className='scale-100 sm:scale-75'
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className='pb-0'>
+                <CardTitle className='flex items-center gap-2 text-sm sm:text-base'>
+                  <ShieldCheck className='text-muted-foreground h-4 w-4' />
+                  {t('models.dialogs.settings.responsesOnlyDataPolicy.label')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='pt-1'>
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                  <p className='text-muted-foreground pr-4 text-sm'>{t('models.dialogs.settings.responsesOnlyDataPolicy.description')}</p>
+                  <Select
+                    value={responsesOnlyDataPolicy}
+                    onValueChange={(value) => setResponsesOnlyDataPolicy(value as ResponsesOnlyDataPolicy)}
+                    disabled={updateModelSettings.isPending}
+                  >
+                    <SelectTrigger id='responses-only-data-policy' className='w-full sm:w-[260px]'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='DISCARD'>{t('models.dialogs.settings.responsesOnlyDataPolicy.options.discard')}</SelectItem>
+                      <SelectItem value='REJECT'>{t('models.dialogs.settings.responsesOnlyDataPolicy.options.reject')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

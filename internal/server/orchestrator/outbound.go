@@ -369,26 +369,115 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
-	if err := ensureResponsesOnlyDataAllowedForOutbound(llmRequest, p.wrapped.APIFormat()); err != nil {
+	var err error
+	llmRequest, err = prepareResponsesOnlyDataForOutbound(llmRequest, p.wrapped.APIFormat(), p.state.ResponsesOnlyDataPolicy)
+	if err != nil {
 		return nil, err
 	}
+	p.state.LlmRequest = llmRequest
 
 	return p.wrapped.TransformRequest(ctx, llmRequest)
 }
 
-func ensureResponsesOnlyDataAllowedForOutbound(
+func prepareResponsesOnlyDataForOutbound(
 	llmRequest *llm.Request,
 	outboundFormat llm.APIFormat,
-) error {
+	policy biz.ResponsesOnlyDataPolicy,
+) (*llm.Request, error) {
 	if llmRequest == nil {
-		return nil
+		return nil, nil
 	}
 
 	if !requiresResponsesOutbound(llmRequest) || isResponsesFormat(outboundFormat) {
+		return llmRequest, nil
+	}
+
+	switch biz.NormalizeResponsesOnlyDataPolicy(policy) {
+	case biz.ResponsesOnlyDataPolicyReject:
+		return nil, fmt.Errorf("%w: outbound format %q", errResponsesOnlyDataRequiresResponsesOutbound, outboundFormat)
+	default:
+		return sanitizeResponsesOnlyDataForNonResponsesOutbound(llmRequest), nil
+	}
+}
+
+func sanitizeResponsesOnlyDataForNonResponsesOutbound(req *llm.Request) *llm.Request {
+	if req == nil {
 		return nil
 	}
 
-	return fmt.Errorf("%w: outbound format %q", errResponsesOnlyDataRequiresResponsesOutbound, outboundFormat)
+	// 降级到非 Responses 出站时，必须剥离无法表达的 lossless 扩展，避免后续 transformer 误用陈旧 raw 数据。
+	cloned := *req
+	cloned.Tools = shared.FilterOutResponsesOnlyTools(req.Tools)
+	cloned.Messages = shared.FilterOutResponseCustomToolMessages(req.Messages)
+	cloned.ProtocolExtensions = dirtyOnlyOpenAIResponsesProtocolExtensions(req.ProtocolExtensions)
+	cloned.ToolChoice = sanitizeToolChoiceForRetainedTools(req.ToolChoice, cloned.Tools)
+	if len(cloned.Tools) == 0 {
+		cloned.ParallelToolCalls = nil
+	}
+
+	return &cloned
+}
+
+func dirtyOnlyOpenAIResponsesProtocolExtensions(ext *llm.ProtocolExtensions) *llm.ProtocolExtensions {
+	if ext == nil || ext.OpenAIResponses == nil {
+		return nil
+	}
+
+	responsesExt := ext.OpenAIResponses
+	if !responsesExt.Dirty &&
+		!responsesExt.InputDirty &&
+		!responsesExt.ToolsDirty &&
+		!responsesExt.ResponseOutputDirty &&
+		!responsesExt.ResponseDirty &&
+		!responsesExt.StreamDirty {
+		return nil
+	}
+
+	return &llm.ProtocolExtensions{
+		OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			Dirty:               responsesExt.Dirty,
+			InputDirty:          responsesExt.InputDirty,
+			ToolsDirty:          responsesExt.ToolsDirty,
+			ResponseOutputDirty: responsesExt.ResponseOutputDirty,
+			ResponseDirty:       responsesExt.ResponseDirty,
+			StreamDirty:         responsesExt.StreamDirty,
+		},
+	}
+}
+
+func sanitizeToolChoiceForRetainedTools(toolChoice *llm.ToolChoice, tools []llm.Tool) *llm.ToolChoice {
+	if toolChoice == nil || len(tools) == 0 {
+		return nil
+	}
+
+	if toolChoice.NamedToolChoice == nil {
+		return toolChoice
+	}
+
+	namedToolChoice := toolChoice.NamedToolChoice
+	if namedToolChoice.Type != "" && namedToolChoice.Type != llm.ToolTypeFunction {
+		return nil
+	}
+
+	if hasRetainedFunctionTool(tools, namedToolChoice.Function.Name) {
+		return toolChoice
+	}
+
+	return nil
+}
+
+func hasRetainedFunctionTool(tools []llm.Tool, name string) bool {
+	if name == "" {
+		return false
+	}
+
+	for _, tool := range tools {
+		if tool.Type == llm.ToolTypeFunction && tool.Function.Name == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func requiresResponsesOutbound(llmRequest *llm.Request) bool {

@@ -563,7 +563,7 @@ models:
       - github.com/looplj/axonhub/internal/server/biz.SystemModelSettings
   UpdateSystemModelSettingsInput:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.SystemModelSettings
+      - github.com/looplj/axonhub/internal/server/biz.UpdateSystemModelSettingsInput
   SystemChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
@@ -618,6 +618,9 @@ models:
   QuotaEnforcementMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
+  ResponsesOnlyDataPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ResponsesOnlyDataPolicy
   PromptSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptSettings

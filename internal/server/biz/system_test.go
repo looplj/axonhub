@@ -398,6 +398,179 @@ func TestSystemService_ChannelSetting_NormalizesLegacyAutoSyncFrequency(t *testi
 	require.Equal(t, AutoSyncFrequencyOneHour, setting.AutoSync.Frequency)
 }
 
+func TestSystemService_ModelSettingsResponsesOnlyDataPolicy(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	t.Run("default value is discard", func(t *testing.T) {
+		service, client := setupTestSystemService(t, cacheConfig)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		settings, err := service.ModelSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, ResponsesOnlyDataPolicyDiscard, settings.ResponsesOnlyDataPolicy)
+	})
+
+	t.Run("legacy json is normalized to discard", func(t *testing.T) {
+		service, client := setupTestSystemService(t, cacheConfig)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		legacySetting := map[string]any{
+			"fallback_to_channels_on_model_not_found": true,
+			"query_all_channel_models":                true,
+			"default_model_api_include_all":           false,
+		}
+		legacyJSON, err := json.Marshal(legacySetting)
+		require.NoError(t, err)
+
+		_, err = client.System.Create().
+			SetKey(SystemKeyModelSettings).
+			SetValue(string(legacyJSON)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		settings, err := service.ModelSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, ResponsesOnlyDataPolicyDiscard, settings.ResponsesOnlyDataPolicy)
+	})
+
+	t.Run("invalid json value is normalized to discard", func(t *testing.T) {
+		service, client := setupTestSystemService(t, cacheConfig)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		rawSetting := map[string]any{
+			"fallback_to_channels_on_model_not_found": true,
+			"responses_only_data_policy":              "invalid",
+		}
+		rawJSON, err := json.Marshal(rawSetting)
+		require.NoError(t, err)
+
+		_, err = client.System.Create().
+			SetKey(SystemKeyModelSettings).
+			SetValue(string(rawJSON)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		settings, err := service.ModelSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, ResponsesOnlyDataPolicyDiscard, settings.ResponsesOnlyDataPolicy)
+	})
+
+	t.Run("set model settings persists reject", func(t *testing.T) {
+		service, client := setupTestSystemService(t, cacheConfig)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		err := service.SetModelSettings(ctx, SystemModelSettings{
+			FallbackToChannelsOnModelNotFound: true,
+			QueryAllChannelModels:             true,
+			ResponsesOnlyDataPolicy:           ResponsesOnlyDataPolicyReject,
+		})
+		require.NoError(t, err)
+
+		settings, err := service.ModelSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, ResponsesOnlyDataPolicyReject, settings.ResponsesOnlyDataPolicy)
+	})
+
+	t.Run("set model settings normalizes invalid value", func(t *testing.T) {
+		service, client := setupTestSystemService(t, cacheConfig)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		err := service.SetModelSettings(ctx, SystemModelSettings{
+			ResponsesOnlyDataPolicy: ResponsesOnlyDataPolicy("invalid"),
+		})
+		require.NoError(t, err)
+
+		settings, err := service.ModelSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, ResponsesOnlyDataPolicyDiscard, settings.ResponsesOnlyDataPolicy)
+	})
+
+	t.Run("patch model settings preserves omitted fields", func(t *testing.T) {
+		service, client := setupTestSystemService(t, cacheConfig)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		err := service.SetModelSettings(ctx, SystemModelSettings{
+			FallbackToChannelsOnModelNotFound: true,
+			QueryAllChannelModels:             true,
+			DefaultModelAPIIncludeAll:         true,
+			AutoReasoningEffort:               true,
+			ResponsesOnlyDataPolicy:           ResponsesOnlyDataPolicyReject,
+		})
+		require.NoError(t, err)
+
+		policy := ResponsesOnlyDataPolicyDiscard
+		err = service.PatchModelSettings(ctx, UpdateSystemModelSettingsInput{
+			ResponsesOnlyDataPolicy: &policy,
+		})
+		require.NoError(t, err)
+
+		settings, err := service.ModelSettings(ctx)
+		require.NoError(t, err)
+		require.True(t, settings.FallbackToChannelsOnModelNotFound)
+		require.True(t, settings.QueryAllChannelModels)
+		require.True(t, settings.DefaultModelAPIIncludeAll)
+		require.True(t, settings.AutoReasoningEffort)
+		require.Equal(t, ResponsesOnlyDataPolicyDiscard, settings.ResponsesOnlyDataPolicy)
+	})
+
+	t.Run("patch model settings applies explicit false values", func(t *testing.T) {
+		service, client := setupTestSystemService(t, cacheConfig)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		err := service.SetModelSettings(ctx, SystemModelSettings{
+			FallbackToChannelsOnModelNotFound: true,
+			QueryAllChannelModels:             true,
+			DefaultModelAPIIncludeAll:         true,
+			AutoReasoningEffort:               true,
+			ResponsesOnlyDataPolicy:           ResponsesOnlyDataPolicyReject,
+		})
+		require.NoError(t, err)
+
+		disabled := false
+		err = service.PatchModelSettings(ctx, UpdateSystemModelSettingsInput{
+			QueryAllChannelModels: &disabled,
+			AutoReasoningEffort:   &disabled,
+		})
+		require.NoError(t, err)
+
+		settings, err := service.ModelSettings(ctx)
+		require.NoError(t, err)
+		require.True(t, settings.FallbackToChannelsOnModelNotFound)
+		require.False(t, settings.QueryAllChannelModels)
+		require.True(t, settings.DefaultModelAPIIncludeAll)
+		require.False(t, settings.AutoReasoningEffort)
+		require.Equal(t, ResponsesOnlyDataPolicyReject, settings.ResponsesOnlyDataPolicy)
+	})
+}
+
 func TestSystemService_Initialize_WithCache(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()

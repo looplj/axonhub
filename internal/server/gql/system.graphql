@@ -161,11 +161,17 @@ input UpdateQuotaEnforcementSettingsInput {
   mode: QuotaEnforcementMode
 }
 
+enum ResponsesOnlyDataPolicy {
+  DISCARD
+  REJECT
+}
+
 type SystemModelSettings {
   fallbackToChannelsOnModelNotFound: Boolean!
   queryAllChannelModels: Boolean!
   defaultModelAPIIncludeAll: Boolean!
   autoReasoningEffort: Boolean!
+  responsesOnlyDataPolicy: ResponsesOnlyDataPolicy!
 }
 
 input UpdateSystemModelSettingsInput {
@@ -173,6 +179,7 @@ input UpdateSystemModelSettingsInput {
   queryAllChannelModels: Boolean
   defaultModelAPIIncludeAll: Boolean
   autoReasoningEffort: Boolean
+  responsesOnlyDataPolicy: ResponsesOnlyDataPolicy
 }
 
 input UpdateDefaultDataStorageInput {

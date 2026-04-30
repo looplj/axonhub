@@ -69,8 +69,8 @@ func (r *mutationResolver) UpdateWebhookNotifierConfig(ctx context.Context, inpu
 }
 
 // UpdateSystemModelSettings is the resolver for the updateSystemModelSettings field.
-func (r *mutationResolver) UpdateSystemModelSettings(ctx context.Context, input biz.SystemModelSettings) (bool, error) {
-	err := r.systemService.SetModelSettings(ctx, input)
+func (r *mutationResolver) UpdateSystemModelSettings(ctx context.Context, input biz.UpdateSystemModelSettingsInput) (bool, error) {
+	err := r.systemService.PatchModelSettings(ctx, input)
 	if err != nil {
 		return false, fmt.Errorf("failed to update system model settings: %w", err)
 	}

@@ -73,8 +73,11 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 
 func stripResponsesProtocolExtensionsFromMessage(msg llm.Message) llm.Message {
 	msg.ProtocolExtensions = nil
-	for i := range msg.Content.MultipleContent {
-		msg.Content.MultipleContent[i].TransformerMetadata = nil
+	if len(msg.Content.MultipleContent) > 0 {
+		msg.Content.MultipleContent = append([]llm.MessageContentPart(nil), msg.Content.MultipleContent...)
+		for i := range msg.Content.MultipleContent {
+			msg.Content.MultipleContent[i].TransformerMetadata = nil
+		}
 	}
 	return msg
 }

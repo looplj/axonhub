@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
 
 type responsesOnlyDataSelector struct {
 	wrapped CandidateSelector
+	policy  biz.ResponsesOnlyDataPolicy
 }
 
-func WithResponsesOnlyDataSelector(selector CandidateSelector) CandidateSelector {
-	return &responsesOnlyDataSelector{wrapped: selector}
+func WithResponsesOnlyDataSelector(selector CandidateSelector, policy biz.ResponsesOnlyDataPolicy) CandidateSelector {
+	return &responsesOnlyDataSelector{
+		wrapped: selector,
+		policy:  biz.NormalizeResponsesOnlyDataPolicy(policy),
+	}
 }
 
 func (s *responsesOnlyDataSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
@@ -34,6 +39,10 @@ func (s *responsesOnlyDataSelector) Select(ctx context.Context, req *llm.Request
 	}
 
 	if len(compatible) == 0 {
+		if s.policy == biz.ResponsesOnlyDataPolicyDiscard {
+			return candidates, nil
+		}
+
 		return nil, fmt.Errorf(
 			"%w: no OpenAI Responses outbound candidates for model %q",
 			errResponsesOnlyDataRequiresResponsesOutbound,

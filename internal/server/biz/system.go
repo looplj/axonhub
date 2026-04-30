@@ -188,6 +188,75 @@ type QuotaEnforcementSettings struct {
 	Mode QuotaEnforcementMode `json:"mode"`
 }
 
+// ResponsesOnlyDataPolicy defines how Responses-only request data is handled
+// when no OpenAI Responses outbound is available.
+type ResponsesOnlyDataPolicy string
+
+const (
+	// ResponsesOnlyDataPolicyDiscard strips Responses-only data and continues with non-Responses outbound.
+	ResponsesOnlyDataPolicyDiscard ResponsesOnlyDataPolicy = "discard"
+	// ResponsesOnlyDataPolicyReject rejects requests that cannot be routed to Responses outbound losslessly.
+	ResponsesOnlyDataPolicyReject ResponsesOnlyDataPolicy = "reject"
+)
+
+func NormalizeResponsesOnlyDataPolicy(policy ResponsesOnlyDataPolicy) ResponsesOnlyDataPolicy {
+	switch policy {
+	case ResponsesOnlyDataPolicyReject, ResponsesOnlyDataPolicy("REJECT"):
+		return ResponsesOnlyDataPolicyReject
+	case ResponsesOnlyDataPolicyDiscard, ResponsesOnlyDataPolicy("DISCARD"):
+		return ResponsesOnlyDataPolicyDiscard
+	default:
+		return ResponsesOnlyDataPolicyDiscard
+	}
+}
+
+func (p ResponsesOnlyDataPolicy) MarshalGQL(w io.Writer) {
+	var s string
+
+	switch NormalizeResponsesOnlyDataPolicy(p) {
+	case ResponsesOnlyDataPolicyReject:
+		s = "REJECT"
+	default:
+		s = "DISCARD"
+	}
+
+	_, _ = io.WriteString(w, `"`+s+`"`)
+}
+
+func (p *ResponsesOnlyDataPolicy) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ResponsesOnlyDataPolicy must be a string")
+	}
+
+	switch str {
+	case "DISCARD", string(ResponsesOnlyDataPolicyDiscard):
+		*p = ResponsesOnlyDataPolicyDiscard
+	case "REJECT", string(ResponsesOnlyDataPolicyReject):
+		*p = ResponsesOnlyDataPolicyReject
+	default:
+		return fmt.Errorf("invalid ResponsesOnlyDataPolicy: %s", str)
+	}
+
+	return nil
+}
+
+func (p *ResponsesOnlyDataPolicy) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		*p = ResponsesOnlyDataPolicyDiscard
+		return nil
+	}
+
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("invalid ResponsesOnlyDataPolicy: %w", err)
+	}
+
+	*p = NormalizeResponsesOnlyDataPolicy(ResponsesOnlyDataPolicy(raw))
+
+	return nil
+}
+
 // BackupFrequency represents how often automatic backups should run.
 type BackupFrequency string
 
@@ -332,6 +401,40 @@ type SystemModelSettings struct {
 	// When true, the suffix is stripped from model and applied to request.reasoning_effort,
 	// overriding any reasoning_effort already set in the request.
 	AutoReasoningEffort bool `json:"auto_reasoning_effort"`
+
+	// ResponsesOnlyDataPolicy controls whether to reject or sanitize Responses-only
+	// request data when routing to non-Responses outbound.
+	ResponsesOnlyDataPolicy ResponsesOnlyDataPolicy `json:"responses_only_data_policy"`
+}
+
+type UpdateSystemModelSettingsInput struct {
+	FallbackToChannelsOnModelNotFound *bool                    `json:"fallback_to_channels_on_model_not_found,omitempty"`
+	QueryAllChannelModels             *bool                    `json:"query_all_channel_models,omitempty"`
+	DefaultModelAPIIncludeAll         *bool                    `json:"default_model_api_include_all,omitempty"`
+	AutoReasoningEffort               *bool                    `json:"auto_reasoning_effort,omitempty"`
+	ResponsesOnlyDataPolicy           *ResponsesOnlyDataPolicy `json:"responses_only_data_policy,omitempty"`
+}
+
+func (input UpdateSystemModelSettingsInput) ApplyTo(settings *SystemModelSettings) {
+	if settings == nil {
+		return
+	}
+
+	if input.FallbackToChannelsOnModelNotFound != nil {
+		settings.FallbackToChannelsOnModelNotFound = *input.FallbackToChannelsOnModelNotFound
+	}
+	if input.QueryAllChannelModels != nil {
+		settings.QueryAllChannelModels = *input.QueryAllChannelModels
+	}
+	if input.DefaultModelAPIIncludeAll != nil {
+		settings.DefaultModelAPIIncludeAll = *input.DefaultModelAPIIncludeAll
+	}
+	if input.AutoReasoningEffort != nil {
+		settings.AutoReasoningEffort = *input.AutoReasoningEffort
+	}
+	if input.ResponsesOnlyDataPolicy != nil {
+		settings.ResponsesOnlyDataPolicy = *input.ResponsesOnlyDataPolicy
+	}
 }
 
 type SystemChannelSettings struct {
@@ -1000,6 +1103,8 @@ func (s *SystemService) ModelSettings(ctx context.Context) (*SystemModelSettings
 		return nil, fmt.Errorf("failed to unmarshal model settings: %w", err)
 	}
 
+	settings.ResponsesOnlyDataPolicy = NormalizeResponsesOnlyDataPolicy(settings.ResponsesOnlyDataPolicy)
+
 	return &settings, nil
 }
 
@@ -1021,12 +1126,26 @@ func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *SystemModel
 
 // SetModelSettings sets the model settings configuration.
 func (s *SystemService) SetModelSettings(ctx context.Context, settings SystemModelSettings) error {
+	settings.ResponsesOnlyDataPolicy = NormalizeResponsesOnlyDataPolicy(settings.ResponsesOnlyDataPolicy)
+
 	jsonBytes, err := json.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal model settings: %w", err)
 	}
 
 	return s.setSystemValue(ctx, SystemKeyModelSettings, string(jsonBytes))
+}
+
+func (s *SystemService) PatchModelSettings(ctx context.Context, input UpdateSystemModelSettingsInput) error {
+	settings, err := s.ModelSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	// GraphQL mutation 是 partial update；只覆盖调用方明确传入的字段，避免未传字段被零值清空。
+	input.ApplyTo(settings)
+
+	return s.SetModelSettings(ctx, *settings)
 }
 
 // ChannelSetting retrieves the channel setting configuration.

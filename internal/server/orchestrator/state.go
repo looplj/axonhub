@@ -33,6 +33,10 @@ type PersistenceState struct {
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request
 
+	// ResponsesOnlyDataPolicy controls fallback behavior when Responses-only data
+	// is routed to a non-Responses outbound.
+	ResponsesOnlyDataPolicy biz.ResponsesOnlyDataPolicy
+
 	// Persistence state
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution

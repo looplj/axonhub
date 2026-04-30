@@ -31,6 +31,7 @@ var defaultModelSettings = SystemModelSettings{
 	FallbackToChannelsOnModelNotFound: true,
 	QueryAllChannelModels:             true,
 	DefaultModelAPIIncludeAll:         false,
+	ResponsesOnlyDataPolicy:           ResponsesOnlyDataPolicyDiscard,
 }
 
 var defaultChannelSetting = SystemChannelSettings{

@@ -769,9 +769,15 @@ func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t 
 	require.Equal(t, testChannel, processor.state.CurrentCandidate.Channel)
 }
 
-func TestEnsureResponsesOnlyDataAllowedForOutbound(t *testing.T) {
+func TestPrepareResponsesOnlyDataForOutbound(t *testing.T) {
+	boolPtr := func(v bool) *bool { return &v }
+	stringPtr := func(v string) *string { return &v }
+
 	baseRequest := &llm.Request{
 		APIFormat: llm.APIFormatOpenAIResponse,
+		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
+		}},
 		Messages: []llm.Message{
 			{
 				Role: "assistant",
@@ -823,24 +829,38 @@ func TestEnsureResponsesOnlyDataAllowedForOutbound(t *testing.T) {
 				}},
 			},
 		},
+		Tools: []llm.Tool{
+			{Type: "namespace", ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{}}},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:       "get_weather",
+					Parameters: json.RawMessage(`{"type":"object"}`),
+				},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{}},
+			},
+		},
 	}
 
 	t.Run("rejects when inbound is responses and outbound is not", func(t *testing.T) {
-		err := ensureResponsesOnlyDataAllowedForOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion)
+		got, err := prepareResponsesOnlyDataForOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyReject)
 		require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
 		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+		require.Nil(t, got)
 	})
 
 	t.Run("allows when outbound is responses", func(t *testing.T) {
-		err := ensureResponsesOnlyDataAllowedForOutbound(baseRequest, llm.APIFormatOpenAIResponse)
+		got, err := prepareResponsesOnlyDataForOutbound(baseRequest, llm.APIFormatOpenAIResponse, biz.ResponsesOnlyDataPolicyReject)
 		require.NoError(t, err)
+		require.Same(t, baseRequest, got)
 	})
 
 	t.Run("allows when inbound is not responses", func(t *testing.T) {
 		nonResponsesReq := *baseRequest
 		nonResponsesReq.APIFormat = llm.APIFormatOpenAIChatCompletion
-		err := ensureResponsesOnlyDataAllowedForOutbound(&nonResponsesReq, llm.APIFormatOpenAIChatCompletion)
+		got, err := prepareResponsesOnlyDataForOutbound(&nonResponsesReq, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyReject)
 		require.NoError(t, err)
+		require.Same(t, &nonResponsesReq, got)
 	})
 
 	t.Run("allows dirty-only responses extensions for non-responses outbound", func(t *testing.T) {
@@ -851,8 +871,157 @@ func TestEnsureResponsesOnlyDataAllowedForOutbound(t *testing.T) {
 			}},
 		}
 
-		err := ensureResponsesOnlyDataAllowedForOutbound(dirtyOnlyReq, llm.APIFormatOpenAIChatCompletion)
+		got, err := prepareResponsesOnlyDataForOutbound(dirtyOnlyReq, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyReject)
 		require.NoError(t, err)
+		require.Same(t, dirtyOnlyReq, got)
+	})
+
+	t.Run("discards responses-only data without mutating original request", func(t *testing.T) {
+		got, err := prepareResponsesOnlyDataForOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyDiscard)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.NotSame(t, baseRequest, got)
+
+		require.Nil(t, got.ProtocolExtensions)
+		require.Len(t, got.Tools, 1)
+		require.Equal(t, llm.ToolTypeFunction, got.Tools[0].Type)
+		require.Nil(t, got.Tools[0].ProtocolExtensions)
+		require.Len(t, got.Messages, 2)
+		require.Len(t, got.Messages[0].ToolCalls, 1)
+		require.Equal(t, "call_function_1", got.Messages[0].ToolCalls[0].ID)
+		require.Nil(t, got.Messages[0].ToolCalls[0].ProtocolExtensions)
+		require.NotNil(t, got.Messages[1].ToolCallID)
+		require.Equal(t, "call_function_1", *got.Messages[1].ToolCallID)
+		require.Nil(t, got.Messages[1].ProtocolExtensions)
+
+		require.NotNil(t, baseRequest.ProtocolExtensions)
+		require.Len(t, baseRequest.Tools, 2)
+		require.Len(t, baseRequest.Messages, 4)
+		require.Len(t, baseRequest.Messages[0].ToolCalls, 2)
+	})
+
+	t.Run("discards tool choice and parallel calls when all tools are responses-only", func(t *testing.T) {
+		req := &llm.Request{
+			APIFormat:         llm.APIFormatOpenAIResponse,
+			ToolChoice:        &llm.ToolChoice{ToolChoice: stringPtr("required")},
+			ParallelToolCalls: boolPtr(true),
+			Tools: []llm.Tool{
+				{Type: llm.ToolTypeResponsesCustomTool},
+				{Type: "tool_search"},
+				{Type: "local_shell"},
+			},
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyDiscard)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Empty(t, got.Tools)
+		require.Nil(t, got.ToolChoice)
+		require.Nil(t, got.ParallelToolCalls)
+
+		require.NotNil(t, req.ToolChoice)
+		require.NotNil(t, req.ParallelToolCalls)
+		require.True(t, *req.ParallelToolCalls)
+		require.Len(t, req.Tools, 3)
+	})
+
+	t.Run("discards named tool choice when selected tool was removed", func(t *testing.T) {
+		req := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+				Type: "custom",
+				Function: llm.ToolFunction{
+					Name: "apply_patch",
+				},
+			}},
+			Tools: []llm.Tool{
+				{
+					Type: llm.ToolTypeResponsesCustomTool,
+					ResponseCustomTool: &llm.ResponseCustomTool{
+						Name: "apply_patch",
+					},
+				},
+				{
+					Type: llm.ToolTypeFunction,
+					Function: llm.Function{
+						Name: "get_weather",
+					},
+				},
+			},
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyDiscard)
+		require.NoError(t, err)
+		require.Len(t, got.Tools, 1)
+		require.Equal(t, "get_weather", got.Tools[0].Function.Name)
+		require.Nil(t, got.ToolChoice)
+
+		require.NotNil(t, req.ToolChoice)
+		require.Len(t, req.Tools, 2)
+	})
+
+	t.Run("keeps named tool choice when selected function tool remains", func(t *testing.T) {
+		req := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+				Type: llm.ToolTypeFunction,
+				Function: llm.ToolFunction{
+					Name: "get_weather",
+				},
+			}},
+			Tools: []llm.Tool{
+				{Type: llm.ToolTypeResponsesCustomTool},
+				{
+					Type: llm.ToolTypeFunction,
+					Function: llm.Function{
+						Name: "get_weather",
+					},
+				},
+			},
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyDiscard)
+		require.NoError(t, err)
+		require.Len(t, got.Tools, 1)
+		require.Same(t, req.ToolChoice, got.ToolChoice)
+		require.NotNil(t, got.ToolChoice.NamedToolChoice)
+		require.Equal(t, "get_weather", got.ToolChoice.NamedToolChoice.Function.Name)
+	})
+
+	t.Run("keeps dirty flags while discarding raw responses extension data", func(t *testing.T) {
+		req := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+				RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
+				InputItems:   []llm.OpenAIResponsesRawItem{{Type: "message", Raw: json.RawMessage(`{"type":"message"}`)}},
+				Tools:        []llm.OpenAIResponsesRawItem{{Type: "function", Raw: json.RawMessage(`{"type":"function"}`)}},
+				ResponseRaw:  json.RawMessage(`{"id":"resp_1"}`),
+				InputDirty:   true,
+				ToolsDirty:   true,
+			}},
+		}
+
+		got, err := prepareResponsesOnlyDataForOutbound(req, llm.APIFormatOpenAIChatCompletion, biz.ResponsesOnlyDataPolicyDiscard)
+		require.NoError(t, err)
+		require.NotNil(t, got.ProtocolExtensions)
+		require.True(t, llm.OpenAIResponsesInputDirty(got.ProtocolExtensions))
+		require.True(t, llm.OpenAIResponsesToolsDirty(got.ProtocolExtensions))
+
+		gotResponsesExt := got.ProtocolExtensions.OpenAIResponses
+		require.NotNil(t, gotResponsesExt)
+		require.Empty(t, gotResponsesExt.RequestExtra)
+		require.Empty(t, gotResponsesExt.InputItems)
+		require.Empty(t, gotResponsesExt.Tools)
+		require.Empty(t, gotResponsesExt.ResponseRaw)
+		require.Empty(t, gotResponsesExt.ResponseExtra)
+		require.Empty(t, gotResponsesExt.ResponseMetadata)
+		require.Empty(t, gotResponsesExt.OutputItems)
+		require.Nil(t, gotResponsesExt.RawEvent)
+
+		require.NotNil(t, req.ProtocolExtensions.OpenAIResponses.RequestExtra)
+		require.NotEmpty(t, req.ProtocolExtensions.OpenAIResponses.InputItems)
+		require.NotEmpty(t, req.ProtocolExtensions.OpenAIResponses.Tools)
+		require.NotEmpty(t, req.ProtocolExtensions.OpenAIResponses.ResponseRaw)
 	})
 }
 
@@ -900,6 +1069,7 @@ func TestPersistentOutboundTransformer_TransformRequest_RejectsResponsesOnlyData
 	processor := &PersistentOutboundTransformer{
 		wrapped: chatOutbound,
 		state: &PersistenceState{
+			ResponsesOnlyDataPolicy: biz.ResponsesOnlyDataPolicyReject,
 			ChannelModelsCandidates: []*ChannelModelsCandidate{
 				{
 					Channel: channel,
@@ -916,6 +1086,77 @@ func TestPersistentOutboundTransformer_TransformRequest_RejectsResponsesOnlyData
 	require.Equal(t, 0, chatOutbound.transformCalls)
 }
 
+func TestPersistentOutboundTransformer_TransformRequest_DiscardsResponsesOnlyDataForNonResponsesOutbound(t *testing.T) {
+	visible := "hello"
+	request := &llm.Request{
+		Model:     "gpt-4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+			RequestExtra: map[string]json.RawMessage{"client_metadata": json.RawMessage(`{"session":"s1"}`)},
+		}},
+		Messages: []llm.Message{
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: &visible},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{
+					InputItems: []llm.OpenAIResponsesRawItem{{Type: "message"}},
+				}},
+			},
+		},
+		Tools: []llm.Tool{
+			{Type: "namespace", ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{}}},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:       "get_weather",
+					Parameters: json.RawMessage(`{"type":"object"}`),
+				},
+				ProtocolExtensions: &llm.ProtocolExtensions{OpenAIResponses: &llm.OpenAIResponsesExtensions{}},
+			},
+		},
+	}
+
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:       1,
+			Name:     "chat-only",
+			Settings: nil,
+		},
+		Outbound: chatOutbound,
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: chatOutbound,
+		state: &PersistenceState{
+			ResponsesOnlyDataPolicy: biz.ResponsesOnlyDataPolicyDiscard,
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+			},
+			CurrentCandidateIndex: 0,
+		},
+	}
+
+	_, err := processor.TransformRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, 1, chatOutbound.transformCalls)
+	require.NotSame(t, request, chatOutbound.lastRequest)
+	require.Same(t, chatOutbound.lastRequest, processor.state.LlmRequest)
+	require.Nil(t, chatOutbound.lastRequest.ProtocolExtensions)
+	require.Len(t, chatOutbound.lastRequest.Tools, 1)
+	require.Equal(t, llm.ToolTypeFunction, chatOutbound.lastRequest.Tools[0].Type)
+	require.Nil(t, chatOutbound.lastRequest.Tools[0].ProtocolExtensions)
+	require.Len(t, chatOutbound.lastRequest.Messages, 1)
+	require.Nil(t, chatOutbound.lastRequest.Messages[0].ProtocolExtensions)
+
+	require.NotNil(t, request.ProtocolExtensions)
+	require.Len(t, request.Tools, 2)
+	require.NotNil(t, request.Tools[1].ProtocolExtensions)
+	require.NotNil(t, request.Messages[0].ProtocolExtensions)
+}
+
 func TestResponsesOnlyDataSelector_PrefersResponsesOutbound(t *testing.T) {
 	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
 	responsesOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse}
@@ -927,13 +1168,6 @@ func TestResponsesOnlyDataSelector_PrefersResponsesOutbound(t *testing.T) {
 			string(llm.APIFormatOpenAIResponse):       responsesOutbound,
 		},
 	}
-	selector := WithResponsesOnlyDataSelector(&staticChannelSelector{candidates: []*ChannelModelsCandidate{
-		{
-			Channel:   channel,
-			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-			Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
-		},
-	}})
 	request := &llm.Request{
 		Model:     "gpt-4",
 		APIFormat: llm.APIFormatOpenAIResponse,
@@ -942,13 +1176,25 @@ func TestResponsesOnlyDataSelector_PrefersResponsesOutbound(t *testing.T) {
 		}},
 	}
 
-	got, err := selector.Select(context.Background(), request)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	require.Equal(t, string(llm.APIFormatOpenAIResponse), got[0].APIFormat)
+	for _, policy := range []biz.ResponsesOnlyDataPolicy{biz.ResponsesOnlyDataPolicyDiscard, biz.ResponsesOnlyDataPolicyReject} {
+		t.Run(string(policy), func(t *testing.T) {
+			selector := WithResponsesOnlyDataSelector(&staticChannelSelector{candidates: []*ChannelModelsCandidate{
+				{
+					Channel:   channel,
+					APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+					Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+			}}, policy)
+
+			got, err := selector.Select(context.Background(), request)
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			require.Equal(t, string(llm.APIFormatOpenAIResponse), got[0].APIFormat)
+		})
+	}
 }
 
-func TestResponsesOnlyDataSelector_RejectsWhenNoResponsesOutbound(t *testing.T) {
+func TestResponsesOnlyDataSelector_WhenNoResponsesOutbound(t *testing.T) {
 	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
 	channel := &biz.Channel{
 		Channel:  &ent.Channel{ID: 1, Name: "chat-only"},
@@ -957,13 +1203,13 @@ func TestResponsesOnlyDataSelector_RejectsWhenNoResponsesOutbound(t *testing.T) 
 			string(llm.APIFormatOpenAIChatCompletion): chatOutbound,
 		},
 	}
-	selector := WithResponsesOnlyDataSelector(&staticChannelSelector{candidates: []*ChannelModelsCandidate{
+	candidates := []*ChannelModelsCandidate{
 		{
 			Channel:   channel,
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 			Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
 		},
-	}})
+	}
 	request := &llm.Request{
 		Model:     "gpt-4",
 		APIFormat: llm.APIFormatOpenAIResponse,
@@ -972,9 +1218,19 @@ func TestResponsesOnlyDataSelector_RejectsWhenNoResponsesOutbound(t *testing.T) 
 		}},
 	}
 
-	_, err := selector.Select(context.Background(), request)
-	require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
-	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	t.Run("reject returns error", func(t *testing.T) {
+		selector := WithResponsesOnlyDataSelector(&staticChannelSelector{candidates: candidates}, biz.ResponsesOnlyDataPolicyReject)
+		_, err := selector.Select(context.Background(), request)
+		require.ErrorIs(t, err, errResponsesOnlyDataRequiresResponsesOutbound)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	})
+
+	t.Run("discard returns original candidates", func(t *testing.T) {
+		selector := WithResponsesOnlyDataSelector(&staticChannelSelector{candidates: candidates}, biz.ResponsesOnlyDataPolicyDiscard)
+		got, err := selector.Select(context.Background(), request)
+		require.NoError(t, err)
+		require.Equal(t, candidates, got)
+	})
 }
 
 // ========== 429 Retry-After Tests ==========

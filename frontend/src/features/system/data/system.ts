@@ -740,6 +740,7 @@ const MODEL_SETTINGS_QUERY = `
       queryAllChannelModels
       defaultModelAPIIncludeAll
       autoReasoningEffort
+      responsesOnlyDataPolicy
     }
   }
 `;
@@ -807,13 +808,17 @@ export interface ModelSettings {
   queryAllChannelModels: boolean;
   defaultModelAPIIncludeAll: boolean;
   autoReasoningEffort: boolean;
+  responsesOnlyDataPolicy: ResponsesOnlyDataPolicy;
 }
+
+export type ResponsesOnlyDataPolicy = 'DISCARD' | 'REJECT';
 
 export interface UpdateModelSettingsInput {
   fallbackToChannelsOnModelNotFound?: boolean;
   queryAllChannelModels?: boolean;
   defaultModelAPIIncludeAll?: boolean;
   autoReasoningEffort?: boolean;
+  responsesOnlyDataPolicy?: ResponsesOnlyDataPolicy;
 }
 
 export function useModelSettings() {
