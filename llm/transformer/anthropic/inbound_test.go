@@ -504,7 +504,7 @@ func TestInboundTransformer_TransformRequest_ThinkingValidation(t *testing.T) {
 		got, err := transformer.TransformRequest(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNil(t, got)
-		require.Empty(t, got.ReasoningEffort)
+		require.Equal(t, "none", got.ReasoningEffort)
 		require.Nil(t, got.ReasoningBudget)
 	})
 

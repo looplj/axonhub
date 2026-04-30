@@ -394,7 +394,7 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 					Type: "disabled",
 				},
 			},
-			expectedEffort: "",
+			expectedEffort: "none",
 		},
 		{
 			name: "no thinking configuration",
@@ -569,6 +569,59 @@ func TestThinking_AdaptiveOutbound(t *testing.T) {
 				require.JSONEq(t, `{"type":"adaptive"}`, string(thinkingJSON))
 			},
 		},
+		{
+			name: "metadata thinking_type=disabled -> Thinking{Type: disabled}",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ReasoningEffort: "none",
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyThinkingType: "disabled",
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "disabled", anthropicReq.Thinking.Type)
+
+				thinkingJSON, err := json.Marshal(anthropicReq.Thinking)
+				require.NoError(t, err)
+				require.JSONEq(t, `{"type":"disabled"}`, string(thinkingJSON))
+			},
+		},
+		{
+			name: "ReasoningEffort=none without TransformerMetadata -> Thinking{Type: disabled}",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ReasoningEffort: "none",
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "disabled", anthropicReq.Thinking.Type)
+
+				thinkingJSON, err := json.Marshal(anthropicReq.Thinking)
+				require.NoError(t, err)
+				require.JSONEq(t, `{"type":"disabled"}`, string(thinkingJSON))
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -605,6 +658,29 @@ func TestThinking_AdaptiveInbound(t *testing.T) {
 				require.NotNil(t, chatReq.TransformerMetadata)
 				require.Equal(t, "adaptive", chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType])
 				require.Equal(t, "high", chatReq.ReasoningEffort)
+				require.Nil(t, chatReq.ReasoningBudget)
+			},
+		},
+		{
+			name: "Thinking{Type: disabled} -> TransformerMetadata thinking_type=disabled and ReasoningEffort=none",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				Thinking: &Thinking{Type: "disabled"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				require.Equal(t, "disabled", chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType])
+				require.Equal(t, "none", chatReq.ReasoningEffort)
 				require.Nil(t, chatReq.ReasoningBudget)
 			},
 		},
@@ -722,6 +798,31 @@ func TestOutputConfig_Outbound(t *testing.T) {
 			validate: func(t *testing.T, anthropicReq *MessageRequest) {
 				t.Helper()
 				require.Nil(t, anthropicReq.OutputConfig)
+			},
+		},
+		{
+			name: "DeepSeek with ReasoningEffort=none -> no OutputConfig, Thinking disabled",
+			chatReq: &llm.Request{
+				Model:     "deepseek-v4-pro",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				ReasoningEffort: "none",
+			},
+			config: &Config{
+				Type: PlatformDeepSeek,
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				// "none" is not a valid output_config.effort value, so OutputConfig should be nil
+				require.Nil(t, anthropicReq.OutputConfig)
+				// Thinking should be disabled instead
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "disabled", anthropicReq.Thinking.Type)
 			},
 		},
 	}

@@ -315,6 +315,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			if anthropicReq.Thinking.Display != "" {
 				chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay] = anthropicReq.Thinking.Display
 			}
+		case "disabled":
+			// Preserve disabled thinking type so outbound transformers can disable reasoning.
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "disabled"
+			chatReq.ReasoningEffort = "none"
 		case "adaptive":
 			// Adaptive thinking doesn't require a budget; preserve the type marker via TransformerMetadata.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"

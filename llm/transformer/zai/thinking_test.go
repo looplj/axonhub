@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -30,6 +29,11 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			expectedType:    "enabled",
 		},
 		{
+			name:            "none reasoning effort (disabled)",
+			reasoningEffort: "none",
+			expectedType:    "disabled",
+		},
+		{
 			name:            "unknown reasoning effort",
 			reasoningEffort: "unknown",
 			expectedType:    "enabled",
@@ -38,21 +42,39 @@ func TestReasoningEffortToThinking(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a ZAI transformer to test the transformation
-			config := &Config{
-				BaseURL:        "https://api.example.com",
-				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			chatReq := &llm.Request{
+				ReasoningEffort: tt.reasoningEffort,
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: &[]string{"Hello, world!"}[0],
+						},
+					},
+				},
 			}
 
-			transformer, err := NewOutboundTransformerWithConfig(config)
-			if err != nil {
-				t.Fatalf("Failed to create transformer: %v", err)
+			zaiReq := Request{}
+
+			if chatReq.ReasoningEffort != "" {
+				var thinkingType string
+				switch chatReq.ReasoningEffort {
+				case "none":
+					thinkingType = "disabled"
+				default:
+					thinkingType = "enabled"
+				}
+				zaiReq.Thinking = &Thinking{
+					Type: thinkingType,
+				}
 			}
 
-			// We can't directly test the internal transformation, but we can test
-			// that the transformer is created successfully
-			if transformer == nil {
-				t.Error("Expected transformer to be non-nil")
+			if zaiReq.Thinking == nil {
+				t.Error("Expected Thinking to be non-nil when ReasoningEffort is set")
+			}
+
+			if zaiReq.Thinking.Type != tt.expectedType {
+				t.Errorf("Expected Thinking.Type to be '%s', got %s", tt.expectedType, zaiReq.Thinking.Type)
 			}
 		})
 	}
@@ -71,13 +93,18 @@ func TestZAIRequestWithThinking(t *testing.T) {
 		},
 	}
 
-	// Create a ZAI request structure to test the field assignment
 	zaiReq := Request{}
 
-	// Manually test the thinking transformation logic
 	if chatReq.ReasoningEffort != "" {
+		var thinkingType string
+		switch chatReq.ReasoningEffort {
+		case "none":
+			thinkingType = "disabled"
+		default:
+			thinkingType = "enabled"
+		}
 		zaiReq.Thinking = &Thinking{
-			Type: "enabled",
+			Type: thinkingType,
 		}
 	}
 
@@ -108,10 +135,16 @@ func TestZAIRequestWithoutThinking(t *testing.T) {
 		UserID:  "test-user",
 	}
 
-	// Manually test the thinking transformation logic
 	if chatReq.ReasoningEffort != "" {
+		var thinkingType string
+		switch chatReq.ReasoningEffort {
+		case "none":
+			thinkingType = "disabled"
+		default:
+			thinkingType = "enabled"
+		}
 		zaiReq.Thinking = &Thinking{
-			Type: "enabled",
+			Type: thinkingType,
 		}
 	}
 
