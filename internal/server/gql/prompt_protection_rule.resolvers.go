@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // CreatePromptProtectionRule is the resolver for the createPromptProtectionRule field.
@@ -66,4 +67,25 @@ func (r *mutationResolver) BulkDisablePromptProtectionRules(ctx context.Context,
 	}
 
 	return true, nil
+}
+
+// PreviewPromptProtectionRule is the resolver for the previewPromptProtectionRule field.
+func (r *mutationResolver) PreviewPromptProtectionRule(ctx context.Context, input PromptProtectionRulePreviewInput) (*PromptProtectionRulePreviewResult, error) {
+	result, err := r.promptProtectionRuleService.Preview(ctx, biz.PromptProtectionPreviewInput{
+		Pattern:  input.Pattern,
+		TestText: input.TestText,
+		Settings: &objects.PromptProtectionSettings{
+			Action:      input.Settings.Action,
+			Replacement: input.Settings.Replacement,
+			Scopes:      input.Settings.Scopes,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &PromptProtectionRulePreviewResult{
+		Result:   result.Result,
+		HasMatch: result.HasMatch,
+	}, nil
 }

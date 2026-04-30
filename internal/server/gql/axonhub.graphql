@@ -579,6 +579,13 @@ extend type Thread {
 
 extend type Channel {
   """
+  Built-in endpoints resolved dynamically from the channel type.
+  The first item is the primary endpoint.
+  These are displayed to users but are not directly editable.
+  """
+  defaultEndpoints: [ChannelEndpoint!]! @goField(forceResolver: true)
+
+  """
   All model entries this channel can handle, including direct models, prefixed models, auto-trimmed models, and mapped models
   """
   allModelEntries: [ChannelModelEntry!]! @goField(forceResolver: true)

@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // mockTransformer is a simple mock transformer for testing.
@@ -223,6 +224,157 @@ func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, processor.state.CurrentModelIndex)
 		require.Nil(t, processor.state.RequestExec)
+	})
+}
+
+func TestPersistentOutboundTransformer_PrepareForRetry_UsesCandidateAPIFormatOutbound(t *testing.T) {
+	ctx := context.Background()
+
+	primaryOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	embeddingOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIEmbedding}
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: primaryOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound,
+		},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: primaryOutbound,
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{
+				Channel:   channel,
+				APIFormat: llm.APIFormatOpenAIEmbedding.String(),
+				Models: []biz.ChannelModelEntry{
+					{RequestModel: "text-embedding-3-small", ActualModel: "text-embedding-3-small"},
+					{RequestModel: "text-embedding-3-large", ActualModel: "text-embedding-3-large"},
+				},
+			},
+			CurrentModelIndex: 0,
+			RequestExec:       &ent.RequestExecution{ID: 1},
+		},
+	}
+
+	err := processor.PrepareForRetry(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, processor.state.CurrentModelIndex)
+	require.Same(t, embeddingOutbound, processor.wrapped)
+}
+
+func TestPersistentOutboundTransformer_NextChannel_UsesCandidateAPIFormatOutbound(t *testing.T) {
+	ctx := context.Background()
+
+	primaryOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	embeddingOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIEmbedding}
+	chatChannel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "chat-channel",
+		},
+		Outbound: primaryOutbound,
+	}
+	embeddingChannel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   2,
+			Name: "embedding-channel",
+		},
+		Outbound: primaryOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound,
+		},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: primaryOutbound,
+		state: &PersistenceState{
+			CurrentCandidateIndex: 0,
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{
+					Channel: chatChannel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4o-mini", ActualModel: "gpt-4o-mini"}},
+				},
+				{
+					Channel:   embeddingChannel,
+					APIFormat: llm.APIFormatOpenAIEmbedding.String(),
+					Models:    []biz.ChannelModelEntry{{RequestModel: "text-embedding-3-small", ActualModel: "text-embedding-3-small"}},
+				},
+			},
+		},
+	}
+
+	err := processor.NextChannel(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, processor.state.CurrentCandidateIndex)
+	require.Same(t, embeddingChannel, processor.state.CurrentCandidate.Channel)
+	require.Same(t, embeddingOutbound, processor.wrapped)
+}
+
+func TestSelectOutboundForCandidate(t *testing.T) {
+	primaryOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	embeddingOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIEmbedding}
+
+	t.Run("nil candidate returns nil", func(t *testing.T) {
+		require.Nil(t, selectOutboundForCandidate(nil))
+	})
+
+	t.Run("candidate with nil channel returns nil", func(t *testing.T) {
+		candidate := &ChannelModelsCandidate{APIFormat: llm.APIFormatOpenAIEmbedding.String()}
+		require.Nil(t, selectOutboundForCandidate(candidate))
+	})
+
+	t.Run("api format set and found in outbounds returns matching outbound", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel:   &ent.Channel{ID: 1, Name: "test"},
+			Outbound:  primaryOutbound,
+			Outbounds: map[string]transformer.Outbound{llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound},
+		}
+		candidate := &ChannelModelsCandidate{
+			Channel:   channel,
+			APIFormat: llm.APIFormatOpenAIEmbedding.String(),
+		}
+		require.Same(t, embeddingOutbound, selectOutboundForCandidate(candidate))
+	})
+
+	t.Run("api format set but not in outbounds falls back to channel outbound", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel:   &ent.Channel{ID: 1, Name: "test"},
+			Outbound:  primaryOutbound,
+			Outbounds: map[string]transformer.Outbound{},
+		}
+		candidate := &ChannelModelsCandidate{
+			Channel:   channel,
+			APIFormat: llm.APIFormatOpenAIEmbedding.String(),
+		}
+		require.Same(t, primaryOutbound, selectOutboundForCandidate(candidate))
+	})
+
+	t.Run("nil outbounds falls back to channel outbound", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel:  &ent.Channel{ID: 1, Name: "test"},
+			Outbound: primaryOutbound,
+		}
+		candidate := &ChannelModelsCandidate{
+			Channel:   channel,
+			APIFormat: llm.APIFormatOpenAIEmbedding.String(),
+		}
+		require.Same(t, primaryOutbound, selectOutboundForCandidate(candidate))
+	})
+
+	t.Run("empty api format falls back to channel outbound", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel:   &ent.Channel{ID: 1, Name: "test"},
+			Outbound:  primaryOutbound,
+			Outbounds: map[string]transformer.Outbound{llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound},
+		}
+		candidate := &ChannelModelsCandidate{
+			Channel:   channel,
+			APIFormat: "",
+		}
+		require.Same(t, primaryOutbound, selectOutboundForCandidate(candidate))
 	})
 }
 

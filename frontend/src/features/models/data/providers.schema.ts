@@ -70,3 +70,8 @@ export const providersDataSchema = z.object({
 export type ProviderModel = z.infer<typeof providerModelSchema>;
 export type Provider = z.infer<typeof providerSchema>;
 export type ProvidersData = z.infer<typeof providersDataSchema>;
+
+export function resolveVision(model: ProviderModel): boolean {
+  if (model.vision !== undefined) return model.vision;
+  return !!model.modalities?.input?.includes('image');
+}

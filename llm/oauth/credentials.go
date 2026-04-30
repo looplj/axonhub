@@ -77,7 +77,7 @@ func (c *OAuthCredentials) IsExpired(now time.Time) bool {
 }
 
 func (c *OAuthCredentials) ToJSON() (string, error) {
-	b, err := json.Marshal(c)
+	b, err := json.Marshal(c) //nolint:gosec
 	if err != nil {
 		return "", err
 	}

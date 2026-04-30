@@ -17,10 +17,21 @@ type PromptProtectionSettings {
   scopes: [PromptProtectionScope!]!
 }
 
+type PromptProtectionRulePreviewResult {
+  result: String!
+  hasMatch: Boolean!
+}
+
 input PromptProtectionSettingsInput {
   action: PromptProtectionAction!
   replacement: String
   scopes: [PromptProtectionScope!]
+}
+
+input PromptProtectionRulePreviewInput {
+  pattern: String!
+  testText: String!
+  settings: PromptProtectionSettingsInput!
 }
 
 extend type Mutation {
@@ -31,4 +42,5 @@ extend type Mutation {
   bulkDeletePromptProtectionRules(ids: [ID!]!): Boolean!
   bulkEnablePromptProtectionRules(ids: [ID!]!): Boolean!
   bulkDisablePromptProtectionRules(ids: [ID!]!): Boolean!
+  previewPromptProtectionRule(input: PromptProtectionRulePreviewInput!): PromptProtectionRulePreviewResult!
 }

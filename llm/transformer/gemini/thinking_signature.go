@@ -7,7 +7,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
-var ContextEngineeringThoughtSignature = string(base64.StdEncoding.EncodeToString([]byte("context_engineering_is_the_way_to_go")))
+var ContextEngineeringThoughtSignature = base64.StdEncoding.EncodeToString([]byte("context_engineering_is_the_way_to_go"))
 
 const transformerMetadataKeyGoogleThoughtSignature = shared.TransformerMetadataKeyGoogleThoughtSignature
 

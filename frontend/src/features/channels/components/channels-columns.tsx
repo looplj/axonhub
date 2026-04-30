@@ -22,6 +22,7 @@ import {
   IconKeyOff,
   IconGauge,
   IconHistory,
+  IconPlugConnected,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -211,7 +212,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setOpen('endpoints');
             }}
           >
-            <IconRoute size={16} className='mr-2' />
+            <IconPlugConnected size={16} className='mr-2' />
             {t('channels.endpoints.title')}
           </DropdownMenuItem>
           {hasMultipleAPIKeys && (

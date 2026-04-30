@@ -75,7 +75,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/dlclark/regexp2 v1.11.5 // indirect
+	github.com/dlclark/regexp2/v2 v2.0.0-beta.2 // indirect
 	github.com/dubbogo/gost v1.14.3 // indirect
 	github.com/dubbogo/timer v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

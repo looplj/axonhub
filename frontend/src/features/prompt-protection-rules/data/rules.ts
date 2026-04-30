@@ -5,10 +5,13 @@ import { graphqlRequest } from '@/gql/graphql';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import {
   CreatePromptProtectionRuleInput,
+  PreviewPromptProtectionRuleInput,
   PromptProtectionRule,
   PromptProtectionRuleConnection,
+  PromptProtectionRulePreviewResult,
   UpdatePromptProtectionRuleInput,
   promptProtectionRuleConnectionSchema,
+  promptProtectionRulePreviewResultSchema,
   promptProtectionRuleSchema,
 } from './schema';
 
@@ -115,6 +118,15 @@ const BULK_ENABLE_RULES_MUTATION = `
 const BULK_DISABLE_RULES_MUTATION = `
   mutation BulkDisablePromptProtectionRules($ids: [ID!]!) {
     bulkDisablePromptProtectionRules(ids: $ids)
+  }
+`;
+
+const PREVIEW_RULE_MUTATION = `
+  mutation PreviewPromptProtectionRule($input: PromptProtectionRulePreviewInput!) {
+    previewPromptProtectionRule(input: $input) {
+      result
+      hasMatch
+    }
   }
 `;
 
@@ -264,6 +276,15 @@ export function useBulkEnablePromptProtectionRules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.bulkEnableSuccess'));
+    },
+  });
+}
+
+export function usePreviewPromptProtectionRule() {
+  return useMutation({
+    mutationFn: async (input: PreviewPromptProtectionRuleInput) => {
+      const data = await graphqlRequest<{ previewPromptProtectionRule: PromptProtectionRulePreviewResult }>(PREVIEW_RULE_MUTATION, { input });
+      return promptProtectionRulePreviewResultSchema.parse(data.previewPromptProtectionRule);
     },
   });
 }

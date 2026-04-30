@@ -355,3 +355,53 @@ func TestPromptProtectionRuleService_BulkOpsAndListEnabled(t *testing.T) {
 	require.NoError(t, svc.BulkDisableRules(ctx, []int{}))
 	require.NoError(t, svc.BulkDeleteRules(ctx, []int{}))
 }
+
+func TestPromptProtectionRuleService_Preview(t *testing.T) {
+	svc, client, ctx := setupPromptProtectionRuleService(t)
+	defer svc.Stop()
+	defer client.Close()
+
+	t.Run("mask action returns replaced preview", func(t *testing.T) {
+		result, err := svc.Preview(ctx, PromptProtectionPreviewInput{
+			Pattern:  `secret-[0-9]+`,
+			TestText: "token is secret-123",
+			Settings: &objects.PromptProtectionSettings{
+				Action:      objects.PromptProtectionActionMask,
+				Replacement: "[MASKED]",
+				Scopes:      []objects.PromptProtectionScope{objects.PromptProtectionScopeUser},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.True(t, result.HasMatch)
+		require.Equal(t, "token is [MASKED]", result.Result)
+	})
+
+	t.Run("reject action returns reject marker", func(t *testing.T) {
+		result, err := svc.Preview(ctx, PromptProtectionPreviewInput{
+			Pattern:  `secret`,
+			TestText: "contains secret",
+			Settings: &objects.PromptProtectionSettings{
+				Action: objects.PromptProtectionActionReject,
+				Scopes: []objects.PromptProtectionScope{objects.PromptProtectionScopeUser},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.True(t, result.HasMatch)
+		require.Equal(t, "reject", result.Result)
+	})
+
+	t.Run("invalid pattern returns error", func(t *testing.T) {
+		result, err := svc.Preview(ctx, PromptProtectionPreviewInput{
+			Pattern:  `(`,
+			TestText: "anything",
+			Settings: &objects.PromptProtectionSettings{
+				Action: objects.PromptProtectionActionReject,
+				Scopes: []objects.PromptProtectionScope{objects.PromptProtectionScopeUser},
+			},
+		})
+		require.Error(t, err)
+		require.Nil(t, result)
+	})
+}
