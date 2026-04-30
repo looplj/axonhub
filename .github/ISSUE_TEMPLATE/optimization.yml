@@ -23,6 +23,17 @@ body:
         - label: I have read the [documentation](https://github.com/looplj/axonhub#readme) / 我已阅读文档
           required: true
 
+  - type: checkboxes
+    id: faq-check
+    attributes:
+      label: FAQ Check / FAQ 检查
+      description: |
+        If this optimization is already covered in the FAQ, the issue will be closed directly.
+        如果此优化建议已在 FAQ 中覆盖，该 issue 将被直接关闭。
+      options:
+        - label: I have checked the [FAQ](https://github.com/looplj/axonhub/issues/1374) and this optimization has not been suggested there / 我已查阅 FAQ，此优化建议未被提及
+          required: true
+
   - type: textarea
     id: current-state
     attributes:
@@ -66,9 +77,9 @@ body:
       description: What type of optimization is this? / 这是哪种类型的优化？
       options:
         - UI / UI
-        - 性能 / Performance
-        - 兼容性 / Compatibility
-        - 其他 / Other
+        - Performance / 性能
+        - Compatibility / 兼容性
+        - Other / 其他
     validations:
       required: true
 

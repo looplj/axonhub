@@ -25,6 +25,17 @@ body:
         - label: I am using the latest version of AxonHub / 我正在使用 AxonHub 的最新版本
           required: true
 
+  - type: checkboxes
+    id: faq-check
+    attributes:
+      label: FAQ Check / FAQ 检查
+      description: |
+        If this bug is already covered in the FAQ, the issue will be closed directly.
+        如果此 Bug 已在 FAQ 中覆盖，该 issue 将被直接关闭。
+      options:
+        - label: I have checked the [FAQ](https://github.com/looplj/axonhub/issues/1374) and this bug is not covered there / 我已查阅 FAQ，此 Bug 未被覆盖
+          required: true
+
   - type: textarea
     id: description
     attributes:
@@ -98,10 +109,10 @@ body:
       options:
         - Claude Code
         - Codex
-        - Cherry Studio 
+        - Cherry Studio
         - Deepchat
         - Lobechat
-        - API 
+        - API
         - Other / 其他
     validations:
       required: true
