@@ -430,12 +430,12 @@ func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 		}
 
 		info := ProviderInfo{
-			ID:          providerID,
-			Name:        p.Name,
-			DisplayName: displayName,
-			JITEnabled:  p.JITEnabled,
-			IconURL:     p.IconURL,
-			ButtonColor: p.ButtonColor,
+			ID:            providerID,
+			Name:          p.Name,
+			DisplayName:   displayName,
+			JITEnabled:    p.JITEnabled,
+			IconURL:       p.IconURL,
+			ButtonColor:   p.ButtonColor,
 			OIDCLoginOnly: p.OIDCLoginOnly,
 		}
 
