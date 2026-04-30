@@ -1,0 +1,62 @@
+name: Question / 问题咨询
+description: Ask a question or start a discussion / 提出问题或发起讨论
+title: "[Question/问题]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out!
+        感谢你的提问！
+
+        Please search existing issues and discussions before submitting to avoid duplicates.
+        提交前请先搜索现有 issues 和讨论，避免重复。
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist / 提交前检查
+      description: Please confirm the following before submitting / 提交前请确认以下内容
+      options:
+        - label: I have searched the [existing issues](https://github.com/looplj/axonhub/issues) and this question has not been answered / 我已搜索现有 issues，此问题尚未被解答
+          required: true
+        - label: I have checked the [FAQ](https://github.com/looplj/axonhub/issues/1374) / 我已查阅 FAQ
+          required: true
+        - label: I have read the [documentation](https://github.com/looplj/axonhub#readme) / 我已阅读文档
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question / 问题
+      description: What is your question? / 你的问题是什么？
+      placeholder: Ask your question here... / 在此提出你的问题...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / 上下文
+      description: Provide any relevant context — what you're trying to do, what you've already tried, etc. / 提供相关上下文——你想做什么、已经尝试过什么等
+      placeholder: |
+        e.g. / 例如：
+        I'm trying to set up a custom channel for... / 我正在尝试为...配置自定义渠道
+        I've already tried... / 我已经尝试过...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category / 分类
+      description: What is your question about? / 你的问题关于什么？
+      options:
+        - Installation / Setup / 安装 / 配置
+        - API Compatibility / API 兼容性
+        - Channel Management / 渠道管理
+        - Configuration / 配置
+        - Usage / 使用方法
+        - Other / 其他
+    validations:
+      required: true
