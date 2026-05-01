@@ -622,6 +622,46 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 	}, nil
 }
 
+// CreateAPIKeyProfileTemplate is the resolver for the createApiKeyProfileTemplate field.
+func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput) (*ent.APIKeyProfileTemplate, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
+		return nil, fmt.Errorf("permission denied: write api keys scope required")
+	}
+
+	profile, _ := contexts.GetAPIKeyProfile(ctx)
+
+	return r.apiKeyProfileTemplateService.CreateTemplate(ctx, input, profile)
+}
+
+// UpdateAPIKeyProfileTemplate is the resolver for the updateApiKeyProfileTemplate field.
+func (r *mutationResolver) UpdateAPIKeyProfileTemplate(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput) (*ent.APIKeyProfileTemplate, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
+		return nil, fmt.Errorf("permission denied: write api keys scope required")
+	}
+
+	profile, _ := contexts.GetAPIKeyProfile(ctx)
+
+	return r.apiKeyProfileTemplateService.UpdateTemplate(ctx, id.ID, input, profile)
+}
+
+// DeleteAPIKeyProfileTemplate is the resolver for the deleteApiKeyProfileTemplate field.
+func (r *mutationResolver) DeleteAPIKeyProfileTemplate(ctx context.Context, id objects.GUID) (*ent.APIKeyProfileTemplate, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
+		return nil, fmt.Errorf("permission denied: write api keys scope required")
+	}
+
+	return r.apiKeyProfileTemplateService.DeleteTemplate(ctx, id.ID)
+}
+
+// LoadAPIKeyProfileTemplate is the resolver for the loadApiKeyProfileTemplate field.
+func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*ent.APIKey, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
+		return nil, fmt.Errorf("permission denied: write api keys scope required")
+	}
+
+	return r.apiKeyProfileTemplateService.LoadTemplate(ctx, input.TemplateID.ID, input.APIKeyID.ID)
+}
+
 // AllChannelSummarys is the resolver for the allChannelSummarys field.
 func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived *bool) ([]*ent.Channel, error) {
 	statusFilter := []channel.Status{channel.StatusEnabled, channel.StatusDisabled}
@@ -822,6 +862,24 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
+// Profile is the resolver for the profile field.
+func (r *createAPIKeyProfileTemplateInputResolver) Profile(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.APIKeyProfile) error {
+	if data != nil {
+		contexts.WithAPIKeyProfile(ctx, data)
+	}
+
+	return nil
+}
+
+// Profile is the resolver for the profile field.
+func (r *updateAPIKeyProfileTemplateInputResolver) Profile(ctx context.Context, obj *ent.UpdateAPIKeyProfileTemplateInput, data *objects.APIKeyProfile) error {
+	if data != nil {
+		contexts.WithAPIKeyProfile(ctx, data)
+	}
+
+	return nil
+}
+
 // ChannelSettings returns ChannelSettingsResolver implementation.
 func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
 
@@ -834,3 +892,15 @@ func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *createAPIKeyProfileTemplateInputResolver) ProjectID(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.GUID) error {
+	return nil
+}
+*/

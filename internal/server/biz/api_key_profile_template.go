@@ -1,0 +1,221 @@
+package biz
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"go.uber.org/fx"
+
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
+	"github.com/looplj/axonhub/internal/objects"
+)
+
+type APIKeyProfileTemplateServiceParams struct {
+	fx.In
+
+	Ent *ent.Client
+}
+
+type APIKeyProfileTemplateService struct {
+	*AbstractService
+}
+
+func NewAPIKeyProfileTemplateService(params APIKeyProfileTemplateServiceParams) *APIKeyProfileTemplateService {
+	return &APIKeyProfileTemplateService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
+	}
+}
+
+func (s *APIKeyProfileTemplateService) CreateTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
+	client := s.entFromContext(ctx)
+
+	create := client.APIKeyProfileTemplate.Create().
+		SetInput(input).
+		SetProfile(profile)
+
+	template, err := create.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template: %w", err)
+	}
+
+	return template, nil
+}
+
+func (s *APIKeyProfileTemplateService) GetTemplate(ctx context.Context, id int) (*ent.APIKeyProfileTemplate, error) {
+	client := s.entFromContext(ctx)
+
+	template, err := client.APIKeyProfileTemplate.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get template: %w", err)
+	}
+
+	return template, nil
+}
+
+func (s *APIKeyProfileTemplateService) ListTemplates(ctx context.Context, projectID int) ([]*ent.APIKeyProfileTemplate, error) {
+	client := s.entFromContext(ctx)
+
+	templates, err := client.APIKeyProfileTemplate.Query().
+		Where(apikeyprofiletemplate.ProjectIDEQ(projectID)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list templates: %w", err)
+	}
+
+	return templates, nil
+}
+
+func (s *APIKeyProfileTemplateService) UpdateTemplate(ctx context.Context, id int, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
+	client := s.entFromContext(ctx)
+
+	update := client.APIKeyProfileTemplate.UpdateOneID(id).
+		SetInput(input)
+
+	if profile != nil {
+		update.SetProfile(profile)
+	}
+
+	template, err := update.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update template: %w", err)
+	}
+
+	return template, nil
+}
+
+func (s *APIKeyProfileTemplateService) DeleteTemplate(ctx context.Context, id int) (*ent.APIKeyProfileTemplate, error) {
+	client := s.entFromContext(ctx)
+
+	template, err := client.APIKeyProfileTemplate.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get template for deletion: %w", err)
+	}
+
+	err = client.APIKeyProfileTemplate.DeleteOneID(id).Exec(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete template: %w", err)
+	}
+
+	return template, nil
+}
+
+func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templateID, apiKeyID int) (*ent.APIKey, error) {
+	client := s.entFromContext(ctx)
+
+	template, err := client.APIKeyProfileTemplate.Get(ctx, templateID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get template: %w", err)
+	}
+
+	apiKey, err := client.APIKey.Get(ctx, apiKeyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if template.ProjectID != apiKey.ProjectID {
+		return nil, fmt.Errorf("template and API key must belong to the same project")
+	}
+
+	templateProfile := deepCopyProfile(template.Profile)
+	if templateProfile == nil {
+		return nil, fmt.Errorf("template has no profile")
+	}
+
+	existingProfiles := apiKey.Profiles
+	if existingProfiles == nil {
+		existingProfiles = &objects.APIKeyProfiles{}
+	}
+
+	resolvedName := resolveProfileNameConflict(existingProfiles.Profiles, templateProfile.Name)
+	templateProfile.Name = resolvedName
+
+	existingProfiles.Profiles = append(existingProfiles.Profiles, *templateProfile)
+
+	updatedKey, err := client.APIKey.UpdateOneID(apiKeyID).
+		SetProfiles(existingProfiles).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update API key profiles: %w", err)
+	}
+
+	return updatedKey, nil
+}
+
+func (s *APIKeyProfileTemplateService) SaveAsTemplate(ctx context.Context, apiKeyID int, profileName, templateName, description string) (*ent.APIKeyProfileTemplate, error) {
+	client := s.entFromContext(ctx)
+
+	apiKey, err := client.APIKey.Get(ctx, apiKeyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if apiKey.Profiles == nil {
+		return nil, fmt.Errorf("API key has no profiles")
+	}
+
+	var sourceProfile *objects.APIKeyProfile
+	for i := range apiKey.Profiles.Profiles {
+		if apiKey.Profiles.Profiles[i].Name == profileName {
+			sourceProfile = &apiKey.Profiles.Profiles[i]
+			break
+		}
+	}
+
+	if sourceProfile == nil {
+		return nil, fmt.Errorf("profile '%s' not found in API key", profileName)
+	}
+
+	copiedProfile := deepCopyProfile(sourceProfile)
+
+	template, err := client.APIKeyProfileTemplate.Create().
+		SetName(templateName).
+		SetDescription(description).
+		SetProjectID(apiKey.ProjectID).
+		SetProfile(copiedProfile).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template: %w", err)
+	}
+
+	return template, nil
+}
+
+func resolveProfileNameConflict(existingProfiles []objects.APIKeyProfile, newName string) string {
+	nameSet := make(map[string]bool, len(existingProfiles))
+	for _, p := range existingProfiles {
+		nameSet[p.Name] = true
+	}
+
+	if !nameSet[newName] {
+		return newName
+	}
+
+	for i := 1; ; i++ {
+		candidate := fmt.Sprintf("%s (%d)", newName, i)
+		if !nameSet[candidate] {
+			return candidate
+		}
+	}
+}
+
+func deepCopyProfile(profile *objects.APIKeyProfile) *objects.APIKeyProfile {
+	if profile == nil {
+		return nil
+	}
+
+	data, err := json.Marshal(profile)
+	if err != nil {
+		return nil
+	}
+
+	var copy objects.APIKeyProfile
+	if err := json.Unmarshal(data, &copy); err != nil {
+		return nil
+	}
+
+	return &copy
+}

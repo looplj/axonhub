@@ -45,6 +45,14 @@ func (_m *APIKey) Requests(
 	return _m.QueryRequests().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *APIKeyProfileTemplate) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *Channel) Requests(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
 ) (*RequestConnection, error) {
@@ -402,6 +410,27 @@ func (_m *Project) Prompts(
 	return _m.QueryPrompts().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *Project) APIKeyProfileTemplates(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *APIKeyProfileTemplateOrder, where *APIKeyProfileTemplateWhereInput,
+) (*APIKeyProfileTemplateConnection, error) {
+	opts := []APIKeyProfileTemplatePaginateOption{
+		WithAPIKeyProfileTemplateOrder(orderBy),
+		WithAPIKeyProfileTemplateFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
+	if nodes, err := _m.NamedAPIKeyProfileTemplates(alias); err == nil || hasTotalCount {
+		pager, err := newAPIKeyProfileTemplatePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &APIKeyProfileTemplateConnection{Edges: []*APIKeyProfileTemplateEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAPIKeyProfileTemplates().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (_m *Project) ProjectUsers(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserProjectOrder, where *UserProjectWhereInput,
 ) (*UserProjectConnection, error) {
@@ -410,7 +439,7 @@ func (_m *Project) ProjectUsers(
 		WithUserProjectFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[9][alias]
 	if nodes, err := _m.NamedProjectUsers(alias); err == nil || hasTotalCount {
 		pager, err := newUserProjectPager(opts, last != nil)
 		if err != nil {

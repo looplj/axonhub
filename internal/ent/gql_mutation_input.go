@@ -81,6 +81,56 @@ func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
 	return c
 }
 
+// CreateAPIKeyProfileTemplateInput represents a mutation input for creating apikeyprofiletemplates.
+type CreateAPIKeyProfileTemplateInput struct {
+	Name        string
+	Description *string
+	ProjectID   int
+}
+
+// Mutate applies the CreateAPIKeyProfileTemplateInput on the APIKeyProfileTemplateMutation builder.
+func (i *CreateAPIKeyProfileTemplateInput) Mutate(m *APIKeyProfileTemplateMutation) {
+	m.SetName(i.Name)
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	m.SetProjectID(i.ProjectID)
+}
+
+// SetInput applies the change-set in the CreateAPIKeyProfileTemplateInput on the APIKeyProfileTemplateCreate builder.
+func (c *APIKeyProfileTemplateCreate) SetInput(i CreateAPIKeyProfileTemplateInput) *APIKeyProfileTemplateCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAPIKeyProfileTemplateInput represents a mutation input for updating apikeyprofiletemplates.
+type UpdateAPIKeyProfileTemplateInput struct {
+	Name        *string
+	Description *string
+}
+
+// Mutate applies the UpdateAPIKeyProfileTemplateInput on the APIKeyProfileTemplateMutation builder.
+func (i *UpdateAPIKeyProfileTemplateInput) Mutate(m *APIKeyProfileTemplateMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAPIKeyProfileTemplateInput on the APIKeyProfileTemplateUpdate builder.
+func (c *APIKeyProfileTemplateUpdate) SetInput(i UpdateAPIKeyProfileTemplateInput) *APIKeyProfileTemplateUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAPIKeyProfileTemplateInput on the APIKeyProfileTemplateUpdateOne builder.
+func (c *APIKeyProfileTemplateUpdateOne) SetInput(i UpdateAPIKeyProfileTemplateInput) *APIKeyProfileTemplateUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateChannelInput represents a mutation input for creating channels.
 type CreateChannelInput struct {
 	Type                    channel.Type

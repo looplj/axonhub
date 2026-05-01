@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // ContextKey defines the context key type.
@@ -169,4 +170,18 @@ func GetErrors(ctx context.Context) []error {
 	defer container.mu.RUnlock()
 
 	return slices.Clone(container.Errors)
+}
+
+// WithAPIKeyProfile stores the API key profile in the context.
+func WithAPIKeyProfile(ctx context.Context, profile *objects.APIKeyProfile) context.Context {
+	container := getContainer(ctx)
+	container.APIKeyProfile = profile
+
+	return withContainer(ctx, container)
+}
+
+// GetAPIKeyProfile retrieves the API key profile from the context.
+func GetAPIKeyProfile(ctx context.Context) (*objects.APIKeyProfile, bool) {
+	container := getContainer(ctx)
+	return container.APIKeyProfile, container.APIKeyProfile != nil
 }

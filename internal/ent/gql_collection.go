@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
@@ -284,6 +285,135 @@ func newAPIKeyPaginateArgs(rv map[string]any) *apikeyPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*APIKeyWhereInput); ok {
 		args.opts = append(args.opts, WithAPIKeyFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *APIKeyProfileTemplateQuery) CollectFields(ctx context.Context, satisfies ...string) (*APIKeyProfileTemplateQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *APIKeyProfileTemplateQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(apikeyprofiletemplate.Columns))
+		selectedFields = []string{apikeyprofiletemplate.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[apikeyprofiletemplate.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, apikeyprofiletemplate.FieldProjectID)
+				fieldSeen[apikeyprofiletemplate.FieldProjectID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[apikeyprofiletemplate.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, apikeyprofiletemplate.FieldCreatedAt)
+				fieldSeen[apikeyprofiletemplate.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[apikeyprofiletemplate.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, apikeyprofiletemplate.FieldUpdatedAt)
+				fieldSeen[apikeyprofiletemplate.FieldUpdatedAt] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[apikeyprofiletemplate.FieldName]; !ok {
+				selectedFields = append(selectedFields, apikeyprofiletemplate.FieldName)
+				fieldSeen[apikeyprofiletemplate.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[apikeyprofiletemplate.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, apikeyprofiletemplate.FieldDescription)
+				fieldSeen[apikeyprofiletemplate.FieldDescription] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[apikeyprofiletemplate.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, apikeyprofiletemplate.FieldProjectID)
+				fieldSeen[apikeyprofiletemplate.FieldProjectID] = struct{}{}
+			}
+		case "profile":
+			if _, ok := fieldSeen[apikeyprofiletemplate.FieldProfile]; !ok {
+				selectedFields = append(selectedFields, apikeyprofiletemplate.FieldProfile)
+				fieldSeen[apikeyprofiletemplate.FieldProfile] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type apikeyprofiletemplatePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []APIKeyProfileTemplatePaginateOption
+}
+
+func newAPIKeyProfileTemplatePaginateArgs(rv map[string]any) *apikeyprofiletemplatePaginateArgs {
+	args := &apikeyprofiletemplatePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &APIKeyProfileTemplateOrder{Field: &APIKeyProfileTemplateOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAPIKeyProfileTemplateOrder(order))
+			}
+		case *APIKeyProfileTemplateOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAPIKeyProfileTemplateOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*APIKeyProfileTemplateWhereInput); ok {
+		args.opts = append(args.opts, WithAPIKeyProfileTemplateFilter(v.Filter))
 	}
 	return args
 }
@@ -2635,6 +2765,95 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				*wq = *query
 			})
 
+		case "apiKeyProfileTemplates":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&APIKeyProfileTemplateClient{config: _q.config}).Query()
+			)
+			args := newAPIKeyProfileTemplatePaginateArgs(fieldArgs(ctx, new(APIKeyProfileTemplateWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAPIKeyProfileTemplatePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.APIKeyProfileTemplatesColumn), ids...))
+						})
+						if err := query.GroupBy(project.APIKeyProfileTemplatesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[8][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.APIKeyProfileTemplates)
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[8][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, apikeyprofiletemplateImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.APIKeyProfileTemplatesColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAPIKeyProfileTemplates(alias, func(wq *APIKeyProfileTemplateQuery) {
+				*wq = *query
+			})
+
 		case "projectUsers":
 			var (
 				alias = field.Alias
@@ -2678,10 +2897,10 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[8] == nil {
-								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[8][alias] = n
+							nodes[i].Edges.totalCount[9][alias] = n
 						}
 						return nil
 					})
@@ -2689,10 +2908,10 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.ProjectUsers)
-							if nodes[i].Edges.totalCount[8] == nil {
-								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[8][alias] = n
+							nodes[i].Edges.totalCount[9][alias] = n
 						}
 						return nil
 					})

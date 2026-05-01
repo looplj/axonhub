@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/samber/lo"
 )
 
@@ -44,6 +45,16 @@ func (r *aPIKeyResolver) ProjectID(ctx context.Context, obj *ent.APIKey) (*objec
 // Returns nil if the user has been soft-deleted.
 func (r *aPIKeyResolver) User(ctx context.Context, obj *ent.APIKey) (*ent.User, error) {
 	return getNilableUser(ctx, r.client, obj.UserID)
+}
+
+// ID is the resolver for the id field.
+func (r *aPIKeyProfileTemplateResolver) ID(ctx context.Context, obj *ent.APIKeyProfileTemplate) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *aPIKeyProfileTemplateResolver) ProjectID(ctx context.Context, obj *ent.APIKeyProfileTemplate) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ProjectID - projectID"))
 }
 
 // ID is the resolver for the id field.
@@ -288,6 +299,26 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 	return r.client.APIKey.Query().Paginate(ctx, after, first, before, last,
 		ent.WithAPIKeyOrder(orderBy),
 		ent.WithAPIKeyFilter(where.Filter),
+	)
+}
+
+// APIKeyProfileTemplates is the resolver for the apiKeyProfileTemplates field.
+func (r *queryResolver) APIKeyProfileTemplates(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyProfileTemplateOrder, where *ent.APIKeyProfileTemplateWhereInput) (*ent.APIKeyProfileTemplateConnection, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeReadAPIKeys) {
+		return nil, fmt.Errorf("permission denied: read api keys scope required")
+	}
+
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAPIKeyProfileTemplateOrder.Field
+	}
+
+	return r.client.APIKeyProfileTemplate.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAPIKeyProfileTemplateOrder(orderBy),
+		ent.WithAPIKeyProfileTemplateFilter(where.Filter),
 	)
 }
 
@@ -875,6 +906,11 @@ func (r *userRoleResolver) RoleID(ctx context.Context, obj *ent.UserRole) (*obje
 // APIKey returns APIKeyResolver implementation.
 func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 
+// APIKeyProfileTemplate returns APIKeyProfileTemplateResolver implementation.
+func (r *Resolver) APIKeyProfileTemplate() APIKeyProfileTemplateResolver {
+	return &aPIKeyProfileTemplateResolver{r}
+}
+
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
@@ -954,7 +990,18 @@ func (r *Resolver) UserProject() UserProjectResolver { return &userProjectResolv
 // UserRole returns UserRoleResolver implementation.
 func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
+// CreateAPIKeyProfileTemplateInput returns CreateAPIKeyProfileTemplateInputResolver implementation.
+func (r *Resolver) CreateAPIKeyProfileTemplateInput() CreateAPIKeyProfileTemplateInputResolver {
+	return &createAPIKeyProfileTemplateInputResolver{r}
+}
+
+// UpdateAPIKeyProfileTemplateInput returns UpdateAPIKeyProfileTemplateInputResolver implementation.
+func (r *Resolver) UpdateAPIKeyProfileTemplateInput() UpdateAPIKeyProfileTemplateInputResolver {
+	return &updateAPIKeyProfileTemplateInputResolver{r}
+}
+
 type aPIKeyResolver struct{ *Resolver }
+type aPIKeyProfileTemplateResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
 type channelModelPriceResolver struct{ *Resolver }
 type channelModelPriceVersionResolver struct{ *Resolver }
@@ -978,3 +1025,11 @@ type usageLogResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type userProjectResolver struct{ *Resolver }
 type userRoleResolver struct{ *Resolver }
+type createAPIKeyProfileTemplateInputResolver struct{ *Resolver }
+
+func (r *createAPIKeyProfileTemplateInputResolver) ProjectID(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.GUID) error {
+	obj.ProjectID = int(data.ID)
+	return nil
+}
+
+type updateAPIKeyProfileTemplateInputResolver struct{ *Resolver }
