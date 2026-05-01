@@ -2,6 +2,7 @@ package llm
 
 // CompactRequest represents the unified compact request model.
 // Used by the Responses API /responses/compact endpoint.
+// Note: Common fields like Stream and StreamOptions are in the parent Request struct, not here.
 type CompactRequest struct {
 	// Input is the list of messages to compact.
 	Input []Message `json:"input,omitempty"`
@@ -17,6 +18,7 @@ type CompactRequest struct {
 }
 
 // CompactResponse represents the unified compact response model.
+// Note: Common fields like Usage are in the parent Response struct, not here.
 type CompactResponse struct {
 	// ID is the unique identifier for the compacted response.
 	ID string `json:"id"`
@@ -32,7 +34,4 @@ type CompactResponse struct {
 
 	// Output is the ordered compacted output messages.
 	Output []Message `json:"output"`
-
-	// Usage is the token accounting for the compaction pass.
-	Usage *Usage `json:"usage,omitempty"`
 }

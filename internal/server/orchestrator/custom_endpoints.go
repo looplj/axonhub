@@ -14,6 +14,11 @@ var chatCapableAPIFormats = map[string]struct{}{
 	"ollama/chat":             {},
 }
 
+// completionCapableAPIFormats lists API formats for completion requests.
+var completionCapableAPIFormats = map[string]struct{}{
+	"openai/completions": {},
+}
+
 // embeddingCapableAPIFormats lists API formats for embedding requests.
 var embeddingCapableAPIFormats = map[string]struct{}{
 	"openai/embeddings": {},
@@ -47,6 +52,8 @@ func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestT
 	switch requestType {
 	case llm.RequestTypeChat:
 		allowed = chatCapableAPIFormats
+	case llm.RequestTypeCompletion:
+		allowed = completionCapableAPIFormats
 	case llm.RequestTypeEmbedding:
 		allowed = embeddingCapableAPIFormats
 	case llm.RequestTypeImage:

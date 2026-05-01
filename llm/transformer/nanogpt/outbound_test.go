@@ -289,7 +289,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 		{Data: []byte(`{"id":"test","choices":[{"index":0,"delta":{"content":" World"}}]}`)},
 	}
 
-	data, meta, err := transformer.AggregateStreamChunks(context.Background(), chunks)
+	data, meta, err := transformer.AggregateStreamChunks(context.Background(), nil, chunks)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "Hello")
 	assert.Contains(t, string(data), "World")

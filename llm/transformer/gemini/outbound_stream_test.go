@@ -245,7 +245,7 @@ func TestOutboundTransformer_TransformStream(t *testing.T) {
 	inputStream := streams.SliceStream(events)
 
 	// Transform the stream
-	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	outputStream, err := transformer.TransformStream(context.Background(), nil, inputStream)
 	require.NoError(t, err)
 	require.NotNil(t, outputStream)
 
@@ -329,7 +329,7 @@ func TestOutboundTransformer_TransformStream_ToolCallIndexAccumulation(t *testin
 	inputStream := streams.SliceStream(events)
 
 	// Transform the stream
-	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	outputStream, err := transformer.TransformStream(context.Background(), nil, inputStream)
 	require.NoError(t, err)
 	require.NotNil(t, outputStream)
 
@@ -417,7 +417,7 @@ func TestOutboundTransformer_TransformStream_MultipleToolCallsInSingleEvent(t *t
 	inputStream := streams.SliceStream(events)
 
 	// Transform the stream
-	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	outputStream, err := transformer.TransformStream(context.Background(), nil, inputStream)
 	require.NoError(t, err)
 	require.NotNil(t, outputStream)
 
@@ -698,7 +698,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			data, meta, err := transformer.AggregateStreamChunks(context.Background(), tt.chunks)
+			data, meta, err := transformer.AggregateStreamChunks(context.Background(), nil, tt.chunks)
 
 			if tt.expectedErr {
 				require.Error(t, err)
@@ -868,7 +868,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			mockStream := streams.SliceStream(geminiEvents)
 
 			// Transform the stream (Gemini -> LLM)
-			transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+			transformedStream, err := transformer.TransformStream(t.Context(), nil, mockStream)
 			require.NoError(t, err)
 
 			// Collect all transformed responses
@@ -884,7 +884,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			require.NoError(t, transformedStream.Err())
 
 			// Test aggregation
-			aggregatedBytes, meta, err := transformer.AggregateStreamChunks(t.Context(), geminiEvents)
+			aggregatedBytes, meta, err := transformer.AggregateStreamChunks(t.Context(), nil, geminiEvents)
 			require.NoError(t, err)
 			require.NotEmpty(t, meta.ID)
 

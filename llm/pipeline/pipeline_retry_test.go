@@ -48,7 +48,7 @@ type mockOutbound struct {
 	prepareForRetry       func(context.Context) error
 	transformRequest      func(context.Context, *llm.Request) (*httpclient.Request, error)
 	transformResponse     func(context.Context, *httpclient.Response) (*llm.Response, error)
-	transformStream       func(context.Context, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error)
+	transformStream       func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error)
 	transformError        func(context.Context, *httpclient.Error) *llm.ResponseError
 	aggregateStreamChunks func(context.Context, []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
@@ -70,9 +70,9 @@ func (m *mockOutbound) TransformResponse(ctx context.Context, resp *httpclient.R
 	return &llm.Response{}, nil
 }
 
-func (m *mockOutbound) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (m *mockOutbound) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	if m.transformStream != nil {
-		return m.transformStream(ctx, stream)
+		return m.transformStream(ctx, req, stream)
 	}
 
 	return nil, nil

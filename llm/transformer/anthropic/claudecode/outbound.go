@@ -235,10 +235,11 @@ func (t *ClaudeCodeTransformer) TransformResponse(
 // TransformStream overrides the base TransformStream to strip tool prefixes from streaming responses.
 func (t *ClaudeCodeTransformer) TransformStream(
 	ctx context.Context,
+	req *httpclient.Request,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) (streams.Stream[*llm.Response], error) {
 	// Call the base transformer to get the response stream
-	baseStream, err := t.Outbound.TransformStream(ctx, stream)
+	baseStream, err := t.Outbound.TransformStream(ctx, req, stream)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +305,7 @@ func (s *toolPrefixStripperStream) Close() error {
 
 // AggregateStreamChunks overrides the base AggregateStreamChunks to strip tool prefixes from stream chunks.
 func (t *ClaudeCodeTransformer) AggregateStreamChunks(
-	ctx context.Context,
+	ctx context.Context, req *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
 	// Note: We can't access request metadata here, so we blindly strip proxy_ prefix
@@ -321,7 +322,7 @@ func (t *ClaudeCodeTransformer) AggregateStreamChunks(
 	}
 
 	// Call the base transformer
-	return t.Outbound.AggregateStreamChunks(ctx, chunks)
+	return t.Outbound.AggregateStreamChunks(ctx, req, chunks)
 }
 
 // stripClaudeToolPrefixFromStreamLine removes the prefix from tool names in streaming events.

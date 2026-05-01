@@ -276,7 +276,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	}, nil
 }
 
-func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
 	}), nil
@@ -350,7 +350,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, err *httpclien
 	}
 }
 
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	if len(chunks) == 0 {
 		return nil, llm.ResponseMeta{}, fmt.Errorf("no chunks to aggregate")
 	}

@@ -594,13 +594,13 @@ func TestOutboundTransformer_StreamNotSupported_Embedding(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("transform stream returns error", func(t *testing.T) {
-		_, err := transformer.TransformStream(context.Background(), nil)
+		_, err := transformer.TransformStream(context.Background(), nil, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "does not support streaming")
 	})
 
 	t.Run("aggregate stream chunks returns error", func(t *testing.T) {
-		_, _, err := transformer.AggregateStreamChunks(context.Background(), nil)
+		_, _, err := transformer.AggregateStreamChunks(context.Background(), nil, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "does not support streaming")
 	})

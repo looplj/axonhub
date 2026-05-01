@@ -51,7 +51,7 @@ func (m *mockTransformer) TransformResponse(ctx context.Context, resp *httpclien
 	return &llm.Response{}, nil
 }
 
-func (m *mockTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (m *mockTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return nil, nil
 }
 
@@ -59,7 +59,7 @@ func (m *mockTransformer) TransformError(ctx context.Context, err *httpclient.Er
 	return nil
 }
 
-func (m *mockTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (m *mockTransformer) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return m.aggregatedResponse, m.aggregatedMeta, m.aggregatedErr
 }
 

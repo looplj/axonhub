@@ -161,6 +161,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	{
 		openaiGroup := apiGroup.Group("/v1")
 		openaiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
+		openaiGroup.POST("/completions", handlers.OpenAI.Completion)
 		openaiGroup.POST("/responses/compact", handlers.OpenAI.CompactResponse)
 		openaiGroup.POST("/responses", handlers.OpenAI.CreateResponse)
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)

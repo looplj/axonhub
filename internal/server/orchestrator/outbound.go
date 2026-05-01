@@ -140,7 +140,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	aggregatedCompleted := false
 
 	if len(ts.responseChunks) > 0 {
-		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
+		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.state.RawProviderRequest, ts.responseChunks)
 		aggregatedCompleted = aggErr == nil && isCompletedAggregated(meta)
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {
@@ -241,7 +241,7 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
+		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.state.RawProviderRequest, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks using transformer", log.Cause(err))
 			return
@@ -406,7 +406,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	return p.wrapped.TransformResponse(ctx, response)
 }
 
-func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	persistentStream := NewOutboundPersistentStream(
 		ctx,
 		stream,
@@ -419,14 +419,14 @@ func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, str
 		p.state,
 	)
 
-	return p.wrapped.TransformStream(ctx, persistentStream)
+	return p.wrapped.TransformStream(ctx, req, persistentStream)
 }
 
 func (p *PersistentOutboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
+	ctx context.Context, req *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
-	return p.wrapped.AggregateStreamChunks(ctx, chunks)
+	return p.wrapped.AggregateStreamChunks(ctx, req, chunks)
 }
 
 // GetRequestExecution returns the current request execution.

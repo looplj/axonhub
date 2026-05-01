@@ -73,6 +73,14 @@ func hasResponseContent(resp *llm.Response) bool {
 		return true
 	}
 
+	if resp.Completion != nil {
+		for _, choice := range resp.Completion.Choices {
+			if choice.Text != "" {
+				return true
+			}
+		}
+	}
+
 	for _, choice := range resp.Choices {
 		if hasMessageContent(choice.Delta) || hasMessageContent(choice.Message) {
 			return true

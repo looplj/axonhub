@@ -475,7 +475,7 @@ func (t *Transformer) SetBaseURL(baseURL string) {
 }
 
 // AggregateStreamChunks implements transformer.Outbound.
-func (t *Transformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *Transformer) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	// We need to unwrap the chunks before delegating to Gemini transformer.
 	// Since we shouldn't modify the input chunks in place (they might be used elsewhere),
 	// we create a new slice of chunks with modified data.
@@ -507,11 +507,11 @@ func (t *Transformer) AggregateStreamChunks(ctx context.Context, chunks []*httpc
 		}
 	}
 
-	return t.geminiTransformer.AggregateStreamChunks(ctx, unwrappedChunks)
+	return t.geminiTransformer.AggregateStreamChunks(ctx, req, unwrappedChunks)
 }
 
 // TransformStream implements transformer.Outbound.
-func (t *Transformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *Transformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	// We need to intercept the stream events to unwrap the "response" envelope
 	// before Gemini transformer processes them.
 
@@ -541,7 +541,7 @@ func (t *Transformer) TransformStream(ctx context.Context, stream streams.Stream
 		return event
 	})
 
-	return t.geminiTransformer.TransformStream(ctx, unwrappedStream)
+	return t.geminiTransformer.TransformStream(ctx, req, unwrappedStream)
 }
 
 // CustomizeExecutor implements pipeline.ChannelCustomizedExecutor.

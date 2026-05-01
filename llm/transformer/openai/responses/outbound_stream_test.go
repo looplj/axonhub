@@ -53,7 +53,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			require.NoError(t, err)
 
 			// Transform the stream (OpenAI Responses API -> LLM format)
-			transformedStream, err := trans.TransformStream(t.Context(), streams.SliceStream(responsesAPIEvents))
+			transformedStream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(responsesAPIEvents))
 			require.NoError(t, err)
 			require.NoError(t, transformedStream.Err())
 
@@ -124,7 +124,7 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	responsesAPIEvents, err := xtest.LoadStreamChunks(t, "error.response.stream.jsonl")
 	require.NoError(t, err)
 
-	transformedStream, err := trans.TransformStream(t.Context(), streams.SliceStream(responsesAPIEvents))
+	transformedStream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(responsesAPIEvents))
 	require.NoError(t, err)
 
 	_, err = streams.All(transformedStream)
@@ -170,7 +170,7 @@ func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *test
 		},
 	}
 
-	stream, err := trans.TransformStream(context.Background(), streams.SliceStream(events))
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
 	require.NoError(t, err)
 
 	actual, err := streams.All(stream)

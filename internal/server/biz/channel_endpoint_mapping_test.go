@@ -196,6 +196,7 @@ func TestResolveEndpoints_MergesDefaultsAndUserOverrides(t *testing.T) {
 func TestSupportedAPIFormats_UsesLLMAPIFormatValues(t *testing.T) {
 	formats := []string{
 		llm.APIFormatOpenAIChatCompletion.String(),
+		llm.APIFormatOpenAICompletion.String(),
 		llm.APIFormatOpenAIResponse.String(),
 		llm.APIFormatOpenAIResponseCompact.String(),
 		llm.APIFormatOpenAIEmbedding.String(),

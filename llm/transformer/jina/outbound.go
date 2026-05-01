@@ -384,6 +384,7 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 // TransformStream - Rerank doesn't support streaming.
 func (t *OutboundTransformer) TransformStream(
 	ctx context.Context,
+	req *httpclient.Request,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) (streams.Stream[*llm.Response], error) {
 	return nil, fmt.Errorf("rerank does not support streaming")
@@ -391,7 +392,7 @@ func (t *OutboundTransformer) TransformStream(
 
 // AggregateStreamChunks - Rerank doesn't support streaming.
 func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
+	ctx context.Context, _ *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
 	return nil, llm.ResponseMeta{}, fmt.Errorf("rerank does not support streaming")

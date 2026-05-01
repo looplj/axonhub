@@ -13,6 +13,7 @@ import (
 // SupportedAPIFormats lists the API formats that are recognized as valid endpoint api_format values.
 var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAIChatCompletion.String():  {},
+	llm.APIFormatOpenAICompletion.String():      {},
 	llm.APIFormatOpenAIResponse.String():        {},
 	llm.APIFormatOpenAIResponseCompact.String(): {},
 	llm.APIFormatOpenAIEmbedding.String():       {},
@@ -103,7 +104,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
 	},
-	channel.TypeDeepseek:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeDeepseek:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}, {APIFormat: llm.APIFormatOpenAICompletion.String()}},
 	channel.TypeDeepseekAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeDeepinfra:         openAICompatibleDefaultEndpoints,
 	channel.TypeFireworks:         {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},

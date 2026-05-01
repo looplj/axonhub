@@ -104,7 +104,12 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
       });
     }
 
-    // 1.5 Handle direct content if it's just a string or has a content field
+    // 1.5 Handle legacy completions format (choices[].text)
+    if (!fullContent && body.choices?.[0]?.text != null) {
+      fullContent = body.choices[0].text;
+    }
+
+    // 1.6 Handle direct content if it's just a string or has a content field
     if (!fullContent && typeof body.content === 'string') {
       fullContent = body.content;
     }
@@ -213,7 +218,7 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
       } else if (data.type === 'reasoning-delta' && typeof data.delta === 'string') {
         fullReasoning += data.delta;
       } else if (data.choices?.[0]?.delta) {
-        // --- Standard OpenAI format ---
+        // --- Standard OpenAI Chat Completions format ---
         const delta = data.choices[0].delta;
         if (delta.content) fullContent += delta.content;
         if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
@@ -236,6 +241,9 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
             }
           });
         }
+      } else if (data.choices?.[0]?.text != null) {
+        // --- Legacy OpenAI Completions format (choices[].text) ---
+        fullContent += data.choices[0].text;
       } else if (Array.isArray(data.candidates) && data.candidates.length > 0) {
         // --- Gemini streaming format ---
         isGeminiFormat = true;

@@ -247,6 +247,13 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			APIKeyProvider:  apiKeyProvider,
 			EndpointPath:    ep.Path,
 		})
+	case llm.APIFormatOpenAICompletion.String():
+		return openai.NewCompletionOutboundTransformer(&openai.Config{
+			BaseURL:         c.BaseURL,
+			APIKeyProvider:  apiKeyProvider,
+			AccountIdentity: accountIdentity,
+			EndpointPath:    ep.Path,
+		})
 	case llm.APIFormatOpenAIResponse.String(),
 		llm.APIFormatOpenAIResponseCompact.String():
 		return responses.NewOutboundTransformerWithConfig(&responses.Config{

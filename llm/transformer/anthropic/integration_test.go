@@ -479,7 +479,7 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	}
 
 	// Aggregate the streaming chunks
-	chatRespBytes, _, err := outboundTransformer.AggregateStreamChunks(t.Context(), chunks)
+	chatRespBytes, _, err := outboundTransformer.AggregateStreamChunks(t.Context(), nil, chunks)
 	require.NoError(t, err)
 	require.NotNil(t, chatRespBytes)
 

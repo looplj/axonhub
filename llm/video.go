@@ -2,6 +2,7 @@ package llm
 
 // VideoRequest is the unified video generation request model (async task).
 // It is designed based on Seedance's content[] structure for extensibility.
+// Note: Common fields like Model are in the parent Request struct, not here.
 type VideoRequest struct {
 	// Model is the model ID.
 	Model string `json:"model"`
@@ -64,7 +65,8 @@ type VideoImageURL struct {
 	URL string `json:"url"`
 }
 
-// VideoResponse is the unified video task response (create/get).
+// VideoResponse represents the unified video response model.
+// Note: Common fields like Usage are in the parent Response struct, not here.
 type VideoResponse struct {
 	ID string `json:"id"`
 

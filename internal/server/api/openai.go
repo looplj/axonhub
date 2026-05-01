@@ -49,6 +49,7 @@ type OpenAIHandlers struct {
 	SystemService              *biz.SystemService
 	VideoService               *biz.VideoService
 	ChatCompletionHandlers     *ChatCompletionHandlers
+	CompletionHandlers         *ChatCompletionHandlers
 	ResponseCompletionHandlers *ChatCompletionHandlers
 	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
@@ -71,6 +72,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				openai.NewInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		CompletionHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewCompletionInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -211,6 +229,10 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 
 func (handlers *OpenAIHandlers) ChatCompletion(c *gin.Context) {
 	handlers.ChatCompletionHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) Completion(c *gin.Context) {
+	handlers.CompletionHandlers.ChatCompletion(c)
 }
 
 func (handlers *OpenAIHandlers) CreateResponse(c *gin.Context) {

@@ -97,6 +97,7 @@ func (e EmbeddingInput) GetType() string {
 
 // EmbeddingRequest represents the unified embedding request model.
 // Based on OpenAI embedding request format for compatibility.
+// Note: Common fields like Model are in the parent Request struct, not here.
 type EmbeddingRequest struct {
 	// Input is the text to embed. Can be string, []string, []int (tokens), or [][]int (multiple token arrays).
 	Input EmbeddingInput `json:"input"`
@@ -125,6 +126,7 @@ type EmbeddingRequest struct {
 }
 
 // EmbeddingResponse represents the unified embedding response model.
+// Note: Common fields like Usage are in the parent Response struct, not here.
 type EmbeddingResponse struct {
 	// ID is the response identifier (some providers return this).
 	ID string `json:"id,omitempty"`

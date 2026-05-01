@@ -33,7 +33,7 @@ func (t *testRetryableOutbound) TransformResponse(ctx context.Context, response 
 	return &llm.Response{}, nil
 }
 
-func (t *testRetryableOutbound) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *testRetryableOutbound) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.SliceStream([]*llm.Response{}), nil
 }
 
@@ -41,7 +41,7 @@ func (t *testRetryableOutbound) TransformError(ctx context.Context, err *httpcli
 	return &llm.ResponseError{}
 }
 
-func (t *testRetryableOutbound) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *testRetryableOutbound) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 
@@ -80,7 +80,7 @@ func (t *testChannelRetryableOutbound) TransformResponse(ctx context.Context, re
 	return &llm.Response{}, nil
 }
 
-func (t *testChannelRetryableOutbound) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *testChannelRetryableOutbound) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.SliceStream([]*llm.Response{}), nil
 }
 
@@ -88,7 +88,7 @@ func (t *testChannelRetryableOutbound) TransformError(ctx context.Context, err *
 	return &llm.ResponseError{}
 }
 
-func (t *testChannelRetryableOutbound) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *testChannelRetryableOutbound) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 
@@ -122,7 +122,7 @@ func (t *testCustomExecutorOutbound) TransformResponse(ctx context.Context, resp
 	return &llm.Response{}, nil
 }
 
-func (t *testCustomExecutorOutbound) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+func (t *testCustomExecutorOutbound) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.SliceStream([]*llm.Response{}), nil
 }
 
@@ -130,7 +130,7 @@ func (t *testCustomExecutorOutbound) TransformError(ctx context.Context, err *ht
 	return &llm.ResponseError{}
 }
 
-func (t *testCustomExecutorOutbound) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *testCustomExecutorOutbound) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 
