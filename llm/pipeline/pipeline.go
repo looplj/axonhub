@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"time"
 
 	"github.com/looplj/axonhub/llm"
@@ -322,9 +323,21 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 			break
 		}
 
-		// Add retry delay if configured
+		// Add retry delay with exponential backoff and jitter, responsive to context cancellation.
 		if p.retryDelay > 0 {
-			time.Sleep(p.retryDelay)
+			baseDelay := p.retryDelay
+			attemptDelay := baseDelay * time.Duration(1<<uint(channelSwitches+sameChannelRetries))
+			if attemptDelay > 30*time.Second {
+				attemptDelay = 30 * time.Second
+			}
+			jitter := time.Duration(float64(attemptDelay) * (0.8 + 0.4*rand.Float64()))
+			delay := jitter
+
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 		}
 
 		slog.WarnContext(ctx, "request process failed, retrying...",

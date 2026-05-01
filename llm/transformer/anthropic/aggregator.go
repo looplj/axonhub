@@ -209,7 +209,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			Type:       "message",
 			Role:       "assistant",
 			Content:    contentBlocks,
-			Model:      "claude-3-sonnet-20240229",
+			Model:      "claude-sonnet-4-20250514",
 			StopReason: stopReason,
 			Usage:      usage,
 		}

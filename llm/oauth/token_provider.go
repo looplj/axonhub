@@ -22,7 +22,8 @@ func wrapHttpError(err error) error {
 
 	var httpErr *httpclient.Error
 	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
-		return fmt.Errorf("%w (response body: %s)", err, string(httpErr.Body))
+		slog.Debug("oauth http error response body", "body", string(httpErr.Body))
+		return fmt.Errorf("oauth http error: status %d", httpErr.StatusCode)
 	}
 
 	return err

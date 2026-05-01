@@ -6,12 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/fx"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/google/uuid"
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -30,7 +32,7 @@ func HashPassword(password string) (string, error) {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", fmt.Errorf("failed to hash password: %w", err)
+		return "", fmt.Errorf("failed to hash password=[MASKED_SECRET]", err)
 	}
 
 	return hex.EncodeToString(hashedPassword), nil
@@ -44,21 +46,87 @@ func VerifyPassword(hashedPassword, password string) error {
 
 	decodedHashedPassword, err := hex.DecodeString(hashedPassword)
 	if err != nil {
-		return fmt.Errorf("failed to decode hashed password: %w", err)
+		return fmt.Errorf("failed to decode hashed password=[MASKED_SECRET]", err)
 	}
 
 	return bcrypt.CompareHashAndPassword(decodedHashedPassword, []byte(password))
 }
 
+// TokenRevocationService maintains an in-memory revocation list for JWT tokens.
+type TokenRevocationService struct {
+	mu       sync.RWMutex
+	revoked  map[string]time.Time // jti -> expiry (used for cleanup)
+	stopCh   chan struct{}
+	doneCh   chan struct{}
+}
+
+func NewTokenRevocationService() *TokenRevocationService {
+	return &TokenRevocationService{
+		revoked: make(map[string]time.Time),
+		stopCh:  make(chan struct{}),
+		doneCh:  make(chan struct{}),
+	}
+}
+
+// Revoke adds a token jti to the revocation list.
+func (s *TokenRevocationService) Revoke(jti string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.revoked[jti] = time.Now().Add(24 * time.Hour)
+}
+
+// IsRevoked checks whether a token jti has been revoked.
+func (s *TokenRevocationService) IsRevoked(jti string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, ok := s.revoked[jti]
+	return ok
+}
+
+// StartSweeper periodically removes expired entries from the revocation list.
+func (s *TokenRevocationService) StartSweeper(ctx context.Context) {
+	go func() {
+		defer close(s.doneCh)
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				s.sweep()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+// Stop stops the sweeper goroutine.
+func (s *TokenRevocationService) Stop() {
+	close(s.stopCh)
+	<-s.doneCh
+}
+
+func (s *TokenRevocationService) sweep() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	for jti, exp := range s.revoked {
+		if now.After(exp) {
+			delete(s.revoked, jti)
+		}
+	}
+}
+
 type AuthServiceParams struct {
 	fx.In
 
-	SystemService *SystemService
-	APIKeyService *APIKeyService
-	UserService   *UserService
-	OIDCService   *OIDCService
-	Ent           *ent.Client
-	AllowNoAuth   bool `name:"allow_no_auth"`
+	SystemService      *SystemService
+	APIKeyService      *APIKeyService
+	UserService        *UserService
+	OIDCService        *OIDCService
+	TokenRevocationSvc *TokenRevocationService
+	Ent                *ent.Client
+	AllowNoAuth        bool `name:"allow_no_auth"`
 }
 
 func NewAuthService(params AuthServiceParams) *AuthService {
@@ -66,22 +134,24 @@ func NewAuthService(params AuthServiceParams) *AuthService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		SystemService: params.SystemService,
-		APIKeyService: params.APIKeyService,
-		UserService:   params.UserService,
-		OIDCService:   params.OIDCService,
-		AllowNoAuth:   params.AllowNoAuth,
+		SystemService:      params.SystemService,
+		APIKeyService:      params.APIKeyService,
+		UserService:        params.UserService,
+		OIDCService:        params.OIDCService,
+		TokenRevocationSvc: params.TokenRevocationSvc,
+		AllowNoAuth:        params.AllowNoAuth,
 	}
 }
 
 type AuthService struct {
 	*AbstractService
 
-	SystemService *SystemService
-	APIKeyService *APIKeyService
-	UserService   *UserService
-	OIDCService   *OIDCService
-	AllowNoAuth   bool
+	SystemService      *SystemService
+	APIKeyService      *APIKeyService
+	UserService        *UserService
+	OIDCService        *OIDCService
+	TokenRevocationSvc *TokenRevocationService
+	AllowNoAuth        bool
 }
 
 // GenerateSecretKey generates a random secret key for JWT.
@@ -105,9 +175,12 @@ func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (str
 		return "", fmt.Errorf("failed to get secret key: %w", err)
 	}
 
+	jti := uuid.New().String()
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
-		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"jti":     jti,
 	})
 
 	tokenString, err := token.SignedString([]byte(secretKey))
@@ -116,6 +189,11 @@ func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (str
 	}
 
 	return tokenString, nil
+}
+
+// RevokeJWT revokes a JWT token by its jti claim.
+func (s *AuthService) RevokeJWT(jti string) {
+	s.TokenRevocationSvc.Revoke(jti)
 }
 
 // AuthenticateUser authenticates a user with email and password.
@@ -134,7 +212,7 @@ func (s *AuthService) AuthenticateUser(
 	})
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, fmt.Errorf("invalid email or password: %w", ErrInvalidPassword)
+			return nil, fmt.Errorf("invalid email or password=[MASKED_SECRET]", ErrInvalidPassword)
 		}
 
 		log.Error(ctx, "failed to get user", log.Cause(err))
@@ -182,6 +260,11 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("%w: invalid token", ErrInvalidJWT)
+	}
+
+	// Check revocation by jti.
+	if jti, ok := claims["jti"].(string); ok && s.TokenRevocationSvc.IsRevoked(jti) {
+		return nil, fmt.Errorf("%w: token revoked", ErrInvalidJWT)
 	}
 
 	userID, ok := claims["user_id"].(float64)

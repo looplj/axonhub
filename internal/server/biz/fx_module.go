@@ -11,6 +11,7 @@ import (
 var Module = fx.Module("biz",
 	fx.Provide(NewLiveStreamRegistry),
 	fx.Provide(NewSystemService),
+	fx.Provide(NewTokenRevocationService),
 	fx.Provide(NewWebhookNotifier),
 	fx.Provide(NewAuthService),
 	fx.Provide(NewChannelService),
@@ -101,6 +102,18 @@ var Module = fx.Module("biz",
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
 				return svc.RegisterScheduledTasks(ctx, s)
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *TokenRevocationService) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				svc.StartSweeper(ctx)
+				return nil
+			},
+			OnStop: func(ctx context.Context) error {
+				svc.Stop()
+				return nil
 			},
 		})
 	}),
