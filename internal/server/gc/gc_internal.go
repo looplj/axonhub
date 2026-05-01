@@ -7,6 +7,10 @@ import (
 )
 
 func (w *Worker) runCleanupWithSystemContext(ctx context.Context) {
+	w.wg.Add(1)
+	defer w.wg.Done()
+
 	ctx = authz.WithSystemBypass(ctx, "gc-cleanup")
-	w.runCleanup(ctx, false)
+	stats := &CleanupStats{}
+	w.runCleanup(ctx, false, stats)
 }

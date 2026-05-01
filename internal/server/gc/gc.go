@@ -3,6 +3,7 @@ package gc
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -14,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -31,11 +31,24 @@ type Config struct {
 	VacuumFull    bool   `json:"vacuum_full" yaml:"vacuum_full" conf:"vacuum_full"`
 }
 
+// CleanupStats holds the results of a cleanup operation.
+type CleanupStats struct {
+	RequestExecsDeleted  int
+	RequestsDeleted      int
+	ThreadsDeleted       int
+	TracesDeleted        int
+	UsageLogsDeleted     int
+	ChannelProbesDeleted int
+}
+
 type Worker struct {
 	SystemService      *biz.SystemService
 	DataStorageService *biz.DataStorageService
 	Ent                *ent.Client
 	Config             Config
+	wg                 sync.WaitGroup // F-D34: tracks in-flight cleanup tasks
+	mu                 sync.Mutex     // protects cleanupFailures
+	cleanupFailures    []string       // F-D7: tracks external storage deletion failures
 }
 
 type Params struct {
@@ -94,11 +107,12 @@ func (w *Worker) getBatchSize() int {
 }
 
 // runCleanup executes the cleanup process based on storage policy.
-func (w *Worker) runCleanup(ctx context.Context, manual bool) {
+func (w *Worker) runCleanup(ctx context.Context, manual bool, stats *CleanupStats) {
 	log.Info(ctx, "Starting automatic cleanup process")
 
 	ctx = ent.NewContext(ctx, w.Ent)
-	ctx = schematype.SkipSoftDelete(ctx)
+	// F-D72: Do NOT use SkipSoftDelete. GC should respect soft-delete semantics:
+	// only hard-delete records that have been soft-deleted past their retention period.
 
 	policy, err := w.SystemService.StoragePolicy(ctx)
 	if err != nil {
@@ -179,6 +193,38 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 	}
 
 	log.Info(ctx, "Automatic cleanup process completed")
+}
+
+// runCleanupWithSystemContext is already defined in gc_internal.go.
+
+// F-D7: retryWithBackoff retries an operation up to maxAttempts times
+// with exponential backoff. Returns nil on success, last error on failure.
+func retryWithBackoff(ctx context.Context, maxAttempts int, op func() error) error {
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		err := op()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if attempt < maxAttempts-1 {
+			backoff := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s, 4s
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+	}
+	return lastErr
+}
+
+// recordCleanupFailure tracks a failed external storage deletion.
+func (w *Worker) recordCleanupFailure(ctx context.Context, msg string) {
+	log.Error(ctx, "External storage cleanup failed after retries", log.String("detail", msg))
+	w.mu.Lock()
+	w.cleanupFailures = append(w.cleanupFailures, msg)
+	w.mu.Unlock()
 }
 
 // cleanupRequests deletes requests older than the specified number of days.
@@ -321,13 +367,13 @@ func (w *Worker) cleanupExecutionExternalStorage(ctx context.Context, exec *ent.
 		biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID),
 	}
 
+	// F-D7: Retry each key deletion with exponential backoff.
 	for _, key := range keys {
-		if err := w.DataStorageService.DeleteData(ctx, ds, key); err != nil {
-			log.Warn(ctx, "Failed to delete execution external data",
-				log.Cause(err),
-				log.Int("execution_id", exec.ID),
-				log.String("key", key),
-			)
+		err := retryWithBackoff(ctx, 3, func() error {
+			return w.DataStorageService.DeleteData(ctx, ds, key)
+		})
+		if err != nil {
+			w.recordCleanupFailure(ctx, fmt.Sprintf("execution_id=%d key=%s err=%v", exec.ID, key, err))
 		}
 	}
 }
@@ -359,13 +405,13 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 		biz.GenerateRequestDirKey(req.ProjectID, req.ID),
 	}
 
+	// F-D7: Retry each key deletion with exponential backoff.
 	for _, key := range keys {
-		if err := w.DataStorageService.DeleteData(ctx, ds, key); err != nil {
-			log.Warn(ctx, "Failed to delete request external data",
-				log.Cause(err),
-				log.Int("request_id", req.ID),
-				log.String("key", key),
-			)
+		err := retryWithBackoff(ctx, 3, func() error {
+			return w.DataStorageService.DeleteData(ctx, ds, key)
+		})
+		if err != nil {
+			w.recordCleanupFailure(ctx, fmt.Sprintf("request_id=%d key=%s err=%v", req.ID, key, err))
 		}
 	}
 }
@@ -545,7 +591,8 @@ func (w *Worker) RunVacuumNow(ctx context.Context) error {
 }
 
 // RunCleanupNow manually triggers the cleanup process.
-func (w *Worker) RunCleanupNow(ctx context.Context) error {
-	w.runCleanup(ctx, true)
-	return nil
+func (w *Worker) RunCleanupNow(ctx context.Context) (*CleanupStats, error) {
+	stats := &CleanupStats{}
+	w.runCleanup(ctx, true, stats)
+	return stats, nil
 }
