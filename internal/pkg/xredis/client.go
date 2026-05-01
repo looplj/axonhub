@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -110,6 +111,50 @@ func newRedisOptions(cfg Config) (*redis.Options, error) {
 	// Ensure TLSInsecureSkipVerify is not silently set without TLS
 	if opts.TLSConfig == nil && cfg.TLSInsecureSkipVerify {
 		return nil, errors.New("tls_insecure_skip_verify requires TLS to be enabled (tls=true or rediss://)")
+	}
+
+	// Apply sensible defaults for pool and timeout if not configured
+	if opts.PoolSize == 0 {
+		opts.PoolSize = cfg.PoolSize
+		if opts.PoolSize == 0 {
+			opts.PoolSize = 50
+		}
+	}
+	if opts.MinIdleConns == 0 {
+		opts.MinIdleConns = cfg.MinIdleConns
+		if opts.MinIdleConns == 0 {
+			opts.MinIdleConns = 10
+		}
+	}
+	if opts.DialTimeout == 0 {
+		opts.DialTimeout = cfg.DialTimeout
+		if opts.DialTimeout == 0 {
+			opts.DialTimeout = 5 * time.Second
+		}
+	}
+	if opts.ReadTimeout == 0 {
+		opts.ReadTimeout = cfg.ReadTimeout
+		if opts.ReadTimeout == 0 {
+			opts.ReadTimeout = 3 * time.Second
+		}
+	}
+	if opts.WriteTimeout == 0 {
+		opts.WriteTimeout = cfg.WriteTimeout
+		if opts.WriteTimeout == 0 {
+			opts.WriteTimeout = 3 * time.Second
+		}
+	}
+	if opts.PoolTimeout == 0 {
+		opts.PoolTimeout = cfg.PoolTimeout
+		if opts.PoolTimeout == 0 {
+			opts.PoolTimeout = 4 * time.Second
+		}
+	}
+	if opts.MaxRetries == 0 {
+		opts.MaxRetries = cfg.MaxRetries
+		if opts.MaxRetries == 0 {
+			opts.MaxRetries = 3
+		}
 	}
 
 	return opts, nil
