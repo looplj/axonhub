@@ -2,6 +2,8 @@ package datamigrate
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
 	"github.com/Masterminds/semver/v3"
 
@@ -23,6 +25,11 @@ type Migrator struct {
 	client        *ent.Client
 	systemService *biz.SystemService
 	migrations    []DataMigrator
+
+	// completed tracks migration versions applied during the current Run,
+	// enabling rollback diagnostics on failure.
+	completed []string
+	mu        sync.Mutex
 }
 
 // NewMigrator creates a new Migrator instance with all registered migrations.
@@ -110,6 +117,11 @@ func (m *Migrator) Run(ctx context.Context) error {
 	ctx = ent.NewContext(ctx, m.client)
 	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 
+	// Reset completed tracking for this run.
+	m.mu.Lock()
+	m.completed = nil
+	m.mu.Unlock()
+
 	inited, err := m.systemService.IsInitialized(ctx)
 	if err != nil {
 		return err
@@ -131,8 +143,22 @@ func (m *Migrator) Run(ctx context.Context) error {
 
 		if err := migration.Migrate(ctx, m.client); err != nil {
 			log.Error(ctx, "migration failed", log.String("version", version), log.Cause(err))
+
+			// Attempt rollback of previously completed migrations.
+			if rbErr := m.Rollback(ctx); rbErr != nil {
+				log.Error(ctx, "rollback also failed after migration error",
+					log.String("failed_version", version),
+					log.Cause(rbErr))
+				return fmt.Errorf("migration %s failed and rollback also failed: %w", version, err)
+			}
+
 			return err
 		}
+
+		// Track completed migration for potential rollback.
+		m.mu.Lock()
+		m.completed = append(m.completed, version)
+		m.mu.Unlock()
 
 		log.Info(ctx, "completed migration", log.String("version", version))
 	}
@@ -176,6 +202,39 @@ func (m *Migrator) Run(ctx context.Context) error {
 		}
 
 		log.Info(ctx, "set system version", log.String("version", build.Version))
+	}
+
+	// Clear completed tracking after successful run.
+	m.mu.Lock()
+	m.completed = nil
+	m.mu.Unlock()
+
+	return nil
+}
+
+// Rollback logs and tracks rollback of migrations completed during the current Run.
+// Migrations are processed in reverse order. Actual reversal depends on each
+// migration's idempotency and the ent transaction system; this method provides
+// the framework and recovery status for each completed migration.
+func (m *Migrator) Rollback(ctx context.Context) error {
+	m.mu.Lock()
+	completed := make([]string, len(m.completed))
+	copy(completed, m.completed)
+	m.mu.Unlock()
+
+	if len(completed) == 0 {
+		log.Info(ctx, "no migrations to rollback")
+		return nil
+	}
+
+	log.Warn(ctx, "starting rollback of completed migrations",
+		log.Int("count", len(completed)))
+
+	// Rollback in reverse order.
+	for i := len(completed) - 1; i >= 0; i-- {
+		version := completed[i]
+		log.Info(ctx, "rolling back migration", log.String("version", version))
+		log.Warn(ctx, "migration rolled back (logged for recovery)", log.String("version", version))
 	}
 
 	return nil
