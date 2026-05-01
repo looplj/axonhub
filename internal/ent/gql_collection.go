@@ -3636,20 +3636,8 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				fieldSeen[request.FieldRequestHeaders] = struct{}{}
 			}
 		case "requestBody":
-			if _, ok := fieldSeen[request.FieldRequestBody]; !ok {
-				selectedFields = append(selectedFields, request.FieldRequestBody)
-				fieldSeen[request.FieldRequestBody] = struct{}{}
-			}
 		case "responseBody":
-			if _, ok := fieldSeen[request.FieldResponseBody]; !ok {
-				selectedFields = append(selectedFields, request.FieldResponseBody)
-				fieldSeen[request.FieldResponseBody] = struct{}{}
-			}
 		case "responseChunks":
-			if _, ok := fieldSeen[request.FieldResponseChunks]; !ok {
-				selectedFields = append(selectedFields, request.FieldResponseChunks)
-				fieldSeen[request.FieldResponseChunks] = struct{}{}
-			}
 		case "channelID":
 			if _, ok := fieldSeen[request.FieldChannelID]; !ok {
 				selectedFields = append(selectedFields, request.FieldChannelID)
@@ -3885,20 +3873,8 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 				fieldSeen[requestexecution.FieldFormat] = struct{}{}
 			}
 		case "requestBody":
-			if _, ok := fieldSeen[requestexecution.FieldRequestBody]; !ok {
-				selectedFields = append(selectedFields, requestexecution.FieldRequestBody)
-				fieldSeen[requestexecution.FieldRequestBody] = struct{}{}
-			}
 		case "responseBody":
-			if _, ok := fieldSeen[requestexecution.FieldResponseBody]; !ok {
-				selectedFields = append(selectedFields, requestexecution.FieldResponseBody)
-				fieldSeen[requestexecution.FieldResponseBody] = struct{}{}
-			}
 		case "responseChunks":
-			if _, ok := fieldSeen[requestexecution.FieldResponseChunks]; !ok {
-				selectedFields = append(selectedFields, requestexecution.FieldResponseChunks)
-				fieldSeen[requestexecution.FieldResponseChunks] = struct{}{}
-			}
 		case "errorMessage":
 			if _, ok := fieldSeen[requestexecution.FieldErrorMessage]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldErrorMessage)

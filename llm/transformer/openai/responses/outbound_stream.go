@@ -3,6 +3,7 @@ package responses
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -14,6 +15,10 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
+
+// ErrStreamIncomplete is returned when the stream ends without a terminal event
+// (response.completed, response.failed, or response.incomplete).
+var ErrStreamIncomplete = errors.New("stream ended without terminal event")
 
 // TransformStream transforms OpenAI Responses API SSE events to unified llm.Response stream.
 func (t *OutboundTransformer) TransformStream(
@@ -39,6 +44,9 @@ type responsesOutboundStream struct {
 	eventQueue []*llm.Response
 	queueIndex int
 	err        error
+
+	// Track whether the response completed successfully
+	responseCompleted bool
 }
 
 // outboundStreamState holds the state for a streaming session.
@@ -93,6 +101,15 @@ func (s *responsesOutboundStream) Next() bool {
 
 	// Try to get the next chunk from source
 	if !s.stream.Next() {
+		// Stream ended - check if we received a terminal event
+		// If not, this is an incomplete stream (e.g., upstream EOF)
+		if s.err == nil && !s.responseCompleted && s.stream.Err() == nil {
+			// Only set this error if we had started receiving response data
+			// This distinguishes between "no response" and "incomplete response"
+			if s.state.responseID != "" {
+				s.err = ErrStreamIncomplete
+			}
+		}
 		return false
 	}
 
@@ -424,6 +441,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseCompleted:
 		// Response completed - emit two events: one with finish_reason, one with usage
+		s.responseCompleted = true
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
@@ -464,6 +482,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseFailed:
 		// Response failed
+		s.responseCompleted = true
 		finishReason := "error"
 		resp.Choices = []llm.Choice{
 			{
@@ -474,6 +493,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseIncomplete:
 		// Response incomplete (e.g., max tokens)
+		s.responseCompleted = true
 		finishReason := "length"
 		resp.Choices = []llm.Choice{
 			{
