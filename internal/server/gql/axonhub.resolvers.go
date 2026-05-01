@@ -628,7 +628,10 @@ func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, inpu
 		return nil, fmt.Errorf("permission denied: write api keys scope required")
 	}
 
-	profile, _ := contexts.GetAPIKeyProfile(ctx)
+	profile, ok := contexts.GetAPIKeyProfile(ctx)
+	if !ok || profile == nil {
+		return nil, fmt.Errorf("profile data is required but was not provided")
+	}
 
 	return r.apiKeyProfileTemplateService.CreateTemplate(ctx, input, profile)
 }
@@ -639,9 +642,9 @@ func (r *mutationResolver) UpdateAPIKeyProfileTemplate(ctx context.Context, id o
 		return nil, fmt.Errorf("permission denied: write api keys scope required")
 	}
 
-	profile, _ := contexts.GetAPIKeyProfile(ctx)
+	optionalProfile, _ := contexts.GetAPIKeyProfile(ctx)
 
-	return r.apiKeyProfileTemplateService.UpdateTemplate(ctx, id.ID, input, profile)
+	return r.apiKeyProfileTemplateService.UpdateTemplate(ctx, id.ID, input, optionalProfile)
 }
 
 // DeleteAPIKeyProfileTemplate is the resolver for the deleteApiKeyProfileTemplate field.
@@ -892,15 +895,3 @@ func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *createAPIKeyProfileTemplateInputResolver) ProjectID(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.GUID) error {
-	return nil
-}
-*/

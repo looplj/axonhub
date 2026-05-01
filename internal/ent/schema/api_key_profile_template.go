@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type APIKeyProfileTemplate struct {
@@ -72,5 +73,18 @@ func (APIKeyProfileTemplate) Annotations() []schema.Annotation {
 		entgql.QueryField(),
 		entgql.RelayConnection(),
 		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
+	}
+}
+
+func (APIKeyProfileTemplate) Policy() ent.Policy {
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.UserProjectScopeReadRule(scopes.ScopeReadAPIKeys),
+			scopes.OwnerRule(),
+		},
+		Mutation: scopes.MutationPolicy{
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteAPIKeys),
+			scopes.OwnerRule(),
+		},
 	}
 }

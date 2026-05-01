@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -120,7 +121,10 @@ func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templat
 		return nil, fmt.Errorf("template and API key must belong to the same project")
 	}
 
-	templateProfile := deepCopyProfile(template.Profile)
+	templateProfile, err := deepCopyProfile(template.Profile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy template profile: %w", err)
+	}
 	if templateProfile == nil {
 		return nil, fmt.Errorf("template has no profile")
 	}
@@ -169,7 +173,11 @@ func (s *APIKeyProfileTemplateService) SaveAsTemplate(ctx context.Context, apiKe
 		return nil, fmt.Errorf("profile '%s' not found in API key", profileName)
 	}
 
-	copiedProfile := deepCopyProfile(sourceProfile)
+	copiedProfile, err := deepCopyProfile(sourceProfile)
+	if err != nil {
+		log.Error(ctx, "Failed to copy API key profile for template", log.Cause(err), log.String("profile_name", profileName))
+		return nil, fmt.Errorf("failed to copy profile: %w", err)
+	}
 
 	template, err := client.APIKeyProfileTemplate.Create().
 		SetName(templateName).
@@ -202,20 +210,20 @@ func resolveProfileNameConflict(existingProfiles []objects.APIKeyProfile, newNam
 	}
 }
 
-func deepCopyProfile(profile *objects.APIKeyProfile) *objects.APIKeyProfile {
+func deepCopyProfile(profile *objects.APIKeyProfile) (*objects.APIKeyProfile, error) {
 	if profile == nil {
-		return nil
+		return nil, nil
 	}
 
 	data, err := json.Marshal(profile)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to marshal profile for deep copy: %w", err)
 	}
 
 	var copy objects.APIKeyProfile
 	if err := json.Unmarshal(data, &copy); err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to unmarshal profile for deep copy: %w", err)
 	}
 
-	return &copy
+	return &copy, nil
 }

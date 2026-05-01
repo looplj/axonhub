@@ -49,12 +49,18 @@ func (r *aPIKeyResolver) User(ctx context.Context, obj *ent.APIKey) (*ent.User, 
 
 // ID is the resolver for the id field.
 func (r *aPIKeyProfileTemplateResolver) ID(ctx context.Context, obj *ent.APIKeyProfileTemplate) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeAPIKeyProfileTemplate,
+		ID:   obj.ID,
+	}, nil
 }
 
 // ProjectID is the resolver for the projectID field.
 func (r *aPIKeyProfileTemplateResolver) ProjectID(ctx context.Context, obj *ent.APIKeyProfileTemplate) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ProjectID - projectID"))
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
