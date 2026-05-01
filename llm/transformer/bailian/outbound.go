@@ -61,6 +61,9 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	llmReq = mergeConsecutiveToolCallMessages(llmReq)
 
+	// Bailian API does not support response_format; strip it before forwarding.
+	llmReq.ResponseFormat = nil
+
 	return t.Outbound.TransformRequest(ctx, llmReq)
 }
 
