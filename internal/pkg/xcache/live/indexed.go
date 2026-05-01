@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -199,7 +200,10 @@ func (c *IndexedCache[K, V]) calcExpireAt() time.Time {
 }
 
 func (c *IndexedCache[K, V]) calcNegativeExpireAt() time.Time {
-	return time.Now().Add(5 * time.Second)
+	// Apply ±20% random jitter to negative cache TTL to prevent thundering herd.
+	const baseTTL = 5 * time.Second
+	jitter := time.Duration(rand.Float64()*0.4 - 0.2) * baseTTL
+	return time.Now().Add(baseTTL + jitter)
 }
 
 // Get retrieves a value by key.
