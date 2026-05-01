@@ -73,12 +73,16 @@ func (c *SyntheticQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel)
 
 	quotaURL := buildSyntheticQuotaURL(ch.BaseURL)
 
-	httpRequest := httpclient.NewRequestBuilder().
+	httpRequest, err := httpclient.NewRequestBuilder().
 		WithMethod("GET").
 		WithURL(quotaURL).
 		WithBearerToken(apiKey).
 		WithHeader("Content-Type", "application/json").
 		Build()
+
+	if err != nil {
+		return QuotaData{}, fmt.Errorf("failed to build request: %w", err)
+	}
 
 	hc := c.httpClient
 	if ch.Settings != nil && ch.Settings.Proxy != nil {

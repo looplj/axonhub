@@ -272,7 +272,15 @@ func (r *queryResolver) Node(ctx context.Context, id objects.GUID) (ent.Noder, e
 
 // Nodes is the resolver for the nodes field.
 func (r *queryResolver) Nodes(ctx context.Context, ids []*objects.GUID) ([]ent.Noder, error) {
-	panic(fmt.Errorf("not implemented: Nodes - nodes"))
+	nodeIDs := make([]int, len(ids))
+	for i, id := range ids {
+		nodeIDs[i] = id.ID
+	}
+	nodes, err := r.client.Noders(ctx, nodeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch nodes: %w", err)
+	}
+	return nodes, nil
 }
 
 // APIKeys is the resolver for the apiKeys field.

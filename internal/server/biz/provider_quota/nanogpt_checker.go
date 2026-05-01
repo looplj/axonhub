@@ -72,12 +72,16 @@ func (c *NanoGPTQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 	// Build quota URL from channel base URL scheme+host + path
 	quotaURL := buildNanoGPTQuotaURL(ch.BaseURL)
 
-	httpRequest := httpclient.NewRequestBuilder().
+	httpRequest, err := httpclient.NewRequestBuilder().
 		WithMethod("GET").
 		WithURL(quotaURL).
 		WithBearerToken(apiKey).
 		WithHeader("Content-Type", "application/json").
 		Build()
+
+	if err != nil {
+		return QuotaData{}, fmt.Errorf("failed to build request: %w", err)
+	}
 
 	// Use proxy-configured HTTP client if available
 	hc := c.httpClient

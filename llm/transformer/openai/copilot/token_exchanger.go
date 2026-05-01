@@ -159,12 +159,16 @@ func exchangeSingleflightKey(accessToken string, client *httpclient.HttpClient, 
 }
 
 func (e *TokenExchanger) exchange(ctx context.Context, httpClient *httpclient.HttpClient, accessToken string) (*copilotTokenResponse, error) {
-	req := httpclient.NewRequestBuilder().
+	req, err := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodGet).
 		WithURL(e.endpoint).
 		WithHeader("Authorization", "token "+accessToken).
 		WithHeader("Accept", "application/json").
 		Build()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
 
 	exchangeCtx, cancel := context.WithTimeout(ctx, tokenExchangeTimeout)
 	defer cancel()

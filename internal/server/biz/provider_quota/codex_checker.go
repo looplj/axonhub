@@ -67,12 +67,16 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		return QuotaData{}, fmt.Errorf("OAuth missing access_token")
 	}
 
-	httpRequest := httpclient.NewRequestBuilder().
+	httpRequest, err := httpclient.NewRequestBuilder().
 		WithMethod("GET").
 		WithURL("https://chatgpt.com/backend-api/wham/usage").
 		WithBearerToken(accessToken).
 		WithHeader("Content-Type", "application/json").
 		Build()
+
+	if err != nil {
+		return QuotaData{}, fmt.Errorf("failed to build request: %w", err)
+	}
 
 	// Use proxy-configured HTTP client if available
 	hc := c.httpClient

@@ -47,7 +47,7 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 	}
 
 	// Build HTTP request using Bearer auth like ClaudeCode transformers
-	httpRequest := httpclient.NewRequestBuilder().
+	httpRequest, err := httpclient.NewRequestBuilder().
 		WithMethod("POST").
 		WithURL(getEndpointURL(ch.BaseURL)).
 		WithAuth(&httpclient.AuthConfig{
@@ -70,6 +70,10 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 			"max_tokens": 1,
 		}).
 		Build()
+
+	if err != nil {
+		return QuotaData{}, fmt.Errorf("failed to build request: %w", err)
+	}
 
 	// Use proxy-configured HTTP client if available
 	httpClient := c.httpClient

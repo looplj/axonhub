@@ -95,12 +95,16 @@ func (c *GithubCopilotQuotaChecker) getAccessToken(ch *ent.Channel) (string, err
 }
 
 func (c *GithubCopilotQuotaChecker) fetchUserPayload(ctx context.Context, hc *httpclient.HttpClient, accessToken string) (*copilotUserPayload, error) {
-	userReq := httpclient.NewRequestBuilder().
+	userReq, err := httpclient.NewRequestBuilder().
 		WithMethod("GET").
 		WithURL("https://api.github.com/copilot_internal/user").
 		WithHeader("Authorization", "token "+accessToken).
 		WithHeader("Accept", "application/json").
 		Build()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
 
 	copilot.SetCopilotHeaders(userReq.Headers)
 

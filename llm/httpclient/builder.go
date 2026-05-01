@@ -2,11 +2,13 @@ package httpclient
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
 // RequestBuilder helps build Request.
 type RequestBuilder struct {
+	err     error
 	request *Request
 }
 
@@ -57,7 +59,8 @@ func (rb *RequestBuilder) WithBody(body any) *RequestBuilder {
 	default:
 		b, err := json.Marshal(v)
 		if err != nil {
-			panic(err)
+			rb.err = fmt.Errorf("failed to marshal body: %w", err)
+			return rb
 		}
 
 		rb.request.Body = b
@@ -98,7 +101,7 @@ func (rb *RequestBuilder) WithRequestID(requestID string) *RequestBuilder {
 	return rb
 }
 
-// Build returns the built request.
-func (rb *RequestBuilder) Build() *Request {
-	return rb.request
+// Build returns the built request and any accumulated error.
+func (rb *RequestBuilder) Build() (*Request, error) {
+	return rb.request, rb.err
 }
