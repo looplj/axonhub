@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -70,6 +71,25 @@ type AuthConfig struct {
 	HeaderKey string `json:"header_key,omitempty"`
 }
 
+// MarshalLog returns a masked representation for safe logging.
+func (a AuthConfig) MarshalLog() string {
+	if a.APIKey == "" {
+		return ""
+	}
+	return maskAPIKey(a.APIKey)
+}
+
+// LogValue implements slog.LogValuer so that slog outputs mask API keys.
+func (a AuthConfig) LogValue() slog.Value {
+	return slog.AnyValue(maskedAuthConfig{
+		Type:      a.Type,
+		APIKey:    a.MarshalLog(),
+		HeaderKey: a.HeaderKey,
+	})
+}
+
+type maskedAuthConfig struct{ Type, APIKey, HeaderKey string }
+
 const (
 	AuthTypeBearer = "bearer"
 	AuthTypeAPIKey = "api_key"
@@ -123,4 +143,13 @@ func EncodeStreamEventToJSON(event *StreamEvent) ([]byte, error) {
 		Type:        event.Type,
 		Data:        string(event.Data),
 	})
+}
+
+// maskAPIKey returns a masked version of the API key for display.
+// Shows first 4 and last 4 characters with **** in between.
+func maskAPIKey(key string) string {
+	if len(key) <= 8 {
+		return "****"
+	}
+	return key[:4] + "****" + key[len(key)-4:]
 }
