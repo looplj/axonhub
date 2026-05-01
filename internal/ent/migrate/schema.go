@@ -358,7 +358,7 @@ var (
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "role", Type: field.TypeString},
-		{Name: "content", Type: field.TypeString},
+		{Name: "content", Type: field.TypeString, SchemaType: map[string]string{"mysql": "longtext"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "disabled"},
 		{Name: "order", Type: field.TypeInt, Default: 0},
 		{Name: "settings", Type: field.TypeJSON},
