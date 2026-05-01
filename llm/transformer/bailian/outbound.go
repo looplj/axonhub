@@ -2,6 +2,7 @@ package bailian
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -60,8 +61,36 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 // TransformRequest applies Bailian-specific request normalization before delegating to OpenAI-compatible transformer.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	llmReq = mergeConsecutiveToolCallMessages(llmReq)
+	llmReq = sanitizeForBailian(llmReq)
 
 	return t.Outbound.TransformRequest(ctx, llmReq)
+}
+
+// sanitizeForBailian removes unsupported fields and fixes format issues for Bailian API compatibility.
+func sanitizeForBailian(req *llm.Request) *llm.Request {
+	if req == nil {
+		return nil
+	}
+
+	if req.ResponseFormat != nil {
+		req.ResponseFormat = nil
+	}
+
+	for i := range req.Messages {
+		for j := range req.Messages[i].ToolCalls {
+			args := req.Messages[i].ToolCalls[j].Function.Arguments
+			if args == "" {
+				req.Messages[i].ToolCalls[j].Function.Arguments = "{}"
+				continue
+			}
+			if !json.Valid([]byte(args)) {
+				wrapped, _ := json.Marshal(args)
+				req.Messages[i].ToolCalls[j].Function.Arguments = string(wrapped)
+			}
+		}
+	}
+
+	return req
 }
 
 func mergeConsecutiveToolCallMessages(req *llm.Request) *llm.Request {
