@@ -602,7 +602,9 @@ data: [DONE]
 	body := io.NopCloser(strings.NewReader(sseData))
 
 	stream := &defaultSSEDecoder{
-		ctx:       t.Context(),
+		done:      t.Context().Done(),
+		cancel:    func() {},
+		recvCh:    make(chan recvResult, 1),
 		sseStream: sse.NewStream(body),
 	}
 
