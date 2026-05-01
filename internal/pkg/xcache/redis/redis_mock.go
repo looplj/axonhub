@@ -157,3 +157,17 @@ func (mr *MockRedisClientInterfaceMockRecorder) TTL(ctx, key interface{}) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TTL", reflect.TypeOf((*MockRedisClientInterface)(nil).TTL), ctx, key)
 }
+
+// Scan mocks base method.
+func (m *MockRedisClientInterface) Scan(ctx context.Context, cursor uint64, match string, count int64) *v9.ScanCmd {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Scan", ctx, cursor, match, count)
+	ret0, _ := ret[0].(*v9.ScanCmd)
+	return ret0
+}
+
+// Scan indicates an expected call of Scan.
+func (mr *MockRedisClientInterfaceMockRecorder) Scan(ctx, cursor, match, count interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Scan", reflect.TypeOf((*MockRedisClientInterface)(nil).Scan), ctx, cursor, match, count)
+}
