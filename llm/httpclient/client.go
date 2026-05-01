@@ -205,9 +205,19 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}()
 
-	body, err := io.ReadAll(rawResp.Body)
+	const maxResponseBodySize = 100 * 1024 * 1024 // 100MB
+	limitedBody := io.LimitReader(rawResp.Body, maxResponseBodySize)
+	body, err := io.ReadAll(limitedBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Detect silent truncation: try to read one more byte from the underlying body.
+	// LimitReader returns io.EOF at the limit, but the underlying reader may still
+	// have data — meaning the response exceeded maxResponseBodySize.
+	var peek [1]byte
+	if n, _ := rawResp.Body.Read(peek[:]); n > 0 {
+		return nil, fmt.Errorf("response body exceeded maximum size limit (%d bytes), truncated", maxResponseBodySize)
 	}
 
 	if rawResp.StatusCode >= 400 {
@@ -216,7 +226,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 				slog.String("method", rawReq.Method),
 				slog.String("url", rawReq.URL.String()),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.String("body", truncateBody(body)))
 		}
 
 		return nil, &Error{
@@ -234,7 +244,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 			slog.String("method", rawReq.Method),
 			slog.String("url", rawReq.URL.String()),
 			slog.Int("status_code", rawResp.StatusCode),
-			slog.String("body", string(body)))
+			slog.String("body", truncateBody(body)))
 	}
 
 	// Build generic response
@@ -291,7 +301,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 				slog.String("method", rawReq.Method),
 				slog.String("url", rawReq.URL.String()),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.String("body", truncateBody(body)))
 		}
 
 		return nil, &Error{
@@ -417,4 +427,15 @@ func (hc *HttpClient) extractHeaders(headers http.Header) map[string]string {
 	}
 
 	return result
+}
+
+// truncateBody limits the response body logged at debug level to prevent
+// leaking large or sensitive payloads. Bodies longer than 512 bytes are
+// truncated with an ellipsis suffix.
+func truncateBody(body []byte) string {
+	const maxLen = 512
+	if len(body) <= maxLen {
+		return string(body)
+	}
+	return string(body[:maxLen]) + "... (truncated)"
 }
