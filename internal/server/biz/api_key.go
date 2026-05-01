@@ -30,7 +30,7 @@ import (
 
 const (
 	//nolint:gosec // Checked.
-	NoAuthAPIKeyValue = "AXONHUB_API_KEY_NO_AUTH"
+	NoAuthAPIKeyValue = ""
 
 	//nolint:gosec // Checked.
 	NoAuthAPIKeyName = "No Auth System Key"
@@ -637,13 +637,21 @@ func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error
 }
 
 func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, error) {
-	existing, err := s.GetAPIKey(ctx, NoAuthAPIKeyValue)
+	// Check if noauth API key already exists by querying by type.
+	existing, err := s.entFromContext(ctx).APIKey.Query().
+		Where(apikey.TypeEQ(apikey.TypeNoauth), apikey.DeletedAtEQ(0)).
+		First(ctx)
 	if err == nil {
+		// Load with project edge for compatibility.
+		project, projErr := s.ProjectService.GetProjectByID(ctx, existing.ProjectID)
+		if projErr == nil {
+			existing.Edges.Project = project
+		}
 		return existing, nil
 	}
 
-	if !errors.Is(err, ErrInvalidAPIKey) {
-		return nil, fmt.Errorf("failed to query noauth api key from cache: %w", err)
+	if !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to query noauth api key: %w", err)
 	}
 
 	client := s.entFromContext(ctx)
@@ -659,9 +667,14 @@ func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, er
 		return nil, fmt.Errorf("failed to get owner user for noauth api key: %w", err)
 	}
 
+	generatedKey, err := GenerateAPIKey(s.keyPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate noauth api key: %w", err)
+	}
+
 	apiKey, err := client.APIKey.Create().
 		SetName(NoAuthAPIKeyName).
-		SetKey(NoAuthAPIKeyValue).
+		SetKey(generatedKey).
 		SetUserID(owner.ID).
 		SetProjectID(proj.ID).
 		SetType(apikey.TypeNoauth).
@@ -684,3 +697,4 @@ func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, er
 
 	return apiKey, nil
 }
+

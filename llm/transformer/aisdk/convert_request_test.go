@@ -268,15 +268,14 @@ func TestConvertToLLMRequestComprehensive_AssistantMessage(t *testing.T) {
 		require.Len(t, result.Messages, 1)
 
 		assert.Equal(t, "assistant", result.Messages[0].Role)
-		require.Len(t, result.Messages[0].Content.MultipleContent, 2)
+		require.Len(t, result.Messages[0].Content.MultipleContent, 1)
 
-		// Check reasoning part (mapped to text)
-		reasoningPart := result.Messages[0].Content.MultipleContent[0]
-		assert.Equal(t, "text", reasoningPart.Type)
-		assert.Equal(t, "Thinking...", *reasoningPart.Text)
+		// Reasoning is set on ReasoningContent field, not as a content part
+		require.NotNil(t, result.Messages[0].ReasoningContent)
+		assert.Equal(t, "Thinking...", *result.Messages[0].ReasoningContent)
 
 		// Check text part
-		textPart := result.Messages[0].Content.MultipleContent[1]
+		textPart := result.Messages[0].Content.MultipleContent[0]
 		assert.Equal(t, "text", textPart.Type)
 		assert.Equal(t, "Hello, human!", *textPart.Text)
 	})

@@ -21,6 +21,7 @@ type RedisClientInterface interface {
 	FlushAll(ctx context.Context) *redis.StatusCmd
 	SAdd(ctx context.Context, key string, members ...any) *redis.IntCmd
 	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
+	Scan(ctx context.Context, cursor uint64, match string, count int64) *redis.ScanCmd
 }
 
 const (
@@ -154,12 +155,48 @@ func (gs *RedisStore[T]) GetType() string {
 	return RedisType
 }
 
-// Clear resets all data in the store.
+// Clear resets all data in this store by scanning and deleting keys.
+// Uses SCAN + DEL instead of FlushAll to avoid affecting other services
+// that may share the same Redis instance.
 func (gs *RedisStore[T]) Clear(ctx context.Context) error {
-	return gs.client.FlushAll(ctx).Err()
+	var cursor uint64
+	for {
+		keys, nextCursor, err := gs.client.Scan(ctx, cursor, "*", 100).Result()
+		if err != nil {
+			return fmt.Errorf("scan keys: %w", err)
+		}
+		if len(keys) > 0 {
+			if err := gs.client.Del(ctx, keys...).Err(); err != nil {
+				return fmt.Errorf("delete keys: %w", err)
+			}
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
 }
 
-// Invalidate invalidates some cache data in Redis for given options.
+// Invalidate invalidates cache entries by tag using the tag-set mechanism.
+// Only keys associated with the given tags are deleted, leaving other
+// services' data untouched.
 func (gs *RedisStore[T]) Invalidate(ctx context.Context, options ...lib_store.InvalidateOption) error {
-	return gs.client.FlushAll(ctx).Err()
+	opts := lib_store.ApplyInvalidateOptions(options...)
+	for _, tag := range opts.Tags {
+		tagKey := fmt.Sprintf(RedisTagPattern, tag)
+		keys, err := gs.client.SMembers(ctx, tagKey).Result()
+		if err != nil {
+			return fmt.Errorf("get tag members: %w", err)
+		}
+		if len(keys) > 0 {
+			if err := gs.client.Del(ctx, keys...).Err(); err != nil {
+				return fmt.Errorf("delete tag keys: %w", err)
+			}
+		}
+		if err := gs.client.Del(ctx, tagKey).Err(); err != nil {
+			return fmt.Errorf("delete tag: %w", err)
+		}
+	}
+	return nil
 }

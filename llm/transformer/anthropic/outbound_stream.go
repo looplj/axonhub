@@ -190,8 +190,14 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			}
 			resp.Choices = []llm.Choice{choice}
 		} else {
-			//nolint:nilnil // It is expected.
-			return nil, nil
+			// Non-tool_use content block: return empty response to maintain stream consistency
+			// and prevent index tracking issues in multi tool call scenarios.
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{},
+				},
+			}
 		}
 
 	case "content_block_delta":

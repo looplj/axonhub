@@ -31,6 +31,8 @@ func RequestFromLLM(r *llm.Request) *Request {
 		Metadata:            r.Metadata,
 		Modalities:          r.Modalities,
 		ReasoningEffort:     r.ReasoningEffort,
+		ReasoningBudget:     r.ReasoningBudget,
+		ReasoningSummary:    r.ReasoningSummary,
 		ServiceTier:         r.ServiceTier,
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,

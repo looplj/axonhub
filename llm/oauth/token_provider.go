@@ -16,13 +16,18 @@ import (
 )
 
 func wrapHttpError(err error) error {
+	const maxBodyLen = 200
 	if err == nil {
 		return nil
 	}
 
 	var httpErr *httpclient.Error
 	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
-		return fmt.Errorf("%w (response body: %s)", err, string(httpErr.Body))
+		bodyStr := string(httpErr.Body)
+		if len(bodyStr) > maxBodyLen {
+			bodyStr = bodyStr[:maxBodyLen] + "...(truncated)"
+		}
+		return fmt.Errorf("%w (response body: %s)", err, bodyStr)
 	}
 
 	return err
