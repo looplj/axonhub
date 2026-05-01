@@ -16,6 +16,12 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+// Default timeout values for HTTP client operations.
+const (
+	DefaultResponseHeaderTimeout = 60 * time.Second
+	DefaultRequestTimeout        = 300 * time.Second
+)
+
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
 	client      *http.Client
@@ -55,6 +61,7 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: DefaultResponseHeaderTimeout,
 	}
 
 	if options.insecureSkipVerify {
@@ -137,40 +144,28 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 		opt(&options)
 	}
 
-	client := &http.Client{}
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: DefaultResponseHeaderTimeout,
+	}
 
 	if options.insecureSkipVerify {
-		var transport *http.Transport
-		if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
-			transport = defaultTransport.Clone()
-		} else {
-			// Fall back to a transport close to http.DefaultTransport when it has been replaced.
-			transport = (&http.Transport{
-				Proxy: getProxyFunc(nil),
-				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-				ForceAttemptHTTP2:     true,
-				MaxIdleConns:          100,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-			})
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // User-configured option for self-signed certificates
 		}
-
-		if transport.TLSClientConfig == nil {
-			transport.TLSClientConfig = &tls.Config{}
-		} else {
-			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
-		}
-
-		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
-		client.Transport = transport
 	}
 
 	return &HttpClient{
-		client: client,
+		client: &http.Client{Transport: transport},
 		opts:   opts,
 	}
 }
