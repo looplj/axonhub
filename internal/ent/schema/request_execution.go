@@ -26,7 +26,10 @@ func (RequestExecution) Indexes() []ent.Index {
 		// Index for window function: find latest execution per request
 		index.Fields("request_id", "status", "created_at").
 			StorageKey("request_executions_by_request_id_status_created_at"),
-		index.Fields("channel_id").
+		// Index for ordering executions by created_at per request
+		index.Fields("request_id", "created_at").
+			StorageKey("request_executions_by_request_id_created_at"),
+		index.Fields("channel_id", "created_at").
 			StorageKey("request_executions_by_channel_id_created_at"),
 	}
 }
