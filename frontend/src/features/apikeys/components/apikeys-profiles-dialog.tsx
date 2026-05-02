@@ -338,6 +338,10 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                               defaultExpanded={isActive}
                               portalContainer={dialogContent}
                               selectedProjectId={selectedProjectId}
+                              onSaveTemplate={(idx) => {
+                                setSaveTemplateProfileIndex(idx);
+                                setSaveTemplateOpen(true);
+                              }}
                             />
                           </div>
                         );
@@ -433,6 +437,7 @@ interface ProfileCardProps {
   portalContainer?: HTMLElement | null;
   /** 当前选中的 project ID */
   selectedProjectId?: string | null;
+  onSaveTemplate: (profileIndex: number) => void;
 }
 
 function ProfileCard({
@@ -447,6 +452,7 @@ function ProfileCard({
   defaultExpanded = false,
   portalContainer,
   selectedProjectId,
+  onSaveTemplate,
 }: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded);
@@ -566,10 +572,7 @@ function ProfileCard({
               type='button'
               variant='ghost'
               size='sm'
-              onClick={() => {
-                setSaveTemplateProfileIndex(profileIndex);
-                setSaveTemplateOpen(true);
-              }}
+              onClick={() => onSaveTemplate(profileIndex)}
             >
               {t('apikeys.templates.saveAsTemplateButton')}
             </Button>
