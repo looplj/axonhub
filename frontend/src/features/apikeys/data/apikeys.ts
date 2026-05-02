@@ -684,10 +684,9 @@ export function useApiKeyProfileTemplates(projectID: string | null) {
     queryFn: async () => {
       try {
         const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-        const where = projectID ? { projectID: buildGUID('Project', projectID) } : undefined;
         const data = await graphqlRequest<{ apiKeyProfileTemplates: { edges: { node: ApiKeyProfileTemplate }[]; totalCount: number } }>(
           APIKEY_PROFILE_TEMPLATES_QUERY,
-          { where: where ?? {} },
+          {},
           headers
         );
         const templates = (data?.apiKeyProfileTemplates?.edges ?? []).map((e) => e.node);
