@@ -766,12 +766,12 @@ export function useDeleteApiKeyProfileTemplate() {
         headers
       );
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
-      toast.success(t('apikeys.templates.successMessage'));
+      toast.success(t('apikeys.templates.deleteSuccessMessage', { name: data.deleteApiKeyProfileTemplate.name }));
     },
     onError: () => {
-      toast.error(t('common.errors.internalServerError'));
+      toast.error(t('apikeys.templates.deleteErrorMessage'));
     },
   });
 }

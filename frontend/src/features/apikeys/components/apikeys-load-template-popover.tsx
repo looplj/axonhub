@@ -4,6 +4,16 @@ import { format } from 'date-fns';
 import { IconFileDownload, IconLoader2, IconTemplate, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useApiKeyProfileTemplates, useLoadApiKeyProfileTemplate, useDeleteApiKeyProfileTemplate } from '../data/apikeys';
@@ -76,6 +86,7 @@ export function ApiKeyLoadTemplatePopover({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [loadingTemplateId, setLoadingTemplateId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiKeyProfileTemplate | null>(null);
 
   const { data: templates, isLoading: isLoadingTemplates } = useApiKeyProfileTemplates(projectID);
   const loadTemplate = useLoadApiKeyProfileTemplate();
@@ -101,15 +112,13 @@ export function ApiKeyLoadTemplatePopover({
     );
   };
 
-  const handleDelete = (template: ApiKeyProfileTemplate) => {
-    setDeletingTemplateId(template.id);
-    deleteTemplate.mutate(template.id, {
-      onSuccess: () => {
-        toast.success(t('apikeys.templates.deleteSuccessMessage', { name: template.name }));
-        setDeletingTemplateId(null);
-      },
-      onError: () => {
-        toast.error(t('apikeys.templates.deleteErrorMessage'));
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const targetId = deleteTarget.id;
+    setDeletingTemplateId(targetId);
+    setDeleteTarget(null);
+    deleteTemplate.mutate(targetId, {
+      onSettled: () => {
         setDeletingTemplateId(null);
       },
     });
@@ -119,53 +128,76 @@ export function ApiKeyLoadTemplatePopover({
   const isEmpty = !isLoadingTemplates && templateList.length === 0;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant='outline' size='sm' className='flex items-center gap-2'>
-          <IconFileDownload className='h-4 w-4' />
-          {t('apikeys.templates.loadButton')}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className='w-80 p-0' align='start'>
-        <div className='px-4 py-3 border-b'>
-          <h4 className='text-sm font-medium'>{t('apikeys.templates.loadTitle')}</h4>
-        </div>
-
-        {isEmpty && (
-          <div className='flex flex-col items-center justify-center gap-2 px-4 py-8'>
-            <IconTemplate className='text-muted-foreground/50 h-8 w-8' />
-            <p className='text-muted-foreground text-sm font-medium'>
-              {t('apikeys.templates.emptyTitle')}
-            </p>
-            <p className='text-muted-foreground/70 text-center text-xs'>
-              {t('apikeys.templates.emptyMessage')}
-            </p>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant='outline' size='sm' className='flex items-center gap-2'>
+            <IconFileDownload className='h-4 w-4' />
+            {t('apikeys.templates.loadButton')}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className='w-80 p-0' align='start'>
+          <div className='px-4 py-3 border-b'>
+            <h4 className='text-sm font-medium'>{t('apikeys.templates.loadTitle')}</h4>
           </div>
-        )}
 
-        {isLoadingTemplates && !isEmpty && (
-          <div className='flex items-center justify-center py-8'>
-            <IconLoader2 className='text-muted-foreground h-5 w-5 animate-spin' />
-          </div>
-        )}
-
-        {!isEmpty && !isLoadingTemplates && (
-          <ScrollArea className='max-h-[280px]'>
-            <div className='py-1'>
-              {templateList.map((template) => (
-                <TemplateItem
-                  key={template.id}
-                  template={template}
-                  onLoad={handleLoad}
-                  isLoading={loadingTemplateId === template.id}
-                  onDelete={handleDelete}
-                  isDeleting={deletingTemplateId === template.id}
-                />
-              ))}
+          {isEmpty && (
+            <div className='flex flex-col items-center justify-center gap-2 px-4 py-8'>
+              <IconTemplate className='text-muted-foreground/50 h-8 w-8' />
+              <p className='text-muted-foreground text-sm font-medium'>
+                {t('apikeys.templates.emptyTitle')}
+              </p>
+              <p className='text-muted-foreground/70 text-center text-xs'>
+                {t('apikeys.templates.emptyMessage')}
+              </p>
             </div>
-          </ScrollArea>
-        )}
-      </PopoverContent>
-    </Popover>
+          )}
+
+          {isLoadingTemplates && !isEmpty && (
+            <div className='flex items-center justify-center py-8'>
+              <IconLoader2 className='text-muted-foreground h-5 w-5 animate-spin' />
+            </div>
+          )}
+
+          {!isEmpty && !isLoadingTemplates && (
+            <ScrollArea className='max-h-[280px]'>
+              <div className='py-1'>
+                {templateList.map((template) => (
+                  <TemplateItem
+                    key={template.id}
+                    template={template}
+                    onLoad={handleLoad}
+                    isLoading={loadingTemplateId === template.id}
+                    onDelete={setDeleteTarget}
+                    isDeleting={deletingTemplateId === template.id}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </PopoverContent>
+      </Popover>
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('apikeys.templates.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('apikeys.templates.deleteConfirmDescription', { name: deleteTarget?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteTemplate.isPending}
+              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+            >
+              {deleteTemplate.isPending ? t('common.buttons.saving') : t('apikeys.templates.deleteButton')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

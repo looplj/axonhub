@@ -167,6 +167,8 @@
   "apikeys.templates.loadSuccessMessage": "Profile '{{name}}' loaded successfully",
   "apikeys.templates.loadErrorMessage": "Failed to load template",
   "apikeys.templates.deleteButton": "Delete template",
+  "apikeys.templates.deleteConfirmTitle": "Delete Template",
+  "apikeys.templates.deleteConfirmDescription": "Are you sure you want to delete the template '{{name}}'? This action cannot be undone.",
   "apikeys.templates.deleteSuccessMessage": "Template '{{name}}' deleted",
   "apikeys.templates.deleteErrorMessage": "Failed to delete template"
 }
