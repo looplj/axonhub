@@ -186,8 +186,8 @@ export const apiKeyProfileTemplateSchema = z.object({
   description: z.string().default(''),
   profile: apiKeyProfileSchema,
   projectID: z.string().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type ApiKeyProfileTemplate = z.infer<typeof apiKeyProfileTemplateSchema>;
 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
+import { buildGUID } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -273,6 +274,7 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
           updatedAt
           name
           description
+          projectID
           profile {
             name
             modelMappings { from to }
@@ -682,7 +684,7 @@ export function useApiKeyProfileTemplates(projectID: string | null) {
     queryFn: async () => {
       try {
         const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-        const where = projectID ? { projectID } : undefined;
+        const where = projectID ? { projectID: buildGUID('Project', projectID) } : undefined;
         const data = await graphqlRequest<{ apiKeyProfileTemplates: { edges: { node: ApiKeyProfileTemplate }[]; totalCount: number } }>(
           APIKEY_PROFILE_TEMPLATES_QUERY,
           { where: where ?? {} },
@@ -707,15 +709,19 @@ export function useCreateApiKeyProfileTemplate() {
   return useMutation({
     mutationFn: (input: CreateApiKeyProfileTemplateInput) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const inputWithGUID = {
+        ...input,
+        projectID: input.projectID ? buildGUID('Project', input.projectID) : null,
+      };
       return graphqlRequest<{ createApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
-        { input },
+        { input: inputWithGUID },
         headers
       );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
-      toast.success(t('apikeys.templates.messages.createSuccess'));
+      toast.success(t('apikeys.templates.successMessage'));
     },
     onError: () => {
       toast.error(t('common.errors.internalServerError'));
@@ -739,7 +745,7 @@ export function useUpdateApiKeyProfileTemplate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
-      toast.success(t('apikeys.templates.messages.updateSuccess'));
+      toast.success(t('apikeys.templates.successMessage'));
     },
     onError: () => {
       toast.error(t('common.errors.internalServerError'));
@@ -763,7 +769,7 @@ export function useDeleteApiKeyProfileTemplate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
-      toast.success(t('apikeys.templates.messages.deleteSuccess'));
+      toast.success(t('apikeys.templates.successMessage'));
     },
     onError: () => {
       toast.error(t('common.errors.internalServerError'));
@@ -788,7 +794,7 @@ export function useLoadApiKeyProfileTemplate() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.apiKeyID] });
-      toast.success(t('apikeys.templates.messages.loadSuccess'));
+      toast.success(t('apikeys.templates.loadSuccessMessage'));
     },
     onError: () => {
       toast.error(t('common.errors.internalServerError'));
