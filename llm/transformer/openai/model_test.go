@@ -246,7 +246,7 @@ func TestRoundTrip_Request(t *testing.T) {
 
 	// Convert to llm.Request and back
 	llmReq := original.ToLLMRequest()
-	roundTripped := RequestFromLLM(llmReq)
+	roundTripped := RequestFromLLM(llmReq, ReasoningFieldNone)
 
 	require.Equal(t, original.Model, roundTripped.Model)
 	require.Len(t, roundTripped.Messages, len(original.Messages))

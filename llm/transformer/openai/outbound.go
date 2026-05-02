@@ -28,6 +28,20 @@ const (
 	PlatformGoogle PlatformType = "google"
 )
 
+// ReasoningField specifies which reasoning field to use in outbound messages.
+type ReasoningField string
+
+const (
+	// ReasoningFieldContent uses reasoning_content field (DeepSeek, Gemini, etc).
+	ReasoningFieldContent ReasoningField = "reasoning_content"
+	// ReasoningFieldReasoning uses reasoning field (NanoGPT, OpenRouter).
+	ReasoningFieldReasoning ReasoningField = "reasoning"
+	// ReasoningFieldNone strips all reasoning fields (Fireworks, bailian, etc).
+	ReasoningFieldNone ReasoningField = "none"
+	// ReasoningFieldAll preserves both reasoning and reasoning_content fields (default).
+	ReasoningFieldAll ReasoningField = "all"
+)
+
 // Config holds all configuration for the OpenAI outbound transformer.
 type Config struct {
 	// Platform configuration
@@ -49,6 +63,11 @@ type Config struct {
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// ReasoningField specifies which reasoning field to use in outbound messages.
+	// Use ReasoningFieldContent for DeepSeek/Gemini, ReasoningFieldReasoning for NanoGPT/OpenRouter,
+	// or ReasoningFieldNone (default) to strip all reasoning fields.
+	ReasoningField ReasoningField `json:"reasoning_field,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
@@ -151,8 +170,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
+	// Determine which reasoning field to use, default to ReasoningFieldNone
+	reasoningField := t.config.ReasoningField
+	if reasoningField == "" {
+		reasoningField = ReasoningFieldNone
+	}
+
 	// Convert to OpenAI Request format (this strips helper fields)
-	oaiReq := RequestFromLLM(llmReq)
+	oaiReq := RequestFromLLM(llmReq, reasoningField)
 	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformOpenAI:

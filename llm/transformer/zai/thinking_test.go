@@ -131,7 +131,7 @@ func TestZAIRequestWithoutThinking(t *testing.T) {
 	}
 
 	zaiReq := Request{
-		Request: *openai.RequestFromLLM(chatReq),
+		Request: *openai.RequestFromLLM(chatReq, openai.ReasoningFieldContent),
 		UserID:  "test-user",
 	}
 
