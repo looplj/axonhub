@@ -165,5 +165,8 @@
   "apikeys.templates.templateNameRequired": "模板名称不能为空",
   "apikeys.templates.templateNameDuplicate": "该名称的模板已存在",
   "apikeys.templates.loadSuccessMessage": "配置 '{{name}}' 加载成功",
-  "apikeys.templates.loadErrorMessage": "加载模板失败"
+  "apikeys.templates.loadErrorMessage": "加载模板失败",
+  "apikeys.templates.deleteButton": "删除模板",
+  "apikeys.templates.deleteSuccessMessage": "模板 '{{name}}' 已删除",
+  "apikeys.templates.deleteErrorMessage": "删除模板失败"
 }

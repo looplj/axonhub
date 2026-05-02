@@ -165,5 +165,8 @@
   "apikeys.templates.templateNameRequired": "Template name is required",
   "apikeys.templates.templateNameDuplicate": "A template with this name already exists",
   "apikeys.templates.loadSuccessMessage": "Profile '{{name}}' loaded successfully",
-  "apikeys.templates.loadErrorMessage": "Failed to load template"
+  "apikeys.templates.loadErrorMessage": "Failed to load template",
+  "apikeys.templates.deleteButton": "Delete template",
+  "apikeys.templates.deleteSuccessMessage": "Template '{{name}}' deleted",
+  "apikeys.templates.deleteErrorMessage": "Failed to delete template"
 }
