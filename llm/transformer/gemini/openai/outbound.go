@@ -143,6 +143,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		PlatformType:   openai.PlatformGoogle,
 		BaseURL:        baseURL,
 		APIKeyProvider: config.APIKeyProvider,
+		ReasoningField: openai.ReasoningFieldContent,
 	}
 
 	outbound, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
@@ -340,7 +341,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request
-	oaiReq := openai.RequestFromLLM(&req)
+	oaiReq := openai.RequestFromLLM(&req, openai.ReasoningFieldContent)
 	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq)
 
 	geminiReq := Request{Request: *oaiReq}

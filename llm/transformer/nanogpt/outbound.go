@@ -45,6 +45,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		PlatformType:   openai.PlatformOpenAI,
 		BaseURL:        config.BaseURL,
 		APIKeyProvider: config.APIKeyProvider,
+		ReasoningField: openai.ReasoningFieldReasoning,
 	}
 
 	t, err := openai.NewOutboundTransformerWithConfig(oaiConfig)

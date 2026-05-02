@@ -39,6 +39,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		PlatformType:   openai.PlatformOpenAI,
 		BaseURL:        config.BaseURL,
 		APIKeyProvider: config.APIKeyProvider,
+		ReasoningField: openai.ReasoningFieldContent,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create longcat outbound transformer: %w", err)
