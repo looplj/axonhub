@@ -597,9 +597,14 @@ var (
 				Columns: []*schema.Column{RequestExecutionsColumns[20], RequestExecutionsColumns[12], RequestExecutionsColumns[1]},
 			},
 			{
+				Name:    "request_executions_by_request_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{RequestExecutionsColumns[20], RequestExecutionsColumns[1]},
+			},
+			{
 				Name:    "request_executions_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[18]},
+				Columns: []*schema.Column{RequestExecutionsColumns[18], RequestExecutionsColumns[1]},
 			},
 		},
 	}

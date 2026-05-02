@@ -121,7 +121,7 @@ func (s *responsesInboundStream) Next() bool {
 	// Try to get the next chunk from source
 	if !s.source.Next() {
 		// Source stream ended - check if we need to emit an error event
-		if s.err == nil && s.source.Err() != nil {
+		if s.err == nil && !s.errorEventEmitted && s.source.Err() != nil {
 			sourceErr := s.source.Err()
 			// Don't emit error event for client cancellation
 			if errors.Is(sourceErr, context.Canceled) {
@@ -133,8 +133,14 @@ func (s *responsesInboundStream) Next() bool {
 				return false
 			}
 			// Emit an error event for upstream failures
-			s.emitStreamErrorEvent(sourceErr)
+			if err := s.emitStreamErrorEvent(sourceErr); err != nil {
+				s.err = fmt.Errorf("failed to enqueue stream error event: %w", err)
+				return false
+			}
+
+			return s.Next()
 		}
+
 		return false
 	}
 
@@ -858,24 +864,30 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 	return nil
 }
 
-func (s *responsesInboundStream) emitStreamErrorEvent(err error) {
+func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
 	code, message := classifyStreamError(err)
 
 	if s.hasResponseCreated {
 		response := s.buildFailedResponse(code, message)
-		_ = s.enqueueEvent(&StreamEvent{
+		if err := s.enqueueEvent(&StreamEvent{
 			Type:     StreamEventTypeResponseFailed,
 			Response: response,
-		})
+		}); err != nil {
+			return err
+		}
 	} else {
-		_ = s.enqueueEvent(&StreamEvent{
+		if err := s.enqueueEvent(&StreamEvent{
 			Type:    StreamEventTypeError,
 			Code:    code,
 			Message: message,
-		})
+		}); err != nil {
+			return err
+		}
 	}
 
 	s.errorEventEmitted = true
+
+	return nil
 }
 
 func classifyStreamError(err error) (code, message string) {
