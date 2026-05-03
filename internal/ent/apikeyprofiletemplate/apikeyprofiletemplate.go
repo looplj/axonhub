@@ -84,8 +84,6 @@ var (
 	DefaultDeletedAt int
 	// DefaultDescription holds the default value on creation for the "description" field.
 	DefaultDescription string
-	// DefaultProjectID holds the default value on creation for the "project_id" field.
-	DefaultProjectID int
 	// DefaultProfile holds the default value on creation for the "profile" field.
 	DefaultProfile *objects.APIKeyProfile
 )

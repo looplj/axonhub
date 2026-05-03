@@ -30,7 +30,7 @@ type APIKeyProfileTemplate struct {
 	Name string `json:"name,omitempty"`
 	// Template description
 	Description string `json:"description,omitempty"`
-	// Project ID, default to 1 for backward compatibility
+	// Project ID, set via project edge
 	ProjectID int `json:"project_id,omitempty"`
 	// Profile holds the value of the "profile" field.
 	Profile *objects.APIKeyProfile `json:"profile,omitempty"`

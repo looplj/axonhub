@@ -41,8 +41,7 @@ func (APIKeyProfileTemplate) Fields() []ent.Field {
 			Comment("Template description"),
 		field.Int("project_id").
 			Immutable().
-			Default(1).
-			Comment("Project ID, default to 1 for backward compatibility").
+			Comment("Project ID, set via project edge").
 			Annotations(
 				entgql.Skip(entgql.SkipMutationUpdateInput),
 			),

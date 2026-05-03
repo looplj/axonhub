@@ -266,7 +266,7 @@ const APIKEY_TOKEN_USAGE_STATS_QUERY = `
 
 const APIKEY_PROFILE_TEMPLATES_QUERY = `
   query ApiKeyProfileTemplates($where: APIKeyProfileTemplateWhereInput) {
-    apiKeyProfileTemplates(first: 1000, where: $where) {
+    apiKeyProfileTemplates(first: 100, where: $where) {
       edges {
         node {
           id
@@ -303,7 +303,7 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
 `;
 
 const CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION = `
-  mutation CreateApiKeyProfileTemplate($input: CreateAPIKeyProfileTemplateInput!, $profile: APIKeyProfileInput) {
+  mutation CreateApiKeyProfileTemplate($input: CreateAPIKeyProfileTemplateInput!, $profile: APIKeyProfileInput!) {
     createApiKeyProfileTemplate(input: $input, profile: $profile) {
       id
       createdAt
@@ -713,7 +713,7 @@ export function useCreateApiKeyProfileTemplate() {
       };
       return graphqlRequest<{ createApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
-        { input: inputFields, profile: profile ? { ...profile, name: input.name } : null },
+        { input: inputFields, profile: { ...profile, name: input.name } },
         headers
       );
     },

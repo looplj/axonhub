@@ -121,7 +121,7 @@ type APIKeyProfileTemplate implements Node {
   """
   description: String!
   """
-  Project ID, default to 1 for backward compatibility
+  Project ID, set via project edge
   """
   projectID: ID!
   profile: APIKeyProfile

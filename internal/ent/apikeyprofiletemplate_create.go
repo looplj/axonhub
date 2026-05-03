@@ -92,14 +92,6 @@ func (_c *APIKeyProfileTemplateCreate) SetProjectID(v int) *APIKeyProfileTemplat
 	return _c
 }
 
-// SetNillableProjectID sets the "project_id" field if the given value is not nil.
-func (_c *APIKeyProfileTemplateCreate) SetNillableProjectID(v *int) *APIKeyProfileTemplateCreate {
-	if v != nil {
-		_c.SetProjectID(*v)
-	}
-	return _c
-}
-
 // SetProfile sets the "profile" field.
 func (_c *APIKeyProfileTemplateCreate) SetProfile(v *objects.APIKeyProfile) *APIKeyProfileTemplateCreate {
 	_c.mutation.SetProfile(v)
@@ -169,10 +161,6 @@ func (_c *APIKeyProfileTemplateCreate) defaults() error {
 	if _, ok := _c.mutation.Description(); !ok {
 		v := apikeyprofiletemplate.DefaultDescription
 		_c.mutation.SetDescription(v)
-	}
-	if _, ok := _c.mutation.ProjectID(); !ok {
-		v := apikeyprofiletemplate.DefaultProjectID
-		_c.mutation.SetProjectID(v)
 	}
 	if _, ok := _c.mutation.Profile(); !ok {
 		v := apikeyprofiletemplate.DefaultProfile

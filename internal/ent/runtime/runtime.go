@@ -126,10 +126,6 @@ func init() {
 	apikeyprofiletemplateDescDescription := apikeyprofiletemplateFields[1].Descriptor()
 	// apikeyprofiletemplate.DefaultDescription holds the default value on creation for the description field.
 	apikeyprofiletemplate.DefaultDescription = apikeyprofiletemplateDescDescription.Default.(string)
-	// apikeyprofiletemplateDescProjectID is the schema descriptor for project_id field.
-	apikeyprofiletemplateDescProjectID := apikeyprofiletemplateFields[2].Descriptor()
-	// apikeyprofiletemplate.DefaultProjectID holds the default value on creation for the project_id field.
-	apikeyprofiletemplate.DefaultProjectID = apikeyprofiletemplateDescProjectID.Default.(int)
 	// apikeyprofiletemplateDescProfile is the schema descriptor for profile field.
 	apikeyprofiletemplateDescProfile := apikeyprofiletemplateFields[3].Descriptor()
 	// apikeyprofiletemplate.DefaultProfile holds the default value on creation for the profile field.

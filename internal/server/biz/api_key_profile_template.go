@@ -2,14 +2,13 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
-	"github.com/looplj/axonhub/internal/log"
+
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -154,10 +153,7 @@ func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templat
 			return fmt.Errorf("template and API key must belong to the same project")
 		}
 
-		templateProfile, err := deepCopyProfile(template.Profile)
-		if err != nil {
-			return fmt.Errorf("failed to copy template profile: %w", err)
-		}
+		templateProfile := template.Profile.Clone()
 		if templateProfile == nil {
 			return fmt.Errorf("template has no profile")
 		}
@@ -192,58 +188,6 @@ func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templat
 	return updatedKey, nil
 }
 
-func (s *APIKeyProfileTemplateService) SaveAsTemplate(ctx context.Context, apiKeyID int, profileName, templateName, description string) (*ent.APIKeyProfileTemplate, error) {
-	var template *ent.APIKeyProfileTemplate
-	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
-		client := s.entFromContext(ctx)
-
-		apiKey, getErr := client.APIKey.Get(ctx, apiKeyID)
-		if getErr != nil {
-			return fmt.Errorf("failed to get API key: %w", getErr)
-		}
-
-		if apiKey.Profiles == nil {
-			return fmt.Errorf("API key has no profiles")
-		}
-
-		var sourceProfile *objects.APIKeyProfile
-		for i := range apiKey.Profiles.Profiles {
-			if apiKey.Profiles.Profiles[i].Name == profileName {
-				sourceProfile = &apiKey.Profiles.Profiles[i]
-				break
-			}
-		}
-
-		if sourceProfile == nil {
-			return fmt.Errorf("profile '%s' not found in API key", profileName)
-		}
-
-		copiedProfile, getErr := deepCopyProfile(sourceProfile)
-		if getErr != nil {
-			log.Error(ctx, "Failed to copy API key profile for template", log.Cause(getErr), log.String("profile_name", profileName))
-			return fmt.Errorf("failed to copy profile: %w", getErr)
-		}
-
-		var saveErr error
-		template, saveErr = client.APIKeyProfileTemplate.Create().
-			SetName(templateName).
-			SetDescription(description).
-			SetProjectID(apiKey.ProjectID).
-			SetProfile(copiedProfile).
-			Save(ctx)
-		if saveErr != nil {
-			return fmt.Errorf("failed to create template: %w", saveErr)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return template, nil
-}
-
 func resolveProfileNameConflict(existingProfiles []objects.APIKeyProfile, newName string) string {
 	nameSet := make(map[string]bool, len(existingProfiles))
 	for _, p := range existingProfiles {
@@ -260,22 +204,4 @@ func resolveProfileNameConflict(existingProfiles []objects.APIKeyProfile, newNam
 			return candidate
 		}
 	}
-}
-
-func deepCopyProfile(profile *objects.APIKeyProfile) (*objects.APIKeyProfile, error) {
-	if profile == nil {
-		return nil, nil
-	}
-
-	data, err := json.Marshal(profile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal profile for deep copy: %w", err)
-	}
-
-	var copy objects.APIKeyProfile
-	if err := json.Unmarshal(data, &copy); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal profile for deep copy: %w", err)
-	}
-
-	return &copy, nil
 }

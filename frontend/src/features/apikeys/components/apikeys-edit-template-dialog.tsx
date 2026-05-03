@@ -540,7 +540,10 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
                                       type='number'
                                       min={1}
                                       value={(field.value as unknown as number | null | undefined) ?? ''}
-                                      onChange={(e) => field.onChange(Number(e.target.value))}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        field.onChange(v === '' ? null : Number(v));
+                                      }}
                                     />
                                   </FormControl>
                                   <FormMessage />

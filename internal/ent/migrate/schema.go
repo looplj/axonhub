@@ -69,7 +69,7 @@ var (
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "profile", Type: field.TypeJSON, Nullable: true},
-		{Name: "project_id", Type: field.TypeInt, Default: 1},
+		{Name: "project_id", Type: field.TypeInt},
 	}
 	// APIKeyProfileTemplatesTable holds the schema information for the "api_key_profile_templates" table.
 	APIKeyProfileTemplatesTable = &schema.Table{
