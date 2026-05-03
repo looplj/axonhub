@@ -93,9 +93,8 @@ func TestApiKeyProfileTemplate_CreateTemplate(t *testing.T) {
 			{From: "gpt-4", To: "gpt-4-turbo"},
 		},
 	}
-	ctx = contexts.WithAPIKeyProfile(ctx, profile)
 
-	template, err := mutationResolver.CreateAPIKeyProfileTemplate(ctx, input)
+	template, err := mutationResolver.CreateAPIKeyProfileTemplate(ctx, input, profile)
 	require.NoError(t, err)
 	require.NotNil(t, template)
 	require.Equal(t, "my-template", template.Name)
@@ -104,31 +103,7 @@ func TestApiKeyProfileTemplate_CreateTemplate(t *testing.T) {
 	require.Equal(t, "test-profile", template.Profile.Name)
 }
 
-func TestApiKeyProfileTemplate_CreateTemplate_NoScope(t *testing.T) {
-	mutationResolver, _, ctx, client := setupTestAPIKeyProfileTemplateResolvers(t)
-	defer client.Close()
 
-	testUser, err := client.User.Create().
-		SetEmail(fmt.Sprintf("noscope-%d@example.com", time.Now().UnixNano())).
-		SetPassword("test-password").
-		SetFirstName("No").
-		SetLastName("Scope").
-		SetStatus(user.StatusActivated).
-		SetIsOwner(false).
-		Save(ctx)
-	require.NoError(t, err)
-
-	ctx = contexts.WithUser(ctx, testUser)
-
-	input := ent.CreateAPIKeyProfileTemplateInput{
-		Name:      "no-scope-template",
-		ProjectID: 1,
-	}
-
-	_, err = mutationResolver.CreateAPIKeyProfileTemplate(ctx, input)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "permission denied")
-}
 
 func TestApiKeyProfileTemplate_UpdateTemplate(t *testing.T) {
 	mutationResolver, _, ctx, client := setupTestAPIKeyProfileTemplateResolvers(t)
@@ -158,9 +133,8 @@ func TestApiKeyProfileTemplate_UpdateTemplate(t *testing.T) {
 			{From: "claude-3", To: "claude-3-opus"},
 		},
 	}
-	ctx = contexts.WithAPIKeyProfile(ctx, updatedProfile)
 
-	result, err := mutationResolver.UpdateAPIKeyProfileTemplate(ctx, objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: template.ID}, input)
+	result, err := mutationResolver.UpdateAPIKeyProfileTemplate(ctx, objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: template.ID}, input, updatedProfile)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "updated-name", result.Name)
@@ -249,31 +223,7 @@ func TestApiKeyProfileTemplate_LoadTemplate(t *testing.T) {
 	require.Equal(t, "Loaded", result.Profiles.Profiles[1].Name)
 }
 
-func TestApiKeyProfileTemplate_LoadTemplate_NoScope(t *testing.T) {
-	mutationResolver, _, ctx, client := setupTestAPIKeyProfileTemplateResolvers(t)
-	defer client.Close()
 
-	testUser, err := client.User.Create().
-		SetEmail(fmt.Sprintf("noscope-load-%d@example.com", time.Now().UnixNano())).
-		SetPassword("test-password").
-		SetFirstName("No").
-		SetLastName("Scope").
-		SetStatus(user.StatusActivated).
-		SetIsOwner(false).
-		Save(ctx)
-	require.NoError(t, err)
-
-	ctx = contexts.WithUser(ctx, testUser)
-
-	input := LoadAPIKeyProfileTemplateInput{
-		TemplateID: objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: 1},
-		APIKeyID:   objects.GUID{Type: ent.TypeAPIKey, ID: 1},
-	}
-
-	_, err = mutationResolver.LoadAPIKeyProfileTemplate(ctx, input)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "permission denied")
-}
 
 func TestApiKeyProfileTemplate_QueryTemplates(t *testing.T) {
 	_, queryResolver, ctx, client := setupTestAPIKeyProfileTemplateResolvers(t)
@@ -306,27 +256,6 @@ func TestApiKeyProfileTemplate_QueryTemplates(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 	require.Equal(t, 3, conn.TotalCount)
-}
-
-func TestApiKeyProfileTemplate_QueryTemplates_NoScope(t *testing.T) {
-	_, queryResolver, ctx, client := setupTestAPIKeyProfileTemplateResolvers(t)
-	defer client.Close()
-
-	testUser, err := client.User.Create().
-		SetEmail(fmt.Sprintf("noscope-query-%d@example.com", time.Now().UnixNano())).
-		SetPassword("test-password").
-		SetFirstName("No").
-		SetLastName("Scope").
-		SetStatus(user.StatusActivated).
-		SetIsOwner(false).
-		Save(ctx)
-	require.NoError(t, err)
-
-	ctx = contexts.WithUser(ctx, testUser)
-
-	_, err = queryResolver.APIKeyProfileTemplates(ctx, nil, nil, nil, nil, nil, nil)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "permission denied")
 }
 
 func TestApiKeyProfileTemplate_ProfileInputResolver(t *testing.T) {

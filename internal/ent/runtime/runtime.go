@@ -88,8 +88,18 @@ func init() {
 	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
 	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
 	apikeyprofiletemplateMixin := schema.APIKeyProfileTemplate{}.Mixin()
+	apikeyprofiletemplate.Policy = privacy.NewPolicies(schema.APIKeyProfileTemplate{})
+	apikeyprofiletemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := apikeyprofiletemplate.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	apikeyprofiletemplateMixinHooks1 := apikeyprofiletemplateMixin[1].Hooks()
-	apikeyprofiletemplate.Hooks[0] = apikeyprofiletemplateMixinHooks1[0]
+
+	apikeyprofiletemplate.Hooks[1] = apikeyprofiletemplateMixinHooks1[0]
 	apikeyprofiletemplateMixinInters1 := apikeyprofiletemplateMixin[1].Interceptors()
 	apikeyprofiletemplate.Interceptors[0] = apikeyprofiletemplateMixinInters1[0]
 	apikeyprofiletemplateMixinFields0 := apikeyprofiletemplateMixin[0].Fields()

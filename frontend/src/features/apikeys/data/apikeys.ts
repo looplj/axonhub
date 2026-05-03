@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
-import { buildGUID } from '@/lib/utils';
+
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -701,29 +701,24 @@ export function useApiKeyProfileTemplates(projectID: string | null) {
 }
 
 export function useCreateApiKeyProfileTemplate() {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
     mutationFn: (input: CreateApiKeyProfileTemplateInput) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const inputWithGUID = {
+      const inputWithProject = {
         ...input,
-        projectID: input.projectID ? buildGUID('Project', input.projectID) : null,
+        projectID: input.projectID ?? null,
       };
       return graphqlRequest<{ createApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
-        { input: inputWithGUID },
+        { input: inputWithProject },
         headers
       );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
-      toast.success(t('apikeys.templates.successMessage'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -777,7 +772,6 @@ export function useDeleteApiKeyProfileTemplate() {
 }
 
 export function useLoadApiKeyProfileTemplate() {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
 
@@ -793,10 +787,6 @@ export function useLoadApiKeyProfileTemplate() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.apiKeyID] });
-      toast.success(t('apikeys.templates.loadSuccessMessage'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

@@ -623,13 +623,8 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 }
 
 // CreateAPIKeyProfileTemplate is the resolver for the createApiKeyProfileTemplate field.
-func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput) (*ent.APIKeyProfileTemplate, error) {
-	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
-		return nil, fmt.Errorf("permission denied: write api keys scope required")
-	}
-
-	profile, ok := contexts.GetAPIKeyProfile(ctx)
-	if !ok || profile == nil {
+func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
+	if profile == nil {
 		return nil, fmt.Errorf("profile data is required but was not provided")
 	}
 
@@ -637,31 +632,17 @@ func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, inpu
 }
 
 // UpdateAPIKeyProfileTemplate is the resolver for the updateApiKeyProfileTemplate field.
-func (r *mutationResolver) UpdateAPIKeyProfileTemplate(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput) (*ent.APIKeyProfileTemplate, error) {
-	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
-		return nil, fmt.Errorf("permission denied: write api keys scope required")
-	}
-
-	optionalProfile, _ := contexts.GetAPIKeyProfile(ctx)
-
-	return r.apiKeyProfileTemplateService.UpdateTemplate(ctx, id.ID, input, optionalProfile)
+func (r *mutationResolver) UpdateAPIKeyProfileTemplate(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
+	return r.apiKeyProfileTemplateService.UpdateTemplate(ctx, id.ID, input, profile)
 }
 
 // DeleteAPIKeyProfileTemplate is the resolver for the deleteApiKeyProfileTemplate field.
 func (r *mutationResolver) DeleteAPIKeyProfileTemplate(ctx context.Context, id objects.GUID) (*ent.APIKeyProfileTemplate, error) {
-	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
-		return nil, fmt.Errorf("permission denied: write api keys scope required")
-	}
-
 	return r.apiKeyProfileTemplateService.DeleteTemplate(ctx, id.ID)
 }
 
 // LoadAPIKeyProfileTemplate is the resolver for the loadApiKeyProfileTemplate field.
 func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*ent.APIKey, error) {
-	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAPIKeys) {
-		return nil, fmt.Errorf("permission denied: write api keys scope required")
-	}
-
 	return r.apiKeyProfileTemplateService.LoadTemplate(ctx, input.TemplateID.ID, input.APIKeyID.ID)
 }
 
@@ -863,24 +844,6 @@ func (r *traceResolver) FirstText(ctx context.Context, obj *ent.Trace) (*string,
 // UsageMetadata is the resolver for the usageMetadata field.
 func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz.UsageMetadata, error) {
 	return r.traceService.UsageMetadata(ctx, obj.ID)
-}
-
-// Profile is the resolver for the profile field.
-func (r *createAPIKeyProfileTemplateInputResolver) Profile(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.APIKeyProfile) error {
-	if data != nil {
-		contexts.WithAPIKeyProfile(ctx, data)
-	}
-
-	return nil
-}
-
-// Profile is the resolver for the profile field.
-func (r *updateAPIKeyProfileTemplateInputResolver) Profile(ctx context.Context, obj *ent.UpdateAPIKeyProfileTemplateInput, data *objects.APIKeyProfile) error {
-	if data != nil {
-		contexts.WithAPIKeyProfile(ctx, data)
-	}
-
-	return nil
 }
 
 // ChannelSettings returns ChannelSettingsResolver implementation.

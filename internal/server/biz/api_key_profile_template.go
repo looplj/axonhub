@@ -89,104 +89,130 @@ func (s *APIKeyProfileTemplateService) UpdateTemplate(ctx context.Context, id in
 }
 
 func (s *APIKeyProfileTemplateService) DeleteTemplate(ctx context.Context, id int) (*ent.APIKeyProfileTemplate, error) {
-	client := s.entFromContext(ctx)
+	var template *ent.APIKeyProfileTemplate
+	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
 
-	template, err := client.APIKeyProfileTemplate.Get(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get template for deletion: %w", err)
-	}
+		var getErr error
+		template, getErr = client.APIKeyProfileTemplate.Get(ctx, id)
+		if getErr != nil {
+			return fmt.Errorf("failed to get template for deletion: %w", getErr)
+		}
 
-	err = client.APIKeyProfileTemplate.DeleteOneID(id).Exec(ctx)
+		getErr = client.APIKeyProfileTemplate.DeleteOneID(id).Exec(ctx)
+		if getErr != nil {
+			return fmt.Errorf("failed to delete template: %w", getErr)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete template: %w", err)
+		return nil, err
 	}
 
 	return template, nil
 }
 
 func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templateID, apiKeyID int) (*ent.APIKey, error) {
-	client := s.entFromContext(ctx)
+	var updatedKey *ent.APIKey
+	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
 
-	template, err := client.APIKeyProfileTemplate.Get(ctx, templateID)
+		template, err := client.APIKeyProfileTemplate.Get(ctx, templateID)
+		if err != nil {
+			return fmt.Errorf("failed to get template: %w", err)
+		}
+
+		apiKey, getErr := client.APIKey.Get(ctx, apiKeyID)
+		if getErr != nil {
+			return fmt.Errorf("failed to get API key: %w", getErr)
+		}
+
+		if template.ProjectID != apiKey.ProjectID {
+			return fmt.Errorf("template and API key must belong to the same project")
+		}
+
+		templateProfile, err := deepCopyProfile(template.Profile)
+		if err != nil {
+			return fmt.Errorf("failed to copy template profile: %w", err)
+		}
+		if templateProfile == nil {
+			return fmt.Errorf("template has no profile")
+		}
+
+		existingProfiles := apiKey.Profiles
+		if existingProfiles == nil {
+			existingProfiles = &objects.APIKeyProfiles{}
+		}
+
+		resolvedName := resolveProfileNameConflict(existingProfiles.Profiles, templateProfile.Name)
+		templateProfile.Name = resolvedName
+
+		existingProfiles.Profiles = append(existingProfiles.Profiles, *templateProfile)
+
+		updatedKey, err = client.APIKey.UpdateOneID(apiKeyID).
+			SetProfiles(existingProfiles).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to update API key profiles: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get template: %w", err)
-	}
-
-	apiKey, err := client.APIKey.Get(ctx, apiKeyID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get API key: %w", err)
-	}
-
-	if template.ProjectID != apiKey.ProjectID {
-		return nil, fmt.Errorf("template and API key must belong to the same project")
-	}
-
-	templateProfile, err := deepCopyProfile(template.Profile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to copy template profile: %w", err)
-	}
-	if templateProfile == nil {
-		return nil, fmt.Errorf("template has no profile")
-	}
-
-	existingProfiles := apiKey.Profiles
-	if existingProfiles == nil {
-		existingProfiles = &objects.APIKeyProfiles{}
-	}
-
-	resolvedName := resolveProfileNameConflict(existingProfiles.Profiles, templateProfile.Name)
-	templateProfile.Name = resolvedName
-
-	existingProfiles.Profiles = append(existingProfiles.Profiles, *templateProfile)
-
-	updatedKey, err := client.APIKey.UpdateOneID(apiKeyID).
-		SetProfiles(existingProfiles).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update API key profiles: %w", err)
+		return nil, err
 	}
 
 	return updatedKey, nil
 }
 
 func (s *APIKeyProfileTemplateService) SaveAsTemplate(ctx context.Context, apiKeyID int, profileName, templateName, description string) (*ent.APIKeyProfileTemplate, error) {
-	client := s.entFromContext(ctx)
+	var template *ent.APIKeyProfileTemplate
+	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
 
-	apiKey, err := client.APIKey.Get(ctx, apiKeyID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get API key: %w", err)
-	}
-
-	if apiKey.Profiles == nil {
-		return nil, fmt.Errorf("API key has no profiles")
-	}
-
-	var sourceProfile *objects.APIKeyProfile
-	for i := range apiKey.Profiles.Profiles {
-		if apiKey.Profiles.Profiles[i].Name == profileName {
-			sourceProfile = &apiKey.Profiles.Profiles[i]
-			break
+		apiKey, getErr := client.APIKey.Get(ctx, apiKeyID)
+		if getErr != nil {
+			return fmt.Errorf("failed to get API key: %w", getErr)
 		}
-	}
 
-	if sourceProfile == nil {
-		return nil, fmt.Errorf("profile '%s' not found in API key", profileName)
-	}
+		if apiKey.Profiles == nil {
+			return fmt.Errorf("API key has no profiles")
+		}
 
-	copiedProfile, err := deepCopyProfile(sourceProfile)
+		var sourceProfile *objects.APIKeyProfile
+		for i := range apiKey.Profiles.Profiles {
+			if apiKey.Profiles.Profiles[i].Name == profileName {
+				sourceProfile = &apiKey.Profiles.Profiles[i]
+				break
+			}
+		}
+
+		if sourceProfile == nil {
+			return fmt.Errorf("profile '%s' not found in API key", profileName)
+		}
+
+		copiedProfile, getErr := deepCopyProfile(sourceProfile)
+		if getErr != nil {
+			log.Error(ctx, "Failed to copy API key profile for template", log.Cause(getErr), log.String("profile_name", profileName))
+			return fmt.Errorf("failed to copy profile: %w", getErr)
+		}
+
+		var saveErr error
+		template, saveErr = client.APIKeyProfileTemplate.Create().
+			SetName(templateName).
+			SetDescription(description).
+			SetProjectID(apiKey.ProjectID).
+			SetProfile(copiedProfile).
+			Save(ctx)
+		if saveErr != nil {
+			return fmt.Errorf("failed to create template: %w", saveErr)
+		}
+
+		return nil
+	})
 	if err != nil {
-		log.Error(ctx, "Failed to copy API key profile for template", log.Cause(err), log.String("profile_name", profileName))
-		return nil, fmt.Errorf("failed to copy profile: %w", err)
-	}
-
-	template, err := client.APIKeyProfileTemplate.Create().
-		SetName(templateName).
-		SetDescription(description).
-		SetProjectID(apiKey.ProjectID).
-		SetProfile(copiedProfile).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create template: %w", err)
+		return nil, err
 	}
 
 	return template, nil

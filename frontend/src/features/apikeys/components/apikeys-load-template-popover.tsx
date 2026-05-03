@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale/zh-CN';
 import { IconFileDownload, IconLoader2, IconTemplate, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,7 @@ function TemplateItem({
 }) {
   const { t, i18n } = useTranslation();
   const createdDate = format(new Date(template.createdAt), 'PP', {
-    locale: i18n.language?.startsWith('zh') ? undefined : undefined,
+    locale: i18n.language?.startsWith('zh') ? zhCN : undefined,
   });
 
   return (

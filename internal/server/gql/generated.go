@@ -92,8 +92,6 @@ type ResolverRoot interface {
 	UserInfo() UserInfoResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
-	CreateAPIKeyProfileTemplateInput() CreateAPIKeyProfileTemplateInputResolver
-	UpdateAPIKeyProfileTemplateInput() UpdateAPIKeyProfileTemplateInputResolver
 }
 
 type DirectiveRoot struct {
@@ -877,7 +875,7 @@ type ComplexityRoot struct {
 		CompleteOnboarding                   func(childComplexity int, input CompleteOnboardingInput) int
 		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
 		CreateAPIKey                         func(childComplexity int, input ent.CreateAPIKeyInput) int
-		CreateAPIKeyProfileTemplate          func(childComplexity int, input ent.CreateAPIKeyProfileTemplateInput) int
+		CreateAPIKeyProfileTemplate          func(childComplexity int, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) int
 		CreateChannel                        func(childComplexity int, input ent.CreateChannelInput) int
 		CreateChannelOverrideTemplate        func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
 		CreateDataStorage                    func(childComplexity int, input ent.CreateDataStorageInput) int
@@ -916,7 +914,7 @@ type ComplexityRoot struct {
 		TriggerGcCleanup                     func(childComplexity int) int
 		UnlinkOIDCIdentity                   func(childComplexity int, id objects.GUID) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
-		UpdateAPIKeyProfileTemplate          func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput) int
+		UpdateAPIKeyProfileTemplate          func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) int
 		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
 		UpdateAPIKeyStatus                   func(childComplexity int, id objects.GUID, status apikey.Status) int
 		UpdateAutoBackupSettings             func(childComplexity int, input UpdateAutoBackupSettingsInput) int
@@ -2028,8 +2026,8 @@ type MutationResolver interface {
 	ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error)
 	ClearChannelOverrideTemplates(ctx context.Context, input ClearChannelOverrideTemplatesInput) (*ClearChannelOverrideTemplatesPayload, error)
 	SyncChannelModels(ctx context.Context, channelID objects.GUID, pattern *string) (*SyncChannelModelsPayload, error)
-	CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput) (*ent.APIKeyProfileTemplate, error)
-	UpdateAPIKeyProfileTemplate(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput) (*ent.APIKeyProfileTemplate, error)
+	CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error)
+	UpdateAPIKeyProfileTemplate(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error)
 	DeleteAPIKeyProfileTemplate(ctx context.Context, id objects.GUID) (*ent.APIKeyProfileTemplate, error)
 	LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*ent.APIKey, error)
 	UpdateMe(ctx context.Context, input UpdateMeInput) (*ent.User, error)
@@ -2271,14 +2269,6 @@ type UserRoleResolver interface {
 	ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
-}
-
-type CreateAPIKeyProfileTemplateInputResolver interface {
-	ProjectID(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.GUID) error
-	Profile(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.APIKeyProfile) error
-}
-type UpdateAPIKeyProfileTemplateInputResolver interface {
-	Profile(ctx context.Context, obj *ent.UpdateAPIKeyProfileTemplateInput, data *objects.APIKeyProfile) error
 }
 
 type executableSchema struct {
@@ -5388,7 +5378,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateAPIKeyProfileTemplate(childComplexity, args["input"].(ent.CreateAPIKeyProfileTemplateInput)), true
+		return e.complexity.Mutation.CreateAPIKeyProfileTemplate(childComplexity, args["input"].(ent.CreateAPIKeyProfileTemplateInput), args["profile"].(*objects.APIKeyProfile)), true
 	case "Mutation.createChannel":
 		if e.complexity.Mutation.CreateChannel == nil {
 			break
@@ -5807,7 +5797,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateAPIKeyProfileTemplate(childComplexity, args["id"].(objects.GUID), args["input"].(ent.UpdateAPIKeyProfileTemplateInput)), true
+		return e.complexity.Mutation.UpdateAPIKeyProfileTemplate(childComplexity, args["id"].(objects.GUID), args["input"].(ent.UpdateAPIKeyProfileTemplateInput), args["profile"].(*objects.APIKeyProfile)), true
 	case "Mutation.updateAPIKeyProfiles":
 		if e.complexity.Mutation.UpdateAPIKeyProfiles == nil {
 			break
@@ -11211,6 +11201,11 @@ func (ec *executionContext) field_Mutation_createApiKeyProfileTemplate_args(ctx 
 		return nil, err
 	}
 	args["input"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "profile", ec.unmarshalOAPIKeyProfileInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyProfile)
+	if err != nil {
+		return nil, err
+	}
+	args["profile"] = arg1
 	return args, nil
 }
 
@@ -11700,6 +11695,11 @@ func (ec *executionContext) field_Mutation_updateApiKeyProfileTemplate_args(ctx 
 		return nil, err
 	}
 	args["input"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "profile", ec.unmarshalOAPIKeyProfileInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyProfile)
+	if err != nil {
+		return nil, err
+	}
+	args["profile"] = arg2
 	return args, nil
 }
 
@@ -31164,7 +31164,7 @@ func (ec *executionContext) _Mutation_createApiKeyProfileTemplate(ctx context.Co
 		ec.fieldContext_Mutation_createApiKeyProfileTemplate,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateAPIKeyProfileTemplate(ctx, fc.Args["input"].(ent.CreateAPIKeyProfileTemplateInput))
+			return ec.resolvers.Mutation().CreateAPIKeyProfileTemplate(ctx, fc.Args["input"].(ent.CreateAPIKeyProfileTemplateInput), fc.Args["profile"].(*objects.APIKeyProfile))
 		},
 		nil,
 		ec.marshalNAPIKeyProfileTemplate2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyProfileTemplate,
@@ -31223,7 +31223,7 @@ func (ec *executionContext) _Mutation_updateApiKeyProfileTemplate(ctx context.Co
 		ec.fieldContext_Mutation_updateApiKeyProfileTemplate,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateAPIKeyProfileTemplate(ctx, fc.Args["id"].(objects.GUID), fc.Args["input"].(ent.UpdateAPIKeyProfileTemplateInput))
+			return ec.resolvers.Mutation().UpdateAPIKeyProfileTemplate(ctx, fc.Args["id"].(objects.GUID), fc.Args["input"].(ent.UpdateAPIKeyProfileTemplateInput), fc.Args["profile"].(*objects.APIKeyProfile))
 		},
 		nil,
 		ec.marshalNAPIKeyProfileTemplate2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyProfileTemplate,
@@ -62985,7 +62985,7 @@ func (ec *executionContext) unmarshalInputCreateAPIKeyProfileTemplateInput(ctx c
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "projectID", "profile"}
+	fieldsInOrder := [...]string{"name", "description", "projectID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63017,15 +63017,6 @@ func (ec *executionContext) unmarshalInputCreateAPIKeyProfileTemplateInput(ctx c
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.ProjectID = converted
-		case "profile":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("profile"))
-			data, err := ec.unmarshalOAPIKeyProfileInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyProfile(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			if err = ec.resolvers.CreateAPIKeyProfileTemplateInput().Profile(ctx, &it, data); err != nil {
-				return it, err
-			}
 		}
 	}
 
@@ -76182,7 +76173,7 @@ func (ec *executionContext) unmarshalInputUpdateAPIKeyProfileTemplateInput(ctx c
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "profile"}
+	fieldsInOrder := [...]string{"name", "description"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76203,15 +76194,6 @@ func (ec *executionContext) unmarshalInputUpdateAPIKeyProfileTemplateInput(ctx c
 				return it, err
 			}
 			it.Description = data
-		case "profile":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("profile"))
-			data, err := ec.unmarshalOAPIKeyProfileInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyProfile(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			if err = ec.resolvers.UpdateAPIKeyProfileTemplateInput().Profile(ctx, &it, data); err != nil {
-				return it, err
-			}
 		}
 	}
 

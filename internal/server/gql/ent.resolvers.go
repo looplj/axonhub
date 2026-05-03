@@ -13,7 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/samber/lo"
 )
 
@@ -310,10 +309,6 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 
 // APIKeyProfileTemplates is the resolver for the apiKeyProfileTemplates field.
 func (r *queryResolver) APIKeyProfileTemplates(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyProfileTemplateOrder, where *ent.APIKeyProfileTemplateWhereInput) (*ent.APIKeyProfileTemplateConnection, error) {
-	if !scopes.UserHasScope(ctx, scopes.ScopeReadAPIKeys) {
-		return nil, fmt.Errorf("permission denied: read api keys scope required")
-	}
-
 	if err := validatePaginationArgs(first, last); err != nil {
 		return nil, err
 	}
@@ -996,16 +991,6 @@ func (r *Resolver) UserProject() UserProjectResolver { return &userProjectResolv
 // UserRole returns UserRoleResolver implementation.
 func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
-// CreateAPIKeyProfileTemplateInput returns CreateAPIKeyProfileTemplateInputResolver implementation.
-func (r *Resolver) CreateAPIKeyProfileTemplateInput() CreateAPIKeyProfileTemplateInputResolver {
-	return &createAPIKeyProfileTemplateInputResolver{r}
-}
-
-// UpdateAPIKeyProfileTemplateInput returns UpdateAPIKeyProfileTemplateInputResolver implementation.
-func (r *Resolver) UpdateAPIKeyProfileTemplateInput() UpdateAPIKeyProfileTemplateInputResolver {
-	return &updateAPIKeyProfileTemplateInputResolver{r}
-}
-
 type aPIKeyResolver struct{ *Resolver }
 type aPIKeyProfileTemplateResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
@@ -1031,11 +1016,24 @@ type usageLogResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type userProjectResolver struct{ *Resolver }
 type userRoleResolver struct{ *Resolver }
-type createAPIKeyProfileTemplateInputResolver struct{ *Resolver }
 
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *Resolver) CreateAPIKeyProfileTemplateInput() CreateAPIKeyProfileTemplateInputResolver {
+	return &createAPIKeyProfileTemplateInputResolver{r}
+}
+func (r *Resolver) UpdateAPIKeyProfileTemplateInput() UpdateAPIKeyProfileTemplateInputResolver {
+	return &updateAPIKeyProfileTemplateInputResolver{r}
+}
+type createAPIKeyProfileTemplateInputResolver struct{ *Resolver }
 func (r *createAPIKeyProfileTemplateInputResolver) ProjectID(ctx context.Context, obj *ent.CreateAPIKeyProfileTemplateInput, data *objects.GUID) error {
 	obj.ProjectID = int(data.ID)
 	return nil
 }
-
 type updateAPIKeyProfileTemplateInputResolver struct{ *Resolver }
+*/

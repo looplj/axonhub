@@ -293,9 +293,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                     <ApiKeyLoadTemplatePopover
                       apiKeyID={apiKeyId}
                       projectID={selectedProjectId}
-                      onLoadComplete={() => {
-                        form.reset();
-                      }}
+                      onLoadComplete={() => {}}
                     />
                     <Button type='button' variant='outline' size='sm' onClick={addProfile} className='flex items-center gap-2'>
                       <IconPlus className='h-4 w-4' />

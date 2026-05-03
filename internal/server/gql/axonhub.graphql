@@ -368,15 +368,7 @@ enum ChannelTagsMatchMode {
 
 # ApiKeyProfileTemplate uses the Ent-generated type and input types from ent.graphql
 
-# Extension input for adding profile to create mutation
-extend input CreateAPIKeyProfileTemplateInput {
-  profile: APIKeyProfileInput
-}
 
-# Extension input for adding profile to update mutation
-extend input UpdateAPIKeyProfileTemplateInput {
-  profile: APIKeyProfileInput
-}
 
 # Load template input - custom input for loading template to API key
 input LoadApiKeyProfileTemplateInput {
@@ -840,10 +832,12 @@ type Mutation {
   # API Key Profile Template Mutations
   createApiKeyProfileTemplate(
     input: CreateAPIKeyProfileTemplateInput!
+    profile: APIKeyProfileInput
   ): APIKeyProfileTemplate!
   updateApiKeyProfileTemplate(
     id: ID!
     input: UpdateAPIKeyProfileTemplateInput!
+    profile: APIKeyProfileInput
   ): APIKeyProfileTemplate!
   deleteApiKeyProfileTemplate(id: ID!): APIKeyProfileTemplate!
   loadApiKeyProfileTemplate(
