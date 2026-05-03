@@ -138,9 +138,13 @@ func (m Message) ToLLMMessage() llm.Message {
 		}
 	}
 
-	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+	// Sync reasoning fields: if one field has value and the other is nil, copy the value
 	if msg.ReasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
 		msg.ReasoningContent = m.Reasoning
+	}
+
+	if msg.Reasoning == nil && msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+		msg.Reasoning = msg.ReasoningContent
 	}
 
 	// Convert Content

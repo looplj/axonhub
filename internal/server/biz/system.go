@@ -94,6 +94,14 @@ const (
 	// When set to true, the system will pass through the original User-Agent header to upstream AI providers.
 	SystemKeyUserAgentPassThrough = "system_user_agent_pass_through"
 
+	// SystemKeyPassThrough is the key used to store the global body/response pass-through setting.
+	// When set to true, channels that do not explicitly disable pass-through will forward the original
+	// request body and the raw provider response/stream to the client without re-serialization, as long as
+	// the inbound and outbound API formats are identical.
+	//
+	//nolint:gosec // Not a secret.
+	SystemKeyPassThrough = "system_pass_through"
+
 	// SystemKeyQuotaEnforcementSettings is the key used to store the quota enforcement settings.
 	// The value is JSON-encoded QuotaEnforcementSettings struct.
 	SystemKeyQuotaEnforcementSettings = "quota_enforcement_settings"
@@ -1320,6 +1328,33 @@ func (s *SystemService) SetUserAgentPassThrough(ctx context.Context, enabled boo
 	}
 
 	return s.setSystemValue(ctx, SystemKeyUserAgentPassThrough, strValue)
+}
+
+// PassThrough retrieves the global body/response pass-through setting.
+// When enabled, channels that do not explicitly override pass-through will forward the
+// original request body and the raw provider response/stream to the client without
+// re-serialization, as long as the inbound and outbound API formats are identical.
+func (s *SystemService) PassThrough(ctx context.Context) (bool, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyPassThrough)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to get pass-through: %w", err)
+	}
+
+	return value == "true", nil
+}
+
+// SetPassThrough sets the global body/response pass-through setting.
+func (s *SystemService) SetPassThrough(ctx context.Context, enabled bool) error {
+	strValue := "false"
+	if enabled {
+		strValue = "true"
+	}
+
+	return s.setSystemValue(ctx, SystemKeyPassThrough, strValue)
 }
 
 // QuotaEnforcementSettings retrieves the quota enforcement settings.

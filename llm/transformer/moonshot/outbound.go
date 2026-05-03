@@ -44,6 +44,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		PlatformType:   openai.PlatformOpenAI,
 		BaseURL:        config.BaseURL,
 		APIKeyProvider: config.APIKeyProvider,
+		ReasoningField: openai.ReasoningFieldContent,
 	}
 
 	t, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
@@ -80,7 +81,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request first
-	oaiReq := openai.RequestFromLLM(llmReq)
+	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
 
 	// Moonshot doesn't support json_schema, convert to json_object
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {

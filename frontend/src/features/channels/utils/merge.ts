@@ -102,12 +102,13 @@ export function mergeChannelSettingsForUpdate(
     autoTrimedModelPrefixes: pick('autoTrimedModelPrefixes', existing?.autoTrimedModelPrefixes ?? []),
     hideOriginalModels: pick('hideOriginalModels', existing?.hideOriginalModels ?? false),
     hideMappedModels: pick('hideMappedModels', existing?.hideMappedModels ?? false),
+    lowercaseModelId: pick('lowercaseModelId', existing?.lowercaseModelId ?? false),
     bodyOverrideOperations: pick('bodyOverrideOperations', existing?.bodyOverrideOperations ?? []),
     headerOverrideOperations: pick('headerOverrideOperations', existing?.headerOverrideOperations ?? []),
     proxy: pick('proxy', existing?.proxy ?? null),
     transformOptions: pick('transformOptions', existing?.transformOptions ?? undefined),
     passThroughUserAgent: pick('passThroughUserAgent', existing?.passThroughUserAgent ?? null),
-    passThroughBody: pick('passThroughBody', existing?.passThroughBody ?? false),
+    passThroughBody: pick('passThroughBody', existing?.passThroughBody ?? null),
     rateLimit: pick('rateLimit', existing?.rateLimit ?? null),
   };
 }

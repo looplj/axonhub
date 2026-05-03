@@ -69,7 +69,7 @@ func TestRequestFromLLM(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := RequestFromLLM(tt.llmReq)
+			result := RequestFromLLM(tt.llmReq, ReasoningFieldNone)
 			tt.validate(t, result)
 		})
 	}
@@ -94,7 +94,7 @@ func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, ReasoningFieldNone)
 
 	require.NotNil(t, req)
 	require.Len(t, req.Tools, 1)
@@ -183,7 +183,7 @@ func TestRequestFromLLM_IgnoresCompactionPartsInMessages(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, ReasoningFieldNone)
 
 	require.NotNil(t, req)
 	require.Len(t, req.Messages, 1)
@@ -510,7 +510,7 @@ func TestRequestFromLLM_KeepsGoogleThoughtSignatureInRequestModel(t *testing.T) 
 				},
 			},
 		},
-	})
+	}, ReasoningFieldNone)
 
 	require.NotNil(t, req)
 	require.Len(t, req.Messages, 1)

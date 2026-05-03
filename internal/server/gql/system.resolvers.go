@@ -248,6 +248,16 @@ func (r *mutationResolver) UpdateUserAgentPassThroughSettings(ctx context.Contex
 	return true, nil
 }
 
+// UpdatePassThroughSettings is the resolver for the updatePassThroughSettings field.
+func (r *mutationResolver) UpdatePassThroughSettings(ctx context.Context, input UpdatePassThroughSettingsInput) (bool, error) {
+	err := r.systemService.SetPassThrough(ctx, input.Enabled)
+	if err != nil {
+		return false, fmt.Errorf("failed to update pass-through settings: %w", err)
+	}
+
+	return true, nil
+}
+
 // ClearCache is the resolver for the clearCache field.
 func (r *mutationResolver) ClearCache(ctx context.Context, input ClearCacheInput) (*ClearCachePayload, error) {
 	user, ok := contexts.GetUser(ctx)
@@ -443,6 +453,18 @@ func (r *queryResolver) UserAgentPassThroughSettings(ctx context.Context) (*User
 	}
 
 	return &UserAgentPassThroughSettings{
+		Enabled: enabled,
+	}, nil
+}
+
+// PassThroughSettings is the resolver for the passThroughSettings field.
+func (r *queryResolver) PassThroughSettings(ctx context.Context) (*PassThroughSettings, error) {
+	enabled, err := r.systemService.PassThrough(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pass-through settings: %w", err)
+	}
+
+	return &PassThroughSettings{
 		Enabled: enabled,
 	}, nil
 }

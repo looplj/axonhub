@@ -3,7 +3,10 @@ package responses
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"strings"
 
 	"github.com/samber/lo"
@@ -72,6 +75,10 @@ type responsesInboundStream struct {
 	eventQueue []*httpclient.StreamEvent
 	queueIndex int
 	err        error
+
+	// Error event tracking - when true, we've already emitted an error event
+	// to the client so Err() should return nil to avoid double error emission
+	errorEventEmitted bool
 }
 
 func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
@@ -113,6 +120,27 @@ func (s *responsesInboundStream) Next() bool {
 
 	// Try to get the next chunk from source
 	if !s.source.Next() {
+		// Source stream ended - check if we need to emit an error event
+		if s.err == nil && !s.errorEventEmitted && s.source.Err() != nil {
+			sourceErr := s.source.Err()
+			// Don't emit error event for client cancellation
+			if errors.Is(sourceErr, context.Canceled) {
+				slog.DebugContext(s.ctx, "stream canceled by client")
+				return false
+			}
+			if errors.Is(sourceErr, context.DeadlineExceeded) {
+				slog.DebugContext(s.ctx, "stream deadline exceeded")
+				return false
+			}
+			// Emit an error event for upstream failures
+			if err := s.emitStreamErrorEvent(sourceErr); err != nil {
+				s.err = fmt.Errorf("failed to enqueue stream error event: %w", err)
+				return false
+			}
+
+			return s.Next()
+		}
+
 		return false
 	}
 
@@ -836,6 +864,96 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 	return nil
 }
 
+func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
+	code, message := classifyStreamError(err)
+
+	if s.hasResponseCreated {
+		response := s.buildFailedResponse(code, message)
+		if err := s.enqueueEvent(&StreamEvent{
+			Type:     StreamEventTypeResponseFailed,
+			Response: response,
+		}); err != nil {
+			return err
+		}
+	} else {
+		if err := s.enqueueEvent(&StreamEvent{
+			Type:    StreamEventTypeError,
+			Code:    code,
+			Message: message,
+		}); err != nil {
+			return err
+		}
+	}
+
+	s.errorEventEmitted = true
+
+	return nil
+}
+
+func classifyStreamError(err error) (code, message string) {
+	code = "stream_error"
+	message = err.Error()
+
+	if errors.Is(err, io.EOF) {
+		code = "upstream_eof"
+		message = "upstream connection closed unexpectedly"
+		return code, message
+	}
+
+	if errors.Is(err, context.Canceled) {
+		code = "client_cancel"
+		message = "client disconnected"
+		return code, message
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		code = "timeout"
+		message = "request timeout"
+		return code, message
+	}
+
+	var httpErr *httpclient.Error
+	if errors.As(err, &httpErr) {
+		code = "api_error"
+		message = string(httpErr.Body)
+		if message == "" {
+			message = httpErr.Status
+		}
+		return code, message
+	}
+
+	if errors.Is(err, ErrStreamIncomplete) {
+		code = "incomplete_stream"
+		message = "stream ended without terminal event"
+		return code, message
+	}
+
+	return code, message
+}
+
+func (s *responsesInboundStream) buildFailedResponse(code, message string) *Response {
+	response := &Response{
+		Object:    "response",
+		ID:        s.responseID,
+		Model:     s.model,
+		CreatedAt: s.createdAt,
+		Status:    lo.ToPtr("failed"),
+		Output:    []Item{},
+		Error: &Error{
+			Type:    "server_error",
+			Code:    code,
+			Message: message,
+		},
+	}
+
+	if s.aggregator != nil {
+		aggregated := s.aggregator.buildResponse()
+		response.Output = aggregated.Output
+	}
+
+	return response
+}
+
 func (s *responsesInboundStream) Current() *httpclient.StreamEvent {
 	if s.queueIndex < len(s.eventQueue) {
 		event := s.eventQueue[s.queueIndex]
@@ -848,6 +966,12 @@ func (s *responsesInboundStream) Current() *httpclient.StreamEvent {
 }
 
 func (s *responsesInboundStream) Err() error {
+	// If we've already emitted an error event to the client, return nil
+	// to avoid double error emission by the SSE writer
+	if s.errorEventEmitted {
+		return nil
+	}
+
 	if s.err != nil {
 		return s.err
 	}

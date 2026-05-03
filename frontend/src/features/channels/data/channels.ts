@@ -90,6 +90,7 @@ const CREATE_CHANNEL_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
+          lowercaseModelId
           proxy {
             type
             url
@@ -146,6 +147,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
+          lowercaseModelId
           proxy {
             type
             url
@@ -202,6 +204,7 @@ const UPDATE_CHANNEL_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
+          lowercaseModelId
           proxy {
             type
             url
@@ -361,6 +364,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
+          lowercaseModelId
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -542,6 +546,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
+          lowercaseModelId
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -643,6 +648,7 @@ const QUERY_CHANNELS_QUERY = `
             autoTrimedModelPrefixes
             hideOriginalModels
             hideMappedModels
+            lowercaseModelId
             bodyOverrideOperations {
               op
               path

@@ -34,6 +34,7 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 								Content: lo.ToPtr(""),
 							},
 							ReasoningContent: lo.ToPtr("We"),
+							Reasoning:        lo.ToPtr("We"),
 						},
 					},
 				},

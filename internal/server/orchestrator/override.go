@@ -27,8 +27,34 @@ type RenderContext struct {
 	Model string `json:"model"`
 	// Metadata is the metadata used in the current request.
 	Metadata map[string]string `json:"metadata"`
+	// RequestHeader is the filtered request headers used in the current request.
+	RequestHeader map[string]string `json:"request_header"`
 	// ReasoningEffort is the reasoning effort used in the current request.
 	ReasoningEffort string `json:"reasoning_effort"`
+}
+
+func buildRequestHeaderMap(llmReq *llm.Request) map[string]string {
+	requestHeaders := make(map[string]string)
+	if llmReq == nil || llmReq.RawRequest == nil || llmReq.RawRequest.Headers == nil {
+		return requestHeaders
+	}
+
+	for key, values := range llmReq.RawRequest.Headers {
+		if len(values) == 0 {
+			continue
+		}
+
+		if httpclient.IsSensitiveHeader(key) {
+			continue
+		}
+
+		value := values[0]
+		canonicalKey := http.CanonicalHeaderKey(key)
+		requestHeaders[canonicalKey] = value
+		requestHeaders[strings.ToLower(key)] = value
+	}
+
+	return requestHeaders
 }
 
 func buildRenderContext(llmReq *llm.Request, requestModel string) RenderContext {
@@ -36,6 +62,7 @@ func buildRenderContext(llmReq *llm.Request, requestModel string) RenderContext 
 		RequestModel:    requestModel,
 		Model:           llmReq.Model,
 		Metadata:        llmReq.Metadata,
+		RequestHeader:   buildRequestHeaderMap(llmReq),
 		ReasoningEffort: llmReq.ReasoningEffort,
 	}
 }

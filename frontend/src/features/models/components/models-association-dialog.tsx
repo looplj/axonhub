@@ -26,6 +26,8 @@ import { ModelAssociation } from '../data/schema';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
+const MAX_ASSOCIATION_PRIORITY = 10;
+
 const whenFilterFields: FilterBuilderField[] = [
   {
     value: 'prompt_tokens',
@@ -178,7 +180,7 @@ const associationFormSchema = z.object({
     .array(
       z.object({
         type: z.enum(['channel_model', 'channel_regex', 'model', 'regex', 'channel_tags_model', 'channel_tags_regex']),
-        priority: z.number().min(0, 'Priority must be at least 0').max(10, 'Priority cannot exceed 10'),
+        priority: z.number().min(0, 'Priority must be at least 0').max(MAX_ASSOCIATION_PRIORITY, `Priority cannot exceed ${MAX_ASSOCIATION_PRIORITY}`),
         disabled: z.boolean().default(false),
         whenEnabled: z.boolean().default(false),
         whenCondition: z.custom<FilterBuilderGroupListValue>().default(DEFAULT_WHEN_CONDITION),
@@ -973,10 +975,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                 <Input
                   type='number'
                   min={0}
-                  max={10}
+                  max={MAX_ASSOCIATION_PRIORITY}
                   {...field}
                   value={field.value ?? 0}
-                  onChange={(e) => field.onChange(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
+                  onChange={(e) => field.onChange(Math.max(0, Math.min(MAX_ASSOCIATION_PRIORITY, Number(e.target.value) || 0)))}
                   className='h-10 sm:h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
                   placeholder='0'
                 />

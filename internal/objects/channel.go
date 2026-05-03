@@ -121,6 +121,12 @@ type ChannelSettings struct {
 	// When enabled, only the original model names (from field) will be exposed, not the mapped model names (to field).
 	HideMappedModels bool `json:"hideMappedModels"`
 
+	// LowercaseModelID converts model name matching keys to lowercase.
+	// When enabled, only RequestModel (used for matching) is lowercased; ActualModel
+	// (sent to provider) preserves original casing. This enables cross-channel load
+	// balancing where providers use different casing for the same model.
+	LowercaseModelID bool `json:"lowercaseModelId"`
+
 	// OverrideParameters sets the channel override the request body.
 	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
@@ -156,7 +162,9 @@ type ChannelSettings struct {
 	// to the upstream provider and the raw provider response/stream directly to the client
 	// without re-serialization through the transform pipelines.
 	// Only effective when the inbound and outbound API formats are identical.
-	PassThroughBody bool `json:"passThroughBody,omitempty"`
+	// When set to nil, it inherits from the global system setting.
+	// When set to true/false, it overrides the global setting.
+	PassThroughBody *bool `json:"passThroughBody,omitempty"`
 
 	// RateLimit configures the upstream rate limit for the channel.
 	// When configured, the load balancer will skip channels that have exceeded their rate limits.

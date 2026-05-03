@@ -311,6 +311,10 @@ type OnboardingInfo struct {
 	AutoDisableChannel *AutoDisableChannelOnboarding `json:"autoDisableChannel,omitempty"`
 }
 
+type PassThroughSettings struct {
+	Enabled bool `json:"enabled"`
+}
+
 type PromptProtectionRulePreviewInput struct {
 	Pattern  string                            `json:"pattern"`
 	TestText string                            `json:"testText"`
@@ -514,6 +518,10 @@ type UpdateMeInput struct {
 type UpdateMyPasswordInput struct {
 	OldPassword *string `json:"oldPassword,omitempty"`
 	NewPassword string  `json:"newPassword"`
+}
+
+type UpdatePassThroughSettingsInput struct {
+	Enabled bool `json:"enabled"`
 }
 
 type UpdateProjectUserInput struct {

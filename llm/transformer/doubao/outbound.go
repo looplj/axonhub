@@ -69,6 +69,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		PlatformType:   openai.PlatformOpenAI,
 		BaseURL:        baseURL,
 		APIKeyProvider: config.APIKeyProvider,
+		ReasoningField: openai.ReasoningFieldContent,
 	}
 
 	outbound, err := openai.NewOutboundTransformerWithConfig(oaiConfig)
@@ -132,7 +133,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request first
-	oaiReq := openai.RequestFromLLM(llmReq)
+	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
 
 	// Create Doubao-specific request by adding request_id/user_id
 	doubaoReq := Request{

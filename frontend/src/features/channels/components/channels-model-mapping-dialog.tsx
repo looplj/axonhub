@@ -59,6 +59,7 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
     autoTrimedModelPrefixes: z.array(z.string()).optional(),
     hideOriginalModels: z.boolean().optional(),
     hideMappedModels: z.boolean().optional(),
+    lowercaseModelId: z.boolean().optional(),
   });
 
 const extractAliasFromModelPath = (modelPath: string): string => {
@@ -110,6 +111,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
       hideMappedModels: currentRow.settings?.hideMappedModels || false,
+      lowercaseModelId: currentRow.settings?.lowercaseModelId || false,
     },
   });
 
@@ -208,6 +210,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
       hideMappedModels: currentRow.settings?.hideMappedModels || false,
+      lowercaseModelId: currentRow.settings?.lowercaseModelId || false,
     });
     exitInlineEditing();
   }, [currentRow, open, form]);
@@ -290,6 +293,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
         autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
         hideOriginalModels: values.hideOriginalModels,
         hideMappedModels: values.hideMappedModels,
+        lowercaseModelId: values.lowercaseModelId,
       });
 
       await updateChannel.mutateAsync({
@@ -430,6 +434,28 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                         </span>
                       </div>
                     )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-lg'>{t('channels.dialogs.settings.lowercaseModelId.title')}</CardTitle>
+                  <CardDescription>{t('channels.dialogs.settings.lowercaseModelId.description')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className='flex items-start gap-3'>
+                    <Checkbox
+                      id='lowercaseModelId'
+                      checked={form.watch('lowercaseModelId') || false}
+                      onCheckedChange={(checked) => form.setValue('lowercaseModelId', checked === true)}
+                    />
+                    <label
+                      htmlFor='lowercaseModelId'
+                      className='cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+                    >
+                      {t('channels.dialogs.settings.lowercaseModelId.label')}
+                    </label>
                   </div>
                 </CardContent>
               </Card>

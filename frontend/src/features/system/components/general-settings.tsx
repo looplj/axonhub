@@ -15,6 +15,8 @@ import {
   useUpdateGeneralSettings,
   useUserAgentPassThroughSettings,
   useUpdateUserAgentPassThroughSettings,
+  usePassThroughSettings,
+  useUpdatePassThroughSettings,
 } from '../data/system';
 import { GMTTimeZoneOptions } from '../data/timezones';
 
@@ -28,6 +30,11 @@ export function GeneralSettings() {
   const { data: uaSettings, isLoading: isLoadingUASettings } = useUserAgentPassThroughSettings();
   const updateUASettings = useUpdateUserAgentPassThroughSettings();
   const [uaPassThroughEnabled, setUaPassThroughEnabled] = useState(false);
+
+  // Pass-Through (request/response body) settings
+  const { data: ptSettings, isLoading: isLoadingPTSettings } = usePassThroughSettings();
+  const updatePTSettings = useUpdatePassThroughSettings();
+  const [passThroughEnabled, setPassThroughEnabled] = useState(false);
 
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [timezone, setTimezone] = useState('UTC');
@@ -58,6 +65,13 @@ export function GeneralSettings() {
     }
   }, [uaSettings]);
 
+  // Update pass-through state when loaded
+  useEffect(() => {
+    if (ptSettings) {
+      setPassThroughEnabled(ptSettings.enabled);
+    }
+  }, [ptSettings]);
+
   const handleSave = async () => {
     setIsLoading(true);
     try {
@@ -78,6 +92,17 @@ export function GeneralSettings() {
     } catch {
       // Revert state on error
       setUaPassThroughEnabled(previousValue);
+    }
+  };
+
+  const handlePassThroughChange = async (enabled: boolean) => {
+    const previousValue = passThroughEnabled;
+    setPassThroughEnabled(enabled);
+    try {
+      await updatePTSettings.mutateAsync({ enabled });
+    } catch {
+      // Revert state on error
+      setPassThroughEnabled(previousValue);
     }
   };
 
@@ -134,10 +159,10 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('system.userAgentPassThrough.title')}</CardTitle>
-          <CardDescription>{t('system.userAgentPassThrough.description')}</CardDescription>
+          <CardTitle>{t('system.passThroughGroup.title')}</CardTitle>
+          <CardDescription>{t('system.passThroughGroup.description')}</CardDescription>
         </CardHeader>
-        <CardContent className='space-y-6'>
+        <CardContent className='space-y-4'>
           <div className='flex items-center justify-between'>
             <div className='space-y-0.5'>
               <Label htmlFor='ua-pass-through'>{t('system.userAgentPassThrough.label')}</Label>
@@ -148,6 +173,18 @@ export function GeneralSettings() {
               checked={uaPassThroughEnabled}
               onCheckedChange={handleUAPassThroughChange}
               disabled={isLoadingUASettings || updateUASettings.isPending}
+            />
+          </div>
+          <div className='flex items-center justify-between'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='pass-through'>{t('system.passThrough.label')}</Label>
+              <div className='text-muted-foreground text-sm'>{t('system.passThrough.helpText')}</div>
+            </div>
+            <Switch
+              id='pass-through'
+              checked={passThroughEnabled}
+              onCheckedChange={handlePassThroughChange}
+              disabled={isLoadingPTSettings || updatePTSettings.isPending}
             />
           </div>
         </CardContent>
