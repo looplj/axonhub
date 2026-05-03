@@ -303,8 +303,8 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
 `;
 
 const CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION = `
-  mutation CreateApiKeyProfileTemplate($input: CreateAPIKeyProfileTemplateInput!) {
-    createApiKeyProfileTemplate(input: $input) {
+  mutation CreateApiKeyProfileTemplate($input: CreateAPIKeyProfileTemplateInput!, $profile: APIKeyProfileInput) {
+    createApiKeyProfileTemplate(input: $input, profile: $profile) {
       id
       createdAt
       updatedAt
@@ -318,8 +318,8 @@ const CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION = `
 `;
 
 const UPDATE_APIKEY_PROFILE_TEMPLATE_MUTATION = `
-  mutation UpdateApiKeyProfileTemplate($id: ID!, $input: UpdateAPIKeyProfileTemplateInput!) {
-    updateApiKeyProfileTemplate(id: $id, input: $input) {
+  mutation UpdateApiKeyProfileTemplate($id: ID!, $input: UpdateAPIKeyProfileTemplateInput!, $profile: APIKeyProfileInput) {
+    updateApiKeyProfileTemplate(id: $id, input: $input, profile: $profile) {
       id
       createdAt
       updatedAt
@@ -707,17 +707,13 @@ export function useCreateApiKeyProfileTemplate() {
   return useMutation({
     mutationFn: (input: CreateApiKeyProfileTemplateInput) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const inputWithProject = {
+      const { profile, ...inputFields } = {
         ...input,
         projectID: input.projectID ?? null,
-        profile: {
-          ...input.profile,
-          name: input.name,
-        },
       };
       return graphqlRequest<{ createApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
-        { input: inputWithProject },
+        { input: inputFields, profile: profile ? { ...profile, name: input.name } : null },
         headers
       );
     },
@@ -735,13 +731,13 @@ export function useUpdateApiKeyProfileTemplate() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfileTemplateInput }) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const inputWithProfileName =
-        input.name && input.profile
-          ? { ...input, profile: { ...input.profile, name: input.name } }
-          : input;
+      const { profile, ...inputFields } = input;
+      const resolvedProfile = profile
+        ? { ...profile, name: input.name ?? undefined }
+        : undefined;
       return graphqlRequest<{ updateApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         UPDATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
-        { id, input: inputWithProfileName },
+        { id, input: inputFields, profile: resolvedProfile },
         headers
       );
     },
