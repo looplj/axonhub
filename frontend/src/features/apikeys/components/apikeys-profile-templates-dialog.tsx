@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { IconLoader2, IconPlus, IconTemplate, IconTrash } from '@tabler/icons-react';
+import { IconLoader2, IconPencil, IconPlus, IconTemplate, IconTrash } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -20,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useApiKeyProfileTemplates, useDeleteApiKeyProfileTemplate } from '../data/apikeys';
 import type { ApiKeyProfileTemplate } from '../data/schema';
 import { ApiKeyCreateTemplateDialog } from './apikeys-create-template-dialog';
+import { ApiKeyEditTemplateDialog } from './apikeys-edit-template-dialog';
 
 interface ApiKeysProfileTemplatesDialogProps {
   open: boolean;
@@ -30,10 +31,14 @@ function TemplateItem({
   template,
   onDelete,
   isDeleting,
+  onEdit,
+  isEditing,
 }: {
   template: ApiKeyProfileTemplate;
   onDelete: (template: ApiKeyProfileTemplate) => void;
   isDeleting: boolean;
+  onEdit: (template: ApiKeyProfileTemplate) => void;
+  isEditing: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -54,6 +59,15 @@ function TemplateItem({
       </div>
       <button
         type='button'
+        className='text-muted-foreground hover:text-foreground mt-0.5 shrink-0 rounded p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50'
+        onClick={() => onEdit(template)}
+        disabled={isEditing}
+        aria-label={t('apikeys.profileTemplates.editButton')}
+      >
+        <IconPencil className='h-3.5 w-3.5' />
+      </button>
+      <button
+        type='button'
         className='text-muted-foreground hover:text-destructive mt-0.5 shrink-0 rounded p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50'
         onClick={() => onDelete(template)}
         disabled={isDeleting}
@@ -71,6 +85,8 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
   const [deleteTarget, setDeleteTarget] = useState<ApiKeyProfileTemplate | null>(null);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ApiKeyProfileTemplate | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
   const { data: templates, isLoading: isLoadingTemplates } = useApiKeyProfileTemplates(selectedProjectId);
   const deleteTemplate = useDeleteApiKeyProfileTemplate();
@@ -134,6 +150,8 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
                     template={template}
                     onDelete={setDeleteTarget}
                     isDeleting={deletingTemplateId === template.id}
+                    onEdit={setEditTarget}
+                    isEditing={editingTemplateId === template.id}
                   />
                 ))}
               </div>
@@ -174,6 +192,7 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
       </AlertDialog>
 
       {createDialogOpen && <ApiKeyCreateTemplateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />}
+      {editTarget && <ApiKeyEditTemplateDialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }} template={editTarget} />}
     </>
   );
 }

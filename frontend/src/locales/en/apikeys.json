@@ -181,5 +181,10 @@
   "apikeys.profileTemplates.createDescription": "Create a new reusable profile template with model mappings, channel restrictions, and quota settings.",
   "apikeys.profileTemplates.createSuccess": "Template created successfully",
   "apikeys.profileTemplates.createError": "Failed to create template",
-  "apikeys.profileTemplates.templateDetails": "Template Details"
+  "apikeys.profileTemplates.templateDetails": "Template Details",
+  "apikeys.profileTemplates.editButton": "Edit",
+  "apikeys.profileTemplates.editTitle": "Edit Profile Template",
+  "apikeys.profileTemplates.editDescription": "Update this profile template's settings.",
+  "apikeys.profileTemplates.editSuccess": "Template updated successfully",
+  "apikeys.profileTemplates.editError": "Failed to update template"
 }

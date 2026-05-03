@@ -181,5 +181,10 @@
   "apikeys.profileTemplates.createDescription": "创建一个新的可重用配置模板，包含模型映射、渠道限制和配额设置。",
   "apikeys.profileTemplates.createSuccess": "模板创建成功",
   "apikeys.profileTemplates.createError": "创建模板失败",
-  "apikeys.profileTemplates.templateDetails": "模板详情"
+  "apikeys.profileTemplates.templateDetails": "模板详情",
+  "apikeys.profileTemplates.editButton": "编辑",
+  "apikeys.profileTemplates.editTitle": "编辑配置模板",
+  "apikeys.profileTemplates.editDescription": "更新此配置模板的设置。",
+  "apikeys.profileTemplates.editSuccess": "模板更新成功",
+  "apikeys.profileTemplates.editError": "更新模板失败"
 }

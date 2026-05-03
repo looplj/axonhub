@@ -724,7 +724,6 @@ export function useCreateApiKeyProfileTemplate() {
 }
 
 export function useUpdateApiKeyProfileTemplate() {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
 
@@ -743,10 +742,6 @@ export function useUpdateApiKeyProfileTemplate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
-      toast.success(t('apikeys.templates.successMessage'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

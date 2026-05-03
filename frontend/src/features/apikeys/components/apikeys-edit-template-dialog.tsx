@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { z } from 'zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
@@ -17,19 +18,98 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { AutoComplete } from '@/components/auto-complete';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
-import { useApiKeyProfileTemplates, useCreateApiKeyProfileTemplate } from '../data/apikeys';
-import { formSchemaFactory, type FormValues } from '../data/template-form-schema';
+import { useUpdateApiKeyProfileTemplate } from '../data/apikeys';
+import type { ApiKeyProfileTemplate } from '../data/schema';
 
-interface ApiKeyCreateTemplateDialogProps {
+const formSchemaFactory = (t: (key: string) => string) =>
+  z
+    .object({
+      name: z.string().min(1, t('apikeys.templates.templateNameRequired')),
+      description: z.string().optional(),
+      profile: z.object({
+        name: z.string().min(1, t('apikeys.validation.profileNameRequired')),
+        modelMappings: z.array(
+          z.object({
+            from: z.string().min(1, t('apikeys.validation.sourceModelRequired')),
+            to: z.string().min(1, t('apikeys.validation.targetModelRequired')),
+          })
+        ),
+        channelIDs: z.array(z.number()).optional().nullable(),
+        channelTags: z.array(z.string()).optional().nullable(),
+        channelTagsMatchMode: z.enum(['any', 'all', 'none']),
+        modelIDs: z.array(z.string()).optional().nullable(),
+        loadBalanceStrategy: z.string().optional().nullable(),
+        quota: z
+          .object({
+            requests: z.number().int().positive().optional().nullable(),
+            totalTokens: z.number().int().positive().optional().nullable(),
+            cost: z.number().optional().nullable(),
+            period: z.object({
+              type: z.enum(['all_time', 'past_duration', 'calendar_duration']),
+              pastDuration: z
+                .object({
+                  value: z.number().int().positive(),
+                  unit: z.enum(['minute', 'hour', 'day']),
+                })
+                .optional()
+                .nullable(),
+              calendarDuration: z
+                .object({
+                  unit: z.enum(['day', 'month']),
+                })
+                .optional()
+                .nullable(),
+            }),
+          })
+          .optional()
+          .nullable(),
+      }),
+    })
+    .superRefine((data, ctx) => {
+      const quota = data.profile?.quota;
+      if (!quota) return;
+
+      const requests = quota.requests ?? undefined;
+      const totalTokens = quota.totalTokens ?? undefined;
+      const cost = quota.cost ?? undefined;
+
+      if (requests == null && totalTokens == null && cost == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('apikeys.validation.quotaAtLeastOneLimit'),
+          path: ['profile', 'quota'],
+        });
+      }
+
+      if (quota.period.type === 'past_duration' && !quota.period.pastDuration) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('apikeys.validation.quotaPastDurationRequired'),
+          path: ['profile', 'quota', 'period', 'pastDuration'],
+        });
+      }
+
+      if (quota.period.type === 'calendar_duration' && !quota.period.calendarDuration) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('apikeys.validation.quotaCalendarDurationRequired'),
+          path: ['profile', 'quota', 'period', 'calendarDuration'],
+        });
+      }
+    });
+
+type FormValues = z.infer<ReturnType<typeof formSchemaFactory>>;
+
+interface ApiKeyEditTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  template: ApiKeyProfileTemplate;
 }
 
-export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateTemplateDialogProps) {
+export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKeyEditTemplateDialogProps) {
   const { t } = useTranslation();
   const selectedProjectId = useSelectedProjectId();
-  const createTemplate = useCreateApiKeyProfileTemplate();
-  const { data: existingTemplates } = useApiKeyProfileTemplates(selectedProjectId);
+  const updateTemplate = useUpdateApiKeyProfileTemplate();
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
   const { data: channelsData } = useAllChannelSummarys(selectedProjectId, { enabled: true });
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
@@ -46,23 +126,47 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
 
   const formSchema = useMemo(() => formSchemaFactory(t), [t]);
 
-  const defaultValues = useMemo(
-    () => ({
-      name: '',
-      description: '',
+  const defaultValues = useMemo<FormValues>(() => {
+    const profile = template.profile;
+    return {
+      name: template.name,
+      description: template.description ?? '',
       profile: {
-        name: '',
-        modelMappings: [] as { from: string; to: string }[],
-        channelIDs: [] as number[],
-        channelTags: [] as string[],
-        channelTagsMatchMode: 'any' as const,
-        modelIDs: [] as string[],
-        loadBalanceStrategy: null as string | null,
-        quota: null as FormValues['profile']['quota'],
+        name: profile?.name ?? '',
+        modelMappings:
+          profile?.modelMappings?.map((m) => ({
+            from: m.from,
+            to: m.to,
+          })) ?? [],
+        channelIDs: profile?.channelIDs ?? null,
+        channelTags: profile?.channelTags ?? null,
+        channelTagsMatchMode: profile?.channelTagsMatchMode ?? 'any',
+        modelIDs: profile?.modelIDs ?? null,
+        loadBalanceStrategy: profile?.loadBalanceStrategy ?? null,
+        quota: profile?.quota
+          ? {
+              requests: profile.quota.requests ?? null,
+              totalTokens: profile.quota.totalTokens ?? null,
+              cost: profile.quota.cost ?? null,
+              period: {
+                type: profile.quota.period.type,
+                pastDuration: profile.quota.period.pastDuration
+                  ? {
+                      value: profile.quota.period.pastDuration.value,
+                      unit: profile.quota.period.pastDuration.unit,
+                    }
+                  : null,
+                calendarDuration: profile.quota.period.calendarDuration
+                  ? {
+                      unit: profile.quota.period.calendarDuration.unit,
+                    }
+                  : null,
+              },
+            }
+          : null,
       },
-    }),
-    []
-  );
+    };
+  }, [template]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -75,21 +179,6 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
       fetchModels({ statusIn: ['enabled'], includeMapping: true, includePrefix: true });
     }
   }, [open, form, defaultValues, fetchModels]);
-
-  const templateName = form.watch('name');
-
-  useEffect(() => {
-    if (!templateName?.trim()) {
-      form.clearErrors('name');
-      return;
-    }
-    const isDuplicate = existingTemplates?.some((tmpl) => tmpl.name.trim().toLowerCase() === templateName.trim().toLowerCase());
-    if (isDuplicate) {
-      form.setError('name', { type: 'manual', message: t('apikeys.templates.templateNameDuplicate') });
-    } else {
-      form.clearErrors('name');
-    }
-  }, [templateName, existingTemplates, form, t]);
 
   const {
     fields: mappingFields,
@@ -108,24 +197,25 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
 
   const handleSubmit = async (values: FormValues) => {
     try {
-      await createTemplate.mutateAsync({
-        name: values.name,
-        description: values.description || '',
-        projectID: selectedProjectId,
-        profile: {
-          ...values.profile,
+      await updateTemplate.mutateAsync({
+        id: template.id,
+        input: {
           name: values.name,
+          description: values.description || '',
+          profile: {
+            ...values.profile,
+            name: values.name,
+          },
         },
       });
-      toast.success(t('apikeys.profileTemplates.createSuccess'));
+      toast.success(t('apikeys.profileTemplates.editSuccess'));
       onOpenChange(false);
     } catch {
-      toast.error(t('apikeys.profileTemplates.createError'));
+      toast.error(t('apikeys.profileTemplates.editError'));
     }
   };
 
-  const isSubmitting = createTemplate.isPending;
-  const hasDuplicateError = form.formState.errors.name?.type === 'manual';
+  const isSubmitting = updateTemplate.isPending;
   const modelOptions = useMemo(
     () => (availableModels?.map((model) => model.id) || []).map((m) => ({ value: m, label: m })),
     [availableModels]
@@ -135,13 +225,13 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent ref={setDialogContent} className='flex max-h-[90vh] flex-col sm:max-w-4xl'>
         <DialogHeader className='shrink-0 text-left'>
-          <DialogTitle>{t('apikeys.profileTemplates.createTitle')}</DialogTitle>
-          <DialogDescription>{t('apikeys.profileTemplates.createDescription')}</DialogDescription>
+          <DialogTitle>{t('apikeys.profileTemplates.editTitle')}</DialogTitle>
+          <DialogDescription>{t('apikeys.profileTemplates.editDescription')}</DialogDescription>
         </DialogHeader>
 
         <div className='flex-1 overflow-y-auto px-1'>
           <Form {...form}>
-            <form id='create-template-form' onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
+            <form id='edit-template-form' onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
               <div className='space-y-4 border-b pb-6'>
                 <h3 className='text-lg font-medium'>{t('apikeys.profileTemplates.templateDetails')}</h3>
                 <div className='grid gap-4 md:grid-cols-2'>
@@ -238,7 +328,7 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
 
                 <div className='space-y-3'>
                   {mappingFields.map((mapping, mappingIndex) => (
-                    <CreateMappingRow
+                    <EditMappingRow
                       key={mapping.id}
                       mappingIndex={mappingIndex}
                       form={form}
@@ -593,8 +683,8 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
             <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               {t('common.buttons.cancel')}
             </Button>
-            <Button type='submit' form='create-template-form' disabled={isSubmitting || hasDuplicateError}>
-              {isSubmitting ? t('common.buttons.saving') : t('apikeys.profileTemplates.createButton')}
+            <Button type='submit' form='edit-template-form' disabled={isSubmitting}>
+              {isSubmitting ? t('common.buttons.saving') : t('apikeys.profileTemplates.editButton')}
             </Button>
           </div>
         </DialogFooter>
@@ -603,7 +693,7 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
   );
 }
 
-interface CreateMappingRowProps {
+interface EditMappingRowProps {
   mappingIndex: number;
   form: ReturnType<typeof useForm<FormValues>>;
   onRemove: () => void;
@@ -612,7 +702,7 @@ interface CreateMappingRowProps {
   portalContainer?: HTMLElement | null;
 }
 
-function CreateMappingRow({ mappingIndex, form, onRemove, modelOptions, t, portalContainer }: CreateMappingRowProps) {
+function EditMappingRow({ mappingIndex, form, onRemove, modelOptions, t, portalContainer }: EditMappingRowProps) {
   const fromFieldName = `profile.modelMappings.${mappingIndex}.from` as const;
   const toFieldName = `profile.modelMappings.${mappingIndex}.to` as const;
 
