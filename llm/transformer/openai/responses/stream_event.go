@@ -103,6 +103,9 @@ type StreamEvent struct {
 	Code    string  `json:"code,omitempty"`
 	Message string  `json:"message,omitempty"`
 	Param   *string `json:"param,omitempty"`
+
+	Raw   json.RawMessage            `json:"-"`
+	Extra map[string]json.RawMessage `json:"-"`
 }
 
 // StreamEventContentPart represents a content part in streaming events.
@@ -115,7 +118,56 @@ type StreamEventContentPart struct {
 	Refusal *string `json:"refusal,omitempty"`
 }
 
+type streamEventAlias StreamEvent
+
+func (ev *StreamEvent) UnmarshalJSON(data []byte) error {
+	var alias streamEventAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	*ev = StreamEvent(alias)
+	ev.Raw = cloneRaw(data)
+	ev.Extra = collectExtraFields(data, streamEventKnownFields)
+
+	return nil
+}
+
+func (ev StreamEvent) MarshalJSON() ([]byte, error) {
+	type alias StreamEvent
+
+	data, err := json.Marshal(alias(ev))
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeExtraWithStructured(ev.Extra, data)
+}
+
 // MarshalStreamEvent marshals a StreamEvent to JSON bytes suitable for SSE.
 func MarshalStreamEvent(ev *StreamEvent) ([]byte, error) {
 	return json.Marshal(ev)
+}
+
+var streamEventKnownFields = map[string]struct{}{
+	"type":                {},
+	"sequence_number":     {},
+	"response":            {},
+	"output_index":        {},
+	"item":                {},
+	"item_id":             {},
+	"content_index":       {},
+	"part":                {},
+	"delta":               {},
+	"text":                {},
+	"name":                {},
+	"call_id":             {},
+	"arguments":           {},
+	"input":               {},
+	"summary_index":       {},
+	"partial_image_b64":   {},
+	"partial_image_index": {},
+	"code":                {},
+	"message":             {},
+	"param":               {},
 }

@@ -24,6 +24,7 @@ func (e *ProviderExtensions) LogValue() slog.Value {
 		slog.Int("response_output_items", len(e.OpenAIResponsesResponse().OutputItems)),
 		slog.Int("response_top_level_extra", len(e.OpenAIResponsesResponse().TopLevelExtra)),
 		slog.Int("response_metadata_keys", len(e.OpenAIResponsesResponse().MetadataExtra)),
+		slog.Bool("stream_raw_event", e.OpenAIResponses.Stream != nil && e.OpenAIResponses.Stream.RawEvent != nil),
 	)
 }
 

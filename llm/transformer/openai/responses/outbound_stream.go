@@ -152,6 +152,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		slog.DebugContext(context.Background(), "received response stream event", slog.Any("event", redactedStreamEventLogSummary(streamEvent)))
 	}
 
+	rawEvent := buildOpenAIResponsesRawEvent(event, &streamEvent, openAIResponsesReplayModeMergeOnly, "")
+
 	// Build base response
 	resp := &llm.Response{
 		Object:             "chat.completion.chunk",
@@ -299,7 +301,14 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 
 		default:
-			// For other item types (e.g., message), skip - no meaningful content to emit
+			if !isKnownOutputItemType(item.Type) {
+				rawEvent.ReplayMode = openAIResponsesReplayModeRaw
+				s.enqueueRawOnlyResponse(resp, rawEvent)
+
+				return nil
+			}
+
+			// For other known item types (e.g., message), skip - no meaningful content to emit
 			return nil // Intentionally skip this event
 		}
 
@@ -440,7 +449,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return nil // Intentionally skip this event
 
 	case StreamEventTypeResponseCompleted:
-		// Response completed - emit two events: one with finish_reason, one with usage
+		// Response completed - emit finish_reason, then carry the raw terminal event for replay/aggregation.
 		s.responseCompleted = true
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
@@ -460,29 +469,44 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		if streamEvent.Response != nil && len(streamEvent.Response.Output) > 0 {
+			llm.MarkRawOnlyResponseContent(resp)
+		}
 
-		// Second event: usage (if available)
 		if streamEvent.Response != nil && streamEvent.Response.Usage != nil {
 			s.state.usage = streamEvent.Response.Usage.ToUsage()
-			usageResp := &llm.Response{
-				Object:             "chat.completion.chunk",
-				ID:                 s.state.responseID,
-				Model:              s.state.responseModel,
-				Created:            s.state.created,
-				PreviousResponseID: s.state.previousResponseID,
-				Choices:            []llm.Choice{},
-				Usage:              s.state.usage,
-			}
-
-			s.enqueue(resp)
-			s.enqueue(usageResp)
-
-			return nil
 		}
+
+		rawCompletedResp := &llm.Response{
+			Object:             "chat.completion.chunk",
+			ID:                 s.state.responseID,
+			Model:              s.state.responseModel,
+			Created:            s.state.created,
+			PreviousResponseID: s.state.previousResponseID,
+			Choices:            []llm.Choice{},
+			Usage:              s.state.usage,
+		}
+		rawEvent.ReplayMode = openAIResponsesReplayModeRaw
+		attachOpenAIResponsesRawStreamEvent(rawCompletedResp, rawEvent)
+		if streamEvent.Response != nil {
+			attachOpenAIResponsesResponseExtensions(rawCompletedResp, streamEvent.Response, streamEvent.Response.Raw)
+			if hasRawOnlyResponseOutput(streamEvent.Response) {
+				llm.MarkRawOnlyResponseContent(rawCompletedResp)
+			}
+		}
+
+		s.enqueue(resp)
+		s.enqueue(rawCompletedResp)
+
+		return nil
 
 	case StreamEventTypeResponseFailed:
 		// Response failed
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
+			resp.PreviousResponseID = s.state.previousResponseID
+		}
 		finishReason := "error"
 		resp.Choices = []llm.Choice{
 			{
@@ -490,10 +514,21 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		if streamEvent.Response != nil && len(streamEvent.Response.Output) > 0 {
+			llm.MarkRawOnlyResponseContent(resp)
+		}
+		s.enqueue(resp)
+		s.enqueueRawTerminalResponse(rawEvent, streamEvent.Response)
+
+		return nil
 
 	case StreamEventTypeResponseIncomplete:
 		// Response incomplete (e.g., max tokens)
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
+			resp.PreviousResponseID = s.state.previousResponseID
+		}
 		finishReason := "length"
 		resp.Choices = []llm.Choice{
 			{
@@ -501,6 +536,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		if streamEvent.Response != nil && len(streamEvent.Response.Output) > 0 {
+			llm.MarkRawOnlyResponseContent(resp)
+		}
+		s.enqueue(resp)
+		s.enqueueRawTerminalResponse(rawEvent, streamEvent.Response)
+
+		return nil
 
 	case StreamEventTypeError:
 		return &llm.ResponseError{
@@ -545,13 +587,76 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	default:
-		// Unknown event type - skip
-		return nil // Intentionally skip this event
+		rawEvent.ReplayMode = openAIResponsesReplayModeRaw
+		s.enqueueRawOnlyResponse(resp, rawEvent)
+
+		return nil
 	}
 
+	attachOpenAIResponsesRawStreamEvent(resp, rawEvent)
 	s.enqueue(resp)
 
 	return nil
+}
+
+func (s *responsesOutboundStream) enqueueRawOnlyResponse(
+	base *llm.Response,
+	rawEvent *llm.OpenAIResponsesRawEvent,
+) {
+	if rawEvent == nil {
+		return
+	}
+
+	resp := &llm.Response{
+		Object:             "chat.completion.chunk",
+		ID:                 s.state.responseID,
+		Model:              s.state.responseModel,
+		Created:            s.state.created,
+		PreviousResponseID: s.state.previousResponseID,
+		Choices:            []llm.Choice{},
+		Usage:              s.state.usage,
+	}
+	if base != nil {
+		resp.ID = base.ID
+		resp.Model = base.Model
+		resp.Created = base.Created
+		resp.PreviousResponseID = base.PreviousResponseID
+		resp.Usage = base.Usage
+	}
+
+	rawEvent.ReplayMode = openAIResponsesReplayModeRaw
+	attachOpenAIResponsesRawStreamEvent(resp, rawEvent)
+	llm.MarkRawOnlyResponseContent(resp)
+	s.enqueue(resp)
+}
+
+func (s *responsesOutboundStream) enqueueRawTerminalResponse(
+	rawEvent *llm.OpenAIResponsesRawEvent,
+	response *Response,
+) {
+	if rawEvent == nil {
+		return
+	}
+
+	terminalResp := &llm.Response{
+		Object:             "chat.completion.chunk",
+		ID:                 s.state.responseID,
+		Model:              s.state.responseModel,
+		Created:            s.state.created,
+		PreviousResponseID: s.state.previousResponseID,
+		Choices:            []llm.Choice{},
+		Usage:              s.state.usage,
+	}
+	rawEvent.ReplayMode = openAIResponsesReplayModeRaw
+	attachOpenAIResponsesRawStreamEvent(terminalResp, rawEvent)
+	if response != nil {
+		attachOpenAIResponsesResponseExtensions(terminalResp, response, response.Raw)
+		if hasRawOnlyResponseOutput(response) {
+			llm.MarkRawOnlyResponseContent(terminalResp)
+		}
+	}
+
+	s.enqueue(terminalResp)
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {

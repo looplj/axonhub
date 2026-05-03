@@ -347,6 +347,24 @@ func interleaveRawOutputItems(structured []Item, rawTopLevel []llm.OpenAIRespons
 	return restored
 }
 
+func appendRawOnlyOutputItems(structured []Item, rawTopLevel []llm.OpenAIResponsesRawItem) []Item {
+	if len(rawTopLevel) == 0 {
+		return structured
+	}
+
+	restored := append([]Item(nil), structured...)
+	for _, rawItem := range rawTopLevel {
+		if rawItem.SemanticKey != "" {
+			continue
+		}
+		if item, ok := itemFromRawOutput(rawItem); ok {
+			restored = append(restored, item)
+		}
+	}
+
+	return restored
+}
+
 func itemFromRawOutput(rawItem llm.OpenAIResponsesRawItem) (Item, bool) {
 	if len(rawItem.Raw) == 0 {
 		return Item{}, false

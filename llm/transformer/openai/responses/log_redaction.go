@@ -1,5 +1,7 @@
 package responses
 
+import "slices"
+
 type streamEventLogSummary struct {
 	Type         StreamEventType `json:"type"`
 	Sequence     int             `json:"sequence_number"`
@@ -11,6 +13,7 @@ type streamEventLogSummary struct {
 	DeltaBytes   int             `json:"delta_bytes,omitempty"`
 	HasUsage     bool            `json:"has_usage"`
 	HasError     bool            `json:"has_error"`
+	ExtraKeys    []string        `json:"extra_keys,omitempty"`
 }
 
 func redactedStreamEventLogSummary(event StreamEvent) streamEventLogSummary {
@@ -30,6 +33,13 @@ func redactedStreamEventLogSummary(event StreamEvent) streamEventLogSummary {
 	summary.DeltaBytes = len(event.Delta)
 	if event.Response != nil {
 		summary.HasUsage = event.Response.Usage != nil
+	}
+	if len(event.Extra) > 0 {
+		summary.ExtraKeys = make([]string, 0, len(event.Extra))
+		for key := range event.Extra {
+			summary.ExtraKeys = append(summary.ExtraKeys, key)
+		}
+		slices.Sort(summary.ExtraKeys)
 	}
 
 	return summary

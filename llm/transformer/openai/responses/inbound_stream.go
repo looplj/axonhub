@@ -22,9 +22,10 @@ func (t *InboundTransformer) TransformStream(
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	return &responsesInboundStream{
-		source:    stream,
-		ctx:       ctx,
-		toolCalls: make(map[int]*llm.ToolCall),
+		source:      stream,
+		ctx:         ctx,
+		toolCalls:   make(map[int]*llm.ToolCall),
+		replayState: newOpenAIResponsesStreamReplayState(),
 	}, nil
 }
 
@@ -46,9 +47,10 @@ type responsesInboundStream struct {
 	responseCompleted       bool
 
 	// Response metadata
-	responseID string
-	model      string
-	createdAt  int64
+	responseID         string
+	model              string
+	createdAt          int64
+	previousResponseID *string
 
 	// Content tracking
 	outputIndex    int
@@ -68,8 +70,10 @@ type responsesInboundStream struct {
 	toolCallOutputIndex map[int]int // Maps tool call index to output index
 
 	// Response accumulation using streamAggregator
-	usage      *llm.Usage
-	aggregator *streamAggregator
+	usage           *llm.Usage
+	aggregator      *streamAggregator
+	replayState     *OpenAIResponsesStreamReplayState
+	currentRawEvent *llm.OpenAIResponsesRawEvent
 
 	// Event queue
 	eventQueue []*httpclient.StreamEvent
@@ -82,8 +86,18 @@ type responsesInboundStream struct {
 }
 
 func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
-	ev.SequenceNumber = s.sequenceNumber
-	s.sequenceNumber++
+	if isResponsesTerminalEvent(ev.Type) {
+		if s.replayState != nil && s.replayState.TerminalEmitted {
+			return nil
+		}
+	}
+
+	if s.currentRawEvent != nil && s.currentRawEvent.Type == string(ev.Type) &&
+		s.currentRawEvent.ReplayMode != openAIResponsesReplayModeRaw {
+		ev.Extra = mergeRawMaps(s.currentRawEvent.Extra, ev.Extra)
+	}
+
+	ev.SequenceNumber = s.nextSequenceNumber()
 
 	eventData, err := json.Marshal(ev)
 	if err != nil {
@@ -103,8 +117,28 @@ func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
 	}
 
 	s.aggregator.processEvent(ev)
+	if isResponsesTerminalEvent(ev.Type) && s.replayState != nil {
+		s.replayState.TerminalEmitted = true
+		if ev.Type == StreamEventTypeResponseCompleted {
+			s.replayState.SyntheticCompletedEmitted = true
+		}
+	}
 
 	return nil
+}
+
+func (s *responsesInboundStream) nextSequenceNumber() int {
+	if s.replayState != nil {
+		sequenceNumber := s.replayState.nextSequenceNumber()
+		s.sequenceNumber = s.replayState.NextSequenceNumber
+
+		return sequenceNumber
+	}
+
+	sequenceNumber := s.sequenceNumber
+	s.sequenceNumber++
+
+	return sequenceNumber
 }
 
 //nolint:maintidx,gocognit // It is complex and hard to split.
@@ -154,6 +188,14 @@ func (s *responsesInboundStream) Next() bool {
 		return s.Next() // Try next chunk
 	}
 
+	s.currentRawEvent = streamRawEvent(chunk)
+	if s.replayState != nil {
+		s.replayState.LastStructuredResponse = chunk
+	}
+	defer func() {
+		s.currentRawEvent = nil
+	}()
+
 	// Initialize response metadata from first chunk
 	if s.responseID == "" && chunk.ID != "" {
 		s.responseID = chunk.ID
@@ -168,6 +210,10 @@ func (s *responsesInboundStream) Next() bool {
 		s.createdAt = chunk.Created
 	}
 
+	if chunk.PreviousResponseID != nil {
+		s.previousResponseID = chunk.PreviousResponseID
+	}
+
 	// Track usage
 	if chunk.Usage != nil {
 		s.usage = chunk.Usage
@@ -178,12 +224,13 @@ func (s *responsesInboundStream) Next() bool {
 		s.hasResponseCreated = true
 
 		response := &Response{
-			Object:    "response",
-			ID:        s.responseID,
-			Model:     s.model,
-			CreatedAt: s.createdAt,
-			Status:    lo.ToPtr("in_progress"),
-			Output:    []Item{},
+			Object:             "response",
+			ID:                 s.responseID,
+			Model:              s.model,
+			CreatedAt:          s.createdAt,
+			Status:             lo.ToPtr("in_progress"),
+			Output:             []Item{},
+			PreviousResponseID: s.previousResponseID,
 		}
 
 		if s.usage != nil {
@@ -268,6 +315,15 @@ func (s *responsesInboundStream) Next() bool {
 		}
 	}
 
+	if s.currentRawEvent != nil && s.currentRawEvent.ReplayMode == openAIResponsesReplayModeRaw {
+		if err := s.enqueueRawReplayEvent(s.currentRawEvent, chunk); err != nil {
+			s.err = fmt.Errorf("failed to enqueue raw responses stream event: %w", err)
+			return false
+		}
+
+		return s.Next()
+	}
+
 	// Handle final usage chunk and complete response
 	if chunk.Usage != nil && s.hasFinished && !s.responseCompleted {
 		s.responseCompleted = true
@@ -277,6 +333,7 @@ func (s *responsesInboundStream) Next() bool {
 		s.aggregator.status = "completed"
 		response := s.aggregator.buildResponse()
 		response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
+		response.PreviousResponseID = s.previousResponseID
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:     StreamEventTypeResponseCompleted,
@@ -933,12 +990,13 @@ func classifyStreamError(err error) (code, message string) {
 
 func (s *responsesInboundStream) buildFailedResponse(code, message string) *Response {
 	response := &Response{
-		Object:    "response",
-		ID:        s.responseID,
-		Model:     s.model,
-		CreatedAt: s.createdAt,
-		Status:    lo.ToPtr("failed"),
-		Output:    []Item{},
+		Object:             "response",
+		ID:                 s.responseID,
+		Model:              s.model,
+		CreatedAt:          s.createdAt,
+		Status:             lo.ToPtr("failed"),
+		Output:             []Item{},
+		PreviousResponseID: s.previousResponseID,
 		Error: &Error{
 			Type:    "server_error",
 			Code:    code,

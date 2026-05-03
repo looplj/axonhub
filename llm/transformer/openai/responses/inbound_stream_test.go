@@ -6,9 +6,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
@@ -218,6 +220,191 @@ func TestInboundTransformer_TransformStream_EmitsUpstreamErrorEvents(t *testing.
 			tt.assert(t, actualEvents)
 		})
 	}
+}
+
+func TestInboundTransformer_TransformStream_ReplaysRawCompletedWithStructuredOverlay(t *testing.T) {
+	rawCompleted := &llm.Response{
+		ID:      "resp_raw_completed",
+		Model:   "client-model",
+		Created: 42,
+		Choices: []llm.Choice{},
+		Usage: &llm.Usage{
+			PromptTokens:     2,
+			CompletionTokens: 3,
+			TotalTokens:      5,
+		},
+	}
+	attachOpenAIResponsesRawStreamEvent(rawCompleted, &llm.OpenAIResponsesRawEvent{
+		Type:       string(StreamEventTypeResponseCompleted),
+		SSEType:    string(StreamEventTypeResponseCompleted),
+		ReplayMode: openAIResponsesReplayModeRaw,
+		Raw: []byte(`{
+			"type": "response.completed",
+			"sequence_number": 99,
+			"response": {
+				"id": "resp_raw_completed",
+				"object": "response",
+				"created_at": 1,
+				"model": "provider-actual-model",
+				"status": "completed",
+				"metadata": {"nested": {"ok": true}},
+				"output": [
+					{
+						"id": "msg_raw",
+						"type": "message",
+						"status": "completed",
+						"role": "assistant",
+						"content": [{"type": "output_text", "text": "hello", "annotations": []}],
+						"provider_extra": "kept"
+					},
+					{
+						"id": "future_raw",
+						"type": "future_output",
+						"payload": {"x": 1}
+					}
+				],
+				"usage": {"input_tokens": 999, "output_tokens": 999, "total_tokens": 999}
+			}
+		}`),
+	})
+
+	stream := streams.SliceStream([]*llm.Response{
+		{
+			ID:      "resp_raw_completed",
+			Model:   "client-model",
+			Created: 42,
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+			},
+		},
+		{
+			ID:      "resp_raw_completed",
+			Model:   "client-model",
+			Created: 42,
+			Choices: []llm.Choice{
+				{
+					Index:        0,
+					Delta:        &llm.Message{},
+					FinishReason: lo.ToPtr("stop"),
+				},
+			},
+		},
+		rawCompleted,
+		llm.DoneResponse,
+	})
+
+	transformedStream, err := NewInboundTransformer().TransformStream(t.Context(), stream)
+	require.NoError(t, err)
+
+	events := collectInboundStreamEvents(t, transformedStream)
+	require.NoError(t, transformedStream.Err())
+
+	completedEvents := filterStreamEvents(events, StreamEventTypeResponseCompleted)
+	require.Len(t, completedEvents, 1)
+
+	completed := completedEvents[0]
+	require.Equal(t, len(events)-1, completed.SequenceNumber)
+	require.NotNil(t, completed.Response)
+	require.Equal(t, "client-model", completed.Response.Model)
+	require.Equal(t, int64(42), completed.Response.CreatedAt)
+	require.NotNil(t, completed.Response.Usage)
+	require.Equal(t, int64(2), completed.Response.Usage.InputTokens)
+	require.Equal(t, int64(3), completed.Response.Usage.OutputTokens)
+	require.Equal(t, int64(5), completed.Response.Usage.TotalTokens)
+	require.JSONEq(t, `{"nested":{"ok":true}}`, string(completed.Response.MetadataRaw))
+	require.Len(t, completed.Response.Output, 2)
+	require.Equal(t, "kept", stringValueFromRaw(t, completed.Response.Output[0].Extra["provider_extra"]))
+	require.Equal(t, "future_output", completed.Response.Output[1].Type)
+
+	for i, event := range events {
+		require.Equal(t, i, event.SequenceNumber)
+	}
+}
+
+func TestInboundTransformer_TransformStream_MergesKnownDeltaExtra(t *testing.T) {
+	rawDelta := &llm.Response{
+		ID:      "resp_delta_extra",
+		Model:   "client-model",
+		Created: 42,
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Delta: &llm.Message{
+					Content: llm.MessageContent{Content: lo.ToPtr("A")},
+				},
+			},
+		},
+	}
+	attachOpenAIResponsesRawStreamEvent(rawDelta, &llm.OpenAIResponsesRawEvent{
+		Type:       string(StreamEventTypeOutputTextDelta),
+		SSEType:    string(StreamEventTypeOutputTextDelta),
+		ReplayMode: openAIResponsesReplayModeMergeOnly,
+		Raw: []byte(`{
+			"type": "response.output_text.delta",
+			"sequence_number": 10,
+			"item_id": "msg_provider",
+			"output_index": 0,
+			"content_index": 0,
+			"delta": "A",
+			"provider_delta_extra": {"kept": true}
+		}`),
+		Extra: map[string]json.RawMessage{
+			"provider_delta_extra": []byte(`{"kept": true}`),
+		},
+	})
+
+	transformedStream, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream([]*llm.Response{rawDelta}))
+	require.NoError(t, err)
+
+	events := collectInboundStreamEvents(t, transformedStream)
+	require.NoError(t, transformedStream.Err())
+
+	deltas := filterStreamEvents(events, StreamEventTypeOutputTextDelta)
+	require.Len(t, deltas, 1)
+	require.JSONEq(t, `{"kept": true}`, string(deltas[0].Extra["provider_delta_extra"]))
+}
+
+func collectInboundStreamEvents(t *testing.T, stream streams.Stream[*httpclient.StreamEvent]) []StreamEvent {
+	t.Helper()
+
+	var events []StreamEvent
+	for stream.Next() {
+		event := stream.Current()
+		require.NotNil(t, event)
+
+		var parsed StreamEvent
+		err := json.Unmarshal(event.Data, &parsed)
+		require.NoError(t, err)
+		events = append(events, parsed)
+	}
+
+	return events
+}
+
+func filterStreamEvents(events []StreamEvent, eventType StreamEventType) []StreamEvent {
+	var filtered []StreamEvent
+	for _, event := range events {
+		if event.Type == eventType {
+			filtered = append(filtered, event)
+		}
+	}
+
+	return filtered
+}
+
+func stringValueFromRaw(t *testing.T, raw json.RawMessage) string {
+	t.Helper()
+
+	var value string
+	err := json.Unmarshal(raw, &value)
+	require.NoError(t, err)
+
+	return value
 }
 
 type errorResponseStream struct {

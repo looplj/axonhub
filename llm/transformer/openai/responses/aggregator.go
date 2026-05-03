@@ -29,6 +29,8 @@ type streamAggregator struct {
 
 	// Usage
 	usage *Usage
+
+	completedResponse *Response
 }
 
 // aggregatedItem holds the accumulated state for an output item.
@@ -50,6 +52,8 @@ type aggregatedItem struct {
 
 	// For reasoning type
 	SummaryParts map[int]*aggregatedSummaryPart
+
+	RawItem *Item
 }
 
 type aggregatedSummaryPart struct {
@@ -240,6 +244,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			item.Arguments.WriteString(ev.Item.Arguments)
 			item.EncryptedContent = ev.Item.EncryptedContent
 			item.Input = ev.Item.Input
+			rawItem := *ev.Item
+			item.RawItem = &rawItem
 
 			if len(ev.Item.Summary) > 0 {
 				for idx, s := range ev.Item.Summary {
@@ -433,8 +439,21 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			if item == nil {
 				item = a.lastItemByOutputIndex(ev.OutputIndex)
 			}
+			if item == nil {
+				item = newAggregatedItem()
+				a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
+			}
 
 			if item != nil {
+				item.ID = ev.Item.ID
+				item.Type = ev.Item.Type
+				item.Role = ev.Item.Role
+				item.CallID = ev.Item.CallID
+				item.Name = ev.Item.Name
+				item.Input = ev.Item.Input
+				rawItem := *ev.Item
+				item.RawItem = &rawItem
+
 				if ev.Item.Status != nil {
 					item.Status = *ev.Item.Status
 				}
@@ -467,6 +486,12 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 	case StreamEventTypeResponseCompleted:
 		a.status = "completed"
 		if ev.Response != nil {
+			a.completedResponse = ev.Response
+			a.responseID = firstNonEmpty(ev.Response.ID, a.responseID)
+			a.model = firstNonEmpty(ev.Response.Model, a.model)
+			if ev.Response.CreatedAt != 0 {
+				a.createdAt = ev.Response.CreatedAt
+			}
 			a.previousResponseID = ev.Response.PreviousResponseID
 			if ev.Response.Usage != nil {
 				a.usage = ev.Response.Usage
@@ -586,7 +611,15 @@ func (a *streamAggregator) buildResponse() *Response {
 				})
 
 			default:
-				// Generic item
+				if item.RawItem != nil {
+					rawItem := *item.RawItem
+					if item.Status != "" {
+						rawItem.Status = lo.ToPtr(item.Status)
+					}
+					output = append(output, rawItem)
+					continue
+				}
+
 				output = append(output, Item{
 					ID:     item.ID,
 					Type:   item.Type,
@@ -597,7 +630,15 @@ func (a *streamAggregator) buildResponse() *Response {
 		}
 	}
 
-	return &Response{
+	if a.completedResponse != nil {
+		rawItems := buildOutputRawItems(a.completedResponse.Output)
+		knownByKey, contentExtraByKey, rawTopLevel := splitResponseRawOutputItems(rawItems)
+		output = applyKnownOutputExtras(output, knownByKey, contentExtraByKey)
+		output = appendRawOnlyOutputItems(output, rawTopLevel)
+		output = dedupeOutputItemsByID(output)
+	}
+
+	resp := &Response{
 		Object:             "response",
 		ID:                 a.responseID,
 		Model:              a.model,
@@ -607,4 +648,32 @@ func (a *streamAggregator) buildResponse() *Response {
 		Usage:              a.usage,
 		PreviousResponseID: a.previousResponseID,
 	}
+
+	if a.completedResponse != nil {
+		resp.Extra = cloneRawMap(a.completedResponse.Extra)
+		resp.MetadataRaw = cloneRaw(a.completedResponse.MetadataRaw)
+		resp.Metadata = metadataStrings(a.completedResponse.MetadataRaw)
+	}
+
+	return resp
+}
+
+func dedupeOutputItemsByID(output []Item) []Item {
+	if len(output) == 0 {
+		return output
+	}
+
+	seen := map[string]struct{}{}
+	deduped := make([]Item, 0, len(output))
+	for _, item := range output {
+		if item.ID != "" {
+			if _, ok := seen[item.ID]; ok {
+				continue
+			}
+			seen[item.ID] = struct{}{}
+		}
+		deduped = append(deduped, item)
+	}
+
+	return deduped
 }

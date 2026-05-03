@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -77,12 +78,14 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				}
 			}
 
-			require.Len(t, actualLLMResponses, len(expectedEvents))
+			comparableResponses := comparableLLMStreamResponses(actualLLMResponses)
+			require.GreaterOrEqual(t, len(comparableResponses), len(expectedEvents))
 
 			// exclude the last DONE event
+			eventCmpOpts := cmpopts.IgnoreFields(llm.Response{}, "ProviderExtensions", "TransformerMetadata")
 			for i, expectedEvent := range expectedEvents[:len(expectedEvents)-1] {
-				if !xtest.Equal(expectedEvent, actualLLMResponses[i]) {
-					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, actualLLMResponses[i]))
+				if !xtest.Equal(expectedEvent, comparableResponses[i], eventCmpOpts) {
+					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, comparableResponses[i], eventCmpOpts))
 				}
 			}
 
@@ -115,6 +118,26 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func comparableLLMStreamResponses(events []*llm.Response) []*llm.Response {
+	comparable := make([]*llm.Response, 0, len(events))
+	for _, event := range events {
+		if event == nil {
+			continue
+		}
+		rawEvent := streamRawEvent(event)
+		if rawEvent != nil &&
+			rawEvent.ReplayMode == openAIResponsesReplayModeRaw &&
+			len(event.Choices) == 0 &&
+			event.Usage == nil {
+			continue
+		}
+
+		comparable = append(comparable, event)
+	}
+
+	return comparable
 }
 
 func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
@@ -188,7 +211,7 @@ func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *test
 	require.Equal(t, llm.DoneResponse, actual[3])
 }
 
-func TestOutboundTransformer_TransformStream_UnknownLifecycleEventCurrentlySkipped(t *testing.T) {
+func TestOutboundTransformer_TransformStream_UnknownLifecycleEventIsCarriedForRawReplay(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
 
@@ -238,7 +261,13 @@ func TestOutboundTransformer_TransformStream_UnknownLifecycleEventCurrentlySkipp
 	actual, err := streams.All(stream)
 	require.NoError(t, err)
 
-	require.Len(t, actual, 4)
+	require.Len(t, actual, 5)
 	require.Equal(t, "resp_unknown", actual[0].ID)
-	require.Equal(t, llm.DoneResponse, actual[3])
+	require.True(t, llm.HasRawOnlyResponseContent(actual[1]))
+	rawEvent := streamRawEvent(actual[1])
+	require.NotNil(t, rawEvent)
+	require.Equal(t, "response.codex_unknown", rawEvent.Type)
+	require.Equal(t, openAIResponsesReplayModeRaw, rawEvent.ReplayMode)
+	require.JSONEq(t, `{"tool_output":"raw-only"}`, string(rawEvent.Extra["payload"]))
+	require.Equal(t, llm.DoneResponse, actual[4])
 }

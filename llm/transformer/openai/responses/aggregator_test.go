@@ -306,6 +306,70 @@ func TestAggregateStreamChunks_PreservesPreviousResponseID(t *testing.T) {
 	require.Equal(t, "resp_prev_123", *resp.PreviousResponseID)
 }
 
+func TestAggregateStreamChunks_PreservesCompletedMetadataAndUnknownOutput(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type": "response.created",
+				"sequence_number": 0,
+				"response": {
+					"id": "resp_stream_raw",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-4o",
+					"status": "in_progress",
+					"output": []
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type": "response.completed",
+				"sequence_number": 1,
+				"response": {
+					"id": "resp_stream_raw",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-4o",
+					"status": "completed",
+					"metadata": {
+						"str": "ok",
+						"object_value": {"nested": true}
+					},
+					"output": [
+						{
+							"id": "future_1",
+							"type": "future_output",
+							"payload": {"x": 1}
+						}
+					],
+					"usage": {
+						"input_tokens": 10,
+						"output_tokens": 5,
+						"total_tokens": 15
+					}
+				}
+			}`),
+		},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.Equal(t, "resp_stream_raw", meta.ID)
+	require.NotNil(t, meta.Usage)
+
+	var resp Response
+	err = json.Unmarshal(resultBytes, &resp)
+	require.NoError(t, err)
+
+	require.JSONEq(t, `{"str":"ok","object_value":{"nested":true}}`, string(resp.MetadataRaw))
+	require.Len(t, resp.Output, 1)
+	require.Equal(t, "future_output", resp.Output[0].Type)
+	require.JSONEq(t, `{"x":1}`, string(resp.Output[0].Extra["payload"]))
+}
+
 func TestAggregateStreamChunks_SkipsInvalidJSON(t *testing.T) {
 	chunks := []*httpclient.StreamEvent{
 		{
