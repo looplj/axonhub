@@ -167,7 +167,11 @@ func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templat
 			existingProfiles = &objects.APIKeyProfiles{}
 		}
 
-		resolvedName := resolveProfileNameConflict(existingProfiles.Profiles, template.Name)
+		profileName := templateProfile.Name
+		if profileName == "" {
+			profileName = template.Name
+		}
+		resolvedName := resolveProfileNameConflict(existingProfiles.Profiles, profileName)
 		templateProfile.Name = resolvedName
 
 		existingProfiles.Profiles = append(existingProfiles.Profiles, *templateProfile)
@@ -219,8 +223,6 @@ func (s *APIKeyProfileTemplateService) SaveAsTemplate(ctx context.Context, apiKe
 			log.Error(ctx, "Failed to copy API key profile for template", log.Cause(getErr), log.String("profile_name", profileName))
 			return fmt.Errorf("failed to copy profile: %w", getErr)
 		}
-
-		copiedProfile.Name = templateName
 
 		var saveErr error
 		template, saveErr = client.APIKeyProfileTemplate.Create().

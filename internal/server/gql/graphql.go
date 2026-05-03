@@ -168,7 +168,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 var guidTypeToNodeType = map[string]string{
 	ent.TypeUser:                    user.Table,
 	ent.TypeAPIKey:                  apikey.Table,
-	ent.TypeAPIKeyProfileTemplate:  apikeyprofiletemplate.Table,
+	ent.TypeAPIKeyProfileTemplate:   apikeyprofiletemplate.Table,
 	ent.TypeModel:                   model.Table,
 	ent.TypeChannel:                 channel.Table,
 	ent.TypeChannelProbe:            channelprobe.Table,

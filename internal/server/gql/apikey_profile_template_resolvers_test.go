@@ -102,8 +102,6 @@ func TestApiKeyProfileTemplate_CreateTemplate(t *testing.T) {
 	require.Equal(t, "my-template", template.Profile.Name)
 }
 
-
-
 func TestApiKeyProfileTemplate_UpdateTemplate(t *testing.T) {
 	mutationResolver, _, ctx, client := setupTestAPIKeyProfileTemplateResolvers(t)
 	defer client.Close()
@@ -221,8 +219,6 @@ func TestApiKeyProfileTemplate_LoadTemplate(t *testing.T) {
 	require.Equal(t, "load-template", result.Profiles.Profiles[1].Name)
 }
 
-
-
 func TestApiKeyProfileTemplate_QueryTemplates(t *testing.T) {
 	_, queryResolver, ctx, client := setupTestAPIKeyProfileTemplateResolvers(t)
 	defer client.Close()
@@ -232,7 +228,7 @@ func TestApiKeyProfileTemplate_QueryTemplates(t *testing.T) {
 
 	testProject := createTestProject(t, ctx, client)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		_, err := client.APIKeyProfileTemplate.Create().
 			SetName(fmt.Sprintf("template-%d", i)).
 			SetDescription(fmt.Sprintf("template %d", i)).
@@ -255,8 +251,6 @@ func TestApiKeyProfileTemplate_QueryTemplates(t *testing.T) {
 	require.NotNil(t, conn)
 	require.Equal(t, 3, conn.TotalCount)
 }
-
-
 
 func ptrStr(s string) *string {
 	return &s
