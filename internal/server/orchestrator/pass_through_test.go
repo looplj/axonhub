@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -37,7 +38,7 @@ func TestCaptureRawProviderResponse_StoresResponse(t *testing.T) {
 					ID:   1,
 					Name: "test",
 					Settings: &objects.ChannelSettings{
-						PassThroughBody: true,
+						PassThroughBody: lo.ToPtr(true),
 					},
 				},
 			},
@@ -49,7 +50,7 @@ func TestCaptureRawProviderResponse_StoresResponse(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := captureRawProviderResponse(outbound)
+	mw := captureRawProviderResponse(outbound, nil)
 	resp := &httpclient.Response{StatusCode: 200, Body: []byte("ok")}
 
 	result, err := mw.OnOutboundRawResponse(ctx, resp)
@@ -73,7 +74,7 @@ func TestApplyPassThroughResponse_Disabled(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughResponse(outbound)
+	mw := applyPassThroughResponse(outbound, nil)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	state.RawProviderResponse = &httpclient.Response{StatusCode: 200, Body: []byte("raw")}
 
@@ -89,7 +90,7 @@ func TestApplyPassThroughResponse_Enabled_ReturnsRaw(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -105,7 +106,7 @@ func TestApplyPassThroughResponse_Enabled_ReturnsRaw(t *testing.T) {
 		state:   state,
 	}
 
-	mw := applyPassThroughResponse(outbound)
+	mw := applyPassThroughResponse(outbound, nil)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	rawResp := &httpclient.Response{
 		StatusCode: 200,
@@ -125,7 +126,7 @@ func TestApplyPassThroughResponse_MismatchedAPIFormat(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -141,7 +142,7 @@ func TestApplyPassThroughResponse_MismatchedAPIFormat(t *testing.T) {
 		state:   state,
 	}
 
-	mw := applyPassThroughResponse(outbound)
+	mw := applyPassThroughResponse(outbound, nil)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	rawResp := &httpclient.Response{
 		StatusCode: 200,
@@ -161,7 +162,7 @@ func TestApplyPassThroughResponse_NilLlmRequest(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -170,7 +171,7 @@ func TestApplyPassThroughResponse_NilLlmRequest(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughResponse(outbound)
+	mw := applyPassThroughResponse(outbound, nil)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	state.RawProviderResponse = &httpclient.Response{
 		StatusCode: 200,
@@ -189,7 +190,7 @@ func TestApplyPassThroughResponse_UsesRawProviderRequestAPIFormat(t *testing.T) 
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -205,7 +206,7 @@ func TestApplyPassThroughResponse_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		state:   state,
 	}
 
-	mw := applyPassThroughResponse(outbound)
+	mw := applyPassThroughResponse(outbound, nil)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	rawResp := &httpclient.Response{
 		StatusCode: 200,
@@ -233,7 +234,7 @@ func TestApplyPassThroughResponse_NilSettings(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughResponse(outbound)
+	mw := applyPassThroughResponse(outbound, nil)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 
 	result, err := mw.OnInboundRawResponse(ctx, transformed)
@@ -253,7 +254,7 @@ func TestCaptureRawProviderStream_Disabled(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := captureRawProviderStream(outbound)
+	mw := captureRawProviderStream(outbound, nil)
 	original := testHTTPStream(nil)
 
 	result, err := mw.OnOutboundRawStream(ctx, original)
@@ -268,7 +269,7 @@ func TestCaptureRawProviderStream_NilLlmRequest(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -280,7 +281,7 @@ func TestCaptureRawProviderStream_NilLlmRequest(t *testing.T) {
 		state:   state,
 	}
 
-	mw := captureRawProviderStream(outbound)
+	mw := captureRawProviderStream(outbound, nil)
 	original := testHTTPStream(nil)
 
 	result, err := mw.OnOutboundRawStream(ctx, original)
@@ -295,7 +296,7 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -318,7 +319,7 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 	}
 	src := testHTTPStream(events)
 
-	mw := captureRawProviderStream(outbound)
+	mw := captureRawProviderStream(outbound, nil)
 	result, err := mw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -363,7 +364,7 @@ func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -382,7 +383,7 @@ func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 	errTest := errors.New("stream error")
 	src := &errorStream{err: errTest}
 
-	mw := captureRawProviderStream(outbound)
+	mw := captureRawProviderStream(outbound, nil)
 	result, err := mw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -400,7 +401,7 @@ func TestCaptureRawProviderStream_UsesRawProviderRequestAPIFormat(t *testing.T) 
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -416,7 +417,7 @@ func TestCaptureRawProviderStream_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		state:   state,
 	}
 
-	mw := captureRawProviderStream(outbound)
+	mw := captureRawProviderStream(outbound, nil)
 	original := testHTTPStream(nil)
 
 	result, err := mw.OnOutboundRawStream(ctx, original)
@@ -447,7 +448,7 @@ func TestApplyPassThroughStream_Disabled(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughStream(outbound)
+	mw := applyPassThroughStream(outbound, nil)
 	transformed := testHTTPStream(nil)
 
 	result, err := mw.OnInboundRawStream(ctx, transformed)
@@ -462,7 +463,7 @@ func TestApplyPassThroughStream_NoRawChannel(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -471,7 +472,7 @@ func TestApplyPassThroughStream_NoRawChannel(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughStream(outbound)
+	mw := applyPassThroughStream(outbound, nil)
 	transformed := testHTTPStream(nil)
 
 	result, err := mw.OnInboundRawStream(ctx, transformed)
@@ -486,7 +487,7 @@ func TestApplyPassThroughStream_ReturnsRawEvents(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -519,7 +520,7 @@ func TestApplyPassThroughStream_ReturnsRawEvents(t *testing.T) {
 		close(rawCh)
 	}()
 
-	mw := applyPassThroughStream(outbound)
+	mw := applyPassThroughStream(outbound, nil)
 	result, err := mw.OnInboundRawStream(ctx, transformed)
 	require.NoError(t, err)
 
@@ -539,7 +540,7 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -569,7 +570,7 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 		close(rawCh)
 	}()
 
-	mw := applyPassThroughStream(outbound)
+	mw := applyPassThroughStream(outbound, nil)
 	result, err := mw.OnInboundRawStream(ctx, transformed)
 	require.NoError(t, err)
 
@@ -721,7 +722,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 		Outbound: &passthroughOutbound{format: format},
@@ -749,7 +750,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	srcStream := testHTTPStream(rawEvents)
 
 	// Step 1: captureRawProviderStream wraps/fans out srcStream
-	capMw := captureRawProviderStream(outbound)
+	capMw := captureRawProviderStream(outbound, nil)
 	pipelineStream, err := capMw.OnOutboundRawStream(ctx, srcStream)
 	require.NoError(t, err)
 	require.NotNil(t, state.RawStreamCh)
@@ -769,7 +770,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	require.NoError(t, err)
 
 	// Step 5: applyPassThroughStream drains the transformed stream
-	applyMw := applyPassThroughStream(outbound)
+	applyMw := applyPassThroughStream(outbound, nil)
 	result, err := applyMw.OnInboundRawStream(ctx, inboundStream)
 	require.NoError(t, err)
 
@@ -797,7 +798,7 @@ func TestPassThroughStream_ErrorPropagates(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -817,7 +818,7 @@ func TestPassThroughStream_ErrorPropagates(t *testing.T) {
 	errTest := errors.New("stream error")
 	src := &errorStream{err: errTest}
 
-	capMw := captureRawProviderStream(outbound)
+	capMw := captureRawProviderStream(outbound, nil)
 	result, err := capMw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -836,7 +837,7 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 			ID:   1,
 			Name: "pass-through-model-mapping",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -860,7 +861,7 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, 0.4, gjson.GetBytes(processed.Body, "temperature").Float())
@@ -878,7 +879,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 			ID:   1,
 			Name: "pass-through-jina-rerank-model-mapping",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -902,7 +903,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 		Body:      []byte(`{"model":"Qwen/Qwen3-Reranker-8B","query":"what is ai","documents":["a","b"]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "Qwen/Qwen3-Reranker-8B", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, float64(2), gjson.GetBytes(processed.Body, "top_n").Float())
@@ -917,7 +918,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaEmbedding(t *testing.T) 
 			ID:   1,
 			Name: "pass-through-jina-embedding-model-mapping",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -941,7 +942,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaEmbedding(t *testing.T) 
 		Body:      []byte(`{"model":"jina-embeddings-v3","input":"hello"}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "jina-embeddings-v3", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, "retrieval.query", gjson.GetBytes(processed.Body, "task").String())
