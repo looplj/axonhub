@@ -28,7 +28,7 @@ func filterResolvedCandidatesForRequest(
 	})
 	if !hasConditionalCandidates {
 		candidates := aggregateChannelModelCandidates(resolvedCandidates)
-		populateAPIFormat(candidates, req.RequestType)
+		populateAPIFormat(candidates, req)
 
 		return candidates
 	}
@@ -58,12 +58,12 @@ func filterResolvedCandidatesForRequest(
 		)
 	}
 
-	populateAPIFormat(candidates, req.RequestType)
+	populateAPIFormat(candidates, req)
 
 	return candidates
 }
 
-func populateAPIFormat(candidates []*ChannelModelsCandidate, requestType llm.RequestType) {
+func populateAPIFormat(candidates []*ChannelModelsCandidate, req *llm.Request) {
 	for _, c := range candidates {
 		if c == nil || c.Channel == nil {
 			continue
@@ -74,7 +74,7 @@ func populateAPIFormat(candidates []*ChannelModelsCandidate, requestType llm.Req
 		}
 
 		endpoints := c.Channel.ResolveEndpoints()
-		c.APIFormat = SelectAPIFormatForRequestType(endpoints, requestType)
+		c.APIFormat = SelectAPIFormat(endpoints, req)
 	}
 }
 

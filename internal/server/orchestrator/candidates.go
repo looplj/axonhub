@@ -111,7 +111,7 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 		}
 
 		endpoints := ch.ResolveEndpoints()
-		apiFormat := SelectAPIFormatForRequestType(endpoints, req.RequestType)
+		apiFormat := SelectAPIFormat(endpoints, req)
 
 		candidates = append(candidates, &ChannelModelsCandidate{
 			Channel:   ch,
@@ -596,7 +596,7 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 	}
 
 	endpoints := channel.ResolveEndpoints()
-	apiFormat := SelectAPIFormatForRequestType(endpoints, req.RequestType)
+	apiFormat := SelectAPIFormat(endpoints, req)
 
 	candidate := &ChannelModelsCandidate{
 		Channel:   channel,
