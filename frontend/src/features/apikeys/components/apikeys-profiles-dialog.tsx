@@ -80,6 +80,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   const { selectedApiKey } = useApiKeysContext();
   const selectedProjectId = useSelectedProjectId();
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
+  const [templateLoadPending, setTemplateLoadPending] = useState(false);
   // 用于解决 Dialog 内 Popover 无法滚动的问题
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -175,6 +176,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   useEffect(() => {
     if (!open) {
       lastInitialDataRef.current = null;
+      setTemplateLoadPending(false);
       return;
     }
 
@@ -182,13 +184,23 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       return;
     }
 
+    const wasTemplatePending = templateLoadPending;
+    if (wasTemplatePending) {
+      setTemplateLoadPending(false);
+    }
+
     if (lastInitialDataRef.current === normalizedSerialized) {
+      return;
+    }
+
+    if (wasTemplatePending) {
+      lastInitialDataRef.current = normalizedSerialized;
       return;
     }
 
     form.reset(normalizedInitialData);
     lastInitialDataRef.current = normalizedSerialized;
-  }, [open, loading, form, normalizedInitialData, normalizedSerialized]);
+  }, [open, loading, form, normalizedInitialData, normalizedSerialized, templateLoadPending]);
 
   // Scroll to active profile after profiles rendered
   useEffect(() => {
@@ -293,7 +305,15 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                     <ApiKeyLoadTemplatePopover
                       apiKeyID={apiKeyId}
                       projectID={selectedProjectId}
-                      onLoadComplete={() => {}}
+                      onLoadComplete={(loadedProfiles) => {
+                        const resetData = {
+                          activeProfile: loadedProfiles.activeProfile || loadedProfiles.profiles[0]?.name || '',
+                          profiles: loadedProfiles.profiles,
+                        };
+                        setTemplateLoadPending(true);
+                        form.reset(resetData);
+                        lastInitialDataRef.current = JSON.stringify(resetData);
+                      }}
                     />
                     <Button type='button' variant='outline' size='sm' onClick={addProfile} className='flex items-center gap-2'>
                       <IconPlus className='h-4 w-4' />
@@ -399,9 +419,9 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
             <Button
               type='submit'
               form='apikey-profiles-form'
-              disabled={loading || !form.formState.isValid || Object.keys(form.formState.errors).length > 0}
+              disabled={loading || templateLoadPending || !form.formState.isValid || Object.keys(form.formState.errors).length > 0}
             >
-              {loading ? t('common.buttons.saving') : t('common.buttons.save')}
+              {loading || templateLoadPending ? t('common.buttons.saving') : t('common.buttons.save')}
             </Button>
           </div>
         </DialogFooter>

@@ -18,12 +18,12 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useApiKeyProfileTemplates, useLoadApiKeyProfileTemplate, useDeleteApiKeyProfileTemplate } from '../data/apikeys';
-import type { ApiKeyProfileTemplate } from '../data/schema';
+import type { ApiKeyProfileTemplate, ApiKeyProfile } from '../data/schema';
 
 interface ApiKeyLoadTemplatePopoverProps {
   apiKeyID: string;
   projectID: string | null;
-  onLoadComplete?: () => void;
+  onLoadComplete?: (loadedProfiles: { activeProfile: string; profiles: ApiKeyProfile[] }) => void;
 }
 
 function TemplateItem({
@@ -99,11 +99,19 @@ export function ApiKeyLoadTemplatePopover({
     loadTemplate.mutate(
       { templateID: template.id, apiKeyID },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
           toast.success(t('apikeys.templates.loadSuccessMessage', { name: template.profile.name }));
           setLoadingTemplateId(null);
           setOpen(false);
-          onLoadComplete?.();
+          const profilesData = result?.loadApiKeyProfileTemplate?.profiles;
+          if (profilesData) {
+            onLoadComplete?.({
+              activeProfile: profilesData.activeProfile || '',
+              profiles: profilesData.profiles || [],
+            });
+          } else {
+            onLoadComplete?.({ activeProfile: '', profiles: [] });
+          }
         },
         onError: () => {
           toast.error(t('apikeys.templates.loadErrorMessage'));
