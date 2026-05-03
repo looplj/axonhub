@@ -170,5 +170,16 @@
   "apikeys.templates.deleteConfirmTitle": "删除模板",
   "apikeys.templates.deleteConfirmDescription": "确定要删除模板 '{{name}}' 吗？此操作无法撤销。",
   "apikeys.templates.deleteSuccessMessage": "模板 '{{name}}' 已删除",
-  "apikeys.templates.deleteErrorMessage": "删除模板失败"
+  "apikeys.templates.deleteErrorMessage": "删除模板失败",
+  "apikeys.profileTemplates.button": "配置模板",
+  "apikeys.profileTemplates.title": "配置模板",
+  "apikeys.profileTemplates.description": "管理可加载到 API 密钥的已保存配置模板。",
+  "apikeys.profileTemplates.emptyHint": "从 API 密钥的配置设置中保存一个配置为模板。",
+  "apikeys.profileTemplates.mappingCount": "{{count}} 个映射",
+  "apikeys.profileTemplates.createButton": "创建模板",
+  "apikeys.profileTemplates.createTitle": "创建配置模板",
+  "apikeys.profileTemplates.createDescription": "创建一个新的可重用配置模板，包含模型映射、渠道限制和配额设置。",
+  "apikeys.profileTemplates.createSuccess": "模板创建成功",
+  "apikeys.profileTemplates.createError": "创建模板失败",
+  "apikeys.profileTemplates.templateDetails": "模板详情"
 }

@@ -170,5 +170,16 @@
   "apikeys.templates.deleteConfirmTitle": "Delete Template",
   "apikeys.templates.deleteConfirmDescription": "Are you sure you want to delete the template '{{name}}'? This action cannot be undone.",
   "apikeys.templates.deleteSuccessMessage": "Template '{{name}}' deleted",
-  "apikeys.templates.deleteErrorMessage": "Failed to delete template"
+  "apikeys.templates.deleteErrorMessage": "Failed to delete template",
+  "apikeys.profileTemplates.button": "Profile Templates",
+  "apikeys.profileTemplates.title": "Profile Templates",
+  "apikeys.profileTemplates.description": "Manage saved profile templates that can be loaded onto API keys.",
+  "apikeys.profileTemplates.emptyHint": "Save a profile as a template from an API key's profiles settings.",
+  "apikeys.profileTemplates.mappingCount": "{{count}} mappings",
+  "apikeys.profileTemplates.createButton": "Create Template",
+  "apikeys.profileTemplates.createTitle": "Create Profile Template",
+  "apikeys.profileTemplates.createDescription": "Create a new reusable profile template with model mappings, channel restrictions, and quota settings.",
+  "apikeys.profileTemplates.createSuccess": "Template created successfully",
+  "apikeys.profileTemplates.createError": "Failed to create template",
+  "apikeys.profileTemplates.templateDetails": "Template Details"
 }
