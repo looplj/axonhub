@@ -211,6 +211,22 @@ func TestCloneRequestForOutboundAttempt_DeepCopiesAttemptState(t *testing.T) {
 			"include":        []string{"reasoning.encrypted_content"},
 			"max_tool_calls": &maxToolCalls,
 		},
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					MetadataRaw: json.RawMessage(`{"count":1}`),
+					InputItems: []llm.OpenAIResponsesRawItem{
+						{
+							Type: "shell_call_output",
+							Raw:  json.RawMessage(`{"type":"shell_call_output","output":"raw"}`),
+							Extra: map[string]json.RawMessage{
+								"namespace": json.RawMessage(`"shell"`),
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	cloned := CloneRequestForOutboundAttempt(req)
@@ -223,6 +239,9 @@ func TestCloneRequestForOutboundAttempt_DeepCopiesAttemptState(t *testing.T) {
 	cloned.RawRequest.Body[0] = '['
 	cloned.TransformerMetadata["include"].([]string)[0] = "changed"
 	*cloned.TransformerMetadata["max_tool_calls"].(*int64) = 9
+	cloned.ProviderExtensions.OpenAIResponses.Request.MetadataRaw[0] = '['
+	cloned.ProviderExtensions.OpenAIResponses.Request.InputItems[0].Raw[0] = '['
+	cloned.ProviderExtensions.OpenAIResponses.Request.InputItems[0].Extra["namespace"][0] = '['
 
 	require.Equal(t, "hello", *req.Messages[0].Content.MultipleContent[0].Text)
 	require.JSONEq(t, `{"kind":"input_text"}`, string(req.Messages[0].Content.MultipleContent[0].TransformerMetadata["raw"].(json.RawMessage)))
@@ -231,6 +250,9 @@ func TestCloneRequestForOutboundAttempt_DeepCopiesAttemptState(t *testing.T) {
 	require.Equal(t, rawBody, req.RawRequest.Body)
 	require.Equal(t, []string{"reasoning.encrypted_content"}, req.TransformerMetadata["include"])
 	require.Equal(t, int64(2), *req.TransformerMetadata["max_tool_calls"].(*int64))
+	require.JSONEq(t, `{"count":1}`, string(req.ProviderExtensions.OpenAIResponses.Request.MetadataRaw))
+	require.JSONEq(t, `{"type":"shell_call_output","output":"raw"}`, string(req.ProviderExtensions.OpenAIResponses.Request.InputItems[0].Raw))
+	require.JSONEq(t, `"shell"`, string(req.ProviderExtensions.OpenAIResponses.Request.InputItems[0].Extra["namespace"]))
 }
 
 func TestPersistentOutboundTransformer_ResponsesSanitizeDoesNotPolluteNextAttempt(t *testing.T) {

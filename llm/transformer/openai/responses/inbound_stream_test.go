@@ -97,8 +97,9 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 				actual := actualEvents[i]
 
-				if !xtest.Equal(expected, actual, ignoreFields) {
-					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expected, actual, ignoreFields))
+				eventCmpOpts := append(ignoreResponsesRawCaptureOptions(), ignoreFields)
+				if !xtest.Equal(expected, actual, eventCmpOpts...) {
+					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expected, actual, eventCmpOpts...))
 				}
 			}
 
@@ -130,9 +131,10 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					return false
 				}, cmp.Ignore())
 
-				if !xtest.Equal(expectedResponse, *lastEvent.Response, responseIgnoreFields) {
+				responseCmpOpts := append(ignoreResponsesRawCaptureOptions(), responseIgnoreFields)
+				if !xtest.Equal(expectedResponse, *lastEvent.Response, responseCmpOpts...) {
 					t.Fatalf("response.completed response mismatch:\n%s",
-						cmp.Diff(expectedResponse, *lastEvent.Response, responseIgnoreFields))
+						cmp.Diff(expectedResponse, *lastEvent.Response, responseCmpOpts...))
 				}
 			}
 		})

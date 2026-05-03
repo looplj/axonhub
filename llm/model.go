@@ -272,6 +272,10 @@ type Request struct {
 	// - "truncation": *string - truncation strategy ("auto", "disabled")
 	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+
+	// ProviderExtensions stores provider/API-format private sidecar data.
+	// It is intentionally excluded from normal JSON output to avoid leaking raw prompts or tool outputs.
+	ProviderExtensions *ProviderExtensions `json:"-"`
 }
 
 type StreamOptions struct {
@@ -642,6 +646,10 @@ type Response struct {
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+
+	// ProviderExtensions stores provider/API-format private sidecar data.
+	// It is intentionally excluded from normal JSON output to avoid leaking raw provider payloads.
+	ProviderExtensions *ProviderExtensions `json:"-"`
 }
 
 // Choice represents a choice in the response.

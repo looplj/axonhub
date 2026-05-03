@@ -60,7 +60,14 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
 
-	return convertToLLMRequest(&req)
+	llmReq, err := convertToLLMRequest(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	attachOpenAIResponsesRequestExtensions(llmReq, &req, httpReq.Body)
+
+	return llmReq, nil
 }
 
 // TransformResponse transforms llm.Response to OpenAI Responses API HTTP response.
@@ -707,9 +714,13 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 	for _, tool := range tools {
 		switch tool.Type {
 		case "function":
-			params, err := json.Marshal(tool.Parameters)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal function parameters: %w", err)
+			params := cloneRaw(tool.ParametersRaw)
+			if len(params) == 0 {
+				var err error
+				params, err = json.Marshal(tool.Parameters)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal function parameters: %w", err)
+				}
 			}
 
 			result = append(result, llm.Tool{

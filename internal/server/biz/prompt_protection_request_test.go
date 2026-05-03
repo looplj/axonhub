@@ -66,6 +66,68 @@ func TestApplyPromptProtectionRulesRejectContent(t *testing.T) {
 	assert.Equal(t, "reject-secret", result.MatchedRules[0].Name)
 }
 
+func TestApplyPromptProtectionRulesScansOpenAIResponsesRawOnlyFragments(t *testing.T) {
+	request := &llm.Request{
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					ProtectableFragments: []llm.OpenAIResponsesProtectableFragment{
+						{
+							Path:        "input[1].output",
+							Scope:       "tool",
+							Text:        "raw secret-123",
+							RewriteMode: "drop_on_change",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := ApplyPromptProtectionRules(request, []*ent.PromptProtectionRule{
+		{
+			Name:    "mask-raw-secret",
+			Pattern: `secret-[0-9]+`,
+			Settings: &objects.PromptProtectionSettings{
+				Action:      objects.PromptProtectionActionMask,
+				Replacement: "[MASKED]",
+				Scopes:      []objects.PromptProtectionScope{objects.PromptProtectionScopeTool},
+			},
+		},
+	})
+
+	require.False(t, result.Rejected)
+	require.Len(t, result.MatchedRules, 1)
+	require.Len(t, result.FragmentResults, 1)
+	assert.Equal(t, "input[1].output", result.FragmentResults[0].Path)
+	assert.True(t, result.FragmentResults[0].Matched)
+	assert.True(t, result.FragmentResults[0].Changed)
+	assert.True(t, result.FragmentResults[0].DropRequired)
+	assert.False(t, result.FragmentResults[0].ReplayAllowed)
+	assert.Equal(t, "raw [MASKED]", result.FragmentResults[0].ReplacementText)
+}
+
+func TestApplyPromptProtectionRulesMarksRawOnlyFragmentsEvaluatedWithoutRules(t *testing.T) {
+	request := &llm.Request{
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					ProtectableFragments: []llm.OpenAIResponsesProtectableFragment{
+						{Path: "input[1].output", Scope: "tool", Text: "raw output"},
+					},
+				},
+			},
+		},
+	}
+
+	result := ApplyPromptProtectionRules(request, nil)
+
+	require.False(t, result.Rejected)
+	require.Len(t, result.FragmentResults, 1)
+	assert.True(t, result.FragmentResults[0].NoRules)
+	assert.True(t, result.FragmentResults[0].ReplayAllowed)
+}
+
 func TestApplyPromptProtectionRulesScopeFiltering(t *testing.T) {
 	assistantContent := "contains secret"
 	request := &llm.Request{

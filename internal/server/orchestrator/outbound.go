@@ -372,6 +372,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	attemptRequest = transformResult.Request
 	if transformResult.Changed {
 		p.state.CurrentAttemptTransformOptionsChanged = true
+		if transformResult.ForceArrayInputsChanged {
+			p.state.MarkDirty(RequestDirtyInputItems)
+		}
+		if transformResult.ForceArrayInstructionsChanged || transformResult.DeveloperRoleChanged {
+			p.state.MarkDirty(RequestDirtyMessages, RequestDirtyInstructions)
+		}
 	}
 
 	filteredRequest := filterResponseCustomToolMessagesForNonResponsesOutbound(attemptRequest, p.wrapped.APIFormat())
@@ -383,6 +389,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		attemptRequest = filteredRequest
 	}
 	p.state.CurrentAttemptRequest = attemptRequest
+	syncRequestDirtyToOpenAIResponsesExtensions(attemptRequest, p.state.RequestDirty)
 
 	providerRequest, err := p.wrapped.TransformRequest(ctx, attemptRequest)
 	if err != nil {
@@ -427,6 +434,34 @@ func containsResponseCustomToolMessages(messages []llm.Message) bool {
 	}
 
 	return false
+}
+
+func syncRequestDirtyToOpenAIResponsesExtensions(req *llm.Request, dirty *RequestDirtySet) {
+	if req == nil || dirty == nil || !isResponsesFormat(req.APIFormat) {
+		return
+	}
+
+	var scopes []llm.OpenAIResponsesDirtyScope
+	if dirty.Has(RequestDirtyMessages) {
+		scopes = append(scopes, llm.OpenAIResponsesDirtyMessages)
+	}
+	if dirty.Has(RequestDirtyInstructions) {
+		scopes = append(scopes, llm.OpenAIResponsesDirtyInstructions)
+	}
+	if dirty.Has(RequestDirtyInputItems) {
+		scopes = append(scopes, llm.OpenAIResponsesDirtyInputItems)
+	}
+	if dirty.Has(RequestDirtyTools) {
+		scopes = append(scopes, llm.OpenAIResponsesDirtyTools)
+	}
+	if dirty.Has(RequestDirtyToolChoice) {
+		scopes = append(scopes, llm.OpenAIResponsesDirtyToolChoice)
+	}
+	if dirty.Has(RequestDirtyTopLevelSemanticExtra) {
+		scopes = append(scopes, llm.OpenAIResponsesDirtyTopLevelSemanticExtra)
+	}
+
+	llm.MarkOpenAIResponsesDirty(req, scopes...)
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

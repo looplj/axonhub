@@ -187,8 +187,9 @@ func TestOutboundTransformer_TransformRequest_Integration(t *testing.T) {
 			actualRequest, err := xjson.To[Request](actualResult.Body)
 			require.NoError(t, err)
 
-			if !xtest.Equal(expectedRequest, actualRequest) {
-				t.Errorf("diff: %v", cmp.Diff(expectedRequest, actualRequest))
+			ignoreRawCapture := ignoreResponsesRawCaptureOptions()
+			if !xtest.Equal(expectedRequest, actualRequest, ignoreRawCapture...) {
+				t.Errorf("diff: %v", cmp.Diff(expectedRequest, actualRequest, ignoreRawCapture...))
 			}
 		})
 	}
@@ -253,6 +254,7 @@ func TestCompactTransformer_TransformResponse_Integration(t *testing.T) {
 		cmpopts.IgnoreFields(Item{}, "Annotations"),
 		cmpopts.EquateEmpty(),
 	}
+	opts = append(opts, ignoreResponsesRawCaptureOptions()...)
 	if diff := cmp.Diff(expected.Output, actual.Output, opts...); diff != "" {
 		t.Errorf("diff: %v", diff)
 	}
@@ -306,6 +308,7 @@ func TestResponsesTransformer_TransformResponse_Integration(t *testing.T) {
 		cmpopts.IgnoreFields(Item{}, "Annotations"),
 		cmpopts.EquateEmpty(),
 	}
+	opts = append(opts, ignoreResponsesRawCaptureOptions()...)
 	if diff := cmp.Diff(expected.Output, actual.Output, opts...); diff != "" {
 		t.Errorf("diff: %v", diff)
 	}

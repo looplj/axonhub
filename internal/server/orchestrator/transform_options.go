@@ -18,8 +18,11 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 }
 
 type transformOptionsResult struct {
-	Request *llm.Request
-	Changed bool
+	Request                       *llm.Request
+	Changed                       bool
+	ForceArrayInstructionsChanged bool
+	ForceArrayInputsChanged       bool
+	DeveloperRoleChanged          bool
 }
 
 func applyTransformOptionsWithResult(req *llm.Request, channelSettings *objects.ChannelSettings) transformOptionsResult {
@@ -37,26 +40,42 @@ func applyTransformOptionsWithResult(req *llm.Request, channelSettings *objects.
 
 	newReq := *req
 	changed := false
+	arrayInstructionsChanged := false
+	arrayInputsChanged := false
+	developerRoleChanged := false
 
 	if transformOptions.ForceArrayInstructions {
-		newReq.TransformOptions.ArrayInstructions = lo.ToPtr(true)
-		changed = true
+		if newReq.TransformOptions.ArrayInstructions == nil || !*newReq.TransformOptions.ArrayInstructions {
+			newReq.TransformOptions.ArrayInstructions = lo.ToPtr(true)
+			changed = true
+			arrayInstructionsChanged = true
+		}
 	}
 
 	if transformOptions.ForceArrayInputs {
-		newReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
-		changed = true
+		if newReq.TransformOptions.ArrayInputs == nil || !*newReq.TransformOptions.ArrayInputs {
+			newReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
+			changed = true
+			arrayInputsChanged = true
+		}
 	}
 
 	if transformOptions.ReplaceDeveloperRoleWithSystem {
 		replacedMessages := replaceDeveloperRoleWithSystem(newReq.Messages)
 		if len(replacedMessages) > 0 && &replacedMessages[0] != &newReq.Messages[0] {
 			changed = true
+			developerRoleChanged = true
 		}
 		newReq.Messages = replacedMessages
 	}
 
-	return transformOptionsResult{Request: &newReq, Changed: changed}
+	return transformOptionsResult{
+		Request:                       &newReq,
+		Changed:                       changed,
+		ForceArrayInstructionsChanged: arrayInstructionsChanged,
+		ForceArrayInputsChanged:       arrayInputsChanged,
+		DeveloperRoleChanged:          developerRoleChanged,
+	}
 }
 
 // replaceDeveloperRoleWithSystem replaces developer role with system in messages.

@@ -33,6 +33,7 @@ func CloneRequestForOutboundAttempt(req *llm.Request) *llm.Request {
 	cloned.RawRequest = cloneHTTPClientRequest(req.RawRequest)
 	cloned.TransformOptions = cloneTransformOptions(req.TransformOptions)
 	cloned.TransformerMetadata = cloneAnyMap(req.TransformerMetadata)
+	cloned.ProviderExtensions = llm.CloneProviderExtensions(req.ProviderExtensions)
 
 	return &cloned
 }

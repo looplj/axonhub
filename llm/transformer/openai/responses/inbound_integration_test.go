@@ -192,6 +192,8 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			expected.TransformerMetadata = result.TransformerMetadata
 			// Copy TransformOptions from result as it contains dynamic fields (array_inputs, etc.)
 			expected.TransformOptions = result.TransformOptions
+			// ProviderExtensions intentionally carries raw sidecar data from the inbound request.
+			expected.ProviderExtensions = result.ProviderExtensions
 			if !xtest.Equal(expected, *result) {
 				t.Errorf("diff: %v", cmp.Diff(expected, *result))
 			}
@@ -332,7 +334,8 @@ func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 
 				return false
 			}, cmp.Ignore())
-			if diff := cmp.Diff(expected, resp, opts); diff != "" {
+			cmpOpts := append(ignoreResponsesRawCaptureOptions(), opts)
+			if diff := cmp.Diff(expected, resp, cmpOpts...); diff != "" {
 				t.Errorf("response mismatch (-expected +got):\n%s", diff)
 			}
 		})

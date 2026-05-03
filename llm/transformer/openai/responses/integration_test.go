@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -53,12 +52,6 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = xtest.LoadTestData(t, tt.expectedFile, &expectedReq)
 			require.NoError(t, err)
 
-			if tt.name == "reasoning request" {
-				expectedReq.Input.Items = lo.Filter(expectedReq.Input.Items, func(item Item, _ int) bool {
-					return item.Type != "reasoning"
-				})
-			}
-
 			var buf bytes.Buffer
 
 			decoder := json.NewEncoder(&buf)
@@ -85,8 +78,12 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !xtest.Equal(expectedReq, gotReq, cmpopts.IgnoreFields(Item{}, "EncryptedContent")) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(expectedReq, gotReq))
+			ignoreRawCapture := append(
+				ignoreResponsesRawCaptureOptions(),
+				cmpopts.IgnoreFields(Item{}, "EncryptedContent"),
+			)
+			if !xtest.Equal(expectedReq, gotReq, ignoreRawCapture...) {
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(expectedReq, gotReq, ignoreRawCapture...))
 			}
 		})
 	}

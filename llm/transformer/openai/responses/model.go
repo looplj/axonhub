@@ -53,6 +53,38 @@ type Tool struct {
 	Quality string `json:"quality,omitempty"`
 	// This field is for ImageGeneration
 	Size string `json:"size,omitempty"`
+
+	Raw   json.RawMessage            `json:"-"`
+	Extra map[string]json.RawMessage `json:"-"`
+	// ParametersRaw preserves the original JSON expression for function parameters.
+	ParametersRaw json.RawMessage `json:"-"`
+}
+
+type toolAlias Tool
+
+func (t *Tool) UnmarshalJSON(data []byte) error {
+	var alias toolAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	*t = Tool(alias)
+	t.Raw = cloneRaw(data)
+	t.Extra = collectExtraFields(data, toolKnownFields)
+	t.ParametersRaw = rawField(t.Raw, "parameters")
+
+	return nil
+}
+
+func (t Tool) MarshalJSON() ([]byte, error) {
+	type alias Tool
+
+	data, err := json.Marshal(alias(t))
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeExtraWithStructured(t.Extra, data)
 }
 
 // CustomToolFormat represents the format definition for a custom tool.
@@ -132,6 +164,42 @@ type Request struct {
 
 	// Nucleus sampling parameter.
 	TopP *float64 `json:"top_p,omitempty"`
+
+	Raw         json.RawMessage            `json:"-"`
+	Extra       map[string]json.RawMessage `json:"-"`
+	MetadataRaw json.RawMessage            `json:"-"`
+}
+
+type requestAlias Request
+
+func (r *Request) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		*requestAlias
+		Metadata json.RawMessage `json:"metadata"`
+	}
+	aux.requestAlias = (*requestAlias)(r)
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	r.Raw = cloneRaw(data)
+	r.Extra = collectExtraFields(data, requestKnownFields)
+	r.MetadataRaw = cloneRaw(aux.Metadata)
+	r.Metadata = metadataStrings(aux.Metadata)
+
+	return nil
+}
+
+func (r Request) MarshalJSON() ([]byte, error) {
+	type alias Request
+
+	data, err := json.Marshal(alias(r))
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeExtraWithStructured(r.Extra, data)
 }
 
 // Prompt represents a reference to a prompt template.
@@ -170,6 +238,9 @@ type ToolChoice struct {
 
 	// Allow multiple tools to be selected.
 	Tools []ToolOption `json:"tools,omitempty"`
+
+	Raw   json.RawMessage            `json:"-"`
+	Extra map[string]json.RawMessage `json:"-"`
 }
 
 type ToolOption struct {
@@ -182,13 +253,17 @@ type ToolChoiceAlias ToolChoice
 func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	mode, err := xjson.To[string](data)
 	if err == nil {
+		*t = ToolChoice{}
 		t.Mode = &mode
+		t.Raw = cloneRaw(data)
 		return nil
 	}
 
 	tc, err := xjson.To[ToolChoiceAlias](data)
 	if err == nil {
 		*t = ToolChoice(tc)
+		t.Raw = cloneRaw(data)
+		t.Extra = collectExtraFields(data, toolChoiceKnownFields)
 		return nil
 	}
 
@@ -203,7 +278,7 @@ func (t *ToolChoice) MarshalJSON() ([]byte, error) {
 	// For other cases, marshal as object
 	type Alias ToolChoice
 
-	return json.Marshal(&struct {
+	data, err := json.Marshal(&struct {
 		Mode  *string      `json:"mode,omitempty"`
 		Type  *string      `json:"type,omitempty"`
 		Name  *string      `json:"name,omitempty"`
@@ -214,6 +289,11 @@ func (t *ToolChoice) MarshalJSON() ([]byte, error) {
 		Name:  t.Name,
 		Tools: t.Tools,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeExtraWithStructured(t.Extra, data)
 }
 
 // ResponseToolChoice represents tool_choice in responses, which can be a string or object.
@@ -322,6 +402,8 @@ type Input struct {
 	// If both are populated, Text takes precedence during marshaling.
 	Text  *string
 	Items []Item
+	Raw   json.RawMessage `json:"-"`
+	Kind  string          `json:"-"`
 }
 
 func (i *Input) UnmarshalJSON(data []byte) error {
@@ -329,6 +411,8 @@ func (i *Input) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &text); err == nil {
 		i.Text = &text
 		i.Items = nil
+		i.Raw = cloneRaw(data)
+		i.Kind = "string"
 
 		return nil
 	}
@@ -337,6 +421,8 @@ func (i *Input) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &items); err == nil {
 		i.Text = nil
 		i.Items = items
+		i.Raw = cloneRaw(data)
+		i.Kind = "array"
 
 		return nil
 	}
@@ -426,6 +512,24 @@ type Item struct {
 	// Compaction fields (for type="compaction")
 	// The identifier of the actor that created the item.
 	CreatedBy *string `json:"created_by,omitempty"`
+
+	Raw   json.RawMessage            `json:"-"`
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+type itemUnmarshalAlias Item
+
+func (item *Item) UnmarshalJSON(data []byte) error {
+	var alias itemUnmarshalAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	*item = Item(alias)
+	item.Raw = cloneRaw(data)
+	item.Extra = collectExtraFields(data, itemKnownFields)
+
+	return nil
 }
 
 // MarshalJSON omits summary for non-reasoning items and forces an empty array for reasoning items.
@@ -439,10 +543,15 @@ func (item Item) MarshalJSON() ([]byte, error) {
 			Arguments string `json:"arguments"`
 		}
 
-		return json.Marshal(functionCallItem{
+		data, err := json.Marshal(functionCallItem{
 			itemAlias: itemAlias(item),
 			Arguments: item.Arguments,
 		})
+		if err != nil {
+			return nil, err
+		}
+
+		return mergeExtraWithStructured(item.Extra, data)
 	}
 
 	if item.Type == "custom_tool_call" {
@@ -457,10 +566,15 @@ func (item Item) MarshalJSON() ([]byte, error) {
 			inputStr = *item.Input
 		}
 
-		return json.Marshal(customToolCallItem{
+		data, err := json.Marshal(customToolCallItem{
 			itemAlias: itemAlias(item),
 			InputStr:  inputStr,
 		})
+		if err != nil {
+			return nil, err
+		}
+
+		return mergeExtraWithStructured(item.Extra, data)
 	}
 
 	if item.Type == "compaction" {
@@ -475,15 +589,25 @@ func (item Item) MarshalJSON() ([]byte, error) {
 			encContent = *item.EncryptedContent
 		}
 
-		return json.Marshal(compactionItem{
+		data, err := json.Marshal(compactionItem{
 			itemAlias:        itemAlias(item),
 			EncryptedContent: encContent,
 		})
+		if err != nil {
+			return nil, err
+		}
+
+		return mergeExtraWithStructured(item.Extra, data)
 	}
 
 	if item.Type != "reasoning" {
 		item.Summary = nil
-		return json.Marshal(itemAlias(item))
+		data, err := json.Marshal(itemAlias(item))
+		if err != nil {
+			return nil, err
+		}
+
+		return mergeExtraWithStructured(item.Extra, data)
 	}
 
 	// Ensure reasoning items always include summary, even if empty.
@@ -498,10 +622,15 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		summary = []ReasoningSummary{}
 	}
 
-	return json.Marshal(reasoningItem{
+	data, err := json.Marshal(reasoningItem{
 		itemAlias: itemAlias(item),
 		Summary:   summary,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeExtraWithStructured(item.Extra, data)
 }
 
 // isOutputMessageContent checks if Content.Items contains output message content items.
