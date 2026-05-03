@@ -27,17 +27,18 @@ import (
 type Config struct {
 	fx.Out `yaml:"-" json:"-"`
 
-	DB               db.Config           `conf:"db" yaml:"db" json:"db"`
-	Log              log.Config          `conf:"log" yaml:"log" json:"log"`
-	APIServer        server.Config       `conf:"server" yaml:"server" json:"server"`
-	Metrics          metrics.Config      `conf:"metrics" yaml:"metrics" json:"metrics"`
-	GC               gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
-	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
-	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
-	OIDC             biz.OIDCConfig      `conf:"oidc" yaml:"oidc" json:"oidc"`
-	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
-	AllowNoAuth      bool                `name:"allow_no_auth" yaml:"-" json:"-"`
-	APIKeyPrefix     string              `name:"api_key_prefix" yaml:"-" json:"-"`
+	DB               db.Config                    `conf:"db" yaml:"db" json:"db"`
+	Log              log.Config                   `conf:"log" yaml:"log" json:"log"`
+	APIServer        server.Config                `conf:"server" yaml:"server" json:"server"`
+	Metrics          metrics.Config               `conf:"metrics" yaml:"metrics" json:"metrics"`
+	GC               gc.Config                    `conf:"gc" yaml:"gc" json:"gc"`
+	Cache            xcache.Config                `conf:"cache" yaml:"cache" json:"cache"`
+	ProviderQuota    providerQuotaConfig          `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
+	LLMCompatibility biz.LLMCompatibilitySettings `conf:"llm_compatibility" yaml:"llm_compatibility" json:"llm_compatibility"`
+	OIDC             biz.OIDCConfig               `conf:"oidc" yaml:"oidc" json:"oidc"`
+	DisableSSLVerify bool                         `name:"disable_ssl_verify" yaml:"-" json:"-"`
+	AllowNoAuth      bool                         `name:"allow_no_auth" yaml:"-" json:"-"`
+	APIKeyPrefix     string                       `name:"api_key_prefix" yaml:"-" json:"-"`
 }
 
 type providerQuotaConfig struct {
@@ -122,7 +123,7 @@ func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) 
 			return nil, err
 		}
 
-		return u, nil
+		return value.Elem().Interface(), nil
 	case dstType == _TypeDuration:
 		if strings.TrimSpace(str) == "" {
 			return time.Duration(0), nil
@@ -225,6 +226,10 @@ func setDefaults(v *viper.Viper) {
 	// Provider quota defaults
 	v.SetDefault("provider_quota.check_interval", "5m")
 	v.SetDefault("provider_quota.warning_check_interval_ratio", 4) // Warning interval = check_interval * ratio
+
+	// LLM compatibility defaults. The default is a compatibility downgrade policy,
+	// not a Responses/Codex fidelity guarantee.
+	v.SetDefault("llm_compatibility.responses_only_data_policy", string(biz.ResponsesOnlyDataPolicyDiscard))
 
 	// Cache defaults
 	v.SetDefault("cache.mode", "memory")

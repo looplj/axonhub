@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -69,6 +70,18 @@ func (m *mockTransformer) APIFormat() llm.APIFormat {
 	}
 
 	return llm.APIFormatOpenAIChatCompletion
+}
+
+type mockLLMCompatibilitySettingsProvider struct {
+	settings *biz.LLMCompatibilitySettings
+}
+
+func (m *mockLLMCompatibilitySettingsProvider) LLMCompatibilitySettingsOrDefault(context.Context) *biz.LLMCompatibilitySettings {
+	if m == nil || m.settings == nil {
+		return &biz.LLMCompatibilitySettings{ResponsesOnlyDataPolicy: biz.ResponsesOnlyDataPolicyDiscard}
+	}
+
+	return m.settings
 }
 
 func TestPersistentOutboundTransformer_TransformRequest_OriginalModelRestoration(t *testing.T) {
@@ -908,6 +921,272 @@ func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t 
 
 	// Verify channel was used
 	require.Equal(t, testChannel, processor.state.CurrentCandidate.Channel)
+}
+
+func TestSanitizeOpenAIResponsesForNonResponsesOutbound_DiscardDropsResponsesOnlyData(t *testing.T) {
+	previousResponseID := "resp_previous"
+	baseRequest := &llm.Request{
+		Model:              "gpt-5.4",
+		APIFormat:          llm.APIFormatOpenAIResponse,
+		PreviousResponseID: &previousResponseID,
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_custom_1",
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID: "call_custom_1",
+							Name:   "local_shell",
+							Input:  "echo hi",
+						},
+					},
+					{
+						ID:   "call_function_1",
+						Type: llm.ToolTypeFunction,
+						Function: llm.FunctionCall{
+							Name:      "get_weather",
+							Arguments: "{}",
+						},
+					},
+				},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_custom_1"),
+				Content:    llm.MessageContent{Content: lo.ToPtr("custom output")},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_function_1"),
+				Content:    llm.MessageContent{Content: lo.ToPtr("function output")},
+			},
+		},
+		Tools: []llm.Tool{
+			{
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomTool: &llm.ResponseCustomTool{
+					Name: "local_shell",
+				},
+			},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name: "get_weather",
+				},
+			},
+		},
+		ToolChoice: &llm.ToolChoice{
+			NamedToolChoice: &llm.NamedToolChoice{
+				Type: llm.ToolTypeResponsesCustomTool,
+				Function: llm.ToolFunction{
+					Name: "local_shell",
+				},
+			},
+		},
+		TransformerMetadata: map[string]any{
+			"include":        []string{"reasoning.encrypted_content"},
+			"max_tool_calls": lo.ToPtr(int64(3)),
+			"preserve":       "kept",
+		},
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					RawBody: []byte(`{"model":"gpt-5.4"}`),
+					TopLevelExtra: map[string]json.RawMessage{
+						"client_metadata": []byte(`{"trace":"safe"}`),
+					},
+					TopLevelSemanticExtra: map[string]json.RawMessage{
+						"conversation": []byte(`"conv_123"`),
+					},
+					MetadataExtra: map[string]json.RawMessage{
+						"number": []byte(`1`),
+					},
+					InputItems: []llm.OpenAIResponsesRawItem{
+						{
+							Type: "shell_call_output",
+							Path: "input[0]",
+							Raw:  []byte(`{"type":"shell_call_output","output":"secret"}`),
+						},
+					},
+					Tools: []llm.OpenAIResponsesRawItem{
+						{
+							Type: "local_shell",
+							Path: "tools[0]",
+							Raw:  []byte(`{"type":"local_shell"}`),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	got, result, err := sanitizeOpenAIResponsesForNonResponsesOutbound(
+		baseRequest,
+		llm.APIFormatOpenAIChatCompletion,
+		biz.ResponsesOnlyDataPolicyDiscard,
+	)
+	require.NoError(t, err)
+	require.True(t, result.Changed)
+	require.False(t, result.Rejected)
+	require.NotSame(t, baseRequest, got)
+	require.Nil(t, got.ProviderExtensions)
+	require.Nil(t, got.PreviousResponseID)
+	require.Len(t, got.Tools, 1)
+	require.Equal(t, llm.ToolTypeFunction, got.Tools[0].Type)
+	require.Len(t, got.Messages, 2)
+	require.Len(t, got.Messages[0].ToolCalls, 1)
+	require.Equal(t, "call_function_1", got.Messages[0].ToolCalls[0].ID)
+	require.NotNil(t, got.Messages[1].ToolCallID)
+	require.Equal(t, "call_function_1", *got.Messages[1].ToolCallID)
+	require.Nil(t, got.ToolChoice)
+	require.Equal(t, "kept", got.TransformerMetadata["preserve"])
+	require.NotContains(t, got.TransformerMetadata, "include")
+	require.NotContains(t, got.TransformerMetadata, "max_tool_calls")
+	require.NotNil(t, baseRequest.ProviderExtensions.OpenAIResponses)
+	require.NotNil(t, baseRequest.PreviousResponseID)
+	require.Len(t, baseRequest.Tools, 2)
+}
+
+func TestSanitizeOpenAIResponsesForNonResponsesOutbound_DiscardSafeRejectControlAllowsSafeExtra(t *testing.T) {
+	baseRequest := &llm.Request{
+		Model:     "gpt-5.4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					RawBody: []byte(`{"model":"gpt-5.4"}`),
+					TopLevelExtra: map[string]json.RawMessage{
+						"trace_id": []byte(`"trace_123"`),
+					},
+					MetadataExtra: map[string]json.RawMessage{
+						"number": []byte(`1`),
+					},
+				},
+			},
+		},
+	}
+
+	got, result, err := sanitizeOpenAIResponsesForNonResponsesOutbound(
+		baseRequest,
+		llm.APIFormatOpenAIChatCompletion,
+		biz.ResponsesOnlyDataPolicyDiscardSafeRejectControl,
+	)
+	require.NoError(t, err)
+	require.True(t, result.Changed)
+	require.False(t, result.Rejected)
+	require.Nil(t, got.ProviderExtensions)
+	require.NotNil(t, baseRequest.ProviderExtensions.OpenAIResponses)
+}
+
+func TestSanitizeOpenAIResponsesForNonResponsesOutbound_DiscardSafeRejectControlRejectsControlData(t *testing.T) {
+	baseRequest := &llm.Request{
+		Model:     "gpt-5.4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					TopLevelSemanticExtra: map[string]json.RawMessage{
+						"prompt": []byte(`"raw prompt"`),
+					},
+					InputItems: []llm.OpenAIResponsesRawItem{
+						{
+							Type: "mcp_tool_call_output",
+							Path: "input[0]",
+							Raw:  []byte(`{"type":"mcp_tool_call_output","output":"secret"}`),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	got, result, err := sanitizeOpenAIResponsesForNonResponsesOutbound(
+		baseRequest,
+		llm.APIFormatOpenAIChatCompletion,
+		biz.ResponsesOnlyDataPolicyDiscardSafeRejectControl,
+	)
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.Same(t, baseRequest, got)
+	require.True(t, result.Rejected)
+	require.False(t, result.Changed)
+	require.Contains(t, result.RejectedCategories, "semantic_control_top_level_extra")
+	require.Contains(t, result.RejectedCategories, "raw_only_input_items")
+	require.NotContains(t, err.Error(), "raw prompt")
+	require.NotContains(t, err.Error(), "secret")
+}
+
+func TestSanitizeOpenAIResponsesForNonResponsesOutbound_RejectRejectsAnyRawExtension(t *testing.T) {
+	baseRequest := &llm.Request{
+		Model:     "gpt-5.4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					RawBody: []byte(`{"model":"gpt-5.4"}`),
+				},
+			},
+		},
+	}
+
+	got, result, err := sanitizeOpenAIResponsesForNonResponsesOutbound(
+		baseRequest,
+		llm.APIFormatOpenAIChatCompletion,
+		biz.ResponsesOnlyDataPolicyReject,
+	)
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.Same(t, baseRequest, got)
+	require.True(t, result.Rejected)
+	require.Contains(t, result.RejectedCategories, "raw_extension")
+}
+
+func TestPersistentOutboundTransformer_ResponsesOnlyPolicyRejectsCurrentAttempt(t *testing.T) {
+	ctx := context.Background()
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	channel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "chat-only-channel"},
+		Outbound: chatOutbound,
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: chatOutbound,
+		state: &PersistenceState{
+			OriginalModel: "gpt-5.4",
+			CompatibilitySettingsProvider: &mockLLMCompatibilitySettingsProvider{
+				settings: &biz.LLMCompatibilitySettings{ResponsesOnlyDataPolicy: biz.ResponsesOnlyDataPolicyDiscardSafeRejectControl},
+			},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{
+					Channel:   channel,
+					APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+					Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-5.4", ActualModel: "chat-model"}},
+				},
+			},
+		},
+	}
+	llmRequest := &llm.Request{
+		Model:     "gpt-5.4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					Tools: []llm.OpenAIResponsesRawItem{
+						{
+							Type: "local_shell",
+							Path: "tools[0]",
+							Raw:  []byte(`{"type":"local_shell"}`),
+						},
+					},
+				},
+			},
+		},
+	}
+	processor.state.SetEffectiveSemanticRequest(llmRequest)
+
+	_, err := processor.TransformRequest(ctx, llmRequest)
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.True(t, processor.state.CurrentAttemptSanitizeResult.Rejected)
+	require.NotNil(t, llmRequest.ProviderExtensions.OpenAIResponses)
 }
 
 func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {

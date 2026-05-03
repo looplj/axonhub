@@ -17,6 +17,7 @@ func TestSelectAPIFormatForRequestType(t *testing.T) {
 	}
 
 	require.Equal(t, "openai/responses", SelectAPIFormatForRequestType(endpoints, llm.RequestTypeChat))
+	require.Equal(t, "openai/responses", SelectAPIFormatForRequestType(endpoints, llm.RequestTypeCompact))
 	require.Equal(t, "openai/embeddings", SelectAPIFormatForRequestType(endpoints, llm.RequestTypeEmbedding))
 	require.Equal(t, "openai/image_generation", SelectAPIFormatForRequestType(endpoints, llm.RequestTypeImage))
 
@@ -42,6 +43,45 @@ func TestSelectAPIFormatForRequest_PrefersInboundResponsesFormat(t *testing.T) {
 	}
 
 	require.Equal(t, llm.APIFormatOpenAIResponse.String(), SelectAPIFormatForRequest(endpoints, req))
+}
+
+func TestSelectAPIFormatForRequest_PrefersInboundResponsesRegardlessEndpointOrder(t *testing.T) {
+	req := &llm.Request{
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponse,
+	}
+
+	chatFirst := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+	}
+	responsesFirst := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+	}
+
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), SelectAPIFormatForRequest(chatFirst, req))
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), SelectAPIFormatForRequest(responsesFirst, req))
+}
+
+func TestSelectAPIFormatForRequest_CompactPrefersCompactThenResponses(t *testing.T) {
+	req := &llm.Request{
+		RequestType: llm.RequestTypeCompact,
+		APIFormat:   llm.APIFormatOpenAIResponseCompact,
+	}
+
+	withCompact := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAIResponseCompact.String()},
+	}
+	withoutCompact := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+	}
+
+	require.Equal(t, llm.APIFormatOpenAIResponseCompact.String(), SelectAPIFormatForRequest(withCompact, req))
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), SelectAPIFormatForRequest(withoutCompact, req))
 }
 
 func TestSelectAPIFormatForRequest_NonResponsesKeepsRequestTypeSelection(t *testing.T) {

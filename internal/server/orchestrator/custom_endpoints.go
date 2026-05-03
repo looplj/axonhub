@@ -14,6 +14,12 @@ var chatCapableAPIFormats = map[string]struct{}{
 	"ollama/chat":             {},
 }
 
+// compactCapableAPIFormats lists API formats for Responses compaction requests.
+var compactCapableAPIFormats = map[string]struct{}{
+	"openai/responses_compact": {},
+	"openai/responses":         {},
+}
+
 // completionCapableAPIFormats lists API formats for completion requests.
 var completionCapableAPIFormats = map[string]struct{}{
 	"openai/completions": {},
@@ -52,6 +58,8 @@ func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestT
 	switch requestType {
 	case llm.RequestTypeChat:
 		allowed = chatCapableAPIFormats
+	case llm.RequestTypeCompact:
+		allowed = compactCapableAPIFormats
 	case llm.RequestTypeCompletion:
 		allowed = completionCapableAPIFormats
 	case llm.RequestTypeEmbedding:
@@ -79,10 +87,11 @@ func SelectAPIFormatForRequest(endpoints []objects.ChannelEndpoint, req *llm.Req
 	}
 
 	if req != nil && isResponsesFormat(req.APIFormat) {
-		preferred := req.APIFormat.String()
-		for _, ep := range endpoints {
-			if ep.APIFormat == preferred {
-				return ep.APIFormat
+		for _, preferred := range preferredResponsesAPIFormats(req.APIFormat) {
+			for _, ep := range endpoints {
+				if ep.APIFormat == preferred {
+					return ep.APIFormat
+				}
 			}
 		}
 	}
@@ -93,4 +102,18 @@ func SelectAPIFormatForRequest(endpoints []objects.ChannelEndpoint, req *llm.Req
 	}
 
 	return SelectAPIFormatForRequestType(endpoints, requestType)
+}
+
+func preferredResponsesAPIFormats(format llm.APIFormat) []string {
+	switch format {
+	case llm.APIFormatOpenAIResponseCompact:
+		return []string{
+			llm.APIFormatOpenAIResponseCompact.String(),
+			llm.APIFormatOpenAIResponse.String(),
+		}
+	case llm.APIFormatOpenAIResponse:
+		return []string{llm.APIFormatOpenAIResponse.String()}
+	default:
+		return nil
+	}
 }

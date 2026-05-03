@@ -69,3 +69,7 @@ var defaultQuotaEnforcementSettings = QuotaEnforcementSettings{
 	Enabled: false,
 	Mode:    QuotaEnforcementModeExhaustedOnly,
 }
+
+var defaultLLMCompatibilitySettings = LLMCompatibilitySettings{
+	ResponsesOnlyDataPolicy: ResponsesOnlyDataPolicyDiscard,
+}

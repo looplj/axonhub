@@ -105,6 +105,10 @@ const (
 	// SystemKeyQuotaEnforcementSettings is the key used to store the quota enforcement settings.
 	// The value is JSON-encoded QuotaEnforcementSettings struct.
 	SystemKeyQuotaEnforcementSettings = "quota_enforcement_settings"
+
+	// SystemKeyLLMCompatibilitySettings is the key used to store LLM protocol compatibility settings.
+	// The value is JSON-encoded LLMCompatibilitySettings struct.
+	SystemKeyLLMCompatibilitySettings = "system_llm_compatibility_settings"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -194,6 +198,60 @@ type QuotaEnforcementSettings struct {
 	Enabled bool `json:"enabled"`
 	// Mode defines how quota is enforced.
 	Mode QuotaEnforcementMode `json:"mode"`
+}
+
+// ResponsesOnlyDataPolicy defines how Responses-only data is handled when the
+// selected outbound endpoint is not OpenAI Responses.
+type ResponsesOnlyDataPolicy string
+
+const (
+	// ResponsesOnlyDataPolicyDiscard drops Responses-only raw data and keeps the semantic request.
+	ResponsesOnlyDataPolicyDiscard ResponsesOnlyDataPolicy = "discard"
+	// ResponsesOnlyDataPolicyDiscardSafeRejectControl drops safe extras but rejects control/executable raw data.
+	ResponsesOnlyDataPolicyDiscardSafeRejectControl ResponsesOnlyDataPolicy = "discard_safe_reject_control"
+	// ResponsesOnlyDataPolicyReject rejects any Responses-only raw data on non-Responses outbound.
+	ResponsesOnlyDataPolicyReject ResponsesOnlyDataPolicy = "reject"
+)
+
+func (p ResponsesOnlyDataPolicy) Valid() bool {
+	switch p {
+	case ResponsesOnlyDataPolicyDiscard,
+		ResponsesOnlyDataPolicyDiscardSafeRejectControl,
+		ResponsesOnlyDataPolicyReject:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *ResponsesOnlyDataPolicy) UnmarshalText(text []byte) error {
+	value := ResponsesOnlyDataPolicy(strings.TrimSpace(string(text)))
+	if value == "" {
+		value = ResponsesOnlyDataPolicyDiscard
+	}
+	if !value.Valid() {
+		return fmt.Errorf("invalid responses_only_data_policy: %s", value)
+	}
+
+	*p = value
+
+	return nil
+}
+
+func (p *ResponsesOnlyDataPolicy) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("invalid responses_only_data_policy: %w", err)
+	}
+
+	return p.UnmarshalText([]byte(raw))
+}
+
+// LLMCompatibilitySettings represents protocol compatibility settings for LLM transformations.
+type LLMCompatibilitySettings struct {
+	// ResponsesOnlyDataPolicy defaults to discard for backward compatibility. This is
+	// a compatibility downgrade policy, not a Codex/Responses fidelity guarantee.
+	ResponsesOnlyDataPolicy ResponsesOnlyDataPolicy `conf:"responses_only_data_policy" yaml:"responses_only_data_policy" json:"responses_only_data_policy"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -516,17 +574,24 @@ func (p *ProbeFrequency) UnmarshalGQL(v any) error {
 type SystemServiceParams struct {
 	fx.In
 
-	CacheConfig xcache.Config
-	Ent         *ent.Client
+	CacheConfig              xcache.Config
+	LLMCompatibilitySettings LLMCompatibilitySettings `optional:"true"`
+	Ent                      *ent.Client
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
+	compatSettings := params.LLMCompatibilitySettings
+	if err := normalizeLLMCompatibilitySettings(&compatSettings); err != nil {
+		compatSettings = defaultLLMCompatibilitySettings
+	}
+
 	return &SystemService{
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		CacheConfig: params.CacheConfig,
-		Cache:       xcache.NewFromConfig[ent.System](params.CacheConfig),
+		CacheConfig:                     params.CacheConfig,
+		Cache:                           xcache.NewFromConfig[ent.System](params.CacheConfig),
+		DefaultLLMCompatibilitySettings: compatSettings,
 	}
 }
 
@@ -535,6 +600,8 @@ type SystemService struct {
 
 	CacheConfig xcache.Config
 	Cache       xcache.Cache[ent.System]
+
+	DefaultLLMCompatibilitySettings LLMCompatibilitySettings
 
 	mu           sync.RWMutex
 	timeLocation *time.Location
@@ -1408,6 +1475,83 @@ func (s *SystemService) SetQuotaEnforcementSettings(ctx context.Context, setting
 	}
 
 	return s.setSystemValue(ctx, SystemKeyQuotaEnforcementSettings, string(jsonBytes))
+}
+
+// LLMCompatibilitySettings retrieves protocol compatibility settings for LLM transformations.
+func (s *SystemService) LLMCompatibilitySettings(ctx context.Context) (*LLMCompatibilitySettings, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyLLMCompatibilitySettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			settings := s.defaultLLMCompatibilitySettings()
+
+			return &settings, nil
+		}
+
+		return nil, fmt.Errorf("failed to get LLM compatibility settings: %w", err)
+	}
+
+	var settings LLMCompatibilitySettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal LLM compatibility settings: %w", err)
+	}
+
+	if err := normalizeLLMCompatibilitySettings(&settings); err != nil {
+		return nil, err
+	}
+
+	return &settings, nil
+}
+
+// LLMCompatibilitySettingsOrDefault retrieves LLM compatibility settings or returns the configured default.
+func (s *SystemService) LLMCompatibilitySettingsOrDefault(ctx context.Context) *LLMCompatibilitySettings {
+	settings, err := s.LLMCompatibilitySettings(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to get LLM compatibility settings", log.Cause(err))
+
+		settings := s.defaultLLMCompatibilitySettings()
+
+		return &settings
+	}
+
+	return settings
+}
+
+// SetLLMCompatibilitySettings stores protocol compatibility settings.
+func (s *SystemService) SetLLMCompatibilitySettings(ctx context.Context, settings LLMCompatibilitySettings) error {
+	if err := normalizeLLMCompatibilitySettings(&settings); err != nil {
+		return err
+	}
+
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal LLM compatibility settings: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyLLMCompatibilitySettings, string(jsonBytes))
+}
+
+func (s *SystemService) defaultLLMCompatibilitySettings() LLMCompatibilitySettings {
+	settings := s.DefaultLLMCompatibilitySettings
+	if err := normalizeLLMCompatibilitySettings(&settings); err != nil {
+		return defaultLLMCompatibilitySettings
+	}
+
+	return settings
+}
+
+func normalizeLLMCompatibilitySettings(settings *LLMCompatibilitySettings) error {
+	if settings == nil {
+		return nil
+	}
+
+	if settings.ResponsesOnlyDataPolicy == "" {
+		settings.ResponsesOnlyDataPolicy = defaultLLMCompatibilitySettings.ResponsesOnlyDataPolicy
+	}
+	if !settings.ResponsesOnlyDataPolicy.Valid() {
+		return fmt.Errorf("invalid responses_only_data_policy: %q", settings.ResponsesOnlyDataPolicy)
+	}
+
+	return nil
 }
 
 // UpdateAutoBackupLastRun updates the last backup timestamp and error status.

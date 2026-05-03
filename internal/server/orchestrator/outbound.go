@@ -380,14 +380,19 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
-	filteredRequest := filterResponseCustomToolMessagesForNonResponsesOutbound(attemptRequest, p.wrapped.APIFormat())
-	if filteredRequest != attemptRequest {
-		p.state.CurrentAttemptSanitizeResult = AttemptSanitizeResult{
-			Changed: true,
-			Reason:  "responses_custom_tool_messages_removed_for_non_responses_outbound",
-		}
-		attemptRequest = filteredRequest
+	sanitizedRequest, sanitizeResult, err := sanitizeOpenAIResponsesForNonResponsesOutbound(
+		attemptRequest,
+		p.wrapped.APIFormat(),
+		p.responsesOnlyDataPolicy(ctx),
+	)
+	p.state.CurrentAttemptSanitizeResult = sanitizeResult
+	if sanitizeResult.Changed || sanitizeResult.Rejected {
+		logResponsesOnlyPolicyResult(ctx, candidate, sanitizeResult)
 	}
+	if err != nil {
+		return nil, err
+	}
+	attemptRequest = sanitizedRequest
 	p.state.CurrentAttemptRequest = attemptRequest
 	syncRequestDirtyToOpenAIResponsesExtensions(attemptRequest, p.state.RequestDirty)
 

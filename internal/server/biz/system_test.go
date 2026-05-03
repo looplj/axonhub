@@ -398,6 +398,47 @@ func TestSystemService_ChannelSetting_NormalizesLegacyAutoSyncFrequency(t *testi
 	require.Equal(t, AutoSyncFrequencyOneHour, setting.AutoSync.Frequency)
 }
 
+func TestSystemService_LLMCompatibilitySettings_DefaultAndSet(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	settings, err := service.LLMCompatibilitySettings(ctx)
+	require.NoError(t, err)
+	require.Equal(t, ResponsesOnlyDataPolicyDiscard, settings.ResponsesOnlyDataPolicy)
+
+	err = service.SetLLMCompatibilitySettings(ctx, LLMCompatibilitySettings{
+		ResponsesOnlyDataPolicy: ResponsesOnlyDataPolicyDiscardSafeRejectControl,
+	})
+	require.NoError(t, err)
+
+	retrieved, err := service.LLMCompatibilitySettings(ctx)
+	require.NoError(t, err)
+	require.Equal(t, ResponsesOnlyDataPolicyDiscardSafeRejectControl, retrieved.ResponsesOnlyDataPolicy)
+}
+
+func TestSystemService_LLMCompatibilitySettings_RejectsInvalidPolicy(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	err := service.SetLLMCompatibilitySettings(ctx, LLMCompatibilitySettings{
+		ResponsesOnlyDataPolicy: ResponsesOnlyDataPolicy("invalid"),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "responses_only_data_policy")
+}
+
 func TestSystemService_Initialize_WithCache(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()

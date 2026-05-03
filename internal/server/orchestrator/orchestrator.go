@@ -192,18 +192,19 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 
 	state := &PersistenceState{
-		APIKey:                apiKey,
-		RequestService:        processor.RequestService,
-		UsageLogService:       processor.UsageLogService,
-		ChannelService:        processor.ChannelService,
-		PromptProvider:        processor.PromptProvider,
-		PromptProtecter:       processor.PromptProtecter,
-		RetryPolicyProvider:   processor.SystemService,
-		CandidateSelector:     processor.channelSelector,
-		LoadBalancer:          loadBalancer,
-		ModelMapper:           processor.ModelMapper,
-		Proxy:                 processor.proxy,
-		CurrentCandidateIndex: 0,
+		APIKey:                        apiKey,
+		RequestService:                processor.RequestService,
+		UsageLogService:               processor.UsageLogService,
+		ChannelService:                processor.ChannelService,
+		PromptProvider:                processor.PromptProvider,
+		PromptProtecter:               processor.PromptProtecter,
+		RetryPolicyProvider:           processor.SystemService,
+		CompatibilitySettingsProvider: processor.SystemService,
+		CandidateSelector:             processor.channelSelector,
+		LoadBalancer:                  loadBalancer,
+		ModelMapper:                   processor.ModelMapper,
+		Proxy:                         processor.proxy,
+		CurrentCandidateIndex:         0,
 	}
 
 	var pipelineOpts []pipeline.Option

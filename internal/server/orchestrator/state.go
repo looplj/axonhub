@@ -14,14 +14,15 @@ import (
 type PersistenceState struct {
 	APIKey *ent.APIKey
 
-	RequestService      *biz.RequestService
-	UsageLogService     *biz.UsageLogService
-	ChannelService      *biz.ChannelService
-	PromptProvider      PromptProvider
-	PromptProtecter     PromptProtecter
-	RetryPolicyProvider RetryPolicyProvider
-	CandidateSelector   CandidateSelector
-	LoadBalancer        *LoadBalancer
+	RequestService                *biz.RequestService
+	UsageLogService               *biz.UsageLogService
+	ChannelService                *biz.ChannelService
+	PromptProvider                PromptProvider
+	PromptProtecter               PromptProtecter
+	RetryPolicyProvider           RetryPolicyProvider
+	CompatibilitySettingsProvider LLMCompatibilitySettingsProvider
+	CandidateSelector             CandidateSelector
+	LoadBalancer                  *LoadBalancer
 
 	// Request state
 	ModelMapper *ModelMapper
@@ -99,9 +100,19 @@ type PersistenceState struct {
 }
 
 type AttemptSanitizeResult struct {
-	Changed  bool
-	Rejected bool
-	Reason   string
+	Changed                         bool
+	Rejected                        bool
+	Reason                          string
+	Policy                          biz.ResponsesOnlyDataPolicy
+	OutboundAPIFormat               string
+	DroppedSafeExtraKeysCount       int
+	DroppedSemanticExtraKeysCount   int
+	DroppedMetadataExtraKeysCount   int
+	DroppedRawInputItemsCount       int
+	DroppedExecutableToolsCount     int
+	DroppedCustomToolMessagesCount  int
+	DroppedTransformerMetadataCount int
+	RejectedCategories              []string
 }
 
 type RequestDirtyScope string
