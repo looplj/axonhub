@@ -710,6 +710,10 @@ export function useCreateApiKeyProfileTemplate() {
       const inputWithProject = {
         ...input,
         projectID: input.projectID ?? null,
+        profile: {
+          ...input.profile,
+          name: input.name,
+        },
       };
       return graphqlRequest<{ createApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
@@ -731,9 +735,13 @@ export function useUpdateApiKeyProfileTemplate() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfileTemplateInput }) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const inputWithProfileName =
+        input.name && input.profile
+          ? { ...input, profile: { ...input.profile, name: input.name } }
+          : input;
       return graphqlRequest<{ updateApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         UPDATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
-        { id, input },
+        { id, input: inputWithProfileName },
         headers
       );
     },

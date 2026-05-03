@@ -100,7 +100,7 @@ func TestApiKeyProfileTemplate_CreateTemplate(t *testing.T) {
 	require.Equal(t, "my-template", template.Name)
 	require.Equal(t, testProject.ID, template.ProjectID)
 	require.NotNil(t, template.Profile)
-	require.Equal(t, "test-profile", template.Profile.Name)
+	require.Equal(t, "my-template", template.Profile.Name)
 }
 
 
@@ -139,7 +139,7 @@ func TestApiKeyProfileTemplate_UpdateTemplate(t *testing.T) {
 	require.NotNil(t, result)
 	require.Equal(t, "updated-name", result.Name)
 	require.Equal(t, "updated desc", result.Description)
-	require.Equal(t, "updated-profile", result.Profile.Name)
+	require.Equal(t, "updated-name", result.Profile.Name)
 }
 
 func TestApiKeyProfileTemplate_DeleteTemplate(t *testing.T) {
@@ -195,7 +195,6 @@ func TestApiKeyProfileTemplate_LoadTemplate(t *testing.T) {
 	require.NoError(t, err)
 
 	templateProfile := &objects.APIKeyProfile{
-		Name: "Loaded",
 		ModelMappings: []objects.ModelMapping{
 			{From: "gpt-4", To: "gpt-4-turbo"},
 		},
@@ -220,7 +219,7 @@ func TestApiKeyProfileTemplate_LoadTemplate(t *testing.T) {
 	require.NotNil(t, result.Profiles)
 	require.Len(t, result.Profiles.Profiles, 2)
 	require.Equal(t, "Default", result.Profiles.Profiles[0].Name)
-	require.Equal(t, "Loaded", result.Profiles.Profiles[1].Name)
+	require.Equal(t, "load-template", result.Profiles.Profiles[1].Name)
 }
 
 

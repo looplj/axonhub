@@ -34,6 +34,10 @@ func NewAPIKeyProfileTemplateService(params APIKeyProfileTemplateServiceParams) 
 func (s *APIKeyProfileTemplateService) CreateTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
 	client := s.entFromContext(ctx)
 
+	if profile != nil {
+		profile.Name = input.Name
+	}
+
 	create := client.APIKeyProfileTemplate.Create().
 		SetInput(input).
 		SetProfile(profile)
@@ -72,6 +76,18 @@ func (s *APIKeyProfileTemplateService) ListTemplates(ctx context.Context, projec
 
 func (s *APIKeyProfileTemplateService) UpdateTemplate(ctx context.Context, id int, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
 	client := s.entFromContext(ctx)
+
+	if profile != nil {
+		if input.Name != nil {
+			profile.Name = *input.Name
+		} else {
+			existing, err := client.APIKeyProfileTemplate.Get(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get template: %w", err)
+			}
+			profile.Name = existing.Name
+		}
+	}
 
 	update := client.APIKeyProfileTemplate.UpdateOneID(id).
 		SetInput(input)
@@ -145,7 +161,7 @@ func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templat
 			existingProfiles = &objects.APIKeyProfiles{}
 		}
 
-		resolvedName := resolveProfileNameConflict(existingProfiles.Profiles, templateProfile.Name)
+		resolvedName := resolveProfileNameConflict(existingProfiles.Profiles, template.Name)
 		templateProfile.Name = resolvedName
 
 		existingProfiles.Profiles = append(existingProfiles.Profiles, *templateProfile)
@@ -197,6 +213,8 @@ func (s *APIKeyProfileTemplateService) SaveAsTemplate(ctx context.Context, apiKe
 			log.Error(ctx, "Failed to copy API key profile for template", log.Cause(getErr), log.String("profile_name", profileName))
 			return fmt.Errorf("failed to copy profile: %w", getErr)
 		}
+
+		copiedProfile.Name = templateName
 
 		var saveErr error
 		template, saveErr = client.APIKeyProfileTemplate.Create().

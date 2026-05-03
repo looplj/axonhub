@@ -130,7 +130,7 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
       name: '',
       description: '',
       profile: {
-        name: 'Default',
+        name: '',
         modelMappings: [] as { from: string; to: string }[],
         channelIDs: [] as number[],
         channelTags: [] as string[],
@@ -191,7 +191,10 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
         name: values.name,
         description: values.description || '',
         projectID: selectedProjectId,
-        profile: values.profile,
+        profile: {
+          ...values.profile,
+          name: values.name,
+        },
       });
       toast.success(t('apikeys.profileTemplates.createSuccess'));
       onOpenChange(false);
@@ -254,20 +257,6 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
                   />
                 </div>
               </div>
-
-              <FormField
-                control={form.control}
-                name='profile.name'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('apikeys.profiles.profileName')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder={t('apikeys.profiles.profileName')} className='md:w-[12em]' />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <div className='border-t pt-6'>
                 <FormField
