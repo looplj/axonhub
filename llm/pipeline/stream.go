@@ -110,7 +110,7 @@ func (p *pipeline) stream(
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		outboundStream = streams.Map(outboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-				slog.DebugContext(ctx, "Outbound stream event", slog.Any("event", event))
+				slog.DebugContext(ctx, "Outbound stream event", slog.Any("event", redactedStreamEventLogSummary(event)))
 				return event
 			},
 		)
@@ -143,7 +143,7 @@ func (p *pipeline) stream(
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		llmStream = streams.Map(llmStream, func(event *llm.Response) *llm.Response {
-			slog.DebugContext(ctx, "LLM stream event", slog.Any("event", event))
+			slog.DebugContext(ctx, "LLM stream event", slog.Any("event", redactedResponseLogSummary(event)))
 			return event
 		})
 	}
@@ -185,7 +185,7 @@ func (p *pipeline) stream(
 		inboundStream = streams.Map(
 			inboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-				slog.DebugContext(ctx, "Inbound stream event", slog.Any("event", event))
+				slog.DebugContext(ctx, "Inbound stream event", slog.Any("event", redactedStreamEventLogSummary(event)))
 				return event
 			},
 		)

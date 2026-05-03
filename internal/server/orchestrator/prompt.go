@@ -69,6 +69,8 @@ func injectPrompts(inbound *PersistentInboundTransformer) pipeline.Middleware {
 		)
 
 		llmRequest = matcher.ApplyPrompts(llmRequest, matchingPrompts)
+		inbound.state.MarkDirty(RequestDirtyMessages, RequestDirtyInstructions)
+		inbound.state.SetEffectiveSemanticRequest(llmRequest)
 
 		return llmRequest, nil
 	})

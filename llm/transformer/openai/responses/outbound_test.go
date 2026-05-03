@@ -950,6 +950,31 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformResponse_MetadataNonStringCurrentlyRejected(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+
+	_, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id": "resp_metadata",
+			"object": "response",
+			"created_at": 1759161016,
+			"status": "completed",
+			"model": "gpt-4o",
+			"metadata": {
+				"object_value": {"nested": true},
+				"array_value": [1, 2],
+				"number_value": 3,
+				"bool_value": true,
+				"null_value": null
+			},
+			"output": []
+		}`),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to unmarshal responses api response")
+}
+
 func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 	tests := []struct {
 		name        string

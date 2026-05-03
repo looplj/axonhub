@@ -359,13 +359,40 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		log.String("api_format", candidate.APIFormat),
 	)
 
-	llmRequest.Model = entry.ActualModel
+	attemptRequest := CloneRequestForOutboundAttempt(p.state.effectiveSemanticRequest())
+	if attemptRequest == nil {
+		attemptRequest = CloneRequestForOutboundAttempt(llmRequest)
+	}
+
+	attemptRequest.Model = entry.ActualModel
+	p.state.CurrentAttemptRequest = attemptRequest
 
 	// Apply channel transform options to create a new request
-	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
-	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
+	transformResult := applyTransformOptionsWithResult(attemptRequest, candidate.Channel.Settings)
+	attemptRequest = transformResult.Request
+	if transformResult.Changed {
+		p.state.CurrentAttemptTransformOptionsChanged = true
+	}
 
-	return p.wrapped.TransformRequest(ctx, llmRequest)
+	filteredRequest := filterResponseCustomToolMessagesForNonResponsesOutbound(attemptRequest, p.wrapped.APIFormat())
+	if filteredRequest != attemptRequest {
+		p.state.CurrentAttemptSanitizeResult = AttemptSanitizeResult{
+			Changed: true,
+			Reason:  "responses_custom_tool_messages_removed_for_non_responses_outbound",
+		}
+		attemptRequest = filteredRequest
+	}
+	p.state.CurrentAttemptRequest = attemptRequest
+
+	providerRequest, err := p.wrapped.TransformRequest(ctx, attemptRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	p.state.CurrentAttemptRawProviderRequest = providerRequest
+	p.state.RawProviderRequest = providerRequest
+
+	return providerRequest, nil
 }
 
 func filterResponseCustomToolMessagesForNonResponsesOutbound(
@@ -482,12 +509,21 @@ func (p *PersistentOutboundTransformer) resetPassThroughStreamState() {
 	p.state.RawStreamErrRef = nil
 }
 
+func (p *PersistentOutboundTransformer) resetCurrentAttemptState() {
+	if p.state == nil {
+		return
+	}
+
+	p.resetPassThroughStreamState()
+	p.state.resetCurrentAttemptState()
+}
+
 // NextChannel moves to the next available candidate for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.
-	p.resetPassThroughStreamState()
+	p.resetCurrentAttemptState()
 
 	p.state.CurrentCandidateIndex++
 
@@ -584,7 +620,7 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.
-	p.resetPassThroughStreamState()
+	p.resetCurrentAttemptState()
 
 	// If there's another model in the list, advance to it.
 	if p.state.CurrentModelIndex+1 < len(candidate.Models) {

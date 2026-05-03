@@ -74,6 +74,9 @@ func TestInjectPrompts_WithMatchingPrompts(t *testing.T) {
 	assert.Equal(t, "system", result.Messages[0].Role)
 	assert.Equal(t, "You are a helpful assistant.", *result.Messages[0].Content.Content)
 	assert.Equal(t, "user", result.Messages[1].Role)
+	assert.True(t, state.RequestDirty.Has(RequestDirtyMessages))
+	assert.True(t, state.RequestDirty.Has(RequestDirtyInstructions))
+	assert.Same(t, result, state.EffectiveSemanticRequest)
 }
 
 func TestInjectPrompts_WithModelCondition(t *testing.T) {

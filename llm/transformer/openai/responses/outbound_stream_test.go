@@ -187,3 +187,58 @@ func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *test
 	require.Equal(t, "resp_prev_123", *actual[2].PreviousResponseID)
 	require.Equal(t, llm.DoneResponse, actual[3])
 }
+
+func TestOutboundTransformer_TransformStream_UnknownLifecycleEventCurrentlySkipped(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type":"response.created",
+				"response":{
+					"id":"resp_unknown",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-5.4",
+					"status":"in_progress",
+					"output":[]
+				}
+			}`),
+		},
+		{
+			Type: "response.codex_unknown",
+			Data: []byte(`{
+				"type":"response.codex_unknown",
+				"sequence_number":2,
+				"payload":{"tool_output":"raw-only"}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type":"response.completed",
+				"response":{
+					"id":"resp_unknown",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-5.4",
+					"status":"completed",
+					"output":[],
+					"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}
+				}
+			}`),
+		},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+
+	require.Len(t, actual, 4)
+	require.Equal(t, "resp_unknown", actual[0].ID)
+	require.Equal(t, llm.DoneResponse, actual[3])
+}

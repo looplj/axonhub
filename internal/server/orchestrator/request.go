@@ -31,6 +31,8 @@ func (m *persistRequestMiddleware) Name() string {
 }
 
 func (m *persistRequestMiddleware) OnInboundLlmRequest(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
+	m.inbound.state.SetEffectiveSemanticRequest(llmRequest)
+
 	if m.inbound.state.Request != nil {
 		return llmRequest, nil
 	}

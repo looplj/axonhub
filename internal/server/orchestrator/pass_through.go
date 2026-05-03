@@ -23,13 +23,35 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled() bool {
 		return false
 	}
 
-	rawReq := p.state.RawProviderRequest
+	rawReq := p.state.currentAttemptRawProviderRequest()
 	if rawReq == nil || rawReq.APIFormat == "" {
 		return false
 	}
 
-	llmReq := p.state.LlmRequest
+	llmReq := p.state.effectiveSemanticRequest()
 	if llmReq == nil || string(llmReq.APIFormat) != rawReq.APIFormat {
+		return false
+	}
+
+	if !isResponsesFormat(llmReq.APIFormat) {
+		return true
+	}
+
+	if p.state.RequestDirty != nil && p.state.RequestDirty.HasAny(
+		RequestDirtyMessages,
+		RequestDirtyInstructions,
+		RequestDirtyInputItems,
+		RequestDirtyTools,
+		RequestDirtyToolChoice,
+	) {
+		return false
+	}
+
+	if p.state.PromptProtection.Changed || p.state.PromptProtection.HasUnsafeFragmentsForReplay() {
+		return false
+	}
+
+	if p.state.CurrentAttemptTransformOptionsChanged {
 		return false
 	}
 
@@ -43,14 +65,21 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled() bool {
 // Save the actual outbound provider request so pass-through checks use the emitted API format.
 func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		outbound.state.CurrentAttemptRawProviderRequest = request
 		outbound.state.RawProviderRequest = request
 
-		if !outbound.isPassThroughEnabled() {
+		enabled := outbound.isPassThroughEnabled()
+		outbound.state.CurrentAttemptRequestBodyPassThroughEnabled = enabled
+
+		if !enabled {
 			return request, nil
 		}
 
 		channel := outbound.GetCurrentChannel()
-		llmReq := outbound.state.LlmRequest
+		llmReq := outbound.state.CurrentAttemptRequest
+		if llmReq == nil {
+			llmReq = outbound.state.effectiveSemanticRequest()
+		}
 
 		log.Debug(ctx, "applying pass-through body",
 			log.String("channel", channel.Name),
@@ -140,8 +169,8 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 
 		if passThroughEnabled {
 			// Pass-through enabled: use the original client's User-Agent
-			if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
-				if clientUA := outbound.state.LlmRequest.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
+			if llmReq := outbound.state.effectiveSemanticRequest(); llmReq != nil && llmReq.RawRequest != nil {
+				if clientUA := llmReq.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
 					request.Headers.Set("User-Agent", clientUA)
 				}
 			}
@@ -180,7 +209,7 @@ func applyPassThroughResponse(outbound *PersistentOutboundTransformer) pipeline.
 
 		log.Debug(ctx, "applying pass-through response",
 			log.String("channel", outbound.GetCurrentChannel().Name),
-			log.String("api_format", outbound.state.RawProviderRequest.APIFormat),
+			log.String("api_format", outbound.state.currentAttemptRawProviderRequest().APIFormat),
 		)
 
 		return rawResp, nil

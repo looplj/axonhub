@@ -62,7 +62,7 @@ func (p *pipeline) notStream(
 		return nil, ErrEmptyResponse
 	}
 
-	slog.DebugContext(ctx, "LLM response", slog.Any("response", llmResp))
+	slog.DebugContext(ctx, "LLM response", slog.Any("response", redactedResponseLogSummary(llmResp)))
 
 	finalResp, err := p.Inbound.TransformResponse(ctx, llmResp)
 	if err != nil {

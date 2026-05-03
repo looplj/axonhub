@@ -870,6 +870,91 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
 }
 
+func TestApplyPassThroughBody_DisabledForDirtyResponsesRequest(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "responses-pass-through-dirty",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest: &llm.Request{
+			Model:     "gpt-5.4",
+			APIFormat: llm.APIFormatOpenAIResponse,
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatOpenAIResponse),
+				Body:      []byte(`{"model":"client-model","input":"original"}`),
+			},
+		},
+		CurrentAttemptRequest: &llm.Request{
+			Model:     "gpt-5.4",
+			APIFormat: llm.APIFormatOpenAIResponse,
+		},
+		RequestDirty: NewRequestDirtySet(),
+	}
+	state.RequestDirty.Mark(RequestDirtyMessages)
+
+	outbound := &PersistentOutboundTransformer{state: state}
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body:      []byte(`{"model":"gpt-5.4","input":"injected"}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, `{"model":"gpt-5.4","input":"injected"}`, string(processed.Body))
+	require.False(t, state.CurrentAttemptRequestBodyPassThroughEnabled)
+}
+
+func TestApplyPassThroughBody_DisabledForPromptProtectionChangedResponsesRequest(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "responses-pass-through-protected",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: true,
+			},
+		},
+	}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest: &llm.Request{
+			Model:     "gpt-5.4",
+			APIFormat: llm.APIFormatOpenAIResponse,
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatOpenAIResponse),
+				Body:      []byte(`{"model":"client-model","input":"secret"}`),
+			},
+		},
+		CurrentAttemptRequest: &llm.Request{
+			Model:     "gpt-5.4",
+			APIFormat: llm.APIFormatOpenAIResponse,
+		},
+		PromptProtection: PromptProtectionState{Changed: true},
+	}
+
+	outbound := &PersistentOutboundTransformer{state: state}
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body:      []byte(`{"model":"gpt-5.4","input":"[MASKED]"}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, `{"model":"gpt-5.4","input":"[MASKED]"}`, string(processed.Body))
+	require.False(t, state.CurrentAttemptRequestBodyPassThroughEnabled)
+}
+
 func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 	ctx := context.Background()
 

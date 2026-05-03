@@ -40,6 +40,10 @@ func TestProtectPromptsMaskContent(t *testing.T) {
 	require.NotNil(t, result.Messages[0].Content.Content)
 	assert.Equal(t, "token is [MASKED]", *result.Messages[0].Content.Content)
 	assert.Equal(t, "token is secret-123", *request.Messages[0].Content.Content)
+	assert.True(t, state.PromptProtection.Changed)
+	assert.True(t, state.RequestDirty.Has(RequestDirtyMessages))
+	assert.True(t, state.RequestDirty.Has(RequestDirtyInputItems))
+	assert.Same(t, result, state.EffectiveSemanticRequest)
 }
 
 func TestProtectPromptsRejectContent(t *testing.T) {
@@ -64,6 +68,9 @@ func TestProtectPromptsRejectContent(t *testing.T) {
 	assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
 	assert.ErrorContains(t, err, promptProtectionRejectedMessage)
 	assert.NotContains(t, err.Error(), "reject-secret")
+	assert.True(t, state.PromptProtection.Rejected)
+	require.Len(t, state.PromptProtection.Fragments, 1)
+	assert.Equal(t, PromptProtectionFragmentRejected, state.PromptProtection.Fragments[0].Status)
 }
 
 func TestProtectPromptsScopeFiltering(t *testing.T) {

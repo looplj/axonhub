@@ -155,10 +155,152 @@ func TestPersistentOutboundTransformer_TransformRequest_OriginalModelRestoration
 			model := gjson.Get(bodyStr, "model")
 			require.Equal(t, tt.expectedFinalModel, model.String())
 
-			// Also verify the llmRequest was modified
-			require.Equal(t, tt.expectedFinalModel, llmRequest.Model)
+			// The shared semantic request must not be mutated by attempt-specific model mapping.
+			require.Equal(t, tt.inputModel, llmRequest.Model)
+			require.NotNil(t, processor.state.CurrentAttemptRequest)
+			require.Equal(t, tt.expectedFinalModel, processor.state.CurrentAttemptRequest.Model)
 		})
 	}
+}
+
+func TestCloneRequestForOutboundAttempt_DeepCopiesAttemptState(t *testing.T) {
+	content := "hello"
+	maxToolCalls := int64(2)
+	rawBody := []byte(`{"model":"alias","input":"hello"}`)
+	parameters := json.RawMessage(`{"type":"object"}`)
+
+	req := &llm.Request{
+		Model: "gpt-5.4",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "text",
+							Text: &content,
+							TransformerMetadata: map[string]any{
+								"raw": json.RawMessage(`{"kind":"input_text"}`),
+							},
+						},
+					},
+				},
+				ToolCalls: []llm.ToolCall{
+					{
+						ID: "call_1",
+						TransformerMetadata: map[string]any{
+							"raw": json.RawMessage(`{"call":"raw"}`),
+						},
+					},
+				},
+			},
+		},
+		Tools: []llm.Tool{
+			{
+				Type: "function",
+				Function: llm.Function{
+					Name:       "lookup",
+					Parameters: parameters,
+				},
+			},
+		},
+		RawRequest: &httpclient.Request{
+			Body: rawBody,
+		},
+		TransformerMetadata: map[string]any{
+			"include":        []string{"reasoning.encrypted_content"},
+			"max_tool_calls": &maxToolCalls,
+		},
+	}
+
+	cloned := CloneRequestForOutboundAttempt(req)
+	require.NotSame(t, req, cloned)
+
+	*cloned.Messages[0].Content.MultipleContent[0].Text = "changed"
+	cloned.Messages[0].Content.MultipleContent[0].TransformerMetadata["raw"].(json.RawMessage)[0] = '['
+	cloned.Messages[0].ToolCalls[0].TransformerMetadata["raw"].(json.RawMessage)[0] = '['
+	cloned.Tools[0].Function.Parameters[0] = '['
+	cloned.RawRequest.Body[0] = '['
+	cloned.TransformerMetadata["include"].([]string)[0] = "changed"
+	*cloned.TransformerMetadata["max_tool_calls"].(*int64) = 9
+
+	require.Equal(t, "hello", *req.Messages[0].Content.MultipleContent[0].Text)
+	require.JSONEq(t, `{"kind":"input_text"}`, string(req.Messages[0].Content.MultipleContent[0].TransformerMetadata["raw"].(json.RawMessage)))
+	require.JSONEq(t, `{"call":"raw"}`, string(req.Messages[0].ToolCalls[0].TransformerMetadata["raw"].(json.RawMessage)))
+	require.JSONEq(t, `{"type":"object"}`, string(req.Tools[0].Function.Parameters))
+	require.Equal(t, rawBody, req.RawRequest.Body)
+	require.Equal(t, []string{"reasoning.encrypted_content"}, req.TransformerMetadata["include"])
+	require.Equal(t, int64(2), *req.TransformerMetadata["max_tool_calls"].(*int64))
+}
+
+func TestPersistentOutboundTransformer_ResponsesSanitizeDoesNotPolluteNextAttempt(t *testing.T) {
+	ctx := context.Background()
+
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	responsesOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse}
+	channel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "mixed-channel"},
+		Outbound: chatOutbound,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatOpenAIResponse.String(): responsesOutbound,
+		},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: chatOutbound,
+		state: &PersistenceState{
+			OriginalModel: "gpt-5.4",
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{
+					Channel:   channel,
+					APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+					Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-5.4", ActualModel: "chat-model"}},
+				},
+				{
+					Channel:   channel,
+					APIFormat: llm.APIFormatOpenAIResponse.String(),
+					Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-5.4", ActualModel: "responses-model"}},
+				},
+			},
+		},
+	}
+
+	llmRequest := &llm.Request{
+		Model:     "gpt-5.4",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_custom",
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID: "call_custom",
+							Name:   "local_shell",
+							Input:  "echo hi",
+						},
+					},
+				},
+			},
+		},
+	}
+	processor.state.SetEffectiveSemanticRequest(llmRequest)
+
+	_, err := processor.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+	require.True(t, processor.state.CurrentAttemptSanitizeResult.Changed)
+	require.Empty(t, processor.state.CurrentAttemptRequest.Messages)
+	require.Len(t, llmRequest.Messages[0].ToolCalls, 1)
+
+	err = processor.NextChannel(ctx)
+	require.NoError(t, err)
+
+	_, err = processor.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+	require.False(t, processor.state.CurrentAttemptSanitizeResult.Changed)
+	require.Len(t, processor.state.CurrentAttemptRequest.Messages[0].ToolCalls, 1)
+	require.Equal(t, "responses-model", processor.state.CurrentAttemptRequest.Model)
 }
 
 func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {

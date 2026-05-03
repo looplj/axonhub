@@ -73,6 +73,9 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		return request, nil
 	}
 
+	state.CurrentAttemptRawProviderRequest = request
+	state.RawProviderRequest = request
+
 	channel := m.outbound.GetCurrentChannel()
 	if channel == nil {
 		return request, nil

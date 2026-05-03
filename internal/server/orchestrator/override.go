@@ -109,7 +109,10 @@ func applyOverrideRequestBody(outbound *PersistentOutboundTransformer) pipeline.
 			return request, nil
 		}
 
-		llmReq := outbound.state.LlmRequest
+		llmReq := outbound.state.CurrentAttemptRequest
+		if llmReq == nil {
+			llmReq = outbound.state.effectiveSemanticRequest()
+		}
 		renderCtx := buildRenderContext(llmReq, outbound.state.OriginalModel)
 		body := request.Body
 
@@ -141,8 +144,8 @@ func applyOverrideRequestBody(outbound *PersistentOutboundTransformer) pipeline.
 				log.String("channel", channel.Name),
 				log.Int("channel_id", channel.ID),
 				log.Any("operations", ops),
-				log.String("old_body", string(request.Body)),
-				log.String("new_body", string(body)),
+				log.Int("old_body_bytes", len(request.Body)),
+				log.Int("new_body_bytes", len(body)),
 			)
 		}
 

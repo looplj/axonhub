@@ -62,6 +62,13 @@ func TestHasResponseContent(t *testing.T) {
 			},
 		}))
 	})
+
+	t.Run("raw-only response content hook", func(t *testing.T) {
+		resp := &llm.Response{}
+		llm.MarkRawOnlyResponseContent(resp)
+
+		require.True(t, hasResponseContent(resp))
+	})
 }
 
 func TestPipeline_Process_StreamEmptyResponseDetection(t *testing.T) {

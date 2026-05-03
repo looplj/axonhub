@@ -52,6 +52,10 @@ func hasResponseContent(resp *llm.Response) bool {
 		return false
 	}
 
+	if llm.HasRawOnlyResponseContent(resp) {
+		return true
+	}
+
 	if resp.Embedding != nil && len(resp.Embedding.Data) > 0 {
 		return true
 	}

@@ -31,7 +31,29 @@ type PersistenceState struct {
 	// OriginalModel is the model after API key profile mapping, used for channel selection
 	OriginalModel string
 	RawRequest    *httpclient.Request
-	LlmRequest    *llm.Request
+
+	// InboundParsedRequest is the first semantic request emitted by the inbound transformer.
+	InboundParsedRequest *llm.Request
+	// EffectiveSemanticRequest is the semantic baseline after inbound middlewares such as prompt injection/protection.
+	EffectiveSemanticRequest *llm.Request
+	// CurrentAttemptRequest is the mutable deep copy used by the current outbound attempt.
+	CurrentAttemptRequest *llm.Request
+	// CurrentAttemptRawProviderRequest is the provider request emitted by the current outbound attempt.
+	CurrentAttemptRawProviderRequest *httpclient.Request
+	// CurrentAttemptSanitizeResult records Responses-only data cleanup/rejection for the current attempt.
+	CurrentAttemptSanitizeResult AttemptSanitizeResult
+	// CurrentAttemptRequestBodyPassThroughEnabled records the final request-body pass-through decision.
+	CurrentAttemptRequestBodyPassThroughEnabled bool
+	// CurrentAttemptTransformOptionsChanged is true when channel transform options changed the emitted request shape.
+	CurrentAttemptTransformOptionsChanged bool
+
+	// RequestDirty records semantic fragments changed after inbound parsing.
+	RequestDirty *RequestDirtySet
+	// PromptProtection records prompt protection outcomes relevant to replay gates.
+	PromptProtection PromptProtectionState
+
+	// LlmRequest is a compatibility alias for EffectiveSemanticRequest.
+	LlmRequest *llm.Request
 
 	// Persistence state
 	Request     *ent.Request
@@ -74,4 +96,171 @@ type PersistenceState struct {
 	// captureRawProviderStream. Must be called in PrepareForRetry and NextChannel so the
 	// abandoned goroutine exits promptly and releases its upstream HTTP connection.
 	RawStreamCancel context.CancelFunc
+}
+
+type AttemptSanitizeResult struct {
+	Changed  bool
+	Rejected bool
+	Reason   string
+}
+
+type RequestDirtyScope string
+
+const (
+	RequestDirtyMessages              RequestDirtyScope = "messages"
+	RequestDirtyInstructions          RequestDirtyScope = "instructions"
+	RequestDirtyInputItems            RequestDirtyScope = "input_items"
+	RequestDirtyTools                 RequestDirtyScope = "tools"
+	RequestDirtyToolChoice            RequestDirtyScope = "tool_choice"
+	RequestDirtyTopLevelSemanticExtra RequestDirtyScope = "top_level_semantic_extra"
+)
+
+type RequestDirtySet struct {
+	scopes map[RequestDirtyScope]struct{}
+}
+
+func NewRequestDirtySet() *RequestDirtySet {
+	return &RequestDirtySet{
+		scopes: make(map[RequestDirtyScope]struct{}),
+	}
+}
+
+func (d *RequestDirtySet) Mark(scopes ...RequestDirtyScope) {
+	if d == nil {
+		return
+	}
+
+	if d.scopes == nil {
+		d.scopes = make(map[RequestDirtyScope]struct{})
+	}
+
+	for _, scope := range scopes {
+		d.scopes[scope] = struct{}{}
+	}
+}
+
+func (d *RequestDirtySet) Has(scope RequestDirtyScope) bool {
+	if d == nil || d.scopes == nil {
+		return false
+	}
+
+	_, ok := d.scopes[scope]
+	return ok
+}
+
+func (d *RequestDirtySet) HasAny(scopes ...RequestDirtyScope) bool {
+	for _, scope := range scopes {
+		if d.Has(scope) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (d *RequestDirtySet) Scopes() []RequestDirtyScope {
+	if d == nil || len(d.scopes) == 0 {
+		return nil
+	}
+
+	scopes := make([]RequestDirtyScope, 0, len(d.scopes))
+	for scope := range d.scopes {
+		scopes = append(scopes, scope)
+	}
+
+	return scopes
+}
+
+type PromptProtectionFragmentStatus string
+
+const (
+	PromptProtectionFragmentUnscanned                  PromptProtectionFragmentStatus = "unscanned"
+	PromptProtectionFragmentScannedClean               PromptProtectionFragmentStatus = "scanned_clean"
+	PromptProtectionFragmentMatchedUnchanged           PromptProtectionFragmentStatus = "matched_unchanged"
+	PromptProtectionFragmentMatchedChangedReplayable   PromptProtectionFragmentStatus = "matched_changed_replayable"
+	PromptProtectionFragmentMatchedChangedUnreplayable PromptProtectionFragmentStatus = "matched_changed_unreplayable"
+	PromptProtectionFragmentRejected                   PromptProtectionFragmentStatus = "rejected"
+)
+
+type PromptProtectionFragmentResult struct {
+	Scope  string
+	Status PromptProtectionFragmentStatus
+}
+
+type PromptProtectionState struct {
+	Changed   bool
+	Rejected  bool
+	Fragments []PromptProtectionFragmentResult
+}
+
+func (p PromptProtectionState) HasUnsafeFragmentsForReplay() bool {
+	for _, fragment := range p.Fragments {
+		switch fragment.Status {
+		case PromptProtectionFragmentUnscanned,
+			PromptProtectionFragmentMatchedChangedUnreplayable,
+			PromptProtectionFragmentRejected:
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *PersistenceState) MarkDirty(scopes ...RequestDirtyScope) {
+	if s == nil {
+		return
+	}
+
+	if s.RequestDirty == nil {
+		s.RequestDirty = NewRequestDirtySet()
+	}
+
+	s.RequestDirty.Mark(scopes...)
+}
+
+func (s *PersistenceState) SetEffectiveSemanticRequest(req *llm.Request) {
+	if s == nil {
+		return
+	}
+
+	s.EffectiveSemanticRequest = req
+	s.LlmRequest = req
+}
+
+func (s *PersistenceState) effectiveSemanticRequest() *llm.Request {
+	if s == nil {
+		return nil
+	}
+
+	if s.EffectiveSemanticRequest != nil {
+		return s.EffectiveSemanticRequest
+	}
+
+	return s.LlmRequest
+}
+
+func (s *PersistenceState) currentAttemptRawProviderRequest() *httpclient.Request {
+	if s == nil {
+		return nil
+	}
+
+	if s.CurrentAttemptRawProviderRequest != nil {
+		return s.CurrentAttemptRawProviderRequest
+	}
+
+	return s.RawProviderRequest
+}
+
+func (s *PersistenceState) resetCurrentAttemptState() {
+	if s == nil {
+		return
+	}
+
+	s.CurrentAttemptRequest = nil
+	s.CurrentAttemptRawProviderRequest = nil
+	s.CurrentAttemptSanitizeResult = AttemptSanitizeResult{}
+	s.CurrentAttemptRequestBodyPassThroughEnabled = false
+	s.CurrentAttemptTransformOptionsChanged = false
+	s.RawProviderRequest = nil
+	s.RawProviderResponse = nil
 }

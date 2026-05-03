@@ -171,8 +171,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	strategy := deriveLoadBalancerStrategy(retryPolicy, apiKey)
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "chat request received",
-			log.String("request_body", string(request.Body)),
-			log.Any("request_headers", request.Headers),
+			log.Any("request", redactedRequestLogSummary(request)),
 			log.Any("retry_policy", retryPolicy),
 			log.String("system_load_balance_strategy", retryPolicy.LoadBalancerStrategy),
 			log.String("load_balance_strategy", strategy),

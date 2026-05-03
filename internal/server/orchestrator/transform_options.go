@@ -12,8 +12,19 @@ import (
 // applyTransformOptions applies channel transform options to create a new llm.Request.
 // It creates a new request instead of modifying the original one.
 func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSettings) *llm.Request {
+	result := applyTransformOptionsWithResult(req, channelSettings)
+
+	return result.Request
+}
+
+type transformOptionsResult struct {
+	Request *llm.Request
+	Changed bool
+}
+
+func applyTransformOptionsWithResult(req *llm.Request, channelSettings *objects.ChannelSettings) transformOptionsResult {
 	if channelSettings == nil {
-		return req
+		return transformOptionsResult{Request: req}
 	}
 
 	transformOptions := channelSettings.TransformOptions
@@ -21,24 +32,31 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 	if !transformOptions.ForceArrayInstructions &&
 		!transformOptions.ForceArrayInputs &&
 		!transformOptions.ReplaceDeveloperRoleWithSystem {
-		return req
+		return transformOptionsResult{Request: req}
 	}
 
 	newReq := *req
+	changed := false
 
 	if transformOptions.ForceArrayInstructions {
 		newReq.TransformOptions.ArrayInstructions = lo.ToPtr(true)
+		changed = true
 	}
 
 	if transformOptions.ForceArrayInputs {
 		newReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
+		changed = true
 	}
 
 	if transformOptions.ReplaceDeveloperRoleWithSystem {
-		newReq.Messages = replaceDeveloperRoleWithSystem(newReq.Messages)
+		replacedMessages := replaceDeveloperRoleWithSystem(newReq.Messages)
+		if len(replacedMessages) > 0 && &replacedMessages[0] != &newReq.Messages[0] {
+			changed = true
+		}
+		newReq.Messages = replacedMessages
 	}
 
-	return &newReq
+	return transformOptionsResult{Request: &newReq, Changed: changed}
 }
 
 // replaceDeveloperRoleWithSystem replaces developer role with system in messages.

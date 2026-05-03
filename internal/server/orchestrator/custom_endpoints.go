@@ -72,3 +72,25 @@ func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestT
 
 	return endpoints[0].APIFormat
 }
+
+func SelectAPIFormatForRequest(endpoints []objects.ChannelEndpoint, req *llm.Request) string {
+	if len(endpoints) == 0 {
+		return ""
+	}
+
+	if req != nil && isResponsesFormat(req.APIFormat) {
+		preferred := req.APIFormat.String()
+		for _, ep := range endpoints {
+			if ep.APIFormat == preferred {
+				return ep.APIFormat
+			}
+		}
+	}
+
+	requestType := llm.RequestTypeChat
+	if req != nil {
+		requestType = req.RequestType
+	}
+
+	return SelectAPIFormatForRequestType(endpoints, requestType)
+}
