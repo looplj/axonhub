@@ -98,6 +98,8 @@ const (
 	// When set to true, channels that do not explicitly disable pass-through will forward the original
 	// request body and the raw provider response/stream to the client without re-serialization, as long as
 	// the inbound and outbound API formats are identical.
+	//
+	//nolint:gosec // Not a secret.
 	SystemKeyPassThrough = "system_pass_through"
 
 	// SystemKeyQuotaEnforcementSettings is the key used to store the quota enforcement settings.

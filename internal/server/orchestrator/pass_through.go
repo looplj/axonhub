@@ -20,7 +20,7 @@ import (
 //
 // The effective flag is the channel-level PassThroughBody when set, otherwise it falls back
 // to the global system setting. systemService may be nil; in that case only the channel-level
-// setting is consulted (used by tests that exercise per-channel behaviour in isolation).
+// setting is consulted (used by tests that exercise per-channel behavior in isolation).
 func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context, systemService *biz.SystemService) bool {
 	channel := p.GetCurrentChannel()
 	if channel == nil {
