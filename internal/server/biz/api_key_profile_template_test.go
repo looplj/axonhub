@@ -559,4 +559,3 @@ func TestLoadTemplate_DifferentProject(t *testing.T) {
 	_, err = svc.LoadTemplate(ctx, template.ID, apiKey.ID)
 	require.Error(t, err)
 }
-

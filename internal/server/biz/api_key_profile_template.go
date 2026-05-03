@@ -8,7 +8,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
-
 	"github.com/looplj/axonhub/internal/objects"
 )
 

@@ -170,5 +170,3 @@ func GetErrors(ctx context.Context) []error {
 
 	return slices.Clone(container.Errors)
 }
-
-
