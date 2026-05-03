@@ -41,7 +41,7 @@ function TemplateItem({
   isEditing: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  const locale = i18n.language === 'zh' ? zhCN : enUS;
+  const locale = i18n.language?.startsWith('zh') ? zhCN : enUS;
   const createdDate = format(new Date(template.createdAt), 'PP', { locale });
   const mappingCount = template.profile?.modelMappings?.length ?? 0;
 

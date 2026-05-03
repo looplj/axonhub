@@ -832,7 +832,7 @@ type Mutation {
   # API Key Profile Template Mutations
   createApiKeyProfileTemplate(
     input: CreateAPIKeyProfileTemplateInput!
-    profile: APIKeyProfileInput
+    profile: APIKeyProfileInput!
   ): APIKeyProfileTemplate!
   updateApiKeyProfileTemplate(
     id: ID!

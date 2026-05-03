@@ -86,9 +86,9 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "api_key_profile_templates_by_name_project",
+				Name:    "api_key_profile_templates_by_project_name",
 				Unique:  true,
-				Columns: []*schema.Column{APIKeyProfileTemplatesColumns[4], APIKeyProfileTemplatesColumns[7], APIKeyProfileTemplatesColumns[3]},
+				Columns: []*schema.Column{APIKeyProfileTemplatesColumns[7], APIKeyProfileTemplatesColumns[4], APIKeyProfileTemplatesColumns[3]},
 			},
 		},
 	}

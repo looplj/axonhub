@@ -182,10 +182,10 @@ export type ApiKeyProfiles = z.infer<typeof apiKeyProfilesSchema>;
 // API Key Profile Template schema
 export const apiKeyProfileTemplateSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, 'Name is required'),
+  name: z.string(),
   description: z.string().default(''),
   profile: apiKeyProfileSchema,
-  projectID: z.string().nullable(),
+  projectID: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -195,7 +195,7 @@ export type ApiKeyProfileTemplate = z.infer<typeof apiKeyProfileTemplateSchema>;
 export const createApiKeyProfileTemplateInputSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  projectID: z.string().nullable(),
+  projectID: z.string(),
   profile: apiKeyProfileSchema,
 });
 export type CreateApiKeyProfileTemplateInput = z.infer<typeof createApiKeyProfileTemplateInputSchema>;

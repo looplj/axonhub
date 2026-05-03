@@ -26,8 +26,8 @@ func (APIKeyProfileTemplate) Mixin() []ent.Mixin {
 
 func (APIKeyProfileTemplate) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("name", "project_id", "deleted_at").
-			StorageKey("api_key_profile_templates_by_name_project").
+		index.Fields("project_id", "name", "deleted_at").
+			StorageKey("api_key_profile_templates_by_project_name").
 			Unique(),
 	}
 }

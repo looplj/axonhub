@@ -132,7 +132,7 @@ export function ApiKeyLoadTemplatePopover({
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant='outline' size='sm' className='flex items-center gap-2'>
+          <Button type='button' variant='outline' size='sm' className='flex items-center gap-2'>
             <IconFileDownload className='h-4 w-4' />
             {t('apikeys.templates.loadButton')}
           </Button>

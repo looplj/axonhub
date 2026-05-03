@@ -69,6 +69,11 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
     defaultValues,
   });
 
+  const watchName = form.watch('name');
+  useEffect(() => {
+    form.setValue('profile.name', watchName);
+  }, [watchName, form]);
+
   useEffect(() => {
     if (open) {
       form.reset(defaultValues);

@@ -623,12 +623,8 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 }
 
 // CreateAPIKeyProfileTemplate is the resolver for the createApiKeyProfileTemplate field.
-func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
-	if profile == nil {
-		return nil, fmt.Errorf("profile data is required but was not provided")
-	}
-
-	return r.apiKeyProfileTemplateService.CreateTemplate(ctx, input, profile)
+func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
+	return r.apiKeyProfileTemplateService.CreateTemplate(ctx, input, &profile)
 }
 
 // UpdateAPIKeyProfileTemplate is the resolver for the updateApiKeyProfileTemplate field.

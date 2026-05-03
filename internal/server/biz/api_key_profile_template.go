@@ -75,30 +75,36 @@ func (s *APIKeyProfileTemplateService) ListTemplates(ctx context.Context, projec
 }
 
 func (s *APIKeyProfileTemplateService) UpdateTemplate(ctx context.Context, id int, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
-	client := s.entFromContext(ctx)
+	var template *ent.APIKeyProfileTemplate
+	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
 
-	if profile != nil {
-		if input.Name != nil {
-			profile.Name = *input.Name
-		} else {
-			existing, err := client.APIKeyProfileTemplate.Get(ctx, id)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get template: %w", err)
+		update := client.APIKeyProfileTemplate.UpdateOneID(id).
+			SetInput(input)
+
+		if profile != nil {
+			existing, getErr := client.APIKeyProfileTemplate.Get(ctx, id)
+			if getErr != nil {
+				return fmt.Errorf("failed to get template: %w", getErr)
 			}
-			profile.Name = existing.Name
+			if input.Name != nil {
+				profile.Name = *input.Name
+			} else {
+				profile.Name = existing.Name
+			}
+			update.SetProfile(profile)
 		}
-	}
 
-	update := client.APIKeyProfileTemplate.UpdateOneID(id).
-		SetInput(input)
+		var saveErr error
+		template, saveErr = update.Save(ctx)
+		if saveErr != nil {
+			return fmt.Errorf("failed to update template: %w", saveErr)
+		}
 
-	if profile != nil {
-		update.SetProfile(profile)
-	}
-
-	template, err := update.Save(ctx)
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to update template: %w", err)
+		return nil, err
 	}
 
 	return template, nil

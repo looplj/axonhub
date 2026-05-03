@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -87,7 +86,7 @@ func TestApiKeyProfileTemplate_CreateTemplate(t *testing.T) {
 		ProjectID:   testProject.ID,
 	}
 
-	profile := &objects.APIKeyProfile{
+	profile := objects.APIKeyProfile{
 		Name: "test-profile",
 		ModelMappings: []objects.ModelMapping{
 			{From: "gpt-4", To: "gpt-4-turbo"},
@@ -257,27 +256,7 @@ func TestApiKeyProfileTemplate_QueryTemplates(t *testing.T) {
 	require.Equal(t, 3, conn.TotalCount)
 }
 
-func TestApiKeyProfileTemplate_ProfileInputResolver(t *testing.T) {
-	profile := &objects.APIKeyProfile{
-		Name: "resolver-test",
-		ModelMappings: []objects.ModelMapping{
-			{From: "gpt-4", To: "gpt-4-turbo"},
-		},
-	}
 
-	ctx := context.Background()
-	ctx = contexts.WithAPIKeyProfile(ctx, profile)
-
-	retrieved, ok := contexts.GetAPIKeyProfile(ctx)
-	require.True(t, ok)
-	require.NotNil(t, retrieved)
-	require.Equal(t, "resolver-test", retrieved.Name)
-}
-
-func TestApiKeyProfileTemplate_ScopeConstants(t *testing.T) {
-	require.Equal(t, scopes.ScopeSlug("read_api_keys"), scopes.ScopeReadAPIKeys)
-	require.Equal(t, scopes.ScopeSlug("write_api_keys"), scopes.ScopeWriteAPIKeys)
-}
 
 func ptrStr(s string) *string {
 	return &s

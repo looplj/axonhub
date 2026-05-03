@@ -732,7 +732,7 @@ export function useUpdateApiKeyProfileTemplate() {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
       const { profile, ...inputFields } = input;
       const resolvedProfile = profile
-        ? { ...profile, name: input.name ?? undefined }
+        ? { ...profile, name: input.name ?? profile.name }
         : undefined;
       return graphqlRequest<{ updateApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         UPDATE_APIKEY_PROFILE_TEMPLATE_MUTATION,

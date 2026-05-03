@@ -875,7 +875,7 @@ type ComplexityRoot struct {
 		CompleteOnboarding                   func(childComplexity int, input CompleteOnboardingInput) int
 		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
 		CreateAPIKey                         func(childComplexity int, input ent.CreateAPIKeyInput) int
-		CreateAPIKeyProfileTemplate          func(childComplexity int, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) int
+		CreateAPIKeyProfileTemplate          func(childComplexity int, input ent.CreateAPIKeyProfileTemplateInput, profile objects.APIKeyProfile) int
 		CreateChannel                        func(childComplexity int, input ent.CreateChannelInput) int
 		CreateChannelOverrideTemplate        func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
 		CreateDataStorage                    func(childComplexity int, input ent.CreateDataStorageInput) int
@@ -2026,7 +2026,7 @@ type MutationResolver interface {
 	ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error)
 	ClearChannelOverrideTemplates(ctx context.Context, input ClearChannelOverrideTemplatesInput) (*ClearChannelOverrideTemplatesPayload, error)
 	SyncChannelModels(ctx context.Context, channelID objects.GUID, pattern *string) (*SyncChannelModelsPayload, error)
-	CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error)
+	CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error)
 	UpdateAPIKeyProfileTemplate(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error)
 	DeleteAPIKeyProfileTemplate(ctx context.Context, id objects.GUID) (*ent.APIKeyProfileTemplate, error)
 	LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*ent.APIKey, error)
@@ -5378,7 +5378,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateAPIKeyProfileTemplate(childComplexity, args["input"].(ent.CreateAPIKeyProfileTemplateInput), args["profile"].(*objects.APIKeyProfile)), true
+		return e.complexity.Mutation.CreateAPIKeyProfileTemplate(childComplexity, args["input"].(ent.CreateAPIKeyProfileTemplateInput), args["profile"].(objects.APIKeyProfile)), true
 	case "Mutation.createChannel":
 		if e.complexity.Mutation.CreateChannel == nil {
 			break
@@ -11201,7 +11201,7 @@ func (ec *executionContext) field_Mutation_createApiKeyProfileTemplate_args(ctx 
 		return nil, err
 	}
 	args["input"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "profile", ec.unmarshalOAPIKeyProfileInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyProfile)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "profile", ec.unmarshalNAPIKeyProfileInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -31164,7 +31164,7 @@ func (ec *executionContext) _Mutation_createApiKeyProfileTemplate(ctx context.Co
 		ec.fieldContext_Mutation_createApiKeyProfileTemplate,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateAPIKeyProfileTemplate(ctx, fc.Args["input"].(ent.CreateAPIKeyProfileTemplateInput), fc.Args["profile"].(*objects.APIKeyProfile))
+			return ec.resolvers.Mutation().CreateAPIKeyProfileTemplate(ctx, fc.Args["input"].(ent.CreateAPIKeyProfileTemplateInput), fc.Args["profile"].(objects.APIKeyProfile))
 		},
 		nil,
 		ec.marshalNAPIKeyProfileTemplate2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyProfileTemplate,
