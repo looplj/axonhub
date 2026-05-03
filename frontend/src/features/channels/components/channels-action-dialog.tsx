@@ -301,8 +301,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [passThroughUserAgent, setPassThroughUserAgent] = useState<boolean | null>(() => {
     return initialRow?.settings?.passThroughUserAgent ?? null;
   });
-  const [passThroughBody, setPassThroughBody] = useState<boolean>(() => {
-    return initialRow?.settings?.passThroughBody ?? false;
+  const [passThroughBody, setPassThroughBody] = useState<boolean | null>(() => {
+    return initialRow?.settings?.passThroughBody ?? null;
   });
 
   // Memoized proxy config for OAuth exchange
@@ -1435,7 +1435,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyUsername(initialRow?.settings?.proxy?.username || '');
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
             setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
-            setPassThroughBody(initialRow?.settings?.passThroughBody ?? false);
+            setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -2344,11 +2344,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           {t('channels.dialogs.bodyPassThrough.label')}
                         </FormLabel>
                         <div className='space-y-2 md:col-span-6'>
-                          <label className='flex cursor-pointer items-center gap-2 text-sm'>
-                            <Checkbox checked={passThroughBody} onCheckedChange={(checked) => setPassThroughBody(checked === true)} />
-                            <span>{t('channels.dialogs.bodyPassThrough.enabled')}</span>
-                          </label>
-                          {passThroughBody && (
+                          <Select
+                            value={passThroughBody === null ? 'inherit' : passThroughBody ? 'enabled' : 'disabled'}
+                            onValueChange={(value) => setPassThroughBody(value === 'inherit' ? null : value === 'enabled')}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('channels.dialogs.bodyPassThrough.inherit')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='inherit'>{t('channels.dialogs.bodyPassThrough.inherit')}</SelectItem>
+                              <SelectItem value='enabled'>{t('channels.dialogs.bodyPassThrough.enabled')}</SelectItem>
+                              <SelectItem value='disabled'>{t('channels.dialogs.bodyPassThrough.disabled')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {passThroughBody === true && (
                             <p className='text-amber-600 dark:text-amber-400 text-xs'>
                               {t('channels.dialogs.bodyPassThrough.warning')}
                             </p>

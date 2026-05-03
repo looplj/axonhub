@@ -900,6 +900,7 @@ type ComplexityRoot struct {
 		UpdateModel                          func(childComplexity int, id objects.GUID, input ent.UpdateModelInput) int
 		UpdateModelStatus                    func(childComplexity int, id objects.GUID, status model.Status) int
 		UpdateMyPassword                     func(childComplexity int, input UpdateMyPasswordInput) int
+		UpdatePassThroughSettings            func(childComplexity int, input UpdatePassThroughSettingsInput) int
 		UpdateProject                        func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
 		UpdateProjectProfiles                func(childComplexity int, id objects.GUID, input objects.ProjectProfiles) int
 		UpdateProjectStatus                  func(childComplexity int, id objects.GUID, status project.Status) int
@@ -986,6 +987,10 @@ type ComplexityRoot struct {
 		HasNextPage     func(childComplexity int) int
 		HasPreviousPage func(childComplexity int) int
 		StartCursor     func(childComplexity int) int
+	}
+
+	PassThroughSettings struct {
+		Enabled func(childComplexity int) int
 	}
 
 	PriceTier struct {
@@ -1189,6 +1194,7 @@ type ComplexityRoot struct {
 		Nodes                        func(childComplexity int, ids []*objects.GUID) int
 		OidcIdentities               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.OIDCIdentityOrder, where *ent.OIDCIdentityWhereInput) int
 		OnboardingInfo               func(childComplexity int) int
+		PassThroughSettings          func(childComplexity int) int
 		Projects                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
 		PromptProtectionRules        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) int
 		Prompts                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
@@ -2006,6 +2012,7 @@ type MutationResolver interface {
 	SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error)
 	DeleteProxyPreset(ctx context.Context, url string) (bool, error)
 	UpdateUserAgentPassThroughSettings(ctx context.Context, input UpdateUserAgentPassThroughSettingsInput) (bool, error)
+	UpdatePassThroughSettings(ctx context.Context, input UpdatePassThroughSettingsInput) (bool, error)
 	ClearCache(ctx context.Context, input ClearCacheInput) (*ClearCachePayload, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
 	BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error)
@@ -2121,6 +2128,7 @@ type QueryResolver interface {
 	QuotaEnforcementSettings(ctx context.Context) (*biz.QuotaEnforcementSettings, error)
 	ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, error)
 	UserAgentPassThroughSettings(ctx context.Context) (*UserAgentPassThroughSettings, error)
+	PassThroughSettings(ctx context.Context) (*PassThroughSettings, error)
 	GetCacheDiagnostics(ctx context.Context, input *GetCacheDiagnosticsInput) (*GetCacheDiagnosticsPayload, error)
 	FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error)
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
@@ -5762,6 +5770,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateMyPassword(childComplexity, args["input"].(UpdateMyPasswordInput)), true
+	case "Mutation.updatePassThroughSettings":
+		if e.complexity.Mutation.UpdatePassThroughSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updatePassThroughSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdatePassThroughSettings(childComplexity, args["input"].(UpdatePassThroughSettingsInput)), true
 	case "Mutation.updateProject":
 		if e.complexity.Mutation.UpdateProject == nil {
 			break
@@ -6242,6 +6261,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
+
+	case "PassThroughSettings.enabled":
+		if e.complexity.PassThroughSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.PassThroughSettings.Enabled(childComplexity), true
 
 	case "PriceTier.pricePerUnit":
 		if e.complexity.PriceTier.PricePerUnit == nil {
@@ -7207,6 +7233,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.OnboardingInfo(childComplexity), true
+	case "Query.passThroughSettings":
+		if e.complexity.Query.PassThroughSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.PassThroughSettings(childComplexity), true
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
 			break
@@ -10233,6 +10265,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateModelInput,
 		ec.unmarshalInputUpdateMyPasswordInput,
 		ec.unmarshalInputUpdateOIDCIdentityInput,
+		ec.unmarshalInputUpdatePassThroughSettingsInput,
 		ec.unmarshalInputUpdateProjectInput,
 		ec.unmarshalInputUpdateProjectProfilesInput,
 		ec.unmarshalInputUpdateProjectUserInput,
@@ -11557,6 +11590,17 @@ func (ec *executionContext) field_Mutation_updateMyPassword_args(ctx context.Con
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateMyPasswordInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateMyPasswordInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updatePassThroughSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdatePassThroughSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdatePassThroughSettingsInput)
 	if err != nil {
 		return nil, err
 	}
@@ -21268,7 +21312,7 @@ func (ec *executionContext) _ChannelSettings_passThroughBody(ctx context.Context
 			return obj.PassThroughBody, nil
 		},
 		nil,
-		ec.marshalOBoolean2bool,
+		ec.marshalOBoolean2ᚖbool,
 		true,
 		false,
 	)
@@ -31152,6 +31196,47 @@ func (ec *executionContext) fieldContext_Mutation_updateUserAgentPassThroughSett
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updatePassThroughSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updatePassThroughSettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdatePassThroughSettings(ctx, fc.Args["input"].(UpdatePassThroughSettingsInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updatePassThroughSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updatePassThroughSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_clearCache(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -33903,6 +33988,35 @@ func (ec *executionContext) fieldContext_PageInfo_endCursor(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PassThroughSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *PassThroughSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PassThroughSettings_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PassThroughSettings_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PassThroughSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -40054,6 +40168,39 @@ func (ec *executionContext) fieldContext_Query_userAgentPassThroughSettings(_ co
 				return ec.fieldContext_UserAgentPassThroughSettings_enabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserAgentPassThroughSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_passThroughSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_passThroughSettings,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().PassThroughSettings(ctx)
+		},
+		nil,
+		ec.marshalNPassThroughSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPassThroughSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_passThroughSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_PassThroughSettings_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PassThroughSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -59666,7 +59813,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 			it.PassThroughUserAgent = data
 		case "passThroughBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passThroughBody"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -75078,6 +75225,33 @@ func (ec *executionContext) unmarshalInputUpdateOIDCIdentityInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdatePassThroughSettingsInput(ctx context.Context, obj any) (UpdatePassThroughSettingsInput, error) {
+	var it UpdatePassThroughSettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateProjectInput(ctx context.Context, obj any) (ent.UpdateProjectInput, error) {
 	var it ent.UpdateProjectInput
 	asMap := map[string]any{}
@@ -87015,6 +87189,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updatePassThroughSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updatePassThroughSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "clearCache":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_clearCache(ctx, field)
@@ -87731,6 +87912,45 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._PageInfo_startCursor(ctx, field, obj)
 		case "endCursor":
 			out.Values[i] = ec._PageInfo_endCursor(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var passThroughSettingsImplementors = []string{"PassThroughSettings"}
+
+func (ec *executionContext) _PassThroughSettings(ctx context.Context, sel ast.SelectionSet, obj *PassThroughSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, passThroughSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PassThroughSettings")
+		case "enabled":
+			out.Values[i] = ec._PassThroughSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -90792,6 +91012,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_userAgentPassThroughSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "passThroughSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_passThroughSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -101284,6 +101526,20 @@ func (ec *executionContext) marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPag
 	return ec._PageInfo(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNPassThroughSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPassThroughSettings(ctx context.Context, sel ast.SelectionSet, v PassThroughSettings) graphql.Marshaler {
+	return ec._PassThroughSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPassThroughSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPassThroughSettings(ctx context.Context, sel ast.SelectionSet, v *PassThroughSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PassThroughSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceItemCode(ctx context.Context, v any) (objects.PriceItemCode, error) {
 	tmp, err := graphql.UnmarshalString(v)
 	res := objects.PriceItemCode(tmp)
@@ -103240,6 +103496,11 @@ func (ec *executionContext) unmarshalNUpdateModelInput2githubᚗcomᚋloopljᚋa
 
 func (ec *executionContext) unmarshalNUpdateMyPasswordInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateMyPasswordInput(ctx context.Context, v any) (UpdateMyPasswordInput, error) {
 	res, err := ec.unmarshalInputUpdateMyPasswordInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdatePassThroughSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdatePassThroughSettingsInput(ctx context.Context, v any) (UpdatePassThroughSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdatePassThroughSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

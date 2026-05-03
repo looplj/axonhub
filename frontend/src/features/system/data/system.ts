@@ -1378,6 +1378,64 @@ export function useUpdateUserAgentPassThroughSettings() {
   });
 }
 
+// Pass-Through Settings (request/response body pass-through)
+const PASS_THROUGH_SETTINGS_QUERY = `
+  query PassThroughSettings {
+    passThroughSettings {
+      enabled
+    }
+  }
+`;
+
+const UPDATE_PASS_THROUGH_SETTINGS_MUTATION = `
+  mutation UpdatePassThroughSettings($input: UpdatePassThroughSettingsInput!) {
+    updatePassThroughSettings(input: $input)
+  }
+`;
+
+export interface PassThroughSettings {
+  enabled: boolean;
+}
+
+export interface UpdatePassThroughSettingsInput {
+  enabled: boolean;
+}
+
+export function usePassThroughSettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['passThroughSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ passThroughSettings: PassThroughSettings }>(PASS_THROUGH_SETTINGS_QUERY);
+        return data.passThroughSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdatePassThroughSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdatePassThroughSettingsInput) => {
+      const data = await graphqlRequest<{ updatePassThroughSettings: boolean }>(UPDATE_PASS_THROUGH_SETTINGS_MUTATION, { input });
+      return data.updatePassThroughSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['passThroughSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
 const QUOTA_ENFORCEMENT_SETTINGS_QUERY = `
   query QuotaEnforcementSettings {
     quotaEnforcementSettings {

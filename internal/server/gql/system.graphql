@@ -280,6 +280,14 @@ input UpdateUserAgentPassThroughSettingsInput {
   enabled: Boolean!
 }
 
+type PassThroughSettings {
+  enabled: Boolean!
+}
+
+input UpdatePassThroughSettingsInput {
+  enabled: Boolean!
+}
+
 
 type ProxyPreset {
   name: String
@@ -314,6 +322,7 @@ extend type Mutation {
   saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
   deleteProxyPreset(url: String!): Boolean!
   updateUserAgentPassThroughSettings(input: UpdateUserAgentPassThroughSettingsInput!): Boolean!
+  updatePassThroughSettings(input: UpdatePassThroughSettingsInput!): Boolean!
 }
 
 type SystemVersion {
@@ -373,6 +382,7 @@ extend type Query {
   quotaEnforcementSettings: QuotaEnforcementSettings!
   proxyPresets: [ProxyPreset!]!
   userAgentPassThroughSettings: UserAgentPassThroughSettings!
+  passThroughSettings: PassThroughSettings!
   getCacheDiagnostics(input: GetCacheDiagnosticsInput): GetCacheDiagnosticsPayload!
 }
 
