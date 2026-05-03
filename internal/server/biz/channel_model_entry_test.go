@@ -253,3 +253,174 @@ func TestChannel_GetUnifiedModels_CachesResult(t *testing.T) {
 	result2 := ch.GetModelEntries()
 	require.Equal(t, result1, result2)
 }
+
+func TestChannel_GetUnifiedModels_LowercaseModelID(t *testing.T) {
+	tests := []struct {
+		name     string
+		channel  *Channel
+		expected []ChannelModelEntry
+	}{
+		{
+			name: "basic lowercase — ActualModel preserves original casing",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"Pro/zai-org/GLM-5.1"},
+					Settings: &objects.ChannelSettings{
+						LowercaseModelID: true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "pro/zai-org/glm-5.1", ActualModel: "Pro/zai-org/GLM-5.1", Source: "direct"},
+			},
+		},
+		{
+			name: "with prefix — ActualModel preserves original casing",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"GLM-5.1"},
+					Settings: &objects.ChannelSettings{
+						ExtraModelPrefix: "zai-org",
+						LowercaseModelID: true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "glm-5.1", ActualModel: "GLM-5.1", Source: "direct"},
+				{RequestModel: "zai-org/glm-5.1", ActualModel: "GLM-5.1", Source: "prefix"},
+			},
+		},
+		{
+			name: "with model mappings — mapping To preserves original casing",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"GPT-4-Turbo"},
+					Settings: &objects.ChannelSettings{
+						ModelMappings: []objects.ModelMapping{
+							{From: "GPT-4", To: "GPT-4-Turbo"},
+						},
+						LowercaseModelID: true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "gpt-4-turbo", ActualModel: "GPT-4-Turbo", Source: "direct"},
+				{RequestModel: "gpt-4", ActualModel: "GPT-4-Turbo", Source: "mapping"},
+			},
+		},
+		{
+			name: "false preserves case",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"Pro/zai-org/GLM-5"},
+					Settings: &objects.ChannelSettings{
+						LowercaseModelID: false,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "Pro/zai-org/GLM-5", ActualModel: "Pro/zai-org/GLM-5", Source: "direct"},
+			},
+		},
+		{
+			name: "with auto-trim — ActualModel keeps original casing",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"OpenAI/GPT-4"},
+					Settings: &objects.ChannelSettings{
+						AutoTrimedModelPrefixes: []string{"OpenAI"},
+						LowercaseModelID:        true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "openai/gpt-4", ActualModel: "OpenAI/GPT-4", Source: "direct"},
+				{RequestModel: "gpt-4", ActualModel: "OpenAI/GPT-4", Source: "auto_trim"},
+			},
+		},
+		{
+			name: "with auto-trim and prefix — combined features",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"Pro/zai-org/GLM-5.1"},
+					Settings: &objects.ChannelSettings{
+						AutoTrimedModelPrefixes: []string{"Pro", "Pro/zai-org"},
+						LowercaseModelID:        true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "pro/zai-org/glm-5.1", ActualModel: "Pro/zai-org/GLM-5.1", Source: "direct"},
+				{RequestModel: "zai-org/glm-5.1", ActualModel: "Pro/zai-org/GLM-5.1", Source: "auto_trim"},
+				{RequestModel: "glm-5.1", ActualModel: "Pro/zai-org/GLM-5.1", Source: "auto_trim"},
+			},
+		},
+		{
+			name: "collision: direct beats mapping",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"GPT-4"},
+					Settings: &objects.ChannelSettings{
+						ModelMappings: []objects.ModelMapping{
+							{From: "gpt-4", To: "GPT-4"},
+						},
+						LowercaseModelID: true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "gpt-4", ActualModel: "GPT-4", Source: "direct"},
+			},
+		},
+		{
+			name: "collision: mapping beats prefix",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"GLM-5.1"},
+					Settings: &objects.ChannelSettings{
+						ExtraModelPrefix: "ZAI",
+						ModelMappings: []objects.ModelMapping{
+							{From: "zai/GLM-5.1", To: "GLM-5.1"},
+						},
+						LowercaseModelID: true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "glm-5.1", ActualModel: "GLM-5.1", Source: "direct"},
+				{RequestModel: "zai/glm-5.1", ActualModel: "GLM-5.1", Source: "mapping"},
+			},
+		},
+		{
+			name: "collision: auto_trim beats mapping",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"ZAI/GLM-5.1"},
+					Settings: &objects.ChannelSettings{
+						AutoTrimedModelPrefixes: []string{"ZAI"},
+						ModelMappings: []objects.ModelMapping{
+							{From: "glm-5.1", To: "ZAI/GLM-5.1"},
+						},
+						LowercaseModelID: true,
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "zai/glm-5.1", ActualModel: "ZAI/GLM-5.1", Source: "direct"},
+				{RequestModel: "glm-5.1", ActualModel: "ZAI/GLM-5.1", Source: "auto_trim"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.channel.GetModelEntries()
+			resultSlice := make([]ChannelModelEntry, 0, len(result))
+			for _, entry := range result {
+				resultSlice = append(resultSlice, entry)
+			}
+
+			require.ElementsMatch(t, tt.expected, resultSlice)
+		})
+	}
+}

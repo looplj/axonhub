@@ -121,6 +121,12 @@ type ChannelSettings struct {
 	// When enabled, only the original model names (from field) will be exposed, not the mapped model names (to field).
 	HideMappedModels bool `json:"hideMappedModels"`
 
+	// LowercaseModelID converts model name matching keys to lowercase.
+	// When enabled, only RequestModel (used for matching) is lowercased; ActualModel
+	// (sent to provider) preserves original casing. This enables cross-channel load
+	// balancing where providers use different casing for the same model.
+	LowercaseModelID bool `json:"lowercaseModelId"`
+
 	// OverrideParameters sets the channel override the request body.
 	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}

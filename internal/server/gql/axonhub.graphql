@@ -98,6 +98,7 @@ type ChannelSettings {
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
+  lowercaseModelId: Boolean
   proxy: ProxyConfig
   transformOptions: TransformOptions
   headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
@@ -132,6 +133,7 @@ input ChannelSettingsInput {
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
+  lowercaseModelId: Boolean
   proxy: ProxyConfigInput
   transformOptions: TransformOptionsInput
   headerOverrideOperations: [OverrideOperationInput!]
