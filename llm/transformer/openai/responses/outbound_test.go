@@ -950,10 +950,10 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
-func TestOutboundTransformer_TransformResponse_MetadataNonStringCurrentlyRejected(t *testing.T) {
+func TestOutboundTransformer_TransformResponse_CapturesMetadataRawWithNonStringValues(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 
-	_, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+	result, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Body: []byte(`{
 			"id": "resp_metadata",
@@ -971,8 +971,17 @@ func TestOutboundTransformer_TransformResponse_MetadataNonStringCurrentlyRejecte
 			"output": []
 		}`),
 	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to unmarshal responses api response")
+	require.NoError(t, err)
+	require.NotNil(t, result.ProviderExtensions)
+	require.NotNil(t, result.ProviderExtensions.OpenAIResponses)
+	require.NotNil(t, result.ProviderExtensions.OpenAIResponses.Response)
+	require.JSONEq(t, `{
+		"object_value": {"nested": true},
+		"array_value": [1, 2],
+		"number_value": 3,
+		"bool_value": true,
+		"null_value": null
+	}`, string(result.ProviderExtensions.OpenAIResponses.Response.MetadataRaw))
 }
 
 func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {

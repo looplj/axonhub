@@ -72,6 +72,38 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	providerExt.Request = requestExt
 }
 
+func attachOpenAIResponsesResponseExtensions(chatResp *llm.Response, resp *Response, rawBody []byte) {
+	if chatResp == nil || resp == nil {
+		return
+	}
+
+	providerExt := llm.EnsureOpenAIResponsesResponseProviderExtensions(chatResp)
+	if providerExt == nil {
+		return
+	}
+
+	responseExt := &llm.OpenAIResponsesResponseExtensions{
+		Raw:           cloneRaw(rawBody),
+		TopLevelExtra: map[string]json.RawMessage{},
+		MetadataRaw:   cloneRaw(resp.MetadataRaw),
+		MetadataExtra: metadataExtra(resp.MetadataRaw),
+		OutputRaw:     cloneRaw(resp.OutputRaw),
+		OutputItems:   buildOutputRawItems(resp.Output),
+	}
+
+	for key, value := range resp.Extra {
+		if isSafeTopLevelExtra(key) {
+			responseExt.TopLevelExtra[key] = cloneRaw(value)
+		}
+	}
+
+	if len(responseExt.TopLevelExtra) == 0 {
+		responseExt.TopLevelExtra = nil
+	}
+
+	providerExt.Response = responseExt
+}
+
 func isSafeTopLevelExtra(key string) bool {
 	_, ok := safeTopLevelExtraKeys[key]
 
@@ -126,6 +158,94 @@ func buildInputRawItems(input Input) []llm.OpenAIResponsesRawItem {
 	}
 
 	return items
+}
+
+func buildOutputRawItems(output []Item) []llm.OpenAIResponsesRawItem {
+	if len(output) == 0 {
+		return nil
+	}
+
+	items := make([]llm.OpenAIResponsesRawItem, 0, len(output))
+	ordinalByType := map[string]int{}
+
+	for i := range output {
+		item := output[i]
+		path := fmt.Sprintf("response.output[%d]", i)
+		semanticKey := outputItemSemanticKey(item, ordinalByType)
+		items = append(items, llm.OpenAIResponsesRawItem{
+			Type:          item.Type,
+			ID:            item.ID,
+			OriginalIndex: ptrInt(i),
+			Path:          path,
+			SemanticKey:   semanticKey,
+			CallID:        item.CallID,
+			Raw:           cloneRaw(item.Raw),
+			Extra:         cloneRawMap(item.Extra),
+		})
+
+		if item.Content == nil || len(item.Content.Items) == 0 {
+			continue
+		}
+
+		contentOrdinalByType := map[string]int{}
+		for j := range item.Content.Items {
+			contentItem := item.Content.Items[j]
+			contentPath := fmt.Sprintf("%s.content[%d]", path, j)
+			items = append(items, llm.OpenAIResponsesRawItem{
+				Type:          contentItem.Type,
+				ID:            contentItem.ID,
+				OriginalIndex: ptrInt(i),
+				Path:          contentPath,
+				SemanticKey:   outputContentItemSemanticKey(semanticKey, contentItem, contentOrdinalByType),
+				ContentIndex:  ptrInt(j),
+				Raw:           cloneRaw(contentItem.Raw),
+				Extra:         cloneRawMap(contentItem.Extra),
+			})
+		}
+	}
+
+	return items
+}
+
+func outputItemSemanticKey(item Item, ordinalByType map[string]int) string {
+	if !isKnownOutputItemType(item.Type) {
+		return ""
+	}
+
+	ordinal := ordinalByType[item.Type]
+	ordinalByType[item.Type] = ordinal + 1
+
+	return fmt.Sprintf("output:%s:%d", item.Type, ordinal)
+}
+
+func outputContentItemSemanticKey(parentKey string, item Item, ordinalByType map[string]int) string {
+	if parentKey == "" || !isKnownOutputContentItemType(item.Type) {
+		return ""
+	}
+
+	ordinal := ordinalByType[item.Type]
+	ordinalByType[item.Type] = ordinal + 1
+
+	return fmt.Sprintf("%s.content:%s:%d", parentKey, item.Type, ordinal)
+}
+
+func isKnownOutputItemType(itemType string) bool {
+	switch itemType {
+	case "message", "output_text", "function_call", "custom_tool_call", "reasoning",
+		"image_generation_call", "compaction", "compaction_summary", "input_image":
+		return true
+	default:
+		return false
+	}
+}
+
+func isKnownOutputContentItemType(itemType string) bool {
+	switch itemType {
+	case "output_text", "input_text", "text", "input_image", "compaction", "compaction_summary":
+		return true
+	default:
+		return false
+	}
 }
 
 func consumedSpansByInputIndex(items []Item) map[int]*llm.OpenAIResponsesConsumedSpan {

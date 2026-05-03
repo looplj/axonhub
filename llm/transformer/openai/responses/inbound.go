@@ -14,8 +14,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
-	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
-	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
@@ -77,9 +75,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}
 
 	// Convert to Responses API format
-	resp := convertToResponsesAPIResponse(chatResp)
-
-	body, err := json.Marshal(resp)
+	_, body, err := newResponseComposer(chatResp).Compose()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal responses api response: %w", err)
 	}
@@ -777,168 +773,9 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 
 // convertToResponsesAPIResponse converts llm.Response to Responses API Response.
 func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
-	resp := &Response{
-		Object:             "response",
-		ID:                 chatResp.ID,
-		Model:              chatResp.Model,
-		CreatedAt:          chatResp.Created,
-		Output:             make([]Item, 0),
-		Status:             lo.ToPtr("completed"),
-		PreviousResponseID: chatResp.PreviousResponseID,
-	}
-
-	// Convert usage
-	resp.Usage = ConvertLLMUsageToResponsesUsage(chatResp.Usage)
-
-	// Convert choices to output items
-	for _, choice := range chatResp.Choices {
-		var message *llm.Message
-		if choice.Message != nil {
-			message = choice.Message
-		} else if choice.Delta != nil {
-			message = choice.Delta
-		}
-
-		if message == nil {
-			continue
-		}
-
-		messageItemID := message.ID
-		if messageItemID == "" {
-			messageItemID = generateItemID()
-		}
-
-		// Handle reasoning content
-		if reasoningItem, ok := buildReasoningItem(*message); ok {
-			resp.Output = append(resp.Output, reasoningItem)
-		}
-
-		// Handle tool calls (function calls and custom tool calls)
-		if len(message.ToolCalls) > 0 {
-			for _, toolCall := range message.ToolCalls {
-				if toolCall.ResponseCustomToolCall != nil {
-					resp.Output = append(resp.Output, Item{
-						ID:     toolCall.ID,
-						Type:   "custom_tool_call",
-						CallID: toolCall.ResponseCustomToolCall.CallID,
-						Name:   toolCall.ResponseCustomToolCall.Name,
-						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
-						Status: lo.ToPtr("completed"),
-					})
-				} else {
-					resp.Output = append(resp.Output, Item{
-						ID:        toolCall.ID,
-						Type:      "function_call",
-						CallID:    toolCall.ID,
-						Name:      toolCall.Function.Name,
-						Arguments: toolCall.Function.Arguments,
-						Status:    lo.ToPtr("completed"),
-					})
-				}
-			}
-		}
-
-		// Handle text content
-		if message.Content.Content != nil && *message.Content.Content != "" {
-			text := *message.Content.Content
-			resp.Output = append(resp.Output, Item{
-				ID:   messageItemID,
-				Type: "message",
-				Role: "assistant",
-				Content: &Input{
-					Items: []Item{
-						{
-							Type:        "output_text",
-							Text:        &text,
-							Annotations: []Annotation{},
-						},
-					},
-				},
-				Status: lo.ToPtr("completed"),
-			})
-		} else if len(message.Content.MultipleContent) > 0 {
-			contentItems := make([]Item, 0)
-
-			for _, part := range message.Content.MultipleContent {
-				switch part.Type {
-				case "text":
-					if part.Text != nil {
-						text := *part.Text
-						contentItems = append(contentItems, Item{
-							Type:        "output_text",
-							Text:        &text,
-							Annotations: []Annotation{},
-						})
-					}
-				case "image_url":
-					// Handle image output
-					if part.ImageURL != nil {
-						imageItem := Item{
-							ID:           generateItemID(),
-							Type:         "image_generation_call",
-							Role:         "assistant",
-							Result:       lo.ToPtr(xurl.ExtractBase64FromDataURL(part.ImageURL.URL)),
-							Status:       lo.ToPtr("completed"),
-							Background:   xmap.GetStringPtr(part.TransformerMetadata, "background"),
-							OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, "output_format"),
-							Quality:      xmap.GetStringPtr(part.TransformerMetadata, "quality"),
-							Size:         xmap.GetStringPtr(part.TransformerMetadata, "size"),
-						}
-						resp.Output = append(resp.Output, imageItem)
-					}
-				case "compaction", "compaction_summary":
-					if part.Compact != nil {
-						resp.Output = append(resp.Output, compactionItemFromPart(part, part.Type))
-					}
-				}
-			}
-
-			if len(contentItems) > 0 {
-				resp.Output = append(resp.Output, Item{
-					ID:      messageItemID,
-					Type:    "message",
-					Role:    "assistant",
-					Content: &Input{Items: contentItems},
-					Status:  lo.ToPtr("completed"),
-				})
-			}
-		}
-
-		// Set status based on finish reason
-		if choice.FinishReason != nil {
-			switch *choice.FinishReason {
-			case "stop":
-				resp.Status = lo.ToPtr("completed")
-			case "length":
-				resp.Status = lo.ToPtr("incomplete")
-			case "tool_calls":
-				resp.Status = lo.ToPtr("completed")
-			case "error":
-				resp.Status = lo.ToPtr("failed")
-			}
-		}
-	}
-
-	// If no output items were created, create an empty message
-	if len(resp.Output) == 0 {
-		emptyText := ""
-		resp.Output = []Item{
-			{
-				ID:   generateItemID(),
-				Type: "message",
-				Role: "assistant",
-				Content: &Input{
-					Items: []Item{
-						{
-							Type:        "output_text",
-							Text:        &emptyText,
-							Annotations: []Annotation{},
-						},
-					},
-				},
-				Status: lo.ToPtr("completed"),
-			},
-		}
+	resp, _, err := newResponseComposer(chatResp).Compose()
+	if err != nil {
+		return &Response{}
 	}
 
 	return resp

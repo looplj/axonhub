@@ -521,13 +521,42 @@ type itemUnmarshalAlias Item
 
 func (item *Item) UnmarshalJSON(data []byte) error {
 	var alias itemUnmarshalAlias
-	if err := json.Unmarshal(data, &alias); err != nil {
+	var aux struct {
+		*itemUnmarshalAlias
+		Content json.RawMessage `json:"content"`
+		Input   json.RawMessage `json:"input"`
+		Output  json.RawMessage `json:"output"`
+	}
+	aux.itemUnmarshalAlias = &alias
+
+	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 
 	*item = Item(alias)
 	item.Raw = cloneRaw(data)
 	item.Extra = collectExtraFields(data, itemKnownFields)
+
+	if len(aux.Content) > 0 {
+		var content Input
+		if err := json.Unmarshal(aux.Content, &content); err == nil {
+			item.Content = &content
+		}
+	}
+
+	if len(aux.Input) > 0 {
+		var input string
+		if err := json.Unmarshal(aux.Input, &input); err == nil {
+			item.Input = &input
+		}
+	}
+
+	if len(aux.Output) > 0 {
+		var output Input
+		if err := json.Unmarshal(aux.Output, &output); err == nil {
+			item.Output = &output
+		}
+	}
 
 	return nil
 }
@@ -795,6 +824,57 @@ type Response struct {
 
 	// A stable identifier for your end-users (deprecated, use safety_identifier).
 	User *string `json:"user,omitempty"`
+
+	Raw         json.RawMessage            `json:"-"`
+	Extra       map[string]json.RawMessage `json:"-"`
+	MetadataRaw json.RawMessage            `json:"-"`
+	OutputRaw   json.RawMessage            `json:"-"`
+}
+
+type responseAlias Response
+
+func (r *Response) UnmarshalJSON(data []byte) error {
+	var alias responseAlias
+	var aux struct {
+		*responseAlias
+		Metadata json.RawMessage `json:"metadata"`
+	}
+	aux.responseAlias = &alias
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	*r = Response(alias)
+	r.Raw = cloneRaw(data)
+	r.Extra = collectExtraFields(data, responseKnownFields)
+	r.MetadataRaw = cloneRaw(aux.Metadata)
+	r.OutputRaw = rawField(r.Raw, "output")
+	r.Metadata = metadataStrings(aux.Metadata)
+
+	return nil
+}
+
+func (r Response) MarshalJSON() ([]byte, error) {
+	type alias Response
+
+	data, err := json.Marshal(alias(r))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(r.MetadataRaw) > 0 {
+		obj, err := decodeRawObject(data)
+		if err == nil {
+			obj["metadata"] = cloneRaw(r.MetadataRaw)
+			data, err = json.Marshal(obj)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return mergeExtraWithStructured(r.Extra, data)
 }
 
 type ContentItem struct {

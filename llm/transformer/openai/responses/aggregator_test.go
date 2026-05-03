@@ -90,9 +90,9 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 			err = xtest.LoadTestData(t, tt.expectedFile, &expected)
 			require.NoError(t, err)
 
-			// Compare using xtest.Equal with cmp.Diff output on mismatch
-			if !xtest.Equal(expected, actual) {
-				t.Fatalf("response mismatch:\n%s", cmp.Diff(expected, actual))
+			ignoreRawCapture := ignoreResponsesRawCaptureOptions()
+			if !xtest.Equal(expected, actual, ignoreRawCapture...) {
+				t.Fatalf("response mismatch:\n%s", cmp.Diff(expected, actual, ignoreRawCapture...))
 			}
 
 			// Verify meta

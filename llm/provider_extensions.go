@@ -21,6 +21,9 @@ func (e *ProviderExtensions) LogValue() slog.Value {
 		slog.Int("request_input_items", len(e.OpenAIResponsesRequest().InputItems)),
 		slog.Int("request_tools", len(e.OpenAIResponsesRequest().Tools)),
 		slog.Int("request_protectable_fragments", len(e.OpenAIResponsesRequest().ProtectableFragments)),
+		slog.Int("response_output_items", len(e.OpenAIResponsesResponse().OutputItems)),
+		slog.Int("response_top_level_extra", len(e.OpenAIResponsesResponse().TopLevelExtra)),
+		slog.Int("response_metadata_keys", len(e.OpenAIResponsesResponse().MetadataExtra)),
 	)
 }
 
@@ -30,6 +33,14 @@ func (e *ProviderExtensions) OpenAIResponsesRequest() *OpenAIResponsesRequestExt
 	}
 
 	return e.OpenAIResponses.Request
+}
+
+func (e *ProviderExtensions) OpenAIResponsesResponse() *OpenAIResponsesResponseExtensions {
+	if e == nil || e.OpenAIResponses == nil || e.OpenAIResponses.Response == nil {
+		return &OpenAIResponsesResponseExtensions{}
+	}
+
+	return e.OpenAIResponses.Response
 }
 
 type OpenAIResponsesProviderExtensions struct {
@@ -59,6 +70,7 @@ type OpenAIResponsesResponseExtensions struct {
 	TopLevelExtra map[string]json.RawMessage `json:"-"`
 	MetadataRaw   json.RawMessage            `json:"-"`
 	MetadataExtra map[string]json.RawMessage `json:"-"`
+	OutputRaw     json.RawMessage            `json:"-"`
 	OutputItems   []OpenAIResponsesRawItem   `json:"output_items,omitempty"`
 }
 
@@ -194,6 +206,22 @@ func EnsureOpenAIResponsesProviderExtensions(req *Request) *OpenAIResponsesProvi
 	return req.ProviderExtensions.OpenAIResponses
 }
 
+func EnsureOpenAIResponsesResponseProviderExtensions(resp *Response) *OpenAIResponsesProviderExtensions {
+	if resp == nil {
+		return nil
+	}
+
+	if resp.ProviderExtensions == nil {
+		resp.ProviderExtensions = &ProviderExtensions{}
+	}
+
+	if resp.ProviderExtensions.OpenAIResponses == nil {
+		resp.ProviderExtensions.OpenAIResponses = &OpenAIResponsesProviderExtensions{}
+	}
+
+	return resp.ProviderExtensions.OpenAIResponses
+}
+
 func MarkOpenAIResponsesDirty(req *Request, scopes ...OpenAIResponsesDirtyScope) {
 	ext := EnsureOpenAIResponsesProviderExtensions(req)
 	if ext == nil {
@@ -260,6 +288,7 @@ func cloneOpenAIResponsesResponseExtensions(src *OpenAIResponsesResponseExtensio
 		TopLevelExtra: cloneJSONRawMap(src.TopLevelExtra),
 		MetadataRaw:   cloneJSONRaw(src.MetadataRaw),
 		MetadataExtra: cloneJSONRawMap(src.MetadataExtra),
+		OutputRaw:     cloneJSONRaw(src.OutputRaw),
 		OutputItems:   cloneOpenAIResponsesRawItems(src.OutputItems),
 	}
 }

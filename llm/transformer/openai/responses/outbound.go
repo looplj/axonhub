@@ -282,6 +282,10 @@ func (t *OutboundTransformer) transformStandardResponse(
 	}
 
 	llmResp.Choices = append(llmResp.Choices, choice)
+	attachOpenAIResponsesResponseExtensions(llmResp, &resp, httpResp.Body)
+	if len(resp.Output) > 0 && !hasResponsesSemanticMessageContent(&msg) {
+		llm.MarkRawOnlyResponseContent(llmResp)
+	}
 
 	// If no choices were created, create a default empty choice
 	if len(llmResp.Choices) == 0 {
@@ -300,4 +304,32 @@ func (t *OutboundTransformer) transformStandardResponse(
 	}
 
 	return llmResp, nil
+}
+
+func hasResponsesSemanticMessageContent(msg *llm.Message) bool {
+	if msg == nil {
+		return false
+	}
+
+	if msg.Content.Content != nil && *msg.Content.Content != "" {
+		return true
+	}
+
+	if len(msg.Content.MultipleContent) > 0 {
+		return true
+	}
+
+	if len(msg.ToolCalls) > 0 {
+		return true
+	}
+
+	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+		return true
+	}
+
+	if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
+		return true
+	}
+
+	return false
 }
