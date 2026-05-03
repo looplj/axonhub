@@ -191,21 +191,25 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		TransformOptions:    llm.TransformOptions{},
 	}
 
-	// Store help fields in TransformerMetadata
+	// Mirror Responses-specific helper fields to legacy TransformerMetadata for backward compatibility.
 	if len(req.Include) > 0 {
-		chatReq.TransformerMetadata["include"] = req.Include
+		chatReq.TransformerMetadata[responsesMetadataKeyInclude] = req.Include
 	}
 
 	if req.MaxToolCalls != nil {
-		chatReq.TransformerMetadata["max_tool_calls"] = req.MaxToolCalls
+		chatReq.TransformerMetadata[responsesMetadataKeyMaxToolCalls] = req.MaxToolCalls
 	}
 
 	if req.PromptCacheRetention != nil {
-		chatReq.TransformerMetadata["prompt_cache_retention"] = req.PromptCacheRetention
+		chatReq.TransformerMetadata[responsesMetadataKeyPromptCacheRetention] = req.PromptCacheRetention
 	}
 
 	if req.Truncation != nil {
-		chatReq.TransformerMetadata["truncation"] = req.Truncation
+		chatReq.TransformerMetadata[responsesMetadataKeyTruncation] = req.Truncation
+	}
+
+	if imageOutputFormat := firstImageOutputFormat(req.Tools); imageOutputFormat != "" {
+		chatReq.TransformerMetadata[responsesMetadataKeyImageOutputFormat] = imageOutputFormat
 	}
 
 	// Convert reasoning
@@ -235,7 +239,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 	if req.StreamOptions != nil {
 		chatReq.StreamOptions = &llm.StreamOptions{}
 		if req.StreamOptions.IncludeObfuscation != nil {
-			chatReq.TransformerMetadata["include_obfuscation"] = req.StreamOptions.IncludeObfuscation
+			chatReq.TransformerMetadata[responsesMetadataKeyIncludeObfuscation] = req.StreamOptions.IncludeObfuscation
 		}
 	}
 

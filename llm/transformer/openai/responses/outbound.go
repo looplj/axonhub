@@ -151,6 +151,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			llmReq.PromptCacheKey = lo.ToPtr(sessionID)
 		}
 	}
+	mirrorOpenAIResponsesCompatibilityToTransformerMetadata(llmReq)
 
 	_, body, err := newRequestComposer(llmReq, scope).Compose()
 	if err != nil {

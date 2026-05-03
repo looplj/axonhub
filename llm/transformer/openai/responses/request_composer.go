@@ -44,6 +44,7 @@ func (c *requestComposer) Compose() (Request, []byte, error) {
 func (c *requestComposer) structuredRequest() Request {
 	req := c.req
 	tools := c.structuredTools()
+	compatibility := c.responsesRequestCompatibility()
 
 	payload := Request{
 		Model:                req.Model,
@@ -62,14 +63,14 @@ func (c *requestComposer) structuredRequest() Request {
 		TopLogprobs:          req.TopLogprobs,
 		TopP:                 req.TopP,
 		ToolChoice:           convertToolChoice(req.ToolChoice),
-		StreamOptions:        convertStreamOptions(req.StreamOptions, req.TransformerMetadata),
+		StreamOptions:        convertStreamOptions(req.StreamOptions, compatibility.IncludeObfuscation),
 		Reasoning:            convertReasoning(req),
-		PromptCacheKey:       req.PromptCacheKey,
+		PromptCacheKey:       firstStringPtr(req.PromptCacheKey, compatibility.PromptCacheKey),
 		PreviousResponseID:   req.PreviousResponseID,
-		Include:              xmap.GetStringSlice(req.TransformerMetadata, "include"),
-		MaxToolCalls:         xmap.GetInt64Ptr(req.TransformerMetadata, "max_tool_calls"),
-		PromptCacheRetention: xmap.GetStringPtr(req.TransformerMetadata, "prompt_cache_retention"),
-		Truncation:           xmap.GetStringPtr(req.TransformerMetadata, "truncation"),
+		Include:              compatibility.Include,
+		MaxToolCalls:         compatibility.MaxToolCalls,
+		PromptCacheRetention: compatibility.PromptCacheRetention,
+		Truncation:           compatibility.Truncation,
 	}
 
 	if len(payload.Tools) == 0 {
@@ -95,7 +96,7 @@ func (c *requestComposer) structuredTools() []Tool {
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
 			tools = append(tools, tool)
-			req.TransformerMetadata["image_output_format"] = tool.OutputFormat
+			c.setImageOutputFormat(tool.OutputFormat)
 		case llm.ToolTypeResponsesCustomTool:
 			tools = append(tools, convertCustomToTool(item))
 		case "function":
@@ -104,6 +105,117 @@ func (c *requestComposer) structuredTools() []Tool {
 	}
 
 	return tools
+}
+
+type responsesRequestCompatibility struct {
+	Include              []string
+	MaxToolCalls         *int64
+	PromptCacheKey       *string
+	PromptCacheRetention *string
+	Truncation           *string
+	IncludeObfuscation   *bool
+}
+
+func (c *requestComposer) responsesRequestCompatibility() responsesRequestCompatibility {
+	var fields responsesRequestCompatibility
+
+	if requestExt := c.openAIResponsesRequestExtensions(); requestExt != nil {
+		fields.Include = append([]string(nil), requestExt.Include...)
+		fields.MaxToolCalls = requestExt.MaxToolCalls
+		fields.PromptCacheKey = requestExt.PromptCacheKey
+		fields.PromptCacheRetention = requestExt.PromptCacheRetention
+		fields.Truncation = requestExt.Truncation
+		fields.IncludeObfuscation = requestExt.IncludeObfuscation
+	}
+
+	metadata := map[string]any(nil)
+	if c != nil && c.req != nil {
+		metadata = c.req.TransformerMetadata
+	}
+	if len(fields.Include) == 0 {
+		fields.Include = xmap.GetStringSlice(metadata, responsesMetadataKeyInclude)
+	}
+	if fields.MaxToolCalls == nil {
+		fields.MaxToolCalls = xmap.GetInt64Ptr(metadata, responsesMetadataKeyMaxToolCalls)
+	}
+	if fields.PromptCacheKey == nil {
+		fields.PromptCacheKey = xmap.GetStringPtr(metadata, responsesMetadataKeyPromptCacheKey)
+	}
+	if fields.PromptCacheRetention == nil {
+		fields.PromptCacheRetention = xmap.GetStringPtr(metadata, responsesMetadataKeyPromptCacheRetention)
+	}
+	if fields.Truncation == nil {
+		fields.Truncation = xmap.GetStringPtr(metadata, responsesMetadataKeyTruncation)
+	}
+	if fields.IncludeObfuscation == nil {
+		fields.IncludeObfuscation = xmap.GetBoolPtr(metadata, responsesMetadataKeyIncludeObfuscation)
+	}
+
+	return fields
+}
+
+func (c *requestComposer) setImageOutputFormat(format string) {
+	if c == nil || c.req == nil || format == "" {
+		return
+	}
+
+	if c.req.TransformerMetadata == nil {
+		c.req.TransformerMetadata = map[string]any{}
+	}
+	c.req.TransformerMetadata[responsesMetadataKeyImageOutputFormat] = format
+
+	if requestExt := c.openAIResponsesRequestExtensions(); requestExt != nil {
+		requestExt.ImageOutputFormat = format
+	}
+}
+
+func mirrorOpenAIResponsesCompatibilityToTransformerMetadata(req *llm.Request) {
+	if req == nil || req.ProviderExtensions == nil || req.ProviderExtensions.OpenAIResponses == nil ||
+		req.ProviderExtensions.OpenAIResponses.Request == nil {
+		return
+	}
+
+	requestExt := req.ProviderExtensions.OpenAIResponses.Request
+	if len(requestExt.Include) == 0 &&
+		requestExt.MaxToolCalls == nil &&
+		requestExt.PromptCacheRetention == nil &&
+		requestExt.Truncation == nil &&
+		requestExt.IncludeObfuscation == nil &&
+		requestExt.ImageOutputFormat == "" {
+		return
+	}
+
+	if req.TransformerMetadata == nil {
+		req.TransformerMetadata = map[string]any{}
+	}
+	if len(requestExt.Include) > 0 {
+		req.TransformerMetadata[responsesMetadataKeyInclude] = append([]string(nil), requestExt.Include...)
+	}
+	if requestExt.MaxToolCalls != nil {
+		req.TransformerMetadata[responsesMetadataKeyMaxToolCalls] = requestExt.MaxToolCalls
+	}
+	if requestExt.PromptCacheRetention != nil {
+		req.TransformerMetadata[responsesMetadataKeyPromptCacheRetention] = requestExt.PromptCacheRetention
+	}
+	if requestExt.Truncation != nil {
+		req.TransformerMetadata[responsesMetadataKeyTruncation] = requestExt.Truncation
+	}
+	if requestExt.IncludeObfuscation != nil {
+		req.TransformerMetadata[responsesMetadataKeyIncludeObfuscation] = requestExt.IncludeObfuscation
+	}
+	if requestExt.ImageOutputFormat != "" {
+		req.TransformerMetadata[responsesMetadataKeyImageOutputFormat] = requestExt.ImageOutputFormat
+	}
+}
+
+func firstStringPtr(values ...*string) *string {
+	for _, value := range values {
+		if value != nil {
+			return value
+		}
+	}
+
+	return nil
 }
 
 func (c *requestComposer) rawEnvelopeFields() map[string]json.RawMessage {

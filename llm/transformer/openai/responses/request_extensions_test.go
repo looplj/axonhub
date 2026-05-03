@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -44,6 +45,44 @@ func TestInboundTransformer_TransformRequest_CapturesOpenAIResponsesRawExtension
 	require.JSONEq(t, `{"mode":"required","tools":[{"type":"namespace","name":"shell"}]}`, string(ext.ToolChoiceRaw))
 }
 
+func TestInboundTransformer_TransformRequest_CapturesOpenAIResponsesCompatibilityFields(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body: []byte(`{
+			"model": "gpt-5.1",
+			"include": ["reasoning.encrypted_content"],
+			"max_tool_calls": 7,
+			"prompt_cache_key": "cache-key",
+			"prompt_cache_retention": "24h",
+			"truncation": "auto",
+			"stream": true,
+			"stream_options": {"include_obfuscation": true},
+			"input": "hello",
+			"tools": [
+				{"type": "image_generation", "output_format": "webp"}
+			]
+		}`),
+	})
+	require.NoError(t, err)
+
+	ext := requireResponsesRequestExtensions(t, req)
+	require.Equal(t, []string{"reasoning.encrypted_content"}, ext.Include)
+	require.Equal(t, int64(7), *ext.MaxToolCalls)
+	require.Equal(t, "cache-key", *ext.PromptCacheKey)
+	require.Equal(t, "24h", *ext.PromptCacheRetention)
+	require.Equal(t, "auto", *ext.Truncation)
+	require.True(t, *ext.IncludeObfuscation)
+	require.Equal(t, "webp", ext.ImageOutputFormat)
+
+	require.Equal(t, ext.Include, req.TransformerMetadata[responsesMetadataKeyInclude])
+	require.Equal(t, ext.MaxToolCalls, req.TransformerMetadata[responsesMetadataKeyMaxToolCalls])
+	require.Equal(t, ext.PromptCacheRetention, req.TransformerMetadata[responsesMetadataKeyPromptCacheRetention])
+	require.Equal(t, ext.Truncation, req.TransformerMetadata[responsesMetadataKeyTruncation])
+	require.Equal(t, ext.IncludeObfuscation, req.TransformerMetadata[responsesMetadataKeyIncludeObfuscation])
+	require.Equal(t, ext.ImageOutputFormat, req.TransformerMetadata[responsesMetadataKeyImageOutputFormat])
+}
+
 func TestOutboundTransformer_TransformRequest_PreservesRawExtensionsWhenClean(t *testing.T) {
 	req := transformRawExtensionFixture(t)
 	req.Model = "mapped-model"
@@ -66,6 +105,63 @@ func TestOutboundTransformer_TransformRequest_PreservesRawExtensionsWhenClean(t 
 	require.JSONEq(t, `[{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]},{"type":"shell_call_output","call_id":"call_shell","output":"raw secret"}]`, rawJSONField(t, body, "input"))
 	require.JSONEq(t, `[{"type":"function","name":"lookup","parameters":{"type":"object"}},{"type":"namespace","name":"shell","description":"local shell"}]`, rawJSONField(t, body, "tools"))
 	require.JSONEq(t, `{"mode":"required","tools":[{"type":"namespace","name":"shell"}]}`, rawJSONField(t, body, "tool_choice"))
+}
+
+func TestOutboundTransformer_TransformRequest_ProviderExtensionsCompatibilityPreferredOverLegacyMetadata(t *testing.T) {
+	legacyMaxToolCalls := int64(1)
+	extMaxToolCalls := int64(3)
+	req := &llm.Request{
+		Model: "gpt-5.1",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("hello"),
+				},
+			},
+		},
+		Stream:        lo.ToPtr(true),
+		StreamOptions: &llm.StreamOptions{IncludeUsage: true},
+		TransformerMetadata: map[string]any{
+			responsesMetadataKeyInclude:              []string{"legacy.include"},
+			responsesMetadataKeyMaxToolCalls:         &legacyMaxToolCalls,
+			responsesMetadataKeyPromptCacheKey:       lo.ToPtr("legacy-cache"),
+			responsesMetadataKeyPromptCacheRetention: lo.ToPtr("legacy-retention"),
+			responsesMetadataKeyTruncation:           lo.ToPtr("legacy-truncation"),
+			responsesMetadataKeyIncludeObfuscation:   lo.ToPtr(false),
+		},
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					Include:              []string{"reasoning.encrypted_content"},
+					MaxToolCalls:         &extMaxToolCalls,
+					PromptCacheKey:       lo.ToPtr("ext-cache"),
+					PromptCacheRetention: lo.ToPtr("24h"),
+					Truncation:           lo.ToPtr("auto"),
+					IncludeObfuscation:   lo.ToPtr(true),
+				},
+			},
+		},
+	}
+
+	rawReq := outboundResponsesRequest(t, req)
+
+	var payload Request
+	require.NoError(t, json.Unmarshal(rawReq.Body, &payload))
+	require.Equal(t, []string{"reasoning.encrypted_content"}, payload.Include)
+	require.Equal(t, int64(3), *payload.MaxToolCalls)
+	require.Equal(t, "ext-cache", *payload.PromptCacheKey)
+	require.Equal(t, "24h", *payload.PromptCacheRetention)
+	require.Equal(t, "auto", *payload.Truncation)
+	require.NotNil(t, payload.StreamOptions)
+	require.True(t, *payload.StreamOptions.IncludeObfuscation)
+
+	require.Equal(t, []string{"reasoning.encrypted_content"}, rawReq.TransformerMetadata[responsesMetadataKeyInclude])
+	require.Equal(t, &extMaxToolCalls, rawReq.TransformerMetadata[responsesMetadataKeyMaxToolCalls])
+	require.Equal(t, "legacy-cache", *rawReq.TransformerMetadata[responsesMetadataKeyPromptCacheKey].(*string))
+	require.Equal(t, "24h", *rawReq.TransformerMetadata[responsesMetadataKeyPromptCacheRetention].(*string))
+	require.Equal(t, "auto", *rawReq.TransformerMetadata[responsesMetadataKeyTruncation].(*string))
+	require.True(t, *rawReq.TransformerMetadata[responsesMetadataKeyIncludeObfuscation].(*bool))
 }
 
 func TestOutboundTransformer_TransformRequest_DirtyStructuredWinsOverRawReplay(t *testing.T) {
@@ -137,6 +233,14 @@ func requireResponsesRequestExtensions(t *testing.T, req *llm.Request) *llm.Open
 func outboundResponsesBody(t *testing.T, req *llm.Request) []byte {
 	t.Helper()
 
+	rawReq := outboundResponsesRequest(t, req)
+
+	return rawReq.Body
+}
+
+func outboundResponsesRequest(t *testing.T, req *llm.Request) *httpclient.Request {
+	t.Helper()
+
 	outbound, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL:        "https://api.openai.com",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
@@ -147,7 +251,7 @@ func outboundResponsesBody(t *testing.T, req *llm.Request) []byte {
 	require.NoError(t, err)
 	require.NotEmpty(t, rawReq.Body)
 
-	return rawReq.Body
+	return rawReq
 }
 
 func rawJSONField(t *testing.T, body []byte, key string) string {

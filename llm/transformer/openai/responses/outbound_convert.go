@@ -7,7 +7,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -448,13 +447,11 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 }
 
 // convertStreamOptions converts llm.StreamOptions to Responses API StreamOptions.
-// IncludeObfuscation is read from TransformerMetadata since it's a Responses API specific field.
-func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *StreamOptions {
+func convertStreamOptions(src *llm.StreamOptions, includeObfuscation *bool) *StreamOptions {
 	if src == nil {
 		return nil
 	}
 
-	includeObfuscation := xmap.GetBoolPtr(metadata, "include_obfuscation")
 	if includeObfuscation == nil {
 		return nil
 	}

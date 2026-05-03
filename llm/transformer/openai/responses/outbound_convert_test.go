@@ -224,25 +224,23 @@ func TestConvertToolMessage(t *testing.T) {
 
 func TestConvertStreamOptions(t *testing.T) {
 	tests := []struct {
-		name     string
-		src      *llm.StreamOptions
-		metadata map[string]any
-		expected *StreamOptions
+		name               string
+		src                *llm.StreamOptions
+		includeObfuscation *bool
+		expected           *StreamOptions
 	}{
 		{
-			name:     "nil stream options",
-			src:      nil,
-			metadata: nil,
-			expected: nil,
+			name:               "nil stream options",
+			src:                nil,
+			includeObfuscation: nil,
+			expected:           nil,
 		},
 		{
 			name: "include obfuscation false",
 			src: &llm.StreamOptions{
 				IncludeUsage: true,
 			},
-			metadata: map[string]any{
-				"include_obfuscation": lo.ToPtr(false),
-			},
+			includeObfuscation: lo.ToPtr(false),
 			expected: &StreamOptions{
 				IncludeObfuscation: lo.ToPtr(false),
 			},
@@ -252,9 +250,7 @@ func TestConvertStreamOptions(t *testing.T) {
 			src: &llm.StreamOptions{
 				IncludeUsage: false,
 			},
-			metadata: map[string]any{
-				"include_obfuscation": lo.ToPtr(true),
-			},
+			includeObfuscation: lo.ToPtr(true),
 			expected: &StreamOptions{
 				IncludeObfuscation: lo.ToPtr(true),
 			},
@@ -264,14 +260,14 @@ func TestConvertStreamOptions(t *testing.T) {
 			src: &llm.StreamOptions{
 				IncludeUsage: true,
 			},
-			metadata: map[string]any{},
-			expected: nil,
+			includeObfuscation: nil,
+			expected:           nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertStreamOptions(tt.src, tt.metadata)
+			result := convertStreamOptions(tt.src, tt.includeObfuscation)
 			require.Equal(t, tt.expected, result)
 		})
 	}

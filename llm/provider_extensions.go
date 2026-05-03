@@ -57,6 +57,13 @@ type OpenAIResponsesRequestExtensions struct {
 	TopLevelSemanticExtra map[string]json.RawMessage           `json:"-"`
 	MetadataRaw           json.RawMessage                      `json:"-"`
 	MetadataExtra         map[string]json.RawMessage           `json:"-"`
+	Include               []string                             `json:"include,omitempty"`
+	MaxToolCalls          *int64                               `json:"max_tool_calls,omitempty"`
+	PromptCacheKey        *string                              `json:"prompt_cache_key,omitempty"`
+	PromptCacheRetention  *string                              `json:"prompt_cache_retention,omitempty"`
+	Truncation            *string                              `json:"truncation,omitempty"`
+	IncludeObfuscation    *bool                                `json:"include_obfuscation,omitempty"`
+	ImageOutputFormat     string                               `json:"image_output_format,omitempty"`
 	InputKind             string                               `json:"input_kind,omitempty"`
 	InputRaw              json.RawMessage                      `json:"-"`
 	InstructionsRaw       json.RawMessage                      `json:"-"`
@@ -269,6 +276,13 @@ func cloneOpenAIResponsesRequestExtensions(src *OpenAIResponsesRequestExtensions
 		TopLevelSemanticExtra: cloneJSONRawMap(src.TopLevelSemanticExtra),
 		MetadataRaw:           cloneJSONRaw(src.MetadataRaw),
 		MetadataExtra:         cloneJSONRawMap(src.MetadataExtra),
+		Include:               append([]string(nil), src.Include...),
+		MaxToolCalls:          cloneValuePtr(src.MaxToolCalls),
+		PromptCacheKey:        cloneValuePtr(src.PromptCacheKey),
+		PromptCacheRetention:  cloneValuePtr(src.PromptCacheRetention),
+		Truncation:            cloneValuePtr(src.Truncation),
+		IncludeObfuscation:    cloneValuePtr(src.IncludeObfuscation),
+		ImageOutputFormat:     src.ImageOutputFormat,
 		InputKind:             src.InputKind,
 		InputRaw:              cloneJSONRaw(src.InputRaw),
 		InstructionsRaw:       cloneJSONRaw(src.InstructionsRaw),

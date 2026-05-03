@@ -12,6 +12,14 @@ import (
 const (
 	inputKindString = "string"
 	inputKindArray  = "array"
+
+	responsesMetadataKeyInclude              = "include"
+	responsesMetadataKeyMaxToolCalls         = "max_tool_calls"
+	responsesMetadataKeyPromptCacheKey       = "prompt_cache_key"
+	responsesMetadataKeyPromptCacheRetention = "prompt_cache_retention"
+	responsesMetadataKeyTruncation           = "truncation"
+	responsesMetadataKeyIncludeObfuscation   = "include_obfuscation"
+	responsesMetadataKeyImageOutputFormat    = "image_output_format"
 )
 
 var safeTopLevelExtraKeys = map[string]struct{}{
@@ -33,16 +41,25 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	}
 
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
-		RawBody:         cloneRaw(rawBody),
-		TopLevelExtra:   map[string]json.RawMessage{},
-		MetadataRaw:     cloneRaw(req.MetadataRaw),
-		MetadataExtra:   metadataExtra(req.MetadataRaw),
-		InputKind:       req.Input.Kind,
-		InputRaw:        cloneRaw(req.Input.Raw),
-		InstructionsRaw: rawField(req.Raw, "instructions"),
-		ToolChoiceRaw:   toolChoiceRaw(req.ToolChoice),
-		InputItems:      buildInputRawItems(req.Input),
-		Tools:           buildToolRawItems(req.Tools),
+		RawBody:              cloneRaw(rawBody),
+		TopLevelExtra:        map[string]json.RawMessage{},
+		MetadataRaw:          cloneRaw(req.MetadataRaw),
+		MetadataExtra:        metadataExtra(req.MetadataRaw),
+		Include:              append([]string(nil), req.Include...),
+		MaxToolCalls:         req.MaxToolCalls,
+		PromptCacheKey:       req.PromptCacheKey,
+		PromptCacheRetention: req.PromptCacheRetention,
+		Truncation:           req.Truncation,
+		ImageOutputFormat:    firstImageOutputFormat(req.Tools),
+		InputKind:            req.Input.Kind,
+		InputRaw:             cloneRaw(req.Input.Raw),
+		InstructionsRaw:      rawField(req.Raw, "instructions"),
+		ToolChoiceRaw:        toolChoiceRaw(req.ToolChoice),
+		InputItems:           buildInputRawItems(req.Input),
+		Tools:                buildToolRawItems(req.Tools),
+	}
+	if req.StreamOptions != nil {
+		requestExt.IncludeObfuscation = req.StreamOptions.IncludeObfuscation
 	}
 
 	if requestExt.InputKind == "" {
@@ -70,6 +87,16 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 
 	requestExt.ProtectableFragments = buildProtectableFragments(requestExt.InputItems)
 	providerExt.Request = requestExt
+}
+
+func firstImageOutputFormat(tools []Tool) string {
+	for _, tool := range tools {
+		if tool.Type == "image_generation" && tool.OutputFormat != "" {
+			return tool.OutputFormat
+		}
+	}
+
+	return ""
 }
 
 func attachOpenAIResponsesResponseExtensions(chatResp *llm.Response, resp *Response, rawBody []byte) {

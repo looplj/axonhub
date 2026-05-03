@@ -19,7 +19,9 @@ type LLMCompatibilitySettingsProvider interface {
 var responsesTransformerMetadataKeys = map[string]struct{}{
 	"include":                {},
 	"include_obfuscation":    {},
+	"image_output_format":    {},
 	"max_tool_calls":         {},
+	"prompt_cache_key":       {},
 	"prompt_cache_retention": {},
 	"truncation":             {},
 }
