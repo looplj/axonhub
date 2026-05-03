@@ -473,6 +473,7 @@ type ComplexityRoot struct {
 		HeaderOverrideOperations func(childComplexity int) int
 		HideMappedModels         func(childComplexity int) int
 		HideOriginalModels       func(childComplexity int) int
+		LowercaseModelID         func(childComplexity int) int
 		ModelMappings            func(childComplexity int) int
 		PassThroughBody          func(childComplexity int) int
 		PassThroughUserAgent     func(childComplexity int) int
@@ -3670,6 +3671,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.HideOriginalModels(childComplexity), true
+	case "ChannelSettings.lowercaseModelId":
+		if e.complexity.ChannelSettings.LowercaseModelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.LowercaseModelID(childComplexity), true
 	case "ChannelSettings.modelMappings":
 		if e.complexity.ChannelSettings.ModelMappings == nil {
 			break
@@ -16965,6 +16972,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_hideOriginalModels(ctx, field)
 			case "hideMappedModels":
 				return ec.fieldContext_ChannelSettings_hideMappedModels(ctx, field)
+			case "lowercaseModelId":
+				return ec.fieldContext_ChannelSettings_lowercaseModelId(ctx, field)
 			case "proxy":
 				return ec.fieldContext_ChannelSettings_proxy(ctx, field)
 			case "transformOptions":
@@ -21091,6 +21100,35 @@ func (ec *executionContext) _ChannelSettings_hideMappedModels(ctx context.Contex
 }
 
 func (ec *executionContext) fieldContext_ChannelSettings_hideMappedModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_lowercaseModelId(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_lowercaseModelId,
+		func(ctx context.Context) (any, error) {
+			return obj.LowercaseModelID, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_lowercaseModelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelSettings",
 		Field:      field,
@@ -59734,7 +59772,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59776,6 +59814,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.HideMappedModels = data
+		case "lowercaseModelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lowercaseModelId"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LowercaseModelID = data
 		case "proxy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxy"))
 			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx, v)
@@ -83899,6 +83944,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_hideOriginalModels(ctx, field, obj)
 		case "hideMappedModels":
 			out.Values[i] = ec._ChannelSettings_hideMappedModels(ctx, field, obj)
+		case "lowercaseModelId":
+			out.Values[i] = ec._ChannelSettings_lowercaseModelId(ctx, field, obj)
 		case "proxy":
 			out.Values[i] = ec._ChannelSettings_proxy(ctx, field, obj)
 		case "transformOptions":

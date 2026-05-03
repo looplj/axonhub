@@ -48,6 +48,10 @@ type AutoRefresher interface {
 	StopAutoRefresh()
 }
 
+// sourcePriority defines the tie-breaking order when two model entries
+// collide after lowercasing — higher number wins.
+var sourcePriority = map[string]int{"direct": 4, "auto_trim": 3, "mapping": 2, "prefix": 1}
+
 func setupAutoRefresh(ch *Channel, refresher AutoRefresher, opts oauth.AutoRefreshOptions) {
 	ch.startTokenProvider = func() {
 		refresher.StartAutoRefresh(context.Background(), opts)
@@ -1108,6 +1112,24 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 				delete(entries, key)
 			}
 		}
+	}
+
+	// 6. Lowercase model IDs if configured
+	// When enabled, the matching keys (RequestModel) are lowercased so that
+	// models with different casing can match across channels for failover.
+	// ActualModel is NOT changed — the provider must receive the original casing.
+	if ch.Settings.LowercaseModelID {
+		// If two entries collide after lowercasing (e.g., "GPT-4" and "gpt-4"),
+		// the one with higher source priority wins: direct > auto_trim > mapping > prefix.
+		lowercased := make(map[string]ChannelModelEntry, len(entries))
+		for key, entry := range entries {
+			lowerKey := strings.ToLower(key)
+			entry.RequestModel = strings.ToLower(entry.RequestModel)
+			if existing, exists := lowercased[lowerKey]; !exists || sourcePriority[entry.Source] > sourcePriority[existing.Source] {
+				lowercased[lowerKey] = entry
+			}
+		}
+		entries = lowercased
 	}
 
 	ch.cachedModelEntries = entries

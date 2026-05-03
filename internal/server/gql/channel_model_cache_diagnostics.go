@@ -90,6 +90,7 @@ type channelModelCacheDiagnosticsSettings struct {
 	AutoTrimedModelPrefixes []string                                   `json:"autoTrimedModelPrefixes,omitempty"`
 	HideMappedModels        bool                                       `json:"hideMappedModels"`
 	HideOriginalModels      bool                                       `json:"hideOriginalModels"`
+	LowercaseModelID        bool                                       `json:"lowercaseModelId"`
 	ModelMappings           []channelModelCacheDiagnosticsModelMapping `json:"modelMappings,omitempty"`
 }
 
@@ -257,6 +258,7 @@ func buildSettingsSnapshot(settings *objects.ChannelSettings) channelModelCacheD
 		AutoTrimedModelPrefixes: append([]string(nil), settings.AutoTrimedModelPrefixes...),
 		HideMappedModels:        settings.HideMappedModels,
 		HideOriginalModels:      settings.HideOriginalModels,
+		LowercaseModelID:        settings.LowercaseModelID,
 		ModelMappings: lo.Map(settings.ModelMappings, func(mapping objects.ModelMapping, _ int) channelModelCacheDiagnosticsModelMapping {
 			return channelModelCacheDiagnosticsModelMapping{
 				From: mapping.From,

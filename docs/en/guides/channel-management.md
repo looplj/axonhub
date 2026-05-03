@@ -137,6 +137,14 @@ The channel now accepts both the original and trimmed names:
 
 > **Tip**: This is the recommended approach for providers that use vendor-prefixed model IDs. It enables batch model ID rewriting without having to create individual model mappings.
 
+### Lowercase Model Name
+
+When enabled, model name matching keys are converted to lowercase. Enable when channel-provided model names contain uppercase letters, to balance load with other lowercase model names. The actual model name sent to the provider retains its original casing.
+
+**Example**: Converts `GLM-5.1` to `glm-5.1`, allowing the channel to share load with other channels that provide `glm-5.1`.
+
+> **Note**: When enabled, model names that differ only in case (e.g., `GPT-4` and `gpt-4`) are treated as the same model. In case of collision, the highest-priority entry wins (direct > auto_trim > mapping > prefix).
+
 ### Visibility Controls
 
 Two options control which model names are exposed in the model list (e.g., when clients call the `/v1/models` endpoint):
