@@ -6,8 +6,25 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 )
+
+func TestChannelGetModelEntries_CodexAddsBuiltinImageModel(t *testing.T) {
+	ch := &Channel{
+		Channel: &ent.Channel{
+			Type:            channel.TypeCodex,
+			SupportedModels: []string{"gpt-5.5"},
+		},
+	}
+
+	entries := ch.GetModelEntries()
+	require.Equal(t, ChannelModelEntry{
+		RequestModel: "gpt-image-2",
+		ActualModel:  "gpt-image-2",
+		Source:       "builtin",
+	}, entries["gpt-image-2"])
+}
 
 func TestChannel_GetUnifiedModels(t *testing.T) {
 	tests := []struct {

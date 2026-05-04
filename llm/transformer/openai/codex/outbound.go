@@ -87,6 +87,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, errors.New("request is nil")
 	}
 
+	if llmReq.RequestType == llm.RequestTypeImage {
+		return t.transformImageRequest(ctx, llmReq)
+	}
+
 	rawSessionID := ""
 	rawOriginator := ""
 	rawUserAgent := ""
@@ -202,6 +206,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
+	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == string(llm.RequestTypeImage) {
+		return t.transformImageResponse(ctx, httpResp)
+	}
+
 	// Codex upstream returns Responses API response.
 	return t.responsesOutbound.TransformResponse(ctx, httpResp)
 }

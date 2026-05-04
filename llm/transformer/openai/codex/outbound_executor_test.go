@@ -314,6 +314,129 @@ func TestCodexOutbound_ForcesArrayInputsForSingleMessage(t *testing.T) {
 	assert.Equal(t, "user", first["role"])
 }
 
+func TestCodexOutbound_TransformsImageGenerationToResponsesTool(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+
+	hreq, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:       "gpt-image-2",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
+		Image: &llm.ImageRequest{
+			Prompt:       "Draw a request flow",
+			Size:         "1024x1024",
+			Quality:      "high",
+			OutputFormat: "png",
+		},
+	})
+	require.NoError(t, err)
+
+	body := decodeCodexRequestBody(t, hreq)
+	require.Equal(t, defaultImageMainModel, body["model"])
+	require.Equal(t, true, body["stream"])
+	require.Equal(t, false, body["store"])
+	toolChoice, ok := body["tool_choice"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "required", toolChoice["mode"])
+	require.Equal(t, string(llm.RequestTypeImage), hreq.RequestType)
+
+	tools, ok := body["tools"].([]any)
+	require.True(t, ok)
+	require.Len(t, tools, 1)
+	tool, ok := tools[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "image_generation", tool["type"])
+	require.Equal(t, "gpt-image-2", tool["model"])
+	require.Equal(t, "1024x1024", tool["size"])
+	require.Equal(t, "high", tool["quality"])
+	require.Equal(t, "png", tool["output_format"])
+
+	input, ok := body["input"].([]any)
+	require.True(t, ok)
+	require.Len(t, input, 1)
+	message, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	content, ok := message["content"].([]any)
+	require.True(t, ok)
+	require.Len(t, content, 1)
+	text, ok := content[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "input_text", text["type"])
+	require.Equal(t, "Draw a request flow", text["text"])
+}
+
+func TestCodexOutbound_TransformsImageEditToResponsesTool(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0}
+
+	hreq, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:       "gpt-image-2",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageEdit,
+		Image: &llm.ImageRequest{
+			Prompt:       "Edit this image",
+			Images:       [][]byte{png},
+			Mask:         png,
+			Size:         "1024x1024",
+			Quality:      "high",
+			OutputFormat: "png",
+		},
+	})
+	require.NoError(t, err)
+
+	body := decodeCodexRequestBody(t, hreq)
+	tools := body["tools"].([]any)
+	tool := tools[0].(map[string]any)
+	require.Equal(t, "image_generation", tool["type"])
+	require.Equal(t, "gpt-image-2", tool["model"])
+	require.Equal(t, "high", tool["quality"])
+	require.Equal(t, "png", tool["output_format"])
+	require.Contains(t, tool, "input_image_mask")
+
+	input := body["input"].([]any)
+	message := input[0].(map[string]any)
+	content := message["content"].([]any)
+	require.Len(t, content, 2)
+	imagePart := content[1].(map[string]any)
+	require.Equal(t, "input_image", imagePart["type"])
+	require.True(t, strings.HasPrefix(imagePart["image_url"].(string), "data:image/png;base64,"))
+}
+
+func TestCodexOutbound_ImageResponseWrapsB64JSON(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+	hreq := &httpclient.Request{
+		RequestType: string(llm.RequestTypeImage),
+		TransformerMetadata: map[string]any{
+			"image_output_format": "png",
+		},
+	}
+	respBody := []byte(`{
+		"id":"resp_img",
+		"object":"response",
+		"created_at":1700000000,
+		"model":"gpt-5.4-mini",
+		"status":"completed",
+		"output":[{
+			"id":"ig_1",
+			"type":"image_generation_call",
+			"status":"completed",
+			"result":"aW1hZ2U="
+		}]
+	}`)
+
+	resp, err := outbound.TransformResponse(ctx, &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       respBody,
+		Request:    hreq,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp.Image)
+	require.Len(t, resp.Image.Data, 1)
+	require.Equal(t, "aW1hZ2U=", resp.Image.Data[0].B64JSON)
+}
+
 func newTestCodexOutbound(t *testing.T) *OutboundTransformer {
 	t.Helper()
 

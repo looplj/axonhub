@@ -64,6 +64,15 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
 		},
 		{
+			name: "codex exposes responses and image tool endpoints",
+			typ:  channel.TypeCodex,
+			expected: []string{
+				llm.APIFormatOpenAIResponse.String(),
+				llm.APIFormatOpenAIImageGeneration.String(),
+				llm.APIFormatOpenAIImageEdit.String(),
+			},
+		},
+		{
 			name:     "nanogpt responses defaults to responses",
 			typ:      channel.TypeNanogptResponses,
 			expected: []string{llm.APIFormatOpenAIResponse.String()},

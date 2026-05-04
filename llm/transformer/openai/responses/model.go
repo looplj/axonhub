@@ -40,6 +40,8 @@ type Tool struct {
 	// This field is for ImageGeneration
 	InputFidelity string `json:"input_fidelity,omitempty"`
 	// This field is for ImageGeneration
+	InputImageMask map[string]any `json:"input_image_mask,omitempty"`
+	// This field is for ImageGeneration
 	Model string `json:"model,omitempty"`
 	// This field is for ImageGeneration
 	Moderation string `json:"moderation,omitempty"`

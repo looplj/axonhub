@@ -52,6 +52,8 @@ type AutoRefresher interface {
 // collide after lowercasing — higher number wins.
 var sourcePriority = map[string]int{"direct": 4, "auto_trim": 3, "mapping": 2, "prefix": 1}
 
+const codexBuiltinImageModelID = "gpt-image-2"
+
 func setupAutoRefresh(ch *Channel, refresher AutoRefresher, opts oauth.AutoRefreshOptions) {
 	ch.startTokenProvider = func() {
 		refresher.StartAutoRefresh(context.Background(), opts)
@@ -1039,6 +1041,16 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 				RequestModel: model,
 				ActualModel:  model,
 				Source:       "direct",
+			}
+		}
+	}
+
+	if ch.Type == channel.TypeCodex {
+		if _, exists := entries[codexBuiltinImageModelID]; !exists {
+			entries[codexBuiltinImageModelID] = ChannelModelEntry{
+				RequestModel: codexBuiltinImageModelID,
+				ActualModel:  codexBuiltinImageModelID,
+				Source:       "builtin",
 			}
 		}
 	}

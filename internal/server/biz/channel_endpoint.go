@@ -90,12 +90,16 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeOpenai:          openAICompatibleDefaultEndpoints,
 	channel.TypeOpenaiResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
-	channel.TypeCodex:           {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
-	channel.TypeVercel:          openAICompatibleDefaultEndpoints,
-	channel.TypeAnthropic:       {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeAnthropicAWS:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeAnthropicGcp:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeGeminiOpenai:    {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeCodex: {
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
+		{APIFormat: llm.APIFormatOpenAIImageEdit.String()},
+	},
+	channel.TypeVercel:       openAICompatibleDefaultEndpoints,
+	channel.TypeAnthropic:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeAnthropicAWS: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeAnthropicGcp: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeGeminiOpenai: {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
 	channel.TypeGemini: {
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
