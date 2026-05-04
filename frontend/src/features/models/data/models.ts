@@ -471,13 +471,14 @@ interface QueryModelsArgs {
   before?: string;
   where?: Record<string, any>;
   orderBy?: {
-    field: 'CREATED_AT' | 'UPDATED_AT' | 'NAME' | 'MODEL_ID';
+    field: 'CREATED_AT' | 'UPDATED_AT' | 'NAME';
     direction: 'ASC' | 'DESC';
   };
 }
 
-export function useQueryModels(args: QueryModelsArgs) {
+export function useQueryModels(args: QueryModelsArgs, options?: { enabled?: boolean }) {
   return useQuery({
+    enabled: options?.enabled ?? true,
     queryKey: ['models', args],
     queryFn: async () => {
       const data = await graphqlRequest<{ models: ModelConnection }>(MODELS_QUERY, args);

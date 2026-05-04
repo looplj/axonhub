@@ -22,6 +22,9 @@ import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-e
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useQueryChannels } from '@/features/channels/data/channels';
+import { useQueryModels } from '@/features/models/data/models';
+
+const MODEL_PAGE_CHANNEL_VALUE = '__axonhub_model_page_models__';
 
 export default function Playground() {
   const { t } = useTranslation();
@@ -70,6 +73,18 @@ export default function Playground() {
       statusIn: ['enabled', 'disabled'],
     },
   });
+  const isModelPageChannel = selectedChannel === MODEL_PAGE_CHANNEL_VALUE;
+  const { data: modelsData, isLoading: modelsLoading } = useQueryModels(
+    {
+      first: 10000,
+      orderBy: { field: 'NAME', direction: 'ASC' },
+      where: {
+        statusIn: ['enabled'],
+        typeIn: ['chat'],
+      },
+    },
+    { enabled: isModelPageChannel }
+  );
 
   const [input, setInput] = useState('');
 
@@ -78,11 +93,14 @@ export default function Playground() {
       api: '/admin/playground/chat',
       credentials: 'include',
       headers: () => {
-        return {
+        const headers: Record<string, string> = {
           Authorization: 'Bearer ' + accessToken,
-          'X-Channel-ID': selectedChannelRef.current || '',
           'X-Project-ID': selectedProjectId || '',
         };
+        if (selectedChannelRef.current && selectedChannelRef.current !== MODEL_PAGE_CHANNEL_VALUE) {
+          headers['X-Channel-ID'] = selectedChannelRef.current;
+        }
+        return headers;
       },
       body: () => {
         return {
@@ -203,8 +221,16 @@ export default function Playground() {
     }
   }, [messages, regenerate, setMessages]);
 
+  const modelPageChannelOption = useMemo(
+    () => ({
+      value: MODEL_PAGE_CHANNEL_VALUE,
+      label: t('playground.settings.modelPageModelsChannel'),
+    }),
+    [t]
+  );
+
   // 渠道选项列表
-  const channelOptions = useMemo(() => {
+  const realChannelOptions = useMemo(() => {
     if (!channelsData?.edges) return [];
     return channelsData.edges
       .filter((edge) => edge.node.supportedModels.length > 0)
@@ -214,8 +240,24 @@ export default function Playground() {
       }));
   }, [channelsData]);
 
+  const channelOptions = useMemo(() => {
+    return [modelPageChannelOption, ...realChannelOptions];
+  }, [modelPageChannelOption, realChannelOptions]);
+
+  const modelPageModelOptions = useMemo(() => {
+    if (!modelsData?.edges) return [];
+    return modelsData.edges.map((edge) => {
+      const modelID = edge.node.modelID;
+      return {
+        value: modelID,
+        label: edge.node.name || modelID,
+      };
+    });
+  }, [modelsData]);
+
   // 根据选中渠道过滤出模型列表
   const modelOptions = useMemo(() => {
+    if (isModelPageChannel) return modelPageModelOptions;
     if (!channelsData?.edges || !selectedChannel) return [];
     const channelEdge = channelsData.edges.find((edge) => edge.node.id === selectedChannel);
     if (!channelEdge) return [];
@@ -223,25 +265,37 @@ export default function Playground() {
       value: m,
       label: m,
     }));
-  }, [channelsData, selectedChannel]);
+  }, [channelsData, isModelPageChannel, modelPageModelOptions, selectedChannel]);
+
+  const selectedModelSourceLoading = isModelPageChannel ? modelsLoading : channelsLoading;
 
   // 处理渠道选择，自动选第一个模型
   const handleChannelChange = useCallback(
     (channelId: string) => {
       setSelectedChannel(channelId);
+      if (channelId === MODEL_PAGE_CHANNEL_VALUE) {
+        setModel(modelPageModelOptions[0]?.value ?? '');
+        return;
+      }
       const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === channelId);
       const firstModel = channelEdge?.node.supportedModels[0] ?? '';
       setModel(firstModel);
     },
-    [channelsData]
+    [channelsData, modelPageModelOptions]
   );
 
   // 初始化：默认选第一个渠道和第一个模型
   useEffect(() => {
-    if (!selectedChannel && channelOptions.length > 0) {
-      handleChannelChange(channelOptions[0].value);
+    if (!selectedChannel && !channelsLoading && channelOptions.length > 0) {
+      handleChannelChange(realChannelOptions[0]?.value ?? MODEL_PAGE_CHANNEL_VALUE);
     }
-  }, [channelOptions, handleChannelChange, selectedChannel]);
+  }, [channelOptions, channelsLoading, handleChannelChange, realChannelOptions, selectedChannel]);
+
+  useEffect(() => {
+    if (isModelPageChannel && !model && modelPageModelOptions.length > 0) {
+      setModel(modelPageModelOptions[0].value);
+    }
+  }, [isModelPageChannel, model, modelPageModelOptions]);
 
   return (
     <TooltipProvider>
@@ -293,17 +347,21 @@ export default function Playground() {
                   selectedValue={model}
                   onSelectedValueChange={(v) => setModel(v)}
                   items={modelOptions}
-                  isLoading={channelsLoading}
-                  emptyMessage={t('playground.errors.noChannelsAvailable')}
-                  placeholder={channelsLoading ? t('loading') : t('playground.settings.selectModel')}
+                  isLoading={selectedModelSourceLoading}
+                  emptyMessage={t('playground.errors.noModelsAvailable')}
+                  placeholder={selectedModelSourceLoading ? t('loading') : t('playground.settings.selectModel')}
                 />
-                {channelsLoading && <p className='text-muted-foreground text-[10px]'>{t('loading')}...</p>}
-                {!channelsLoading && modelOptions.length > 0 && (
+                {selectedModelSourceLoading && <p className='text-muted-foreground text-[10px]'>{t('loading')}...</p>}
+                {!selectedModelSourceLoading && modelOptions.length > 0 && (
                   <p className='text-muted-foreground text-[10px]'>
-                    {t('playground.modelsAvailable', {
-                      count: modelOptions.length,
-                      channels: channelOptions.length,
-                    })}
+                    {isModelPageChannel
+                      ? t('playground.modelPageModelsAvailable', {
+                          count: modelOptions.length,
+                        })
+                      : t('playground.modelsAvailable', {
+                          count: modelOptions.length,
+                          channels: realChannelOptions.length,
+                        })}
                   </p>
                 )}
               </div>
