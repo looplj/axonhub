@@ -44,6 +44,12 @@ var rerankCapableAPIFormats = map[string]struct{}{
 	"jina/rerank": {},
 }
 
+// videoCapableAPIFormats lists API formats for video requests.
+var videoCapableAPIFormats = map[string]struct{}{
+	"openai/video":   {},
+	"seedance/video": {},
+}
+
 // SelectAPIFormatForRequestType selects the most appropriate APIFormat from a channel's
 // resolved endpoints based on the request type. Returns the first matching endpoint's
 // APIFormat, or the first endpoint's APIFormat as a fallback.
@@ -52,6 +58,15 @@ func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestT
 		return ""
 	}
 
+	return selectAPIFormat(endpoints, requestType, "")
+}
+
+// SelectAPIFormat selects an endpoint format using the full inbound request context.
+func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) string {
+	return SelectAPIFormatForRequest(endpoints, req)
+}
+
+func selectAPIFormat(endpoints []objects.ChannelEndpoint, requestType llm.RequestType, preferredFormat string) string {
 	var allowed map[string]struct{}
 
 	//nolint:exhaustive // checked.
@@ -68,9 +83,19 @@ func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestT
 		allowed = imageCapableAPIFormats
 	case llm.RequestTypeRerank:
 		allowed = rerankCapableAPIFormats
+	case llm.RequestTypeVideo:
+		allowed = videoCapableAPIFormats
 	}
 
 	if allowed != nil {
+		if preferredFormat != "" {
+			for _, ep := range endpoints {
+				if _, ok := allowed[ep.APIFormat]; ok && ep.APIFormat == preferredFormat {
+					return ep.APIFormat
+				}
+			}
+		}
+
 		for _, ep := range endpoints {
 			if _, ok := allowed[ep.APIFormat]; ok {
 				return ep.APIFormat
@@ -97,11 +122,13 @@ func SelectAPIFormatForRequest(endpoints []objects.ChannelEndpoint, req *llm.Req
 	}
 
 	requestType := llm.RequestTypeChat
+	preferredFormat := ""
 	if req != nil {
 		requestType = req.RequestType
+		preferredFormat = req.APIFormat.String()
 	}
 
-	return SelectAPIFormatForRequestType(endpoints, requestType)
+	return selectAPIFormat(endpoints, requestType, preferredFormat)
 }
 
 func preferredResponsesAPIFormats(format llm.APIFormat) []string {

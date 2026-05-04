@@ -916,8 +916,12 @@ func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t 
 	require.NoError(t, err)
 	require.NotNil(t, channelRequest)
 
-	// Verify original model was restored
-	require.Equal(t, "gpt-3.5-turbo", llmRequest.Model)
+	require.Equal(t, "mapped-gpt-4", llmRequest.Model)
+	require.NotNil(t, processor.state.CurrentAttemptRequest)
+	require.Equal(t, "gpt-3.5-turbo", processor.state.CurrentAttemptRequest.Model)
+
+	model := gjson.GetBytes(channelRequest.Body, "model")
+	require.Equal(t, "gpt-3.5-turbo", model.String())
 
 	// Verify channel was used
 	require.Equal(t, testChannel, processor.state.CurrentCandidate.Channel)
