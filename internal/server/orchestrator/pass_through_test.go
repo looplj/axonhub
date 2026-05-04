@@ -47,6 +47,7 @@ func TestCaptureRawProviderResponse_StoresResponse(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
@@ -100,6 +101,7 @@ func TestApplyPassThroughResponse_Enabled_ReturnsRaw(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
@@ -200,6 +202,7 @@ func TestApplyPassThroughResponse_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{apiFormat: llm.APIFormatAnthropicMessage},
@@ -306,6 +309,7 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
@@ -374,6 +378,7 @@ func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
@@ -411,6 +416,7 @@ func TestCaptureRawProviderStream_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{apiFormat: llm.APIFormatAnthropicMessage},
@@ -499,6 +505,7 @@ func TestApplyPassThroughStream_ReturnsRawEvents(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
@@ -552,6 +559,7 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
@@ -734,6 +742,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(format),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 
 	outbound := &PersistentOutboundTransformer{
@@ -809,6 +818,7 @@ func TestPassThroughStream_ErrorPropagates(t *testing.T) {
 		RawProviderRequest: &httpclient.Request{
 			APIFormat: string(format),
 		},
+		CurrentAttemptRequestBodyPassThroughEnabled: true,
 	}
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{apiFormat: format},
@@ -871,6 +881,163 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
 }
 
+func TestApplyPassThroughBody_DefaultDisabledWhenNoSetting(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:       1,
+			Name:     "pass-through-default-disabled",
+			Settings: &objects.ChannelSettings{},
+		},
+	}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest: &llm.Request{
+			Model:     "gpt-4o",
+			APIFormat: llm.APIFormatOpenAIChatCompletion,
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+				Body:      []byte(`{"model":"client-model","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`),
+			},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, `{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`, string(processed.Body))
+	require.False(t, state.CurrentAttemptRequestBodyPassThroughEnabled)
+}
+
+func TestApplyPassThroughBody_GlobalEnabledWhenChannelUnset(t *testing.T) {
+	ctx, client := setupTest(t)
+	systemService := newTestSystemService(client)
+	require.NoError(t, systemService.SetPassThrough(ctx, true))
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:       1,
+			Name:     "pass-through-global-enabled",
+			Settings: &objects.ChannelSettings{},
+		},
+	}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest: &llm.Request{
+			Model:     "gpt-4o",
+			APIFormat: llm.APIFormatOpenAIChatCompletion,
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+				Body:      []byte(`{"model":"client-model","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`),
+			},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, systemService).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, 0.4, gjson.GetBytes(processed.Body, "temperature").Float())
+	require.True(t, state.CurrentAttemptRequestBodyPassThroughEnabled)
+}
+
+func TestApplyPassThroughBody_ChannelDisabledOverridesGlobal(t *testing.T) {
+	ctx, client := setupTest(t)
+	systemService := newTestSystemService(client)
+	require.NoError(t, systemService.SetPassThrough(ctx, true))
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-channel-disabled",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(false),
+			},
+		},
+	}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest: &llm.Request{
+			Model:     "gpt-4o",
+			APIFormat: llm.APIFormatOpenAIChatCompletion,
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+				Body:      []byte(`{"model":"client-model","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`),
+			},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, systemService).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, `{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`, string(processed.Body))
+	require.False(t, state.CurrentAttemptRequestBodyPassThroughEnabled)
+}
+
+func TestApplyPassThroughBody_MergeFailureKeepsPassThroughDisabled(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-merge-failure",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest: &llm.Request{
+			Model:     "gpt-4o",
+			APIFormat: llm.APIFormatOpenAIChatCompletion,
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+				Body:      []byte(`{`),
+			},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, `{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`, string(processed.Body))
+	require.False(t, state.CurrentAttemptRequestBodyPassThroughEnabled)
+
+	rawResp := &httpclient.Response{StatusCode: 200, Body: []byte("raw")}
+	transformedResp := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
+	state.RawProviderResponse = rawResp
+
+	result, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(ctx, transformedResp)
+	require.NoError(t, err)
+	require.Equal(t, transformedResp, result)
+}
+
 func TestApplyPassThroughBody_DisabledForDirtyResponsesRequest(t *testing.T) {
 	ctx := context.Background()
 
@@ -879,7 +1046,7 @@ func TestApplyPassThroughBody_DisabledForDirtyResponsesRequest(t *testing.T) {
 			ID:   1,
 			Name: "responses-pass-through-dirty",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -908,7 +1075,7 @@ func TestApplyPassThroughBody_DisabledForDirtyResponsesRequest(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-5.4","input":"injected"}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, `{"model":"gpt-5.4","input":"injected"}`, string(processed.Body))
 	require.False(t, state.CurrentAttemptRequestBodyPassThroughEnabled)
@@ -922,7 +1089,7 @@ func TestApplyPassThroughBody_DisabledForPromptProtectionChangedResponsesRequest
 			ID:   1,
 			Name: "responses-pass-through-protected",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: true,
+				PassThroughBody: lo.ToPtr(true),
 			},
 		},
 	}
@@ -950,7 +1117,7 @@ func TestApplyPassThroughBody_DisabledForPromptProtectionChangedResponsesRequest
 		Body:      []byte(`{"model":"gpt-5.4","input":"[MASKED]"}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, `{"model":"gpt-5.4","input":"[MASKED]"}`, string(processed.Body))
 	require.False(t, state.CurrentAttemptRequestBodyPassThroughEnabled)

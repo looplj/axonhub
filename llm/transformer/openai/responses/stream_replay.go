@@ -16,30 +16,12 @@ const (
 // OpenAIResponsesStreamReplayState centralizes sequence allocation and terminal
 // dedupe for mixed raw replay and synthetic Responses SSE events.
 type OpenAIResponsesStreamReplayState struct {
-	NextSequenceNumber        int
-	Started                   bool
-	TerminalEmitted           bool
-	RawCompletedReplayed      bool
-	SyntheticCompletedEmitted bool
-	RawOnlyEventSeen          bool
-	OutputItemsByID           map[string]OpenAIResponsesOutputItemState
-	RawEventsBySequence       map[int]llm.OpenAIResponsesRawEvent
-	SemanticEventsByPath      map[string]struct{}
-	LastStructuredResponse    *llm.Response
-}
-
-type OpenAIResponsesOutputItemState struct {
-	ID          string
-	OutputIndex int
-	ItemType    string
+	NextSequenceNumber int
+	TerminalEmitted    bool
 }
 
 func newOpenAIResponsesStreamReplayState() *OpenAIResponsesStreamReplayState {
-	return &OpenAIResponsesStreamReplayState{
-		OutputItemsByID:      map[string]OpenAIResponsesOutputItemState{},
-		RawEventsBySequence:  map[int]llm.OpenAIResponsesRawEvent{},
-		SemanticEventsByPath: map[string]struct{}{},
-	}
+	return &OpenAIResponsesStreamReplayState{}
 }
 
 func (s *OpenAIResponsesStreamReplayState) nextSequenceNumber() int {
@@ -208,15 +190,8 @@ func (s *responsesInboundStream) enqueueRawReplayEvent(
 	}
 
 	if s.replayState != nil {
-		s.replayState.RawOnlyEventSeen = true
-		if rawEvent.SequenceNumber != nil {
-			s.replayState.RawEventsBySequence[*rawEvent.SequenceNumber] = *cloneRawStreamEvent(rawEvent)
-		}
 		if isResponsesTerminalEvent(eventType) {
 			s.replayState.TerminalEmitted = true
-			if eventType == StreamEventTypeResponseCompleted {
-				s.replayState.RawCompletedReplayed = true
-			}
 		}
 	}
 

@@ -267,7 +267,7 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 
 	llmRequest.RawRequest = request
 	p.state.RawRequest = request
-	p.state.InboundParsedRequest = llmRequest
+	p.state.InboundParsedRequest = CloneRequestForOutboundAttempt(llmRequest)
 	p.state.SetEffectiveSemanticRequest(llmRequest)
 
 	return llmRequest, nil

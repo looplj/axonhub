@@ -52,25 +52,28 @@ type OpenAIResponsesProviderExtensions struct {
 }
 
 type OpenAIResponsesRequestExtensions struct {
-	RawBody               json.RawMessage                      `json:"-"`
-	TopLevelExtra         map[string]json.RawMessage           `json:"-"`
-	TopLevelSemanticExtra map[string]json.RawMessage           `json:"-"`
-	MetadataRaw           json.RawMessage                      `json:"-"`
-	MetadataExtra         map[string]json.RawMessage           `json:"-"`
-	Include               []string                             `json:"include,omitempty"`
-	MaxToolCalls          *int64                               `json:"max_tool_calls,omitempty"`
-	PromptCacheKey        *string                              `json:"prompt_cache_key,omitempty"`
-	PromptCacheRetention  *string                              `json:"prompt_cache_retention,omitempty"`
-	Truncation            *string                              `json:"truncation,omitempty"`
-	IncludeObfuscation    *bool                                `json:"include_obfuscation,omitempty"`
-	ImageOutputFormat     string                               `json:"image_output_format,omitempty"`
-	InputKind             string                               `json:"input_kind,omitempty"`
-	InputRaw              json.RawMessage                      `json:"-"`
-	InstructionsRaw       json.RawMessage                      `json:"-"`
-	InputItems            []OpenAIResponsesRawItem             `json:"input_items,omitempty"`
-	Tools                 []OpenAIResponsesRawItem             `json:"tools,omitempty"`
-	ToolChoiceRaw         json.RawMessage                      `json:"-"`
-	ProtectableFragments  []OpenAIResponsesProtectableFragment `json:"protectable_fragments,omitempty"`
+	RawBody                         json.RawMessage                         `json:"-"`
+	TopLevelExtra                   map[string]json.RawMessage              `json:"-"`
+	TopLevelSemanticExtra           map[string]json.RawMessage              `json:"-"`
+	TopLevelSemanticExtraClasses    map[string]string                       `json:"-"`
+	TopLevelSemanticExtraTextPaths  map[string][]string                     `json:"-"`
+	TopLevelSemanticExtraProtection map[string]OpenAIResponsesRawProtection `json:"-"`
+	MetadataRaw                     json.RawMessage                         `json:"-"`
+	MetadataExtra                   map[string]json.RawMessage              `json:"-"`
+	Include                         []string                                `json:"include,omitempty"`
+	MaxToolCalls                    *int64                                  `json:"max_tool_calls,omitempty"`
+	PromptCacheKey                  *string                                 `json:"prompt_cache_key,omitempty"`
+	PromptCacheRetention            *string                                 `json:"prompt_cache_retention,omitempty"`
+	Truncation                      *string                                 `json:"truncation,omitempty"`
+	IncludeObfuscation              *bool                                   `json:"include_obfuscation,omitempty"`
+	ImageOutputFormat               string                                  `json:"image_output_format,omitempty"`
+	InputKind                       string                                  `json:"input_kind,omitempty"`
+	InputRaw                        json.RawMessage                         `json:"-"`
+	InstructionsRaw                 json.RawMessage                         `json:"-"`
+	InputItems                      []OpenAIResponsesRawItem                `json:"input_items,omitempty"`
+	Tools                           []OpenAIResponsesRawItem                `json:"tools,omitempty"`
+	ToolChoiceRaw                   json.RawMessage                         `json:"-"`
+	ProtectableFragments            []OpenAIResponsesProtectableFragment    `json:"protectable_fragments,omitempty"`
 }
 
 type OpenAIResponsesResponseExtensions struct {
@@ -154,6 +157,7 @@ const (
 	OpenAIResponsesDirtyInputItems            OpenAIResponsesDirtyScope = "input_items"
 	OpenAIResponsesDirtyTools                 OpenAIResponsesDirtyScope = "tools"
 	OpenAIResponsesDirtyToolChoice            OpenAIResponsesDirtyScope = "tool_choice"
+	OpenAIResponsesDirtyMetadata              OpenAIResponsesDirtyScope = "metadata"
 	OpenAIResponsesDirtyTopLevelSemanticExtra OpenAIResponsesDirtyScope = "top_level_semantic_extra"
 	OpenAIResponsesDirtyResponseOutput        OpenAIResponsesDirtyScope = "response_output"
 	OpenAIResponsesDirtyResponseEnvelope      OpenAIResponsesDirtyScope = "response_envelope"
@@ -271,25 +275,28 @@ func cloneOpenAIResponsesRequestExtensions(src *OpenAIResponsesRequestExtensions
 	}
 
 	return &OpenAIResponsesRequestExtensions{
-		RawBody:               cloneJSONRaw(src.RawBody),
-		TopLevelExtra:         cloneJSONRawMap(src.TopLevelExtra),
-		TopLevelSemanticExtra: cloneJSONRawMap(src.TopLevelSemanticExtra),
-		MetadataRaw:           cloneJSONRaw(src.MetadataRaw),
-		MetadataExtra:         cloneJSONRawMap(src.MetadataExtra),
-		Include:               append([]string(nil), src.Include...),
-		MaxToolCalls:          cloneValuePtr(src.MaxToolCalls),
-		PromptCacheKey:        cloneValuePtr(src.PromptCacheKey),
-		PromptCacheRetention:  cloneValuePtr(src.PromptCacheRetention),
-		Truncation:            cloneValuePtr(src.Truncation),
-		IncludeObfuscation:    cloneValuePtr(src.IncludeObfuscation),
-		ImageOutputFormat:     src.ImageOutputFormat,
-		InputKind:             src.InputKind,
-		InputRaw:              cloneJSONRaw(src.InputRaw),
-		InstructionsRaw:       cloneJSONRaw(src.InstructionsRaw),
-		InputItems:            cloneOpenAIResponsesRawItems(src.InputItems),
-		Tools:                 cloneOpenAIResponsesRawItems(src.Tools),
-		ToolChoiceRaw:         cloneJSONRaw(src.ToolChoiceRaw),
-		ProtectableFragments:  cloneOpenAIResponsesProtectableFragments(src.ProtectableFragments),
+		RawBody:                         cloneJSONRaw(src.RawBody),
+		TopLevelExtra:                   cloneJSONRawMap(src.TopLevelExtra),
+		TopLevelSemanticExtra:           cloneJSONRawMap(src.TopLevelSemanticExtra),
+		TopLevelSemanticExtraClasses:    cloneStringMap(src.TopLevelSemanticExtraClasses),
+		TopLevelSemanticExtraTextPaths:  cloneStringSliceMap(src.TopLevelSemanticExtraTextPaths),
+		TopLevelSemanticExtraProtection: cloneOpenAIResponsesRawProtectionMap(src.TopLevelSemanticExtraProtection),
+		MetadataRaw:                     cloneJSONRaw(src.MetadataRaw),
+		MetadataExtra:                   cloneJSONRawMap(src.MetadataExtra),
+		Include:                         append([]string(nil), src.Include...),
+		MaxToolCalls:                    cloneValuePtr(src.MaxToolCalls),
+		PromptCacheKey:                  cloneValuePtr(src.PromptCacheKey),
+		PromptCacheRetention:            cloneValuePtr(src.PromptCacheRetention),
+		Truncation:                      cloneValuePtr(src.Truncation),
+		IncludeObfuscation:              cloneValuePtr(src.IncludeObfuscation),
+		ImageOutputFormat:               src.ImageOutputFormat,
+		InputKind:                       src.InputKind,
+		InputRaw:                        cloneJSONRaw(src.InputRaw),
+		InstructionsRaw:                 cloneJSONRaw(src.InstructionsRaw),
+		InputItems:                      cloneOpenAIResponsesRawItems(src.InputItems),
+		Tools:                           cloneOpenAIResponsesRawItems(src.Tools),
+		ToolChoiceRaw:                   cloneJSONRaw(src.ToolChoiceRaw),
+		ProtectableFragments:            cloneOpenAIResponsesProtectableFragments(src.ProtectableFragments),
 	}
 }
 
@@ -345,6 +352,20 @@ func cloneOpenAIResponsesProtectableFragments(src []OpenAIResponsesProtectableFr
 	return append([]OpenAIResponsesProtectableFragment(nil), src...)
 }
 
+func cloneOpenAIResponsesRawProtectionMap(src map[string]OpenAIResponsesRawProtection) map[string]OpenAIResponsesRawProtection {
+	if len(src) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string]OpenAIResponsesRawProtection, len(src))
+	for key, value := range src {
+		value.TextPaths = append([]string(nil), value.TextPaths...)
+		cloned[key] = value
+	}
+
+	return cloned
+}
+
 func cloneOpenAIResponsesRawEvent(src *OpenAIResponsesRawEvent) *OpenAIResponsesRawEvent {
 	if src == nil {
 		return nil
@@ -384,6 +405,32 @@ func cloneJSONRawMap(src map[string]json.RawMessage) map[string]json.RawMessage 
 	cloned := make(map[string]json.RawMessage, len(src))
 	for key, value := range src {
 		cloned[key] = cloneJSONRaw(value)
+	}
+
+	return cloned
+}
+
+func cloneStringMap(src map[string]string) map[string]string {
+	if len(src) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string]string, len(src))
+	for key, value := range src {
+		cloned[key] = value
+	}
+
+	return cloned
+}
+
+func cloneStringSliceMap(src map[string][]string) map[string][]string {
+	if len(src) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string][]string, len(src))
+	for key, value := range src {
+		cloned[key] = append([]string(nil), value...)
 	}
 
 	return cloned

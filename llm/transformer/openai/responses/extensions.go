@@ -13,6 +13,9 @@ const (
 	inputKindString = "string"
 	inputKindArray  = "array"
 
+	fragmentClassSemanticControl = "semantic_control"
+	fragmentClassExecutableTool  = "executable_tool"
+
 	responsesMetadataKeyInclude              = "include"
 	responsesMetadataKeyMaxToolCalls         = "max_tool_calls"
 	responsesMetadataKeyPromptCacheKey       = "prompt_cache_key"
@@ -78,7 +81,11 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 		if requestExt.TopLevelSemanticExtra == nil {
 			requestExt.TopLevelSemanticExtra = map[string]json.RawMessage{}
 		}
+		if requestExt.TopLevelSemanticExtraClasses == nil {
+			requestExt.TopLevelSemanticExtraClasses = map[string]string{}
+		}
 		requestExt.TopLevelSemanticExtra[key] = cloneRaw(value)
+		requestExt.TopLevelSemanticExtraClasses[key] = classifyTopLevelSemanticExtra(key)
 	}
 
 	if len(requestExt.TopLevelExtra) == 0 {
@@ -86,7 +93,19 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	}
 
 	requestExt.ProtectableFragments = buildProtectableFragments(requestExt.InputItems)
+	requestExt.ProtectableFragments = appendTopLevelSemanticProtectableFragments(requestExt.ProtectableFragments, requestExt)
 	providerExt.Request = requestExt
+}
+
+func classifyTopLevelSemanticExtra(key string) string {
+	switch key {
+	case "tool_search", "shell", "local_shell", "mcp", "namespace":
+		return fragmentClassExecutableTool
+	case "prompt", "conversation", "context", "session", "thread", "attachments":
+		return fragmentClassSemanticControl
+	default:
+		return fragmentClassSemanticControl
+	}
 }
 
 func firstImageOutputFormat(tools []Tool) string {
@@ -387,6 +406,98 @@ func buildProtectableFragments(items []llm.OpenAIResponsesRawItem) []llm.OpenAIR
 	}
 
 	return fragments
+}
+
+func appendTopLevelSemanticProtectableFragments(
+	fragments []llm.OpenAIResponsesProtectableFragment,
+	requestExt *llm.OpenAIResponsesRequestExtensions,
+) []llm.OpenAIResponsesProtectableFragment {
+	if requestExt == nil || len(requestExt.TopLevelSemanticExtra) == 0 {
+		return fragments
+	}
+
+	for key, raw := range requestExt.TopLevelSemanticExtra {
+		textByPath := extractTopLevelSemanticExtraTexts(raw, key)
+		if len(textByPath) == 0 {
+			continue
+		}
+
+		paths := make([]string, 0, len(textByPath))
+		for path := range textByPath {
+			paths = append(paths, path)
+		}
+		slices.Sort(paths)
+
+		if requestExt.TopLevelSemanticExtraTextPaths == nil {
+			requestExt.TopLevelSemanticExtraTextPaths = map[string][]string{}
+		}
+		requestExt.TopLevelSemanticExtraTextPaths[key] = paths
+
+		scope := requestExt.TopLevelSemanticExtraClasses[key]
+		if scope == "" {
+			scope = fragmentClassSemanticControl
+		}
+		if requestExt.TopLevelSemanticExtraProtection == nil {
+			requestExt.TopLevelSemanticExtraProtection = map[string]llm.OpenAIResponsesRawProtection{}
+		}
+		requestExt.TopLevelSemanticExtraProtection[key] = llm.OpenAIResponsesRawProtection{
+			Status:        llm.OpenAIResponsesProtectionNotSupported,
+			Scanned:       false,
+			TextExtracted: true,
+			ReplayAllowed: false,
+			Scope:         scope,
+			TextPaths:     append([]string(nil), paths...),
+		}
+		for _, path := range paths {
+			fragments = append(fragments, llm.OpenAIResponsesProtectableFragment{
+				Path:        path,
+				Scope:       scope,
+				Text:        textByPath[path],
+				RewriteMode: "drop_on_change",
+			})
+		}
+	}
+
+	return fragments
+}
+
+func extractTopLevelSemanticExtraTexts(raw json.RawMessage, basePath string) map[string]string {
+	if len(raw) == 0 {
+		return nil
+	}
+
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil
+	}
+
+	result := map[string]string{}
+	collectSemanticExtraStringLeaves(value, basePath, result)
+	if len(result) == 0 {
+		return nil
+	}
+
+	return result
+}
+
+func collectSemanticExtraStringLeaves(value any, path string, result map[string]string) {
+	switch typed := value.(type) {
+	case string:
+		if typed != "" {
+			result[path] = typed
+		}
+	case []any:
+		for i, item := range typed {
+			collectSemanticExtraStringLeaves(item, fmt.Sprintf("%s[%d]", path, i), result)
+		}
+	case map[string]any:
+		for key, item := range typed {
+			if isUnprotectableMetadataKey(key) {
+				continue
+			}
+			collectSemanticExtraStringLeaves(item, path+"."+key, result)
+		}
+	}
 }
 
 func extractProtectableTextPaths(raw json.RawMessage, basePath string) []string {

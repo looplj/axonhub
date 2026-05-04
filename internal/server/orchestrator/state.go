@@ -123,6 +123,7 @@ const (
 	RequestDirtyInputItems            RequestDirtyScope = "input_items"
 	RequestDirtyTools                 RequestDirtyScope = "tools"
 	RequestDirtyToolChoice            RequestDirtyScope = "tool_choice"
+	RequestDirtyMetadata              RequestDirtyScope = "metadata"
 	RequestDirtyTopLevelSemanticExtra RequestDirtyScope = "top_level_semantic_extra"
 )
 
@@ -260,6 +261,10 @@ func (s *PersistenceState) currentAttemptRawProviderRequest() *httpclient.Reques
 	}
 
 	return s.RawProviderRequest
+}
+
+func (s *PersistenceState) currentAttemptPassThroughBodyApplied() bool {
+	return s != nil && s.CurrentAttemptRequestBodyPassThroughEnabled
 }
 
 func (s *PersistenceState) resetCurrentAttemptState() {

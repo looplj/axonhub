@@ -83,6 +83,35 @@ func TestInboundTransformer_TransformRequest_CapturesOpenAIResponsesCompatibilit
 	require.Equal(t, ext.ImageOutputFormat, req.TransformerMetadata[responsesMetadataKeyImageOutputFormat])
 }
 
+func TestInboundTransformer_TransformRequest_CapturesTopLevelSemanticExtraProtection(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body: []byte(`{
+			"model": "gpt-5.1",
+			"prompt": {"id": "prompt_1", "text": "system secret"},
+			"local_shell": {"type": "local_shell", "input": "cat ~/.config/token"},
+			"input": "hello"
+		}`),
+	})
+	require.NoError(t, err)
+
+	ext := requireResponsesRequestExtensions(t, req)
+	require.Equal(t, fragmentClassSemanticControl, ext.TopLevelSemanticExtraClasses["prompt"])
+	require.Equal(t, fragmentClassExecutableTool, ext.TopLevelSemanticExtraClasses["local_shell"])
+	require.Equal(t, []string{"prompt.text"}, ext.TopLevelSemanticExtraTextPaths["prompt"])
+	require.Equal(t, []string{"local_shell.input"}, ext.TopLevelSemanticExtraTextPaths["local_shell"])
+
+	fragmentsByPath := map[string]llm.OpenAIResponsesProtectableFragment{}
+	for _, fragment := range ext.ProtectableFragments {
+		fragmentsByPath[fragment.Path] = fragment
+	}
+	require.Equal(t, fragmentClassSemanticControl, fragmentsByPath["prompt.text"].Scope)
+	require.Equal(t, "system secret", fragmentsByPath["prompt.text"].Text)
+	require.Equal(t, fragmentClassExecutableTool, fragmentsByPath["local_shell.input"].Scope)
+	require.Equal(t, "cat ~/.config/token", fragmentsByPath["local_shell.input"].Text)
+}
+
 func TestOutboundTransformer_TransformRequest_PreservesRawExtensionsWhenClean(t *testing.T) {
 	req := transformRawExtensionFixture(t)
 	req.Model = "mapped-model"
@@ -185,6 +214,65 @@ func TestOutboundTransformer_TransformRequest_DirtyStructuredWinsOverRawReplay(t
 	require.NotContains(t, bodyText, "conv_123")
 	require.Contains(t, bodyText, "hello")
 	require.JSONEq(t, `{"owner":"team-a","flags":{"safe":true},"count":2,"enabled":true,"none":null}`, rawJSONField(t, body, "metadata"))
+}
+
+func TestOutboundTransformer_TransformRequest_DropsUnscannedTopLevelSemanticExtraWithText(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body: []byte(`{
+			"model": "gpt-5.1",
+			"prompt": {"text": "system secret"},
+			"input": "hello"
+		}`),
+	})
+	require.NoError(t, err)
+
+	body := outboundResponsesBody(t, req)
+	require.NotContains(t, string(body), "system secret")
+}
+
+func TestOutboundTransformer_TransformRequest_ReplaysScannedCleanTopLevelSemanticExtraWithText(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body: []byte(`{
+			"model": "gpt-5.1",
+			"prompt": {"text": "system prompt"},
+			"input": "hello"
+		}`),
+	})
+	require.NoError(t, err)
+
+	ext := requireResponsesRequestExtensions(t, req)
+	ext.TopLevelSemanticExtraProtection["prompt"] = llm.OpenAIResponsesRawProtection{
+		Status:        llm.OpenAIResponsesProtectionEvaluatedNoRules,
+		Scanned:       true,
+		TextExtracted: true,
+		ReplayAllowed: true,
+		Scope:         fragmentClassSemanticControl,
+		TextPaths:     []string{"prompt.text"},
+	}
+
+	body := outboundResponsesBody(t, req)
+	require.JSONEq(t, `{"text":"system prompt"}`, rawJSONField(t, body, "prompt"))
+}
+
+func TestOutboundTransformer_TransformRequest_MetadataDirtyOverlaysStructuredValues(t *testing.T) {
+	req := transformRawExtensionFixture(t)
+	req.Metadata["owner"] = "team-b"
+	req.Metadata["new"] = "value"
+	llm.MarkOpenAIResponsesDirty(req, llm.OpenAIResponsesDirtyMetadata)
+
+	body := outboundResponsesBody(t, req)
+	require.JSONEq(t, `{
+		"owner": "team-b",
+		"flags": {"safe": true},
+		"count": 2,
+		"enabled": true,
+		"none": null,
+		"new": "value"
+	}`, rawJSONField(t, body, "metadata"))
 }
 
 func transformRawExtensionFixture(t *testing.T) *llm.Request {

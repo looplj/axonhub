@@ -154,6 +154,32 @@ func updateOpenAIResponsesFragmentProtection(req *llm.Request, results []biz.Pro
 			item.Protection.Status = openAIResponsesProtectionStatus(result)
 		}
 	}
+
+	for key, textPaths := range requestExt.TopLevelSemanticExtraTextPaths {
+		for _, result := range results {
+			if !fragmentResultBelongsToItem(result.Path, textPaths) {
+				continue
+			}
+
+			if requestExt.TopLevelSemanticExtraProtection == nil {
+				requestExt.TopLevelSemanticExtraProtection = map[string]llm.OpenAIResponsesRawProtection{}
+			}
+
+			current := requestExt.TopLevelSemanticExtraProtection[key]
+			if current.Scanned && !current.ReplayAllowed {
+				continue
+			}
+
+			current.Scanned = true
+			current.TextExtracted = true
+			current.Scope = result.Scope
+			current.ReplayAllowed = result.ReplayAllowed
+			current.Changed = current.Changed || result.Changed
+			current.Status = openAIResponsesProtectionStatus(result)
+			current.TextPaths = append([]string(nil), textPaths...)
+			requestExt.TopLevelSemanticExtraProtection[key] = current
+		}
+	}
 }
 
 func fragmentResultBelongsToItem(path string, textPaths []string) bool {

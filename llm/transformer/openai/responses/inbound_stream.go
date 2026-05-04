@@ -119,9 +119,6 @@ func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
 	s.aggregator.processEvent(ev)
 	if isResponsesTerminalEvent(ev.Type) && s.replayState != nil {
 		s.replayState.TerminalEmitted = true
-		if ev.Type == StreamEventTypeResponseCompleted {
-			s.replayState.SyntheticCompletedEmitted = true
-		}
 	}
 
 	return nil
@@ -189,9 +186,6 @@ func (s *responsesInboundStream) Next() bool {
 	}
 
 	s.currentRawEvent = streamRawEvent(chunk)
-	if s.replayState != nil {
-		s.replayState.LastStructuredResponse = chunk
-	}
 	defer func() {
 		s.currentRawEvent = nil
 	}()

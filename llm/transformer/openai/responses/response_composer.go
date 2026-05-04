@@ -26,8 +26,10 @@ func (c *responseComposer) Compose() (*Response, []byte, error) {
 	}
 
 	payload := c.structuredResponse()
-	payload.Extra = cloneRawMap(c.responseExtensions().TopLevelExtra)
-	payload.MetadataRaw = cloneRaw(c.responseExtensions().MetadataRaw)
+	if !c.responseDirty().Has(llm.OpenAIResponsesDirtyResponseEnvelope) {
+		payload.Extra = cloneRawMap(c.responseExtensions().TopLevelExtra)
+		payload.MetadataRaw = cloneRaw(c.responseExtensions().MetadataRaw)
+	}
 	payload.Output = c.restoreOutputItems(payload.Output)
 
 	body, err := json.Marshal(payload)
@@ -201,6 +203,10 @@ func (c *responseComposer) restoreOutputItems(structured []Item) []Item {
 
 	knownByKey, contentExtraByKey, rawTopLevel := splitResponseRawOutputItems(responseExt.OutputItems)
 	structured = applyKnownOutputExtras(structured, knownByKey, contentExtraByKey)
+	if c.responseDirty().Has(llm.OpenAIResponsesDirtyResponseOutput) {
+		return c.ensureNonEmptyOutput(structured, false)
+	}
+
 	restored := interleaveRawOutputItems(structured, rawTopLevel)
 
 	return c.ensureNonEmptyOutput(restored, len(rawTopLevel) > 0)
@@ -240,6 +246,15 @@ func (c *responseComposer) responseExtensions() *llm.OpenAIResponsesResponseExte
 	}
 
 	return c.resp.ProviderExtensions.OpenAIResponses.Response
+}
+
+func (c *responseComposer) responseDirty() llm.OpenAIResponsesDirtySet {
+	if c == nil || c.resp == nil || c.resp.ProviderExtensions == nil ||
+		c.resp.ProviderExtensions.OpenAIResponses == nil {
+		return llm.OpenAIResponsesDirtySet{}
+	}
+
+	return c.resp.ProviderExtensions.OpenAIResponses.Dirty
 }
 
 func splitResponseRawOutputItems(

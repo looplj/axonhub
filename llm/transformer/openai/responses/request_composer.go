@@ -417,6 +417,10 @@ func (c *requestComposer) toolChoiceField(payload Request) json.RawMessage {
 func (c *requestComposer) metadataField(payload Request) json.RawMessage {
 	requestExt := c.openAIResponsesRequestExtensions()
 	if requestExt != nil && len(requestExt.MetadataRaw) > 0 {
+		if c.dirty().Has(llm.OpenAIResponsesDirtyMetadata) {
+			return overlayStructuredMetadata(requestExt.MetadataRaw, payload.Metadata)
+		}
+
 		return cloneRaw(requestExt.MetadataRaw)
 	}
 
@@ -430,6 +434,41 @@ func (c *requestComposer) metadataField(payload Request) json.RawMessage {
 	}
 
 	return raw
+}
+
+func overlayStructuredMetadata(raw json.RawMessage, structured map[string]string) json.RawMessage {
+	if len(structured) == 0 {
+		return cloneRaw(raw)
+	}
+
+	var rawObject map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &rawObject); err != nil {
+		encoded, marshalErr := marshalRaw(structured)
+		if marshalErr != nil {
+			return cloneRaw(raw)
+		}
+
+		return encoded
+	}
+
+	merged := cloneRawMap(rawObject)
+	if merged == nil {
+		merged = map[string]json.RawMessage{}
+	}
+	for key, value := range structured {
+		encoded, err := marshalRaw(value)
+		if err != nil {
+			continue
+		}
+		merged[key] = encoded
+	}
+
+	encoded, err := json.Marshal(merged)
+	if err != nil {
+		return cloneRaw(raw)
+	}
+
+	return encoded
 }
 
 func (c *requestComposer) openAIResponsesRequestExtensions() *llm.OpenAIResponsesRequestExtensions {
@@ -452,13 +491,40 @@ func (c *requestComposer) dirty() llm.OpenAIResponsesDirtySet {
 
 func (c *requestComposer) canReplayTopLevelSemanticExtra() bool {
 	dirty := c.dirty()
-
-	return !dirty.HasAny(
+	if dirty.HasAny(
 		llm.OpenAIResponsesDirtyMessages,
 		llm.OpenAIResponsesDirtyInstructions,
 		llm.OpenAIResponsesDirtyInputItems,
 		llm.OpenAIResponsesDirtyTopLevelSemanticExtra,
-	)
+	) {
+		return false
+	}
+
+	requestExt := c.openAIResponsesRequestExtensions()
+	if requestExt == nil {
+		return false
+	}
+
+	for key := range requestExt.TopLevelSemanticExtra {
+		if len(requestExt.TopLevelSemanticExtraTextPaths[key]) == 0 {
+			continue
+		}
+
+		protection, ok := requestExt.TopLevelSemanticExtraProtection[key]
+		if !ok || !protection.Scanned || !protection.ReplayAllowed {
+			return false
+		}
+
+		switch protection.Status {
+		case llm.OpenAIResponsesProtectionEvaluatedNoRules,
+			llm.OpenAIResponsesProtectionEvaluatedNoMatch,
+			llm.OpenAIResponsesProtectionMatchedNoChange:
+		default:
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c *requestComposer) canReplayRawInput() bool {

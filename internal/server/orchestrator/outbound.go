@@ -462,6 +462,9 @@ func syncRequestDirtyToOpenAIResponsesExtensions(req *llm.Request, dirty *Reques
 	if dirty.Has(RequestDirtyToolChoice) {
 		scopes = append(scopes, llm.OpenAIResponsesDirtyToolChoice)
 	}
+	if dirty.Has(RequestDirtyMetadata) {
+		scopes = append(scopes, llm.OpenAIResponsesDirtyMetadata)
+	}
 	if dirty.Has(RequestDirtyTopLevelSemanticExtra) {
 		scopes = append(scopes, llm.OpenAIResponsesDirtyTopLevelSemanticExtra)
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,6 +21,7 @@ import (
 
 // mockInboundTransformer is a mock transformer for testing.
 type mockInboundTransformer struct {
+	request               *llm.Request
 	aggregateResponseBody []byte
 	aggregateMeta         llm.ResponseMeta
 	aggregateErr          error
@@ -30,6 +32,10 @@ func (m *mockInboundTransformer) APIFormat() llm.APIFormat {
 }
 
 func (m *mockInboundTransformer) TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error) {
+	if m.request != nil {
+		return m.request, nil
+	}
+
 	return &llm.Request{}, nil
 }
 
@@ -47,6 +53,40 @@ func (m *mockInboundTransformer) TransformError(ctx context.Context, rawErr erro
 
 func (m *mockInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return m.aggregateResponseBody, m.aggregateMeta, m.aggregateErr
+}
+
+func TestPersistentInboundTransformer_TransformRequest_KeepsInboundParsedBaselineImmutable(t *testing.T) {
+	ctx := context.Background()
+	rawRequest := &httpclient.Request{Body: []byte(`{"model":"gpt-4o","messages":[]}`)}
+	sourceRequest := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("original"),
+				},
+			},
+		},
+		Metadata: map[string]string{"trace": "original"},
+	}
+	state := &PersistenceState{}
+	inbound := &PersistentInboundTransformer{
+		wrapped: &mockInboundTransformer{request: sourceRequest},
+		state:   state,
+	}
+
+	llmRequest, err := inbound.TransformRequest(ctx, rawRequest)
+	require.NoError(t, err)
+	require.Same(t, llmRequest, state.EffectiveSemanticRequest)
+	require.NotSame(t, llmRequest, state.InboundParsedRequest)
+
+	*llmRequest.Messages[0].Content.Content = "mutated"
+	llmRequest.Metadata["trace"] = "mutated"
+
+	require.Equal(t, "original", *state.InboundParsedRequest.Messages[0].Content.Content)
+	require.Equal(t, "original", state.InboundParsedRequest.Metadata["trace"])
+	require.Equal(t, "mutated", *state.EffectiveSemanticRequest.Messages[0].Content.Content)
 }
 
 // mockStream is a simple mock stream for testing.

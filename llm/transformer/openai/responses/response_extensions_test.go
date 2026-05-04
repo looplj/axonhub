@@ -102,6 +102,43 @@ func TestResponsesResponseComposer_StructuredFieldsWinOverRawEnvelope(t *testing
 	require.Equal(t, "future_output", output[7].(map[string]any)["type"])
 }
 
+func TestResponsesResponseComposer_DirtyOutputDoesNotRestoreRawOnlyOutput(t *testing.T) {
+	llmResp := transformProviderResponsesBody(t, responseBodyWithRawExtensions())
+	llmResp.ProviderExtensions.OpenAIResponses.Dirty.Mark(llm.OpenAIResponsesDirtyResponseOutput)
+
+	httpResp, err := NewInboundTransformer().TransformResponse(t.Context(), llmResp)
+	require.NoError(t, err)
+
+	var actual map[string]any
+	err = json.Unmarshal(httpResp.Body, &actual)
+	require.NoError(t, err)
+
+	output := actual["output"].([]any)
+	require.Len(t, output, 1)
+	message := output[0].(map[string]any)
+	require.Equal(t, "message", message["type"])
+	require.Equal(t, "final_answer", message["phase"])
+	content := message["content"].([]any)[0].(map[string]any)
+	require.Equal(t, []any{}, content["logprobs"])
+	require.NotContains(t, string(httpResp.Body), "future_output")
+	require.NotContains(t, string(httpResp.Body), "mcp_tool_call_output")
+}
+
+func TestResponsesResponseComposer_DirtyEnvelopeDoesNotRestoreRawEnvelopeExtras(t *testing.T) {
+	llmResp := transformProviderResponsesBody(t, responseBodyWithRawExtensions())
+	llmResp.ProviderExtensions.OpenAIResponses.Dirty.Mark(llm.OpenAIResponsesDirtyResponseEnvelope)
+
+	httpResp, err := NewInboundTransformer().TransformResponse(t.Context(), llmResp)
+	require.NoError(t, err)
+
+	var actual map[string]any
+	err = json.Unmarshal(httpResp.Body, &actual)
+	require.NoError(t, err)
+
+	require.NotContains(t, actual, "client_metadata")
+	require.NotContains(t, actual, "metadata")
+}
+
 func TestResponsesResponseRoundTrip_RawOnlyOutputIsContentAndDoesNotCreateEmptyMessage(t *testing.T) {
 	llmResp := transformProviderResponsesBody(t, []byte(`{
 		"id": "resp_raw_only",

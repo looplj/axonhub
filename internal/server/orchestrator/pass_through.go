@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -15,15 +16,16 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-// isPassThroughEnabled returns true when the effective pass-through flag for the current
-// channel is enabled and both the inbound and outbound API formats are identical.
-//
-// The effective flag is the channel-level PassThroughBody when set, otherwise it falls back
-// to the global system setting. systemService may be nil; in that case only the channel-level
-// setting is consulted (used by tests that exercise per-channel behavior in isolation).
+// isPassThroughEnabled returns true when request body pass-through is explicitly enabled and
+// safe to attempt for the current outbound request. It does not mean the raw body has been
+// successfully applied yet.
 func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context, systemService *biz.SystemService) bool {
 	channel := p.GetCurrentChannel()
 	if channel == nil {
+		return false
+	}
+
+	if !p.passThroughBodyConfigured(ctx, systemService) {
 		return false
 	}
 
@@ -47,6 +49,8 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context
 		RequestDirtyInputItems,
 		RequestDirtyTools,
 		RequestDirtyToolChoice,
+		RequestDirtyMetadata,
+		RequestDirtyTopLevelSemanticExtra,
 	) {
 		return false
 	}
@@ -62,6 +66,36 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context
 	return true
 }
 
+// passThroughBodyConfigured resolves channel-level PassThroughBody first, then falls back to
+// the global system setting. Missing services and read errors fail closed.
+func (p *PersistentOutboundTransformer) passThroughBodyConfigured(ctx context.Context, systemService *biz.SystemService) bool {
+	channel := p.GetCurrentChannel()
+	if channel == nil {
+		return false
+	}
+
+	if channel.Settings != nil && channel.Settings.PassThroughBody != nil {
+		return *channel.Settings.PassThroughBody
+	}
+
+	if systemService == nil {
+		return false
+	}
+
+	enabled, err := systemService.PassThrough(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to get global pass-through body setting",
+			log.String("channel", channel.Name),
+			log.Int("channel_id", channel.ID),
+			log.Cause(err),
+		)
+
+		return false
+	}
+
+	return enabled
+}
+
 // applyPassThroughRequestBody creates a middleware that reuses the original inbound request body when
 // the channel enables pass-through and the inbound and outbound API formats are identical.
 // For formats that encode the selected model in the request body, the mapped llmReq.Model is
@@ -71,9 +105,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		outbound.state.CurrentAttemptRawProviderRequest = request
 		outbound.state.RawProviderRequest = request
+		outbound.state.CurrentAttemptRequestBodyPassThroughEnabled = false
 
 		enabled := outbound.isPassThroughEnabled(ctx, systemService)
-		outbound.state.CurrentAttemptRequestBodyPassThroughEnabled = enabled
 
 		if !enabled {
 			return request, nil
@@ -83,6 +117,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		llmReq := outbound.state.CurrentAttemptRequest
 		if llmReq == nil {
 			llmReq = outbound.state.effectiveSemanticRequest()
+		}
+		if llmReq == nil || llmReq.RawRequest == nil {
+			return request, nil
 		}
 
 		log.Debug(ctx, "applying pass-through body",
@@ -102,6 +139,7 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		}
 
 		request.Body = body
+		outbound.state.CurrentAttemptRequestBodyPassThroughEnabled = true
 
 		return request, nil
 	})
@@ -116,6 +154,9 @@ func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model 
 
 	if model == "" {
 		return body, nil
+	}
+	if !gjson.ValidBytes(body) {
+		return nil, fmt.Errorf("raw pass-through body is invalid JSON")
 	}
 
 	nextBody, err := sjson.SetBytes(body, "model", model)
@@ -190,7 +231,7 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 // captureRawProviderResponse stores the raw provider response on state for response pass-through.
 func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawResponse("capture-raw-provider-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if outbound.isPassThroughEnabled(ctx, systemService) {
+		if outbound.state.currentAttemptPassThroughBodyApplied() {
 			outbound.state.RawProviderResponse = response
 		}
 
@@ -202,7 +243,7 @@ func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemS
 // when PassThroughBody is enabled and the inbound/outbound API formats match.
 func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnInboundRawResponse("pass-through-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		if !outbound.state.currentAttemptPassThroughBodyApplied() {
 			return response, nil
 		}
 
@@ -226,7 +267,7 @@ func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemSer
 // raw events are stored on state.RawStreamCh for pass-through delivery.
 func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		if !outbound.state.currentAttemptPassThroughBodyApplied() {
 			return stream, nil
 		}
 
@@ -299,7 +340,7 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 // performance recording, rate limit tracking) still process events.
 func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnInboundRawStream("pass-through-response-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		if !outbound.state.currentAttemptPassThroughBodyApplied() {
 			return stream, nil
 		}
 
