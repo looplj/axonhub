@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
@@ -96,6 +97,7 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			apikey.Table:                   apikey.ValidColumn,
+			apikeyprofiletemplate.Table:    apikeyprofiletemplate.ValidColumn,
 			channel.Table:                  channel.ValidColumn,
 			channelmodelprice.Table:        channelmodelprice.ValidColumn,
 			channelmodelpriceversion.Table: channelmodelpriceversion.ValidColumn,

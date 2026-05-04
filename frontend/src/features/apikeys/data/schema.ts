@@ -179,6 +179,35 @@ export const apiKeyProfilesSchema = z.object({
 });
 export type ApiKeyProfiles = z.infer<typeof apiKeyProfilesSchema>;
 
+// API Key Profile Template schema
+export const apiKeyProfileTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().default(''),
+  profile: apiKeyProfileSchema,
+  projectID: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ApiKeyProfileTemplate = z.infer<typeof apiKeyProfileTemplateSchema>;
+
+// Create API Key Profile Template Input schema
+export const createApiKeyProfileTemplateInputSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  projectID: z.string(),
+  profile: apiKeyProfileSchema,
+});
+export type CreateApiKeyProfileTemplateInput = z.infer<typeof createApiKeyProfileTemplateInputSchema>;
+
+// Update API Key Profile Template Input schema
+export const updateApiKeyProfileTemplateInputSchema = z.object({
+  name: z.string().min(1, 'Name is required').optional(),
+  description: z.string().optional(),
+  profile: apiKeyProfileSchema.optional(),
+});
+export type UpdateApiKeyProfileTemplateInput = z.infer<typeof updateApiKeyProfileTemplateInputSchema>;
+
 // Update API Key Profiles Input schema - factory function for i18n support
 export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => string) =>
   z

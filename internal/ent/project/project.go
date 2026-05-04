@@ -49,6 +49,8 @@ const (
 	EdgeTraces = "traces"
 	// EdgePrompts holds the string denoting the prompts edge name in mutations.
 	EdgePrompts = "prompts"
+	// EdgeAPIKeyProfileTemplates holds the string denoting the api_key_profile_templates edge name in mutations.
+	EdgeAPIKeyProfileTemplates = "api_key_profile_templates"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// Table holds the table name of the project in the database.
@@ -105,6 +107,13 @@ const (
 	// PromptsInverseTable is the table name for the Prompt entity.
 	// It exists in this package in order to avoid circular dependency with the "prompt" package.
 	PromptsInverseTable = "prompts"
+	// APIKeyProfileTemplatesTable is the table that holds the api_key_profile_templates relation/edge.
+	APIKeyProfileTemplatesTable = "api_key_profile_templates"
+	// APIKeyProfileTemplatesInverseTable is the table name for the APIKeyProfileTemplate entity.
+	// It exists in this package in order to avoid circular dependency with the "apikeyprofiletemplate" package.
+	APIKeyProfileTemplatesInverseTable = "api_key_profile_templates"
+	// APIKeyProfileTemplatesColumn is the table column denoting the api_key_profile_templates relation/edge.
+	APIKeyProfileTemplatesColumn = "project_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -344,6 +353,20 @@ func ByPrompts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByAPIKeyProfileTemplatesCount orders the results by api_key_profile_templates count.
+func ByAPIKeyProfileTemplatesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAPIKeyProfileTemplatesStep(), opts...)
+	}
+}
+
+// ByAPIKeyProfileTemplates orders the results by api_key_profile_templates terms.
+func ByAPIKeyProfileTemplates(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAPIKeyProfileTemplatesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -411,6 +434,13 @@ func newPromptsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PromptsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, PromptsTable, PromptsPrimaryKey...),
+	)
+}
+func newAPIKeyProfileTemplatesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(APIKeyProfileTemplatesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, APIKeyProfileTemplatesTable, APIKeyProfileTemplatesColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

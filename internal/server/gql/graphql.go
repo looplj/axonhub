@@ -19,6 +19,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
@@ -63,6 +64,7 @@ type Dependencies struct {
 	ThreadService                  *biz.ThreadService
 	UsageLogService                *biz.UsageLogService
 	ChannelOverrideTemplateService *biz.ChannelOverrideTemplateService
+	APIKeyProfileTemplateService   *biz.APIKeyProfileTemplateService
 	ModelService                   *biz.ModelService
 	BackupService                  *backup.BackupService
 	ChannelProbeService            *biz.ChannelProbeService
@@ -100,6 +102,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ThreadService,
 			deps.UsageLogService,
 			deps.ChannelOverrideTemplateService,
+			deps.APIKeyProfileTemplateService,
 			deps.ModelService,
 			deps.BackupService,
 			deps.ChannelProbeService,
@@ -165,6 +168,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 var guidTypeToNodeType = map[string]string{
 	ent.TypeUser:                    user.Table,
 	ent.TypeAPIKey:                  apikey.Table,
+	ent.TypeAPIKeyProfileTemplate:   apikeyprofiletemplate.Table,
 	ent.TypeModel:                   model.Table,
 	ent.TypeChannel:                 channel.Table,
 	ent.TypeChannelProbe:            channelprobe.Table,

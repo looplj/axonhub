@@ -366,6 +366,16 @@ enum ChannelTagsMatchMode {
   none
 }
 
+# ApiKeyProfileTemplate uses the Ent-generated type and input types from ent.graphql
+
+
+
+# Load template input - custom input for loading template to API key
+input LoadApiKeyProfileTemplateInput {
+  templateID: ID!
+  apiKeyID: ID!
+}
+
 input APIKeyQuotaInput {
   requests: Int
   totalTokens: Int
@@ -818,6 +828,21 @@ type Mutation {
 
   # Trigger immediate model sync for a channel
   syncChannelModels(channelID: ID!, pattern: String): SyncChannelModelsPayload!
+
+  # API Key Profile Template Mutations
+  createApiKeyProfileTemplate(
+    input: CreateAPIKeyProfileTemplateInput!
+    profile: APIKeyProfileInput!
+  ): APIKeyProfileTemplate!
+  updateApiKeyProfileTemplate(
+    id: ID!
+    input: UpdateAPIKeyProfileTemplateInput!
+    profile: APIKeyProfileInput
+  ): APIKeyProfileTemplate!
+  deleteApiKeyProfileTemplate(id: ID!): APIKeyProfileTemplate!
+  loadApiKeyProfileTemplate(
+    input: LoadApiKeyProfileTemplateInput!
+  ): APIKey!
 }
 
 input QueryChannelInput {

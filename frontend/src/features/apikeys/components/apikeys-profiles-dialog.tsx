@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { ApiKeySaveTemplateDialog } from './apikeys-save-template-dialog';
+import { ApiKeyLoadTemplatePopover } from './apikeys-load-template-popover';
 import { format, type Locale } from 'date-fns';
 import { zhCN, enUS } from 'date-fns/locale';
 import { useQueryModels } from '@/gql/models';
@@ -78,6 +80,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   const { selectedApiKey } = useApiKeysContext();
   const selectedProjectId = useSelectedProjectId();
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
+  const [templateLoadPending, setTemplateLoadPending] = useState(false);
   // 用于解决 Dialog 内 Popover 无法滚动的问题
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -93,6 +96,10 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
     });
     return map;
   }, [quotaUsagesQuery.data]);
+
+  // Template save/load state
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [saveTemplateProfileIndex, setSaveTemplateProfileIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -169,6 +176,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   useEffect(() => {
     if (!open) {
       lastInitialDataRef.current = null;
+      setTemplateLoadPending(false);
       return;
     }
 
@@ -176,13 +184,23 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       return;
     }
 
+    const wasTemplatePending = templateLoadPending;
+    if (wasTemplatePending) {
+      setTemplateLoadPending(false);
+    }
+
     if (lastInitialDataRef.current === normalizedSerialized) {
+      return;
+    }
+
+    if (wasTemplatePending) {
+      lastInitialDataRef.current = normalizedSerialized;
       return;
     }
 
     form.reset(normalizedInitialData);
     lastInitialDataRef.current = normalizedSerialized;
-  }, [open, loading, form, normalizedInitialData, normalizedSerialized]);
+  }, [open, loading, form, normalizedInitialData, normalizedSerialized, templateLoadPending]);
 
   // Scroll to active profile after profiles rendered
   useEffect(() => {
@@ -283,10 +301,25 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
               <form id='apikey-profiles-form' onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
                 <div className='flex items-center justify-between'>
                   <h3 className='text-lg font-medium'>{t('apikeys.profiles.profilesTitle')}</h3>
-                  <Button type='button' variant='outline' size='sm' onClick={addProfile} className='flex items-center gap-2'>
-                    <IconPlus className='h-4 w-4' />
-                    {t('apikeys.profiles.addProfile')}
-                  </Button>
+                  <div className='flex items-center gap-2'>
+                    <ApiKeyLoadTemplatePopover
+                      apiKeyID={apiKeyId}
+                      projectID={selectedProjectId}
+                      onLoadComplete={(loadedProfiles) => {
+                        const resetData = {
+                          activeProfile: loadedProfiles.activeProfile || loadedProfiles.profiles[0]?.name || '',
+                          profiles: loadedProfiles.profiles,
+                        };
+                        setTemplateLoadPending(true);
+                        form.reset(resetData);
+                        lastInitialDataRef.current = JSON.stringify(resetData);
+                      }}
+                    />
+                    <Button type='button' variant='outline' size='sm' onClick={addProfile} className='flex items-center gap-2'>
+                      <IconPlus className='h-4 w-4' />
+                      {t('apikeys.profiles.addProfile')}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>
@@ -323,6 +356,10 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                               defaultExpanded={isActive}
                               portalContainer={dialogContent}
                               selectedProjectId={selectedProjectId}
+                              onSaveTemplate={(idx) => {
+                                setSaveTemplateProfileIndex(idx);
+                                setSaveTemplateOpen(true);
+                              }}
                             />
                           </div>
                         );
@@ -382,12 +419,23 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
             <Button
               type='submit'
               form='apikey-profiles-form'
-              disabled={loading || !form.formState.isValid || Object.keys(form.formState.errors).length > 0}
+              disabled={loading || templateLoadPending || !form.formState.isValid || Object.keys(form.formState.errors).length > 0}
             >
-              {loading ? t('common.buttons.saving') : t('common.buttons.save')}
+              {loading || templateLoadPending ? t('common.buttons.saving') : t('common.buttons.save')}
             </Button>
           </div>
         </DialogFooter>
+        {saveTemplateOpen && saveTemplateProfileIndex !== null && (
+          <ApiKeySaveTemplateDialog
+            open={saveTemplateOpen}
+            onOpenChange={(open) => {
+              setSaveTemplateOpen(open);
+              if (!open) setSaveTemplateProfileIndex(null);
+            }}
+            profileData={form.watch(`profiles.${saveTemplateProfileIndex}`)}
+            projectID={selectedProjectId}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -407,6 +455,7 @@ interface ProfileCardProps {
   portalContainer?: HTMLElement | null;
   /** 当前选中的 project ID */
   selectedProjectId?: string | null;
+  onSaveTemplate: (profileIndex: number) => void;
 }
 
 function ProfileCard({
@@ -421,6 +470,7 @@ function ProfileCard({
   defaultExpanded = false,
   portalContainer,
   selectedProjectId,
+  onSaveTemplate,
 }: ProfileCardProps) {
   const [localProfileName, setLocalProfileName] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded);
@@ -535,6 +585,14 @@ function ProfileCard({
               aria-label={isCollapsed ? t('apikeys.profiles.expand') : t('apikeys.profiles.collapse')}
             >
               {isCollapsed ? <IconChevronDown className='h-4 w-4' /> : <IconChevronUp className='h-4 w-4' />}
+            </Button>
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={() => onSaveTemplate(profileIndex)}
+            >
+              {t('apikeys.templates.saveAsTemplateButton')}
             </Button>
             {canRemove && (
               <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive'>
@@ -707,7 +765,10 @@ function ProfileCard({
                                 type='number'
                                 min={1}
                                 value={(field.value as unknown as number | null | undefined) ?? ''}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  field.onChange(v === '' ? null : Number(v));
+                                }}
                               />
                             </FormControl>
                             <FormMessage />

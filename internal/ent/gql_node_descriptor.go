@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
@@ -166,6 +167,76 @@ func (_m *APIKey) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryRequests().
 		Select(request.FieldID).
 		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *APIKeyProfileTemplate) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "APIKeyProfileTemplate",
+		Fields: make([]*Field, 6),
+		Edges:  make([]*Edge, 1),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Description); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "string",
+		Name:  "description",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Profile); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "*objects.APIKeyProfile",
+		Name:  "profile",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -1046,7 +1117,7 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "Project",
 		Fields: make([]*Field, 6),
-		Edges:  make([]*Edge, 9),
+		Edges:  make([]*Edge, 10),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -1178,12 +1249,22 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[8] = &Edge{
+		Type: "APIKeyProfileTemplate",
+		Name: "api_key_profile_templates",
+	}
+	err = _m.QueryAPIKeyProfileTemplates().
+		Select(apikeyprofiletemplate.FieldID).
+		Scan(ctx, &node.Edges[8].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[9] = &Edge{
 		Type: "UserProject",
 		Name: "project_users",
 	}
 	err = _m.QueryProjectUsers().
 		Select(userproject.FieldID).
-		Scan(ctx, &node.Edges[8].IDs)
+		Scan(ctx, &node.Edges[9].IDs)
 	if err != nil {
 		return nil, err
 	}
