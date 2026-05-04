@@ -101,7 +101,9 @@ func (t *OutboundTransformer) transformImageRequest(ctx context.Context, llmReq 
 		ImageGeneration: imageTool,
 	}}
 	imageReq.ToolChoice = &llm.ToolChoice{
-		ToolChoice: lo.ToPtr("required"),
+		NamedToolChoice: &llm.NamedToolChoice{
+			Type: llm.ToolTypeImageGeneration,
+		},
 	}
 	imageReq.Stream = lo.ToPtr(true)
 	imageReq.Store = lo.ToPtr(false)

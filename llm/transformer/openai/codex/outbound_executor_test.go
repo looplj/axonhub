@@ -337,7 +337,8 @@ func TestCodexOutbound_TransformsImageGenerationToResponsesTool(t *testing.T) {
 	require.Equal(t, false, body["store"])
 	toolChoice, ok := body["tool_choice"].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "required", toolChoice["mode"])
+	require.Equal(t, "image_generation", toolChoice["type"])
+	require.NotContains(t, toolChoice, "name")
 	require.Equal(t, string(llm.RequestTypeImage), hreq.RequestType)
 
 	tools, ok := body["tools"].([]any)
@@ -435,6 +436,36 @@ func TestCodexOutbound_ImageResponseWrapsB64JSON(t *testing.T) {
 	require.NotNil(t, resp.Image)
 	require.Len(t, resp.Image.Data, 1)
 	require.Equal(t, "aW1hZ2U=", resp.Image.Data[0].B64JSON)
+}
+
+func TestCodexOutbound_ImageResponseWrapsAggregatedStreamResult(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+	hreq := &httpclient.Request{
+		RequestType: string(llm.RequestTypeImage),
+		TransformerMetadata: map[string]any{
+			"image_output_format": "png",
+		},
+	}
+	executor := outbound.CustomizeExecutor(&mockCodexExecutor{
+		streamEvents: []*httpclient.StreamEvent{
+			{Type: "response.created", Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_img","object":"response","created_at":1700000000,"model":"gpt-5.4-mini","status":"in_progress","output":[]}}`)},
+			{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":1,"output_index":0,"item":{"id":"ig_1","type":"image_generation_call","status":"completed","result":"aW1hZ2U=","output_format":"png","quality":"high","size":"1024x1024"}}`)},
+			{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":2,"response":{"id":"resp_img","object":"response","created_at":1700000000,"model":"gpt-5.4-mini","status":"completed","output":[{"id":"ig_1","type":"image_generation_call","status":"completed","result":"aW1hZ2U=","output_format":"png","quality":"high","size":"1024x1024"}]}}`)},
+		},
+	})
+
+	httpResp, err := executor.Do(ctx, hreq)
+	require.NoError(t, err)
+
+	resp, err := outbound.TransformResponse(ctx, httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, resp.Image)
+	require.Len(t, resp.Image.Data, 1)
+	require.Equal(t, "aW1hZ2U=", resp.Image.Data[0].B64JSON)
+	require.Equal(t, "png", resp.Image.OutputFormat)
+	require.Equal(t, "high", resp.Image.Quality)
+	require.Equal(t, "1024x1024", resp.Image.Size)
 }
 
 func newTestCodexOutbound(t *testing.T) *OutboundTransformer {
