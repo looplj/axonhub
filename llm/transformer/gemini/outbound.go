@@ -11,7 +11,6 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const (
@@ -29,8 +28,6 @@ const (
 type Config struct {
 	// BaseURL is the base URL for the Gemini API.
 	BaseURL string `json:"base_url,omitempty"`
-
-	AccountIdentity string `json:"account_identity,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
@@ -114,11 +111,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		apiKey = t.config.APIKeyProvider.Get(ctx)
 	}
 
-	scope := shared.TransportScope{
-		BaseURL:         t.config.BaseURL,
-		AccountIdentity: t.config.AccountIdentity,
-	}
-
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeEmbedding:
@@ -142,7 +134,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Convert to Gemini request format with config
-	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config, scope)
+	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
 
 	// Clear function call/response IDs for Vertex AI (not supported)
 	if t.config.PlatformType == PlatformVertex {
@@ -186,7 +178,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Auth:                  authConfig,
 		APIFormat:             string(llm.APIFormatGeminiContents),
 		SkipInboundQueryMerge: true,
-		Metadata:              scope.Metadata(),
+		Metadata:              nil,
 	}, nil
 }
 
@@ -265,9 +257,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	}
 
 	// Convert to unified response (non-streaming)
-	scope, _ := shared.GetTransportScope(ctx)
-
-	return convertGeminiToLLMResponse(&geminiResp, false, scope), nil
+	return convertGeminiToLLMResponse(&geminiResp, false), nil
 }
 
 // TransformError transforms HTTP error response to unified error response for Gemini.

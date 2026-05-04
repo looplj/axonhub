@@ -12,15 +12,14 @@ import (
 // convertToAnthropicRequest converts ChatCompletionRequest to Anthropic MessageRequest.
 // Deprecated: Use convertToAnthropicRequestWithConfig instead.
 func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
-	return convertToAnthropicRequestWithConfig(chatReq, nil, shared.TransportScope{})
+	return convertToAnthropicRequestWithConfig(chatReq, nil)
 }
 
-// convertToAnthropicRequestWithConfig converts ChatCompletionRequest to Anthropic MessageRequest with config.
-func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config, scope shared.TransportScope) *MessageRequest {
+func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := buildBaseRequest(chatReq, config)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
-	req.Messages = convertMessages(chatReq, scope, config)
+	req.Messages = convertMessages(chatReq, config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
 	// DeepSeek requires assistant messages in history to include a thinking block
@@ -94,17 +93,13 @@ func shouldDecodeAnthropicSignature(config *Config) bool {
 	}
 }
 
-func prepareAnthropicReasoning(reasoningContent, reasoningSignature *string, scope shared.TransportScope, config *Config) (*string, *string) {
+func prepareAnthropicReasoning(reasoningContent, reasoningSignature *string, config *Config) (*string, *string) {
 	if reasoningSignature == nil || *reasoningSignature == "" {
 		return reasoningContent, reasoningSignature
 	}
 
 	if shouldDecodeAnthropicSignature(config) {
-		if scope.Footprint() == "" {
-			return reasoningContent, reasoningSignature
-		}
-
-		if decoded := shared.DecodeAnthropicSignatureInScope(reasoningSignature, scope); decoded != nil {
+		if decoded := shared.DecodeAnthropicSignature(reasoningSignature); decoded != nil {
 			return reasoningContent, decoded
 		}
 
@@ -321,7 +316,7 @@ func convertStopSequences(stop *llm.Stop) []string {
 }
 
 // convertMessages converts all messages to Anthropic format.
-func convertMessages(chatReq *llm.Request, scope shared.TransportScope, config *Config) []MessageParam {
+func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 	messages := make([]MessageParam, 0, len(chatReq.Messages))
 	// First, filter out system and developer messages as they are handled separately.
 	nonSystemMsgs := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
@@ -354,12 +349,12 @@ func convertMessages(chatReq *llm.Request, scope shared.TransportScope, config *
 				continue
 			}
 
-			if converted, ok := convertUserMessage(msg, scope); ok {
+			if converted, ok := convertUserMessage(msg); ok {
 				messages = append(messages, converted...)
 			}
 		case "assistant":
 			// Convert the assistant message.
-			if assistantMsg, ok := convertAssistantMessage(msg, scope, config); ok {
+			if assistantMsg, ok := convertAssistantMessage(msg, config); ok {
 				messages = append(messages, assistantMsg...)
 			}
 
@@ -531,8 +526,8 @@ func extractUserContentBlocks(msg llm.Message) []MessageContentBlock {
 }
 
 // convertUserMessage handles user message conversion.
-func convertUserMessage(msg llm.Message, scope shared.TransportScope) ([]MessageParam, bool) {
-	content, ok := buildMessageContent(msg, scope, nil)
+func convertUserMessage(msg llm.Message) ([]MessageParam, bool) {
+	content, ok := buildMessageContent(msg, nil)
 	if !ok {
 		return nil, false
 	}
@@ -541,13 +536,13 @@ func convertUserMessage(msg llm.Message, scope shared.TransportScope) ([]Message
 }
 
 // convertAssistantMessage handles assistant message conversion.
-func convertAssistantMessage(msg llm.Message, scope shared.TransportScope, config *Config) ([]MessageParam, bool) {
-	return convertAssistantWithToolCalls(msg, scope, config)
+func convertAssistantMessage(msg llm.Message, config *Config) ([]MessageParam, bool) {
+	return convertAssistantWithToolCalls(msg, config)
 }
 
 // convertAssistantWithToolCalls handles assistant messages that have tool calls.
-func convertAssistantWithToolCalls(msg llm.Message, scope shared.TransportScope, config *Config) ([]MessageParam, bool) {
-	preBlocks := buildPreBlocks(msg, scope, config)
+func convertAssistantWithToolCalls(msg llm.Message, config *Config) ([]MessageParam, bool) {
+	preBlocks := buildPreBlocks(msg, config)
 	toolContent, hasToolContent := convertMultiplePartContent(msg)
 
 	switch {
@@ -565,13 +560,12 @@ func convertAssistantWithToolCalls(msg llm.Message, scope shared.TransportScope,
 }
 
 // buildPreBlocks creates thinking and text blocks that precede tool use.
-func buildPreBlocks(msg llm.Message, scope shared.TransportScope, config *Config) []MessageContentBlock {
+func buildPreBlocks(msg llm.Message, config *Config) []MessageContentBlock {
 	var blocks []MessageContentBlock
 
 	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
 		msg.ReasoningContent,
 		msg.ReasoningSignature,
-		scope,
 		config,
 	)
 
@@ -604,11 +598,11 @@ func buildContentFromBlocks(blocks []MessageContentBlock) MessageContent {
 }
 
 // buildMessageContent creates message content with optional thinking block.
-func buildMessageContent(msg llm.Message, scope shared.TransportScope, config *Config) (MessageContent, bool) {
+func buildMessageContent(msg llm.Message, config *Config) (MessageContent, bool) {
 	// Handle simple string content
 	if msg.Content.Content != nil {
 		if msg.CacheControl != nil || hasThinkingContent(msg) {
-			return buildMultipleContentWithThinking(msg, scope, config), true
+			return buildMultipleContentWithThinking(msg, config), true
 		}
 
 		return MessageContent{Content: msg.Content.Content}, true
@@ -646,13 +640,12 @@ func hasThinkingContent(msg llm.Message) bool {
 }
 
 // buildMultipleContentWithThinking creates content blocks including thinking.
-func buildMultipleContentWithThinking(msg llm.Message, scope shared.TransportScope, config *Config) MessageContent {
+func buildMultipleContentWithThinking(msg llm.Message, config *Config) MessageContent {
 	blocks := make([]MessageContentBlock, 0, 3)
 
 	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
 		msg.ReasoningContent,
 		msg.ReasoningSignature,
-		scope,
 		config,
 	)
 
@@ -920,7 +913,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 }
 
 // convertToLlmResponse converts Anthropic Message to unified Response format.
-func convertToLlmResponse(anthropicResp *Message, platformType PlatformType, scope shared.TransportScope) *llm.Response {
+func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *llm.Response {
 	if anthropicResp == nil {
 		return &llm.Response{
 			ID:      "",
@@ -1014,7 +1007,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType, sco
 		Content:                  content,
 		ToolCalls:                toolCalls,
 		ReasoningContent:         thinkingText,
-		ReasoningSignature:       shared.EncodeAnthropicSignatureInScope(thinkingSignature, scope),
+		ReasoningSignature:       shared.EncodeAnthropicSignature(thinkingSignature),
 		RedactedReasoningContent: redactedThinkingData,
 	}
 

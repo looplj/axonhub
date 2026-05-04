@@ -32,21 +32,21 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 		Model: "claude-3-sonnet-20240229",
 	}
 
-	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
 
 	require.NotNil(t, result)
 	require.Len(t, result.Choices, 1)
 	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
 	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature), ""), *result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature)), *result.Choices[0].Message.ReasoningSignature)
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
 	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
 	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
 }
 
 func TestOutboundConvert_GeminiThoughtSignatureBecomesAnthropicRedactedThinking(t *testing.T) {
-	geminiSig := shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A"), "")
+	geminiSig := shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A"))
 	chatReq := &llm.Request{
 		Model:     "claude-sonnet-4-5-20250929",
 		MaxTokens: lo.ToPtr(int64(16000)),
@@ -106,7 +106,7 @@ func TestConvertToChatCompletionResponse_WithRedactedThinking(t *testing.T) {
 		Model: "claude-sonnet-4-5-20250929",
 	}
 
-	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
 
 	require.NotNil(t, result)
 	require.Len(t, result.Choices, 1)
@@ -120,9 +120,9 @@ func TestConvertToChatCompletionResponse_WithRedactedThinking(t *testing.T) {
 func TestConvertToChatCompletionResponse_WithThinkingAndRedactedThinking(t *testing.T) {
 	const (
 		thinking     = "Let me analyze this step by step..."
-		signature    = "WaUjzkypQ2mUEVM36O2TxuC06KN8xyfbJwyem2dw3URve/op91XWHOEBLLqIOMfFG/UvLEczmEsUjavL...."
+		signature    = "EqQAAABBBCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRSSSSTTTTUUUUVVVVWWWWXXXXYYYYZZZZaaaabbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmmnnnnooooppppqqqqrrrrssssttttuuuuvvvvwwwwxxxxyyyyzzzz0000111122223333444455556666777788889999"
 		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
-		answer       = "Based on my analysis..."
+		textContent  = "Based on my analysis..."
 	)
 
 	anthropicResp := &Message{
@@ -132,23 +132,23 @@ func TestConvertToChatCompletionResponse_WithThinkingAndRedactedThinking(t *test
 		Content: []MessageContentBlock{
 			{Type: "thinking", Thinking: lo.ToPtr(thinking), Signature: lo.ToPtr(signature)},
 			{Type: "redacted_thinking", Data: redactedData},
-			{Type: "text", Text: lo.ToPtr(answer)},
+			{Type: "text", Text: lo.ToPtr(textContent)},
 		},
 		Model: "claude-sonnet-4-5-20250929",
 	}
 
-	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
 
 	require.NotNil(t, result)
 	require.Len(t, result.Choices, 1)
 	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
 	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature), ""), *result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature)), *result.Choices[0].Message.ReasoningSignature)
 	require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
 	require.Equal(t, redactedData, *result.Choices[0].Message.RedactedReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
-	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
+	require.Equal(t, textContent, *result.Choices[0].Message.Content.Content)
 }
 
 func TestReasoningEffortToThinking(t *testing.T) {
@@ -209,7 +209,7 @@ func TestReasoningEffortToThinking(t *testing.T) {
 				ReasoningEffort: tt.reasoningEffort,
 			}
 
-			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config, shared.TransportScope{})
+			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
 
 			if anthropicReq.Thinking == nil {
 				t.Errorf("Expected Thinking to be non-nil")
@@ -232,7 +232,7 @@ func TestNoReasoningEffort(t *testing.T) {
 		Model: "claude-3-sonnet-20240229",
 	}
 
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil, shared.TransportScope{})
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil)
 
 	if anthropicReq.Thinking != nil {
 		t.Errorf("Expected Thinking to be nil when ReasoningEffort is not set")
@@ -293,7 +293,7 @@ func TestReasoningBudgetPriority(t *testing.T) {
 				ReasoningBudget: tt.reasoningBudget,
 			}
 
-			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config, shared.TransportScope{})
+			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
 
 			if anthropicReq.Thinking == nil {
 				t.Errorf("Expected Thinking to be non-nil")
@@ -831,7 +831,7 @@ func TestOutputConfig_Outbound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var anthropicReq *MessageRequest
 			if tt.config != nil {
-				anthropicReq = convertToAnthropicRequestWithConfig(tt.chatReq, tt.config, shared.TransportScope{})
+				anthropicReq = convertToAnthropicRequestWithConfig(tt.chatReq, tt.config)
 			} else {
 				anthropicReq = convertToAnthropicRequest(tt.chatReq)
 			}
@@ -1139,13 +1139,13 @@ func TestInboundTransformer_ThinkingWithOtherFields(t *testing.T) {
 func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 	const (
 		thinking     = "Let me analyze this step by step..."
-		signature    = "WaUjzkypQ2mUEVM36O2TxuC06KN8xyfbJwyem2dw3URve/op91XWHOEBLLqIOMfFG/UvLEczmEsUjavL...."
+		signature    = "EqQAAABBBCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRSSSSTTTTUUUUVVVVWWWWXXXXYYYYZZZZaaaabbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmmnnnnooooppppqqqqrrrrssssttttuuuuvvvvwwwwxxxxyyyyzzzz0000111122223333444455556666777788889999"
 		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
 		textContent  = "Based on my analysis..."
 	)
 
-	// Signatures in unified format are encoded with the Anthropic prefix + channel footprint
-	encodedSignature := *shared.EncodeAnthropicSignature(lo.ToPtr(signature), "")
+	// Signatures in unified format are encoded with the Anthropic prefix + channel identity
+	encodedSignature := *shared.EncodeAnthropicSignature(lo.ToPtr(signature))
 
 	chatReq := &llm.Request{
 		Model:           "claude-sonnet-4-5-20250929",
@@ -1457,7 +1457,7 @@ func TestDeepSeek_EnsureThinkingBlocksInAssistantMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			anthropicReq := convertToAnthropicRequestWithConfig(tt.chatReq, tt.config, shared.TransportScope{})
+			anthropicReq := convertToAnthropicRequestWithConfig(tt.chatReq, tt.config)
 			require.NotNil(t, anthropicReq)
 			tt.validate(t, anthropicReq)
 		})
@@ -1471,7 +1471,7 @@ func TestOutboundConvert_RedactedThinkingToAnthropicCompatiblePlatformKeepsEncod
 		textContent = "Based on my analysis..."
 	)
 
-	encodedSignature := *shared.EncodeAnthropicSignature(lo.ToPtr(signature), "")
+	encodedSignature := *shared.EncodeAnthropicSignature(lo.ToPtr(signature))
 
 	chatReq := &llm.Request{
 		Model:           "deepseek-chat",
@@ -1495,7 +1495,7 @@ func TestOutboundConvert_RedactedThinkingToAnthropicCompatiblePlatformKeepsEncod
 		},
 	}
 
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDeepSeek}, shared.TransportScope{})
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDeepSeek})
 
 	require.NotNil(t, anthropicReq)
 	require.Len(t, anthropicReq.Messages, 2)

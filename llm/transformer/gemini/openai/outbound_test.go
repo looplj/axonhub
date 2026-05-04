@@ -147,11 +147,10 @@ func TestNewOutboundTransformerWithConfig(t *testing.T) {
 	}
 }
 
-func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
+func TestOutboundTransformer_TransformRequest_AccountIdentity(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
-		BaseURL:         "https://generativelanguage.googleapis.com",
-		APIKeyProvider:  auth.NewStaticKeyProvider("test-api-key"),
-		AccountIdentity: "channel-1",
+		BaseURL:        "https://generativelanguage.googleapis.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	})
 	require.NoError(t, err)
 
@@ -164,14 +163,10 @@ func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testin
 
 	hreq, err := transformer.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
-	require.NotNil(t, hreq.Metadata)
-
-	tp := transformer.(*OutboundTransformer)
-	require.Equal(t, tp.BaseURL, hreq.Metadata[shared.MetadataKeyBaseURL])
-	require.Equal(t, "channel-1", hreq.Metadata[shared.MetadataKeyAccountIdentity])
+	require.Nil(t, hreq.Metadata)
 }
 
-func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing.T) {
+func TestOutboundTransformer_TransformRequest_OmitsMetadataWhenEmpty(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL:        "https://generativelanguage.googleapis.com",
 		APIKeyProvider: auth.NewStaticKeyProvider(""),
@@ -187,7 +182,7 @@ func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing
 
 	hreq, err := transformer.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
-	require.True(t, hreq.Metadata == nil || (hreq.Metadata[shared.MetadataKeyBaseURL] == "" && hreq.Metadata[shared.MetadataKeyAccountIdentity] == ""))
+	require.Nil(t, hreq.Metadata)
 }
 
 func TestThinkingBudget_MarshalJSON(t *testing.T) {
@@ -609,7 +604,7 @@ func TestOutboundTransformer_TransformRequest_StripsPrefixedThoughtSignatureForG
 		Messages: []llm.Message{
 			{
 				Role:               "assistant",
-				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature"), ""),
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature")),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_1",
@@ -651,7 +646,7 @@ func TestOutboundTransformer_TransformRequest_KeepToolCallSignaturePosition(t *t
 		Messages: []llm.Message{
 			{
 				Role:               "assistant",
-				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second"), ""),
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second")),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_1",
@@ -671,7 +666,7 @@ func TestOutboundTransformer_TransformRequest_KeepToolCallSignaturePosition(t *t
 						},
 						Index: 1,
 						TransformerMetadata: map[string]any{
-							oaitransformer.TransformerMetadataKeyGoogleThoughtSignature: *shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second"), ""),
+							oaitransformer.TransformerMetadataKeyGoogleThoughtSignature: *shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second")),
 						},
 					},
 				},
@@ -692,8 +687,7 @@ func TestOutboundTransformer_TransformRequest_KeepToolCallSignaturePosition(t *t
 }
 
 func TestFillGeminiThoughtSignatureForGeminiOpenAIRequest_FallbackByToolCallID(t *testing.T) {
-	scope := shared.TransportScope{BaseURL: "https://generativelanguage.googleapis.com", AccountIdentity: "channel-1"}
-	prefixed := shared.EncodeGeminiThoughtSignatureInScope(lo.ToPtr("sig_call_2"), scope)
+	prefixed := shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_call_2"))
 	require.NotNil(t, prefixed)
 
 	src := &llm.Request{
@@ -761,14 +755,13 @@ func TestFillGeminiThoughtSignatureForGeminiOpenAIRequest_FallbackByToolCallID(t
 	require.Len(t, dst.Messages[0].ToolCalls, 2)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent.Google)
-	// The raw encoded value is passed through as-is (no footprint decode)
+	// The raw encoded value is passed through as-is (no prefix decode)
 	require.Equal(t, *prefixed, dst.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
 	require.Nil(t, dst.Messages[0].ToolCalls[1].ExtraContent)
 }
 
 func TestFillGeminiThoughtSignatureForGeminiOpenAIRequest_StripsPrefixedMetadataSignature(t *testing.T) {
-	scope := shared.TransportScope{BaseURL: "https://generativelanguage.googleapis.com", AccountIdentity: "channel-1"}
-	prefixed := shared.EncodeGeminiThoughtSignatureInScope(lo.ToPtr("sig_prefixed"), scope)
+	prefixed := shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_prefixed"))
 	require.NotNil(t, prefixed)
 
 	src := &llm.Request{
@@ -818,7 +811,7 @@ func TestFillGeminiThoughtSignatureForGeminiOpenAIRequest_StripsPrefixedMetadata
 	require.Len(t, dst.Messages[0].ToolCalls, 1)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent.Google)
-	// The raw encoded value is passed through as-is (no footprint decode)
+	// The raw encoded value is passed through as-is (no prefix decode)
 	require.Equal(t, *prefixed, dst.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
 }
 

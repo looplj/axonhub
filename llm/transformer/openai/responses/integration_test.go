@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -52,12 +51,6 @@ func TestTransformRequest_Integration(t *testing.T) {
 
 			err = xtest.LoadTestData(t, tt.expectedFile, &expectedReq)
 			require.NoError(t, err)
-
-			if tt.name == "reasoning request" {
-				expectedReq.Input.Items = lo.Filter(expectedReq.Input.Items, func(item Item, _ int) bool {
-					return item.Type != "reasoning"
-				})
-			}
 
 			var buf bytes.Buffer
 

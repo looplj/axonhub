@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestConvertToChatCompletionResponse(t *testing.T) {
@@ -29,7 +28,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 			OutputTokens: 20,
 		},
 	}
-	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
 
 	require.Equal(t, "msg_123", result.ID)
 	require.Equal(t, "chat.completion", result.Object)
@@ -399,7 +398,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 						StopReason: lo.ToPtr(anthropicReason),
 					}
 
-					result := convertToLlmResponse(msg, PlatformDirect, shared.TransportScope{})
+					result := convertToLlmResponse(msg, PlatformDirect)
 					if expectedReason == "stop" {
 						require.Equal(t, expectedReason, *result.Choices[0].FinishReason)
 					} else {
@@ -512,7 +511,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToLlmResponse(tt.input, PlatformDirect, shared.TransportScope{})
+			result := convertToLlmResponse(tt.input, PlatformDirect)
 			tt.validate(t, result)
 		})
 	}

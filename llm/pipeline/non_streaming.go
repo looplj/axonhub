@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Process executes the non-streaming LLM pipeline
@@ -35,10 +34,6 @@ func (p *pipeline) notStream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		return nil, fmt.Errorf("failed to apply raw response middlewares: %w", err)
-	}
-
-	if request != nil && request.Metadata != nil {
-		ctx = shared.ContextWithTransportScope(ctx, shared.ScopeFromMetadata(request.Metadata))
 	}
 
 	llmResp, err := p.Outbound.TransformResponse(ctx, httpResp)

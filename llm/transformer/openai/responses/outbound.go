@@ -24,8 +24,6 @@ type Config struct {
 	// BaseURL is the base URL for the OpenAI API, required.
 	BaseURL string `json:"base_url,omitempty"`
 
-	AccountIdentity string `json:"account_identity,omitempty"`
-
 	// RawURL is whether to use raw URL for requests, default is false.
 	// If true, the request URL will be used as is, without appending the response endpoint.
 	RawURL bool `json:"raw_url,omitempty"`
@@ -125,15 +123,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("chat request is nil")
 	}
 
-	scope := shared.TransportScope{
-		BaseURL:         t.config.BaseURL,
-		AccountIdentity: t.config.AccountIdentity,
-	}
-
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeCompact:
-		return t.transformCompactRequest(ctx, llmReq, scope)
+		return t.transformCompactRequest(ctx, llmReq)
 	case llm.RequestTypeChat, "":
 		// continue
 	default:
@@ -170,7 +163,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, scope),
+		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
@@ -237,7 +230,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIFormat:             string(llm.APIFormatOpenAIResponse),
 		TransformerMetadata:   llmReq.TransformerMetadata,
 		SkipInboundQueryMerge: true,
-		Metadata:              scope.Metadata(),
+		Metadata:              nil,
 	}, nil
 }
 
@@ -281,8 +274,6 @@ func (t *OutboundTransformer) transformStandardResponse(
 		return nil, fmt.Errorf("http response is nil")
 	}
 
-	scope, _ := shared.GetTransportScope(ctx)
-
 	if httpResp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
@@ -320,7 +311,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 		transformerMetadata = httpResp.Request.TransformerMetadata
 	}
 
-	msg := convertOutputToMessage(resp.Output, scope, transformerMetadata)
+	msg := convertOutputToMessage(resp.Output, transformerMetadata)
 
 	choice := llm.Choice{
 		Index:   0,

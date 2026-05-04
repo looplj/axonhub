@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 	"github.com/looplj/axonhub/llm/vertex"
 )
 
@@ -53,8 +52,6 @@ type Config struct {
 
 	// BaseURL is the base URL for the Anthropic API, required.
 	BaseURL string `json:"base_url,omitempty"`
-
-	AccountIdentity string `json:"account_identity,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
@@ -165,11 +162,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert to Anthropic request format
-	scope := shared.TransportScope{
-		BaseURL:         t.config.BaseURL,
-		AccountIdentity: t.config.AccountIdentity,
-	}
-	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
+	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
 
 	// Anthropic supports two prompt-caching modes (see
 	// https://docs.claude.com/en/docs/build-with-claude/prompt-caching):
@@ -254,7 +247,7 @@ func (t *OutboundTransformer) TransformRequest(
 		Body:      body,
 		Auth:      authConfig,
 		APIFormat: string(llm.APIFormatAnthropicMessage),
-		Metadata:  scope.Metadata(),
+		Metadata:  nil,
 	}, nil
 }
 
@@ -332,8 +325,7 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to ChatCompletionResponse
-	scope, _ := shared.GetTransportScope(ctx)
-	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type, scope)
+	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type)
 
 	return chatResp, nil
 }
