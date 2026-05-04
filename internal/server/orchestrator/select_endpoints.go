@@ -14,6 +14,11 @@ var chatCapableAPIFormats = map[string]struct{}{
 	"ollama/chat":             {},
 }
 
+// compactCapableAPIFormats lists API formats for compact requests.
+var compactCapableAPIFormats = map[string]struct{}{
+	"openai/responses_compact": {},
+}
+
 // completionCapableAPIFormats lists API formats for completion requests.
 var completionCapableAPIFormats = map[string]struct{}{
 	"openai/completions": {},
@@ -38,13 +43,23 @@ var rerankCapableAPIFormats = map[string]struct{}{
 	"jina/rerank": {},
 }
 
-// SelectAPIFormatForRequestType selects the most appropriate APIFormat from a channel's
-// resolved endpoints based on the request type. Returns the first matching endpoint's
-// APIFormat, or the first endpoint's APIFormat as a fallback.
-func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestType llm.RequestType) string {
+// videoCapableAPIFormats lists API formats for video requests.
+var videoCapableAPIFormats = map[string]struct{}{
+	"openai/video":   {},
+	"seedance/video": {},
+}
+
+// SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
+// based on the request type and inbound API format. Prefers an endpoint whose API format
+// matches the inbound request format so that pass-through can be enabled when identical
+// formats are used. Falls back to the first capable endpoint, then the first endpoint.
+func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) string {
 	if len(endpoints) == 0 {
 		return ""
 	}
+
+	requestType := req.RequestType
+	preferredFormat := string(req.APIFormat)
 
 	var allowed map[string]struct{}
 
@@ -52,6 +67,8 @@ func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestT
 	switch requestType {
 	case llm.RequestTypeChat:
 		allowed = chatCapableAPIFormats
+	case llm.RequestTypeCompact:
+		allowed = compactCapableAPIFormats
 	case llm.RequestTypeCompletion:
 		allowed = completionCapableAPIFormats
 	case llm.RequestTypeEmbedding:
@@ -60,9 +77,19 @@ func SelectAPIFormatForRequestType(endpoints []objects.ChannelEndpoint, requestT
 		allowed = imageCapableAPIFormats
 	case llm.RequestTypeRerank:
 		allowed = rerankCapableAPIFormats
+	case llm.RequestTypeVideo:
+		allowed = videoCapableAPIFormats
 	}
 
 	if allowed != nil {
+		if preferredFormat != "" {
+			for _, ep := range endpoints {
+				if _, ok := allowed[ep.APIFormat]; ok && ep.APIFormat == preferredFormat {
+					return ep.APIFormat
+				}
+			}
+		}
+
 		for _, ep := range endpoints {
 			if _, ok := allowed[ep.APIFormat]; ok {
 				return ep.APIFormat
