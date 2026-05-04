@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
@@ -86,6 +87,49 @@ func init() {
 	apikeyDescProfiles := apikeyFields[7].Descriptor()
 	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
 	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
+	apikeyprofiletemplateMixin := schema.APIKeyProfileTemplate{}.Mixin()
+	apikeyprofiletemplate.Policy = privacy.NewPolicies(schema.APIKeyProfileTemplate{})
+	apikeyprofiletemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := apikeyprofiletemplate.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	apikeyprofiletemplateMixinHooks1 := apikeyprofiletemplateMixin[1].Hooks()
+
+	apikeyprofiletemplate.Hooks[1] = apikeyprofiletemplateMixinHooks1[0]
+	apikeyprofiletemplateMixinInters1 := apikeyprofiletemplateMixin[1].Interceptors()
+	apikeyprofiletemplate.Interceptors[0] = apikeyprofiletemplateMixinInters1[0]
+	apikeyprofiletemplateMixinFields0 := apikeyprofiletemplateMixin[0].Fields()
+	_ = apikeyprofiletemplateMixinFields0
+	apikeyprofiletemplateMixinFields1 := apikeyprofiletemplateMixin[1].Fields()
+	_ = apikeyprofiletemplateMixinFields1
+	apikeyprofiletemplateFields := schema.APIKeyProfileTemplate{}.Fields()
+	_ = apikeyprofiletemplateFields
+	// apikeyprofiletemplateDescCreatedAt is the schema descriptor for created_at field.
+	apikeyprofiletemplateDescCreatedAt := apikeyprofiletemplateMixinFields0[0].Descriptor()
+	// apikeyprofiletemplate.DefaultCreatedAt holds the default value on creation for the created_at field.
+	apikeyprofiletemplate.DefaultCreatedAt = apikeyprofiletemplateDescCreatedAt.Default.(func() time.Time)
+	// apikeyprofiletemplateDescUpdatedAt is the schema descriptor for updated_at field.
+	apikeyprofiletemplateDescUpdatedAt := apikeyprofiletemplateMixinFields0[1].Descriptor()
+	// apikeyprofiletemplate.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	apikeyprofiletemplate.DefaultUpdatedAt = apikeyprofiletemplateDescUpdatedAt.Default.(func() time.Time)
+	// apikeyprofiletemplate.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	apikeyprofiletemplate.UpdateDefaultUpdatedAt = apikeyprofiletemplateDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// apikeyprofiletemplateDescDeletedAt is the schema descriptor for deleted_at field.
+	apikeyprofiletemplateDescDeletedAt := apikeyprofiletemplateMixinFields1[0].Descriptor()
+	// apikeyprofiletemplate.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	apikeyprofiletemplate.DefaultDeletedAt = apikeyprofiletemplateDescDeletedAt.Default.(int)
+	// apikeyprofiletemplateDescDescription is the schema descriptor for description field.
+	apikeyprofiletemplateDescDescription := apikeyprofiletemplateFields[1].Descriptor()
+	// apikeyprofiletemplate.DefaultDescription holds the default value on creation for the description field.
+	apikeyprofiletemplate.DefaultDescription = apikeyprofiletemplateDescDescription.Default.(string)
+	// apikeyprofiletemplateDescProfile is the schema descriptor for profile field.
+	apikeyprofiletemplateDescProfile := apikeyprofiletemplateFields[3].Descriptor()
+	// apikeyprofiletemplate.DefaultProfile holds the default value on creation for the profile field.
+	apikeyprofiletemplate.DefaultProfile = apikeyprofiletemplateDescProfile.Default.(*objects.APIKeyProfile)
 	channelMixin := schema.Channel{}.Mixin()
 	channel.Policy = privacy.NewPolicies(schema.Channel{})
 	channel.Hooks[0] = func(next ent.Mutator) ent.Mutator {

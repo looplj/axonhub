@@ -279,6 +279,11 @@ type InitializeSystemPayload struct {
 	Token   *string   `json:"token,omitempty"`
 }
 
+type LoadAPIKeyProfileTemplateInput struct {
+	TemplateID objects.GUID `json:"templateID"`
+	APIKeyID   objects.GUID `json:"apiKeyID"`
+}
+
 // Performance statistics for a specific model on a given date
 type ModelPerformanceStat struct {
 	Date         string   `json:"date"`

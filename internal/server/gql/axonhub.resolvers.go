@@ -622,6 +622,26 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 	}, nil
 }
 
+// CreateAPIKeyProfileTemplate is the resolver for the createApiKeyProfileTemplate field.
+func (r *mutationResolver) CreateAPIKeyProfileTemplate(ctx context.Context, input ent.CreateAPIKeyProfileTemplateInput, profile objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
+	return r.apiKeyProfileTemplateService.CreateTemplate(ctx, input, &profile)
+}
+
+// UpdateAPIKeyProfileTemplate is the resolver for the updateApiKeyProfileTemplate field.
+func (r *mutationResolver) UpdateAPIKeyProfileTemplate(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) (*ent.APIKeyProfileTemplate, error) {
+	return r.apiKeyProfileTemplateService.UpdateTemplate(ctx, id.ID, input, profile)
+}
+
+// DeleteAPIKeyProfileTemplate is the resolver for the deleteApiKeyProfileTemplate field.
+func (r *mutationResolver) DeleteAPIKeyProfileTemplate(ctx context.Context, id objects.GUID) (*ent.APIKeyProfileTemplate, error) {
+	return r.apiKeyProfileTemplateService.DeleteTemplate(ctx, id.ID)
+}
+
+// LoadAPIKeyProfileTemplate is the resolver for the loadApiKeyProfileTemplate field.
+func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*ent.APIKey, error) {
+	return r.apiKeyProfileTemplateService.LoadTemplate(ctx, input.TemplateID.ID, input.APIKeyID.ID)
+}
+
 // AllChannelSummarys is the resolver for the allChannelSummarys field.
 func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived *bool) ([]*ent.Channel, error) {
 	statusFilter := []channel.Status{channel.StatusEnabled, channel.StatusDisabled}

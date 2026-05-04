@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
@@ -48,6 +49,7 @@ const (
 
 	// Node types.
 	TypeAPIKey                   = "APIKey"
+	TypeAPIKeyProfileTemplate    = "APIKeyProfileTemplate"
 	TypeChannel                  = "Channel"
 	TypeChannelModelPrice        = "ChannelModelPrice"
 	TypeChannelModelPriceVersion = "ChannelModelPriceVersion"
@@ -1234,6 +1236,768 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey edge %s", name)
+}
+
+// APIKeyProfileTemplateMutation represents an operation that mutates the APIKeyProfileTemplate nodes in the graph.
+type APIKeyProfileTemplateMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	created_at     *time.Time
+	updated_at     *time.Time
+	deleted_at     *int
+	adddeleted_at  *int
+	name           *string
+	description    *string
+	profile        **objects.APIKeyProfile
+	clearedFields  map[string]struct{}
+	project        *int
+	clearedproject bool
+	done           bool
+	oldValue       func(context.Context) (*APIKeyProfileTemplate, error)
+	predicates     []predicate.APIKeyProfileTemplate
+}
+
+var _ ent.Mutation = (*APIKeyProfileTemplateMutation)(nil)
+
+// apikeyprofiletemplateOption allows management of the mutation configuration using functional options.
+type apikeyprofiletemplateOption func(*APIKeyProfileTemplateMutation)
+
+// newAPIKeyProfileTemplateMutation creates new mutation for the APIKeyProfileTemplate entity.
+func newAPIKeyProfileTemplateMutation(c config, op Op, opts ...apikeyprofiletemplateOption) *APIKeyProfileTemplateMutation {
+	m := &APIKeyProfileTemplateMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAPIKeyProfileTemplate,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAPIKeyProfileTemplateID sets the ID field of the mutation.
+func withAPIKeyProfileTemplateID(id int) apikeyprofiletemplateOption {
+	return func(m *APIKeyProfileTemplateMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *APIKeyProfileTemplate
+		)
+		m.oldValue = func(ctx context.Context) (*APIKeyProfileTemplate, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().APIKeyProfileTemplate.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAPIKeyProfileTemplate sets the old APIKeyProfileTemplate of the mutation.
+func withAPIKeyProfileTemplate(node *APIKeyProfileTemplate) apikeyprofiletemplateOption {
+	return func(m *APIKeyProfileTemplateMutation) {
+		m.oldValue = func(context.Context) (*APIKeyProfileTemplate, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m APIKeyProfileTemplateMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m APIKeyProfileTemplateMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *APIKeyProfileTemplateMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *APIKeyProfileTemplateMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().APIKeyProfileTemplate.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *APIKeyProfileTemplateMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *APIKeyProfileTemplateMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the APIKeyProfileTemplate entity.
+// If the APIKeyProfileTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyProfileTemplateMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *APIKeyProfileTemplateMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *APIKeyProfileTemplateMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *APIKeyProfileTemplateMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the APIKeyProfileTemplate entity.
+// If the APIKeyProfileTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyProfileTemplateMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *APIKeyProfileTemplateMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *APIKeyProfileTemplateMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *APIKeyProfileTemplateMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the APIKeyProfileTemplate entity.
+// If the APIKeyProfileTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyProfileTemplateMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *APIKeyProfileTemplateMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *APIKeyProfileTemplateMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *APIKeyProfileTemplateMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetName sets the "name" field.
+func (m *APIKeyProfileTemplateMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *APIKeyProfileTemplateMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the APIKeyProfileTemplate entity.
+// If the APIKeyProfileTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyProfileTemplateMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *APIKeyProfileTemplateMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *APIKeyProfileTemplateMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *APIKeyProfileTemplateMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the APIKeyProfileTemplate entity.
+// If the APIKeyProfileTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyProfileTemplateMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *APIKeyProfileTemplateMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *APIKeyProfileTemplateMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *APIKeyProfileTemplateMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the APIKeyProfileTemplate entity.
+// If the APIKeyProfileTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyProfileTemplateMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *APIKeyProfileTemplateMutation) ResetProjectID() {
+	m.project = nil
+}
+
+// SetProfile sets the "profile" field.
+func (m *APIKeyProfileTemplateMutation) SetProfile(okp *objects.APIKeyProfile) {
+	m.profile = &okp
+}
+
+// Profile returns the value of the "profile" field in the mutation.
+func (m *APIKeyProfileTemplateMutation) Profile() (r *objects.APIKeyProfile, exists bool) {
+	v := m.profile
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProfile returns the old "profile" field's value of the APIKeyProfileTemplate entity.
+// If the APIKeyProfileTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyProfileTemplateMutation) OldProfile(ctx context.Context) (v *objects.APIKeyProfile, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProfile is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProfile requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProfile: %w", err)
+	}
+	return oldValue.Profile, nil
+}
+
+// ClearProfile clears the value of the "profile" field.
+func (m *APIKeyProfileTemplateMutation) ClearProfile() {
+	m.profile = nil
+	m.clearedFields[apikeyprofiletemplate.FieldProfile] = struct{}{}
+}
+
+// ProfileCleared returns if the "profile" field was cleared in this mutation.
+func (m *APIKeyProfileTemplateMutation) ProfileCleared() bool {
+	_, ok := m.clearedFields[apikeyprofiletemplate.FieldProfile]
+	return ok
+}
+
+// ResetProfile resets all changes to the "profile" field.
+func (m *APIKeyProfileTemplateMutation) ResetProfile() {
+	m.profile = nil
+	delete(m.clearedFields, apikeyprofiletemplate.FieldProfile)
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (m *APIKeyProfileTemplateMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[apikeyprofiletemplate.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *APIKeyProfileTemplateMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *APIKeyProfileTemplateMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *APIKeyProfileTemplateMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
+// Where appends a list predicates to the APIKeyProfileTemplateMutation builder.
+func (m *APIKeyProfileTemplateMutation) Where(ps ...predicate.APIKeyProfileTemplate) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the APIKeyProfileTemplateMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *APIKeyProfileTemplateMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.APIKeyProfileTemplate, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *APIKeyProfileTemplateMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *APIKeyProfileTemplateMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (APIKeyProfileTemplate).
+func (m *APIKeyProfileTemplateMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *APIKeyProfileTemplateMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.created_at != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldDeletedAt)
+	}
+	if m.name != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldDescription)
+	}
+	if m.project != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldProjectID)
+	}
+	if m.profile != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldProfile)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *APIKeyProfileTemplateMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case apikeyprofiletemplate.FieldCreatedAt:
+		return m.CreatedAt()
+	case apikeyprofiletemplate.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case apikeyprofiletemplate.FieldDeletedAt:
+		return m.DeletedAt()
+	case apikeyprofiletemplate.FieldName:
+		return m.Name()
+	case apikeyprofiletemplate.FieldDescription:
+		return m.Description()
+	case apikeyprofiletemplate.FieldProjectID:
+		return m.ProjectID()
+	case apikeyprofiletemplate.FieldProfile:
+		return m.Profile()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *APIKeyProfileTemplateMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case apikeyprofiletemplate.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case apikeyprofiletemplate.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case apikeyprofiletemplate.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case apikeyprofiletemplate.FieldName:
+		return m.OldName(ctx)
+	case apikeyprofiletemplate.FieldDescription:
+		return m.OldDescription(ctx)
+	case apikeyprofiletemplate.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case apikeyprofiletemplate.FieldProfile:
+		return m.OldProfile(ctx)
+	}
+	return nil, fmt.Errorf("unknown APIKeyProfileTemplate field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *APIKeyProfileTemplateMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case apikeyprofiletemplate.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case apikeyprofiletemplate.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case apikeyprofiletemplate.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case apikeyprofiletemplate.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case apikeyprofiletemplate.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case apikeyprofiletemplate.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case apikeyprofiletemplate.FieldProfile:
+		v, ok := value.(*objects.APIKeyProfile)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProfile(v)
+		return nil
+	}
+	return fmt.Errorf("unknown APIKeyProfileTemplate field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *APIKeyProfileTemplateMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, apikeyprofiletemplate.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *APIKeyProfileTemplateMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case apikeyprofiletemplate.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *APIKeyProfileTemplateMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case apikeyprofiletemplate.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown APIKeyProfileTemplate numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *APIKeyProfileTemplateMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(apikeyprofiletemplate.FieldProfile) {
+		fields = append(fields, apikeyprofiletemplate.FieldProfile)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *APIKeyProfileTemplateMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *APIKeyProfileTemplateMutation) ClearField(name string) error {
+	switch name {
+	case apikeyprofiletemplate.FieldProfile:
+		m.ClearProfile()
+		return nil
+	}
+	return fmt.Errorf("unknown APIKeyProfileTemplate nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *APIKeyProfileTemplateMutation) ResetField(name string) error {
+	switch name {
+	case apikeyprofiletemplate.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case apikeyprofiletemplate.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case apikeyprofiletemplate.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case apikeyprofiletemplate.FieldName:
+		m.ResetName()
+		return nil
+	case apikeyprofiletemplate.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case apikeyprofiletemplate.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case apikeyprofiletemplate.FieldProfile:
+		m.ResetProfile()
+		return nil
+	}
+	return fmt.Errorf("unknown APIKeyProfileTemplate field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *APIKeyProfileTemplateMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.project != nil {
+		edges = append(edges, apikeyprofiletemplate.EdgeProject)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *APIKeyProfileTemplateMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case apikeyprofiletemplate.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *APIKeyProfileTemplateMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *APIKeyProfileTemplateMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *APIKeyProfileTemplateMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedproject {
+		edges = append(edges, apikeyprofiletemplate.EdgeProject)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *APIKeyProfileTemplateMutation) EdgeCleared(name string) bool {
+	switch name {
+	case apikeyprofiletemplate.EdgeProject:
+		return m.clearedproject
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *APIKeyProfileTemplateMutation) ClearEdge(name string) error {
+	switch name {
+	case apikeyprofiletemplate.EdgeProject:
+		m.ClearProject()
+		return nil
+	}
+	return fmt.Errorf("unknown APIKeyProfileTemplate unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *APIKeyProfileTemplateMutation) ResetEdge(name string) error {
+	switch name {
+	case apikeyprofiletemplate.EdgeProject:
+		m.ResetProject()
+		return nil
+	}
+	return fmt.Errorf("unknown APIKeyProfileTemplate edge %s", name)
 }
 
 // ChannelMutation represents an operation that mutates the Channel nodes in the graph.
@@ -10026,48 +10790,51 @@ func (m *OIDCIdentityMutation) ResetEdge(name string) error {
 // ProjectMutation represents an operation that mutates the Project nodes in the graph.
 type ProjectMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int
-	created_at           *time.Time
-	updated_at           *time.Time
-	deleted_at           *int
-	adddeleted_at        *int
-	name                 *string
-	description          *string
-	status               *project.Status
-	profiles             **objects.ProjectProfiles
-	clearedFields        map[string]struct{}
-	users                map[int]struct{}
-	removedusers         map[int]struct{}
-	clearedusers         bool
-	roles                map[int]struct{}
-	removedroles         map[int]struct{}
-	clearedroles         bool
-	api_keys             map[int]struct{}
-	removedapi_keys      map[int]struct{}
-	clearedapi_keys      bool
-	requests             map[int]struct{}
-	removedrequests      map[int]struct{}
-	clearedrequests      bool
-	usage_logs           map[int]struct{}
-	removedusage_logs    map[int]struct{}
-	clearedusage_logs    bool
-	threads              map[int]struct{}
-	removedthreads       map[int]struct{}
-	clearedthreads       bool
-	traces               map[int]struct{}
-	removedtraces        map[int]struct{}
-	clearedtraces        bool
-	prompts              map[int]struct{}
-	removedprompts       map[int]struct{}
-	clearedprompts       bool
-	project_users        map[int]struct{}
-	removedproject_users map[int]struct{}
-	clearedproject_users bool
-	done                 bool
-	oldValue             func(context.Context) (*Project, error)
-	predicates           []predicate.Project
+	op                               Op
+	typ                              string
+	id                               *int
+	created_at                       *time.Time
+	updated_at                       *time.Time
+	deleted_at                       *int
+	adddeleted_at                    *int
+	name                             *string
+	description                      *string
+	status                           *project.Status
+	profiles                         **objects.ProjectProfiles
+	clearedFields                    map[string]struct{}
+	users                            map[int]struct{}
+	removedusers                     map[int]struct{}
+	clearedusers                     bool
+	roles                            map[int]struct{}
+	removedroles                     map[int]struct{}
+	clearedroles                     bool
+	api_keys                         map[int]struct{}
+	removedapi_keys                  map[int]struct{}
+	clearedapi_keys                  bool
+	requests                         map[int]struct{}
+	removedrequests                  map[int]struct{}
+	clearedrequests                  bool
+	usage_logs                       map[int]struct{}
+	removedusage_logs                map[int]struct{}
+	clearedusage_logs                bool
+	threads                          map[int]struct{}
+	removedthreads                   map[int]struct{}
+	clearedthreads                   bool
+	traces                           map[int]struct{}
+	removedtraces                    map[int]struct{}
+	clearedtraces                    bool
+	prompts                          map[int]struct{}
+	removedprompts                   map[int]struct{}
+	clearedprompts                   bool
+	api_key_profile_templates        map[int]struct{}
+	removedapi_key_profile_templates map[int]struct{}
+	clearedapi_key_profile_templates bool
+	project_users                    map[int]struct{}
+	removedproject_users             map[int]struct{}
+	clearedproject_users             bool
+	done                             bool
+	oldValue                         func(context.Context) (*Project, error)
+	predicates                       []predicate.Project
 }
 
 var _ ent.Mutation = (*ProjectMutation)(nil)
@@ -10885,6 +11652,60 @@ func (m *ProjectMutation) ResetPrompts() {
 	m.removedprompts = nil
 }
 
+// AddAPIKeyProfileTemplateIDs adds the "api_key_profile_templates" edge to the APIKeyProfileTemplate entity by ids.
+func (m *ProjectMutation) AddAPIKeyProfileTemplateIDs(ids ...int) {
+	if m.api_key_profile_templates == nil {
+		m.api_key_profile_templates = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.api_key_profile_templates[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAPIKeyProfileTemplates clears the "api_key_profile_templates" edge to the APIKeyProfileTemplate entity.
+func (m *ProjectMutation) ClearAPIKeyProfileTemplates() {
+	m.clearedapi_key_profile_templates = true
+}
+
+// APIKeyProfileTemplatesCleared reports if the "api_key_profile_templates" edge to the APIKeyProfileTemplate entity was cleared.
+func (m *ProjectMutation) APIKeyProfileTemplatesCleared() bool {
+	return m.clearedapi_key_profile_templates
+}
+
+// RemoveAPIKeyProfileTemplateIDs removes the "api_key_profile_templates" edge to the APIKeyProfileTemplate entity by IDs.
+func (m *ProjectMutation) RemoveAPIKeyProfileTemplateIDs(ids ...int) {
+	if m.removedapi_key_profile_templates == nil {
+		m.removedapi_key_profile_templates = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.api_key_profile_templates, ids[i])
+		m.removedapi_key_profile_templates[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAPIKeyProfileTemplates returns the removed IDs of the "api_key_profile_templates" edge to the APIKeyProfileTemplate entity.
+func (m *ProjectMutation) RemovedAPIKeyProfileTemplatesIDs() (ids []int) {
+	for id := range m.removedapi_key_profile_templates {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// APIKeyProfileTemplatesIDs returns the "api_key_profile_templates" edge IDs in the mutation.
+func (m *ProjectMutation) APIKeyProfileTemplatesIDs() (ids []int) {
+	for id := range m.api_key_profile_templates {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAPIKeyProfileTemplates resets all changes to the "api_key_profile_templates" edge.
+func (m *ProjectMutation) ResetAPIKeyProfileTemplates() {
+	m.api_key_profile_templates = nil
+	m.clearedapi_key_profile_templates = false
+	m.removedapi_key_profile_templates = nil
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by ids.
 func (m *ProjectMutation) AddProjectUserIDs(ids ...int) {
 	if m.project_users == nil {
@@ -11198,7 +12019,7 @@ func (m *ProjectMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ProjectMutation) AddedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.users != nil {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -11222,6 +12043,9 @@ func (m *ProjectMutation) AddedEdges() []string {
 	}
 	if m.prompts != nil {
 		edges = append(edges, project.EdgePrompts)
+	}
+	if m.api_key_profile_templates != nil {
+		edges = append(edges, project.EdgeAPIKeyProfileTemplates)
 	}
 	if m.project_users != nil {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -11281,6 +12105,12 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeAPIKeyProfileTemplates:
+		ids := make([]ent.Value, 0, len(m.api_key_profile_templates))
+		for id := range m.api_key_profile_templates {
+			ids = append(ids, id)
+		}
+		return ids
 	case project.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.project_users))
 		for id := range m.project_users {
@@ -11293,7 +12123,7 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ProjectMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.removedusers != nil {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -11317,6 +12147,9 @@ func (m *ProjectMutation) RemovedEdges() []string {
 	}
 	if m.removedprompts != nil {
 		edges = append(edges, project.EdgePrompts)
+	}
+	if m.removedapi_key_profile_templates != nil {
+		edges = append(edges, project.EdgeAPIKeyProfileTemplates)
 	}
 	if m.removedproject_users != nil {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -11376,6 +12209,12 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeAPIKeyProfileTemplates:
+		ids := make([]ent.Value, 0, len(m.removedapi_key_profile_templates))
+		for id := range m.removedapi_key_profile_templates {
+			ids = append(ids, id)
+		}
+		return ids
 	case project.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.removedproject_users))
 		for id := range m.removedproject_users {
@@ -11388,7 +12227,7 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ProjectMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.clearedusers {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -11412,6 +12251,9 @@ func (m *ProjectMutation) ClearedEdges() []string {
 	}
 	if m.clearedprompts {
 		edges = append(edges, project.EdgePrompts)
+	}
+	if m.clearedapi_key_profile_templates {
+		edges = append(edges, project.EdgeAPIKeyProfileTemplates)
 	}
 	if m.clearedproject_users {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -11439,6 +12281,8 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 		return m.clearedtraces
 	case project.EdgePrompts:
 		return m.clearedprompts
+	case project.EdgeAPIKeyProfileTemplates:
+		return m.clearedapi_key_profile_templates
 	case project.EdgeProjectUsers:
 		return m.clearedproject_users
 	}
@@ -11480,6 +12324,9 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 		return nil
 	case project.EdgePrompts:
 		m.ResetPrompts()
+		return nil
+	case project.EdgeAPIKeyProfileTemplates:
+		m.ResetAPIKeyProfileTemplates()
 		return nil
 	case project.EdgeProjectUsers:
 		m.ResetProjectUsers()

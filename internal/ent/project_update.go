@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -240,6 +241,21 @@ func (_u *ProjectUpdate) AddPrompts(v ...*Prompt) *ProjectUpdate {
 	return _u.AddPromptIDs(ids...)
 }
 
+// AddAPIKeyProfileTemplateIDs adds the "api_key_profile_templates" edge to the APIKeyProfileTemplate entity by IDs.
+func (_u *ProjectUpdate) AddAPIKeyProfileTemplateIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.AddAPIKeyProfileTemplateIDs(ids...)
+	return _u
+}
+
+// AddAPIKeyProfileTemplates adds the "api_key_profile_templates" edges to the APIKeyProfileTemplate entity.
+func (_u *ProjectUpdate) AddAPIKeyProfileTemplates(v ...*APIKeyProfileTemplate) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAPIKeyProfileTemplateIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *ProjectUpdate) AddProjectUserIDs(ids ...int) *ProjectUpdate {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -426,6 +442,27 @@ func (_u *ProjectUpdate) RemovePrompts(v ...*Prompt) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePromptIDs(ids...)
+}
+
+// ClearAPIKeyProfileTemplates clears all "api_key_profile_templates" edges to the APIKeyProfileTemplate entity.
+func (_u *ProjectUpdate) ClearAPIKeyProfileTemplates() *ProjectUpdate {
+	_u.mutation.ClearAPIKeyProfileTemplates()
+	return _u
+}
+
+// RemoveAPIKeyProfileTemplateIDs removes the "api_key_profile_templates" edge to APIKeyProfileTemplate entities by IDs.
+func (_u *ProjectUpdate) RemoveAPIKeyProfileTemplateIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.RemoveAPIKeyProfileTemplateIDs(ids...)
+	return _u
+}
+
+// RemoveAPIKeyProfileTemplates removes "api_key_profile_templates" edges to APIKeyProfileTemplate entities.
+func (_u *ProjectUpdate) RemoveAPIKeyProfileTemplates(v ...*APIKeyProfileTemplate) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAPIKeyProfileTemplateIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -915,6 +952,51 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.APIKeyProfileTemplatesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.APIKeyProfileTemplatesTable,
+			Columns: []string{project.APIKeyProfileTemplatesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apikeyprofiletemplate.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAPIKeyProfileTemplatesIDs(); len(nodes) > 0 && !_u.mutation.APIKeyProfileTemplatesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.APIKeyProfileTemplatesTable,
+			Columns: []string{project.APIKeyProfileTemplatesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apikeyprofiletemplate.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.APIKeyProfileTemplatesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.APIKeyProfileTemplatesTable,
+			Columns: []string{project.APIKeyProfileTemplatesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apikeyprofiletemplate.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ProjectUsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1183,6 +1265,21 @@ func (_u *ProjectUpdateOne) AddPrompts(v ...*Prompt) *ProjectUpdateOne {
 	return _u.AddPromptIDs(ids...)
 }
 
+// AddAPIKeyProfileTemplateIDs adds the "api_key_profile_templates" edge to the APIKeyProfileTemplate entity by IDs.
+func (_u *ProjectUpdateOne) AddAPIKeyProfileTemplateIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.AddAPIKeyProfileTemplateIDs(ids...)
+	return _u
+}
+
+// AddAPIKeyProfileTemplates adds the "api_key_profile_templates" edges to the APIKeyProfileTemplate entity.
+func (_u *ProjectUpdateOne) AddAPIKeyProfileTemplates(v ...*APIKeyProfileTemplate) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAPIKeyProfileTemplateIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *ProjectUpdateOne) AddProjectUserIDs(ids ...int) *ProjectUpdateOne {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -1369,6 +1466,27 @@ func (_u *ProjectUpdateOne) RemovePrompts(v ...*Prompt) *ProjectUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePromptIDs(ids...)
+}
+
+// ClearAPIKeyProfileTemplates clears all "api_key_profile_templates" edges to the APIKeyProfileTemplate entity.
+func (_u *ProjectUpdateOne) ClearAPIKeyProfileTemplates() *ProjectUpdateOne {
+	_u.mutation.ClearAPIKeyProfileTemplates()
+	return _u
+}
+
+// RemoveAPIKeyProfileTemplateIDs removes the "api_key_profile_templates" edge to APIKeyProfileTemplate entities by IDs.
+func (_u *ProjectUpdateOne) RemoveAPIKeyProfileTemplateIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.RemoveAPIKeyProfileTemplateIDs(ids...)
+	return _u
+}
+
+// RemoveAPIKeyProfileTemplates removes "api_key_profile_templates" edges to APIKeyProfileTemplate entities.
+func (_u *ProjectUpdateOne) RemoveAPIKeyProfileTemplates(v ...*APIKeyProfileTemplate) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAPIKeyProfileTemplateIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -1881,6 +1999,51 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.APIKeyProfileTemplatesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.APIKeyProfileTemplatesTable,
+			Columns: []string{project.APIKeyProfileTemplatesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apikeyprofiletemplate.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAPIKeyProfileTemplatesIDs(); len(nodes) > 0 && !_u.mutation.APIKeyProfileTemplatesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.APIKeyProfileTemplatesTable,
+			Columns: []string{project.APIKeyProfileTemplatesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apikeyprofiletemplate.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.APIKeyProfileTemplatesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.APIKeyProfileTemplatesTable,
+			Columns: []string{project.APIKeyProfileTemplatesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apikeyprofiletemplate.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

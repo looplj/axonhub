@@ -8,6 +8,7 @@ type ApiKeyDialogType =
   | 'status'
   | 'view'
   | 'profiles'
+  | 'profileTemplates'
   | 'archive'
   | 'bulkDisable'
   | 'bulkArchive'
@@ -37,6 +38,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
     status: false,
     view: false,
     profiles: false,
+    profileTemplates: false,
     archive: false,
     bulkDisable: false,
     bulkArchive: false,
@@ -73,6 +75,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
         status: false,
         view: false,
         profiles: false,
+        profileTemplates: false,
         archive: false,
         bulkDisable: false,
         bulkArchive: false,
