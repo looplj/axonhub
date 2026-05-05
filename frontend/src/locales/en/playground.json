@@ -1,9 +1,10 @@
 {
   "playground.title": "Playground",
   "playground.description": "Interactive environment for testing AI models.",
+  "playground.settings.modelSource": "Test mode",
   "playground.settings.channel": "Channel",
   "playground.settings.selectChannel": "Select a channel",
-  "playground.settings.modelPageModelsChannel": "Model gateway",
+  "playground.settings.modelGateway": "Model gateway",
   "playground.settings.model": "Model",
   "playground.settings.selectModel": "Select a model",
   "playground.settings.temperature": "Temperature",
@@ -20,5 +21,5 @@
   "playground.errors.noChannelsAvailable": "No channels available",
   "playground.errors.noModelsAvailable": "No models available",
   "playground.modelsAvailable": "{{count}} models available across {{channels}} channels",
-  "playground.modelPageModelsAvailable": "{{count}} model page models available"
+  "playground.modelPageModelsAvailable": "{{count}} model gateway models available"
 }
