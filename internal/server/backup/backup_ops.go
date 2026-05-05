@@ -10,6 +10,9 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/model"
+	"github.com/looplj/axonhub/internal/ent/project"
 )
 
 func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byte, error) {
@@ -39,7 +42,9 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 	)
 
 	if opts.IncludeProjects {
-		projects, err := svc.db.Project.Query().All(ctx)
+		projects, err := svc.db.Project.Query().
+			Order(ent.Desc(project.FieldID)).
+			All(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +55,9 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 	}
 
 	if opts.IncludeChannels {
-		channels, err := svc.db.Channel.Query().All(ctx)
+		channels, err := svc.db.Channel.Query().
+			Order(ent.Desc(channel.FieldID)).
+			All(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +95,9 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 	var modelDataList []*BackupModel
 
 	if opts.IncludeModels {
-		models, err := svc.db.Model.Query().All(ctx)
+		models, err := svc.db.Model.Query().
+			Order(ent.Desc(model.FieldID)).
+			All(ctx)
 		if err != nil {
 			return nil, err
 		}

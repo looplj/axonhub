@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -40,7 +41,9 @@ func NewPromptService(params PromptServiceParams) *PromptService {
 func (svc *PromptService) Initialize(ctx context.Context) error {
 	ctx = authz.WithSystemBypass(ctx, "prompt-initialize")
 
-	projects, err := svc.entFromContext(ctx).Project.Query().All(ctx)
+	projects, err := svc.entFromContext(ctx).Project.Query().
+		Order(ent.Desc(project.FieldID)).
+		All(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to query projects for initial prompt loading: %w", err)
 	}

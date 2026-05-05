@@ -389,7 +389,9 @@ func (svc *ProviderQuotaService) getCheckInterval() time.Duration {
 }
 
 func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {
-	records, err := svc.db.ProviderQuotaStatus.Query().All(ctx)
+	records, err := svc.db.ProviderQuotaStatus.Query().
+		Order(ent.Desc(providerquotastatus.FieldID)).
+		All(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to load quota cache from DB", log.Cause(err))
 		return

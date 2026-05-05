@@ -51,6 +51,7 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 		Count  int            `json:"count"`
 	}
 	if err := r.client.Request.Query().
+		Order(ent.Desc(request.FieldID)).
 		GroupBy(request.FieldStatus).
 		Aggregate(ent.Count()).
 		Scan(ctx, &statusCounts); err != nil {
@@ -905,6 +906,7 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 			}
 
 			s.GroupBy(requestexecution.FieldChannelID)
+			s.OrderBy(sql.Desc(requestexecution.FieldID))
 		}).
 		Scan(ctx, &results)
 	if err != nil {
