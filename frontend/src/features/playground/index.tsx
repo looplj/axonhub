@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Actions, Action } from '@/components/ai-elements/actions';
@@ -22,9 +23,13 @@ import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-e
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useQueryChannels } from '@/features/channels/data/channels';
+import { useQueryModels } from '@/features/models/data/models';
+
+type PlaygroundModelSource = 'channel' | 'model_gateway';
 
 export default function Playground() {
   const { t } = useTranslation();
+  const [modelSource, setModelSource] = useState<PlaygroundModelSource>('channel');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [model, setModel] = useState('');
   const [temperature, setTemperature] = useState(0.6);
@@ -37,6 +42,7 @@ export default function Playground() {
   const maxTokensRef = useRef(maxTokens);
   const systemPromptRef = useRef(systemPrompt);
   const selectedChannelRef = useRef(selectedChannel);
+  const modelSourceRef = useRef(modelSource);
 
   // Keep refs synchronized with state
   useEffect(() => {
@@ -59,6 +65,10 @@ export default function Playground() {
     selectedChannelRef.current = selectedChannel;
   }, [selectedChannel]);
 
+  useEffect(() => {
+    modelSourceRef.current = modelSource;
+  }, [modelSource]);
+
   const { accessToken } = useAuthStore((state) => state.auth);
   const selectedProjectId = useSelectedProjectId();
 
@@ -70,6 +80,18 @@ export default function Playground() {
       statusIn: ['enabled', 'disabled'],
     },
   });
+  const isModelGatewaySource = modelSource === 'model_gateway';
+  const { data: modelsData, isLoading: modelsLoading } = useQueryModels(
+    {
+      first: 10000,
+      orderBy: { field: 'NAME', direction: 'ASC' },
+      where: {
+        statusIn: ['enabled'],
+        typeIn: ['chat'],
+      },
+    },
+    { enabled: isModelGatewaySource }
+  );
 
   const [input, setInput] = useState('');
 
@@ -78,11 +100,14 @@ export default function Playground() {
       api: '/admin/playground/chat',
       credentials: 'include',
       headers: () => {
-        return {
+        const headers: Record<string, string> = {
           Authorization: 'Bearer ' + accessToken,
-          'X-Channel-ID': selectedChannelRef.current || '',
           'X-Project-ID': selectedProjectId || '',
         };
+        if (modelSourceRef.current === 'channel' && selectedChannelRef.current) {
+          headers['X-Channel-ID'] = selectedChannelRef.current;
+        }
+        return headers;
       },
       body: () => {
         return {
@@ -214,8 +239,20 @@ export default function Playground() {
       }));
   }, [channelsData]);
 
+  const modelPageModelOptions = useMemo(() => {
+    if (!modelsData?.edges) return [];
+    return modelsData.edges.map((edge) => {
+      const modelID = edge.node.modelID;
+      return {
+        value: modelID,
+        label: edge.node.name || modelID,
+      };
+    });
+  }, [modelsData]);
+
   // 根据选中渠道过滤出模型列表
   const modelOptions = useMemo(() => {
+    if (isModelGatewaySource) return modelPageModelOptions;
     if (!channelsData?.edges || !selectedChannel) return [];
     const channelEdge = channelsData.edges.find((edge) => edge.node.id === selectedChannel);
     if (!channelEdge) return [];
@@ -223,7 +260,9 @@ export default function Playground() {
       value: m,
       label: m,
     }));
-  }, [channelsData, selectedChannel]);
+  }, [channelsData, isModelGatewaySource, modelPageModelOptions, selectedChannel]);
+
+  const selectedModelSourceLoading = isModelGatewaySource ? modelsLoading : channelsLoading;
 
   // 处理渠道选择，自动选第一个模型
   const handleChannelChange = useCallback(
@@ -236,12 +275,32 @@ export default function Playground() {
     [channelsData]
   );
 
+  const handleModelSourceChange = useCallback(
+    (source: string) => {
+      const nextSource = source as PlaygroundModelSource;
+      setModelSource(nextSource);
+      if (nextSource === 'model_gateway') {
+        setModel(modelPageModelOptions[0]?.value ?? '');
+        return;
+      }
+      const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === selectedChannel);
+      setModel(channelEdge?.node.supportedModels[0] ?? '');
+    },
+    [channelsData, modelPageModelOptions, selectedChannel]
+  );
+
   // 初始化：默认选第一个渠道和第一个模型
   useEffect(() => {
-    if (!selectedChannel && channelOptions.length > 0) {
+    if (!selectedChannel && !channelsLoading && channelOptions.length > 0) {
       handleChannelChange(channelOptions[0].value);
     }
-  }, [channelOptions, handleChannelChange, selectedChannel]);
+  }, [channelOptions, channelsLoading, handleChannelChange, selectedChannel]);
+
+  useEffect(() => {
+    if (isModelGatewaySource && !model && modelPageModelOptions.length > 0) {
+      setModel(modelPageModelOptions[0].value);
+    }
+  }, [isModelGatewaySource, model, modelPageModelOptions]);
 
   return (
     <TooltipProvider>
@@ -272,18 +331,30 @@ export default function Playground() {
           <ScrollArea className='min-h-0 flex-1 p-4'>
             <div className='space-y-6'>
               <div className='space-y-3'>
-                <Label htmlFor='channel' className='text-xs font-semibold'>
-                  {t('playground.settings.channel')}
-                </Label>
-                <AutoCompleteSelect
-                  selectedValue={selectedChannel}
-                  onSelectedValueChange={(v) => handleChannelChange(v)}
-                  items={channelOptions}
-                  isLoading={channelsLoading}
-                  emptyMessage={t('playground.errors.noChannelsAvailable')}
-                  placeholder={channelsLoading ? t('loading') : t('playground.settings.selectChannel')}
-                />
+                <Label className='text-xs font-semibold'>{t('playground.settings.modelSource')}</Label>
+                <Tabs value={modelSource} onValueChange={handleModelSourceChange}>
+                  <TabsList className='grid w-full grid-cols-2'>
+                    <TabsTrigger value='channel'>{t('playground.settings.channel')}</TabsTrigger>
+                    <TabsTrigger value='model_gateway'>{t('playground.settings.modelGateway')}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
+
+              {modelSource === 'channel' && (
+                <div className='space-y-3'>
+                  <Label htmlFor='channel' className='text-xs font-semibold'>
+                    {t('playground.settings.channel')}
+                  </Label>
+                  <AutoCompleteSelect
+                    selectedValue={selectedChannel}
+                    onSelectedValueChange={(v) => handleChannelChange(v)}
+                    items={channelOptions}
+                    isLoading={channelsLoading}
+                    emptyMessage={t('playground.errors.noChannelsAvailable')}
+                    placeholder={channelsLoading ? t('loading') : t('playground.settings.selectChannel')}
+                  />
+                </div>
+              )}
 
               <div className='space-y-3'>
                 <Label htmlFor='model' className='text-xs font-semibold'>
@@ -293,17 +364,21 @@ export default function Playground() {
                   selectedValue={model}
                   onSelectedValueChange={(v) => setModel(v)}
                   items={modelOptions}
-                  isLoading={channelsLoading}
-                  emptyMessage={t('playground.errors.noChannelsAvailable')}
-                  placeholder={channelsLoading ? t('loading') : t('playground.settings.selectModel')}
+                  isLoading={selectedModelSourceLoading}
+                  emptyMessage={t('playground.errors.noModelsAvailable')}
+                  placeholder={selectedModelSourceLoading ? t('loading') : t('playground.settings.selectModel')}
                 />
-                {channelsLoading && <p className='text-muted-foreground text-[10px]'>{t('loading')}...</p>}
-                {!channelsLoading && modelOptions.length > 0 && (
+                {selectedModelSourceLoading && <p className='text-muted-foreground text-[10px]'>{t('loading')}...</p>}
+                {!selectedModelSourceLoading && modelOptions.length > 0 && (
                   <p className='text-muted-foreground text-[10px]'>
-                    {t('playground.modelsAvailable', {
-                      count: modelOptions.length,
-                      channels: channelOptions.length,
-                    })}
+                    {isModelGatewaySource
+                      ? t('playground.modelPageModelsAvailable', {
+                          count: modelOptions.length,
+                        })
+                      : t('playground.modelsAvailable', {
+                          count: modelOptions.length,
+                          channels: channelOptions.length,
+                        })}
                   </p>
                 )}
               </div>
