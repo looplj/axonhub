@@ -139,7 +139,7 @@ func (s *RequestService) CreateRequest(
 
 	if storeRequestBody {
 		if len(httpRequest.JSONBody) > 0 {
-			requestBodyBytes = httpRequest.JSONBody
+			requestBodyBytes = xjson.SafeJSONRawMessage(string(httpRequest.JSONBody))
 		} else {
 			b, err := xjson.Marshal(httpRequest.Body)
 			if err != nil {
@@ -259,7 +259,7 @@ func (s *RequestService) CreateRequestExecution(
 
 	if storeRequestBody {
 		if len(channelRequest.JSONBody) > 0 {
-			requestBodyBytes = channelRequest.JSONBody
+			requestBodyBytes = xjson.SafeJSONRawMessage(string(channelRequest.JSONBody))
 		} else {
 			b, err := xjson.Marshal(channelRequest.Body)
 			if err != nil {
