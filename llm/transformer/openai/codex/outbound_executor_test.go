@@ -366,6 +366,42 @@ func TestCodexOutbound_TransformsImageGenerationToResponsesTool(t *testing.T) {
 	require.Equal(t, "Draw a request flow", text["text"])
 }
 
+func TestCodexOutbound_ImageRequestDoesNotMutateTransformerMetadata(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+	metadata := map[string]any{"existing": "value"}
+
+	_, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:               "gpt-image-2",
+		RequestType:         llm.RequestTypeImage,
+		APIFormat:           llm.APIFormatOpenAIImageGeneration,
+		TransformerMetadata: metadata,
+		Image: &llm.ImageRequest{
+			Prompt:       "Draw a request flow",
+			OutputFormat: "png",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"existing": "value"}, metadata)
+}
+
+func TestCodexOutbound_ImageRequestRejectsMultipleImages(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+	n := int64(2)
+
+	_, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:       "gpt-image-2",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
+		Image: &llm.ImageRequest{
+			Prompt: "Draw a request flow",
+			N:      &n,
+		},
+	})
+	require.ErrorContains(t, err, "codex image generation supports n=1 only")
+}
+
 func TestCodexOutbound_TransformsImageEditToResponsesTool(t *testing.T) {
 	ctx := context.Background()
 	outbound := newTestCodexOutbound(t)

@@ -33,6 +33,9 @@ func (t *OutboundTransformer) transformImageRequest(ctx context.Context, llmReq 
 	if llmReq.Image == nil {
 		return nil, errors.New("image request is required")
 	}
+	if llmReq.Image.N != nil && *llmReq.Image.N > 1 {
+		return nil, fmt.Errorf("codex image generation supports n=1 only, got %d", *llmReq.Image.N)
+	}
 
 	toolModel := strings.TrimSpace(llmReq.Model)
 	if toolModel == "" {
@@ -87,6 +90,7 @@ func (t *OutboundTransformer) transformImageRequest(ctx context.Context, llmReq 
 	}
 
 	imageReq := *llmReq
+	imageReq.TransformerMetadata = cloneTransformerMetadata(llmReq.TransformerMetadata)
 	imageReq.Model = codexImageMainModel()
 	imageReq.RequestType = llm.RequestTypeChat
 	imageReq.APIFormat = llm.APIFormatOpenAIResponse
@@ -110,10 +114,6 @@ func (t *OutboundTransformer) transformImageRequest(ctx context.Context, llmReq 
 	imageReq.ParallelToolCalls = lo.ToPtr(true)
 	imageReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
 
-	if imageReq.TransformerMetadata == nil {
-		imageReq.TransformerMetadata = map[string]any{}
-	}
-
 	if imageTool.OutputFormat != "" {
 		imageReq.TransformerMetadata["image_output_format"] = imageTool.OutputFormat
 	}
@@ -128,6 +128,15 @@ func (t *OutboundTransformer) transformImageRequest(ctx context.Context, llmReq 
 	hreq.TransformerMetadata["codex_image_request_model"] = toolModel
 
 	return hreq, nil
+}
+
+func cloneTransformerMetadata(src map[string]any) map[string]any {
+	dst := make(map[string]any, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+
+	return dst
 }
 
 func imageDataURL(data []byte) string {
