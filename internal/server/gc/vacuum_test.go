@@ -6,10 +6,11 @@ import (
 	"os"
 	"testing"
 
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
