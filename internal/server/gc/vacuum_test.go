@@ -19,10 +19,7 @@ import (
 func TestWorker_runVacuum_Disabled(t *testing.T) {
 	t.Parallel()
 
-	client := enttest.NewEntClient(t, "sqlite3", "file:vacdis?mode=memory&_fk=1")
-	t.Cleanup(func() { _ = client.Close() })
-
-	w := &Worker{Ent: client, Config: Config{VacuumEnabled: false}}
+	w := &Worker{Config: Config{VacuumEnabled: false}}
 	require.NoError(t, w.runVacuum(context.Background()))
 }
 
