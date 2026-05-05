@@ -526,8 +526,7 @@ func (w *Worker) runVacuum(ctx context.Context) error {
 		vacuumSQL = "VACUUM"
 	}
 
-	_, err := sqlDriver.ExecContext(ctx, vacuumSQL, nil, nil)
-	if err != nil {
+	if _, err := sqlDriver.ExecContext(ctx, vacuumSQL); err != nil {
 		return fmt.Errorf("failed to execute %s: %w", vacuumSQL, err)
 	}
 
