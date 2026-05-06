@@ -166,6 +166,7 @@ type SystemModelSettings {
   queryAllChannelModels: Boolean!
   defaultModelAPIIncludeAll: Boolean!
   autoReasoningEffort: Boolean!
+  modelBlacklistRegex: String!
 }
 
 input UpdateSystemModelSettingsInput {
@@ -173,6 +174,7 @@ input UpdateSystemModelSettingsInput {
   queryAllChannelModels: Boolean
   defaultModelAPIIncludeAll: Boolean
   autoReasoningEffort: Boolean
+  modelBlacklistRegex: String
 }
 
 input UpdateDefaultDataStorageInput {

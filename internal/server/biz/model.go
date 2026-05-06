@@ -610,8 +610,9 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 
 	// QueryAllChannelModels=true: merge configured models (higher priority) with channel models
 	var (
-		models   = configuredModels
-		modelSet = make(map[string]bool, len(configuredModels))
+		models    = configuredModels
+		modelSet  = make(map[string]bool, len(configuredModels))
+		blacklist = settings.ModelBlacklistRegex
 	)
 
 	for _, m := range configuredModels {
@@ -623,6 +624,12 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 
 		for requestModel := range entries {
 			if modelSet[requestModel] {
+				continue
+			}
+
+			// Channel-derived models matching the blacklist regex are excluded.
+			// Configured Model entities above are not affected.
+			if blacklist != "" && xregexp.MatchString(blacklist, requestModel) {
 				continue
 			}
 
