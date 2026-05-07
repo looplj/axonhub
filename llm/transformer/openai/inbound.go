@@ -104,9 +104,16 @@ func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	return streams.NoNil(streams.MapErr(stream, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
+	withoutDone := streams.Filter(stream, func(chunk *llm.Response) bool {
+		return chunk != nil && chunk.Object != llm.DoneResponse.Object
+	})
+
+	mapped := streams.NoNil(streams.MapErr(withoutDone, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
 		return t.TransformStreamChunk(ctx, chunk)
-	})), nil
+	}))
+
+	doneEvent := llm.DoneStreamEvent
+	return streams.AppendStream(mapped, &doneEvent), nil
 }
 
 func (t *InboundTransformer) TransformStreamChunk(
@@ -131,7 +138,7 @@ func (t *InboundTransformer) TransformStreamChunk(
 	}
 
 	// Convert to OpenAI Response format
-	oaiResp := ResponseFromLLM(chatResp)
+	oaiResp := ResponseFromLLM(normalizeOpenAIStreamChunk(chatResp))
 
 	// For OpenAI, we keep the original response format as the event data
 	eventData, err := json.Marshal(oaiResp)
@@ -143,6 +150,49 @@ func (t *InboundTransformer) TransformStreamChunk(
 		Type: "",
 		Data: eventData,
 	}, nil
+}
+
+func normalizeOpenAIStreamChunk(resp *llm.Response) *llm.Response {
+	if resp == nil {
+		return nil
+	}
+
+	normalized := *resp
+	normalized.Object = "chat.completion.chunk"
+
+	if len(resp.Choices) == 0 {
+		return &normalized
+	}
+
+	normalized.Choices = make([]llm.Choice, len(resp.Choices))
+	for i, choice := range resp.Choices {
+		normalizedChoice := choice
+		if choice.Delta != nil {
+			delta := normalizeOpenAIStreamDelta(*choice.Delta)
+			normalizedChoice.Delta = &delta
+			normalizedChoice.Message = nil
+		} else if choice.Message != nil {
+			delta := normalizeOpenAIStreamDelta(*choice.Message)
+			normalizedChoice.Delta = &delta
+			normalizedChoice.Message = nil
+		} else if choice.FinishReason != nil {
+			normalizedChoice.Delta = &llm.Message{}
+		}
+
+		normalized.Choices[i] = normalizedChoice
+	}
+
+	return &normalized
+}
+
+func normalizeOpenAIStreamDelta(delta llm.Message) llm.Message {
+	for i := range delta.ToolCalls {
+		if i > 0 && delta.ToolCalls[i].Index == 0 {
+			delta.ToolCalls[i].Index = i
+		}
+	}
+
+	return delta
 }
 
 // isReasoningSignatureEvent checks if the response contains ONLY ReasoningSignature.
