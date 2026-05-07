@@ -475,6 +475,109 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_TransformStreamChunk_NormalizesOpenAIChunkShape(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	event, err := transformer.TransformStreamChunk(t.Context(), &llm.Response{
+		ID:      "chatcmpl-123",
+		Object:  "chat.completion",
+		Created: 1677652288,
+		Model:   "gpt-4",
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_123",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "get_user_city",
+								Arguments: `{"user_id":"123"}`,
+							},
+						},
+						{
+							ID:   "call_456",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "get_weather",
+								Arguments: `{"city":"Shanghai"}`,
+							},
+						},
+					},
+				},
+				FinishReason: lo.ToPtr("tool_calls"),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, event)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(event.Data, &payload))
+	require.Equal(t, "chat.completion.chunk", payload["object"])
+
+	choices, ok := payload["choices"].([]any)
+	require.True(t, ok)
+	require.Len(t, choices, 1)
+
+	choice, ok := choices[0].(map[string]any)
+	require.True(t, ok)
+	require.NotContains(t, choice, "message")
+	require.Equal(t, "tool_calls", choice["finish_reason"])
+
+	delta, ok := choice["delta"].(map[string]any)
+	require.True(t, ok)
+
+	toolCalls, ok := delta["tool_calls"].([]any)
+	require.True(t, ok)
+	require.Len(t, toolCalls, 2)
+
+	firstToolCall, ok := toolCalls[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, float64(0), firstToolCall["index"])
+
+	secondToolCall, ok := toolCalls[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, float64(1), secondToolCall["index"])
+}
+
+func TestInboundTransformer_TransformStreamChunk_AddsEmptyDeltaForFinishReason(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	event, err := transformer.TransformStreamChunk(t.Context(), &llm.Response{
+		ID:      "chatcmpl-123",
+		Object:  "chat.completion.chunk",
+		Created: 1677652288,
+		Model:   "gpt-4",
+		Choices: []llm.Choice{
+			{
+				Index:        0,
+				FinishReason: lo.ToPtr("tool_calls"),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, event)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(event.Data, &payload))
+
+	choices, ok := payload["choices"].([]any)
+	require.True(t, ok)
+	require.Len(t, choices, 1)
+
+	choice, ok := choices[0].(map[string]any)
+	require.True(t, ok)
+	require.Contains(t, choice, "delta")
+	require.Equal(t, "tool_calls", choice["finish_reason"])
+
+	delta, ok := choice["delta"].(map[string]any)
+	require.True(t, ok)
+	require.Empty(t, delta)
+}
+
 func TestInboundTransformer_TransformStream_SkipsPureReasoningSignatureChunk(t *testing.T) {
 	transformer := NewInboundTransformer()
 	signature := shared.GeminiThoughtSignaturePrefix + "stream_signature"
@@ -539,6 +642,40 @@ func TestInboundTransformer_TransformStream_SkipsPureReasoningSignatureChunk(t *
 	require.NotNil(t, chunkResp.Choices[0].Delta)
 	require.Len(t, chunkResp.Choices[0].Delta.ToolCalls, 1)
 	require.Nil(t, chunkResp.Choices[0].Delta.ToolCalls[0].ExtraContent)
+	require.Equal(t, "[DONE]", string(events[1].Data))
+}
+
+func TestInboundTransformer_TransformStream_AppendsSingleDoneEvent(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	stream, err := transformer.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			ID:      "chatcmpl-123",
+			Object:  "chat.completion.chunk",
+			Created: 1677652288,
+			Model:   "gpt-4",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			},
+		},
+		llm.DoneResponse,
+	}))
+	require.NoError(t, err)
+
+	var events []*httpclient.StreamEvent
+	for stream.Next() {
+		events = append(events, stream.Current())
+	}
+	require.NoError(t, stream.Err())
+	require.Len(t, events, 2)
 	require.Equal(t, "[DONE]", string(events[1].Data))
 }
 
