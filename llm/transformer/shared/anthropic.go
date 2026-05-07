@@ -1,69 +1,28 @@
 package shared
 
-import (
-	"encoding/base64"
-	"strings"
-)
-
-func parseAnthropicSignaturePrefix(signature string) (prefixLength int, footprint string, ok bool) {
-	if len(signature) >= len(AnthropicSignaturePrefix)+8 && strings.HasPrefix(signature, AnthropicSignaturePrefix) {
-		fpB64 := signature[len(AnthropicSignaturePrefix) : len(AnthropicSignaturePrefix)+8]
-		if decoded, err := base64.StdEncoding.DecodeString(fpB64); err == nil && len(decoded) == 6 {
-			fp := string(decoded)
-			if isFootprintHex6(fp) {
-				return len(AnthropicSignaturePrefix) + 8, fp, true
-			}
-		}
-	}
-
-	return 0, "", false
-}
-
-// DecodeAnthropicSignature strips the full Anthropic prefix (type marker + footprint)
-// from an encoded signature. Returns nil if the prefix does not match.
-func DecodeAnthropicSignature(signature *string, footprint string) *string {
-	if signature == nil {
-		return nil
-	}
-
-	prefixLength, embeddedFootprint, ok := parseAnthropicSignaturePrefix(*signature)
-	if !ok {
-		return nil
-	}
-
-	if embeddedFootprint != "" && embeddedFootprint != footprint {
-		return nil
-	}
-
-	decoded := (*signature)[prefixLength:]
-
-	return &decoded
-}
-
-func DecodeAnthropicSignatureInScope(signature *string, scope TransportScope) *string {
-	return DecodeAnthropicSignature(signature, scope.Footprint())
-}
-
-// EncodeAnthropicSignature encodes a raw signature with the Anthropic type marker and footprint.
-// Format:
-//   - without footprint: EnsureBase64Encoding(rawSignature)
-//   - with footprint: AnthropicSignaturePrefix + base64(footprint) + EnsureBase64Encoding(rawSignature)
-func EncodeAnthropicSignature(signature *string, footprint string) *string {
+// EncodeAnthropicSignature encodes a raw Anthropic signature for storage in ReasoningSignature.
+// Anthropic signatures are typically raw bytes, so we base64-encode them if needed.
+func EncodeAnthropicSignature(signature *string) *string {
 	if signature == nil {
 		return nil
 	}
 
 	encoded := EnsureBase64Encoding(*signature)
-	if footprint == "" || !isFootprintHex6(footprint) {
-		return &encoded
-	}
-
-	prefix := AnthropicSignaturePrefix + base64.StdEncoding.EncodeToString([]byte(footprint))
-	encoded = prefix + encoded
-
 	return &encoded
 }
 
-func EncodeAnthropicSignatureInScope(signature *string, scope TransportScope) *string {
-	return EncodeAnthropicSignature(signature, scope.Footprint())
+// DecodeAnthropicSignature checks whether a signature blob is safe to use as an Anthropic thinking signature.
+// Returns the raw value if the blob is likely Anthropic or its provider is unknown.
+// Returns nil if the blob is clearly from a different provider (OpenAI/Gemini).
+func DecodeAnthropicSignature(signature *string) *string {
+	if signature == nil {
+		return nil
+	}
+
+	result := GuessSignatureProvider(*signature)
+	if result.Provider == ProviderOpenAI || result.Provider == ProviderGemini {
+		return nil
+	}
+
+	return signature
 }

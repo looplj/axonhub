@@ -137,11 +137,10 @@ func TestOutboundTransformer_APIFormat(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIResponse, transformer.APIFormat())
 }
 
-func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
+func TestOutboundTransformer_TransformRequest_AccountIdentity(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
-		BaseURL:         "https://api.openai.com",
-		APIKeyProvider:  auth.NewStaticKeyProvider("test-api-key"),
-		AccountIdentity: "channel-1",
+		BaseURL:        "https://api.openai.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	})
 	require.NoError(t, err)
 
@@ -154,13 +153,10 @@ func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testin
 
 	hreq, err := transformer.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
-	require.NotNil(t, hreq.Metadata)
-
-	require.Equal(t, transformer.config.BaseURL, hreq.Metadata[shared.MetadataKeyBaseURL])
-	require.Equal(t, "channel-1", hreq.Metadata[shared.MetadataKeyAccountIdentity])
+	require.Nil(t, hreq.Metadata)
 }
 
-func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing.T) {
+func TestOutboundTransformer_TransformRequest_OmitsMetadataWhenEmpty(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL:        "https://api.openai.com",
 		APIKeyProvider: auth.NewStaticKeyProvider(""),
@@ -176,7 +172,7 @@ func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing
 
 	hreq, err := transformer.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
-	require.True(t, hreq.Metadata == nil || (hreq.Metadata[shared.MetadataKeyBaseURL] == "" && hreq.Metadata[shared.MetadataKeyAccountIdentity] == ""))
+	require.Nil(t, hreq.Metadata)
 }
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {

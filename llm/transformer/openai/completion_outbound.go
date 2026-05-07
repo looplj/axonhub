@@ -12,7 +12,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 type CompletionOutboundTransformer struct {
@@ -108,11 +107,6 @@ func (t *CompletionOutboundTransformer) TransformRequest(
 
 	url := t.buildURL()
 
-	scope := shared.TransportScope{
-		BaseURL:         t.config.BaseURL,
-		AccountIdentity: t.config.AccountIdentity,
-	}
-
 	return &httpclient.Request{
 		Method:  http.MethodPost,
 		URL:     url,
@@ -124,7 +118,7 @@ func (t *CompletionOutboundTransformer) TransformRequest(
 		},
 		RequestType: string(llm.RequestTypeCompletion),
 		APIFormat:   string(llm.APIFormatOpenAICompletion),
-		Metadata:    scope.Metadata(),
+		Metadata:    nil,
 	}, nil
 }
 

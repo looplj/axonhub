@@ -200,7 +200,6 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel) (*Channel, 
 	}
 
 	outbounds := make(map[string]transformer.Outbound)
-	accountIdentity := strconv.Itoa(c.ID)
 
 	for _, ep := range defaultEndpoints {
 		if ep.APIFormat == "" {
@@ -214,7 +213,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel) (*Channel, 
 		if ep.APIFormat == "" {
 			continue
 		}
-		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, accountIdentity, ep)
+		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
 		}
@@ -237,7 +236,6 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel) (*Channel, 
 func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	c *ent.Channel,
 	ch *Channel,
-	accountIdentity string,
 	ep objects.ChannelEndpoint,
 ) (transformer.Outbound, error) {
 	apiKeyProvider := getAPIKeyProvider(ch)
@@ -245,26 +243,23 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	switch ep.APIFormat {
 	case llm.APIFormatOpenAIChatCompletion.String():
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:    openai.PlatformOpenAI,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  apiKeyProvider,
-			EndpointPath:    ep.Path,
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAICompletion.String():
 		return openai.NewCompletionOutboundTransformer(&openai.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  apiKeyProvider,
-			AccountIdentity: accountIdentity,
-			EndpointPath:    ep.Path,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIResponse.String(),
 		llm.APIFormatOpenAIResponseCompact.String():
 		return responses.NewOutboundTransformerWithConfig(&responses.Config{
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  apiKeyProvider,
-			EndpointPath:    ep.Path,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),
@@ -272,35 +267,31 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		llm.APIFormatOpenAIImageVariation.String(),
 		llm.APIFormatOpenAIVideo.String():
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:    openai.PlatformOpenAI,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  apiKeyProvider,
-			EndpointPath:    ep.Path,
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatAnthropicMessage.String():
 		return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:            anthropic.PlatformDirect,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  apiKeyProvider,
-			EndpointPath:    ep.Path,
+			Type:           anthropic.PlatformDirect,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatGeminiContents.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  apiKeyProvider,
-			EndpointPath:    ep.Path,
-			PlatformType:    ch.platformTypeForGeminiEndpoint(),
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
+			PlatformType:   ch.platformTypeForGeminiEndpoint(),
 		})
 	case llm.APIFormatGeminiEmbedding.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  apiKeyProvider,
-			EndpointPath:    ep.Path,
-			PlatformType:    ch.platformTypeForGeminiEndpoint(),
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+			EndpointPath:   ep.Path,
+			PlatformType:   ch.platformTypeForGeminiEndpoint(),
 		})
 	case llm.APIFormatJinaRerank.String(), llm.APIFormatJinaEmbedding.String():
 		return jina.NewOutboundTransformerWithConfig(&jina.Config{
@@ -348,7 +339,6 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 	httpClient := svc.getHttpClient(c.Settings)
 	ch := buildChannel(c, httpClient)
-	accountIdentity := strconv.Itoa(c.ID)
 
 	switch c.Type {
 	case channel.TypeDoubao, channel.TypeVolcengine:
@@ -401,9 +391,8 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeNanogptResponses:
 		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  getAPIKeyProvider(ch),
-			AccountIdentity: accountIdentity,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -488,10 +477,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeAnthropic, channel.TypeMinimaxAnthropic, channel.TypeVolcengineAnthropic, channel.TypeAihubmixAnthropic, channel.TypeXiaomiAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:            anthropic.PlatformDirect,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  getAPIKeyProvider(ch),
+			Type:           anthropic.PlatformDirect,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -537,7 +525,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 				TokenProvider:   tokens,
 				BaseURL:         c.BaseURL,
 				IsOfficial:      true,
-				AccountIdentity: accountIdentity,
+				AccountIdentity: strconv.Itoa(c.ID),
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to create claudecode outbound transformer: %w", err)
@@ -557,7 +545,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			TokenProvider:   tokens,
 			BaseURL:         c.BaseURL,
 			IsOfficial:      false,
-			AccountIdentity: accountIdentity,
+			AccountIdentity: strconv.Itoa(c.ID),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create claudecode outbound transformer: %w", err)
@@ -634,10 +622,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 	case channel.TypeAnthropicAWS:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:            anthropic.PlatformBedrock,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  getAPIKeyProvider(ch),
+			Type:           anthropic.PlatformBedrock,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -654,11 +641,10 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		}
 
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:            anthropic.PlatformVertex,
-			Region:          c.Credentials.GCP.Region,
-			ProjectID:       c.Credentials.GCP.ProjectID,
-			JSONData:        c.Credentials.GCP.JSONData,
-			AccountIdentity: accountIdentity,
+			Type:      anthropic.PlatformVertex,
+			Region:    c.Credentials.GCP.Region,
+			ProjectID: c.Credentials.GCP.ProjectID,
+			JSONData:  c.Credentials.GCP.JSONData,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -688,9 +674,8 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeGeminiOpenai:
 		transformer, err := geminioai.NewOutboundTransformerWithConfig(&geminioai.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  getAPIKeyProvider(ch),
-			AccountIdentity: accountIdentity,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -725,10 +710,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeBailianAnthropic, channel.TypeMoonshotCoding:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:            anthropic.PlatformDirect,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  getAPIKeyProvider(ch),
+			Type:           anthropic.PlatformDirect,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -771,9 +755,8 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			})
 
 			transformer, err := codex.NewOutboundTransformer(codex.Params{
-				TokenProvider:   p,
-				BaseURL:         c.BaseURL,
-				AccountIdentity: accountIdentity,
+				TokenProvider: p,
+				BaseURL:       c.BaseURL,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
@@ -790,9 +773,8 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		tokens := oauth.NewAPIKeyTokenProvider(apiKeyProvider.Get)
 
 		transformer, err := codex.NewOutboundTransformer(codex.Params{
-			TokenProvider:   tokens,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
+			TokenProvider: tokens,
+			BaseURL:       c.BaseURL,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
@@ -864,10 +846,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub:
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:    openai.PlatformOpenAI,
-			BaseURL:         c.BaseURL,
-			AccountIdentity: accountIdentity,
-			APIKeyProvider:  getAPIKeyProvider(ch),
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -878,9 +859,8 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeOpenaiResponses:
 		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  getAPIKeyProvider(ch),
-			AccountIdentity: accountIdentity,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -891,9 +871,8 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeGemini:
 		transformer, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  getAPIKeyProvider(ch),
-			AccountIdentity: accountIdentity,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -904,10 +883,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		return ch, nil
 	case channel.TypeGeminiVertex:
 		transformer, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  getAPIKeyProvider(ch),
-			PlatformType:    gemini.PlatformVertex,
-			AccountIdentity: accountIdentity,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+			PlatformType:   gemini.PlatformVertex,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

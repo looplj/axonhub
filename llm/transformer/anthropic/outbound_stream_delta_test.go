@@ -10,7 +10,6 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // TestOutboundTransformer_FinishReason_AlwaysIncludesDelta is a regression test
@@ -38,12 +37,10 @@ import (
 func TestOutboundTransformer_FinishReason_AlwaysIncludesDelta(t *testing.T) {
 	baseURL := "https://api.anthropic.com"
 	apiKey := string(PlatformDirect)
-	accountIdentity := "channel-1"
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
-		Type:            PlatformDirect,
-		BaseURL:         baseURL,
-		AccountIdentity: accountIdentity,
-		APIKeyProvider:  auth.NewStaticKeyProvider(apiKey),
+		Type:           PlatformDirect,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 	})
 	require.NoError(t, err)
 
@@ -52,11 +49,7 @@ func TestOutboundTransformer_FinishReason_AlwaysIncludesDelta(t *testing.T) {
 	require.NoError(t, err)
 
 	mockStream := streams.SliceStream(streamEvents)
-	ot := transformer.(*OutboundTransformer)
-	ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
-		BaseURL:         ot.config.BaseURL,
-		AccountIdentity: accountIdentity,
-	})
+	ctx := t.Context()
 	transformedStream, err := transformer.TransformStream(ctx, nil, mockStream)
 	require.NoError(t, err)
 
@@ -108,12 +101,10 @@ func TestOutboundTransformer_AllStreamingChunks_HaveDelta(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			baseURL := "https://api.anthropic.com"
 			apiKey := string(PlatformDirect)
-			accountIdentity := "channel-1"
 			transformer, err := NewOutboundTransformerWithConfig(&Config{
-				Type:            PlatformDirect,
-				BaseURL:         baseURL,
-				AccountIdentity: accountIdentity,
-				APIKeyProvider:  auth.NewStaticKeyProvider(apiKey),
+				Type:           PlatformDirect,
+				BaseURL:        baseURL,
+				APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
 			})
 			require.NoError(t, err)
 
@@ -121,11 +112,7 @@ func TestOutboundTransformer_AllStreamingChunks_HaveDelta(t *testing.T) {
 			require.NoError(t, err)
 
 			mockStream := streams.SliceStream(streamEvents)
-			ot := transformer.(*OutboundTransformer)
-			ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
-				BaseURL:         ot.config.BaseURL,
-				AccountIdentity: accountIdentity,
-			})
+			ctx := t.Context()
 			transformedStream, err := transformer.TransformStream(ctx, nil, mockStream)
 			require.NoError(t, err)
 

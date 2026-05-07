@@ -7,7 +7,6 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // candidateAggregator is a helper struct to aggregate data for each candidate.
@@ -38,7 +37,6 @@ func AggregateStreamChunks(
 		responseID    string
 		modelVersion  string
 		candidateAggs = make(map[int64]*candidateAggregator)
-		scope, _      = shared.GetTransportScope(ctx)
 	)
 
 	for _, chunk := range chunks {
@@ -106,7 +104,7 @@ func AggregateStreamChunks(
 								Arguments: string(argsJSON),
 							},
 						}
-						setOutboundToolCallThoughtSignature(agg.toolCalls[toolCallIndex], part.ThoughtSignature, scope)
+						setOutboundToolCallThoughtSignature(agg.toolCalls[toolCallIndex], part.ThoughtSignature)
 
 					case part.InlineData != nil:
 						agg.inlineDataParts = append(agg.inlineDataParts, part.InlineData)

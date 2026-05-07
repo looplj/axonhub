@@ -9,7 +9,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // hasFinishReason checks if an llm.Response event contains a finish reason.
@@ -114,10 +113,6 @@ func (p *pipeline) stream(
 				return event
 			},
 		)
-	}
-
-	if request != nil && request.Metadata != nil {
-		ctx = shared.ContextWithTransportScope(ctx, shared.ScopeFromMetadata(request.Metadata))
 	}
 
 	llmStream, err := p.Outbound.TransformStream(ctx, request, outboundStream)

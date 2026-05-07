@@ -41,9 +41,8 @@ var (
 )
 
 type Params struct {
-	TokenProvider   oauth.TokenGetter
-	BaseURL         string
-	AccountIdentity string
+	TokenProvider oauth.TokenGetter
+	BaseURL       string
 }
 
 func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
@@ -60,9 +59,8 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
 	ro, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
-		BaseURL:         baseURL,
-		APIKeyProvider:  auth.NewStaticKeyProvider("dummy"),
-		AccountIdentity: params.AccountIdentity,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 	})
 	if err != nil {
 		return nil, err

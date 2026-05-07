@@ -11,7 +11,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestClenupConfig(t *testing.T) {
@@ -110,11 +109,10 @@ func TestClenupConfig(t *testing.T) {
 	}
 }
 
-func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
+func TestOutboundTransformer_TransformRequest_AccountIdentity(t *testing.T) {
 	outbound, err := NewOutboundTransformerWithConfig(Config{
-		BaseURL:         "https://generativelanguage.googleapis.com",
-		APIKeyProvider:  auth.NewStaticKeyProvider("test-api-key"),
-		AccountIdentity: "channel-1",
+		BaseURL:        "https://generativelanguage.googleapis.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
 	})
 	require.NoError(t, err)
 
@@ -127,13 +125,10 @@ func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testin
 
 	hreq, err := outbound.TransformRequest(t.Context(), req)
 	require.NoError(t, err)
-	require.NotNil(t, hreq.Metadata)
-
-	require.Equal(t, "https://generativelanguage.googleapis.com", hreq.Metadata[shared.MetadataKeyBaseURL])
-	require.Equal(t, "channel-1", hreq.Metadata[shared.MetadataKeyAccountIdentity])
+	require.Nil(t, hreq.Metadata)
 }
 
-func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing.T) {
+func TestOutboundTransformer_TransformRequest_OmitsMetadataWhenEmpty(t *testing.T) {
 	outbound, err := NewOutboundTransformerWithConfig(Config{
 		BaseURL:        "https://generativelanguage.googleapis.com",
 		APIKeyProvider: auth.NewStaticKeyProvider(""),
@@ -149,7 +144,7 @@ func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing
 
 	hreq, err := outbound.TransformRequest(t.Context(), req)
 	require.NoError(t, err)
-	require.True(t, hreq.Metadata == nil || (hreq.Metadata[shared.MetadataKeyBaseURL] == "" && hreq.Metadata[shared.MetadataKeyAccountIdentity] == ""))
+	require.Nil(t, hreq.Metadata)
 }
 
 func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {

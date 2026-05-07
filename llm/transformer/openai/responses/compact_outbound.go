@@ -17,7 +17,6 @@ import (
 func (t *OutboundTransformer) transformCompactRequest(
 	ctx context.Context,
 	llmReq *llm.Request,
-	scope shared.TransportScope,
 ) (*httpclient.Request, error) {
 	if llmReq.Compact == nil {
 		return nil, fmt.Errorf("compact request is nil in llm.Request")
@@ -25,7 +24,7 @@ func (t *OutboundTransformer) transformCompactRequest(
 
 	// Build the compact API request payload
 	// Compact request input is always an ordered message array and must not be collapsed to plain text.
-	input := convertInputFromMessages(llmReq.Compact.Input, llm.TransformOptions{ArrayInputs: lo.ToPtr(true)}, scope)
+	input := convertInputFromMessages(llmReq.Compact.Input, llm.TransformOptions{ArrayInputs: lo.ToPtr(true)})
 
 	payload := CompactAPIRequest{
 		Model:          llmReq.Model,
@@ -59,7 +58,7 @@ func (t *OutboundTransformer) transformCompactRequest(
 		RequestType:           string(llm.RequestTypeCompact),
 		APIFormat:             string(llm.APIFormatOpenAIResponseCompact),
 		SkipInboundQueryMerge: true,
-		Metadata:              scope.Metadata(),
+		Metadata:              nil,
 	}, nil
 }
 
@@ -88,8 +87,6 @@ func (t *OutboundTransformer) transformCompactResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	scope, _ := shared.GetTransportScope(ctx)
-
 	var compactResp CompactAPIResponse
 	if err := json.Unmarshal(httpResp.Body, &compactResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal compact response: %w", err)
@@ -101,7 +98,7 @@ func (t *OutboundTransformer) transformCompactResponse(
 	}
 
 	for i := range outputMessages {
-		outputMessages[i].ReasoningSignature = shared.EncodeOpenAIEncryptedContentInScope(outputMessages[i].ReasoningSignature, scope)
+		outputMessages[i].ReasoningSignature = shared.EncodeOpenAIEncryptedContent(outputMessages[i].ReasoningSignature)
 	}
 
 	llmResp := &llm.Response{

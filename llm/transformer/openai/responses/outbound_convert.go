@@ -91,7 +91,7 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 // User messages become items with content array containing input_text items.
 // Assistant messages become items with type "message" and content array containing output_text items.
 // Tool calls become function_call items, tool results become function_call_output items.
-func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions, scope shared.TransportScope) Input {
+func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions) Input {
 	if len(msgs) == 0 {
 		return Input{}
 	}
@@ -113,7 +113,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 		case "user", "developer":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
-			assistantItems := convertAssistantMessage(msg, scope)
+			assistantItems := convertAssistantMessage(msg)
 			items = append(items, assistantItems...)
 
 			// Record tool call types for later tool result encoding.
@@ -191,7 +191,7 @@ func convertUserMessage(msg llm.Message) Item {
 
 // convertAssistantMessage converts an assistant message to Responses API Item(s) format.
 // Returns multiple items if the message contains tool calls.
-func convertAssistantMessage(msg llm.Message, scope shared.TransportScope) []Item {
+func convertAssistantMessage(msg llm.Message) []Item {
 	var (
 		items         []Item
 		toolCallItems []Item
@@ -202,7 +202,7 @@ func convertAssistantMessage(msg llm.Message, scope shared.TransportScope) []Ite
 	// The Responses API uses the `summary` field to hold the reasoning summary text.
 	var encryptedContent *string
 	if msg.ReasoningSignature != nil {
-		encryptedContent = shared.DecodeOpenAIEncryptedContentInScope(msg.ReasoningSignature, scope)
+		encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
 	}
 
 	if encryptedContent != nil {
@@ -497,7 +497,7 @@ func convertReasoning(req *llm.Request) *Reasoning {
 // convertOutputToMessage converts Responses API output items into an llm.Message.
 // It aggregates text, reasoning, tool calls, image generation,
 // compaction and compaction_summary items from the response output.
-func convertOutputToMessage(output []Item, scope shared.TransportScope, transformerMetadata map[string]any) llm.Message {
+func convertOutputToMessage(output []Item, transformerMetadata map[string]any) llm.Message {
 	var (
 		contentParts       []llm.MessageContentPart
 		textContent        strings.Builder
@@ -573,7 +573,7 @@ func convertOutputToMessage(output []Item, scope shared.TransportScope, transfor
 			}
 
 			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
-				reasoningSignature = shared.EncodeOpenAIEncryptedContentInScope(outputItem.EncryptedContent, scope)
+				reasoningSignature = shared.EncodeOpenAIEncryptedContent(outputItem.EncryptedContent)
 			}
 		case "image_generation_call":
 			flushText()
