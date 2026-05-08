@@ -24,6 +24,7 @@ import {
   Github,
   Claude,
   Cerebras,
+  Qiniu,
   XiaomiMiMo,
   Fireworks,
   Ollama,
