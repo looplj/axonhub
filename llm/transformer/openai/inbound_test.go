@@ -478,7 +478,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 func TestInboundTransformer_TransformStreamChunk_NormalizesOpenAIChunkShape(t *testing.T) {
 	transformer := NewInboundTransformer()
 
-	event, err := transformer.TransformStreamChunk(t.Context(), &llm.Response{
+	resp := &llm.Response{
 		ID:      "chatcmpl-123",
 		Object:  "chat.completion",
 		Created: 1677652288,
@@ -510,7 +510,9 @@ func TestInboundTransformer_TransformStreamChunk_NormalizesOpenAIChunkShape(t *t
 				FinishReason: lo.ToPtr("tool_calls"),
 			},
 		},
-	})
+	}
+
+	event, err := transformer.TransformStreamChunk(t.Context(), resp)
 	require.NoError(t, err)
 	require.NotNil(t, event)
 
@@ -541,6 +543,7 @@ func TestInboundTransformer_TransformStreamChunk_NormalizesOpenAIChunkShape(t *t
 	secondToolCall, ok := toolCalls[1].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, float64(1), secondToolCall["index"])
+	require.Zero(t, resp.Choices[0].Message.ToolCalls[1].Index)
 }
 
 func TestInboundTransformer_TransformStreamChunk_AddsEmptyDeltaForFinishReason(t *testing.T) {
