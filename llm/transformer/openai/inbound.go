@@ -186,11 +186,32 @@ func normalizeOpenAIStreamChunk(resp *llm.Response) *llm.Response {
 }
 
 func normalizeOpenAIStreamDelta(delta llm.Message) llm.Message {
-	for i := range delta.ToolCalls {
-		if i > 0 && delta.ToolCalls[i].Index == 0 {
-			delta.ToolCalls[i].Index = i
+	if len(delta.ToolCalls) == 0 {
+		return delta
+	}
+
+	needsFix := false
+	for i := 1; i < len(delta.ToolCalls); i++ {
+		if delta.ToolCalls[i].Index == 0 {
+			needsFix = true
+			break
 		}
 	}
+
+	if !needsFix {
+		return delta
+	}
+
+	toolCalls := make([]llm.ToolCall, len(delta.ToolCalls))
+	copy(toolCalls, delta.ToolCalls)
+
+	for i := range toolCalls {
+		if i > 0 && toolCalls[i].Index == 0 {
+			toolCalls[i].Index = i
+		}
+	}
+
+	delta.ToolCalls = toolCalls
 
 	return delta
 }
