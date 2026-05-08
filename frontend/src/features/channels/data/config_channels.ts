@@ -138,7 +138,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: ['deepseek-v3'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: OpenAI,
+    icon: Qiniu,
   },
   anthropic: {
     channelType: 'anthropic',
