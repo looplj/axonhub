@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"entgo.io/contrib/entgql"
+	"entgo.io/ent/privacy"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -152,6 +153,15 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 					"resource": codedErr.Extensions["resource"],
 					"field":    codedErr.Extensions["field"],
 					"value":    codedErr.Extensions["value"],
+				},
+			}
+		}
+		// Convert ent privacy deny errors to FORBIDDEN
+		if errors.Is(err, privacy.Deny) {
+			return &gqlerror.Error{
+				Message: "permission denied",
+				Extensions: map[string]any{
+					"code": xerrors.ErrCodeForbidden,
 				},
 			}
 		}

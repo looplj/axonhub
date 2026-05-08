@@ -6,7 +6,7 @@ import Playground from '@/features/playground';
 function ProtectedPlayground() {
   return (
     <ProjectGuard>
-      <RouteGuard requiredScopes={['write_requests']}>
+      <RouteGuard requiredScopes={['write_requests', 'read_channels']}>
         <Playground />
       </RouteGuard>
     </ProjectGuard>
