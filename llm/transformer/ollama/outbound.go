@@ -52,6 +52,7 @@ type ChatRequest struct {
 type ChatMessage struct {
 	Role     string `json:"role"`
 	Content  string `json:"content"`
+	Images   []string `json:"images,omitempty"`
 	Thinking string `json:"thinking,omitempty"`
 }
 
@@ -106,10 +107,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	for _, msg := range llmReq.Messages {
-		content := getContentString(msg.Content)
 		ollamaReq.Messages = append(ollamaReq.Messages, ChatMessage{
 			Role:    msg.Role,
-			Content: content,
+			Content: getContentString(msg.Content),
+			Images:  getImages(msg.Content),
 		})
 	}
 
@@ -174,6 +175,35 @@ func getContentString(content llm.MessageContent) string {
 	}
 
 	return ""
+}
+
+func getImages(content llm.MessageContent) []string {
+	if len(content.MultipleContent) == 0 {
+		return nil
+	}
+
+	images := make([]string, 0)
+
+	for _, part := range content.MultipleContent {
+		if part.Type != "image_url" || part.ImageURL == nil {
+			continue
+		}
+
+		image := strings.TrimSpace(part.ImageURL.URL)
+		if image == "" {
+			continue
+		}
+
+		if comma := strings.Index(image, ","); strings.HasPrefix(image, "data:") && comma >= 0 {
+			image = image[comma+1:]
+		}
+
+		if image != "" {
+			images = append(images, image)
+		}
+	}
+
+	return images
 }
 
 func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
