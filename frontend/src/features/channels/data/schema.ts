@@ -57,6 +57,7 @@ export const channelTypeSchema = z.enum([
   'deepseek',
   'deepseek_anthropic',
   'deepinfra',
+  'qiniu',
   'doubao',
   'doubao_anthropic',
   'moonshot',

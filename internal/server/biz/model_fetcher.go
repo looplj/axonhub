@@ -167,6 +167,8 @@ type FetchModelsResult struct {
 	Error  *string
 }
 
+var qiniuFallbackModels = []ModelIdentify{{ID: "deepseek-v3"}}
+
 func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.Type) []ModelIdentify {
 	//nolint:exhaustive // only supports default model fetching for specific channel types.
 	switch typ {
@@ -266,7 +268,14 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 	}
 
+	channelType := channel.Type(input.ChannelType)
+
 	if apiKey == "" {
+		if channelType == channel.TypeQiniu {
+			return &FetchModelsResult{
+				Models: qiniuFallbackModels,
+			}, nil
+		}
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr("API key is required"),
@@ -281,7 +290,6 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	// Validate channel type
-	channelType := channel.Type(input.ChannelType)
 	if err := channel.TypeValidator(channelType); err != nil {
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
@@ -357,6 +365,11 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	if err != nil {
+		if channelType == channel.TypeQiniu {
+			return &FetchModelsResult{
+				Models: qiniuFallbackModels,
+			}, nil
+		}
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
@@ -364,6 +377,11 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if channelType == channel.TypeQiniu {
+			return &FetchModelsResult{
+				Models: qiniuFallbackModels,
+			}, nil
+		}
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", resp.StatusCode)),
@@ -372,6 +390,11 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	models, err := f.parseModelsResponse(resp.Body)
 	if err != nil {
+		if channelType == channel.TypeQiniu {
+			return &FetchModelsResult{
+				Models: qiniuFallbackModels,
+			}, nil
+		}
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to parse models response: %v", err)),

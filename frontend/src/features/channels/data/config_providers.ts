@@ -25,6 +25,7 @@ import {
   AiHubMix,
   Cerebras,
   Claude,
+  Qiniu,
   XiaomiMiMo,
   Fireworks,
   Ollama
@@ -213,6 +214,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: DeepInfra,
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     channelTypes: ['deepinfra'],
+  },
+  qiniu: {
+    provider: 'qiniu',
+    icon: Qiniu,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    channelTypes: ['qiniu'],
   },
   cerebras: {
     provider: 'cerebras',
