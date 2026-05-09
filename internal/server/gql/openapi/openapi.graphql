@@ -77,7 +77,7 @@ enum APIKeyQuotaCalendarDurationUnit {
 
 input UpdateAPIKeyProfilesInput {
   activeProfile: String!
-  profiles: [APIKeyProfileInput!]
+  profiles: [APIKeyProfileInput!]!
 }
 
 input APIKeyProfileInput {

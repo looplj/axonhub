@@ -64,7 +64,11 @@ func APIKeyProjectScopeReadRule(requiredScope ScopeSlug) privacy.QueryRule {
 		}
 
 		if !hasScope(apiKey.Scopes, string(requiredScope)) {
-			return privacy.Skipf("API key %d does not have required scope: %s", apiKey.ID, requiredScope)
+			// Deny rather than Skip: the API key principal IS in context,
+			// it's just missing the required scope. This matches the explicit
+			// contract used by APIKeyScopeQueryRule and APIKeyProjectScopeWriteRule.
+			// (Skip is reserved for "this rule's principal type doesn't apply".)
+			return privacy.Denyf("API key %d does not have required scope: %s", apiKey.ID, requiredScope)
 		}
 
 		if pf, ok := q.(ProjectOwnedFilter); ok {
