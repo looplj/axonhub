@@ -2,10 +2,20 @@
 
 package openapi
 
+import (
+	"github.com/looplj/axonhub/internal/objects"
+)
+
 type APIKey struct {
-	Key    string   `json:"key"`
-	Name   string   `json:"name"`
-	Scopes []string `json:"scopes,omitempty"`
+	Key      string                  `json:"key"`
+	Name     string                  `json:"name"`
+	Scopes   []string                `json:"scopes,omitempty"`
+	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
+}
+
+type LoadAPIKeyProfileTemplateInput struct {
+	TemplateID objects.GUID `json:"templateID"`
+	APIKeyID   objects.GUID `json:"apiKeyID"`
 }
 
 type Mutation struct {

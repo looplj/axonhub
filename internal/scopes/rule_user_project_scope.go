@@ -68,7 +68,11 @@ func projectMemberQueryFilter(requiredScope ScopeSlug) func(ctx context.Context,
 
 		currentUser, err := getUserFromContext(ctx)
 		if err != nil {
-			return err
+			// Skip (not Deny) when no user is in context — mirrors
+			// UserProjectScopeWriteRule's convention so non-user principals
+			// (e.g. OpenAPI service account API keys) can fall through to
+			// APIKeyProjectScopeReadRule instead of being hard-denied here.
+			return privacy.Skipf("User not found in context")
 		}
 
 		switch q := q.(type) {

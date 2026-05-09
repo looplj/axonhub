@@ -10,6 +10,8 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // CreateLLMAPIKey is the resolver for the createLLMAPIKey field.
@@ -24,14 +26,56 @@ func (r *mutationResolver) CreateLLMAPIKey(ctx context.Context, name string) (*A
 		return nil, err
 	}
 
-	return &APIKey{
-		Key:    apiKey.Key,
-		Name:   apiKey.Name,
-		Scopes: apiKey.Scopes,
-	}, nil
+	return toOpenAPIAPIKey(apiKey), nil
+}
+
+// UpdateAPIKeyProfiles is the resolver for the updateAPIKeyProfiles field.
+func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.GUID, input objects.APIKeyProfiles) (*APIKey, error) {
+	// Coerce nil ModelMappings to [] before saving. The admin UI's Zod schema
+	// rejects null/undefined for this specific field (other arrays are .nullable),
+	// so OpenAPI clients omitting modelMappings would otherwise produce rows
+	// the UI can't render. This is scoped to OpenAPI because admin GraphQL
+	// inputs are validated client-side and never carry nil here.
+	for i := range input.Profiles {
+		if input.Profiles[i].ModelMappings == nil {
+			input.Profiles[i].ModelMappings = []objects.ModelMapping{}
+		}
+	}
+
+	apiKey, err := r.apiKeyService.UpdateAPIKeyProfiles(ctx, id.ID, input)
+	if err != nil {
+		return nil, err
+	}
+
+	return toOpenAPIAPIKey(apiKey), nil
+}
+
+// LoadAPIKeyProfileTemplate is the resolver for the loadApiKeyProfileTemplate field.
+func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*APIKey, error) {
+	apiKey, err := r.apiKeyProfileTemplateService.LoadTemplate(ctx, input.TemplateID.ID, input.APIKeyID.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return toOpenAPIAPIKey(apiKey), nil
 }
 
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
+
+// toOpenAPIAPIKey projects the rich ent.APIKey down to the minimal OpenAPI
+// surface — only what programmatic callers need (key/name/scopes/profiles).
+func toOpenAPIAPIKey(k *ent.APIKey) *APIKey {
+	if k == nil {
+		return nil
+	}
+
+	return &APIKey{
+		Key:      k.Key,
+		Name:     k.Name,
+		Scopes:   k.Scopes,
+		Profiles: k.Profiles,
+	}
+}

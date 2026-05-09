@@ -28,3 +28,63 @@ models:
   ID:
     model:
       - github.com/looplj/axonhub/internal/objects.GUID
+  Decimal:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Decimal
+  DecimalInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.Decimal
+  ModelMapping:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ModelMappingInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ChannelTagsMatchMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelTagsMatchMode
+  UpdateAPIKeyProfilesInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfiles
+  APIKeyProfiles:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfiles
+  APIKeyProfile:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfile
+  APIKeyProfileInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfile
+  APIKeyQuota:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuota
+  APIKeyQuotaInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuota
+  APIKeyQuotaPeriod:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPeriod
+  APIKeyQuotaPeriodInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPeriod
+  APIKeyQuotaPeriodType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPeriodType
+  APIKeyQuotaPastDuration:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPastDuration
+  APIKeyQuotaPastDurationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPastDuration
+  APIKeyQuotaPastDurationUnit:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaPastDurationUnit
+  APIKeyQuotaCalendarDuration:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaCalendarDuration
+  APIKeyQuotaCalendarDurationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaCalendarDuration
+  APIKeyQuotaCalendarDurationUnit:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyQuotaCalendarDurationUnit

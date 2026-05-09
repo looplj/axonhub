@@ -5,3 +5,49 @@ mutation CreateAPIKey($name: String!) {
     scopes
   }
 }
+
+mutation UpdateAPIKeyProfiles($id: ID!, $input: UpdateAPIKeyProfilesInput!) {
+  updateAPIKeyProfiles(id: $id, input: $input) {
+    key
+    name
+    scopes
+    profiles {
+      activeProfile
+      profiles {
+        name
+        modelMappings {
+          from
+          to
+        }
+        channelIDs
+        channelTags
+        channelTagsMatchMode
+        modelIDs
+        loadBalanceStrategy
+      }
+    }
+  }
+}
+
+mutation LoadApiKeyProfileTemplate($input: LoadApiKeyProfileTemplateInput!) {
+  loadApiKeyProfileTemplate(input: $input) {
+    key
+    name
+    scopes
+    profiles {
+      activeProfile
+      profiles {
+        name
+        modelMappings {
+          from
+          to
+        }
+        channelIDs
+        channelTags
+        channelTagsMatchMode
+        modelIDs
+        loadBalanceStrategy
+      }
+    }
+  }
+}

@@ -79,6 +79,7 @@ func (APIKeyProfileTemplate) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
 			scopes.UserProjectScopeReadRule(scopes.ScopeReadAPIKeys),
+			scopes.APIKeyProjectScopeReadRule(scopes.ScopeReadAPIKeys), // OpenAPI service account 加载模板
 			scopes.OwnerRule(),
 		},
 		Mutation: scopes.MutationPolicy{
