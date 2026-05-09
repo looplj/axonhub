@@ -93,7 +93,7 @@ func setupOpenAPI(t *testing.T, serviceAccountScopes []string) (*mutationResolve
 		SetType(apikey.TypeUser).
 		SetProfiles(&objects.APIKeyProfiles{
 			ActiveProfile: "Default",
-			Profiles: []objects.APIKeyProfile{{Name: "Default"}},
+			Profiles:      []objects.APIKeyProfile{{Name: "Default"}},
 		}).
 		Save(setupCtx)
 	require.NoError(t, err)
