@@ -1,7 +1,56 @@
 mutation CreateAPIKey($name: String!) {
   createLLMAPIKey(name: $name) {
+    id
     key
     name
     scopes
+  }
+}
+
+mutation UpdateAPIKeyProfiles($id: ID!, $input: UpdateAPIKeyProfilesInput!) {
+  updateAPIKeyProfiles(id: $id, input: $input) {
+    id
+    key
+    name
+    scopes
+    profiles {
+      activeProfile
+      profiles {
+        name
+        modelMappings {
+          from
+          to
+        }
+        channelIDs
+        channelTags
+        channelTagsMatchMode
+        modelIDs
+        loadBalanceStrategy
+      }
+    }
+  }
+}
+
+mutation LoadApiKeyProfileTemplate($input: LoadApiKeyProfileTemplateInput!) {
+  loadApiKeyProfileTemplate(input: $input) {
+    id
+    key
+    name
+    scopes
+    profiles {
+      activeProfile
+      profiles {
+        name
+        modelMappings {
+          from
+          to
+        }
+        channelIDs
+        channelTags
+        channelTagsMatchMode
+        modelIDs
+        loadBalanceStrategy
+      }
+    }
   }
 }

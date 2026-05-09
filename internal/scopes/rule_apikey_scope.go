@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/entql"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 )
@@ -44,6 +46,38 @@ func APIKeyScopeMutationRule(requiredScope ScopeSlug) privacy.MutationRule {
 		}
 
 		return privacy.Denyf("API key does not have required scope: %s", requiredScope)
+	})
+}
+
+// APIKeyProjectScopeReadRule restricts API key principals to read resources
+// within their own project, gated by the required scope.
+//
+// It mirrors UserProjectScopeReadRule but resolves the principal from the API
+// key in context (set by WithOpenAPIAuth / API key auth flows). When the query
+// targets a project-owned resource, it injects a project_id filter so the
+// caller can only see rows in its own project.
+func APIKeyProjectScopeReadRule(requiredScope ScopeSlug) privacy.QueryRule {
+	return privacy.FilterFunc(func(ctx context.Context, q privacy.Filter) error {
+		apiKey, err := getAPIKeyFromContext(ctx)
+		if err != nil {
+			return err
+		}
+
+		if !hasScope(apiKey.Scopes, string(requiredScope)) {
+			// Deny rather than Skip: the API key principal IS in context,
+			// it's just missing the required scope. This matches the explicit
+			// contract used by APIKeyScopeQueryRule and APIKeyProjectScopeWriteRule.
+			// (Skip is reserved for "this rule's principal type doesn't apply".)
+			return privacy.Denyf("API key %d does not have required scope: %s", apiKey.ID, requiredScope)
+		}
+
+		if pf, ok := q.(ProjectOwnedFilter); ok {
+			pf.WhereProjectID(entql.IntEQ(apiKey.ProjectID))
+
+			return privacy.Allowf("API key %d can query project %d with scope %s", apiKey.ID, apiKey.ProjectID, requiredScope)
+		}
+
+		return privacy.Skipf("Not a project-owned query")
 	})
 }
 

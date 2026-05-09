@@ -1,9 +1,130 @@
+scalar Decimal
+scalar DecimalInput
+
 type APIKey {
+  id: ID!
   key: String!
   name: String!
   scopes: [String!]
+  profiles: APIKeyProfiles
+}
+
+type APIKeyProfiles {
+  activeProfile: String!
+  profiles: [APIKeyProfile!]
+}
+
+type APIKeyProfile {
+  name: String!
+  modelMappings: [ModelMapping!]
+  channelIDs: [Int!]
+  channelTags: [String!]
+  channelTagsMatchMode: ChannelTagsMatchMode
+  modelIDs: [String!]
+  quota: APIKeyQuota
+  loadBalanceStrategy: String
+}
+
+type APIKeyQuota {
+  requests: Int
+  totalTokens: Int
+  cost: Decimal
+  period: APIKeyQuotaPeriod!
+}
+
+type APIKeyQuotaPeriod {
+  type: APIKeyQuotaPeriodType!
+  pastDuration: APIKeyQuotaPastDuration
+  calendarDuration: APIKeyQuotaCalendarDuration
+}
+
+type APIKeyQuotaPastDuration {
+  value: Int!
+  unit: APIKeyQuotaPastDurationUnit!
+}
+
+type APIKeyQuotaCalendarDuration {
+  unit: APIKeyQuotaCalendarDurationUnit!
+}
+
+type ModelMapping {
+  from: String!
+  to: String!
+}
+
+enum ChannelTagsMatchMode {
+  any
+  all
+  none
+}
+
+enum APIKeyQuotaPeriodType {
+  all_time
+  past_duration
+  calendar_duration
+}
+
+enum APIKeyQuotaPastDurationUnit {
+  minute
+  hour
+  day
+}
+
+enum APIKeyQuotaCalendarDurationUnit {
+  day
+  month
+}
+
+input UpdateAPIKeyProfilesInput {
+  activeProfile: String!
+  profiles: [APIKeyProfileInput!]!
+}
+
+input APIKeyProfileInput {
+  name: String!
+  modelMappings: [ModelMappingInput!]
+  channelIDs: [Int!]
+  channelTags: [String!]
+  channelTagsMatchMode: ChannelTagsMatchMode
+  modelIDs: [String!]
+  quota: APIKeyQuotaInput
+  loadBalanceStrategy: String
+}
+
+input APIKeyQuotaInput {
+  requests: Int
+  totalTokens: Int
+  cost: DecimalInput
+  period: APIKeyQuotaPeriodInput!
+}
+
+input APIKeyQuotaPeriodInput {
+  type: APIKeyQuotaPeriodType!
+  pastDuration: APIKeyQuotaPastDurationInput
+  calendarDuration: APIKeyQuotaCalendarDurationInput
+}
+
+input APIKeyQuotaPastDurationInput {
+  value: Int!
+  unit: APIKeyQuotaPastDurationUnit!
+}
+
+input APIKeyQuotaCalendarDurationInput {
+  unit: APIKeyQuotaCalendarDurationUnit!
+}
+
+input ModelMappingInput {
+  from: String!
+  to: String!
+}
+
+input LoadApiKeyProfileTemplateInput {
+  templateID: ID!
+  apiKeyID: ID!
 }
 
 extend type Mutation {
   createLLMAPIKey(name: String!): APIKey!
+  updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
+  loadApiKeyProfileTemplate(input: LoadApiKeyProfileTemplateInput!): APIKey!
 }

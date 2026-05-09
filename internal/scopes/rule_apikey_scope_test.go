@@ -148,3 +148,74 @@ func (m *mockMutation) Op() ent.Op {
 func (m *mockMutation) Type() string {
 	return "Mock"
 }
+
+func TestAPIKeyProjectScopeReadRule(t *testing.T) {
+	tests := []struct {
+		name          string
+		ctx           context.Context
+		requiredScope ScopeSlug
+		expectAllow   bool
+	}{
+		{
+			name:          "no API key in context",
+			ctx:           context.Background(),
+			requiredScope: ScopeReadAPIKeys,
+			expectAllow:   false,
+		},
+		{
+			name:          "nil API key in context",
+			ctx:           contexts.WithAPIKey(context.Background(), nil),
+			requiredScope: ScopeReadAPIKeys,
+			expectAllow:   false,
+		},
+		{
+			name: "API key with required scope and project",
+			ctx: contexts.WithAPIKey(context.Background(), &ent.APIKey{
+				ID:        1,
+				ProjectID: 100,
+				Scopes:    []string{"read_api_keys", "write_api_keys"},
+			}),
+			requiredScope: ScopeReadAPIKeys,
+			expectAllow:   true,
+		},
+		{
+			name: "API key without required scope",
+			ctx: contexts.WithAPIKey(context.Background(), &ent.APIKey{
+				ID:        1,
+				ProjectID: 100,
+				Scopes:    []string{"read_channels"},
+			}),
+			requiredScope: ScopeReadAPIKeys,
+			expectAllow:   false,
+		},
+		{
+			name: "API key with empty scopes",
+			ctx: contexts.WithAPIKey(context.Background(), &ent.APIKey{
+				ID:        1,
+				ProjectID: 100,
+				Scopes:    []string{},
+			}),
+			requiredScope: ScopeReadAPIKeys,
+			expectAllow:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := APIKeyProjectScopeReadRule(tt.requiredScope)
+			// Use real ent query that implements ProjectOwnedFilter.
+			query := &ent.APIKeyQuery{}
+			err := rule.EvalQuery(tt.ctx, query)
+
+			if tt.expectAllow {
+				if !errors.Is(err, privacy.Allow) {
+					t.Errorf("expected privacy.Allow, got %v", err)
+				}
+			} else {
+				if errors.Is(err, privacy.Allow) {
+					t.Error("expected error or deny, got privacy.Allow")
+				}
+			}
+		})
+	}
+}

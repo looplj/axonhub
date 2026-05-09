@@ -1,9 +1,11 @@
-schema: openapi.graphql 
+schema: openapi.graphql
 operations:
 - api_key.graphql
 generated: generated.go
 bindings:
-  DateTime:
-    type: time.Time
+  Decimal:
+    type: string
+  DecimalInput:
+    type: string
 optional: pointer_omitempty
 use_struct_references: true
