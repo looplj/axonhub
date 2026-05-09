@@ -2,6 +2,7 @@ scalar Decimal
 scalar DecimalInput
 
 type APIKey {
+  id: ID!
   key: String!
   name: String!
   scopes: [String!]

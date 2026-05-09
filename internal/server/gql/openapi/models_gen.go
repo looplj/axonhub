@@ -7,6 +7,7 @@ import (
 )
 
 type APIKey struct {
+	ID       objects.GUID            `json:"id"`
 	Key      string                  `json:"key"`
 	Name     string                  `json:"name"`
 	Scopes   []string                `json:"scopes,omitempty"`

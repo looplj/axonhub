@@ -48,6 +48,7 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	APIKey struct {
+		ID       func(childComplexity int) int
 		Key      func(childComplexity int) int
 		Name     func(childComplexity int) int
 		Profiles func(childComplexity int) int
@@ -132,6 +133,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	_ = ec
 	switch typeName + "." + field {
 
+	case "APIKey.id":
+		if e.complexity.APIKey.ID == nil {
+			break
+		}
+
+		return e.complexity.APIKey.ID(childComplexity), true
 	case "APIKey.key":
 		if e.complexity.APIKey.Key == nil {
 			break
@@ -562,6 +569,35 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _APIKey_id(ctx context.Context, field graphql.CollectedField, obj *APIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKey_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKey_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _APIKey_key(ctx context.Context, field graphql.CollectedField, obj *APIKey) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
@@ -1400,6 +1436,8 @@ func (ec *executionContext) fieldContext_Mutation_createLLMAPIKey(ctx context.Co
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_APIKey_id(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
@@ -1451,6 +1489,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyProfiles(ctx conte
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_APIKey_id(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
@@ -1502,6 +1542,8 @@ func (ec *executionContext) fieldContext_Mutation_loadApiKeyProfileTemplate(ctx 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_APIKey_id(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
@@ -3429,6 +3471,11 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("APIKey")
+		case "id":
+			out.Values[i] = ec._APIKey_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "key":
 			out.Values[i] = ec._APIKey_key(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

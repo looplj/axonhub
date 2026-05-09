@@ -157,10 +157,14 @@ var AllChannelTagsMatchMode = []ChannelTagsMatchMode{
 
 // CreateAPIKeyCreateLLMAPIKey includes the requested fields of the GraphQL type APIKey.
 type CreateAPIKeyCreateLLMAPIKey struct {
+	Id     string   `json:"id"`
 	Key    string   `json:"key"`
 	Name   string   `json:"name"`
 	Scopes []string `json:"scopes"`
 }
+
+// GetId returns CreateAPIKeyCreateLLMAPIKey.Id, and is useful for accessing the field via an interface.
+func (v *CreateAPIKeyCreateLLMAPIKey) GetId() string { return v.Id }
 
 // GetKey returns CreateAPIKeyCreateLLMAPIKey.Key, and is useful for accessing the field via an interface.
 func (v *CreateAPIKeyCreateLLMAPIKey) GetKey() string { return v.Key }
@@ -194,11 +198,15 @@ func (v *LoadApiKeyProfileTemplateInput) GetApiKeyID() string { return v.ApiKeyI
 
 // LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey includes the requested fields of the GraphQL type APIKey.
 type LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey struct {
+	Id       string                                                            `json:"id"`
 	Key      string                                                            `json:"key"`
 	Name     string                                                            `json:"name"`
 	Scopes   []string                                                          `json:"scopes"`
 	Profiles *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfiles `json:"profiles"`
 }
+
+// GetId returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey.Id, and is useful for accessing the field via an interface.
+func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey) GetId() string { return v.Id }
 
 // GetKey returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey.Key, and is useful for accessing the field via an interface.
 func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey) GetKey() string { return v.Key }
@@ -338,11 +346,15 @@ func (v *UpdateAPIKeyProfilesResponse) GetUpdateAPIKeyProfiles() *UpdateAPIKeyPr
 
 // UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKey includes the requested fields of the GraphQL type APIKey.
 type UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKey struct {
+	Id       string                                                  `json:"id"`
 	Key      string                                                  `json:"key"`
 	Name     string                                                  `json:"name"`
 	Scopes   []string                                                `json:"scopes"`
 	Profiles *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfiles `json:"profiles"`
 }
+
+// GetId returns UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKey.Id, and is useful for accessing the field via an interface.
+func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKey) GetId() string { return v.Id }
 
 // GetKey returns UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKey.Key, and is useful for accessing the field via an interface.
 func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKey) GetKey() string { return v.Key }
@@ -468,6 +480,7 @@ func (v *__UpdateAPIKeyProfilesInput) GetInput() *UpdateAPIKeyProfilesInput { re
 const CreateAPIKey_Operation = `
 mutation CreateAPIKey ($name: String!) {
 	createLLMAPIKey(name: $name) {
+		id
 		key
 		name
 		scopes
@@ -504,6 +517,7 @@ func CreateAPIKey(
 const LoadApiKeyProfileTemplate_Operation = `
 mutation LoadApiKeyProfileTemplate ($input: LoadApiKeyProfileTemplateInput!) {
 	loadApiKeyProfileTemplate(input: $input) {
+		id
 		key
 		name
 		scopes
@@ -555,6 +569,7 @@ func LoadApiKeyProfileTemplate(
 const UpdateAPIKeyProfiles_Operation = `
 mutation UpdateAPIKeyProfiles ($id: ID!, $input: UpdateAPIKeyProfilesInput!) {
 	updateAPIKeyProfiles(id: $id, input: $input) {
+		id
 		key
 		name
 		scopes

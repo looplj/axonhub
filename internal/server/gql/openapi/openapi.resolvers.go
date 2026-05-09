@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/contexts"
-	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -64,18 +63,3 @@ func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input 
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-
-// toOpenAPIAPIKey projects the rich ent.APIKey down to the minimal OpenAPI
-// surface — only what programmatic callers need (key/name/scopes/profiles).
-func toOpenAPIAPIKey(k *ent.APIKey) *APIKey {
-	if k == nil {
-		return nil
-	}
-
-	return &APIKey{
-		Key:      k.Key,
-		Name:     k.Name,
-		Scopes:   k.Scopes,
-		Profiles: k.Profiles,
-	}
-}
