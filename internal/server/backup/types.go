@@ -62,7 +62,6 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		ID                            int                      `json:"id,omitempty"`
 		CreatedAt                     time.Time                `json:"created_at,omitempty"`
 		UpdatedAt                     time.Time                `json:"updated_at,omitempty"`
-		APIKeyID                      int                      `json:"api_key_id,omitempty"`
 		ProjectID                     int                      `json:"project_id,omitempty"`
 		Source                        request.Source           `json:"source,omitempty"`
 		ModelID                       string                   `json:"model_id,omitempty"`
@@ -93,7 +92,6 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		ID:                         r.ID,
 		CreatedAt:                  r.CreatedAt,
 		UpdatedAt:                  r.UpdatedAt,
-		APIKeyID:                   r.APIKeyID,
 		ProjectID:                  r.ProjectID,
 		Source:                     r.Source,
 		ModelID:                    r.ModelID,
@@ -135,7 +133,6 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		CreatedAt                          time.Time          `json:"created_at,omitempty"`
 		UpdatedAt                          time.Time          `json:"updated_at,omitempty"`
 		RequestID                          int                `json:"request_id,omitempty"`
-		APIKeyID                           int                `json:"api_key_id,omitempty"`
 		ProjectID                          int                `json:"project_id,omitempty"`
 		ChannelID                          int                `json:"channel_id,omitempty"`
 		ModelID                            string             `json:"model_id,omitempty"`
@@ -166,7 +163,6 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		CreatedAt:                          l.CreatedAt,
 		UpdatedAt:                          l.UpdatedAt,
 		RequestID:                          l.RequestID,
-		APIKeyID:                           l.APIKeyID,
 		ProjectID:                          l.ProjectID,
 		ChannelID:                          l.ChannelID,
 		ModelID:                            l.ModelID,

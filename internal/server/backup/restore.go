@@ -1112,6 +1112,9 @@ func sameUsageRequest(existing *ent.Request, backup *BackupUsageRequest, project
 		existing.Source == backup.Source &&
 		existing.Status == backup.Status &&
 		existing.Stream == backup.Stream &&
+		existing.ClientIP == backup.ClientIP &&
+		existing.ExternalID == backup.ExternalID &&
+		existing.ReasoningEffort == backup.ReasoningEffort &&
 		existing.CreatedAt.Equal(backup.CreatedAt)
 }
 
