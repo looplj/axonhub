@@ -209,7 +209,7 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 			Type:        QuotaLimitTypeToken,
 			Status:      status,
 			UsageRatio:  usageRatio,
-			Ready:       status != "exhausted",
+			Ready:       IsReadyStatus(status),
 			NextResetAt: resetAt,
 		})
 	}
@@ -247,7 +247,7 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 		Type:        QuotaLimitTypeToken,
 		Status:      status,
 		UsageRatio:  usageRatio,
-		Ready:       status != "exhausted",
+		Ready:       IsReadyStatus(status),
 		NextResetAt: resetAt,
 	}
 }

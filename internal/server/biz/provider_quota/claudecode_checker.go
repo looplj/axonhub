@@ -218,7 +218,7 @@ func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.
 		Type:        QuotaLimitTypeToken,
 		Status:      status,
 		UsageRatio:  utilization,
-		Ready:       status != "exhausted",
+		Ready:       IsReadyStatus(status),
 		NextResetAt: nextReset,
 	}
 }
