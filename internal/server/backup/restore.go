@@ -1019,7 +1019,8 @@ func existingUsageRequests(
 
 func addExistingUsageRequest(lookup *existingUsageRequestLookup, req *ent.Request) {
 	lookup.byID[req.ID] = req
-	lookup.byFingerprint[usageRequestExistingFingerprint(req)] = req
+	lookup.byFingerprint[usageRequestExistingFingerprint(req, true)] = req
+	lookup.byFingerprint[usageRequestExistingFingerprint(req, false)] = req
 }
 
 func usageRequestBackupFingerprint(req *BackupUsageRequest) string {
@@ -1039,7 +1040,7 @@ func usageRequestBackupFingerprint(req *BackupUsageRequest) string {
 	)
 }
 
-func usageRequestExistingFingerprint(req *ent.Request) string {
+func usageRequestExistingFingerprint(req *ent.Request, includeAPIKey bool) string {
 	projectName := ""
 	if req.Edges.Project != nil {
 		projectName = req.Edges.Project.Name
@@ -1051,7 +1052,7 @@ func usageRequestExistingFingerprint(req *ent.Request) string {
 	}
 
 	apiKeyKey := ""
-	if req.Edges.APIKey != nil {
+	if includeAPIKey && req.Edges.APIKey != nil {
 		apiKeyKey = req.Edges.APIKey.Key
 	}
 
@@ -1104,9 +1105,11 @@ func usageRequestFingerprint(
 }
 
 func sameUsageRequest(existing *ent.Request, backup *BackupUsageRequest, projectID, channelID, apiKeyID int) bool {
+	apiKeyMatches := backup.APIKeyKey == "" || existing.APIKeyID == apiKeyID
+
 	return existing.ProjectID == projectID &&
 		existing.ChannelID == channelID &&
-		existing.APIKeyID == apiKeyID &&
+		apiKeyMatches &&
 		existing.ModelID == backup.ModelID &&
 		existing.Format == backup.Format &&
 		existing.Source == backup.Source &&

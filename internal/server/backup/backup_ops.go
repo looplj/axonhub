@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 )
@@ -217,7 +218,21 @@ func backupUsageRequest(req *ent.Request, includeAPIKeyValues bool) *BackupUsage
 
 func (svc *BackupService) backupUsageLogs(ctx context.Context, includeAPIKeyValues bool) ([]*BackupUsageLog, error) {
 	var usageLogDataList []*BackupUsageLog
+	apiKeyKeys := map[int]string{}
 	lastID := 0
+
+	if includeAPIKeyValues {
+		apiKeys, err := svc.db.APIKey.Query().
+			Select(apikey.FieldID, apikey.FieldKey).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, ak := range apiKeys {
+			apiKeyKeys[ak.ID] = ak.Key
+		}
+	}
 
 	for {
 		query := svc.db.UsageLog.Query().
@@ -226,11 +241,6 @@ func (svc *BackupService) backupUsageLogs(ctx context.Context, includeAPIKeyValu
 			Limit(usageBackupBatchSize).
 			WithProject().
 			WithChannel()
-		if includeAPIKeyValues {
-			query.WithRequest(func(q *ent.RequestQuery) {
-				q.WithAPIKey()
-			})
-		}
 
 		usageLogs, err := query.All(ctx)
 		if err != nil {
@@ -242,7 +252,7 @@ func (svc *BackupService) backupUsageLogs(ctx context.Context, includeAPIKeyValu
 		}
 
 		for _, ul := range usageLogs {
-			usageLogDataList = append(usageLogDataList, backupUsageLog(ul, includeAPIKeyValues))
+			usageLogDataList = append(usageLogDataList, backupUsageLog(ul, apiKeyKeys))
 			lastID = ul.ID
 		}
 
@@ -254,7 +264,7 @@ func (svc *BackupService) backupUsageLogs(ctx context.Context, includeAPIKeyValu
 	return usageLogDataList, nil
 }
 
-func backupUsageLog(ul *ent.UsageLog, includeAPIKeyValues bool) *BackupUsageLog {
+func backupUsageLog(ul *ent.UsageLog, apiKeyKeys map[int]string) *BackupUsageLog {
 	data := &BackupUsageLog{UsageLog: *ul}
 	if ul.Edges.Project != nil {
 		data.ProjectName = ul.Edges.Project.Name
@@ -262,8 +272,8 @@ func backupUsageLog(ul *ent.UsageLog, includeAPIKeyValues bool) *BackupUsageLog 
 	if ul.Edges.Channel != nil {
 		data.ChannelName = ul.Edges.Channel.Name
 	}
-	if includeAPIKeyValues && ul.Edges.Request != nil && ul.Edges.Request.Edges.APIKey != nil {
-		data.APIKeyKey = ul.Edges.Request.Edges.APIKey.Key
+	if ul.APIKeyID != 0 {
+		data.APIKeyKey = apiKeyKeys[ul.APIKeyID]
 	}
 	data.UsageLog.Edges = ent.UsageLogEdges{}
 
