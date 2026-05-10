@@ -255,7 +255,7 @@ func (r *usageRestoreResolver) resolveChannelID(channelID int, channelName strin
 	return channelID, ok
 }
 
-func (r *usageRestoreResolver) resolveAPIKeyID(apiKeyID int, apiKeyKey string) (int, bool) {
+func (r *usageRestoreResolver) resolveAPIKeyID(apiKeyKey string) (int, bool) {
 	if apiKeyKey != "" {
 		id, ok := r.apiKeyKeys[apiKeyKey]
 		return id, ok
@@ -890,8 +890,8 @@ func (svc *BackupService) restoreUsageRequests(
 			)
 		}
 
-		apiKeyID, ok := resolver.resolveAPIKeyID(reqData.APIKeyID, reqData.APIKeyKey)
-		if !ok && hasBackupAPIKeyRef(reqData.APIKeyID, reqData.APIKeyKey) {
+		apiKeyID, ok := resolver.resolveAPIKeyID(reqData.APIKeyKey)
+		if !ok && reqData.APIKeyKey != "" {
 			log.Warn(ctx, "API key not found for restoring usage request, restoring with null API key",
 				log.Int("request_id", oldID),
 				log.Int("api_key_id", reqData.APIKeyID),
@@ -943,10 +943,6 @@ func (svc *BackupService) restoreUsageRequests(
 
 func hasBackupChannelRef(channelID int, channelName string) bool {
 	return channelID != 0 || channelName != ""
-}
-
-func hasBackupAPIKeyRef(apiKeyID int, apiKeyKey string) bool {
-	return apiKeyID != 0 || apiKeyKey != ""
 }
 
 func existingUsageRequests(
@@ -1087,8 +1083,8 @@ func (svc *BackupService) restoreUsageLogs(
 			)
 		}
 
-		apiKeyID, ok := resolver.resolveAPIKeyID(usageData.APIKeyID, usageData.APIKeyKey)
-		if !ok && hasBackupAPIKeyRef(usageData.APIKeyID, usageData.APIKeyKey) {
+		apiKeyID, ok := resolver.resolveAPIKeyID(usageData.APIKeyKey)
+		if !ok && usageData.APIKeyKey != "" {
 			log.Warn(ctx, "API key not found for restoring usage log, restoring with null API key",
 				log.Int("usage_log_id", usageData.ID),
 				log.Int("api_key_id", usageData.APIKeyID),
