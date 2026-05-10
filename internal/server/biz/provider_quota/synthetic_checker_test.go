@@ -170,9 +170,9 @@ func TestSynthetic_CheckQuota_ExhaustedState(t *testing.T) {
 	require.Equal(t, 1.0, quota.Limits[0].UsageRatio)
 	require.False(t, quota.Limits[0].Ready)
 
-	require.Equal(t, "warning", quota.Limits[1].Status)
+	require.Equal(t, "exhausted", quota.Limits[1].Status)
 	require.InDelta(t, 1.0, quota.Limits[1].UsageRatio, 0.001)
-	require.True(t, quota.Limits[1].Ready)
+	require.False(t, quota.Limits[1].Ready)
 }
 
 func TestSynthetic_CheckQuota_MissingCredentials(t *testing.T) {

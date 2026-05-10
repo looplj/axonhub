@@ -269,7 +269,7 @@ func buildNanoGPTLimitStatuses(imageWindow, dailyTokenWindow, weeklyTokenWindow 
 			Type:        w.limitType,
 			Status:      status,
 			UsageRatio:  usageRatio,
-			Ready:       status != "exhausted",
+			Ready:       IsReadyStatus(status),
 			NextResetAt: resetAt,
 		})
 	}

@@ -209,7 +209,7 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 			Type:        QuotaLimitTypeToken,
 			Status:      status,
 			UsageRatio:  usageRatio,
-			Ready:       status != "exhausted",
+			Ready:       IsReadyStatus(status),
 			NextResetAt: resetAt,
 		})
 	}
@@ -227,7 +227,10 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 
 	if weekly.PercentRemaining != nil {
 		usageRatio = 1.0 - (*weekly.PercentRemaining / 100.0)
-		if usageRatio > WarningThresholdRatio {
+
+		if usageRatio >= 1.0 {
+			status = "exhausted"
+		} else if usageRatio > WarningThresholdRatio {
 			status = "warning"
 		}
 	}
@@ -244,7 +247,7 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 		Type:        QuotaLimitTypeToken,
 		Status:      status,
 		UsageRatio:  usageRatio,
-		Ready:       true,
+		Ready:       IsReadyStatus(status),
 		NextResetAt: resetAt,
 	}
 }
