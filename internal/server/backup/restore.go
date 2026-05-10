@@ -870,28 +870,6 @@ func (svc *BackupService) restoreUsageRequests(
 		return nil, err
 	}
 
-	builders := make([]*ent.RequestCreate, 0, min(len(requestsData), usageBackupBatchSize))
-	oldIDs := make([]int, 0, min(len(requestsData), usageBackupBatchSize))
-	flush := func() error {
-		if len(builders) == 0 {
-			return nil
-		}
-
-		created, err := db.Request.CreateBulk(builders...).Save(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to restore usage requests: %w", err)
-		}
-
-		for i, req := range created {
-			idMap[oldIDs[i]] = req.ID
-		}
-
-		builders = builders[:0]
-		oldIDs = oldIDs[:0]
-
-		return nil
-	}
-
 	for _, reqData := range requestsData {
 		if reqData == nil {
 			continue
@@ -935,7 +913,7 @@ func (svc *BackupService) restoreUsageRequests(
 			}
 		}
 
-		builders = append(builders, db.Request.Create().
+		created, err := db.Request.Create().
 			SetCreatedAt(reqData.CreatedAt).
 			SetUpdatedAt(reqData.UpdatedAt).
 			SetProjectID(projectID).
@@ -959,18 +937,13 @@ func (svc *BackupService) restoreUsageRequests(
 			SetNillableMetricsReasoningDurationMs(reqData.MetricsReasoningDurationMs).
 			SetNillableContentStorageID(reqData.ContentStorageID).
 			SetNillableContentStorageKey(reqData.ContentStorageKey).
-			SetNillableContentSavedAt(reqData.ContentSavedAt))
-		oldIDs = append(oldIDs, oldID)
-
-		if len(builders) >= usageBackupBatchSize {
-			if err := flush(); err != nil {
-				return nil, err
-			}
+			SetNillableContentSavedAt(reqData.ContentSavedAt).
+			Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to restore usage request %d: %w", oldID, err)
 		}
-	}
 
-	if err := flush(); err != nil {
-		return nil, err
+		idMap[oldID] = created.ID
 	}
 
 	return idMap, nil

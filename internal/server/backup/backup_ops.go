@@ -132,12 +132,12 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 
 	if opts.IncludeUsageStats {
 		var err error
-		usageRequestDataList, err = svc.backupUsageRequests(ctx)
+		usageRequestDataList, err = svc.backupUsageRequests(ctx, opts.IncludeAPIKeys)
 		if err != nil {
 			return nil, err
 		}
 
-		usageLogDataList, err = svc.backupUsageLogs(ctx)
+		usageLogDataList, err = svc.backupUsageLogs(ctx, opts.IncludeAPIKeys)
 		if err != nil {
 			return nil, err
 		}
@@ -155,22 +155,25 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 		UsageLogs:          usageLogDataList,
 	}
 
-	return json.MarshalIndent(backupData, "", "  ")
+	return json.Marshal(backupData)
 }
 
-func (svc *BackupService) backupUsageRequests(ctx context.Context) ([]*BackupUsageRequest, error) {
+func (svc *BackupService) backupUsageRequests(ctx context.Context, includeAPIKeyValues bool) ([]*BackupUsageRequest, error) {
 	var usageRequestDataList []*BackupUsageRequest
 	lastID := 0
 
 	for {
-		usageRequests, err := svc.db.Request.Query().
+		query := svc.db.Request.Query().
 			Where(request.IDGT(lastID)).
 			Order(ent.Asc(request.FieldID)).
 			Limit(usageBackupBatchSize).
 			WithProject().
-			WithChannel().
-			WithAPIKey().
-			All(ctx)
+			WithChannel()
+		if includeAPIKeyValues {
+			query.WithAPIKey()
+		}
+
+		usageRequests, err := query.All(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +183,7 @@ func (svc *BackupService) backupUsageRequests(ctx context.Context) ([]*BackupUsa
 		}
 
 		for _, req := range usageRequests {
-			usageRequestDataList = append(usageRequestDataList, backupUsageRequest(req))
+			usageRequestDataList = append(usageRequestDataList, backupUsageRequest(req, includeAPIKeyValues))
 			lastID = req.ID
 		}
 
@@ -192,7 +195,7 @@ func (svc *BackupService) backupUsageRequests(ctx context.Context) ([]*BackupUsa
 	return usageRequestDataList, nil
 }
 
-func backupUsageRequest(req *ent.Request) *BackupUsageRequest {
+func backupUsageRequest(req *ent.Request, includeAPIKeyValues bool) *BackupUsageRequest {
 	data := &BackupUsageRequest{Request: *req}
 	if req.Edges.Project != nil {
 		data.ProjectName = req.Edges.Project.Name
@@ -200,28 +203,32 @@ func backupUsageRequest(req *ent.Request) *BackupUsageRequest {
 	if req.Edges.Channel != nil {
 		data.ChannelName = req.Edges.Channel.Name
 	}
-	if req.Edges.APIKey != nil {
+	if includeAPIKeyValues && req.Edges.APIKey != nil {
 		data.APIKeyKey = req.Edges.APIKey.Key
 	}
+	data.Request.Edges = ent.RequestEdges{}
 
 	return data
 }
 
-func (svc *BackupService) backupUsageLogs(ctx context.Context) ([]*BackupUsageLog, error) {
+func (svc *BackupService) backupUsageLogs(ctx context.Context, includeAPIKeyValues bool) ([]*BackupUsageLog, error) {
 	var usageLogDataList []*BackupUsageLog
 	lastID := 0
 
 	for {
-		usageLogs, err := svc.db.UsageLog.Query().
+		query := svc.db.UsageLog.Query().
 			Where(usagelog.IDGT(lastID)).
 			Order(ent.Asc(usagelog.FieldID)).
 			Limit(usageBackupBatchSize).
 			WithProject().
-			WithChannel().
-			WithRequest(func(q *ent.RequestQuery) {
+			WithChannel()
+		if includeAPIKeyValues {
+			query.WithRequest(func(q *ent.RequestQuery) {
 				q.WithAPIKey()
-			}).
-			All(ctx)
+			})
+		}
+
+		usageLogs, err := query.All(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +238,7 @@ func (svc *BackupService) backupUsageLogs(ctx context.Context) ([]*BackupUsageLo
 		}
 
 		for _, ul := range usageLogs {
-			usageLogDataList = append(usageLogDataList, backupUsageLog(ul))
+			usageLogDataList = append(usageLogDataList, backupUsageLog(ul, includeAPIKeyValues))
 			lastID = ul.ID
 		}
 
@@ -243,7 +250,7 @@ func (svc *BackupService) backupUsageLogs(ctx context.Context) ([]*BackupUsageLo
 	return usageLogDataList, nil
 }
 
-func backupUsageLog(ul *ent.UsageLog) *BackupUsageLog {
+func backupUsageLog(ul *ent.UsageLog, includeAPIKeyValues bool) *BackupUsageLog {
 	data := &BackupUsageLog{UsageLog: *ul}
 	if ul.Edges.Project != nil {
 		data.ProjectName = ul.Edges.Project.Name
@@ -251,9 +258,10 @@ func backupUsageLog(ul *ent.UsageLog) *BackupUsageLog {
 	if ul.Edges.Channel != nil {
 		data.ChannelName = ul.Edges.Channel.Name
 	}
-	if ul.Edges.Request != nil && ul.Edges.Request.Edges.APIKey != nil {
+	if includeAPIKeyValues && ul.Edges.Request != nil && ul.Edges.Request.Edges.APIKey != nil {
 		data.APIKeyKey = ul.Edges.Request.Edges.APIKey.Key
 	}
+	data.UsageLog.Edges = ent.UsageLogEdges{}
 
 	return data
 }
