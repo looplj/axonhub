@@ -2,6 +2,7 @@
   "requests.title": "Request Logs",
   "requests.description": "View and manage LLM call request logs",
   "requests.columns.modelId": "Model ID",
+  "requests.columns.apiFormat": "API Format",
   "requests.columns.reasoningEffort": "Reasoning Effort",
   "requests.columns.stream": "Stream",
   "requests.columns.source": "Source",

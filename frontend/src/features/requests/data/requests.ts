@@ -48,6 +48,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             updatedAt${apiKeyFields}${channelFields}
             source
             modelID
+            format
             reasoningEffort
             stream
             status

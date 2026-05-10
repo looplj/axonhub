@@ -16,6 +16,7 @@ import (
 type ChannelEndpoint struct {
 	APIFormat string `json:"api_format"`
 	Path      string `json:"path,omitempty"`
+	BaseURL   string `json:"base_url,omitempty"`
 }
 
 type (

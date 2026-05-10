@@ -73,11 +73,13 @@ type ProxyConfig {
 type ChannelEndpoint {
   apiFormat: String!
   path: String
+  baseURL: String
 }
 
 input ChannelEndpointInput {
   apiFormat: String!
   path: String
+  baseURL: String
 }
 
 input SaveChannelEndpointsInput {

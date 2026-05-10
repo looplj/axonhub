@@ -40,6 +40,7 @@ export const configurableChannelEndpointApiFormatSchema = z.enum(configurableCha
 export const channelEndpointSchema = z.object({
   apiFormat: z.string().min(1),
   path: z.string().optional(),
+  baseURL: z.url('Invalid URL').optional().or(z.literal('')),
 });
 export type ChannelEndpoint = z.infer<typeof channelEndpointSchema>;
 
@@ -288,6 +289,16 @@ export const channelSchema = z.object({
   defaultEndpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
 });
 export type Channel = z.infer<typeof channelSchema>;
+
+// Simplified schema for saveChannelEndpoints mutation response
+export const channelEndpointsResponseSchema = z.object({
+  id: z.string(),
+  type: channelTypeSchema,
+  name: z.string(),
+  defaultEndpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
+  endpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
+});
+export type ChannelEndpointsResponse = z.infer<typeof channelEndpointsResponseSchema>;
 
 export const testAPIKeyResultSchema = z.object({
   keyPrefix: z.string(),

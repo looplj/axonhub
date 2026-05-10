@@ -95,6 +95,24 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     },
 
     {
+      id: 'apiFormat',
+      accessorFn: (row) => row.format,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiFormat')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const format = row.original.format;
+        if (!format) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+        return (
+          <span className='inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-300'>
+            {format}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: 'reasoningEffort',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.reasoningEffort')} />,
       enableSorting: false,
