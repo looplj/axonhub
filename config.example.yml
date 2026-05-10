@@ -56,6 +56,7 @@ server:
 db:
   dialect: "sqlite3"            # Database dialect: sqlite3, postgres, mysql (env: AXONHUB_DB_DIALECT)
   dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"  # Database connection string (env: AXONHUB_DB_DSN)
+  disable_sqlite_auto_wal: false # Disable auto-enabling WAL mode for SQLite (env: AXONHUB_DB_DISABLE_SQLITE_AUTO_WAL)
   debug: false                  # Enable database debug logging (env: AXONHUB_DB_DEBUG)
   max_open_conns: 20            # Maximum open DB connections shared by the app (env: AXONHUB_DB_MAX_OPEN_CONNS)
   max_idle_conns: 10            # Maximum idle DB connections kept in the pool (env: AXONHUB_DB_MAX_IDLE_CONNS)

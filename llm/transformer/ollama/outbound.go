@@ -50,10 +50,10 @@ type ChatRequest struct {
 }
 
 type ChatMessage struct {
-	Role     string `json:"role"`
-	Content  string `json:"content"`
+	Role     string   `json:"role"`
+	Content  string   `json:"content"`
 	Images   []string `json:"images,omitempty"`
-	Thinking string `json:"thinking,omitempty"`
+	Thinking string   `json:"thinking,omitempty"`
 }
 
 type Options struct {

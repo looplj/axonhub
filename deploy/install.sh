@@ -395,7 +395,7 @@ server:
 
 db:
   dialect: "sqlite3"
-  dsn: "${BASE_DIR}/axonhub.db?cache=shared&_fk=1"
+  dsn: "${BASE_DIR}/axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"
 
 cache:
   mode: "memory"
