@@ -264,12 +264,7 @@ func (r *usageRestoreResolver) resolveAPIKeyID(apiKeyID int, apiKeyKey string) (
 		return id, ok
 	}
 
-	if apiKeyID == 0 {
-		return 0, false
-	}
-
-	_, ok := r.apiKeyIDs[apiKeyID]
-	return apiKeyID, ok
+	return 0, false
 }
 
 func remapModelSettingsChannelIDs(settings *objects.ModelSettings, channelIDMap map[int]int) {
@@ -1015,7 +1010,7 @@ func (svc *BackupService) restoreUsageLogs(
 		requestIDs = append(requestIDs, requestID)
 	}
 
-	existingLogs := map[int]struct{}{}
+	existingLogRequestIDs := map[int]struct{}{}
 	for start := 0; start < len(requestIDs); start += usageBackupBatchSize {
 		end := min(start+usageBackupBatchSize, len(requestIDs))
 		logs, err := db.UsageLog.Query().
@@ -1027,10 +1022,11 @@ func (svc *BackupService) restoreUsageLogs(
 		}
 
 		for _, usageLog := range logs {
-			existingLogs[usageLog.RequestID] = struct{}{}
+			existingLogRequestIDs[usageLog.RequestID] = struct{}{}
 		}
 	}
 
+	restoredLogRequestIDs := map[int]struct{}{}
 	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), usageBackupBatchSize))
 	flush := func() error {
 		if len(builders) == 0 {
@@ -1060,7 +1056,19 @@ func (svc *BackupService) restoreUsageLogs(
 			continue
 		}
 
-		if _, existing := existingLogs[requestID]; existing {
+		if _, existing := existingLogRequestIDs[requestID]; existing {
+			log.Warn(ctx, "usage log already exists for request, skipping",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("request_id", usageData.RequestID),
+			)
+			continue
+		}
+
+		if _, duplicate := restoredLogRequestIDs[requestID]; duplicate {
+			log.Warn(ctx, "duplicate usage log for request in backup, skipping",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("request_id", usageData.RequestID),
+			)
 			continue
 		}
 
@@ -1115,7 +1123,7 @@ func (svc *BackupService) restoreUsageLogs(
 			SetNillableTotalCost(usageData.TotalCost).
 			SetCostItems(usageData.CostItems).
 			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)))
-		existingLogs[requestID] = struct{}{}
+		restoredLogRequestIDs[requestID] = struct{}{}
 
 		if len(builders) >= usageBackupBatchSize {
 			if err := flush(); err != nil {
