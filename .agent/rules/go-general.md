@@ -20,3 +20,4 @@ globs: "**/*.go"
 5. Use structured logging with zap.
 6. Propagate `context.Context` correctly through request and service boundaries.
 7. Handle errors with the unified helpers in `internal/pkg/xerrors` and wrap them with useful context.
+8. Any manually started goroutine (`go func(...) { ... }(...)` or equivalent) must install a top-level `defer recover()` guard that logs the panic before the goroutine exits.
