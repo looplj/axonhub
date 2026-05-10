@@ -65,7 +65,7 @@ export function BackupSettings() {
     includeModels: true,
     includeAPIKeys: false,
     includeModelPrices: true,
-    includeUsageStats: true,
+    includeUsageStats: false,
     retentionDays: 0,
   });
 
