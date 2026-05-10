@@ -895,7 +895,6 @@ func (svc *BackupService) restoreUsageRequests(
 		if !ok && reqData.APIKeyKey != "" {
 			log.Warn(ctx, "API key not found for restoring usage request, restoring with null API key",
 				log.Int("request_id", oldID),
-				log.String("api_key_key", reqData.APIKeyKey),
 			)
 		}
 
@@ -962,6 +961,7 @@ func existingUsageRequests(
 ) (*existingUsageRequestLookup, error) {
 	ids := make([]int, 0, len(requestsData))
 	createdAt := make([]time.Time, 0, len(requestsData))
+	createdAtSeen := map[time.Time]struct{}{}
 	for _, reqData := range requestsData {
 		if reqData == nil {
 			continue
@@ -972,6 +972,10 @@ func existingUsageRequests(
 		}
 
 		if !reqData.CreatedAt.IsZero() {
+			if _, ok := createdAtSeen[reqData.CreatedAt]; ok {
+				continue
+			}
+			createdAtSeen[reqData.CreatedAt] = struct{}{}
 			createdAt = append(createdAt, reqData.CreatedAt)
 		}
 	}
@@ -1221,7 +1225,6 @@ func (svc *BackupService) restoreUsageLogs(
 		if !ok && usageData.APIKeyKey != "" {
 			log.Warn(ctx, "API key not found for restoring usage log, restoring with null API key",
 				log.Int("usage_log_id", usageData.ID),
-				log.String("api_key_key", usageData.APIKeyKey),
 			)
 		}
 
