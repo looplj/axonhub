@@ -172,91 +172,104 @@ func (svc *BackupService) buildChannelIDMap(ctx context.Context, db *ent.Client,
 	return idMap, nil
 }
 
-func resolveProjectID(ctx context.Context, db *ent.Client, projectID int, projectName string) (int, bool, error) {
+type usageRestoreResolver struct {
+	projectNames map[string]int
+	projectIDs   map[int]struct{}
+	channelNames map[string]int
+	channelIDs   map[int]struct{}
+	apiKeyKeys   map[string]int
+	apiKeyIDs    map[int]struct{}
+}
+
+func newUsageRestoreResolver(ctx context.Context, db *ent.Client) (*usageRestoreResolver, error) {
+	projects, err := db.Project.Query().
+		Select(project.FieldID, project.FieldName).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	channels, err := db.Channel.Query().
+		Select(channel.FieldID, channel.FieldName).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKeys, err := db.APIKey.Query().
+		Select(apikey.FieldID, apikey.FieldKey).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resolver := &usageRestoreResolver{
+		projectNames: make(map[string]int, len(projects)),
+		projectIDs:   make(map[int]struct{}, len(projects)),
+		channelNames: make(map[string]int, len(channels)),
+		channelIDs:   make(map[int]struct{}, len(channels)),
+		apiKeyKeys:   make(map[string]int, len(apiKeys)),
+		apiKeyIDs:    make(map[int]struct{}, len(apiKeys)),
+	}
+
+	for _, proj := range projects {
+		resolver.projectIDs[proj.ID] = struct{}{}
+		resolver.projectNames[proj.Name] = proj.ID
+	}
+
+	for _, ch := range channels {
+		resolver.channelIDs[ch.ID] = struct{}{}
+		resolver.channelNames[ch.Name] = ch.ID
+	}
+
+	for _, ak := range apiKeys {
+		resolver.apiKeyIDs[ak.ID] = struct{}{}
+		resolver.apiKeyKeys[ak.Key] = ak.ID
+	}
+
+	return resolver, nil
+}
+
+func (r *usageRestoreResolver) resolveProjectID(projectID int, projectName string) (int, bool) {
 	if projectName != "" {
-		proj, err := db.Project.Query().
-			Where(project.Name(projectName)).
-			First(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return 0, false, nil
-			}
-
-			return 0, false, err
-		}
-
-		return proj.ID, true, nil
+		id, ok := r.projectNames[projectName]
+		return id, ok
 	}
 
 	if projectID == 0 {
-		return 0, false, nil
+		return 0, false
 	}
 
-	if exists, err := db.Project.Query().Where(project.IDEQ(projectID)).Exist(ctx); err != nil {
-		return 0, false, err
-	} else if !exists {
-		return 0, false, nil
-	}
-
-	return projectID, true, nil
+	_, ok := r.projectIDs[projectID]
+	return projectID, ok
 }
 
-func resolveChannelID(ctx context.Context, db *ent.Client, channelID int, channelName string) (int, bool, error) {
+func (r *usageRestoreResolver) resolveChannelID(channelID int, channelName string) (int, bool) {
 	if channelName != "" {
-		ch, err := db.Channel.Query().
-			Where(channel.Name(channelName)).
-			First(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return 0, true, nil
-			}
-
-			return 0, false, err
-		}
-
-		return ch.ID, true, nil
+		id, ok := r.channelNames[channelName]
+		return id, ok
 	}
 
 	if channelID == 0 {
-		return 0, true, nil
+		return 0, false
 	}
 
-	if exists, err := db.Channel.Query().Where(channel.IDEQ(channelID)).Exist(ctx); err != nil {
-		return 0, false, err
-	} else if !exists {
-		return 0, true, nil
-	}
-
-	return channelID, true, nil
+	_, ok := r.channelIDs[channelID]
+	return channelID, ok
 }
 
-func resolveAPIKeyID(ctx context.Context, db *ent.Client, apiKeyID int, apiKeyKey string) (int, bool, error) {
+func (r *usageRestoreResolver) resolveAPIKeyID(apiKeyID int, apiKeyKey string) (int, bool) {
 	if apiKeyKey != "" {
-		ak, err := db.APIKey.Query().
-			Where(apikey.Key(apiKeyKey)).
-			First(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return 0, true, nil
-			}
-
-			return 0, false, err
-		}
-
-		return ak.ID, true, nil
+		id, ok := r.apiKeyKeys[apiKeyKey]
+		return id, ok
 	}
 
 	if apiKeyID == 0 {
-		return 0, true, nil
+		return 0, false
 	}
 
-	if exists, err := db.APIKey.Query().Where(apikey.IDEQ(apiKeyID)).Exist(ctx); err != nil {
-		return 0, false, err
-	} else if !exists {
-		return 0, true, nil
-	}
-
-	return apiKeyID, true, nil
+	_, ok := r.apiKeyIDs[apiKeyID]
+	return apiKeyID, ok
 }
 
 func remapModelSettingsChannelIDs(settings *objects.ModelSettings, channelIDMap map[int]int) {
@@ -828,22 +841,55 @@ func (svc *BackupService) restoreUsageStats(
 	requestsData []*BackupUsageRequest,
 	usageLogs []*BackupUsageLog,
 ) error {
-	requestIDMap, err := svc.restoreUsageRequests(ctx, db, requestsData)
+	resolver, err := newUsageRestoreResolver(ctx, db)
 	if err != nil {
 		return err
 	}
 
-	return svc.restoreUsageLogs(ctx, db, usageLogs, requestIDMap)
+	requestIDMap, err := svc.restoreUsageRequests(ctx, db, requestsData, resolver)
+	if err != nil {
+		return err
+	}
+
+	return svc.restoreUsageLogs(ctx, db, usageLogs, requestIDMap, resolver)
 }
 
 func (svc *BackupService) restoreUsageRequests(
 	ctx context.Context,
 	db *ent.Client,
 	requestsData []*BackupUsageRequest,
+	resolver *usageRestoreResolver,
 ) (map[int]int, error) {
 	idMap := map[int]int{}
 	if len(requestsData) == 0 {
 		return idMap, nil
+	}
+
+	existingRequests, err := existingUsageRequests(ctx, db, requestsData)
+	if err != nil {
+		return nil, err
+	}
+
+	builders := make([]*ent.RequestCreate, 0, min(len(requestsData), usageBackupBatchSize))
+	oldIDs := make([]int, 0, min(len(requestsData), usageBackupBatchSize))
+	flush := func() error {
+		if len(builders) == 0 {
+			return nil
+		}
+
+		created, err := db.Request.CreateBulk(builders...).Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to restore usage requests: %w", err)
+		}
+
+		for i, req := range created {
+			idMap[oldIDs[i]] = req.ID
+		}
+
+		builders = builders[:0]
+		oldIDs = oldIDs[:0]
+
+		return nil
 	}
 
 	for _, reqData := range requestsData {
@@ -856,10 +902,7 @@ func (svc *BackupService) restoreUsageRequests(
 			continue
 		}
 
-		projectID, ok, err := resolveProjectID(ctx, db, reqData.ProjectID, reqData.ProjectName)
-		if err != nil {
-			return nil, err
-		}
+		projectID, ok := resolver.resolveProjectID(reqData.ProjectID, reqData.ProjectName)
 		if !ok {
 			log.Warn(ctx, "project not found for restoring usage request, skipping",
 				log.Int("request_id", oldID),
@@ -868,39 +911,31 @@ func (svc *BackupService) restoreUsageRequests(
 			continue
 		}
 
-		channelID, ok, err := resolveChannelID(ctx, db, reqData.ChannelID, reqData.ChannelName)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			log.Warn(ctx, "channel not found for restoring usage request, skipping",
+		channelID, ok := resolver.resolveChannelID(reqData.ChannelID, reqData.ChannelName)
+		if !ok && hasBackupChannelRef(reqData.ChannelID, reqData.ChannelName) {
+			log.Warn(ctx, "channel not found for restoring usage request, restoring with null channel",
 				log.Int("request_id", oldID),
+				log.Int("channel_id", reqData.ChannelID),
 				log.String("channel", reqData.ChannelName),
 			)
-			continue
 		}
 
-		apiKeyID, ok, err := resolveAPIKeyID(ctx, db, reqData.APIKeyID, reqData.APIKeyKey)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			log.Warn(ctx, "API key not found for restoring usage request, skipping",
+		apiKeyID, ok := resolver.resolveAPIKeyID(reqData.APIKeyID, reqData.APIKeyKey)
+		if !ok && hasBackupAPIKeyRef(reqData.APIKeyID, reqData.APIKeyKey) {
+			log.Warn(ctx, "API key not found for restoring usage request, restoring with null API key",
 				log.Int("request_id", oldID),
+				log.Int("api_key_id", reqData.APIKeyID),
 			)
-			continue
 		}
 
-		if existing, err := db.Request.Get(ctx, oldID); err == nil {
+		if existing, ok := existingRequests[oldID]; ok {
 			if sameUsageRequest(existing, reqData, projectID, channelID, apiKeyID) {
 				idMap[oldID] = existing.ID
 				continue
 			}
-		} else if !ent.IsNotFound(err) {
-			return nil, err
 		}
 
-		create := db.Request.Create().
+		builders = append(builders, db.Request.Create().
 			SetCreatedAt(reqData.CreatedAt).
 			SetUpdatedAt(reqData.UpdatedAt).
 			SetProjectID(projectID).
@@ -924,17 +959,59 @@ func (svc *BackupService) restoreUsageRequests(
 			SetNillableMetricsReasoningDurationMs(reqData.MetricsReasoningDurationMs).
 			SetNillableContentStorageID(reqData.ContentStorageID).
 			SetNillableContentStorageKey(reqData.ContentStorageKey).
-			SetNillableContentSavedAt(reqData.ContentSavedAt)
+			SetNillableContentSavedAt(reqData.ContentSavedAt))
+		oldIDs = append(oldIDs, oldID)
 
-		created, err := create.Save(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to restore usage request %d: %w", oldID, err)
+		if len(builders) >= usageBackupBatchSize {
+			if err := flush(); err != nil {
+				return nil, err
+			}
 		}
+	}
 
-		idMap[oldID] = created.ID
+	if err := flush(); err != nil {
+		return nil, err
 	}
 
 	return idMap, nil
+}
+
+func hasBackupChannelRef(channelID int, channelName string) bool {
+	return channelID != 0 || channelName != ""
+}
+
+func hasBackupAPIKeyRef(apiKeyID int, apiKeyKey string) bool {
+	return apiKeyID != 0 || apiKeyKey != ""
+}
+
+func existingUsageRequests(
+	ctx context.Context,
+	db *ent.Client,
+	requestsData []*BackupUsageRequest,
+) (map[int]*ent.Request, error) {
+	ids := make([]int, 0, len(requestsData))
+	for _, reqData := range requestsData {
+		if reqData != nil && reqData.ID != 0 {
+			ids = append(ids, reqData.ID)
+		}
+	}
+
+	existingRequests := map[int]*ent.Request{}
+	for start := 0; start < len(ids); start += usageBackupBatchSize {
+		end := min(start+usageBackupBatchSize, len(ids))
+		requests, err := db.Request.Query().
+			Where(request.IDIn(ids[start:end]...)).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, req := range requests {
+			existingRequests[req.ID] = req
+		}
+	}
+
+	return existingRequests, nil
 }
 
 func sameUsageRequest(existing *ent.Request, backup *BackupUsageRequest, projectID, channelID, apiKeyID int) bool {
@@ -954,7 +1031,48 @@ func (svc *BackupService) restoreUsageLogs(
 	db *ent.Client,
 	usageLogs []*BackupUsageLog,
 	requestIDMap map[int]int,
+	resolver *usageRestoreResolver,
 ) error {
+	if len(usageLogs) == 0 {
+		return nil
+	}
+
+	requestIDs := make([]int, 0, len(requestIDMap))
+	for _, requestID := range requestIDMap {
+		requestIDs = append(requestIDs, requestID)
+	}
+
+	existingLogs := map[int]struct{}{}
+	for start := 0; start < len(requestIDs); start += usageBackupBatchSize {
+		end := min(start+usageBackupBatchSize, len(requestIDs))
+		logs, err := db.UsageLog.Query().
+			Where(usagelog.RequestIDIn(requestIDs[start:end]...)).
+			Select(usagelog.FieldRequestID).
+			All(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, usageLog := range logs {
+			existingLogs[usageLog.RequestID] = struct{}{}
+		}
+	}
+
+	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), usageBackupBatchSize))
+	flush := func() error {
+		if len(builders) == 0 {
+			return nil
+		}
+
+		if _, err := db.UsageLog.CreateBulk(builders...).Save(ctx); err != nil {
+			return fmt.Errorf("failed to restore usage logs: %w", err)
+		}
+
+		builders = builders[:0]
+
+		return nil
+	}
+
 	for _, usageData := range usageLogs {
 		if usageData == nil {
 			continue
@@ -969,18 +1087,11 @@ func (svc *BackupService) restoreUsageLogs(
 			continue
 		}
 
-		if existing, err := db.UsageLog.Query().
-			Where(usagelog.RequestIDEQ(requestID)).
-			Exist(ctx); err != nil {
-			return err
-		} else if existing {
+		if _, existing := existingLogs[requestID]; existing {
 			continue
 		}
 
-		projectID, ok, err := resolveProjectID(ctx, db, usageData.ProjectID, usageData.ProjectName)
-		if err != nil {
-			return err
-		}
+		projectID, ok := resolver.resolveProjectID(usageData.ProjectID, usageData.ProjectName)
 		if !ok {
 			log.Warn(ctx, "project not found for restoring usage log, skipping",
 				log.Int("usage_log_id", usageData.ID),
@@ -989,30 +1100,24 @@ func (svc *BackupService) restoreUsageLogs(
 			continue
 		}
 
-		channelID, ok, err := resolveChannelID(ctx, db, usageData.ChannelID, usageData.ChannelName)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			log.Warn(ctx, "channel not found for restoring usage log, skipping",
+		channelID, ok := resolver.resolveChannelID(usageData.ChannelID, usageData.ChannelName)
+		if !ok && hasBackupChannelRef(usageData.ChannelID, usageData.ChannelName) {
+			log.Warn(ctx, "channel not found for restoring usage log, restoring with null channel",
 				log.Int("usage_log_id", usageData.ID),
+				log.Int("channel_id", usageData.ChannelID),
 				log.String("channel", usageData.ChannelName),
 			)
-			continue
 		}
 
-		apiKeyID, ok, err := resolveAPIKeyID(ctx, db, usageData.APIKeyID, usageData.APIKeyKey)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			log.Warn(ctx, "API key not found for restoring usage log, skipping",
+		apiKeyID, ok := resolver.resolveAPIKeyID(usageData.APIKeyID, usageData.APIKeyKey)
+		if !ok && hasBackupAPIKeyRef(usageData.APIKeyID, usageData.APIKeyKey) {
+			log.Warn(ctx, "API key not found for restoring usage log, restoring with null API key",
 				log.Int("usage_log_id", usageData.ID),
+				log.Int("api_key_id", usageData.APIKeyID),
 			)
-			continue
 		}
 
-		if _, err := db.UsageLog.Create().
+		builders = append(builders, db.UsageLog.Create().
 			SetCreatedAt(usageData.CreatedAt).
 			SetUpdatedAt(usageData.UpdatedAt).
 			SetRequestID(requestID).
@@ -1036,13 +1141,17 @@ func (svc *BackupService) restoreUsageLogs(
 			SetFormat(usageData.Format).
 			SetNillableTotalCost(usageData.TotalCost).
 			SetCostItems(usageData.CostItems).
-			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)).
-			Save(ctx); err != nil {
-			return fmt.Errorf("failed to restore usage log %d: %w", usageData.ID, err)
+			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)))
+		existingLogs[requestID] = struct{}{}
+
+		if len(builders) >= usageBackupBatchSize {
+			if err := flush(); err != nil {
+				return err
+			}
 		}
 	}
 
-	return nil
+	return flush()
 }
 
 func nilIfZero(v int) *int {

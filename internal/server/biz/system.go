@@ -1225,7 +1225,12 @@ func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSett
 		return nil, fmt.Errorf("failed to unmarshal auto backup settings: %w", err)
 	}
 
-	if !strings.Contains(value, "\"include_usage_stats\"") {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(value), &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal auto backup settings keys: %w", err)
+	}
+
+	if _, ok := raw["include_usage_stats"]; !ok {
 		settings.IncludeUsageStats = defaultAutoBackupSettings.IncludeUsageStats
 	}
 
