@@ -895,7 +895,7 @@ func (svc *BackupService) restoreUsageRequests(
 		if !ok && reqData.APIKeyKey != "" {
 			log.Warn(ctx, "API key not found for restoring usage request, restoring with null API key",
 				log.Int("request_id", oldID),
-				log.Int("api_key_id", reqData.APIKeyID),
+				log.String("api_key_key", reqData.APIKeyKey),
 			)
 		}
 
@@ -1221,7 +1221,7 @@ func (svc *BackupService) restoreUsageLogs(
 		if !ok && usageData.APIKeyKey != "" {
 			log.Warn(ctx, "API key not found for restoring usage log, restoring with null API key",
 				log.Int("usage_log_id", usageData.ID),
-				log.Int("api_key_id", usageData.APIKeyID),
+				log.String("api_key_key", usageData.APIKeyKey),
 			)
 		}
 
