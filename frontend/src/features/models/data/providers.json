@@ -3397,7 +3397,7 @@
       "models": [
         {
           "id": "glm-5v-turbo",
-          "name": "glm-5v-turbo",
+          "name": "GLM-5V-Turbo",
           "family": "glm",
           "attachment": true,
           "reasoning": {
@@ -3433,7 +3433,7 @@
             "context": 200000,
             "output": 131072
           },
-          "display_name": "glm-5v-turbo",
+          "display_name": "GLM-5V-Turbo",
           "type": "chat",
           "extra_capabilities": {
             "reasoning": {
@@ -6083,7 +6083,6 @@
             }
           },
           "display_name": "GPT-5.5",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6104,7 +6103,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.5-pro",
@@ -6147,6 +6147,51 @@
           },
           "display_name": "GPT-5.5 Pro",
           "type": "chat"
+        },
+        {
+          "id": "gpt-image-2",
+          "name": "gpt-image-2",
+          "display_name": "gpt-image-2",
+          "family": "gpt-image",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "structured_output": false,
+          "release_date": "2026-04-21",
+          "last_updated": "2026-04-21",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cache_read": 1.25
+          },
+          "metadata": {
+            "pricing": {
+              "text_input": 5,
+              "text_cache_read": 1.25,
+              "image_input": 8,
+              "image_cache_read": 2,
+              "image_output": 30,
+              "unit": "USD per 1M tokens"
+            }
+          },
+          "type": "image-generation"
         },
         {
           "id": "gpt-5.4-mini",
@@ -6200,7 +6245,6 @@
             }
           },
           "display_name": "GPT-5.4 mini",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6222,7 +6266,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.4-nano",
@@ -6260,7 +6305,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.4 nano",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6282,7 +6326,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.4-pro",
@@ -6323,7 +6368,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.4 Pro",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6343,7 +6387,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.4",
@@ -6403,7 +6448,6 @@
             }
           },
           "display_name": "GPT-5.4",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6425,7 +6469,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.3-chat-latest",
@@ -6500,7 +6545,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.3 Codex",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6521,7 +6565,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.3-codex-spark",
@@ -6560,7 +6605,6 @@
             "output": 32000
           },
           "display_name": "GPT-5.3 Codex Spark",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6581,7 +6625,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "chatgpt-image-latest",
@@ -6649,7 +6694,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.2 Pro",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6669,7 +6713,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.2",
@@ -6707,7 +6752,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.2",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6729,7 +6773,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.2-codex",
@@ -6768,7 +6813,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.2 Codex",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6789,7 +6833,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.2-chat-latest",
@@ -6895,7 +6940,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.1 Codex Max",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6916,7 +6960,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.1-codex-mini",
@@ -6954,7 +6999,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.1 Codex mini",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -6975,7 +7019,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.1",
@@ -7013,7 +7058,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.1",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7034,7 +7078,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5.1-chat-latest",
@@ -7109,7 +7154,6 @@
             "output": 128000
           },
           "display_name": "GPT-5.1 Codex",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7130,7 +7174,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5-pro",
@@ -7167,7 +7212,6 @@
             "output": 272000
           },
           "display_name": "GPT-5 Pro",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7182,7 +7226,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-image-1-mini",
@@ -7251,7 +7296,6 @@
             "output": 128000
           },
           "display_name": "GPT-5-Codex",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7272,7 +7316,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5-mini",
@@ -7310,7 +7355,6 @@
             "output": 128000
           },
           "display_name": "GPT-5 Mini",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7331,7 +7375,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5-nano",
@@ -7369,7 +7414,6 @@
             "output": 128000
           },
           "display_name": "GPT-5 Nano",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7390,7 +7434,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5",
@@ -7428,7 +7473,6 @@
             "output": 128000
           },
           "display_name": "GPT-5",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7449,7 +7493,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-5-chat-latest",
@@ -7576,7 +7621,6 @@
             "output": 100000
           },
           "display_name": "o3-pro",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7590,7 +7634,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-image-1",
@@ -7657,7 +7702,6 @@
             "output": 100000
           },
           "display_name": "o4-mini",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7671,7 +7715,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "o3",
@@ -7709,7 +7754,6 @@
             "output": 100000
           },
           "display_name": "o3",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7723,7 +7767,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-4.1-nano",
@@ -7869,7 +7914,6 @@
             "output": 100000
           },
           "display_name": "o1-pro",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7883,7 +7927,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "o3-mini",
@@ -7919,7 +7964,6 @@
             "output": 100000
           },
           "display_name": "o3-mini",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7933,7 +7977,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "o1",
@@ -7971,7 +8016,6 @@
             "output": 100000
           },
           "display_name": "o1",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -7985,7 +8029,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-4o-2024-11-20",
@@ -8057,7 +8102,6 @@
             "output": 65536
           },
           "display_name": "o1-mini",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -8071,7 +8115,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "o1-preview",
@@ -8106,7 +8151,6 @@
             "output": 32768
           },
           "display_name": "o1-preview",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -8120,7 +8164,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-4o-2024-08-06",
@@ -8229,7 +8274,6 @@
             "output": 100000
           },
           "display_name": "o4-mini-deep-research",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -8243,7 +8287,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "o3-deep-research",
@@ -8279,7 +8324,6 @@
             "output": 100000
           },
           "display_name": "o3-deep-research",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -8293,7 +8337,8 @@
               ],
               "visibility": "hidden"
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "gpt-4o-2024-05-13",
@@ -9902,9 +9947,55 @@
     "google": {
       "id": "google",
       "name": "google",
-      "doc": "https://ai.google.dev/gemini-api/docs/pricing",
+      "doc": "https://ai.google.dev/gemini-api/docs/models",
       "display_name": "google",
       "models": [
+        {
+          "id": "gemini-3.1-flash-lite",
+          "name": "Gemini 3.1 Flash Lite",
+          "family": "gemini-flash-lite",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-05-07",
+          "last_updated": "2026-05-07",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.25,
+            "output": 1.5,
+            "cache_read": 0.025,
+            "cache_write": 1
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "display_name": "Gemini 3.1 Flash Lite",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "type": "chat"
+        },
         {
           "id": "gemma-4-31b-it",
           "name": "Gemma 4 31B",
@@ -13117,7 +13208,7 @@
           "id": "mimo-v2.5-pro",
           "name": "MiMo-V2.5-Pro",
           "family": "mimo",
-          "attachment": true,
+          "attachment": false,
           "reasoning": {
             "supported": true,
             "default": true
@@ -13132,17 +13223,13 @@
           "last_updated": "2026-04-22",
           "modalities": {
             "input": [
-              "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
+              "text"
             ],
             "output": [
               "text"
             ]
           },
-          "open_weights": false,
+          "open_weights": true,
           "cost": {
             "input": 1,
             "output": 3,
@@ -13190,13 +13277,16 @@
           "last_updated": "2026-04-22",
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image",
+              "audio",
+              "video"
             ],
             "output": [
               "text"
             ]
           },
-          "open_weights": false,
+          "open_weights": true,
           "cost": {
             "input": 0.4,
             "output": 2,
@@ -13254,15 +13344,15 @@
               "text"
             ]
           },
-          "open_weights": true,
+          "open_weights": false,
           "cost": {
             "input": 0.4,
             "output": 2,
             "cache_read": 0.08
           },
           "limit": {
-            "context": 256000,
-            "output": 128000
+            "context": 262144,
+            "output": 131072
           },
           "display_name": "MiMo-V2-Omni",
           "type": "chat",
@@ -13282,7 +13372,7 @@
           "id": "mimo-v2-pro",
           "name": "MiMo-V2-Pro",
           "family": "mimo",
-          "attachment": true,
+          "attachment": false,
           "reasoning": {
             "supported": true,
             "default": true
@@ -13303,15 +13393,20 @@
               "text"
             ]
           },
-          "open_weights": true,
+          "open_weights": false,
           "cost": {
             "input": 1,
             "output": 3,
-            "cache_read": 0.2
+            "cache_read": 0.2,
+            "context_over_200k": {
+              "input": 2,
+              "output": 6,
+              "cache_read": 0.4
+            }
           },
           "limit": {
-            "context": 1000000,
-            "output": 128000
+            "context": 1048576,
+            "output": 131072
           },
           "display_name": "MiMo-V2-Pro",
           "type": "chat",
@@ -13352,8 +13447,8 @@
             "output": 0
           },
           "limit": {
-            "context": 8000,
-            "output": 16000
+            "context": 8192,
+            "output": 16384
           },
           "display_name": "MiMo-V2-TTS",
           "type": "chat"
@@ -13390,8 +13485,8 @@
             "cache_read": 0.01
           },
           "limit": {
-            "context": 256000,
-            "output": 64000
+            "context": 262144,
+            "output": 65536
           },
           "display_name": "MiMo-V2-Flash",
           "type": "chat",
@@ -13557,7 +13652,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-04-27T06:11:27Z",
+      "updated_at": "2026-05-07T03:44:20Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -13573,7 +13668,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13624,7 +13719,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13675,7 +13770,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13723,7 +13818,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13771,7 +13866,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13818,7 +13913,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13861,7 +13956,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13906,7 +14001,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -13970,7 +14065,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14033,7 +14128,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14096,7 +14191,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14158,7 +14253,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14219,7 +14314,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14261,7 +14356,7 @@
             "raw_limits": [
               "上下文窗口: 256k",
               "最大 RPM: 30000",
-              "���大 TPM: 5000000",
+              "最大 TPM: 5000000",
               "最大回答(默认 4k):32k",
               "最大思维链: 32k",
               "最大输入: 224k"
@@ -14283,7 +14378,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14346,7 +14441,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14407,7 +14502,69 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "image",
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 256000,
+            "output": 128000,
+            "requests_per_minute": 30000
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "max_input_tokens": 224000,
+            "max_thinking_tokens": 128000,
+            "canonical_id": "doubao-seed-2-0-lite",
+            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-lite",
+            "section_titles": [
+              "上下文缓存能力",
+              "工具调用能力",
+              "文本生成能力",
+              "深度思考能力",
+              "结构化输出能力(beta)",
+              "视觉理解能力"
+            ],
+            "capabilities": [
+              "多模态理解",
+              "工具调用",
+              "文本生成",
+              "深度思考",
+              "结构化输出",
+              "视觉定位"
+            ],
+            "raw_limits": [
+              "上下文窗口: 256k",
+              "最大 RPM: 30000",
+              "最大 TPM: 5000000",
+              "最大回答(默认 4k): 128k",
+              "最大思维链: 128k",
+              "最大输入: 224k"
+            ],
+            "features": [
+              "context-cache"
+            ]
+          }
+        },
+        {
+          "id": "doubao-seed-2-0-lite-260428",
+          "name": "doubao-seed-2-0-lite-260428",
+          "display_name": "doubao-seed-2-0-lite-260428",
+          "type": "chat",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14440,9 +14597,7 @@
               "多模态理解",
               "工具调用",
               "文本生成",
-              "深度思考",
-              "结构化输出",
-              "视觉定位"
+              "深度思考"
             ],
             "raw_limits": [
               "上下文窗口: 256k",
@@ -14469,7 +14624,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14521,6 +14676,65 @@
           }
         },
         {
+          "id": "doubao-seed-2-0-mini-260428",
+          "name": "doubao-seed-2-0-mini-260428",
+          "display_name": "doubao-seed-2-0-mini-260428",
+          "type": "chat",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "last_updated": "2026-05-07T03:44:20Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "image",
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 256000,
+            "output": 128000,
+            "requests_per_minute": 30000
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "max_input_tokens": 224000,
+            "max_thinking_tokens": 128000,
+            "canonical_id": "doubao-seed-2-0-mini",
+            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
+            "section_titles": [
+              "上下文缓存能力",
+              "工具调用能力",
+              "文本生成能力",
+              "深度思考能力",
+              "视觉理解能力"
+            ],
+            "capabilities": [
+              "多模态理解",
+              "工具调用",
+              "文本生成",
+              "深度思考"
+            ],
+            "raw_limits": [
+              "上下文窗口: 256k",
+              "最大 RPM: 30000",
+              "最大 TPM: 5000000",
+              "最大回答(默认 4k): 128k",
+              "最大思维链: 128k",
+              "最大输入: 224k"
+            ],
+            "features": [
+              "context-cache"
+            ]
+          }
+        },
+        {
           "id": "doubao-seed-2-0-pro-260215",
           "name": "doubao-seed-2-0-pro-260215",
           "display_name": "doubao-seed-2-0-pro-260215",
@@ -14531,7 +14745,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14590,7 +14804,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14642,7 +14856,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14702,7 +14916,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14747,7 +14961,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14787,7 +15001,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14827,7 +15041,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14869,7 +15083,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14911,7 +15125,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14955,7 +15169,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14997,7 +15211,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15039,7 +15253,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15074,7 +15288,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -15103,7 +15317,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -15132,7 +15346,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15170,7 +15384,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-04-27T06:11:27Z",
+          "last_updated": "2026-05-07T03:44:20Z",
           "vision": true,
           "modalities": {
             "input": [
