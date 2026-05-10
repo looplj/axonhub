@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -898,11 +899,15 @@ func (svc *BackupService) restoreUsageRequests(
 			)
 		}
 
-		if existing, ok := existingRequests[oldID]; ok {
+		if existing, ok := existingRequests.byID[oldID]; ok {
 			if sameUsageRequest(existing, reqData, projectID, channelID, apiKeyID) {
 				idMap[oldID] = existing.ID
 				continue
 			}
+		}
+		if existing, ok := existingRequests.byFingerprint[usageRequestBackupFingerprint(reqData)]; ok {
+			idMap[oldID] = existing.ID
+			continue
 		}
 
 		created, err := db.Request.Create().
@@ -945,34 +950,157 @@ func hasBackupChannelRef(channelID int, channelName string) bool {
 	return channelID != 0 || channelName != ""
 }
 
+type existingUsageRequestLookup struct {
+	byID           map[int]*ent.Request
+	byFingerprint map[string]*ent.Request
+}
+
 func existingUsageRequests(
 	ctx context.Context,
 	db *ent.Client,
 	requestsData []*BackupUsageRequest,
-) (map[int]*ent.Request, error) {
+) (*existingUsageRequestLookup, error) {
 	ids := make([]int, 0, len(requestsData))
+	createdAt := make([]time.Time, 0, len(requestsData))
 	for _, reqData := range requestsData {
-		if reqData != nil && reqData.ID != 0 {
+		if reqData == nil {
+			continue
+		}
+
+		if reqData.ID != 0 {
 			ids = append(ids, reqData.ID)
+		}
+
+		if !reqData.CreatedAt.IsZero() {
+			createdAt = append(createdAt, reqData.CreatedAt)
 		}
 	}
 
-	existingRequests := map[int]*ent.Request{}
+	lookup := &existingUsageRequestLookup{
+		byID:          map[int]*ent.Request{},
+		byFingerprint: map[string]*ent.Request{},
+	}
 	for start := 0; start < len(ids); start += usageBackupBatchSize {
 		end := min(start+usageBackupBatchSize, len(ids))
 		requests, err := db.Request.Query().
 			Where(request.IDIn(ids[start:end]...)).
+			WithProject().
+			WithChannel().
+			WithAPIKey().
 			All(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, req := range requests {
-			existingRequests[req.ID] = req
+			addExistingUsageRequest(lookup, req)
 		}
 	}
 
-	return existingRequests, nil
+	for start := 0; start < len(createdAt); start += usageBackupBatchSize {
+		end := min(start+usageBackupBatchSize, len(createdAt))
+		requests, err := db.Request.Query().
+			Where(request.CreatedAtIn(createdAt[start:end]...)).
+			WithProject().
+			WithChannel().
+			WithAPIKey().
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, req := range requests {
+			addExistingUsageRequest(lookup, req)
+		}
+	}
+
+	return lookup, nil
+}
+
+func addExistingUsageRequest(lookup *existingUsageRequestLookup, req *ent.Request) {
+	lookup.byID[req.ID] = req
+	lookup.byFingerprint[usageRequestExistingFingerprint(req)] = req
+}
+
+func usageRequestBackupFingerprint(req *BackupUsageRequest) string {
+	return usageRequestFingerprint(
+		req.CreatedAt,
+		req.ModelID,
+		req.Format,
+		string(req.Source),
+		string(req.Status),
+		req.Stream,
+		req.ClientIP,
+		req.ExternalID,
+		req.ReasoningEffort,
+		req.ProjectName,
+		req.ChannelName,
+		req.APIKeyKey,
+	)
+}
+
+func usageRequestExistingFingerprint(req *ent.Request) string {
+	projectName := ""
+	if req.Edges.Project != nil {
+		projectName = req.Edges.Project.Name
+	}
+
+	channelName := ""
+	if req.Edges.Channel != nil {
+		channelName = req.Edges.Channel.Name
+	}
+
+	apiKeyKey := ""
+	if req.Edges.APIKey != nil {
+		apiKeyKey = req.Edges.APIKey.Key
+	}
+
+	return usageRequestFingerprint(
+		req.CreatedAt,
+		req.ModelID,
+		req.Format,
+		string(req.Source),
+		string(req.Status),
+		req.Stream,
+		req.ClientIP,
+		req.ExternalID,
+		req.ReasoningEffort,
+		projectName,
+		channelName,
+		apiKeyKey,
+	)
+}
+
+func usageRequestFingerprint(
+	createdAt time.Time,
+	modelID string,
+	format string,
+	source string,
+	status string,
+	stream bool,
+	clientIP string,
+	externalID string,
+	reasoningEffort string,
+	projectName string,
+	channelName string,
+	apiKeyKey string,
+) string {
+	parts := []string{
+		createdAt.UTC().Format(time.RFC3339Nano),
+		modelID,
+		format,
+		source,
+		status,
+		fmt.Sprintf("%t", stream),
+		clientIP,
+		externalID,
+		reasoningEffort,
+		projectName,
+		channelName,
+		apiKeyKey,
+	}
+
+	return strings.Join(parts, "\x00")
 }
 
 func sameUsageRequest(existing *ent.Request, backup *BackupUsageRequest, projectID, channelID, apiKeyID int) bool {
