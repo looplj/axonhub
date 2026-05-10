@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -31,7 +32,8 @@ func NewEntClient(cfg Config) *ent.Client {
 		opts = append(opts, ent.Debug())
 	}
 
-	dbDialect, masterDB, err := openDB(cfg.Dialect, cfg.DSN,
+	masterDSN := ensureSQLiteWAL(cfg.Dialect, cfg.DSN, cfg.DisableSQLiteAutoWAL)
+	dbDialect, masterDB, err := openDB(cfg.Dialect, masterDSN,
 		cfg.MaxOpenConns, cfg.MaxIdleConns, cfg.ConnMaxLifetime, cfg.ConnMaxIdleTime)
 	if err != nil {
 		panic(err)
@@ -39,7 +41,8 @@ func NewEntClient(cfg Config) *ent.Client {
 
 	var drv dialect.Driver
 	if cfg.ReadReplica.DSN != "" {
-		readDialect, replicaDB, err := openDB(cfg.Dialect, cfg.ReadReplica.DSN,
+		replicaDSN := ensureSQLiteWAL(cfg.Dialect, cfg.ReadReplica.DSN, cfg.DisableSQLiteAutoWAL)
+		readDialect, replicaDB, err := openDB(cfg.Dialect, replicaDSN,
 			cfg.ReadReplica.MaxOpenConns, cfg.ReadReplica.MaxIdleConns,
 			cfg.ConnMaxLifetime, cfg.ConnMaxIdleTime)
 		if err != nil {
@@ -76,6 +79,25 @@ func NewEntClient(cfg Config) *ent.Client {
 	}
 
 	return client
+}
+
+// ensureSQLiteWAL appends _pragma=journal_mode(WAL) to the DSN for SQLite dialects
+// unless WAL is explicitly disabled or the DSN already specifies a journal_mode pragma.
+func ensureSQLiteWAL(dialectName, dsn string, disable bool) string {
+	if disable {
+		return dsn
+	}
+	switch dialectName {
+	case "sqlite3", "sqlite":
+		if !strings.Contains(dsn, "journal_mode") {
+			if strings.Contains(dsn, "?") {
+				dsn += "&_pragma=journal_mode(WAL)"
+			} else {
+				dsn += "?_pragma=journal_mode(WAL)"
+			}
+		}
+	}
+	return dsn
 }
 
 // openDB opens a sql.DB for the given dialect and DSN, applies pool settings,
