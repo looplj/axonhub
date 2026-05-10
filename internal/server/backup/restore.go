@@ -178,7 +178,6 @@ type usageRestoreResolver struct {
 	channelNames map[string]int
 	channelIDs   map[int]struct{}
 	apiKeyKeys   map[string]int
-	apiKeyIDs    map[int]struct{}
 }
 
 func newUsageRestoreResolver(ctx context.Context, db *ent.Client) (*usageRestoreResolver, error) {
@@ -209,7 +208,6 @@ func newUsageRestoreResolver(ctx context.Context, db *ent.Client) (*usageRestore
 		channelNames: make(map[string]int, len(channels)),
 		channelIDs:   make(map[int]struct{}, len(channels)),
 		apiKeyKeys:   make(map[string]int, len(apiKeys)),
-		apiKeyIDs:    make(map[int]struct{}, len(apiKeys)),
 	}
 
 	for _, proj := range projects {
@@ -223,7 +221,6 @@ func newUsageRestoreResolver(ctx context.Context, db *ent.Client) (*usageRestore
 	}
 
 	for _, ak := range apiKeys {
-		resolver.apiKeyIDs[ak.ID] = struct{}{}
 		resolver.apiKeyKeys[ak.Key] = ak.ID
 	}
 

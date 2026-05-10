@@ -64,8 +64,6 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		UpdatedAt                     time.Time                `json:"updated_at,omitempty"`
 		APIKeyID                      int                      `json:"api_key_id,omitempty"`
 		ProjectID                     int                      `json:"project_id,omitempty"`
-		TraceID                       int                      `json:"trace_id,omitempty"`
-		DataStorageID                 int                      `json:"data_storage_id,omitempty"`
 		Source                        request.Source           `json:"source,omitempty"`
 		ModelID                       string                   `json:"model_id,omitempty"`
 		ReasoningEffort               string                   `json:"reasoning_effort,omitempty"`
@@ -97,8 +95,6 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		UpdatedAt:                  r.UpdatedAt,
 		APIKeyID:                   r.APIKeyID,
 		ProjectID:                  r.ProjectID,
-		TraceID:                    r.TraceID,
-		DataStorageID:              r.DataStorageID,
 		Source:                     r.Source,
 		ModelID:                    r.ModelID,
 		ReasoningEffort:            r.ReasoningEffort,
