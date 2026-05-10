@@ -501,6 +501,7 @@ type UpdateAutoBackupSettingsInput struct {
 	IncludeModels      *bool                `json:"includeModels,omitempty"`
 	IncludeAPIKeys     *bool                `json:"includeAPIKeys,omitempty"`
 	IncludeModelPrices *bool                `json:"includeModelPrices,omitempty"`
+	IncludeUsageStats  *bool                `json:"includeUsageStats,omitempty"`
 	RetentionDays      *int                 `json:"retentionDays,omitempty"`
 }
 

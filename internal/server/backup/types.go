@@ -15,6 +15,8 @@ type BackupData struct {
 	Models             []*BackupModel             `json:"models"`
 	ChannelModelPrices []*BackupChannelModelPrice `json:"channel_model_prices,omitempty"`
 	APIKeys            []*BackupAPIKey            `json:"api_keys,omitempty"`
+	UsageRequests      []*BackupUsageRequest      `json:"usage_requests,omitempty"`
+	UsageLogs          []*BackupUsageLog          `json:"usage_logs,omitempty"`
 }
 
 type BackupProject struct {
@@ -44,9 +46,26 @@ type BackupChannelModelPrice struct {
 	ReferenceID string             `json:"reference_id"`
 }
 
+type BackupUsageRequest struct {
+	ent.Request
+
+	ProjectName string `json:"project_name,omitempty"`
+	ChannelName string `json:"channel_name,omitempty"`
+	APIKeyKey   string `json:"api_key_key,omitempty"`
+}
+
+type BackupUsageLog struct {
+	ent.UsageLog
+
+	ProjectName string `json:"project_name,omitempty"`
+	ChannelName string `json:"channel_name,omitempty"`
+	APIKeyKey   string `json:"api_key_key,omitempty"`
+}
+
 const (
-	BackupVersion   = "1.1"
+	BackupVersion   = "1.2"
 	BackupVersionV1 = "1.0"
+	BackupVersionV2 = "1.1"
 )
 
 type BackupOptions struct {
@@ -55,6 +74,7 @@ type BackupOptions struct {
 	IncludeModels      bool
 	IncludeAPIKeys     bool
 	IncludeModelPrices bool
+	IncludeUsageStats  bool
 }
 
 type ConflictStrategy string
@@ -71,6 +91,7 @@ type RestoreOptions struct {
 	IncludeModels              bool
 	IncludeAPIKeys             bool
 	IncludeModelPrices         bool
+	IncludeUsageStats          bool
 	ProjectConflictStrategy    ConflictStrategy
 	ChannelConflictStrategy    ConflictStrategy
 	ModelConflictStrategy      ConflictStrategy

@@ -11,6 +11,7 @@ input BackupOptionsInput {
   includeModelPrices: Boolean! = true
   includeModels: Boolean!
   includeAPIKeys: Boolean!
+  includeUsageStats: Boolean! = true
 }
 
 input RestoreOptionsInput {
@@ -18,6 +19,7 @@ input RestoreOptionsInput {
   includeModelPrices: Boolean! = true
   includeModels: Boolean!
   includeAPIKeys: Boolean!
+  includeUsageStats: Boolean! = true
   channelConflictStrategy: BackupConflictStrategy!
   modelConflictStrategy: BackupConflictStrategy!
   modelPriceConflictStrategy: BackupConflictStrategy!
@@ -54,6 +56,7 @@ type AutoBackupSettings {
   includeModels: Boolean!
   includeAPIKeys: Boolean!
   includeModelPrices: Boolean!
+  includeUsageStats: Boolean!
   retentionDays: Int!
   lastBackupAt: Time
   lastBackupError: String
@@ -67,6 +70,7 @@ input UpdateAutoBackupSettingsInput {
   includeModels: Boolean
   includeAPIKeys: Boolean
   includeModelPrices: Boolean
+  includeUsageStats: Boolean
   retentionDays: Int
 }
 

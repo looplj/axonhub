@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/request"
 )
 
 func (svc *BackupService) Backup(ctx context.Context, opts BackupOptions) ([]byte, error) {
@@ -121,6 +122,64 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 		})
 	}
 
+	var (
+		usageRequestDataList []*BackupUsageRequest
+		usageLogDataList     []*BackupUsageLog
+	)
+
+	if opts.IncludeUsageStats {
+		usageRequests, err := svc.db.Request.Query().
+			Order(ent.Asc(request.FieldID)).
+			WithProject().
+			WithChannel().
+			WithAPIKey().
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		usageRequestDataList = lo.Map(usageRequests, func(req *ent.Request, _ int) *BackupUsageRequest {
+			data := &BackupUsageRequest{Request: *req}
+			if req.Edges.Project != nil {
+				data.ProjectName = req.Edges.Project.Name
+			}
+			if req.Edges.Channel != nil {
+				data.ChannelName = req.Edges.Channel.Name
+			}
+			if req.Edges.APIKey != nil {
+				data.APIKeyKey = req.Edges.APIKey.Key
+			}
+
+			return data
+		})
+
+		usageLogs, err := svc.db.UsageLog.Query().
+			WithProject().
+			WithChannel().
+			WithRequest(func(q *ent.RequestQuery) {
+				q.WithAPIKey()
+			}).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		usageLogDataList = lo.Map(usageLogs, func(ul *ent.UsageLog, _ int) *BackupUsageLog {
+			data := &BackupUsageLog{UsageLog: *ul}
+			if ul.Edges.Project != nil {
+				data.ProjectName = ul.Edges.Project.Name
+			}
+			if ul.Edges.Channel != nil {
+				data.ChannelName = ul.Edges.Channel.Name
+			}
+			if ul.Edges.Request != nil && ul.Edges.Request.Edges.APIKey != nil {
+				data.APIKeyKey = ul.Edges.Request.Edges.APIKey.Key
+			}
+
+			return data
+		})
+	}
+
 	backupData := &BackupData{
 		Version:            BackupVersion,
 		Timestamp:          time.Now(),
@@ -129,6 +188,8 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 		Models:             modelDataList,
 		ChannelModelPrices: channelModelPriceDataList,
 		APIKeys:            apiKeyDataList,
+		UsageRequests:      usageRequestDataList,
+		UsageLogs:          usageLogDataList,
 	}
 
 	return json.MarshalIndent(backupData, "", "  ")

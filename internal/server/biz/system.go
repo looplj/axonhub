@@ -218,6 +218,7 @@ type AutoBackupSettings struct {
 	IncludeModels      bool `json:"include_models"`
 	IncludeAPIKeys     bool `json:"include_api_keys"`
 	IncludeModelPrices bool `json:"include_model_prices"`
+	IncludeUsageStats  bool `json:"include_usage_stats"`
 	// RetentionDays defines how many days to keep backups (0 = keep all)
 	RetentionDays int `json:"retention_days"`
 	// LastBackupAt is the timestamp of the last successful backup
@@ -1222,6 +1223,10 @@ func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSett
 	var settings AutoBackupSettings
 	if err := json.Unmarshal([]byte(value), &settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal auto backup settings: %w", err)
+	}
+
+	if !strings.Contains(value, "\"include_usage_stats\"") {
+		settings.IncludeUsageStats = defaultAutoBackupSettings.IncludeUsageStats
 	}
 
 	return &settings, nil

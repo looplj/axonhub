@@ -1015,6 +1015,7 @@ export interface BackupOptionsInput {
   includeModelPrices: boolean;
   includeModels: boolean;
   includeAPIKeys: boolean;
+  includeUsageStats: boolean;
 }
 
 export interface BackupPayload {
@@ -1028,6 +1029,7 @@ export interface RestoreOptionsInput {
   includeModelPrices: boolean;
   includeModels: boolean;
   includeAPIKeys: boolean;
+  includeUsageStats: boolean;
   channelConflictStrategy: 'skip' | 'overwrite' | 'error';
   modelConflictStrategy: 'skip' | 'overwrite' | 'error';
   modelPriceConflictStrategy: 'skip' | 'overwrite' | 'error';
@@ -1124,6 +1126,7 @@ const AUTO_BACKUP_SETTINGS_QUERY = `
       includeModels
       includeAPIKeys
       includeModelPrices
+      includeUsageStats
       retentionDays
       lastBackupAt
       lastBackupError
@@ -1156,6 +1159,7 @@ export interface AutoBackupSettings {
   includeModels: boolean;
   includeAPIKeys: boolean;
   includeModelPrices: boolean;
+  includeUsageStats: boolean;
   retentionDays: number;
   lastBackupAt?: string;
   lastBackupError?: string;
@@ -1169,6 +1173,7 @@ export interface UpdateAutoBackupSettingsInput {
   includeModels?: boolean;
   includeAPIKeys?: boolean;
   includeModelPrices?: boolean;
+  includeUsageStats?: boolean;
   retentionDays?: number;
 }
 
