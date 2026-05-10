@@ -155,7 +155,11 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 		UsageLogs:          usageLogDataList,
 	}
 
-	return json.Marshal(backupData)
+	if opts.IncludeUsageStats {
+		return json.Marshal(backupData)
+	}
+
+	return json.MarshalIndent(backupData, "", "  ")
 }
 
 func (svc *BackupService) backupUsageRequests(ctx context.Context, includeAPIKeyValues bool) ([]*BackupUsageRequest, error) {

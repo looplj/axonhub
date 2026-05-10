@@ -699,6 +699,7 @@ func TestBackupService_Restore_UsageStats(t *testing.T) {
 	_, usage := createBackupTestUsage(t, client, ctx, proj, ch, ak)
 
 	data, err := service.Backup(ctx, BackupOptions{
+		IncludeAPIKeys:    true,
 		IncludeUsageStats: true,
 	})
 	require.NoError(t, err)
