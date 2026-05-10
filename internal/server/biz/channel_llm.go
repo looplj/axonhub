@@ -240,24 +240,29 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 ) (transformer.Outbound, error) {
 	apiKeyProvider := getAPIKeyProvider(ch)
 
+	baseURL := c.BaseURL
+	if ep.BaseURL != "" {
+		baseURL = ep.BaseURL
+	}
+
 	switch ep.APIFormat {
 	case llm.APIFormatOpenAIChatCompletion.String():
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType:   openai.PlatformOpenAI,
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAICompletion.String():
 		return openai.NewCompletionOutboundTransformer(&openai.Config{
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIResponse.String(),
 		llm.APIFormatOpenAIResponseCompact.String():
 		return responses.NewOutboundTransformerWithConfig(&responses.Config{
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 		})
@@ -268,34 +273,34 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		llm.APIFormatOpenAIVideo.String():
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType:   openai.PlatformOpenAI,
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatAnthropicMessage.String():
 		return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:           anthropic.PlatformDirect,
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatGeminiContents.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 			PlatformType:   ch.platformTypeForGeminiEndpoint(),
 		})
 	case llm.APIFormatGeminiEmbedding.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 			PlatformType:   ch.platformTypeForGeminiEndpoint(),
 		})
 	case llm.APIFormatJinaRerank.String(), llm.APIFormatJinaEmbedding.String():
 		return jina.NewOutboundTransformerWithConfig(&jina.Config{
-			BaseURL:        c.BaseURL,
+			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
 		})

@@ -671,5 +671,8 @@
   "channels.endpoints.noOverridesHint": "No custom endpoint overrides configured.",
   "channels.endpoints.unsupportedBadge": "Unsupported",
   "channels.endpoints.defaultConflictError": "Cannot override a default endpoint",
-  "channels.endpoints.invalidApiFormat": "Unsupported API format"
+  "channels.endpoints.invalidApiFormat": "Unsupported API format",
+  "channels.endpoints.baseURL": "Base URL",
+  "channels.endpoints.baseURLPlaceholder": "Optional base URL override (e.g. https://api.deepseek.com/v1)",
+  "channels.endpoints.invalidBaseURL": "Invalid base URL format"
 }

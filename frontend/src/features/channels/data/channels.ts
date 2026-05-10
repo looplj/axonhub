@@ -13,6 +13,7 @@ import {
   UpdateChannelInput,
   channelConnectionSchema,
   channelSchema,
+  channelEndpointsResponseSchema,
   BulkImportChannelsInput,
   BulkImportChannelsResult,
   bulkImportChannelsResultSchema,
@@ -110,10 +111,12 @@ const CREATE_CHANNEL_MUTATION = `
       defaultEndpoints {
         apiFormat
         path
+        baseURL
       }
       endpoints {
         apiFormat
         path
+        baseURL
       }
     }
   }
@@ -167,10 +170,12 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       defaultEndpoints {
         apiFormat
         path
+        baseURL
       }
       endpoints {
         apiFormat
         path
+        baseURL
       }
     }
   }
@@ -225,10 +230,12 @@ const UPDATE_CHANNEL_MUTATION = `
       defaultEndpoints {
         apiFormat
         path
+        baseURL
       }
       endpoints {
         apiFormat
         path
+        baseURL
       }
     }
   }
@@ -288,10 +295,12 @@ const SAVE_CHANNEL_ENDPOINTS_MUTATION = `
       defaultEndpoints {
         apiFormat
         path
+        baseURL
       }
       endpoints {
         apiFormat
         path
+        baseURL
       }
     }
   }
@@ -350,10 +359,12 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         defaultEndpoints {
           apiFormat
           path
+          baseURL
         }
         endpoints {
           apiFormat
           path
+          baseURL
         }
         settings {
           extraModelPrefix
@@ -532,10 +543,12 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
         defaultEndpoints {
           apiFormat
           path
+          baseURL
         }
         endpoints {
           apiFormat
           path
+          baseURL
         }
         settings {
           extraModelPrefix
@@ -573,6 +586,7 @@ const ALL_CHANNEL_SUMMARYS_QUERY = `
       endpoints {
         apiFormat
         path
+        baseURL
       }
       allModelEntries {
         requestModel
@@ -696,10 +710,12 @@ const QUERY_CHANNELS_QUERY = `
           defaultEndpoints {
             apiFormat
             path
+            baseURL
           }
           endpoints {
             apiFormat
             path
+            baseURL
           }
           disabledAPIKeys {
             key
@@ -952,7 +968,7 @@ export function useUpdateChannel() {
 
 export interface SaveChannelEndpointsInput {
   channelID: string;
-  endpoints: Array<{ apiFormat: string; path?: string }>;
+  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string }>;
 }
 
 export function useSaveChannelEndpoints() {
@@ -963,7 +979,7 @@ export function useSaveChannelEndpoints() {
   return useMutation({
     mutationFn: async (input: SaveChannelEndpointsInput) => {
       const data = await graphqlRequest<{ saveChannelEndpoints: Channel }>(SAVE_CHANNEL_ENDPOINTS_MUTATION, { input });
-      return channelSchema.parse(data.saveChannelEndpoints);
+      return channelEndpointsResponseSchema.parse(data.saveChannelEndpoints);
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
