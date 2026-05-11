@@ -2844,7 +2844,7 @@ func TestConvertGeminiToLLMResponse_CitationMetadata(t *testing.T) {
 			}}},
 			FinishReason: "STOP",
 		}},
-	}, false, shared.TransportScope{})
+	}, false)
 
 	require.Len(t, resp.Choices, 1)
 	require.NotNil(t, resp.Choices[0].Message)
@@ -2875,7 +2875,7 @@ func TestConvertGeminiToLLMResponse_GroundingMetadataDerivesAnnotations(t *testi
 			},
 			FinishReason: "STOP",
 		}},
-	}, false, shared.TransportScope{})
+	}, false)
 
 	require.Len(t, resp.Choices, 1)
 	require.NotNil(t, resp.Choices[0].Message)

@@ -601,7 +601,7 @@ func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, out
 // convertOutputToMessage converts Responses API output items into an llm.Message.
 // It aggregates text, reasoning, tool calls, image generation,
 // compaction and compaction_summary items from the response output.
-func convertOutputToMessage(output []Item, scope shared.TransportScope, transformerMetadata map[string]any) llm.Message {
+func convertOutputToMessage(output []Item, transformerMetadata map[string]any) llm.Message {
 	var (
 		contentParts         []llm.MessageContentPart
 		textContent          strings.Builder
@@ -672,7 +672,7 @@ func convertOutputToMessage(output []Item, scope shared.TransportScope, transfor
 			}
 
 			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
-				reasoningSignature = shared.EncodeOpenAIEncryptedContentInScope(outputItem.EncryptedContent, scope)
+				reasoningSignature = shared.EncodeOpenAIEncryptedContent(outputItem.EncryptedContent)
 			}
 		case "image_generation_call":
 			flushText()

@@ -30,8 +30,7 @@ func (t *OutboundTransformer) TransformStream(
 	doneEvent := lo.ToPtr(llm.DoneStreamEvent)
 	streamWithDone := streams.AppendStream(stream, doneEvent)
 
-	scope, _ := shared.GetTransportScope(ctx)
-	return streams.NoNil(newResponsesOutboundStream(streamWithDone, scope)), nil
+	return streams.NoNil(newResponsesOutboundStream(streamWithDone)), nil
 }
 
 // responsesOutboundStream wraps a stream and maintains state during processing.
@@ -55,7 +54,6 @@ type outboundStreamState struct {
 	previousResponseID *string
 	usage              *llm.Usage
 	created            int64
-	scope              shared.TransportScope
 
 	// Content accumulation
 	textContent      strings.Builder
@@ -74,7 +72,7 @@ type outboundStreamState struct {
 	transformerMetadata map[string]any
 }
 
-func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent], scope shared.TransportScope) *responsesOutboundStream {
+func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
 	return &responsesOutboundStream{
 		stream: stream,
 		state: &outboundStreamState{
@@ -83,7 +81,6 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent], 
 			toolCallIndex:           make(map[string]int),
 			encryptedContentEmitted: make(map[string]bool),
 			transformerMetadata:     make(map[string]any),
-			scope:                   scope,
 		},
 	}
 }
@@ -228,7 +225,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 					{
 						Index: 0,
 						Delta: &llm.Message{
-							ReasoningSignature: shared.EncodeOpenAIEncryptedContentInScope(item.EncryptedContent, s.state.scope),
+							ReasoningSignature: shared.EncodeOpenAIEncryptedContent(item.EncryptedContent),
 						},
 					},
 				}
@@ -449,7 +446,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil // Intentionally skip this event
 		}
 
-		msg := convertOutputToMessage([]Item{*streamEvent.Item}, s.state.scope, s.state.transformerMetadata)
+		msg := convertOutputToMessage([]Item{*streamEvent.Item}, s.state.transformerMetadata)
 		if len(msg.Annotations) == 0 {
 			return nil // Intentionally skip this event
 		}

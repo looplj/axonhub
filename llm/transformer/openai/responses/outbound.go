@@ -315,8 +315,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 		llmResp.TransformerMetadata = maps.Clone(httpResp.Request.TransformerMetadata)
 	}
 
-	scope, _ := shared.GetTransportScope(ctx)
-	msg := convertOutputToMessage(resp.Output, scope, llmResp.TransformerMetadata)
+	msg := convertOutputToMessage(resp.Output, llmResp.TransformerMetadata)
 
 	choice := llm.Choice{
 		Index:   0,

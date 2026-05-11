@@ -130,8 +130,8 @@ func TestChatCompletionOrchestrator_Process_Streaming_PreservesGeminiGroundingAn
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
-		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		ModelMapper:               NewModelMapper(),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -295,8 +295,8 @@ func TestChatCompletionOrchestrator_Process_Streaming_PreservesAnthropicCitation
 		SystemService:     systemService,
 		UsageLogService:   usageLogService,
 		PipelineFactory:   pipeline.NewFactory(executor),
-		ModelMapper:       NewModelMapper(),
-		connectionTracker: NewDefaultConnectionTracker(1024),
+		ModelMapper:               NewModelMapper(),
+		channelLimiterManager:      NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},

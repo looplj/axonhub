@@ -239,7 +239,7 @@ func TestOutboundTransformer_TransformStream_PreservesFinalItemAnnotations(t *te
 		},
 	}
 
-	stream, err := trans.TransformStream(context.Background(), streams.SliceStream(events))
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
 	require.NoError(t, err)
 
 	actual, err := streams.All(stream)
@@ -353,7 +353,7 @@ func TestOutboundTransformer_TransformStream_PreservesWebSearchMetadataOnAnnotat
 		},
 	}
 
-	stream, err := trans.TransformStream(context.Background(), streams.SliceStream(events))
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
 	require.NoError(t, err)
 
 	actual, err := streams.All(stream)

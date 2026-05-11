@@ -13,7 +13,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestNewInboundTransformer(t *testing.T) {
@@ -1858,7 +1857,7 @@ func TestInboundTransformer_TransformResponse_WithReasoningContent(t *testing.T)
 				require.Equal(t, "summary_text", reasoningOutput.Summary[0].Type)
 				require.Equal(t, "I analyzed the problem step by step.", reasoningOutput.Summary[0].Text)
 				require.NotNil(t, reasoningOutput.EncryptedContent)
-				require.Equal(t, shared.OpenAIEncryptedContentPrefix+"encrypted_data_here", *reasoningOutput.EncryptedContent)
+				require.Equal(t, "encrypted_data_here", *reasoningOutput.EncryptedContent)
 
 				// Second output should be message
 				messageOutput := resp.Output[1]
