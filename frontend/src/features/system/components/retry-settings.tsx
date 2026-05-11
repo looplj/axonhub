@@ -150,6 +150,41 @@ export function RetrySettings() {
 
           <Separator />
 
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='upstream-error-mode'>{t('system.retry.upstreamErrorPolicy.label')}</Label>
+              <div className='text-muted-foreground mb-2 text-sm'>{t('system.retry.upstreamErrorPolicy.description')}</div>
+              <Select
+                value={formData.upstreamErrorPolicy?.mode || 'passthrough'}
+                onValueChange={(value) => value && handleUpstreamErrorPolicyChange('mode', value)}
+              >
+                <SelectTrigger id='upstream-error-mode' className='w-56'>
+                  <SelectValue placeholder={t('system.retry.upstreamErrorPolicy.placeholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='passthrough'>{t('system.retry.upstreamErrorPolicy.options.passthrough')}</SelectItem>
+                  <SelectItem value='hidden'>{t('system.retry.upstreamErrorPolicy.options.hidden')}</SelectItem>
+                  <SelectItem value='custom'>{t('system.retry.upstreamErrorPolicy.options.custom')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.upstreamErrorPolicy?.mode === 'custom' && (
+              <div className='space-y-2'>
+                <Label htmlFor='upstream-error-custom-message'>{t('system.retry.upstreamErrorPolicy.customMessage.label')}</Label>
+                <Textarea
+                  id='upstream-error-custom-message'
+                  value={formData.upstreamErrorPolicy?.customMessage || ''}
+                  onChange={(e) => handleUpstreamErrorPolicyChange('customMessage', e.target.value)}
+                  placeholder={t('system.retry.upstreamErrorPolicy.customMessage.placeholder')}
+                  className='min-h-20'
+                />
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
           {/* Retry Configuration - Only show when enabled */}
           {formData.enabled && (
             <div className='space-y-4'>
@@ -242,41 +277,6 @@ export function RetrySettings() {
                   checked={formData.emptyResponseDetection || false}
                   onCheckedChange={(checked) => handleInputChange('emptyResponseDetection', checked)}
                 />
-              </div>
-
-              <Separator />
-
-              <div className='space-y-4'>
-                <div className='space-y-2'>
-                  <Label htmlFor='upstream-error-mode'>{t('system.retry.upstreamErrorPolicy.label')}</Label>
-                  <div className='text-muted-foreground mb-2 text-sm'>{t('system.retry.upstreamErrorPolicy.description')}</div>
-                  <Select
-                    value={formData.upstreamErrorPolicy?.mode || 'passthrough'}
-                    onValueChange={(value) => value && handleUpstreamErrorPolicyChange('mode', value)}
-                  >
-                    <SelectTrigger id='upstream-error-mode' className='w-56'>
-                      <SelectValue placeholder={t('system.retry.upstreamErrorPolicy.placeholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='passthrough'>{t('system.retry.upstreamErrorPolicy.options.passthrough')}</SelectItem>
-                      <SelectItem value='hidden'>{t('system.retry.upstreamErrorPolicy.options.hidden')}</SelectItem>
-                      <SelectItem value='custom'>{t('system.retry.upstreamErrorPolicy.options.custom')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.upstreamErrorPolicy?.mode === 'custom' && (
-                  <div className='space-y-2'>
-                    <Label htmlFor='upstream-error-custom-message'>{t('system.retry.upstreamErrorPolicy.customMessage.label')}</Label>
-                    <Textarea
-                      id='upstream-error-custom-message'
-                      value={formData.upstreamErrorPolicy?.customMessage || ''}
-                      onChange={(e) => handleUpstreamErrorPolicyChange('customMessage', e.target.value)}
-                      placeholder={t('system.retry.upstreamErrorPolicy.customMessage.placeholder')}
-                      className='min-h-20'
-                    />
-                  </div>
-                )}
               </div>
 
               <Separator />

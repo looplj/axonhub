@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -379,7 +380,7 @@ func TestApplyUpstreamErrorPolicy_CustomMessage(t *testing.T) {
 		Body:       []byte(`{"error":{"message":"raw provider secret","type":"rate_limit_error","code":"provider_rate_limit"},"request_id":"req_123"}`),
 	}
 
-	err := applyUpstreamErrorPolicy(ctx, rawErr, systemService)
+	err := applyUpstreamErrorPolicy(ctx, pipeline.WrapUpstreamError(rawErr), systemService)
 
 	respErr := &llm.ResponseError{}
 	require.True(t, errors.As(err, &respErr))
@@ -401,4 +402,24 @@ func TestApplyUpstreamErrorPolicy_PassthroughByDefault(t *testing.T) {
 	err := applyUpstreamErrorPolicy(ctx, rawErr, systemService)
 
 	assert.Equal(t, rawErr, err)
+}
+
+func TestApplyUpstreamErrorPolicy_DoesNotRewriteLocalResponseError(t *testing.T) {
+	ctx, systemService := setupUpstreamErrorPolicyTest(t, biz.UpstreamErrorPolicy{
+		Mode:          biz.UpstreamErrorModeCustom,
+		CustomMessage: "模型服务暂时不可用，请稍后再试",
+	})
+
+	localErr := &llm.ResponseError{
+		StatusCode: http.StatusForbidden,
+		Detail: llm.ErrorDetail{
+			Code:    "quota_exceeded",
+			Message: "API key quota exceeded",
+			Type:    "quota_exceeded_error",
+		},
+	}
+
+	err := applyUpstreamErrorPolicy(ctx, localErr, systemService)
+
+	assert.Equal(t, localErr, err)
 }

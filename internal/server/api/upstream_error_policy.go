@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -13,8 +12,23 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+func transformOrchestratorError(ctx context.Context, err error, orch *orchestrator.ChatCompletionOrchestrator) *httpclient.Error {
+	err = wrapQuotaExhaustedAsResponseError(err)
+	if orch != nil {
+		err = applyUpstreamErrorPolicy(ctx, err, orch.SystemService)
+		return orch.Inbound.TransformError(ctx, err)
+	}
+
+	return &httpclient.Error{
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
+		Body:       []byte(`{"error":{"message":"internal server error","type":"internal_server_error"}}`),
+	}
+}
 
 func applyUpstreamErrorPolicy(ctx context.Context, err error, systemService *biz.SystemService) error {
 	if err == nil || systemService == nil {
@@ -28,6 +42,10 @@ func applyUpstreamErrorPolicy(ctx context.Context, err error, systemService *biz
 
 	policy := systemService.RetryPolicyOrDefault(ctx).UpstreamErrorPolicy
 	if policy.Mode == biz.UpstreamErrorModePassthrough || policy.Mode == "" {
+		return err
+	}
+
+	if !pipeline.IsUpstreamError(err) {
 		return err
 	}
 
@@ -67,10 +85,6 @@ func applyUpstreamErrorPolicy(ctx context.Context, err error, systemService *biz
 				RequestID: upstreamRequestIDFromHTTP(httpErr),
 			},
 		}
-	}
-
-	if !isLikelyUpstreamError(err) {
-		return err
 	}
 
 	return &llm.ResponseError{
@@ -116,7 +130,7 @@ func (s *upstreamErrorStream) Err() error {
 
 	policy := s.systemService.RetryPolicyOrDefault(s.ctx).UpstreamErrorPolicy
 	if policy.Mode != "" && policy.Mode != biz.UpstreamErrorModePassthrough {
-		return applyUpstreamErrorPolicy(s.ctx, fmt.Errorf("failed to stream request: %w", err), s.systemService)
+		return applyUpstreamErrorPolicy(s.ctx, pipeline.WrapUpstreamError(err), s.systemService)
 	}
 
 	return err
@@ -154,14 +168,6 @@ func upstreamRequestIDFromHTTP(httpErr *httpclient.Error) string {
 	}
 
 	return ""
-}
-
-func isLikelyUpstreamError(err error) bool {
-	text := err.Error()
-	return strings.Contains(text, "failed to do request") ||
-		strings.Contains(text, "failed to stream request") ||
-		strings.Contains(text, "failed to transform response") ||
-		strings.Contains(text, "failed to transform streaming request")
 }
 
 func firstNonEmpty(values ...string) string {

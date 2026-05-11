@@ -22,10 +22,10 @@ func (p *pipeline) notStream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
-			return nil, p.Outbound.TransformError(ctx, httpErr)
+			return nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
 		}
 
-		return nil, fmt.Errorf("failed to do request: %w", err)
+		return nil, WrapUpstreamError(fmt.Errorf("failed to do request: %w", err))
 	}
 
 	// Apply raw response middlewares
@@ -40,7 +40,7 @@ func (p *pipeline) notStream(
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
-		return nil, fmt.Errorf("failed to transform response: %w", err)
+		return nil, WrapUpstreamError(fmt.Errorf("failed to transform response: %w", err))
 	}
 
 	// Apply LLM response middlewares
