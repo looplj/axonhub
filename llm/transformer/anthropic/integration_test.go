@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
@@ -280,6 +281,183 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			require.Equal(t, tt.expectedModel, finalAnthropicResp.Model)
 		})
 	}
+}
+
+func TestAnthropicTransformResponse_CitationRoundTripIntegration(t *testing.T) {
+	inboundTransformer := NewInboundTransformer()
+	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+
+	anthropicResponse := &Message{
+		ID:   "msg_citation_roundtrip",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{
+				Type: "text",
+				Text: lo.ToPtr("Answer with source"),
+				Citations: []TextCitation{
+					{
+						Type:           "url_citation",
+						URL:            "https://example.com/anthropic",
+						Title:          "Anthropic Source",
+						EncryptedIndex: lo.ToPtr("secret-index"),
+						CitedText:      lo.ToPtr("quoted text"),
+					},
+				},
+			},
+		},
+		Model: "claude-3-7-sonnet-latest",
+	}
+
+	responseBody, err := json.Marshal(anthropicResponse)
+	require.NoError(t, err)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       responseBody,
+	}
+
+	chatResp, err := outboundTransformer.TransformResponse(t.Context(), httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, chatResp)
+	require.Len(t, chatResp.Choices, 1)
+	require.NotNil(t, chatResp.Choices[0].Message)
+	require.Equal(t, "assistant", chatResp.Choices[0].Message.Role)
+	require.Equal(t, "Answer with source", lo.FromPtr(chatResp.Choices[0].Message.Content.Content))
+	require.Len(t, chatResp.Choices[0].Message.Annotations, 1)
+
+	annotation := chatResp.Choices[0].Message.Annotations[0]
+	require.Equal(t, "url_citation", annotation.Type)
+	require.NotNil(t, annotation.URLCitation)
+	require.Equal(t, "https://example.com/anthropic", annotation.URLCitation.URL)
+	require.Equal(t, "Anthropic Source", annotation.URLCitation.Title)
+	require.Nil(t, annotation.StartIndex)
+	require.Nil(t, annotation.EndIndex)
+
+	finalHTTPResp, err := inboundTransformer.TransformResponse(t.Context(), chatResp)
+	require.NoError(t, err)
+	require.NotNil(t, finalHTTPResp)
+
+	var finalAnthropicResp Message
+
+	err = json.Unmarshal(finalHTTPResp.Body, &finalAnthropicResp)
+	require.NoError(t, err)
+	require.Equal(t, "msg_citation_roundtrip", finalAnthropicResp.ID)
+	require.Equal(t, "message", finalAnthropicResp.Type)
+	require.Equal(t, "assistant", finalAnthropicResp.Role)
+	require.Equal(t, "claude-3-7-sonnet-latest", finalAnthropicResp.Model)
+	require.Len(t, finalAnthropicResp.Content, 1)
+	require.Equal(t, "text", finalAnthropicResp.Content[0].Type)
+	require.Equal(t, "Answer with source", lo.FromPtr(finalAnthropicResp.Content[0].Text))
+	require.Len(t, finalAnthropicResp.Content[0].Citations, 1)
+
+	citation := finalAnthropicResp.Content[0].Citations[0]
+	require.Equal(t, "url_citation", citation.Type)
+	require.Equal(t, "https://example.com/anthropic", citation.URL)
+	require.Equal(t, "Anthropic Source", citation.Title)
+	require.Nil(t, citation.EncryptedIndex)
+	require.Nil(t, citation.CitedText)
+}
+
+
+func TestAnthropicTransformResponse_WebSearchBlocks_RoundTripIntegration(t *testing.T) {
+	inboundTransformer := NewInboundTransformer()
+	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+
+	anthropicResponse := &Message{
+		ID:   "msg_a930390d3a",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{
+				Type: "text",
+				Text: lo.ToPtr("I'll search for when Claude Shannon was born."),
+			},
+			{
+				Type:  "server_tool_use",
+				ID:    "srvtoolu_01WYG3ziw53XMcoyKL4XcZmE",
+				Name:  lo.ToPtr("web_search"),
+				Input: json.RawMessage(`{"query":"claude shannon birth date"}`),
+			},
+			{
+				Type:      "web_search_tool_result",
+				ToolUseID: lo.ToPtr("srvtoolu_01WYG3ziw53XMcoyKL4XcZmE"),
+				Content: &MessageContent{MultipleContent: []MessageContentBlock{{
+					Type:             "web_search_result",
+					URL:              "https://en.wikipedia.org/wiki/Claude_Shannon",
+					Title:            "Claude Shannon - Wikipedia",
+					EncryptedContent: lo.ToPtr("EqgfCioIARgBIiQ3YTAwMjY1Mi1mZjM5LTQ1NGUtODgxNC1kNjNjNTk1ZWI3Y..."),
+					PageAge:          lo.ToPtr("April 30, 2025"),
+				}}},
+			},
+			{
+				Type: "text",
+				Text: lo.ToPtr("Based on the search results, "),
+			},
+			{
+				Type: "text",
+				Text: lo.ToPtr("Claude Shannon was born on April 30, 1916, in Petoskey, Michigan"),
+				Citations: []TextCitation{{
+					Type:           "web_search_result_location",
+					URL:            "https://en.wikipedia.org/wiki/Claude_Shannon",
+					Title:          "Claude Shannon - Wikipedia",
+					EncryptedIndex: lo.ToPtr("Eo8BCioIAhgBIiQyYjQ0OWJmZi1lNm.."),
+					CitedText:      lo.ToPtr("Claude Elwood Shannon (April 30, 1916 – February 24, 2001) was an American mathematician, electrical engineer, computer scientist, cryptographer and i..."),
+				}},
+			},
+		},
+		Model: "claude-3-7-sonnet-latest",
+		Usage: &Usage{InputTokens: 6039, OutputTokens: 931},
+	}
+
+	responseBody, err := json.Marshal(anthropicResponse)
+	require.NoError(t, err)
+
+	httpResp := &httpclient.Response{StatusCode: http.StatusOK, Body: responseBody}
+	chatResp, err := outboundTransformer.TransformResponse(t.Context(), httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, chatResp)
+	require.Len(t, chatResp.Choices, 1)
+	require.NotNil(t, chatResp.Choices[0].Message)
+	require.Len(t, chatResp.Choices[0].Message.Annotations, 1)
+
+	finalHTTPResp, err := inboundTransformer.TransformResponse(t.Context(), chatResp)
+	require.NoError(t, err)
+	require.NotNil(t, finalHTTPResp)
+
+	root := gjson.ParseBytes(finalHTTPResp.Body)
+	content := root.Get("content")
+	require.True(t, content.Exists())
+	require.Len(t, content.Array(), 5)
+
+	require.Equal(t, "text", content.Array()[0].Get("type").String())
+	require.Equal(t, "I'll search for when Claude Shannon was born.", content.Array()[0].Get("text").String())
+
+	require.Equal(t, "server_tool_use", content.Array()[1].Get("type").String())
+	require.Equal(t, "srvtoolu_01WYG3ziw53XMcoyKL4XcZmE", content.Array()[1].Get("id").String())
+	require.Equal(t, "web_search", content.Array()[1].Get("name").String())
+	require.Equal(t, "claude shannon birth date", content.Array()[1].Get("input.query").String())
+
+	require.Equal(t, "web_search_tool_result", content.Array()[2].Get("type").String())
+	require.Equal(t, "srvtoolu_01WYG3ziw53XMcoyKL4XcZmE", content.Array()[2].Get("tool_use_id").String())
+	require.Len(t, content.Array()[2].Get("content").Array(), 1)
+	require.Equal(t, "web_search_result", content.Array()[2].Get("content.0.type").String())
+	require.Equal(t, "https://en.wikipedia.org/wiki/Claude_Shannon", content.Array()[2].Get("content.0.url").String())
+	require.Equal(t, "Claude Shannon - Wikipedia", content.Array()[2].Get("content.0.title").String())
+	require.Equal(t, "EqgfCioIARgBIiQ3YTAwMjY1Mi1mZjM5LTQ1NGUtODgxNC1kNjNjNTk1ZWI3Y...", content.Array()[2].Get("content.0.encrypted_content").String())
+	require.Equal(t, "April 30, 2025", content.Array()[2].Get("content.0.page_age").String())
+
+	require.Equal(t, "text", content.Array()[3].Get("type").String())
+	require.Equal(t, "Based on the search results, ", content.Array()[3].Get("text").String())
+
+	require.Equal(t, "text", content.Array()[4].Get("type").String())
+	require.Equal(t, "Claude Shannon was born on April 30, 1916, in Petoskey, Michigan", content.Array()[4].Get("text").String())
+	require.Len(t, content.Array()[4].Get("citations").Array(), 1)
+	require.Equal(t, "web_search_result_location", content.Array()[4].Get("citations.0.type").String())
+	require.Equal(t, "https://en.wikipedia.org/wiki/Claude_Shannon", content.Array()[4].Get("citations.0.url").String())
+	require.Equal(t, "Claude Shannon - Wikipedia", content.Array()[4].Get("citations.0.title").String())
+	require.Equal(t, "Eo8BCioIAhgBIiQyYjQ0OWJmZi1lNm..", content.Array()[4].Get("citations.0.encrypted_index").String())
+	require.Equal(t, "Claude Elwood Shannon (April 30, 1916 – February 24, 2001) was an American mathematician, electrical engineer, computer scientist, cryptographer and i...", content.Array()[4].Get("citations.0.cited_text").String())
 }
 
 func TestTransformRequest_Integration(t *testing.T) {

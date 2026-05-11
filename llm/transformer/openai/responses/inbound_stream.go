@@ -44,6 +44,7 @@ type responsesInboundStream struct {
 	hasContentPartStarted   bool
 	hasFinished             bool
 	responseCompleted       bool
+	pendingAnnotations      []llm.Annotation
 
 	// Response metadata
 	responseID string
@@ -234,6 +235,13 @@ func (s *responsesInboundStream) Next() bool {
 			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
 		}
 
+		if choice.Message != nil && len(choice.Message.Annotations) > 0 {
+			s.pendingAnnotations = append(s.pendingAnnotations, choice.Message.Annotations...)
+		}
+		if choice.Delta != nil && len(choice.Delta.Annotations) > 0 {
+			s.pendingAnnotations = append(s.pendingAnnotations, choice.Delta.Annotations...)
+		}
+
 		// Handle text content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
 			if err := s.handleTextContent(choice.Delta.Content.Content); err != nil {
@@ -399,19 +407,26 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 	if !s.hasContentPartStarted {
 		s.hasContentPartStarted = true
 
+		textPartItems, _ := attachAnnotationsToFirstTextItem([]Item{{
+			Type:        "output_text",
+			Annotations: []Annotation{},
+		}}, s.pendingAnnotations)
+
 		err := s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeContentPartAdded,
 			ItemID:       &s.currentItemID,
 			OutputIndex:  s.outputIndex,
 			ContentIndex: &s.contentIndex,
 			Part: &StreamEventContentPart{
-				Type: "output_text",
-				Text: lo.ToPtr(""),
+				Type:        "output_text",
+				Text:        lo.ToPtr(""),
+				Annotations: textPartItems[0].Annotations,
 			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to enqueue content_part.added event: %w", err)
 		}
+		// Keep pendingAnnotations until output_item.done so the final message item preserves them.
 	}
 
 	// Accumulate text content
@@ -713,6 +728,8 @@ func (s *responsesInboundStream) closeMessageItem() error {
 			}},
 		},
 	}
+	item.Content.Items, _ = attachAnnotationsToFirstTextItem(item.Content.Items, s.pendingAnnotations)
+	s.pendingAnnotations = nil
 
 	err := s.enqueueEvent(&StreamEvent{
 		Type:        StreamEventTypeOutputItemDone,
@@ -751,14 +768,21 @@ func (s *responsesInboundStream) closeCurrentContentPart() error {
 	}
 
 	// Emit content_part.done with full text
+	contentPartItems, _ := attachAnnotationsToFirstTextItem([]Item{{
+		Type:        "output_text",
+		Text:        lo.ToPtr(fullText),
+		Annotations: []Annotation{},
+	}}, s.pendingAnnotations)
+
 	err = s.enqueueEvent(&StreamEvent{
 		Type:         StreamEventTypeContentPartDone,
 		ItemID:       &s.currentItemID,
 		OutputIndex:  s.outputIndex,
 		ContentIndex: &s.contentIndex,
 		Part: &StreamEventContentPart{
-			Type: "output_text",
-			Text: lo.ToPtr(fullText),
+			Type:        "output_text",
+			Text:        lo.ToPtr(fullText),
+			Annotations: contentPartItems[0].Annotations,
 		},
 	})
 	if err != nil {

@@ -247,3 +247,41 @@ func TestResponseToolChoiceUnmarshalJSON_ClearsConflictingRepresentation(t *test
 	require.NotNil(t, choice.ObjectValue.Name)
 	require.Equal(t, "get_weather", *choice.ObjectValue.Name)
 }
+
+func TestToolChoiceMarshalJSON_PreservesStringModes(t *testing.T) {
+	cases := []struct {
+		name     string
+		choice    ToolChoice
+		expected string
+	}{
+		{
+			name: "auto marshals as string",
+			choice: ToolChoice{
+				Mode: lo.ToPtr("auto"),
+			},
+			expected: `"auto"`,
+		},
+		{
+			name: "required marshals as string",
+			choice: ToolChoice{
+				Mode: lo.ToPtr("required"),
+			},
+			expected: `"required"`,
+		},
+		{
+			name: "none marshals as string",
+			choice: ToolChoice{
+				Mode: lo.ToPtr("none"),
+			},
+			expected: `"none"`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := json.Marshal(&tc.choice)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.expected, string(data))
+		})
+	}
+}

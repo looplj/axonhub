@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/samber/lo"
@@ -22,20 +23,83 @@ type choiceAggregator struct {
 	toolCalls           map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
 	finishReason        *string
 	role                string
-	annotations         map[string]llm.Annotation // Map to track unique annotations by URL
+	annotations         map[string]llm.Annotation // Map to track unique annotations by stable annotation key
+}
+
+func buildAnnotationKey(annotation Annotation) string {
+	url := ""
+	if annotation.URLCitation != nil {
+		url = annotation.URLCitation.URL
+	}
+
+	start := "nil"
+	if annotation.StartIndex != nil {
+		start = strconv.FormatInt(*annotation.StartIndex, 10)
+	}
+
+	end := "nil"
+	if annotation.EndIndex != nil {
+		end = strconv.FormatInt(*annotation.EndIndex, 10)
+	}
+
+	return strings.Join([]string{annotation.Type, url, start, end}, "\x00")
+}
+
+func shouldPreferIncomingAnnotationTitle(existing, incoming llm.Annotation) bool {
+	if existing.URLCitation == nil || incoming.URLCitation == nil || incoming.URLCitation.Title == "" {
+		return false
+	}
+
+	return existing.URLCitation.Title == "" || len(incoming.URLCitation.Title) > len(existing.URLCitation.Title)
+}
+
+func compareOptionalAnnotationIndex(left, right *int64) (bool, bool) {
+	switch {
+	case left == nil && right == nil:
+		return false, false
+	case left == nil:
+		return false, true
+	case right == nil:
+		return true, true
+	case *left != *right:
+		return *left < *right, true
+	default:
+		return false, false
+	}
+}
+
+func annotationURL(annotation llm.Annotation) string {
+	if annotation.URLCitation == nil {
+		return ""
+	}
+
+	return annotation.URLCitation.URL
 }
 
 // addAnnotations adds annotations from a message to the choice aggregator,
-// deduplicating by URL.
+// deduplicating by stable annotation key.
 func (ca *choiceAggregator) addAnnotations(msg *Message) {
 	if msg == nil || len(msg.Annotations) == 0 {
 		return
 	}
 
 	for _, annotation := range msg.Annotations {
-		if annotation.URLCitation != nil && annotation.URLCitation.URL != "" {
-			ca.annotations[annotation.URLCitation.URL] = annotation.ToLLMAnnotation()
+		if annotation.URLCitation == nil || annotation.URLCitation.URL == "" {
+			continue
 		}
+
+		key := buildAnnotationKey(annotation)
+		incoming := annotation.ToLLMAnnotation()
+
+		if existing, ok := ca.annotations[key]; ok {
+			if shouldPreferIncomingAnnotationTitle(existing, incoming) {
+				existing.URLCitation.Title = incoming.URLCitation.Title
+				ca.annotations[key] = existing
+			}
+			continue
+		}
+
+		ca.annotations[key] = incoming
 	}
 }
 
@@ -235,6 +299,19 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			for _, annotation := range choiceAgg.annotations {
 				message.Annotations = append(message.Annotations, annotation)
 			}
+			sort.Slice(message.Annotations, func(i, j int) bool {
+				if less, decided := compareOptionalAnnotationIndex(message.Annotations[i].StartIndex, message.Annotations[j].StartIndex); decided {
+					return less
+				}
+				if less, decided := compareOptionalAnnotationIndex(message.Annotations[i].EndIndex, message.Annotations[j].EndIndex); decided {
+					return less
+				}
+				if message.Annotations[i].Type != message.Annotations[j].Type {
+					return message.Annotations[i].Type < message.Annotations[j].Type
+				}
+
+				return annotationURL(message.Annotations[i]) < annotationURL(message.Annotations[j])
+			})
 		}
 
 		// Determine finish reason

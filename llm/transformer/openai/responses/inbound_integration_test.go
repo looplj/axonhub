@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -197,6 +198,67 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInboundTransformer_TransformResponse_AttachesMessageAnnotationsToFirstSplitTextItem(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	llmResp := &llm.Response{
+		ID:      "resp_annotations_writeback",
+		Object:  "chat.completion",
+		Created: 1759161016,
+		Model:   "gpt-4o",
+		Choices: []llm.Choice{{
+			Index: 0,
+			Message: &llm.Message{
+				ID:   "msg_annotations_writeback",
+				Role: "assistant",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("Alpha ")},
+						{Type: "text", Text: lo.ToPtr("Beta")},
+					},
+				},
+				Annotations: []llm.Annotation{{
+					Type:       "url_citation",
+					StartIndex: lo.ToPtr(int64(6)),
+					EndIndex:   lo.ToPtr(int64(10)),
+					URLCitation: &llm.URLCitation{
+						URL:   "https://example.com/beta",
+						Title: "Beta Source",
+					},
+				}},
+			},
+		}},
+	}
+
+	result, err := transformer.TransformResponse(t.Context(), llmResp)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	var resp Response
+	err = json.Unmarshal(result.Body, &resp)
+	require.NoError(t, err)
+	require.Len(t, resp.Output, 1)
+
+	output := resp.Output[0]
+	require.Equal(t, "message", output.Type)
+	contentItems := output.GetContentItems()
+	require.Len(t, contentItems, 2)
+	require.Equal(t, "Alpha ", contentItems[0].Text)
+	require.Equal(t, "Beta", contentItems[1].Text)
+	require.Len(t, contentItems[0].Annotations, 1)
+	require.Empty(t, contentItems[1].Annotations)
+
+	annotation := contentItems[0].Annotations[0]
+	require.Equal(t, "url_citation", annotation.Type)
+	require.NotNil(t, annotation.StartIndex)
+	require.NotNil(t, annotation.EndIndex)
+	require.EqualValues(t, 6, *annotation.StartIndex)
+	require.EqualValues(t, 10, *annotation.EndIndex)
+	require.NotNil(t, annotation.URLCitation)
+	require.Equal(t, "https://example.com/beta", annotation.URLCitation.URL)
+	require.Equal(t, "Beta Source", annotation.URLCitation.Title)
 }
 
 func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {

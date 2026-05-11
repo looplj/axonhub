@@ -275,6 +275,71 @@ func TestAggregateStreamChunks_WithAnnotations(t *testing.T) {
 	require.NotNil(t, got.Choices[0].Message.Annotations[1].URLCitation)
 }
 
+func TestAggregateStreamChunks_DistinctAnnotationSpans(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"sonar-deep-research","choices":[{"index":0,"delta":{"role":"assistant","content":"Alpha Beta"},"message":{"role":"assistant","content":"Alpha Beta","annotations":[{"type":"url_citation","start_index":6,"end_index":10,"url_citation":{"url":"https://example.com/source","title":"Example Source"}},{"type":"url_citation","start_index":0,"end_index":5,"url_citation":{"url":"https://example.com/source","title":"Example Source"}}]},"finish_reason":"stop"}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	require.Len(t, got.Choices, 1)
+	require.NotNil(t, got.Choices[0].Message)
+	require.Len(t, got.Choices[0].Message.Annotations, 2)
+
+	first := got.Choices[0].Message.Annotations[0]
+	require.Equal(t, "url_citation", first.Type)
+	require.NotNil(t, first.URLCitation)
+	require.Equal(t, "https://example.com/source", first.URLCitation.URL)
+	require.Equal(t, "Example Source", first.URLCitation.Title)
+	require.NotNil(t, first.StartIndex)
+	require.NotNil(t, first.EndIndex)
+	require.EqualValues(t, 0, *first.StartIndex)
+	require.EqualValues(t, 5, *first.EndIndex)
+
+	second := got.Choices[0].Message.Annotations[1]
+	require.Equal(t, "url_citation", second.Type)
+	require.NotNil(t, second.URLCitation)
+	require.Equal(t, "https://example.com/source", second.URLCitation.URL)
+	require.Equal(t, "Example Source", second.URLCitation.Title)
+	require.NotNil(t, second.StartIndex)
+	require.NotNil(t, second.EndIndex)
+	require.EqualValues(t, 6, *second.StartIndex)
+	require.EqualValues(t, 10, *second.EndIndex)
+}
+
+func TestAggregateStreamChunks_MergesAnnotationTitleAcrossChunks(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"sonar-deep-research","choices":[{"index":0,"delta":{"role":"assistant","content":"Alpha"},"message":{"role":"assistant","content":"Alpha","annotations":[{"type":"url_citation","start_index":0,"end_index":5,"url_citation":{"url":"https://example.com/source","title":"Example"}}]}}]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"sonar-deep-research","choices":[{"index":0,"delta":{"content":" Beta"},"message":{"role":"assistant","content":"Alpha Beta","annotations":[{"type":"url_citation","start_index":0,"end_index":5,"url_citation":{"url":"https://example.com/source","title":"Example Source"}}]},"finish_reason":"stop"}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	require.Len(t, got.Choices, 1)
+	require.NotNil(t, got.Choices[0].Message)
+	require.Len(t, got.Choices[0].Message.Annotations, 1)
+	require.Equal(t, "url_citation", got.Choices[0].Message.Annotations[0].Type)
+	require.NotNil(t, got.Choices[0].Message.Annotations[0].URLCitation)
+	require.Equal(t, "https://example.com/source", got.Choices[0].Message.Annotations[0].URLCitation.URL)
+	require.Equal(t, "Example Source", got.Choices[0].Message.Annotations[0].URLCitation.Title)
+}
+
 func TestAggregateStreamChunks_WithAnnotationsInMessage(t *testing.T) {
 	// Test annotations that come in the Message field (non-streaming style chunks)
 	chunks := []*httpclient.StreamEvent{

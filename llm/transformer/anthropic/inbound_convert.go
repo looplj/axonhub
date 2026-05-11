@@ -380,6 +380,123 @@ func convertAnthropicToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 	return nil
 }
 
+func citationFromLLMAnnotation(annotation llm.Annotation, metadata map[string]any) (TextCitation, bool) {
+	if annotation.Type == "" && annotation.URLCitation == nil {
+		return TextCitation{}, false
+	}
+
+	citationType := annotation.Type
+	if citationType == "" || (citationType == "url_citation" && hasOpenAIResponsesWebSearchCallMetadata(metadata)) {
+		citationType = "web_search_result_location"
+	}
+
+	citation := TextCitation{Type: citationType}
+	if annotation.URLCitation != nil {
+		citation.URL = annotation.URLCitation.URL
+		citation.Title = annotation.URLCitation.Title
+	}
+
+	return citation, true
+}
+
+func hasOpenAIResponsesWebSearchCallMetadata(metadata map[string]any) bool {
+	if len(metadata) == 0 {
+		return false
+	}
+
+	raw, ok := metadata["openai_responses_web_search_calls"]
+	if !ok || raw == nil {
+		return false
+	}
+
+	switch calls := raw.(type) {
+	case []any:
+		return len(calls) > 0
+	case []map[string]any:
+		return len(calls) > 0
+	default:
+		return true
+	}
+}
+
+func attachCitationsToFirstAnthropicTextBlock(contentBlocks []MessageContentBlock, annotations []llm.Annotation, metadata map[string]any) []MessageContentBlock {
+	if len(annotations) == 0 {
+		return contentBlocks
+	}
+
+	citations := lo.FilterMap(annotations, func(annotation llm.Annotation, _ int) (TextCitation, bool) {
+		return citationFromLLMAnnotation(annotation, metadata)
+	})
+	if len(citations) == 0 {
+		return contentBlocks
+	}
+
+	for i := range contentBlocks {
+		if contentBlocks[i].Type != "text" {
+			continue
+		}
+
+		existing := map[string]struct{}{}
+		for _, citation := range contentBlocks[i].Citations {
+			existing[citationKey(citation)] = struct{}{}
+		}
+		for _, citation := range citations {
+			if _, ok := existing[citationKey(citation)]; ok {
+				continue
+			}
+			contentBlocks[i].Citations = append(contentBlocks[i].Citations, citation)
+		}
+
+		return contentBlocks
+	}
+
+	emptyText := ""
+	contentBlocks = append(contentBlocks, MessageContentBlock{
+		Type:      "text",
+		Text:      &emptyText,
+		Citations: append([]TextCitation(nil), citations...),
+	})
+
+	return contentBlocks
+}
+
+func getAnthropicResponseContentFromMetadata(metadata map[string]any) []MessageContentBlock {
+	if len(metadata) == 0 {
+		return nil
+	}
+
+	raw, ok := metadata[TransformerMetadataKeyAnthropicResponseContent]
+	if !ok || raw == nil {
+		return nil
+	}
+
+	if blocks, ok := raw.([]MessageContentBlock); ok {
+		return cloneAnthropicResponseContentBlocks(blocks)
+	}
+
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil
+	}
+
+	var blocks []MessageContentBlock
+	if err := json.Unmarshal(data, &blocks); err != nil {
+		return nil
+	}
+
+	return blocks
+}
+
+func mergeAnthropicResponseContentBlocks(contentBlocks []MessageContentBlock, metadata map[string]any, annotations []llm.Annotation) []MessageContentBlock {
+	providerBlocks := getAnthropicResponseContentFromMetadata(metadata)
+	if len(providerBlocks) == 0 {
+		return attachCitationsToFirstAnthropicTextBlock(contentBlocks, annotations, metadata)
+	}
+
+	providerBlocks = attachCitationsToFirstAnthropicTextBlock(providerBlocks, annotations, metadata)
+	return providerBlocks
+}
+
 func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 	resp := &Message{
 		ID:    chatResp.ID,
@@ -494,7 +611,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 				}
 			}
 
-			resp.Content = contentBlocks
+			resp.Content = mergeAnthropicResponseContentBlocks(contentBlocks, chatResp.TransformerMetadata, message.Annotations)
 		}
 
 		// Convert finish reason

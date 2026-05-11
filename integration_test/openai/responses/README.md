@@ -12,6 +12,10 @@ Basic question-answer tests demonstrating simple Responses API usage:
 - **TestSimpleQAWithDifferentQuestion** - Different question types
 - **TestMultipleQuestions** - Sequential independent questions
 
+### tool_single/
+Single built-in tool tests:
+- **TestResponsesWebSearchReturnsCitations** - Responses API web search with citations and source validation
+
 ### streaming/
 Streaming response tests:
 - **TestResponsesStreaming** - Basic streaming with event handling

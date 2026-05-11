@@ -136,10 +136,9 @@ func convertCompactMessageToItems(msg llm.Message) []Item {
 		role = "assistant"
 	}
 
-	var (
-		items        []Item
-		contentItems []Item
-	)
+	var items []Item
+	var contentItems []Item
+	annotationsAttached := false
 
 	textItemType := "input_text"
 	if role == "assistant" {
@@ -150,7 +149,11 @@ func convertCompactMessageToItems(msg llm.Message) []Item {
 		if len(contentItems) == 0 {
 			return
 		}
-
+		if !annotationsAttached {
+			var attached bool
+			contentItems, attached = attachAnnotationsToFirstTextItem(contentItems, msg.Annotations)
+			annotationsAttached = attached
+		}
 		items = append(items, Item{
 			ID:      msg.ID,
 			Type:    "message",

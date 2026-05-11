@@ -259,6 +259,280 @@ func TestAggregateStreamChunks_BasicEvents(t *testing.T) {
 	require.Equal(t, int64(5), meta.Usage.CompletionTokens)
 }
 
+func TestAggregateStreamChunks_PreservesAnnotationsFromFinalOutputItem(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type": "response.created",
+				"sequence_number": 0,
+				"response": {
+					"id": "resp_annotations_123",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-4o-search-preview",
+					"status": "in_progress",
+					"output": []
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: []byte(`{
+				"type": "response.output_item.added",
+				"sequence_number": 1,
+				"output_index": 0,
+				"item": {
+					"id": "msg_annotations_456",
+					"type": "message",
+					"status": "in_progress",
+					"role": "assistant"
+				}
+			}`),
+		},
+		{
+			Type: "response.content_part.added",
+			Data: []byte(`{
+				"type": "response.content_part.added",
+				"sequence_number": 2,
+				"item_id": "msg_annotations_456",
+				"output_index": 0,
+				"content_index": 0,
+				"part": {
+					"type": "output_text",
+					"text": ""
+				}
+			}`),
+		},
+		{
+			Type: "response.output_text.delta",
+			Data: []byte(`{
+				"type": "response.output_text.delta",
+				"sequence_number": 3,
+				"item_id": "msg_annotations_456",
+				"output_index": 0,
+				"content_index": 0,
+				"delta": "Search result"
+			}`),
+		},
+		{
+			Type: "response.output_text.done",
+			Data: []byte(`{
+				"type": "response.output_text.done",
+				"sequence_number": 4,
+				"item_id": "msg_annotations_456",
+				"output_index": 0,
+				"content_index": 0,
+				"text": "Search result"
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type": "response.output_item.done",
+				"sequence_number": 5,
+				"output_index": 0,
+				"item": {
+					"id": "msg_annotations_456",
+					"type": "message",
+					"status": "completed",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "output_text",
+							"text": "Search result",
+							"annotations": [
+								{
+									"type": "url_citation",
+									"start_index": 0,
+									"end_index": 6,
+									"url_citation": {
+										"url": "https://example.com/result",
+										"title": "Example Result"
+									}
+								}
+							]
+						}
+					]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type": "response.completed",
+				"sequence_number": 6,
+				"response": {
+					"id": "resp_annotations_123",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-4o-search-preview",
+					"status": "completed",
+					"output": []
+				}
+			}`),
+		},
+	}
+
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+
+	var resp Response
+	err = json.Unmarshal(resultBytes, &resp)
+	require.NoError(t, err)
+	require.Len(t, resp.Output, 1)
+
+	contentItems := resp.Output[0].GetContentItems()
+	require.Len(t, contentItems, 1)
+	require.Equal(t, "Search result", contentItems[0].Text)
+	require.Len(t, contentItems[0].Annotations, 1)
+	require.Equal(t, "url_citation", contentItems[0].Annotations[0].Type)
+	require.NotNil(t, contentItems[0].Annotations[0].StartIndex)
+	require.NotNil(t, contentItems[0].Annotations[0].EndIndex)
+	require.Equal(t, int64(0), *contentItems[0].Annotations[0].StartIndex)
+	require.Equal(t, int64(6), *contentItems[0].Annotations[0].EndIndex)
+	require.NotNil(t, contentItems[0].Annotations[0].URLCitation)
+	require.Equal(t, "https://example.com/result", contentItems[0].Annotations[0].URLCitation.URL)
+	require.Equal(t, "Example Result", contentItems[0].Annotations[0].URLCitation.Title)
+}
+
+func TestAggregateStreamChunks_PreservesEarlierAnnotationsWhenFinalItemOmitsThem(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type": "response.created",
+				"sequence_number": 0,
+				"response": {
+					"id": "resp_annotations_preserved_123",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-4o-search-preview",
+					"status": "in_progress",
+					"output": []
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: []byte(`{
+				"type": "response.output_item.added",
+				"sequence_number": 1,
+				"output_index": 0,
+				"item": {
+					"id": "msg_annotations_preserved_456",
+					"type": "message",
+					"status": "in_progress",
+					"role": "assistant"
+				}
+			}`),
+		},
+		{
+			Type: "response.content_part.added",
+			Data: []byte(`{
+				"type": "response.content_part.added",
+				"sequence_number": 2,
+				"item_id": "msg_annotations_preserved_456",
+				"output_index": 0,
+				"content_index": 0,
+				"part": {
+					"type": "output_text",
+					"text": "",
+					"annotations": [
+						{
+							"type": "url_citation",
+							"start_index": 0,
+							"end_index": 6,
+							"url_citation": {
+								"url": "https://example.com/earlier",
+								"title": "Earlier Result"
+							}
+						}
+					]
+				}
+			}`),
+		},
+		{
+			Type: "response.output_text.delta",
+			Data: []byte(`{
+				"type": "response.output_text.delta",
+				"sequence_number": 3,
+				"item_id": "msg_annotations_preserved_456",
+				"output_index": 0,
+				"content_index": 0,
+				"delta": "Search result"
+			}`),
+		},
+		{
+			Type: "response.output_text.done",
+			Data: []byte(`{
+				"type": "response.output_text.done",
+				"sequence_number": 4,
+				"item_id": "msg_annotations_preserved_456",
+				"output_index": 0,
+				"content_index": 0,
+				"text": "Search result"
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type": "response.output_item.done",
+				"sequence_number": 5,
+				"output_index": 0,
+				"item": {
+					"id": "msg_annotations_preserved_456",
+					"type": "message",
+					"status": "completed",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "output_text",
+							"text": "Search result"
+						}
+					]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type": "response.completed",
+				"sequence_number": 6,
+				"response": {
+					"id": "resp_annotations_preserved_123",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-4o-search-preview",
+					"status": "completed",
+					"output": []
+				}
+			}`),
+		},
+	}
+
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+
+	var resp Response
+	err = json.Unmarshal(resultBytes, &resp)
+	require.NoError(t, err)
+	require.Len(t, resp.Output, 1)
+
+	contentItems := resp.Output[0].GetContentItems()
+	require.Len(t, contentItems, 1)
+	require.Equal(t, "Search result", contentItems[0].Text)
+	require.Len(t, contentItems[0].Annotations, 1)
+	require.Equal(t, "url_citation", contentItems[0].Annotations[0].Type)
+	require.NotNil(t, contentItems[0].Annotations[0].StartIndex)
+	require.NotNil(t, contentItems[0].Annotations[0].EndIndex)
+	require.Equal(t, int64(0), *contentItems[0].Annotations[0].StartIndex)
+	require.Equal(t, int64(6), *contentItems[0].Annotations[0].EndIndex)
+	require.NotNil(t, contentItems[0].Annotations[0].URLCitation)
+	require.Equal(t, "https://example.com/earlier", contentItems[0].Annotations[0].URLCitation.URL)
+	require.Equal(t, "Earlier Result", contentItems[0].Annotations[0].URLCitation.Title)
+}
+
 func TestAggregateStreamChunks_PreservesPreviousResponseID(t *testing.T) {
 	chunks := []*httpclient.StreamEvent{
 		{

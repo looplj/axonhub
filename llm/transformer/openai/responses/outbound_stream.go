@@ -30,7 +30,8 @@ func (t *OutboundTransformer) TransformStream(
 	doneEvent := lo.ToPtr(llm.DoneStreamEvent)
 	streamWithDone := streams.AppendStream(stream, doneEvent)
 
-	return streams.NoNil(newResponsesOutboundStream(streamWithDone)), nil
+	scope, _ := shared.GetTransportScope(ctx)
+	return streams.NoNil(newResponsesOutboundStream(streamWithDone, scope)), nil
 }
 
 // responsesOutboundStream wraps a stream and maintains state during processing.
@@ -54,6 +55,7 @@ type outboundStreamState struct {
 	previousResponseID *string
 	usage              *llm.Usage
 	created            int64
+	scope              shared.TransportScope
 
 	// Content accumulation
 	textContent      strings.Builder
@@ -67,9 +69,12 @@ type outboundStreamState struct {
 	// Reasoning signature tracking
 	encryptedContentEmitted map[string]bool
 	hasEncryptedReasoning   bool
+
+	// Transformer metadata tracking
+	transformerMetadata map[string]any
 }
 
-func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
+func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent], scope shared.TransportScope) *responsesOutboundStream {
 	return &responsesOutboundStream{
 		stream: stream,
 		state: &outboundStreamState{
@@ -77,6 +82,8 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 			itemToCallID:            make(map[string]string),
 			toolCallIndex:           make(map[string]int),
 			encryptedContentEmitted: make(map[string]bool),
+			transformerMetadata:     make(map[string]any),
+			scope:                   scope,
 		},
 	}
 }
@@ -221,7 +228,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 					{
 						Index: 0,
 						Delta: &llm.Message{
-							ReasoningSignature: shared.EncodeOpenAIEncryptedContent(item.EncryptedContent),
+							ReasoningSignature: shared.EncodeOpenAIEncryptedContentInScope(item.EncryptedContent, s.state.scope),
 						},
 					},
 				}
@@ -430,7 +437,37 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		// Reasoning content completed - skip, content was already streamed via deltas
 		return nil // Intentionally skip this event
 
-	case StreamEventTypeOutputItemDone, StreamEventTypeContentPartDone,
+	case StreamEventTypeOutputItemDone:
+		if streamEvent.Item == nil {
+			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "web_search_call" {
+			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
+			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type != "message" {
+			return nil // Intentionally skip this event
+		}
+
+		msg := convertOutputToMessage([]Item{*streamEvent.Item}, s.state.scope, s.state.transformerMetadata)
+		if len(msg.Annotations) == 0 {
+			return nil // Intentionally skip this event
+		}
+
+		if len(s.state.transformerMetadata) > 0 {
+			resp.TransformerMetadata = s.state.transformerMetadata
+		}
+
+		resp.Choices = []llm.Choice{
+			{
+				Index: 0,
+				Delta: &llm.Message{
+					Annotations: msg.Annotations,
+				},
+			},
+		}
+
+	case StreamEventTypeContentPartDone,
 		StreamEventTypeReasoningSummaryPartAdded, StreamEventTypeReasoningSummaryPartDone:
 		// These events don't need special handling - skip
 		return nil // Intentionally skip this event

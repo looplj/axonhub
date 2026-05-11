@@ -14,6 +14,10 @@ Each test case is organized in its own directory with dedicated tests and docume
    - Conversation history testing
    - Configurable model support
 
+2. **[tool_single](./tool_single)** - Single-tool and built-in search tests
+   - Function-calling tool flows
+   - Google Search grounding / citation validation
+
 ## Common Integration Features
 
 ### Headers Integration
@@ -69,11 +73,17 @@ go test -cover ./...
 # Simple Q&A tests
 go test -v ./qa_simple
 
+# Tool and search tests
+go test -v ./tool_single
+
 # Run specific test function
 go test -v -run TestSimpleQA ./qa_simple
 
 # Run conversation history test
 go test -v -run TestConversationHistory ./qa_simple
+
+# Run Google Search grounding test
+go test -v -run TestGoogleSearchReturnsGroundingMetadata ./tool_single
 ```
 
 ## Test Configuration

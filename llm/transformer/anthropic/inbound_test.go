@@ -1726,6 +1726,187 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 	})
 }
 
+
+func TestConvertToAnthropicResponse_WithAnnotations(t *testing.T) {
+	chatResp := &llm.Response{
+		ID:     "msg_annotations",
+		Object: "chat.completion",
+		Model:  "claude-3-sonnet-20240229",
+		Choices: []llm.Choice{{
+			Index: 0,
+			Message: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/image.png"}},
+						{Type: "text", Text: lo.ToPtr("hello")},
+						{Type: "text", Text: lo.ToPtr("world")},
+					},
+				},
+				Annotations: []llm.Annotation{
+					{
+						Type: "url_citation",
+						URLCitation: &llm.URLCitation{
+							URL:   "https://example.com/a",
+							Title: "Example A",
+						},
+					},
+					{
+						Type: "url_citation",
+						StartIndex: lo.ToPtr(int64(1)),
+						EndIndex:   lo.ToPtr(int64(3)),
+						URLCitation: &llm.URLCitation{
+							URL:   "https://example.com/b",
+							Title: "Example B",
+						},
+					},
+				},
+			},
+		}},
+	}
+
+	resp := convertToAnthropicResponse(chatResp)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Content, 3)
+	require.Equal(t, "image", resp.Content[0].Type)
+	require.Equal(t, "text", resp.Content[1].Type)
+	require.Equal(t, "hello", lo.FromPtr(resp.Content[1].Text))
+	require.Len(t, resp.Content[1].Citations, 2)
+	require.Equal(t, []TextCitation{
+		{
+			Type:  "url_citation",
+			URL:   "https://example.com/a",
+			Title: "Example A",
+		},
+		{
+			Type:  "url_citation",
+			URL:   "https://example.com/b",
+			Title: "Example B",
+		},
+	}, resp.Content[1].Citations)
+	require.Equal(t, "text", resp.Content[2].Type)
+	require.Equal(t, "world", lo.FromPtr(resp.Content[2].Text))
+	require.Nil(t, resp.Content[2].Citations)
+}
+
+func TestConvertToAnthropicResponse_WithAnnotationsAndNoTextBlock(t *testing.T) {
+	chatResp := &llm.Response{
+		ID:     "msg_annotations_no_text",
+		Object: "chat.completion",
+		Model:  "claude-3-sonnet-20240229",
+		Choices: []llm.Choice{{
+			Index: 0,
+			Message: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/image.png"}},
+					},
+				},
+				Annotations: []llm.Annotation{{
+					Type: "url_citation",
+					URLCitation: &llm.URLCitation{
+						URL:   "https://example.com/only",
+						Title: "Only Citation",
+					},
+				}},
+			},
+		}},
+	}
+
+	resp := convertToAnthropicResponse(chatResp)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Content, 2)
+	require.Equal(t, "image", resp.Content[0].Type)
+	require.Equal(t, "text", resp.Content[1].Type)
+	require.Equal(t, "", lo.FromPtr(resp.Content[1].Text))
+	require.Equal(t, []TextCitation{{
+		Type:  "url_citation",
+		URL:   "https://example.com/only",
+		Title: "Only Citation",
+	}}, resp.Content[1].Citations)
+}
+
+func TestConvertToAnthropicResponse_WithAnnotationsDefaultsCitationType(t *testing.T) {
+	chatResp := &llm.Response{
+		ID:     "msg_annotations_default_type",
+		Object: "chat.completion",
+		Model:  "claude-3-sonnet-20240229",
+		Choices: []llm.Choice{{
+			Index: 0,
+			Message: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Grounded answer"),
+				},
+				Annotations: []llm.Annotation{{
+					URLCitation: &llm.URLCitation{
+						URL:   "https://example.com/default",
+						Title: "Default Citation",
+					},
+				}},
+			},
+		}},
+	}
+
+	resp := convertToAnthropicResponse(chatResp)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Content, 1)
+	require.Equal(t, "text", resp.Content[0].Type)
+	require.Len(t, resp.Content[0].Citations, 1)
+	require.Equal(t, TextCitation{
+		Type:  "web_search_result_location",
+		URL:   "https://example.com/default",
+		Title: "Default Citation",
+	}, resp.Content[0].Citations[0])
+}
+
+func TestConvertToAnthropicResponse_NormalizesOpenAIWebSearchCitationType(t *testing.T) {
+	chatResp := &llm.Response{
+		ID:     "msg_annotations_openai_web_search_type",
+		Object: "chat.completion",
+		Model:  "gpt-5.4-2026-03-05",
+		TransformerMetadata: map[string]any{
+			"openai_responses_web_search_calls": []map[string]any{{
+				"id":     "ws_123",
+				"type":   "web_search_call",
+				"status": "completed",
+				"action": map[string]any{
+					"type":  "search",
+					"query": "latest ai news",
+				},
+			}},
+		},
+		Choices: []llm.Choice{{
+			Index: 0,
+			Message: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Grounded answer"),
+				},
+				Annotations: []llm.Annotation{{
+					Type: "url_citation",
+					URLCitation: &llm.URLCitation{
+						URL:   "https://example.com/search",
+						Title: "Search Result",
+					},
+				}},
+			},
+		}},
+	}
+
+	resp := convertToAnthropicResponse(chatResp)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Content, 1)
+	require.Equal(t, "text", resp.Content[0].Type)
+	require.Len(t, resp.Content[0].Citations, 1)
+	require.Equal(t, TextCitation{
+		Type:  "web_search_result_location",
+		URL:   "https://example.com/search",
+		Title: "Search Result",
+	}, resp.Content[0].Citations[0])
+}
+
 func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
 	transformer := NewInboundTransformer()
 
