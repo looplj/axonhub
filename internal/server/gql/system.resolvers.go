@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/samber/lo"
 )
 
@@ -197,7 +198,7 @@ func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error
 }
 
 // TriggerGcCleanup is the resolver for the triggerGcCleanup field.
-func (r *mutationResolver) TriggerGcCleanup(ctx context.Context) (bool, error) {
+func (r *mutationResolver) TriggerGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) (bool, error) {
 	if !scopes.UserHasScope(ctx, scopes.ScopeWriteSettings) {
 		return false, fmt.Errorf("permission denied: requires write:settings scope")
 	}
@@ -212,7 +213,7 @@ func (r *mutationResolver) TriggerGcCleanup(ctx context.Context) (bool, error) {
 
 		// Use a detached context with system bypass for background execution
 		bgCtx := authz.WithSystemBypass(context.WithoutCancel(ctx), "manual-gc-cleanup")
-		_ = r.gcWorker.RunCleanupNow(bgCtx)
+		_ = r.gcWorker.RunCleanupNow(bgCtx, input)
 	}()
 
 	return true, nil
@@ -283,6 +284,24 @@ func (r *mutationResolver) ClearCache(ctx context.Context, input ClearCacheInput
 		Message: "cache cleared successfully",
 		Targets: targets,
 	}, nil
+}
+
+// PreviewGcCleanup is the resolver for the previewGcCleanup field.
+func (r *queryResolver) PreviewGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) ([]*gc.GcCleanupPreviewItem, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeReadSettings) {
+		return nil, fmt.Errorf("permission denied: requires read:settings scope")
+	}
+
+	items, err := r.gcWorker.PreviewCleanup(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*gc.GcCleanupPreviewItem, len(items))
+	for i := range items {
+		result[i] = &items[i]
+	}
+	return result, nil
 }
 
 // SystemStatus is the resolver for the systemStatus field.

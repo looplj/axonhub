@@ -200,8 +200,19 @@ const COMPLETE_AUTO_DISABLE_CHANNEL_ONBOARDING_MUTATION = `
 `;
 
 const TRIGGER_GC_CLEANUP_MUTATION = `
-  mutation triggerGcCleanup {
-    triggerGcCleanup
+  mutation triggerGcCleanup($input: TriggerGcCleanupInput!) {
+    triggerGcCleanup(input: $input)
+  }
+`;
+
+const PREVIEW_GC_CLEANUP_QUERY = `
+  query previewGcCleanup($input: TriggerGcCleanupInput!) {
+    previewGcCleanup(input: $input) {
+      resourceType
+      estimatedCount
+      cutoffTime
+      retentionDays
+    }
   }
 `;
 
@@ -266,6 +277,18 @@ export interface CleanupOptionInput {
   resourceType: string;
   enabled: boolean;
   cleanupDays: number;
+}
+
+export interface TriggerGcCleanupInput {
+  requestsCleanupDays: number;
+  usageLogsCleanupDays: number;
+}
+
+export interface GcCleanupPreviewItem {
+  resourceType: string;
+  estimatedCount: number;
+  cutoffTime: string;
+  retentionDays: number;
 }
 
 export interface AutoDisableChannelStatus {
@@ -476,8 +499,8 @@ export function useUpdateStoragePolicy() {
 
 export function useTriggerGcCleanup() {
   return useMutation({
-    mutationFn: async () => {
-      const data = await graphqlRequest<{ triggerGcCleanup: boolean }>(TRIGGER_GC_CLEANUP_MUTATION);
+    mutationFn: async (input: TriggerGcCleanupInput) => {
+      const data = await graphqlRequest<{ triggerGcCleanup: boolean }>(TRIGGER_GC_CLEANUP_MUTATION, { input });
       return data.triggerGcCleanup;
     },
     onSuccess: () => {
@@ -485,6 +508,15 @@ export function useTriggerGcCleanup() {
     },
     onError: () => {
       toast.error(i18n.t('system.storage.policy.runCleanupError'));
+    },
+  });
+}
+
+export function usePreviewGcCleanup() {
+  return useMutation({
+    mutationFn: async (input: TriggerGcCleanupInput) => {
+      const data = await graphqlRequest<{ previewGcCleanup: GcCleanupPreviewItem[] }>(PREVIEW_GC_CLEANUP_QUERY, { input });
+      return data.previewGcCleanup;
     },
   });
 }
