@@ -13,6 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -21,6 +25,29 @@ import (
 
 func init() {
 	gin.SetMode(gin.TestMode)
+}
+
+func setupUpstreamErrorPolicyTest(t *testing.T, policy biz.UpstreamErrorPolicy) (context.Context, *biz.SystemService) {
+	t.Helper()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+
+	ctx := ent.NewContext(authz.WithTestBypass(t.Context()), client)
+	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	err := systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{
+		Enabled:                 true,
+		MaxChannelRetries:       3,
+		MaxSingleChannelRetries: 2,
+		RetryDelayMs:            1000,
+		LoadBalancerStrategy:    biz.LoadBalancerStrategyAdaptive,
+		UpstreamErrorPolicy:     policy,
+	})
+	require.NoError(t, err)
+
+	return ctx, systemService
 }
 
 // errorAfterStream emits items then returns an error.
@@ -339,4 +366,39 @@ func TestFormatStreamError_LlmResponseError_PassesCodeAndRequestID(t *testing.T)
 	assert.Equal(t, "permission_error", errorField["type"])
 	assert.Equal(t, "1311", errorField["code"])
 	assert.Equal(t, "202603112254417d15bd26697445b0", parsed["request_id"])
+}
+
+func TestApplyUpstreamErrorPolicy_CustomMessage(t *testing.T) {
+	ctx, systemService := setupUpstreamErrorPolicyTest(t, biz.UpstreamErrorPolicy{
+		Mode:          biz.UpstreamErrorModeCustom,
+		CustomMessage: "模型服务暂时不可用，请稍后再试",
+	})
+
+	rawErr := &httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Body:       []byte(`{"error":{"message":"raw provider secret","type":"rate_limit_error","code":"provider_rate_limit"},"request_id":"req_123"}`),
+	}
+
+	err := applyUpstreamErrorPolicy(ctx, rawErr, systemService)
+
+	respErr := &llm.ResponseError{}
+	require.True(t, errors.As(err, &respErr))
+	assert.Equal(t, http.StatusTooManyRequests, respErr.StatusCode)
+	assert.Equal(t, "模型服务暂时不可用，请稍后再试", respErr.Detail.Message)
+	assert.Equal(t, "rate_limit_error", respErr.Detail.Type)
+	assert.Equal(t, "provider_rate_limit", respErr.Detail.Code)
+	assert.Equal(t, "req_123", respErr.Detail.RequestID)
+	assert.NotContains(t, respErr.Error(), "raw provider secret")
+}
+
+func TestApplyUpstreamErrorPolicy_PassthroughByDefault(t *testing.T) {
+	ctx, systemService := setupUpstreamErrorPolicyTest(t, biz.UpstreamErrorPolicy{
+		Mode: biz.UpstreamErrorModePassthrough,
+	})
+
+	rawErr := errors.New("raw upstream error")
+
+	err := applyUpstreamErrorPolicy(ctx, rawErr, systemService)
+
+	assert.Equal(t, rawErr, err)
 }

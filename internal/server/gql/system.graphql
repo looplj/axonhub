@@ -124,6 +124,17 @@ type RetryPolicy {
   enabled: Boolean!
   autoDisableChannel: AutoDisableChannel!
   emptyResponseDetection: Boolean!
+  upstreamErrorPolicy: UpstreamErrorPolicy!
+}
+
+type UpstreamErrorPolicy {
+  mode: String!
+  customMessage: String!
+}
+
+input UpstreamErrorPolicyInput {
+  mode: String
+  customMessage: String
 }
 
 input AutoDisableChannelStatusInput {
@@ -144,6 +155,7 @@ input UpdateRetryPolicyInput {
   enabled: Boolean
   autoDisableChannel: AutoDisableChannelInput
   emptyResponseDetection: Boolean
+  upstreamErrorPolicy: UpstreamErrorPolicyInput
 }
 
 enum QuotaEnforcementMode {

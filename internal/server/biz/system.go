@@ -251,7 +251,18 @@ const (
 
 	// LoadBalancerStrategyCircuitBreaker is a dynamic load balancer strategy that monitors the health of channels and fails over to a backup channel when the primary channel is unhealthy.
 	LoadBalancerStrategyCircuitBreaker = "circuit-breaker"
+
+	// UpstreamErrorModePassthrough keeps provider errors unchanged.
+	UpstreamErrorModePassthrough = "passthrough"
+
+	// UpstreamErrorModeHidden replaces provider errors with a safe default message.
+	UpstreamErrorModeHidden = "hidden"
+
+	// UpstreamErrorModeCustom replaces provider errors with an admin-defined message.
+	UpstreamErrorModeCustom = "custom"
 )
+
+const DefaultUpstreamErrorMessage = "Upstream provider request failed. Please try again later."
 
 // RetryPolicy represents the retry policy configuration.
 type RetryPolicy struct {
@@ -276,6 +287,17 @@ type RetryPolicy struct {
 	// When enabled, the pipeline pre-reads stream events to check if the response
 	// contains meaningful content, and marks empty responses as failed attempts for retry handling.
 	EmptyResponseDetection bool `json:"empty_response_detection"`
+
+	// UpstreamErrorPolicy controls how provider errors are exposed to API users.
+	UpstreamErrorPolicy UpstreamErrorPolicy `json:"upstream_error_policy"`
+}
+
+type UpstreamErrorPolicy struct {
+	// Mode controls whether provider errors are passed through, hidden, or replaced with a custom message.
+	Mode string `json:"mode"`
+
+	// CustomMessage is returned to API users when Mode is custom.
+	CustomMessage string `json:"custom_message"`
 }
 
 type AutoDisableChannel struct {
@@ -925,6 +947,17 @@ func normalizeRetryPolicy(policy *RetryPolicy) {
 
 	if policy.AutoDisableChannel.Statuses == nil {
 		policy.AutoDisableChannel.Statuses = []AutoDisableChannelStatus{}
+	}
+
+	switch policy.UpstreamErrorPolicy.Mode {
+	case UpstreamErrorModePassthrough, UpstreamErrorModeHidden, UpstreamErrorModeCustom:
+	default:
+		policy.UpstreamErrorPolicy.Mode = defaultRetryPolicy.UpstreamErrorPolicy.Mode
+	}
+
+	if policy.UpstreamErrorPolicy.Mode == UpstreamErrorModeCustom &&
+		strings.TrimSpace(policy.UpstreamErrorPolicy.CustomMessage) == "" {
+		policy.UpstreamErrorPolicy.Mode = UpstreamErrorModeHidden
 	}
 }
 

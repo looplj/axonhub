@@ -69,6 +69,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
 		err = wrapQuotaExhaustedAsResponseError(err)
+		err = applyUpstreamErrorPolicy(ctx, err, handlers.ChatCompletionOrchestrator.SystemService)
 
 		httpErr := handlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
@@ -106,7 +107,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 			streamWriter = WriteSSEStream
 		}
 
-		streamWriter(c, result.ChatCompletionStream)
+		streamWriter(c, newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService))
 	}
 }
 
