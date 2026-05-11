@@ -387,11 +387,64 @@ func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 	result, err := mw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
-	// Wait for goroutine to finish
-	time.Sleep(50 * time.Millisecond)
+	// Drain the stream until the producer goroutine closes the channel.
+	// The channel close is the happens-before barrier that makes the
+	// goroutine's write to rawStreamErr visible to Err() / RawStreamErrRef.
+	for result.Next() { //nolint:revive // intentional drain
+	}
 
 	assert.Equal(t, errTest, result.Err())
 	assert.Equal(t, errTest, *state.RawStreamErrRef)
+}
+
+func TestCaptureRawProviderStream_CloseStopsBlockedUpstream(t *testing.T) {
+	ctx := context.Background()
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest:       &llm.Request{APIFormat: llm.APIFormatOpenAIChatCompletion},
+		RawProviderRequest: &httpclient.Request{
+			APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		},
+	}
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+		state:   state,
+	}
+
+	src := newBlockingStream()
+	mw := captureRawProviderStream(outbound, nil)
+	result, err := mw.OnOutboundRawStream(ctx, src)
+	require.NoError(t, err)
+
+	select {
+	case <-src.started:
+	case <-time.After(time.Second):
+		t.Fatal("upstream stream was not read")
+	}
+
+	require.NoError(t, result.Close())
+
+	select {
+	case <-src.closed:
+	case <-time.After(time.Second):
+		t.Fatal("upstream stream was not closed")
+	}
+
+	select {
+	case _, ok := <-state.RawStreamCh:
+		require.False(t, ok)
+	case <-time.After(time.Second):
+		t.Fatal("pass-through channel was not closed")
+	}
 }
 
 func TestCaptureRawProviderStream_UsesRawProviderRequestAPIFormat(t *testing.T) {
@@ -435,6 +488,39 @@ func (s *errorStream) Next() bool                       { return false }
 func (s *errorStream) Current() *httpclient.StreamEvent { return nil }
 func (s *errorStream) Err() error                       { return s.err }
 func (s *errorStream) Close() error                     { return nil }
+
+type blockingStream struct {
+	started   chan struct{}
+	closed    chan struct{}
+	startOnce sync.Once
+	closeOnce sync.Once
+}
+
+func newBlockingStream() *blockingStream {
+	return &blockingStream{
+		started: make(chan struct{}),
+		closed:  make(chan struct{}),
+	}
+}
+
+func (s *blockingStream) Next() bool {
+	s.startOnce.Do(func() {
+		close(s.started)
+	})
+	<-s.closed
+
+	return false
+}
+
+func (s *blockingStream) Current() *httpclient.StreamEvent { return nil }
+func (s *blockingStream) Err() error                       { return nil }
+func (s *blockingStream) Close() error {
+	s.closeOnce.Do(func() {
+		close(s.closed)
+	})
+
+	return nil
+}
 
 // === applyPassThroughStream tests ===
 
@@ -628,6 +714,15 @@ func (m *trackingLLM) OnOutboundLlmStream(ctx context.Context, stream streams.St
 	}, nil
 }
 
+// eventCount returns the current event count under the mutex so tests can
+// safely read it without racing with trackingWrapper.Next.
+func (m *trackingLLM) eventCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.evtCount
+}
+
 type trackingWrapper struct {
 	stream streams.Stream[*llm.Response]
 	mw     *trackingLLM
@@ -784,9 +879,11 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	require.Len(t, passthroughEvents, 2)
 	assert.Equal(t, rawEvents, passthroughEvents)
 
-	// Wait for drain to complete and tracking to process
-	time.Sleep(100 * time.Millisecond)
-	assert.Equal(t, 2, tracker.evtCount, "tracking middleware should process 2 events")
+	// Wait for the applyPassThroughStream drain goroutine to finish processing.
+	// Polling under the tracker mutex avoids racing with trackingWrapper.Next.
+	require.Eventually(t, func() bool {
+		return tracker.eventCount() == 2
+	}, time.Second, 10*time.Millisecond, "tracking middleware should process 2 events")
 }
 
 func TestPassThroughStream_ErrorPropagates(t *testing.T) {
@@ -822,8 +919,11 @@ func TestPassThroughStream_ErrorPropagates(t *testing.T) {
 	result, err := capMw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
-	// Wait for fan-out goroutine
-	time.Sleep(50 * time.Millisecond)
+	// Drain the stream until the producer goroutine closes the channel.
+	// The channel close is the happens-before barrier for the goroutine's
+	// write to rawStreamErr.
+	for result.Next() { //nolint:revive // intentional drain
+	}
 
 	assert.Equal(t, errTest, result.Err())
 	assert.Equal(t, errTest, *state.RawStreamErrRef)
