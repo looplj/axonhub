@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -139,6 +140,83 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMetadata(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_web_search_no_annotations",
+			Created: 1700000000,
+			Model:   "gpt-4o-search-preview",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Content: llm.MessageContent{Content: lo.ToPtr("Search result without inline citations")},
+				},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_web_search_no_annotations",
+			Created: 1700000000,
+			Model:   "gpt-4o-search-preview",
+			TransformerMetadata: map[string]any{
+				responsesWebSearchCallsTransformerMetadataKey: []Item{{
+					ID:     "ws_456",
+					Type:   "web_search_call",
+					Status: lo.ToPtr("completed"),
+					Action: &WebSearchAction{
+						Type:  "search",
+						Query: "latest ai news",
+						Sources: []WebSearchSource{{
+							Type:  "url",
+							URL:   "https://example.com/source",
+							Title: "Example Source",
+						}},
+					},
+				}},
+			},
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: lo.ToPtr("stop"),
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_web_search_no_annotations",
+			Created: 1700000000,
+			Model:   "gpt-4o-search-preview",
+			Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+		},
+	}))
+	require.NoError(t, err)
+
+	var actualEvents []StreamEvent
+	for stream.Next() {
+		event := stream.Current()
+		var ev StreamEvent
+		err := json.Unmarshal(event.Data, &ev)
+		require.NoError(t, err)
+		actualEvents = append(actualEvents, ev)
+	}
+	require.NoError(t, stream.Err())
+	require.NotEmpty(t, actualEvents)
+
+	lastEvent := actualEvents[len(actualEvents)-1]
+	require.Equal(t, StreamEventTypeResponseCompleted, lastEvent.Type)
+	require.NotNil(t, lastEvent.Response)
+	require.Len(t, lastEvent.Response.Output, 2)
+	require.Equal(t, "web_search_call", lastEvent.Response.Output[0].Type)
+	require.Equal(t, "ws_456", lastEvent.Response.Output[0].ID)
+	require.NotNil(t, lastEvent.Response.Output[0].Action)
+	require.Equal(t, "latest ai news", lastEvent.Response.Output[0].Action.Query)
+	require.Equal(t, "message", lastEvent.Response.Output[1].Type)
+	require.NotNil(t, lastEvent.Response.Output[1].Content)
+	require.Len(t, lastEvent.Response.Output[1].Content.Items, 1)
+	require.Equal(t, "Search result without inline citations", lo.FromPtr(lastEvent.Response.Output[1].Content.Items[0].Text))
 }
 
 func TestInboundTransformer_TransformStream_EmitsUpstreamErrorEvents(t *testing.T) {

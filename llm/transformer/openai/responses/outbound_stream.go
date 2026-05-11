@@ -69,7 +69,8 @@ type outboundStreamState struct {
 	hasEncryptedReasoning   bool
 
 	// Transformer metadata tracking
-	transformerMetadata map[string]any
+	transformerMetadata        map[string]any
+	transformerMetadataEmitted bool
 }
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
@@ -450,9 +451,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if len(msg.Annotations) == 0 {
 			return nil // Intentionally skip this event
 		}
-
 		if len(s.state.transformerMetadata) > 0 {
 			resp.TransformerMetadata = s.state.transformerMetadata
+			s.state.transformerMetadataEmitted = true
 		}
 
 		resp.Choices = []llm.Choice{
@@ -475,6 +476,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
+		}
+		if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
+			resp.TransformerMetadata = s.state.transformerMetadata
+			s.state.transformerMetadataEmitted = true
 		}
 
 		finishReason := "stop"

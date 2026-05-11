@@ -383,6 +383,101 @@ func TestOutboundTransformer_TransformStream_PreservesWebSearchMetadataOnAnnotat
 	require.NotNil(t, calls)
 }
 
+func TestOutboundTransformer_TransformStream_PreservesWebSearchMetadataWithoutAnnotations(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type":"response.created",
+				"response":{
+					"id":"resp_stream_web_search_no_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"in_progress",
+					"output":[]
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type":"response.output_item.done",
+				"output_index":0,
+				"item":{
+					"id":"ws_456",
+					"type":"web_search_call",
+					"status":"completed",
+					"action":{
+						"type":"search",
+						"query":"latest ai news",
+						"sources":[{"type":"url","url":"https://example.com/source","title":"Example Source"}]
+					}
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type":"response.output_item.done",
+				"output_index":1,
+				"item":{
+					"id":"msg_stream_web_search_no_annotations",
+					"type":"message",
+					"status":"completed",
+					"role":"assistant",
+					"content":[{
+						"type":"output_text",
+						"text":"Search result without inline citations"
+					}]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type":"response.completed",
+				"response":{
+					"id":"resp_stream_web_search_no_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"completed",
+					"output":[]
+				}
+			}`),
+		},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, actual)
+
+	var metadataChunk *llm.Response
+	for _, resp := range actual {
+		if resp == llm.DoneResponse {
+			continue
+		}
+		if resp.TransformerMetadata != nil {
+			if _, ok := resp.TransformerMetadata[responsesWebSearchCallsTransformerMetadataKey]; ok {
+				metadataChunk = resp
+				break
+			}
+		}
+	}
+
+	require.NotNil(t, metadataChunk)
+	calls, ok := metadataChunk.TransformerMetadata[responsesWebSearchCallsTransformerMetadataKey]
+	require.True(t, ok)
+	require.NotNil(t, calls)
+}
+
 func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
