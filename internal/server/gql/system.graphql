@@ -315,6 +315,18 @@ input SaveProxyPresetInput {
   password: String
 }
 
+input TriggerGcCleanupInput {
+    requestsCleanupDays: Int!
+    usageLogsCleanupDays: Int!
+}
+
+type GcCleanupPreviewItem {
+    resourceType: String!
+    estimatedCount: Int!
+    cutoffTime: Time!
+    retentionDays: Int!
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
@@ -330,11 +342,15 @@ extend type Mutation {
   updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   updateQuotaEnforcementSettings(input: UpdateQuotaEnforcementSettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
-  triggerGcCleanup: Boolean!
+  triggerGcCleanup(input: TriggerGcCleanupInput!): Boolean!
   saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
   deleteProxyPreset(url: String!): Boolean!
   updateUserAgentPassThroughSettings(input: UpdateUserAgentPassThroughSettingsInput!): Boolean!
   updatePassThroughSettings(input: UpdatePassThroughSettingsInput!): Boolean!
+}
+
+extend type Query {
+  previewGcCleanup(input: TriggerGcCleanupInput!): [GcCleanupPreviewItem!]!
 }
 
 type SystemVersion {

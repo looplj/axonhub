@@ -624,6 +624,12 @@ models:
   QuotaEnforcementMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
+  TriggerGcCleanupInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/gc.TriggerGcCleanupInput
+  GcCleanupPreviewItem:
+    model:
+      - github.com/looplj/axonhub/internal/server/gc.GcCleanupPreviewItem
   PromptSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptSettings

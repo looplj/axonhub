@@ -35,6 +35,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/shopspring/decimal"
@@ -683,6 +684,13 @@ type ComplexityRoot struct {
 		BucketName func(childComplexity int) int
 	}
 
+	GcCleanupPreviewItem struct {
+		CutoffTime     func(childComplexity int) int
+		EstimatedCount func(childComplexity int) int
+		ResourceType   func(childComplexity int) int
+		RetentionDays  func(childComplexity int) int
+	}
+
 	GetCacheDiagnosticsPayload struct {
 		Content  func(childComplexity int) int
 		FileName func(childComplexity int) int
@@ -912,7 +920,7 @@ type ComplexityRoot struct {
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		TestChannelAPIKeys                   func(childComplexity int, channelID objects.GUID, modelID *string) int
 		TriggerAutoBackup                    func(childComplexity int) int
-		TriggerGcCleanup                     func(childComplexity int) int
+		TriggerGcCleanup                     func(childComplexity int, input gc.TriggerGcCleanupInput) int
 		UnlinkOIDCIdentity                   func(childComplexity int, id objects.GUID) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyProfileTemplate          func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) int
@@ -1226,6 +1234,7 @@ type ComplexityRoot struct {
 		OidcIdentities               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.OIDCIdentityOrder, where *ent.OIDCIdentityWhereInput) int
 		OnboardingInfo               func(childComplexity int) int
 		PassThroughSettings          func(childComplexity int) int
+		PreviewGcCleanup             func(childComplexity int, input gc.TriggerGcCleanupInput) int
 		Projects                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
 		PromptProtectionRules        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) int
 		Prompts                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
@@ -2054,7 +2063,7 @@ type MutationResolver interface {
 	UpdateVideoStorageSettings(ctx context.Context, input biz.VideoStorageSettings) (bool, error)
 	UpdateQuotaEnforcementSettings(ctx context.Context, input UpdateQuotaEnforcementSettingsInput) (bool, error)
 	CheckProviderQuotas(ctx context.Context) (bool, error)
-	TriggerGcCleanup(ctx context.Context) (bool, error)
+	TriggerGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) (bool, error)
 	SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error)
 	DeleteProxyPreset(ctx context.Context, url string) (bool, error)
 	UpdateUserAgentPassThroughSettings(ctx context.Context, input UpdateUserAgentPassThroughSettingsInput) (bool, error)
@@ -2159,6 +2168,7 @@ type QueryResolver interface {
 	AllScopes(ctx context.Context, level *string) ([]*ScopeInfo, error)
 	Me(ctx context.Context) (*objects.UserInfo, error)
 	MyProjects(ctx context.Context) ([]*ent.Project, error)
+	PreviewGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) ([]*gc.GcCleanupPreviewItem, error)
 	SystemStatus(ctx context.Context) (*SystemStatus, error)
 	BrandSettings(ctx context.Context) (*BrandSettings, error)
 	StoragePolicy(ctx context.Context) (*biz.StoragePolicy, error)
@@ -4477,6 +4487,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GCS.BucketName(childComplexity), true
 
+	case "GcCleanupPreviewItem.cutoffTime":
+		if e.complexity.GcCleanupPreviewItem.CutoffTime == nil {
+			break
+		}
+
+		return e.complexity.GcCleanupPreviewItem.CutoffTime(childComplexity), true
+	case "GcCleanupPreviewItem.estimatedCount":
+		if e.complexity.GcCleanupPreviewItem.EstimatedCount == nil {
+			break
+		}
+
+		return e.complexity.GcCleanupPreviewItem.EstimatedCount(childComplexity), true
+	case "GcCleanupPreviewItem.resourceType":
+		if e.complexity.GcCleanupPreviewItem.ResourceType == nil {
+			break
+		}
+
+		return e.complexity.GcCleanupPreviewItem.ResourceType(childComplexity), true
+	case "GcCleanupPreviewItem.retentionDays":
+		if e.complexity.GcCleanupPreviewItem.RetentionDays == nil {
+			break
+		}
+
+		return e.complexity.GcCleanupPreviewItem.RetentionDays(childComplexity), true
+
 	case "GetCacheDiagnosticsPayload.content":
 		if e.complexity.GetCacheDiagnosticsPayload.Content == nil {
 			break
@@ -5777,7 +5812,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Mutation.TriggerGcCleanup(childComplexity), true
+		args, err := ec.field_Mutation_triggerGcCleanup_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TriggerGcCleanup(childComplexity, args["input"].(gc.TriggerGcCleanupInput)), true
 	case "Mutation.unlinkOIDCIdentity":
 		if e.complexity.Mutation.UnlinkOIDCIdentity == nil {
 			break
@@ -7445,6 +7485,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PassThroughSettings(childComplexity), true
+	case "Query.previewGcCleanup":
+		if e.complexity.Query.PreviewGcCleanup == nil {
+			break
+		}
+
+		args, err := ec.field_Query_previewGcCleanup_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PreviewGcCleanup(childComplexity, args["input"].(gc.TriggerGcCleanupInput)), true
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
 			break
@@ -10479,6 +10530,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTraceOrder,
 		ec.unmarshalInputTraceWhereInput,
 		ec.unmarshalInputTransformOptionsInput,
+		ec.unmarshalInputTriggerGcCleanupInput,
 		ec.unmarshalInputUpdateAPIKeyInput,
 		ec.unmarshalInputUpdateAPIKeyProfileTemplateInput,
 		ec.unmarshalInputUpdateAPIKeyProfilesInput,
@@ -11649,6 +11701,17 @@ func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context,
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNTestChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_triggerGcCleanup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNTriggerGcCleanupInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐTriggerGcCleanupInput)
 	if err != nil {
 		return nil, err
 	}
@@ -12969,6 +13032,17 @@ func (ec *executionContext) field_Query_oidcIdentities_args(ctx context.Context,
 		return nil, err
 	}
 	args["where"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_previewGcCleanup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNTriggerGcCleanupInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐTriggerGcCleanupInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -25352,6 +25426,122 @@ func (ec *executionContext) fieldContext_GCS_bucketName(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _GcCleanupPreviewItem_resourceType(ctx context.Context, field graphql.CollectedField, obj *gc.GcCleanupPreviewItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GcCleanupPreviewItem_resourceType,
+		func(ctx context.Context) (any, error) {
+			return obj.ResourceType, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GcCleanupPreviewItem_resourceType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GcCleanupPreviewItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GcCleanupPreviewItem_estimatedCount(ctx context.Context, field graphql.CollectedField, obj *gc.GcCleanupPreviewItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GcCleanupPreviewItem_estimatedCount,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GcCleanupPreviewItem_estimatedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GcCleanupPreviewItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GcCleanupPreviewItem_cutoffTime(ctx context.Context, field graphql.CollectedField, obj *gc.GcCleanupPreviewItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GcCleanupPreviewItem_cutoffTime,
+		func(ctx context.Context) (any, error) {
+			return obj.CutoffTime, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GcCleanupPreviewItem_cutoffTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GcCleanupPreviewItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GcCleanupPreviewItem_retentionDays(ctx context.Context, field graphql.CollectedField, obj *gc.GcCleanupPreviewItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GcCleanupPreviewItem_retentionDays,
+		func(ctx context.Context) (any, error) {
+			return obj.RetentionDays, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GcCleanupPreviewItem_retentionDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GcCleanupPreviewItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GetCacheDiagnosticsPayload_fileName(ctx context.Context, field graphql.CollectedField, obj *GetCacheDiagnosticsPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32200,7 +32390,8 @@ func (ec *executionContext) _Mutation_triggerGcCleanup(ctx context.Context, fiel
 		field,
 		ec.fieldContext_Mutation_triggerGcCleanup,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Mutation().TriggerGcCleanup(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().TriggerGcCleanup(ctx, fc.Args["input"].(gc.TriggerGcCleanupInput))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -32209,7 +32400,7 @@ func (ec *executionContext) _Mutation_triggerGcCleanup(ctx context.Context, fiel
 	)
 }
 
-func (ec *executionContext) fieldContext_Mutation_triggerGcCleanup(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_triggerGcCleanup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -32218,6 +32409,17 @@ func (ec *executionContext) fieldContext_Mutation_triggerGcCleanup(_ context.Con
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_triggerGcCleanup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -40826,6 +41028,57 @@ func (ec *executionContext) fieldContext_Query_myProjects(_ context.Context, fie
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_previewGcCleanup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_previewGcCleanup,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().PreviewGcCleanup(ctx, fc.Args["input"].(gc.TriggerGcCleanupInput))
+		},
+		nil,
+		ec.marshalNGcCleanupPreviewItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐGcCleanupPreviewItemᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_previewGcCleanup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "resourceType":
+				return ec.fieldContext_GcCleanupPreviewItem_resourceType(ctx, field)
+			case "estimatedCount":
+				return ec.fieldContext_GcCleanupPreviewItem_estimatedCount(ctx, field)
+			case "cutoffTime":
+				return ec.fieldContext_GcCleanupPreviewItem_cutoffTime(ctx, field)
+			case "retentionDays":
+				return ec.fieldContext_GcCleanupPreviewItem_retentionDays(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GcCleanupPreviewItem", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_previewGcCleanup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -76286,6 +76539,40 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTriggerGcCleanupInput(ctx context.Context, obj any) (gc.TriggerGcCleanupInput, error) {
+	var it gc.TriggerGcCleanupInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"requestsCleanupDays", "usageLogsCleanupDays"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "requestsCleanupDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestsCleanupDays"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestsCleanupDays = data
+		case "usageLogsCleanupDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("usageLogsCleanupDays"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UsageLogsCleanupDays = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateAPIKeyInput(ctx context.Context, obj any) (ent.UpdateAPIKeyInput, error) {
 	var it ent.UpdateAPIKeyInput
 	asMap := map[string]any{}
@@ -87735,6 +88022,60 @@ func (ec *executionContext) _GCS(ctx context.Context, sel ast.SelectionSet, obj 
 	return out
 }
 
+var gcCleanupPreviewItemImplementors = []string{"GcCleanupPreviewItem"}
+
+func (ec *executionContext) _GcCleanupPreviewItem(ctx context.Context, sel ast.SelectionSet, obj *gc.GcCleanupPreviewItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gcCleanupPreviewItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GcCleanupPreviewItem")
+		case "resourceType":
+			out.Values[i] = ec._GcCleanupPreviewItem_resourceType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "estimatedCount":
+			out.Values[i] = ec._GcCleanupPreviewItem_estimatedCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cutoffTime":
+			out.Values[i] = ec._GcCleanupPreviewItem_cutoffTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "retentionDays":
+			out.Values[i] = ec._GcCleanupPreviewItem_retentionDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var getCacheDiagnosticsPayloadImplementors = []string{"GetCacheDiagnosticsPayload"}
 
 func (ec *executionContext) _GetCacheDiagnosticsPayload(ctx context.Context, sel ast.SelectionSet, obj *GetCacheDiagnosticsPayload) graphql.Marshaler {
@@ -93071,6 +93412,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_myProjects(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "previewGcCleanup":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_previewGcCleanup(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -103031,6 +103394,60 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalNGcCleanupPreviewItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐGcCleanupPreviewItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*gc.GcCleanupPreviewItem) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGcCleanupPreviewItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐGcCleanupPreviewItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGcCleanupPreviewItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐGcCleanupPreviewItem(ctx context.Context, sel ast.SelectionSet, v *gc.GcCleanupPreviewItem) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GcCleanupPreviewItem(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNGetCacheDiagnosticsPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGetCacheDiagnosticsPayload(ctx context.Context, sel ast.SelectionSet, v GetCacheDiagnosticsPayload) graphql.Marshaler {
 	return ec._GetCacheDiagnosticsPayload(ctx, sel, &v)
 }
@@ -105901,6 +106318,11 @@ func (ec *executionContext) marshalNTriggerBackupPayload2ᚖgithubᚗcomᚋloopl
 		return graphql.Null
 	}
 	return ec._TriggerBackupPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTriggerGcCleanupInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐTriggerGcCleanupInput(ctx context.Context, v any) (gc.TriggerGcCleanupInput, error) {
+	res, err := ec.unmarshalInputTriggerGcCleanupInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUnassociatedChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUnassociatedChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.UnassociatedChannel) graphql.Marshaler {

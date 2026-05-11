@@ -25,6 +25,18 @@ import (
 
 var defaultBatchSize = 500
 
+type TriggerGcCleanupInput struct {
+	RequestsCleanupDays  int `json:"requests_cleanup_days"`
+	UsageLogsCleanupDays int `json:"usage_logs_cleanup_days"`
+}
+
+type GcCleanupPreviewItem struct {
+	ResourceType   string    `json:"resource_type"`
+	EstimatedCount int       `json:"estimated_count"`
+	CutoffTime     time.Time `json:"cutoff_time"`
+	RetentionDays  int       `json:"retention_days"`
+}
+
 type Config struct {
 	CRON          string `json:"cron" yaml:"cron" conf:"cron" validate:"required"`
 	VacuumEnabled bool   `json:"vacuum_enabled" yaml:"vacuum_enabled" conf:"vacuum_enabled"`
@@ -64,7 +76,7 @@ func (w *Worker) RegisterScheduledTasks(ctx context.Context, s *scheduler.Schedu
 		Description: "Garbage collection — cleanup old requests, traces, usage logs, and channel probes",
 		CronExpr:    w.Config.CRON,
 		Timezone:    "UTC",
-	}, w.runCleanupWithSystemContext)
+	}, w.runAutomaticCleanup)
 }
 
 // deleteInBatches deletes records in batches to avoid memory issues.
@@ -94,8 +106,9 @@ func (w *Worker) getBatchSize() int {
 }
 
 // runCleanup executes the cleanup process based on storage policy.
-func (w *Worker) runCleanup(ctx context.Context, manual bool) {
-	log.Info(ctx, "Starting automatic cleanup process")
+// When manual is true and manualDays is provided, those days override the policy values.
+func (w *Worker) runCleanup(ctx context.Context, manual bool, manualDays map[string]int) {
+	log.Info(ctx, "Starting cleanup process", log.Bool("manual", manual))
 
 	ctx = ent.NewContext(ctx, w.Ent)
 	ctx = schematype.SkipSoftDelete(ctx)
@@ -109,10 +122,21 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 	log.Debug(ctx, "Storage policy for cleanup", log.Any("policy", policy))
 
 	for _, option := range policy.CleanupOptions {
-		if option.Enabled {
+		if option.Enabled || manual {
+			if manual && manualDays != nil {
+				if _, ok := manualDays[option.ResourceType]; !ok {
+					continue
+				}
+			}
+			days := option.CleanupDays
+			if manual && manualDays != nil {
+				if d, ok := manualDays[option.ResourceType]; ok {
+					days = d
+				}
+			}
 			switch option.ResourceType {
 			case "requests":
-				err := w.cleanupRequests(ctx, option.CleanupDays, manual)
+				err := w.cleanupRequests(ctx, days, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup requests",
 						log.String("resource", option.ResourceType),
@@ -120,10 +144,10 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 				} else {
 					log.Info(ctx, "Successfully cleaned up requests",
 						log.String("resource", option.ResourceType),
-						log.Int("cleanup_days", option.CleanupDays))
+						log.Int("cleanup_days", days))
 				}
 
-				err = w.cleanupThreads(ctx, option.CleanupDays, manual)
+				err = w.cleanupThreads(ctx, days, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup threads",
 						log.String("resource", "threads"),
@@ -131,10 +155,10 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 				} else {
 					log.Info(ctx, "Successfully cleaned up threads",
 						log.String("resource", "threads"),
-						log.Int("cleanup_days", option.CleanupDays))
+						log.Int("cleanup_days", days))
 				}
 
-				err = w.cleanupTraces(ctx, option.CleanupDays, manual)
+				err = w.cleanupTraces(ctx, days, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup traces",
 						log.String("resource", "traces"),
@@ -142,10 +166,10 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 				} else {
 					log.Info(ctx, "Successfully cleaned up traces",
 						log.String("resource", "traces"),
-						log.Int("cleanup_days", option.CleanupDays))
+						log.Int("cleanup_days", days))
 				}
 			case "usage_logs":
-				err := w.cleanupUsageLogs(ctx, option.CleanupDays, manual)
+				err := w.cleanupUsageLogs(ctx, days, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup usage logs",
 						log.String("resource", option.ResourceType),
@@ -153,7 +177,7 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 				} else {
 					log.Info(ctx, "Successfully cleaned up usage logs",
 						log.String("resource", option.ResourceType),
-						log.Int("cleanup_days", option.CleanupDays))
+						log.Int("cleanup_days", days))
 				}
 			default:
 				log.Warn(ctx, "Unknown resource type for cleanup",
@@ -178,20 +202,17 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 		}
 	}
 
-	log.Info(ctx, "Automatic cleanup process completed")
+	log.Info(ctx, "Cleanup process completed")
 }
 
 // cleanupRequests deletes requests older than the specified number of days.
 func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool) error {
-	if !manual && cleanupDays <= 0 {
+	if cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for requests")
 		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
-	if manual && cleanupDays == 0 {
-		cutoffTime = time.Now()
-	}
 
 	execResult, err := w.cleanupOldRequestExecutions(ctx, cutoffTime)
 	if err != nil {
@@ -387,14 +408,11 @@ func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int
 
 // cleanupUsageLogs deletes usage logs older than the specified number of days.
 func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual bool) error {
-	if !manual && cleanupDays <= 0 {
+	if cleanupDays <= 0 {
 		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
-	if manual && cleanupDays == 0 {
-		cutoffTime = time.Now()
-	}
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.UsageLog.Delete().Where(usagelog.CreatedAtLT(cutoffTime)).Exec(ctx)
@@ -412,15 +430,12 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 
 // cleanupThreads deletes threads older than the specified number of days.
 func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual bool) error {
-	if !manual && cleanupDays <= 0 {
+	if cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for threads")
 		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
-	if manual && cleanupDays == 0 {
-		cutoffTime = time.Now()
-	}
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.Thread.Delete().Where(thread.CreatedAtLT(cutoffTime)).Exec(ctx)
@@ -438,15 +453,12 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 
 // cleanupTraces deletes traces older than the specified number of days.
 func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool) error {
-	if !manual && cleanupDays <= 0 {
+	if cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for traces")
 		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
-	if manual && cleanupDays == 0 {
-		cutoffTime = time.Now()
-	}
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.Trace.Delete().Where(trace.CreatedAtLT(cutoffTime)).Exec(ctx)
@@ -464,15 +476,12 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 
 // cleanupChannelProbes deletes channel probes older than the specified number of days.
 func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manual bool) error {
-	if !manual && cleanupDays <= 0 {
+	if cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for channel probes")
 		return nil
 	}
 
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
-	if manual && cleanupDays == 0 {
-		cutoffTime = time.Now()
-	}
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.ChannelProbe.Delete().Where(channelprobe.TimestampLT(cutoffTime.Unix())).Exec(ctx)
@@ -543,8 +552,53 @@ func (w *Worker) RunVacuumNow(ctx context.Context) error {
 	return w.runVacuum(ctx)
 }
 
-// RunCleanupNow manually triggers the cleanup process.
-func (w *Worker) RunCleanupNow(ctx context.Context) error {
-	w.runCleanup(ctx, true)
+// RunCleanupNow manually triggers the cleanup process with the specified days.
+func (w *Worker) RunCleanupNow(ctx context.Context, input TriggerGcCleanupInput) error {
+	manualDays := make(map[string]int)
+	if input.RequestsCleanupDays > 0 {
+		manualDays["requests"] = input.RequestsCleanupDays
+	}
+	if input.UsageLogsCleanupDays > 0 {
+		manualDays["usage_logs"] = input.UsageLogsCleanupDays
+	}
+	w.runCleanup(ctx, true, manualDays)
 	return nil
+}
+
+// PreviewCleanup estimates how many records would be deleted without actually deleting them.
+func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput) ([]GcCleanupPreviewItem, error) {
+	ctx = ent.NewContext(ctx, w.Ent)
+	ctx = schematype.SkipSoftDelete(ctx)
+
+	var items []GcCleanupPreviewItem
+
+	if input.RequestsCleanupDays > 0 {
+		cutoff := time.Now().AddDate(0, 0, -input.RequestsCleanupDays)
+		count, err := w.Ent.Request.Query().Where(request.CreatedAtLT(cutoff)).Count(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count requests for preview: %w", err)
+		}
+		items = append(items, GcCleanupPreviewItem{
+			ResourceType:   "requests",
+			EstimatedCount: count,
+			CutoffTime:     cutoff,
+			RetentionDays:  input.RequestsCleanupDays,
+		})
+	}
+
+	if input.UsageLogsCleanupDays > 0 {
+		cutoff := time.Now().AddDate(0, 0, -input.UsageLogsCleanupDays)
+		count, err := w.Ent.UsageLog.Query().Where(usagelog.CreatedAtLT(cutoff)).Count(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count usage logs for preview: %w", err)
+		}
+		items = append(items, GcCleanupPreviewItem{
+			ResourceType:   "usage_logs",
+			EstimatedCount: count,
+			CutoffTime:     cutoff,
+			RetentionDays:  input.UsageLogsCleanupDays,
+		})
+	}
+
+	return items, nil
 }
