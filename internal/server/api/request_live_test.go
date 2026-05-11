@@ -71,7 +71,7 @@ func TestRequestPreviewHandlers_ReplayPreservesAnnotationChunk(t *testing.T) {
 	reader := bufio.NewReader(resp.Body)
 	firstEvent := readSSEEvent(t, reader)
 	require.Equal(t, "preview.replay", firstEvent.Event)
-	require.JSONEq(t, `{"id":"chatcmpl-preview","object":"chat.completion.chunk","model":"sonar-deep-research","choices":[{"index":0,"delta":{"content":"Source","annotations":[{"type":"url_citation","start_index":0,"end_index":6,"url_citation":{"url":"https://example.com/result","title":"Example Result"}}]}}]}` , firstEvent.Data)
+	require.JSONEq(t, `{"id":"chatcmpl-preview","object":"chat.completion.chunk","model":"sonar-deep-research","choices":[{"index":0,"delta":{"content":"Source","annotations":[{"type":"url_citation","start_index":0,"end_index":6,"url_citation":{"url":"https://example.com/result","title":"Example Result"}}]}}]}`, firstEvent.Data)
 
 	completedEvent := readSSEEvent(t, reader)
 	require.Equal(t, "preview.completed", completedEvent.Event)
@@ -269,10 +269,10 @@ func newRequestPreviewTestSetup(t *testing.T) requestPreviewTestSetup {
 	router.GET("/admin/requests/:request_id/preview", handlers.PreviewRequest)
 
 	return requestPreviewTestSetup{
-		client: client,
-		ctx:    ctx,
-		router: router,
-		req:    reqRow,
+		client:             client,
+		ctx:                ctx,
+		router:             router,
+		req:                reqRow,
 		liveStreamRegistry: liveStreamRegistry,
 	}
 }

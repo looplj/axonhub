@@ -228,15 +228,15 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 					Content: streamEvent.Delta.Text,
 				}
 			case "citations_delta":
-					if streamEvent.Delta.Citation == nil {
-						return nil, nil
-					}
-					annotation, ok := llmAnnotationFromCitation(*streamEvent.Delta.Citation)
-					if !ok {
-						return nil, nil
-					}
-					choice.Delta.Annotations = []llm.Annotation{annotation}
-				case "thinking":
+				if streamEvent.Delta.Citation == nil {
+					return nil, nil
+				}
+				annotation, ok := llmAnnotationFromCitation(*streamEvent.Delta.Citation)
+				if !ok {
+					return nil, nil
+				}
+				choice.Delta.Annotations = []llm.Annotation{annotation}
+			case "thinking":
 				return nil, nil
 			case "thinking_delta":
 				choice.Delta.ReasoningContent = streamEvent.Delta.Thinking

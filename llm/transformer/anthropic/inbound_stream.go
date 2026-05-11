@@ -668,9 +668,14 @@ func (s *anthropicInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
+			contentClosed := false
+
 			if err := s.closeThinkingBlock(); err != nil {
 				s.err = fmt.Errorf("failed to close thinking block: %w", err)
 				return false
+			}
+			if s.lastEventType == "content_block_stop" {
+				contentClosed = true
 			}
 
 			if s.hasTextContentStarted {
@@ -693,6 +698,7 @@ func (s *anthropicInboundStream) Next() bool {
 				}
 
 				s.contentIndex += 1
+				contentClosed = true
 			}
 
 			if s.hasToolContentStarted {
@@ -710,9 +716,10 @@ func (s *anthropicInboundStream) Next() bool {
 				}
 
 				s.contentIndex += 1
+				contentClosed = true
 			}
 
-			if !s.hasTextContentStarted && !s.hasToolContentStarted && !s.hasThinkingContentStarted {
+			if !contentClosed && !s.hasTextContentStarted && !s.hasToolContentStarted && !s.hasThinkingContentStarted {
 				streamEvent := StreamEvent{
 					Type:  "content_block_stop",
 					Index: &s.contentIndex,

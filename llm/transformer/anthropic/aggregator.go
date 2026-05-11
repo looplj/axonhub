@@ -74,12 +74,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 					}
 
 					if event.Delta.Citation != nil {
-							if contentBlocks[index].Type == "text" {
-								contentBlocks[index].Citations = append(contentBlocks[index].Citations, *event.Delta.Citation)
-							}
+						if contentBlocks[index].Type == "text" {
+							contentBlocks[index].Citations = append(contentBlocks[index].Citations, *event.Delta.Citation)
 						}
+					}
 
-						if event.Delta.Thinking != nil {
+					if event.Delta.Thinking != nil {
 						if contentBlocks[index].Type == "thinking" {
 							if contentBlocks[index].Thinking == nil {
 								contentBlocks[index].Thinking = lo.ToPtr("")
