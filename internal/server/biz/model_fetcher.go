@@ -276,6 +276,11 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 				Models: qiniuFallbackModels,
 			}, nil
 		}
+		if isOfficialOnlyType(channelType) {
+			if models := f.getDefaultModelsByType(ctx, channelType); models != nil {
+				return &FetchModelsResult{Models: models}, nil
+			}
+		}
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr("API key is required"),

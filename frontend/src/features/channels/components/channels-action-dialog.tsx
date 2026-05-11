@@ -1154,9 +1154,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // For OAuth-based providers (like Copilot), prefer oauthApiKey first
       let firstApiKey = '';
       if (oauthApiKey) {
-        const parsed = parseOauthToken(oauthApiKey || '');
-        if (parsed) {
-          firstApiKey = parsed;
+        // If it's OAuth JSON, send full JSON so backend detects isOAuthJSON
+        if (oauthApiKey.trimStart().startsWith('{')) {
+          firstApiKey = oauthApiKey;
+        } else {
+          const parsed = parseOauthToken(oauthApiKey || '');
+          if (parsed) {
+            firstApiKey = parsed;
+          }
         }
       }
 
