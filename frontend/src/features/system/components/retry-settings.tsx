@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useRetryPolicy, useUpdateRetryPolicy, type RetryPolicyInput } from '../data/system';
 
 export function RetrySettings() {
@@ -24,6 +25,10 @@ export function RetrySettings() {
     retryDelayMs: 1000,
     loadBalancerStrategy: 'adaptive',
     emptyResponseDetection: false,
+    upstreamErrorPolicy: {
+      mode: 'passthrough',
+      customMessage: '',
+    },
     autoDisableChannel: {
       enabled: false,
       statuses: [],
@@ -39,6 +44,10 @@ export function RetrySettings() {
         retryDelayMs: retryPolicy.retryDelayMs,
         loadBalancerStrategy: retryPolicy.loadBalancerStrategy,
         emptyResponseDetection: retryPolicy.emptyResponseDetection,
+        upstreamErrorPolicy: {
+          mode: retryPolicy.upstreamErrorPolicy?.mode || 'passthrough',
+          customMessage: retryPolicy.upstreamErrorPolicy?.customMessage || '',
+        },
         autoDisableChannel: {
           enabled: retryPolicy.autoDisableChannel?.enabled || false,
           statuses: retryPolicy.autoDisableChannel?.statuses || [],
@@ -51,6 +60,16 @@ export function RetrySettings() {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+    }));
+  }, []);
+
+  const handleUpstreamErrorPolicyChange = useCallback((field: 'mode' | 'customMessage', value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      upstreamErrorPolicy: {
+        ...prev.upstreamErrorPolicy,
+        [field]: value,
+      },
     }));
   }, []);
 
@@ -127,6 +146,41 @@ export function RetrySettings() {
               <div className='text-muted-foreground text-sm'>{t('system.retry.enabled.description')}</div>
             </div>
             <Switch id='retry-enabled' checked={formData.enabled} onCheckedChange={(checked) => handleInputChange('enabled', checked)} />
+          </div>
+
+          <Separator />
+
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='upstream-error-mode'>{t('system.retry.upstreamErrorPolicy.label')}</Label>
+              <div className='text-muted-foreground mb-2 text-sm'>{t('system.retry.upstreamErrorPolicy.description')}</div>
+              <Select
+                value={formData.upstreamErrorPolicy?.mode || 'passthrough'}
+                onValueChange={(value) => value && handleUpstreamErrorPolicyChange('mode', value)}
+              >
+                <SelectTrigger id='upstream-error-mode' className='w-56'>
+                  <SelectValue placeholder={t('system.retry.upstreamErrorPolicy.placeholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='passthrough'>{t('system.retry.upstreamErrorPolicy.options.passthrough')}</SelectItem>
+                  <SelectItem value='hidden'>{t('system.retry.upstreamErrorPolicy.options.hidden')}</SelectItem>
+                  <SelectItem value='custom'>{t('system.retry.upstreamErrorPolicy.options.custom')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.upstreamErrorPolicy?.mode === 'custom' && (
+              <div className='space-y-2'>
+                <Label htmlFor='upstream-error-custom-message'>{t('system.retry.upstreamErrorPolicy.customMessage.label')}</Label>
+                <Textarea
+                  id='upstream-error-custom-message'
+                  value={formData.upstreamErrorPolicy?.customMessage || ''}
+                  onChange={(e) => handleUpstreamErrorPolicyChange('customMessage', e.target.value)}
+                  placeholder={t('system.retry.upstreamErrorPolicy.customMessage.placeholder')}
+                  className='min-h-20'
+                />
+              </div>
+            )}
           </div>
 
           <Separator />

@@ -207,6 +207,12 @@ models:
   AutoDisableChannelStatusInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
+  UpstreamErrorPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.UpstreamErrorPolicy
+  UpstreamErrorPolicyInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.UpstreamErrorPolicy
   UpdateAPIKeyProfilesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfiles

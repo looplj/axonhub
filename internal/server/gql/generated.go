@@ -1403,6 +1403,7 @@ type ComplexityRoot struct {
 		MaxChannelRetries       func(childComplexity int) int
 		MaxSingleChannelRetries func(childComplexity int) int
 		RetryDelayMs            func(childComplexity int) int
+		UpstreamErrorPolicy     func(childComplexity int) int
 	}
 
 	Role struct {
@@ -1736,6 +1737,11 @@ type ComplexityRoot struct {
 	UnassociatedChannel struct {
 		Channel func(childComplexity int) int
 		Models  func(childComplexity int) int
+	}
+
+	UpstreamErrorPolicy struct {
+		CustomMessage func(childComplexity int) int
+		Mode          func(childComplexity int) int
 	}
 
 	UsageLog struct {
@@ -8351,6 +8357,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RetryPolicy.RetryDelayMs(childComplexity), true
+	case "RetryPolicy.upstreamErrorPolicy":
+		if e.complexity.RetryPolicy.UpstreamErrorPolicy == nil {
+			break
+		}
+
+		return e.complexity.RetryPolicy.UpstreamErrorPolicy(childComplexity), true
 
 	case "Role.createdAt":
 		if e.complexity.Role.CreatedAt == nil {
@@ -9549,6 +9561,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UnassociatedChannel.Models(childComplexity), true
 
+	case "UpstreamErrorPolicy.customMessage":
+		if e.complexity.UpstreamErrorPolicy.CustomMessage == nil {
+			break
+		}
+
+		return e.complexity.UpstreamErrorPolicy.CustomMessage(childComplexity), true
+	case "UpstreamErrorPolicy.mode":
+		if e.complexity.UpstreamErrorPolicy.Mode == nil {
+			break
+		}
+
+		return e.complexity.UpstreamErrorPolicy.Mode(childComplexity), true
+
 	case "UsageLog.apiKeyID":
 		if e.complexity.UsageLog.APIKeyID == nil {
 			break
@@ -10491,6 +10516,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateUserAgentPassThroughSettingsInput,
 		ec.unmarshalInputUpdateUserInput,
 		ec.unmarshalInputUpdateVideoStorageSettingsInput,
+		ec.unmarshalInputUpstreamErrorPolicyInput,
 		ec.unmarshalInputUsageLogOrder,
 		ec.unmarshalInputUsageLogWhereInput,
 		ec.unmarshalInputUserOrder,
@@ -40951,6 +40977,8 @@ func (ec *executionContext) fieldContext_Query_retryPolicy(_ context.Context, fi
 				return ec.fieldContext_RetryPolicy_autoDisableChannel(ctx, field)
 			case "emptyResponseDetection":
 				return ec.fieldContext_RetryPolicy_emptyResponseDetection(ctx, field)
+			case "upstreamErrorPolicy":
+				return ec.fieldContext_RetryPolicy_upstreamErrorPolicy(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RetryPolicy", field.Name)
 		},
@@ -45216,6 +45244,41 @@ func (ec *executionContext) fieldContext_RetryPolicy_emptyResponseDetection(_ co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RetryPolicy_upstreamErrorPolicy(ctx context.Context, field graphql.CollectedField, obj *biz.RetryPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RetryPolicy_upstreamErrorPolicy,
+		func(ctx context.Context) (any, error) {
+			return obj.UpstreamErrorPolicy, nil
+		},
+		nil,
+		ec.marshalNUpstreamErrorPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RetryPolicy_upstreamErrorPolicy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RetryPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mode":
+				return ec.fieldContext_UpstreamErrorPolicy_mode(ctx, field)
+			case "customMessage":
+				return ec.fieldContext_UpstreamErrorPolicy_customMessage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UpstreamErrorPolicy", field.Name)
 		},
 	}
 	return fc, nil
@@ -51346,6 +51409,64 @@ func (ec *executionContext) _UnassociatedChannel_models(ctx context.Context, fie
 func (ec *executionContext) fieldContext_UnassociatedChannel_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UnassociatedChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UpstreamErrorPolicy_mode(ctx context.Context, field graphql.CollectedField, obj *biz.UpstreamErrorPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UpstreamErrorPolicy_mode,
+		func(ctx context.Context) (any, error) {
+			return obj.Mode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UpstreamErrorPolicy_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpstreamErrorPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UpstreamErrorPolicy_customMessage(ctx context.Context, field graphql.CollectedField, obj *biz.UpstreamErrorPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UpstreamErrorPolicy_customMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.CustomMessage, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UpstreamErrorPolicy_customMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpstreamErrorPolicy",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -77722,7 +77843,7 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "loadBalancerStrategy", "enabled", "autoDisableChannel", "emptyResponseDetection"}
+	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "loadBalancerStrategy", "enabled", "autoDisableChannel", "emptyResponseDetection", "upstreamErrorPolicy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77778,6 +77899,13 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 				return it, err
 			}
 			it.EmptyResponseDetection = data
+		case "upstreamErrorPolicy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upstreamErrorPolicy"))
+			data, err := ec.unmarshalOUpstreamErrorPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpstreamErrorPolicy = data
 		}
 	}
 
@@ -78585,6 +78713,40 @@ func (ec *executionContext) unmarshalInputUpdateVideoStorageSettingsInput(ctx co
 				return it, err
 			}
 			it.ScanLimit = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpstreamErrorPolicyInput(ctx context.Context, obj any) (biz.UpstreamErrorPolicy, error) {
+	var it biz.UpstreamErrorPolicy
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"mode", "customMessage"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "mode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mode = data
+		case "customMessage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("customMessage"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CustomMessage = data
 		}
 	}
 
@@ -95123,6 +95285,11 @@ func (ec *executionContext) _RetryPolicy(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "upstreamErrorPolicy":
+			out.Values[i] = ec._RetryPolicy_upstreamErrorPolicy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -98313,6 +98480,50 @@ func (ec *executionContext) _UnassociatedChannel(ctx context.Context, sel ast.Se
 			}
 		case "models":
 			out.Values[i] = ec._UnassociatedChannel_models(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var upstreamErrorPolicyImplementors = []string{"UpstreamErrorPolicy"}
+
+func (ec *executionContext) _UpstreamErrorPolicy(ctx context.Context, sel ast.SelectionSet, obj *biz.UpstreamErrorPolicy) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, upstreamErrorPolicyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UpstreamErrorPolicy")
+		case "mode":
+			out.Values[i] = ec._UpstreamErrorPolicy_mode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "customMessage":
+			out.Values[i] = ec._UpstreamErrorPolicy_customMessage(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -105902,6 +106113,10 @@ func (ec *executionContext) marshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋg
 	return res
 }
 
+func (ec *executionContext) marshalNUpstreamErrorPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy(ctx context.Context, sel ast.SelectionSet, v biz.UpstreamErrorPolicy) graphql.Marshaler {
+	return ec._UpstreamErrorPolicy(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNUsageLogConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUsageLogConnection(ctx context.Context, sel ast.SelectionSet, v ent.UsageLogConnection) graphql.Marshaler {
 	return ec._UsageLogConnection(ctx, sel, &v)
 }
@@ -112119,6 +112334,11 @@ func (ec *executionContext) unmarshalOUpdateChannelModelAutoSyncSettingInput2git
 
 func (ec *executionContext) unmarshalOUpdateChannelProbeSettingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelProbeSetting(ctx context.Context, v any) (biz.ChannelProbeSetting, error) {
 	res, err := ec.unmarshalInputUpdateChannelProbeSettingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOUpstreamErrorPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy(ctx context.Context, v any) (biz.UpstreamErrorPolicy, error) {
+	res, err := ec.unmarshalInputUpstreamErrorPolicyInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

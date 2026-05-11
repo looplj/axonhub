@@ -89,10 +89,10 @@ func (p *pipeline) stream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
-			return nil, p.Outbound.TransformError(ctx, httpErr)
+			return nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
 		}
 
-		return nil, err
+		return nil, WrapUpstreamError(err)
 	}
 
 	// Apply raw stream middlewares
@@ -122,7 +122,7 @@ func (p *pipeline) stream(
 
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
 
-		return nil, err
+		return nil, WrapUpstreamError(err)
 	}
 
 	rawLlmStream := llmStream

@@ -68,9 +68,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
-		err = wrapQuotaExhaustedAsResponseError(err)
-
-		httpErr := handlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		httpErr := transformOrchestratorError(ctx, err, handlers.ChatCompletionOrchestrator)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 
 		return
@@ -106,7 +104,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 			streamWriter = WriteSSEStream
 		}
 
-		streamWriter(c, result.ChatCompletionStream)
+		streamWriter(c, newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService))
 	}
 }
 

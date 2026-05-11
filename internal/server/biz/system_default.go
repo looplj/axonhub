@@ -25,6 +25,9 @@ var defaultRetryPolicy = RetryPolicy{
 	RetryDelayMs:            1000,
 	LoadBalancerStrategy:    "adaptive",
 	Enabled:                 true,
+	UpstreamErrorPolicy: UpstreamErrorPolicy{
+		Mode: UpstreamErrorModePassthrough,
+	},
 }
 
 var defaultModelSettings = SystemModelSettings{
