@@ -23,7 +23,7 @@ import { useChannelModelPrices, useSaveChannelModelPrices } from '../data/channe
 import { PricingMode, PriceItemCode } from '../data/schema';
 
 const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens'] as const;
-const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered'] as const;
+const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume'] as const;
 const promptWriteCacheVariantCodes = ['five_min', 'one_hour'] as const;
 
 const createPriceFormSchema = (t: (key: string) => string) =>
@@ -113,7 +113,7 @@ const createPriceFormSchema = (t: (key: string) => string) =>
             path: [...pathPrefix, 'usagePerUnit'],
           });
         }
-        if (mode === 'usage_tiered') {
+        if (mode === 'usage_tiered' || mode === 'usage_volume') {
           const tiers = usageTiered?.tiers || [];
           if (tiers.length === 0) {
             ctx.addIssue({

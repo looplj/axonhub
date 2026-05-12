@@ -2044,12 +2044,12 @@ func TestConvertLLMToGeminiResponse_CitationMetadataFallback(t *testing.T) {
 		Model: "gemini-2.5-flash",
 		Choices: []llm.Choice{{
 			Message: &llm.Message{
-				Role: "assistant",
+				Role:    "assistant",
 				Content: llm.MessageContent{Content: lo.ToPtr("Grounded answer")},
 				Annotations: []llm.Annotation{{
-					Type:       "url_citation",
-					StartIndex: lo.ToPtr(int64(0)),
-					EndIndex:   lo.ToPtr(int64(8)),
+					Type:        "url_citation",
+					StartIndex:  lo.ToPtr(int64(0)),
+					EndIndex:    lo.ToPtr(int64(8)),
 					URLCitation: &llm.URLCitation{URL: "https://example.com/fallback", Title: "Fallback Source"},
 				}},
 			},
@@ -2072,7 +2072,7 @@ func TestConvertLLMToGeminiResponse_GroundingMetadataTakesPrecedenceOverAnnotati
 		Model: "gemini-2.5-flash",
 		Choices: []llm.Choice{{
 			Message: &llm.Message{
-				Role: "assistant",
+				Role:    "assistant",
 				Content: llm.MessageContent{Content: lo.ToPtr("Grounded answer")},
 				Annotations: []llm.Annotation{{
 					Type:        "url_citation",

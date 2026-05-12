@@ -80,6 +80,7 @@
   "price.mode_flat_fee": "固定费用",
   "price.mode_usage_per_unit": "每百万 Token",
   "price.mode_usage_tiered": "阶梯 Token",
+  "price.mode_usage_volume": "全量阶梯",
   "price.tiers": "阶梯",
   "price.upTo": "上限",
   "price.pricePerUnit": "单价",

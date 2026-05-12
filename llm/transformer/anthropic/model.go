@@ -371,11 +371,10 @@ type MessageContentBlock struct {
 	PageAge          *string `json:"page_age,omitempty"`
 }
 
-
 // TextCitation represents a citation attached to an Anthropic text block.
 type TextCitation struct {
-	Type string `json:"type,omitempty"`
-	URL  string `json:"url,omitempty"`
+	Type  string `json:"type,omitempty"`
+	URL   string `json:"url,omitempty"`
 	Title string `json:"title,omitempty"`
 
 	EncryptedIndex *string `json:"encrypted_index,omitempty"`

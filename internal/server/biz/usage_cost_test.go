@@ -193,6 +193,160 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 	require.Len(t, ul.CostItems[0].TierBreakdown, 2)
 }
 
+func TestUsageCost_VolumePrompt(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("c8").
+		SetSupportedModels([]string{"m8"}).
+		SetDefaultTestModel("m8").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.ChannelModelPrice.Create().
+		SetChannelID(ch.ID).
+		SetModelID("m8").
+		SetPrice(objects.ModelPrice{
+			Items: []objects.ModelPriceItem{
+				{
+					ItemCode: objects.PriceItemCodeUsage,
+					Pricing: objects.Pricing{
+						Mode: objects.PricingModeVolume,
+						UsageTiered: &objects.TieredPricing{
+							Tiers: []objects.PriceTier{
+								{UpTo: lo.ToPtr(int64(1000)), PricePerUnit: decimal.NewFromFloat(0.01)},
+								{UpTo: nil, PricePerUnit: decimal.NewFromFloat(0.02)},
+							},
+						},
+					},
+				},
+			},
+		}).
+		SetReferenceID("ref-8").
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.preloadModelPrices(ctx, built)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usage := &llm.Usage{
+		PromptTokens:     1500,
+		CompletionTokens: 0,
+		TotalTokens:      1500,
+	}
+
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     ch.ID,
+		ActualModelID: "m8",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ul)
+
+	// expected total: (1500/1e6)*0.02 = 0.00003 (all tokens billed at tier 2 price)
+	require.NotNil(t, ul.TotalCost)
+	require.InDelta(t, 0.00003, *ul.TotalCost, 1e-12)
+	require.Len(t, ul.CostItems, 1)
+	require.Len(t, ul.CostItems[0].TierBreakdown, 1)
+	require.Equal(t, int64(1500), ul.CostItems[0].TierBreakdown[0].Units)
+}
+
+func TestUsageCost_VolumePromptFirstTier(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("c9").
+		SetSupportedModels([]string{"m9"}).
+		SetDefaultTestModel("m9").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.ChannelModelPrice.Create().
+		SetChannelID(ch.ID).
+		SetModelID("m9").
+		SetPrice(objects.ModelPrice{
+			Items: []objects.ModelPriceItem{
+				{
+					ItemCode: objects.PriceItemCodeUsage,
+					Pricing: objects.Pricing{
+						Mode: objects.PricingModeVolume,
+						UsageTiered: &objects.TieredPricing{
+							Tiers: []objects.PriceTier{
+								{UpTo: lo.ToPtr(int64(1000)), PricePerUnit: decimal.NewFromFloat(0.01)},
+								{UpTo: nil, PricePerUnit: decimal.NewFromFloat(0.02)},
+							},
+						},
+					},
+				},
+			},
+		}).
+		SetReferenceID("ref-9").
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.preloadModelPrices(ctx, built)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usage := &llm.Usage{
+		PromptTokens:     800,
+		CompletionTokens: 0,
+		TotalTokens:      800,
+	}
+
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     ch.ID,
+		ActualModelID: "m9",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ul)
+
+	// expected total: (800/1e6)*0.01 = 0.000008 (all tokens billed at tier 1 price)
+	require.NotNil(t, ul.TotalCost)
+	require.InDelta(t, 0.000008, *ul.TotalCost, 1e-12)
+	require.Len(t, ul.CostItems, 1)
+	require.Len(t, ul.CostItems[0].TierBreakdown, 1)
+	require.Equal(t, int64(800), ul.CostItems[0].TierBreakdown[0].Units)
+}
+
 func TestUsageCost_NoPriceConfigured(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

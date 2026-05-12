@@ -212,6 +212,7 @@
   "price.mode_flat_fee": "Flat Fee",
   "price.mode_usage_per_unit": "Per 1M Tokens",
   "price.mode_usage_tiered": "Tiered Token",
+  "price.mode_usage_volume": "Volume Tiered",
   "price.tiers": "Tiers",
   "price.upTo": "Up To",
   "price.pricePerUnit": "Price per Unit",

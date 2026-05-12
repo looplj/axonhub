@@ -233,7 +233,6 @@ func TestCompactInboundTransformer_TransformResponse(t *testing.T) {
 	})
 }
 
-
 func TestCompactInboundTransformer_TransformResponse_AttachesAnnotationsToFirstTextItem(t *testing.T) {
 	transformer := NewCompactInboundTransformer()
 	ctx := context.Background()

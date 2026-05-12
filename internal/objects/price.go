@@ -17,9 +17,16 @@ const (
 	PricingModeUsagePerUnit PricingMode = "usage_per_unit"
 
 	// PricingModeTiered means the request is charged a fee based on the token usage tiers.
-	// e.g. a tier price is [1,000, 2,000, 3,000] for [$0.01, $0.02, $0.03], if the usage is 1,500 then the fee is
-	// $0.01 x 1000 + $0.02 x (1500-1000) = $20.00.
+	// Each tier segment is billed separately at its own rate.
+	// e.g. tiers are [{upTo: 1000, pricePerUnit: $0.01}, {upTo: nil, pricePerUnit: $0.02}],
+	// if usage is 1,500 then the fee is (1000/1e6)*$0.01 + (500/1e6)*$0.02.
 	PricingModeTiered PricingMode = "usage_tiered"
+
+	// PricingModeVolume means the request is charged a fee based on the token usage volume tiers.
+	// The tier matched by the total token count determines the unit price for ALL tokens.
+	// e.g. tiers are [{upTo: 1000, pricePerUnit: $0.01}, {upTo: nil, pricePerUnit: $0.02}],
+	// if usage is 1,500 then all tokens are billed at $0.02 => (1500/1e6)*$0.02.
+	PricingModeVolume PricingMode = "usage_volume"
 )
 
 type Pricing struct {
@@ -32,6 +39,8 @@ type Pricing struct {
 	UsagePerUnit *decimal.Decimal `json:"usagePerUnit,omitempty"`
 
 	// UsageTiered is the tiered pricing for the pricing.
+	// Used by both UsageTiered and UsageVolume modes — they share the same data structure
+	// but differ in calculation logic.
 	UsageTiered *TieredPricing `json:"usageTiered,omitempty"`
 }
 
@@ -61,7 +70,7 @@ func (p *Pricing) Equals(other *Pricing) bool {
 		if p.UsagePerUnit != nil && !p.UsagePerUnit.Equal(*other.UsagePerUnit) {
 			return false
 		}
-	case PricingModeTiered:
+	case PricingModeTiered, PricingModeVolume:
 		return p.UsageTiered.Equals(other.UsageTiered)
 	}
 
@@ -82,7 +91,7 @@ func (p *Pricing) Validate() error {
 		if p.UsagePerUnit == nil {
 			return fmt.Errorf("usagePerUnit is required")
 		}
-	case PricingModeTiered:
+	case PricingModeTiered, PricingModeVolume:
 		if p.UsageTiered == nil {
 			return fmt.Errorf("usageTiered is required")
 		}

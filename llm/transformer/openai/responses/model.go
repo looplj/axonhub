@@ -384,6 +384,7 @@ func (a *Annotation) UnmarshalJSON(data []byte) error {
 
 	var raw struct {
 		rawAnnotation
+
 		URL   *string `json:"url,omitempty"`
 		Title *string `json:"title,omitempty"`
 	}

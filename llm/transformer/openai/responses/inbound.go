@@ -819,8 +819,8 @@ func getResponseWebSearchCallsFromMetadata(metadata map[string]any) []Item {
 			Type:   item.Type,
 			Status: item.Status,
 			Action: &WebSearchAction{
-				Type:  item.Action.Type,
-				Query: item.Action.Query,
+				Type:    item.Action.Type,
+				Query:   item.Action.Query,
 				Queries: append([]string(nil), item.Action.Queries...),
 				Sources: append([]WebSearchSource(nil), item.Action.Sources...),
 			},

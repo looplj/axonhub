@@ -217,6 +217,85 @@ func TestModelPrice_Equals(t *testing.T) {
 	}
 }
 
+func TestModelPrice_EqualsVolume(t *testing.T) {
+	d1 := decimal.NewFromFloat(0.01)
+	d2 := decimal.NewFromFloat(0.02)
+	upTo1000 := int64(1000)
+
+	p1 := ModelPrice{
+		Items: []ModelPriceItem{
+			{
+				ItemCode: PriceItemCodeUsage,
+				Pricing: Pricing{
+					Mode: PricingModeVolume,
+					UsageTiered: &TieredPricing{
+						Tiers: []PriceTier{
+							{UpTo: &upTo1000, PricePerUnit: d1},
+							{UpTo: nil, PricePerUnit: d2},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p2 := ModelPrice{
+		Items: []ModelPriceItem{
+			{
+				ItemCode: PriceItemCodeUsage,
+				Pricing: Pricing{
+					Mode: PricingModeVolume,
+					UsageTiered: &TieredPricing{
+						Tiers: []PriceTier{
+							{UpTo: &upTo1000, PricePerUnit: d1},
+							{UpTo: nil, PricePerUnit: d2},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.True(t, p1.Equals(p2))
+
+	// Different mode should not be equal
+	p3 := ModelPrice{
+		Items: []ModelPriceItem{
+			{
+				ItemCode: PriceItemCodeUsage,
+				Pricing: Pricing{
+					Mode: PricingModeVolume,
+					UsageTiered: &TieredPricing{
+						Tiers: []PriceTier{
+							{UpTo: &upTo1000, PricePerUnit: d1},
+							{UpTo: nil, PricePerUnit: d2},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p4 := ModelPrice{
+		Items: []ModelPriceItem{
+			{
+				ItemCode: PriceItemCodeUsage,
+				Pricing: Pricing{
+					Mode: PricingModeTiered,
+					UsageTiered: &TieredPricing{
+						Tiers: []PriceTier{
+							{UpTo: &upTo1000, PricePerUnit: d1},
+							{UpTo: nil, PricePerUnit: d2},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.False(t, p3.Equals(p4))
+}
+
 func TestModelPrice_Validate(t *testing.T) {
 	t.Run("flat_fee requires flatFee", func(t *testing.T) {
 		mp := ModelPrice{
@@ -280,6 +359,46 @@ func TestModelPrice_Validate(t *testing.T) {
 					ItemCode: PriceItemCodeUsage,
 					Pricing: Pricing{
 						Mode: PricingModeTiered,
+						UsageTiered: &TieredPricing{
+							Tiers: []PriceTier{
+								{UpTo: &upTo1000, PricePerUnit: decimal.NewFromFloat(0.01)},
+								{UpTo: &upTo2000, PricePerUnit: decimal.NewFromFloat(0.02)},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "tiers[1].upTo must be null")
+	})
+
+	t.Run("volume requires usageTiered", func(t *testing.T) {
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing:  Pricing{Mode: PricingModeVolume},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "usageTiered is required")
+	})
+
+	t.Run("volume validates tiers same as tiered", func(t *testing.T) {
+		upTo1000 := int64(1000)
+		upTo2000 := int64(2000)
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing: Pricing{
+						Mode: PricingModeVolume,
 						UsageTiered: &TieredPricing{
 							Tiers: []PriceTier{
 								{UpTo: &upTo1000, PricePerUnit: decimal.NewFromFloat(0.01)},

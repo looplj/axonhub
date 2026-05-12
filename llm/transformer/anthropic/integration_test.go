@@ -359,7 +359,6 @@ func TestAnthropicTransformResponse_CitationRoundTripIntegration(t *testing.T) {
 	require.Nil(t, citation.CitedText)
 }
 
-
 func TestAnthropicTransformResponse_WebSearchBlocks_RoundTripIntegration(t *testing.T) {
 	inboundTransformer := NewInboundTransformer()
 	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
