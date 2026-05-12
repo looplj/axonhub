@@ -951,7 +951,7 @@ func hasBackupChannelRef(channelID int, channelName string) bool {
 }
 
 type existingUsageRequestLookup struct {
-	byID           map[int]*ent.Request
+	byID          map[int]*ent.Request
 	byFingerprint map[string]*ent.Request
 }
 

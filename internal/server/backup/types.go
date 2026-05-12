@@ -59,33 +59,33 @@ type BackupUsageRequest struct {
 
 func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 	type requestData struct {
-		ID                            int                      `json:"id,omitempty"`
-		CreatedAt                     time.Time                `json:"created_at,omitempty"`
-		UpdatedAt                     time.Time                `json:"updated_at,omitempty"`
-		ProjectID                     int                      `json:"project_id,omitempty"`
-		Source                        request.Source           `json:"source,omitempty"`
-		ModelID                       string                   `json:"model_id,omitempty"`
-		ReasoningEffort               string                   `json:"reasoning_effort,omitempty"`
-		Format                        string                   `json:"format,omitempty"`
-		RequestHeaders                objects.JSONRawMessage   `json:"request_headers,omitempty"`
-		RequestBody                   objects.JSONRawMessage   `json:"request_body,omitempty"`
-		ResponseBody                  objects.JSONRawMessage   `json:"response_body,omitempty"`
-		ResponseChunks                []objects.JSONRawMessage `json:"response_chunks,omitempty"`
-		ChannelID                     int                      `json:"channel_id,omitempty"`
-		ExternalID                    string                   `json:"external_id,omitempty"`
-		Status                        request.Status           `json:"status,omitempty"`
-		Stream                        bool                     `json:"stream,omitempty"`
-		ClientIP                      string                   `json:"client_ip,omitempty"`
-		MetricsLatencyMs              *int64                   `json:"metrics_latency_ms,omitempty"`
-		MetricsFirstTokenLatencyMs    *int64                   `json:"metrics_first_token_latency_ms,omitempty"`
-		MetricsReasoningDurationMs    *int64                   `json:"metrics_reasoning_duration_ms,omitempty"`
-		ContentSaved                  bool                     `json:"content_saved,omitempty"`
-		ContentStorageID              *int                     `json:"content_storage_id,omitempty"`
-		ContentStorageKey             *string                  `json:"content_storage_key,omitempty"`
-		ContentSavedAt                *time.Time               `json:"content_saved_at,omitempty"`
-		ProjectName                   string                   `json:"project_name,omitempty"`
-		ChannelName                   string                   `json:"channel_name,omitempty"`
-		APIKeyKey                     string                   `json:"api_key_key,omitempty"`
+		ID                         int                      `json:"id,omitempty"`
+		CreatedAt                  time.Time                `json:"created_at,omitzero"`
+		UpdatedAt                  time.Time                `json:"updated_at,omitzero"`
+		ProjectID                  int                      `json:"project_id,omitempty"`
+		Source                     request.Source           `json:"source,omitempty"`
+		ModelID                    string                   `json:"model_id,omitempty"`
+		ReasoningEffort            string                   `json:"reasoning_effort,omitempty"`
+		Format                     string                   `json:"format,omitempty"`
+		RequestHeaders             objects.JSONRawMessage   `json:"request_headers,omitempty"`
+		RequestBody                objects.JSONRawMessage   `json:"request_body,omitempty"`
+		ResponseBody               objects.JSONRawMessage   `json:"response_body,omitempty"`
+		ResponseChunks             []objects.JSONRawMessage `json:"response_chunks,omitempty"`
+		ChannelID                  int                      `json:"channel_id,omitempty"`
+		ExternalID                 string                   `json:"external_id,omitempty"`
+		Status                     request.Status           `json:"status,omitempty"`
+		Stream                     bool                     `json:"stream,omitempty"`
+		ClientIP                   string                   `json:"client_ip,omitempty"`
+		MetricsLatencyMs           *int64                   `json:"metrics_latency_ms,omitempty"`
+		MetricsFirstTokenLatencyMs *int64                   `json:"metrics_first_token_latency_ms,omitempty"`
+		MetricsReasoningDurationMs *int64                   `json:"metrics_reasoning_duration_ms,omitempty"`
+		ContentSaved               bool                     `json:"content_saved,omitempty"`
+		ContentStorageID           *int                     `json:"content_storage_id,omitempty"`
+		ContentStorageKey          *string                  `json:"content_storage_key,omitempty"`
+		ContentSavedAt             *time.Time               `json:"content_saved_at,omitempty"`
+		ProjectName                string                   `json:"project_name,omitempty"`
+		ChannelName                string                   `json:"channel_name,omitempty"`
+		APIKeyKey                  string                   `json:"api_key_key,omitempty"`
 	}
 
 	return json.Marshal(requestData{
@@ -130,8 +130,8 @@ type BackupUsageLog struct {
 func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 	type usageLogData struct {
 		ID                                 int                `json:"id,omitempty"`
-		CreatedAt                          time.Time          `json:"created_at,omitempty"`
-		UpdatedAt                          time.Time          `json:"updated_at,omitempty"`
+		CreatedAt                          time.Time          `json:"created_at,omitzero"`
+		UpdatedAt                          time.Time          `json:"updated_at,omitzero"`
 		RequestID                          int                `json:"request_id,omitempty"`
 		ProjectID                          int                `json:"project_id,omitempty"`
 		ChannelID                          int                `json:"channel_id,omitempty"`

@@ -228,17 +228,17 @@ type AutoBackupSettings struct {
 }
 
 type autoBackupSettingsJSON struct {
-	Enabled            bool             `json:"enabled"`
-	Frequency          BackupFrequency  `json:"frequency"`
-	DataStorageID      int              `json:"data_storage_id"`
-	IncludeChannels    bool             `json:"include_channels"`
-	IncludeModels      bool             `json:"include_models"`
-	IncludeAPIKeys     bool             `json:"include_api_keys"`
-	IncludeModelPrices bool             `json:"include_model_prices"`
-	IncludeUsageStats  *bool            `json:"include_usage_stats"`
-	RetentionDays      int              `json:"retention_days"`
-	LastBackupAt       *time.Time       `json:"last_backup_at,omitempty"`
-	LastBackupError    string           `json:"last_backup_error,omitempty"`
+	Enabled            bool            `json:"enabled"`
+	Frequency          BackupFrequency `json:"frequency"`
+	DataStorageID      int             `json:"data_storage_id"`
+	IncludeChannels    bool            `json:"include_channels"`
+	IncludeModels      bool            `json:"include_models"`
+	IncludeAPIKeys     bool            `json:"include_api_keys"`
+	IncludeModelPrices bool            `json:"include_model_prices"`
+	IncludeUsageStats  *bool           `json:"include_usage_stats"`
+	RetentionDays      int             `json:"retention_days"`
+	LastBackupAt       *time.Time      `json:"last_backup_at,omitempty"`
+	LastBackupError    string          `json:"last_backup_error,omitempty"`
 }
 
 // StoragePolicy represents the storage policy configuration.
