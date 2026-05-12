@@ -183,20 +183,22 @@ func (s *SomeService) doWork(ctx context.Context) error {
 When introducing a new provider channel, keep backend and frontend changes aligned:
 
 1. **Extend the channel enum in the Ent schema**
-   - Add the provider key to the `field.Enum("type")` list in [internal/ent/schema/channel.go](../../../internal/ent/schema/channel.go)
-   - Run `make generate` to regenerate artifacts and migrations
+   - Add the provider key to `field.Enum("type")` in [internal/ent/schema/channel.go](../../../internal/ent/schema/channel.go)
+   - Run `make generate` to regenerate Ent artifacts and GraphQL types
 
-2. **Wire the outbound transformer**
-   - Update the switch in `ChannelService.buildChannel` to construct the correct outbound transformer for the new enum
-   - Or add a new transformer under `internal/llm/transformer` if necessary
+2. **Map default endpoints**
+   - Add an entry to `defaultEndpointsForChannelType` in [internal/server/biz/channel_endpoint.go](../../../internal/server/biz/channel_endpoint.go)
+   - If the channel uses a new API format, add it to `SupportedAPIFormats` in the same file
 
-3. **Register provider metadata**
-   - Add or extend an entry in [frontend/src/features/channels/data/config_providers.ts](../../../frontend/src/features/channels/data/config_providers.ts)
-   - Keep the helper functions working by ensuring every channel type listed exists in `CHANNEL_CONFIGS`
+3. **Wire the outbound transformer**
+   - Add a `case` to the switch in `ChannelService.buildChannelWithTransformer` ([internal/server/biz/channel_llm.go](../../../internal/server/biz/channel_llm.go))
+   - If a new credential variant, add validation above the switch
+   - If adding a new transformer under `llm/transformer/`, import it and build config with `getAPIKeyProvider(ch)`
 
-4. **Sync the frontend schema and presentation**
-   - Append the enum value to the Zod schema in [frontend/src/features/channels/data/schema.ts](../../../frontend/src/features/channels/data/schema.ts)
-   - Add channel configuration to [frontend/src/features/channels/data/constants.ts](../../../frontend/src/features/channels/data/constants.ts)
+4. **Sync the frontend schema and config**
+   - Append the enum value to `channelTypeSchema` in [frontend/src/features/channels/data/schema.ts](../../../frontend/src/features/channels/data/schema.ts)
+   - Add a `CHANNEL_CONFIGS` entry in [frontend/src/features/channels/data/config_channels.ts](../../../frontend/src/features/channels/data/config_channels.ts)
+   - Add a `PROVIDER_CONFIGS` entry or extend an existing one in [frontend/src/features/channels/data/config_providers.ts](../../../frontend/src/features/channels/data/config_providers.ts)
 
 5. **Add internationalization**
    - Add translation keys in both locale files:

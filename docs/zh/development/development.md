@@ -184,19 +184,21 @@ func (s *SomeService) doWork(ctx context.Context) error {
 
 1. **在 Ent Schema 中扩展枚举**
    - 在 [internal/ent/schema/channel.go](../../../internal/ent/schema/channel.go) 的 `field.Enum("type")` 列表里添加新的渠道标识
-   - 执行 `make generate` 以生成代码与迁移
+   - 执行 `make generate` 以生成代码与 GraphQL 类型
 
-2. **在业务层构造 Transformer**
-   - 在 `ChannelService.buildChannel` 的 switch 中为新枚举返回合适的 outbound transformer
-   - 必要时在 `internal/llm/transformer` 下实现新的 transformer
+2. **配置默认端点**
+   - 在 [internal/server/biz/channel_endpoint.go](../../../internal/server/biz/channel_endpoint.go) 的 `defaultEndpointsForChannelType` 中添加映射
+   - 如果使用新的 API 格式，同步添加到 `SupportedAPIFormats`
 
-3. **注册 Provider 元数据**
-   - 在 [frontend/src/features/channels/data/config_providers.ts](../../../frontend/src/features/channels/data/config_providers.ts) 添加或扩展 Provider 配置
-   - 确保 `channelTypes` 中引用的渠道都已经在 `CHANNEL_CONFIGS` 中存在
+3. **在业务层构造 Transformer**
+   - 在 `ChannelService.buildChannelWithTransformer`（[internal/server/biz/channel_llm.go](../../../internal/server/biz/channel_llm.go)）的 switch 中新增 `case`
+   - 如果有新的凭据类型，在 switch 上方添加校验逻辑
+   - 如需新 transformer 包（`llm/transformer/`），引入后用 `getAPIKeyProvider(ch)` 构建配置
 
-4. **同步前端的 schema 与展示**
-   - 将枚举值加入 [frontend/src/features/channels/data/schema.ts](../../../frontend/src/features/channels/data/schema.ts) 的 Zod schema
-   - 在 [frontend/src/features/channels/data/constants.ts](../../../frontend/src/features/channels/data/constants.ts) 中添加渠道配置
+4. **同步前端的 schema 与配置**
+   - 将枚举值加入 [frontend/src/features/channels/data/schema.ts](../../../frontend/src/features/channels/data/schema.ts) 的 `channelTypeSchema`
+   - 在 [frontend/src/features/channels/data/config_channels.ts](../../../frontend/src/features/channels/data/config_channels.ts) 中添加 `CHANNEL_CONFIGS` 条目
+   - 在 [frontend/src/features/channels/data/config_providers.ts](../../../frontend/src/features/channels/data/config_providers.ts) 中添加或扩展 `PROVIDER_CONFIGS`
 
 5. **添加国际化**
    - 在两个 locale 文件中补充翻译：
