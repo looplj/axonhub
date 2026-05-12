@@ -179,7 +179,9 @@ func (m Message) ToLLMMessage() llm.Message {
 // ToLLMAnnotation converts OpenAI Annotation to unified llm.Annotation.
 func (a Annotation) ToLLMAnnotation() llm.Annotation {
 	annotation := llm.Annotation{
-		Type: a.Type,
+		Type:       a.Type,
+		StartIndex: a.StartIndex,
+		EndIndex:   a.EndIndex,
 	}
 
 	if a.URLCitation != nil {

@@ -182,7 +182,9 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 // AnnotationFromLLM creates OpenAI Annotation from unified llm.Annotation.
 func AnnotationFromLLM(a llm.Annotation) Annotation {
 	annotation := Annotation{
-		Type: a.Type,
+		Type:       a.Type,
+		StartIndex: a.StartIndex,
+		EndIndex:   a.EndIndex,
 	}
 
 	if a.URLCitation != nil {

@@ -55,6 +55,29 @@ func TestRequestPreviewHandlers_ReplayOnConnect(t *testing.T) {
 	require.JSONEq(t, `{"status":"completed"}`, secondEvent.Data)
 }
 
+func TestRequestPreviewHandlers_ReplayPreservesAnnotationChunk(t *testing.T) {
+	setup := newRequestPreviewTestSetup(t)
+	defer setup.liveStreamRegistry.UnregisterRequest(setup.req.ID)
+
+	buffer := chunkbuffer.New()
+	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"id":"chatcmpl-preview","object":"chat.completion.chunk","model":"sonar-deep-research","choices":[{"index":0,"delta":{"content":"Source","annotations":[{"type":"url_citation","start_index":0,"end_index":6,"url_citation":{"url":"https://example.com/result","title":"Example Result"}}]}}]}`)})
+	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: llm.DoneStreamEvent.Data})
+	buffer.Close()
+	setup.liveStreamRegistry.RegisterRequest(setup.req.ID, buffer)
+
+	resp := performPreviewRequest(t, setup.router, setup.req.ID)
+	defer resp.Body.Close()
+
+	reader := bufio.NewReader(resp.Body)
+	firstEvent := readSSEEvent(t, reader)
+	require.Equal(t, "preview.replay", firstEvent.Event)
+	require.JSONEq(t, `{"id":"chatcmpl-preview","object":"chat.completion.chunk","model":"sonar-deep-research","choices":[{"index":0,"delta":{"content":"Source","annotations":[{"type":"url_citation","start_index":0,"end_index":6,"url_citation":{"url":"https://example.com/result","title":"Example Result"}}]}}]}`, firstEvent.Data)
+
+	completedEvent := readSSEEvent(t, reader)
+	require.Equal(t, "preview.completed", completedEvent.Event)
+	require.JSONEq(t, `{"status":"completed"}`, completedEvent.Data)
+}
+
 func TestRequestPreviewHandlers_IncrementalDeliveryAfterReplay(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
 	defer setup.liveStreamRegistry.UnregisterRequest(setup.req.ID)
@@ -161,6 +184,28 @@ func TestRequestPreviewHandlers_FallbackToStaticFetchForCompletedRequests(t *tes
 	require.JSONEq(t, `{"persisted":true}`, string(body.ResponseChunks[0]))
 }
 
+func TestRequestPreviewHandlers_FallbackToStaticFetchPreservesAnnotationChunks(t *testing.T) {
+	setup := newRequestPreviewTestSetup(t)
+
+	_, err := setup.client.Request.UpdateOneID(setup.req.ID).
+		SetStatus(request.StatusCompleted).
+		SetResponseChunks([]objects.JSONRawMessage{objects.JSONRawMessage(`{"event":"","data":{"id":"chatcmpl-preview","object":"chat.completion.chunk","model":"sonar-deep-research","choices":[{"index":0,"delta":{"content":"Source","annotations":[{"type":"url_citation","start_index":0,"end_index":6,"url_citation":{"url":"https://example.com/result","title":"Example Result"}}]}}]}}`)}).
+		Save(setup.ctx)
+	require.NoError(t, err)
+
+	resp := performPreviewRequest(t, setup.router, setup.req.ID)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+
+	var body RequestPreviewFallbackResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	require.Equal(t, "static-fetch", body.Mode)
+	require.Len(t, body.ResponseChunks, 1)
+	require.JSONEq(t, `{"event":"","data":{"id":"chatcmpl-preview","object":"chat.completion.chunk","model":"sonar-deep-research","choices":[{"index":0,"delta":{"content":"Source","annotations":[{"type":"url_citation","start_index":0,"end_index":6,"url_citation":{"url":"https://example.com/result","title":"Example Result"}}]}}]}}`, string(body.ResponseChunks[0]))
+}
+
 type requestPreviewTestSetup struct {
 	client             *ent.Client
 	ctx                context.Context
@@ -224,10 +269,10 @@ func newRequestPreviewTestSetup(t *testing.T) requestPreviewTestSetup {
 	router.GET("/admin/requests/:request_id/preview", handlers.PreviewRequest)
 
 	return requestPreviewTestSetup{
-		client: client,
-		ctx:    ctx,
-		router: router,
-		req:    reqRow,
+		client:             client,
+		ctx:                ctx,
+		router:             router,
+		req:                reqRow,
 		liveStreamRegistry: liveStreamRegistry,
 	}
 }

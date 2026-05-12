@@ -712,14 +712,18 @@ func TestMessageFromLLM_WithAnnotations(t *testing.T) {
 				Content: llm.MessageContent{Content: lo.ToPtr("The meaning of life...")},
 				Annotations: []llm.Annotation{
 					{
-						Type: "url_citation",
+						Type:       "url_citation",
+						StartIndex: lo.ToPtr(int64(0)),
+						EndIndex:   lo.ToPtr(int64(11)),
 						URLCitation: &llm.URLCitation{
 							URL:   "https://en.wikipedia.org/wiki/Meaning_of_life",
 							Title: "Meaning of life - Wikipedia",
 						},
 					},
 					{
-						Type: "url_citation",
+						Type:       "url_citation",
+						StartIndex: lo.ToPtr(int64(20)),
+						EndIndex:   lo.ToPtr(int64(27)),
 						URLCitation: &llm.URLCitation{
 							URL:   "https://plato.stanford.edu/entries/life-meaning/",
 							Title: "The Meaning of Life - Stanford Encyclopedia",
@@ -731,9 +735,22 @@ func TestMessageFromLLM_WithAnnotations(t *testing.T) {
 				require.Equal(t, "assistant", msg.Role)
 				require.Len(t, msg.Annotations, 2)
 				require.Equal(t, "url_citation", msg.Annotations[0].Type)
+				require.NotNil(t, msg.Annotations[0].StartIndex)
+				require.Equal(t, int64(0), *msg.Annotations[0].StartIndex)
+				require.NotNil(t, msg.Annotations[0].EndIndex)
+				require.Equal(t, int64(11), *msg.Annotations[0].EndIndex)
 				require.NotNil(t, msg.Annotations[0].URLCitation)
 				require.Equal(t, "https://en.wikipedia.org/wiki/Meaning_of_life", msg.Annotations[0].URLCitation.URL)
 				require.Equal(t, "Meaning of life - Wikipedia", msg.Annotations[0].URLCitation.Title)
+				require.NotNil(t, msg.Annotations[1].StartIndex)
+				require.Equal(t, int64(20), *msg.Annotations[1].StartIndex)
+				require.NotNil(t, msg.Annotations[1].EndIndex)
+				require.Equal(t, int64(27), *msg.Annotations[1].EndIndex)
+
+				payload, err := json.Marshal(msg)
+				require.NoError(t, err)
+				require.Contains(t, string(payload), `"start_index":0`)
+				require.Contains(t, string(payload), `"end_index":11`)
 			},
 		},
 		{

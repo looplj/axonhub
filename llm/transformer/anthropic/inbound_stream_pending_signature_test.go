@@ -614,3 +614,70 @@ func TestPendingSignature_SignatureWithoutThinking_FinishOnly(t *testing.T) {
 	require.Equal(t, "message_delta", events[4].Type)
 	require.Equal(t, "message_stop", events[5].Type)
 }
+
+// TestFinishReason_WithoutAnyOpenBlockPreservesTrailingStop verifies the legacy
+// finish_reason behavior: even when no text/tool block is open, the transformer
+// still emits a trailing content_block_stop before message_delta.
+func TestFinishReason_WithoutAnyOpenBlockPreservesTrailingStop(t *testing.T) {
+	const (
+		id    = "msg_test_finish_only"
+		model = "test-model"
+	)
+
+	responses := []*llm.Response{
+		buildChunk(id, model, withUsage(10, 1)),
+		buildChunk(id, model, withFinishReason("stop")),
+		buildChunk(id, model, withUsage(10, 5)),
+	}
+
+	events := collectStreamEvents(t, responses)
+
+	// Expected legacy event order:
+	// 0: message_start
+	// 1: content_block_stop (index 0)
+	// 2: message_delta
+	// 3: message_stop
+	require.Len(t, events, 4)
+	require.Equal(t, "message_start", events[0].Type)
+	require.Equal(t, "content_block_stop", events[1].Type)
+	require.Equal(t, int64(0), *events[1].Index)
+	require.Equal(t, "message_delta", events[2].Type)
+	require.Equal(t, "message_stop", events[3].Type)
+}
+
+func TestFinishReason_WithOpenTextBlock_EmitsSingleStop(t *testing.T) {
+	const (
+		id    = "msg_test_finish_text_only"
+		model = "test-model"
+	)
+
+	responses := []*llm.Response{
+		buildChunk(id, model, withUsage(10, 1)),
+		buildChunk(id, model, withTextContent("Hello")),
+		buildChunk(id, model, withFinishReason("stop")),
+		buildChunk(id, model, withUsage(10, 5)),
+	}
+
+	events := collectStreamEvents(t, responses)
+
+	require.Len(t, events, 6)
+	require.Equal(t, "message_start", events[0].Type)
+	require.Equal(t, "content_block_start", events[1].Type)
+	require.Equal(t, "text", events[1].ContentBlock.Type)
+	require.Equal(t, int64(0), *events[1].Index)
+	require.Equal(t, "content_block_delta", events[2].Type)
+	require.Equal(t, "text_delta", *events[2].Delta.Type)
+	require.Equal(t, "Hello", *events[2].Delta.Text)
+	require.Equal(t, "content_block_stop", events[3].Type)
+	require.Equal(t, int64(0), *events[3].Index)
+	require.Equal(t, "message_delta", events[4].Type)
+	require.Equal(t, "message_stop", events[5].Type)
+
+	stopCount := 0
+	for _, event := range events {
+		if event.Type == "content_block_stop" {
+			stopCount++
+		}
+	}
+	require.Equal(t, 1, stopCount)
+}

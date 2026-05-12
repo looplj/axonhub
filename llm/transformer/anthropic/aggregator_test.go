@@ -839,6 +839,87 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 	})
 }
 
+func TestAggregateStreamChunks_WithCitationsDelta(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{
+				"type": "message_start",
+				"message": {
+					"id": "msg_citations",
+					"type": "message",
+					"role": "assistant",
+					"content": [],
+					"model": "claude-sonnet-4-6"
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_start",
+				"index": 0,
+				"content_block": {
+					"type": "text",
+					"text": ""
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_delta",
+				"index": 0,
+				"delta": {
+					"type": "text_delta",
+					"text": "Answer with source"
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_delta",
+				"index": 0,
+				"delta": {
+					"type": "citations_delta",
+					"citation": {
+						"type": "url_citation",
+						"url": "https://example.com/source",
+						"title": "Example Source"
+					}
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_stop",
+				"index": 0
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "message_delta",
+				"delta": {
+					"stop_reason": "end_turn"
+				}
+			}`),
+		},
+	}
+
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks, PlatformDirect)
+	require.NoError(t, err)
+
+	var result Message
+	err = json.Unmarshal(resultBytes, &result)
+	require.NoError(t, err)
+	require.Len(t, result.Content, 1)
+	require.Equal(t, "text", result.Content[0].Type)
+	require.Equal(t, "Answer with source", *result.Content[0].Text)
+	require.Equal(t, []TextCitation{{
+		Type:  "url_citation",
+		URL:   "https://example.com/source",
+		Title: "Example Source",
+	}}, result.Content[0].Citations)
+	require.Nil(t, result.Content[0].Citations[0].EncryptedIndex)
+}
+
 func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 	tests := []struct {
 		name         string

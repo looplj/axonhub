@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -449,6 +450,114 @@ func TestInvalidToolCall(t *testing.T) {
 	if len(responseText) == 0 {
 		t.Error("Expected non-empty response even with invalid tool")
 	}
+}
+
+func TestGoogleSearchReturnsGroundingMetadata(t *testing.T) {
+	helper := testutil.NewTestHelper(t, "gemini_google_search")
+	if searchModel := os.Getenv("TEST_GEMINI_SEARCH_MODEL"); searchModel != "" {
+		helper.SetModel(searchModel)
+	}
+
+	ctx := helper.CreateTestContext()
+	modelName := helper.GetModel()
+	question := "Use Google Search to summarize one recent AI announcement and include the source you used."
+
+	contents := []*genai.Content{{
+		Parts: []*genai.Part{{Text: question}},
+	}}
+
+	config := helper.MergeHTTPOptions(&genai.GenerateContentConfig{
+		Tools: []*genai.Tool{{GoogleSearch: &genai.GoogleSearch{}}},
+	})
+	stream := helper.Client.Models.GenerateContentStream(ctx, modelName, contents, config)
+
+	var (
+		responseCount      int
+		fullResponse       strings.Builder
+		groundingMetadata  *genai.GroundingMetadata
+		citationMetadata   *genai.CitationMetadata
+		receivedCandidate  bool
+	)
+
+	for response, err := range stream {
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			helper.AssertNoError(t, err, "Grounded stream encountered an error")
+		}
+		if response == nil || len(response.Candidates) == 0 || response.Candidates[0] == nil {
+			continue
+		}
+
+		responseCount++
+		receivedCandidate = true
+		candidate := response.Candidates[0]
+		if candidate.Content != nil {
+			for _, part := range candidate.Content.Parts {
+				if part != nil && part.Text != "" {
+					fullResponse.WriteString(part.Text)
+				}
+			}
+		}
+		if candidate.GroundingMetadata != nil {
+			groundingMetadata = candidate.GroundingMetadata
+		}
+		if candidate.CitationMetadata != nil {
+			citationMetadata = candidate.CitationMetadata
+		}
+	}
+
+	if !receivedCandidate {
+		t.Fatal("Expected at least one streamed candidate")
+	}
+	if fullResponse.Len() == 0 {
+		t.Fatal("Expected non-empty grounded response text")
+	}
+	if groundingMetadata == nil && citationMetadata == nil {
+		t.Fatalf("Expected grounding or citation metadata after streaming, got response text: %q", fullResponse.String())
+	}
+
+	if groundingMetadata != nil {
+		if len(groundingMetadata.GroundingChunks) == 0 {
+			t.Fatalf("Expected grounding chunks, got grounding metadata: %#v", groundingMetadata)
+		}
+
+		var foundWebURI bool
+		for _, chunk := range groundingMetadata.GroundingChunks {
+			if chunk != nil && chunk.Web != nil && chunk.Web.URI != "" {
+				foundWebURI = true
+				break
+			}
+		}
+		if !foundWebURI {
+			t.Fatalf("Expected at least one grounding chunk with web URI, got grounding metadata: %#v", groundingMetadata)
+		}
+
+		for _, support := range groundingMetadata.GroundingSupports {
+			if support == nil || support.Segment == nil {
+				continue
+			}
+			if support.Segment.EndIndex < support.Segment.StartIndex {
+				t.Fatalf("Expected ordered grounding segment indices, got segment: %#v", support.Segment)
+			}
+		}
+	}
+
+	if citationMetadata != nil {
+		if len(citationMetadata.Citations) == 0 {
+			t.Fatalf("Expected citations in citation metadata, got: %#v", citationMetadata)
+		}
+		citation := citationMetadata.Citations[0]
+		if citation == nil || citation.URI == "" {
+			t.Fatalf("Expected citation URI, got: %#v", citation)
+		}
+		if citation.EndIndex < citation.StartIndex {
+			t.Fatalf("Expected ordered citation indices, got start=%d end=%d", citation.StartIndex, citation.EndIndex)
+		}
+	}
+
+	t.Logf("Validated Google Search streaming response in %d chunks", responseCount)
 }
 
 // Helper functions

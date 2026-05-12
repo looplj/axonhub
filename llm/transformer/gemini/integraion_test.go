@@ -30,6 +30,7 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 		expectedMaxTokens  int64
 		expectedPath       string
 		expectedModalities []string
+		expectedToolTypes  []string
 	}{
 		{
 			name:         "simple text message",
@@ -103,6 +104,33 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			expectedMaxTokens:  1024,
 			expectedPath:       "/v1beta/models/gemini-2.5-flash-image-preview:generateContent",
 			expectedModalities: []string{"text", "image"},
+		},
+		{
+			name:         "request with snake_case google_search tool",
+			requestPath:  "/v1beta/models/gemini-2.5-flash:generateContent",
+			requestQuery: url.Values{},
+			geminiRequestJSON: `{
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{"text": "Search the web for the latest AI announcement."}
+							]
+						}
+					],
+					"tools": [
+						{
+							"google_search": {}
+						}
+					],
+					"generationConfig": {
+						"maxOutputTokens": 256
+					}
+				}`,
+			expectedModel:     "gemini-2.5-flash",
+			expectedMaxTokens: 256,
+			expectedPath:      "/v1beta/models/gemini-2.5-flash:generateContent",
+			expectedToolTypes: []string{llm.ToolTypeGoogleSearch},
 		},
 		{
 			name:         "streaming request with alt query",
@@ -247,6 +275,107 @@ func TestGeminiTransformers_Integration(t *testing.T) {
 			require.Equal(t, "model", finalGeminiResp.Candidates[0].Content.Role)
 		})
 	}
+}
+
+func TestGeminiTransformResponse_GroundingRoundTripIntegration(t *testing.T) {
+	inboundTransformer := NewInboundTransformer()
+	outboundTransformer, _ := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-api-key")
+
+	geminiResponse := &GenerateContentResponse{
+		ResponseID:   "resp_gemini_grounding_roundtrip",
+		ModelVersion: "gemini-2.5-flash",
+		Candidates: []*Candidate{
+			{
+				Index: 0,
+				Content: &Content{
+					Role: "model",
+					Parts: []*Part{
+						{Text: "Grounded answer"},
+					},
+				},
+				FinishReason: "STOP",
+				GroundingMetadata: &GroundingMetadata{
+					WebSearchQueries: []string{"grounded query"},
+					GroundingChunks: []*GroundingChunk{
+						{
+							Web: &GroundingChunkWeb{
+								URI:   "https://example.com/gemini",
+								Title: "Gemini Source",
+							},
+						},
+					},
+					GroundingSupports: []*GroundingSupport{
+						{
+							Segment: &Segment{
+								StartIndex: 0,
+								EndIndex:   8,
+								Text:       "Grounded",
+							},
+							GroundingChunkIndices: []int32{0},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	responseBody, err := json.Marshal(geminiResponse)
+	require.NoError(t, err)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       responseBody,
+	}
+
+	chatResp, err := outboundTransformer.TransformResponse(t.Context(), httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, chatResp)
+	require.Len(t, chatResp.Choices, 1)
+	require.NotNil(t, chatResp.Choices[0].Message)
+	require.Equal(t, "assistant", chatResp.Choices[0].Message.Role)
+	require.Equal(t, "Grounded answer", lo.FromPtr(chatResp.Choices[0].Message.Content.Content))
+	require.Len(t, chatResp.Choices[0].Message.Annotations, 1)
+
+	annotation := chatResp.Choices[0].Message.Annotations[0]
+	require.Equal(t, "url_citation", annotation.Type)
+	require.NotNil(t, annotation.URLCitation)
+	require.Equal(t, "https://example.com/gemini", annotation.URLCitation.URL)
+	require.Equal(t, "Gemini Source", annotation.URLCitation.Title)
+	require.NotNil(t, annotation.StartIndex)
+	require.EqualValues(t, 0, *annotation.StartIndex)
+	require.NotNil(t, annotation.EndIndex)
+	require.EqualValues(t, 8, *annotation.EndIndex)
+
+	require.NotNil(t, chatResp.Choices[0].TransformerMetadata)
+	groundingMetadata, ok := chatResp.Choices[0].TransformerMetadata[TransformerMetadataKeyGroundingMetadata].(*GroundingMetadata)
+	require.True(t, ok)
+	require.NotNil(t, groundingMetadata)
+	require.Equal(t, []string{"grounded query"}, groundingMetadata.WebSearchQueries)
+	require.Len(t, groundingMetadata.GroundingChunks, 1)
+	require.NotNil(t, groundingMetadata.GroundingChunks[0].Web)
+	require.Equal(t, "https://example.com/gemini", groundingMetadata.GroundingChunks[0].Web.URI)
+	require.Equal(t, "Gemini Source", groundingMetadata.GroundingChunks[0].Web.Title)
+
+	finalHTTPResp, err := inboundTransformer.TransformResponse(t.Context(), chatResp)
+	require.NoError(t, err)
+	require.NotNil(t, finalHTTPResp)
+
+	var finalGeminiResp GenerateContentResponse
+
+	err = json.Unmarshal(finalHTTPResp.Body, &finalGeminiResp)
+	require.NoError(t, err)
+	require.Equal(t, "resp_gemini_grounding_roundtrip", finalGeminiResp.ResponseID)
+	require.Equal(t, "gemini-2.5-flash", finalGeminiResp.ModelVersion)
+	require.Len(t, finalGeminiResp.Candidates, 1)
+	require.NotNil(t, finalGeminiResp.Candidates[0].Content)
+	require.Equal(t, "model", finalGeminiResp.Candidates[0].Content.Role)
+	require.NotNil(t, finalGeminiResp.Candidates[0].GroundingMetadata)
+	require.Equal(t, []string{"grounded query"}, finalGeminiResp.Candidates[0].GroundingMetadata.WebSearchQueries)
+	require.Len(t, finalGeminiResp.Candidates[0].GroundingMetadata.GroundingChunks, 1)
+	require.NotNil(t, finalGeminiResp.Candidates[0].GroundingMetadata.GroundingChunks[0].Web)
+	require.Equal(t, "https://example.com/gemini", finalGeminiResp.Candidates[0].GroundingMetadata.GroundingChunks[0].Web.URI)
+	require.Equal(t, "Gemini Source", finalGeminiResp.Candidates[0].GroundingMetadata.GroundingChunks[0].Web.Title)
+	require.Nil(t, finalGeminiResp.Candidates[0].CitationMetadata)
 }
 
 func TestTransformRequest_Integration(t *testing.T) {
@@ -709,4 +838,41 @@ func TestModalitiesRoundTrip(t *testing.T) {
 	// Verify modalities are preserved
 	require.NotNil(t, gotGeminiReq.GenerationConfig)
 	require.Equal(t, []string{"TEXT", "IMAGE"}, gotGeminiReq.GenerationConfig.ResponseModalities)
+}
+
+func TestGeminiInboundTransformRequest_SnakeCaseGoogleSearchTool(t *testing.T) {
+	inboundTransformer := NewInboundTransformer()
+
+	httpReq := &httpclient.Request{
+		Path: "/v1beta/models/gemini-2.5-flash:generateContent",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{
+			"contents": [
+				{
+					"role": "user",
+					"parts": [
+						{"text": "Search the web for the latest AI announcement."}
+					]
+				}
+			],
+			"tools": [
+				{
+					"google_search": {}
+				}
+			],
+			"generationConfig": {
+				"maxOutputTokens": 256
+			}
+		}`),
+	}
+
+	chatReq, err := inboundTransformer.TransformRequest(t.Context(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, chatReq)
+	require.Len(t, chatReq.Tools, 1)
+	require.Equal(t, llm.ToolTypeGoogleSearch, chatReq.Tools[0].Type)
+	require.NotNil(t, chatReq.Tools[0].Google)
+	require.NotNil(t, chatReq.Tools[0].Google.Search)
 }

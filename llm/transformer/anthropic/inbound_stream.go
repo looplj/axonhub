@@ -20,9 +20,10 @@ func (t *InboundTransformer) TransformStream(
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Create a custom stream that handles the stateful transformation
 	return &anthropicInboundStream{
-		source:    stream,
-		ctx:       ctx,
-		toolCalls: make(map[int]*llm.ToolCall),
+		source:               stream,
+		ctx:                  ctx,
+		toolCalls:            make(map[int]*llm.ToolCall),
+		pendingTextCitations: nil,
 	}, nil
 }
 
@@ -53,11 +54,62 @@ type anthropicInboundStream struct {
 	// Buffered signature: when signature arrives before thinking starts,
 	// we hold it until thinking finishes.
 	pendingSignature *string
+
+	// Buffered citations for the currently open text block. These are emitted as
+	// citations_delta events immediately before the text block is closed.
+	pendingTextCitations []TextCitation
 }
 
 // generateSignature generates a random signature using base64(uuid).
 func generateSignature() string {
 	return base64.StdEncoding.EncodeToString([]byte(uuid.New().String()))
+}
+
+func citationKey(citation TextCitation) string {
+	return citation.Type + "\x00" + citation.URL + "\x00" + citation.Title
+}
+
+func (s *anthropicInboundStream) appendPendingTextCitations(annotations []llm.Annotation, metadata map[string]any) {
+	for _, annotation := range annotations {
+		citation, ok := citationFromLLMAnnotation(annotation, metadata)
+		if !ok {
+			continue
+		}
+
+		key := citationKey(citation)
+		exists := lo.ContainsBy(s.pendingTextCitations, func(existing TextCitation) bool {
+			return citationKey(existing) == key
+		})
+		if exists {
+			continue
+		}
+
+		s.pendingTextCitations = append(s.pendingTextCitations, citation)
+	}
+}
+
+func (s *anthropicInboundStream) flushPendingTextCitations() error {
+	if !s.hasTextContentStarted || len(s.pendingTextCitations) == 0 {
+		return nil
+	}
+
+	for i := range s.pendingTextCitations {
+		citation := s.pendingTextCitations[i]
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_delta",
+			Index: &s.contentIndex,
+			Delta: &StreamDelta{
+				Type:     lo.ToPtr("citations_delta"),
+				Citation: &citation,
+			},
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue citations_delta event: %w", err)
+		}
+	}
+
+	s.pendingTextCitations = nil
+
+	return nil
 }
 
 // closeThinkingBlock ensures any open or implied thinking block is properly
@@ -77,6 +129,10 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 
 		// Close any previously open content block before creating the synthetic thinking block.
 		if s.hasTextContentStarted {
+			if err := s.flushPendingTextCitations(); err != nil {
+				return fmt.Errorf("failed to flush text citations before pending signature: %w", err)
+			}
+
 			s.hasTextContentStarted = false
 
 			if err := s.enqueEvent(&StreamEvent{
@@ -263,6 +319,13 @@ func (s *anthropicInboundStream) Next() bool {
 	if len(chunk.Choices) > 0 {
 		choice := chunk.Choices[0]
 
+		if choice.Message != nil && len(choice.Message.Annotations) > 0 {
+			s.appendPendingTextCitations(choice.Message.Annotations, chunk.TransformerMetadata)
+		}
+		if choice.Delta != nil && len(choice.Delta.Annotations) > 0 {
+			s.appendPendingTextCitations(choice.Delta.Annotations, chunk.TransformerMetadata)
+		}
+
 		// Handle reasoning content (thinking) delta
 		if choice.Delta != nil && choice.Delta.ReasoningContent != nil && *choice.Delta.ReasoningContent != "" {
 			// If the tool content has started before the thinking content, we need to stop it
@@ -361,6 +424,11 @@ func (s *anthropicInboundStream) Next() bool {
 
 			// If the text content has started before the redacted thinking content, we need to stop it
 			if s.hasTextContentStarted {
+				if err := s.flushPendingTextCitations(); err != nil {
+					s.err = fmt.Errorf("failed to flush text citations: %w", err)
+					return false
+				}
+
 				s.hasTextContentStarted = false
 
 				streamEvent := StreamEvent{
@@ -476,6 +544,11 @@ func (s *anthropicInboundStream) Next() bool {
 
 			// If the text content has started before the tool content, we need to stop it
 			if s.hasTextContentStarted {
+				if err := s.flushPendingTextCitations(); err != nil {
+					s.err = fmt.Errorf("failed to flush text citations: %w", err)
+					return false
+				}
+
 				s.hasTextContentStarted = false
 
 				streamEvent := StreamEvent{
@@ -499,18 +572,22 @@ func (s *anthropicInboundStream) Next() bool {
 				if _, ok := s.toolCalls[toolCallIndex]; !ok {
 					// Start a new tool use block, we should stop the previous tool use block
 					if toolCallIndex > 0 {
-						streamEvent := StreamEvent{
-							Type:  "content_block_stop",
-							Index: &s.contentIndex,
-						}
+						if s.hasToolContentStarted {
+							s.hasToolContentStarted = false
 
-						err := s.enqueEvent(&streamEvent)
-						if err != nil {
-							s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
-							return false
-						}
+							streamEvent := StreamEvent{
+								Type:  "content_block_stop",
+								Index: &s.contentIndex,
+							}
 
-						s.contentIndex += 1
+							err := s.enqueEvent(&streamEvent)
+							if err != nil {
+								s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+								return false
+							}
+
+							s.contentIndex += 1
+						}
 					}
 
 					s.hasToolContentStarted = true
@@ -591,20 +668,68 @@ func (s *anthropicInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
+			contentClosed := false
+
 			if err := s.closeThinkingBlock(); err != nil {
 				s.err = fmt.Errorf("failed to close thinking block: %w", err)
 				return false
 			}
-
-			streamEvent := StreamEvent{
-				Type:  "content_block_stop",
-				Index: &s.contentIndex,
+			if s.lastEventType == "content_block_stop" {
+				contentClosed = true
 			}
 
-			err := s.enqueEvent(&streamEvent)
-			if err != nil {
-				s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
-				return false
+			if s.hasTextContentStarted {
+				if err := s.flushPendingTextCitations(); err != nil {
+					s.err = fmt.Errorf("failed to flush text citations: %w", err)
+					return false
+				}
+
+				s.hasTextContentStarted = false
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+				contentClosed = true
+			}
+
+			if s.hasToolContentStarted {
+				s.hasToolContentStarted = false
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+				contentClosed = true
+			}
+
+			if !contentClosed && !s.hasTextContentStarted && !s.hasToolContentStarted && !s.hasThinkingContentStarted {
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
 			}
 
 			// Convert finish reason to Anthropic format

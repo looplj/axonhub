@@ -8,11 +8,301 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+func TestInboundStream_EmitsCitationsDeltaBeforeContentBlockStop(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	text := "Annotated answer"
+	stop := "stop"
+
+	input := []*llm.Response{
+		{
+			ID:     "msg_annotations_stream",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: &text,
+					},
+					Annotations: []llm.Annotation{
+						{
+							Type: "url_citation",
+							URLCitation: &llm.URLCitation{
+								URL:   "https://example.com/1",
+								Title: "Source One",
+							},
+						},
+						{
+							Type: "url_citation",
+							URLCitation: &llm.URLCitation{
+								URL:   "https://example.com/2",
+								Title: "Source Two",
+							},
+						},
+					},
+				},
+			}},
+		},
+		{
+			ID:     "msg_annotations_stream",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &stop,
+			}},
+			Usage: &llm.Usage{},
+		},
+	}
+
+	events := collectInboundStreamEvents(t, transformer, input)
+
+	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{
+		{
+			Type:  "url_citation",
+			URL:   "https://example.com/1",
+			Title: "Source One",
+		},
+		{
+			Type:  "url_citation",
+			URL:   "https://example.com/2",
+			Title: "Source Two",
+		},
+	})
+}
+
+func TestInboundStream_EmitsCitationsDeltaWhenAnnotationsArriveBeforeText(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	text := "Annotated after metadata"
+	stop := "stop"
+
+	input := []*llm.Response{
+		{
+			ID:     "msg_annotations_before_text",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					Annotations: []llm.Annotation{
+						{
+							Type: "url_citation",
+							URLCitation: &llm.URLCitation{
+								URL:   "https://example.com/metadata-first",
+								Title: "Metadata First",
+							},
+						},
+					},
+				},
+			}},
+		},
+		{
+			ID:     "msg_annotations_before_text",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: &text,
+					},
+				},
+			}},
+		},
+		{
+			ID:     "msg_annotations_before_text",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &stop,
+			}},
+			Usage: &llm.Usage{},
+		},
+	}
+
+	events := collectInboundStreamEvents(t, transformer, input)
+
+	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{{
+		Type:  "url_citation",
+		URL:   "https://example.com/metadata-first",
+		Title: "Metadata First",
+	}})
+}
+
+func TestInboundStream_EmitsCitationsDeltaFromChoiceMessageAnnotations(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	text := "Annotated via choice.message"
+	stop := "stop"
+
+	input := []*llm.Response{
+		{
+			ID:     "msg_choice_message_annotations",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Message: &llm.Message{
+					Annotations: []llm.Annotation{
+						{
+							Type: "url_citation",
+							URLCitation: &llm.URLCitation{
+								URL:   "https://example.com/message-annotations",
+								Title: "Message Annotation",
+							},
+						},
+					},
+				},
+				Delta: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: &text,
+					},
+				},
+			}},
+		},
+		{
+			ID:     "msg_choice_message_annotations",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &stop,
+			}},
+			Usage: &llm.Usage{},
+		},
+	}
+
+	events := collectInboundStreamEvents(t, transformer, input)
+
+	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{{
+		Type:  "url_citation",
+		URL:   "https://example.com/message-annotations",
+		Title: "Message Annotation",
+	}})
+}
+
+func collectInboundStreamEvents(t *testing.T, transformer *InboundTransformer, input []*llm.Response) []StreamEvent {
+	t.Helper()
+
+	stream, err := transformer.TransformStream(t.Context(), streams.SliceStream(input))
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		raw := stream.Current()
+		var event StreamEvent
+		err := json.Unmarshal(raw.Data, &event)
+		require.NoError(t, err)
+		events = append(events, event)
+	}
+	require.NoError(t, stream.Err())
+
+	return events
+}
+
+func assertCitationsDeltaBeforeContentBlockStop(t *testing.T, events []StreamEvent, expected []TextCitation) {
+	t.Helper()
+
+	var (
+		citationEventIndexes []int
+		contentBlockStopIndex = -1
+		actualCitations       []TextCitation
+	)
+
+	for i, event := range events {
+		if event.Type == "content_block_delta" && event.Delta != nil && event.Delta.Type != nil && *event.Delta.Type == "citations_delta" {
+			citationEventIndexes = append(citationEventIndexes, i)
+			require.NotNil(t, event.Delta.Citation)
+			actualCitations = append(actualCitations, *event.Delta.Citation)
+			require.Nil(t, event.Delta.Citation.EncryptedIndex)
+			require.Nil(t, event.Delta.Citation.CitedText)
+		}
+		if event.Type == "content_block_stop" && event.Index != nil && *event.Index == 0 && contentBlockStopIndex == -1 {
+			contentBlockStopIndex = i
+		}
+	}
+
+	require.Len(t, citationEventIndexes, len(expected))
+	require.NotEqual(t, -1, contentBlockStopIndex)
+	for _, idx := range citationEventIndexes {
+		require.Less(t, idx, contentBlockStopIndex)
+	}
+	require.Equal(t, expected, actualCitations)
+}
+
+func TestInboundStream_NormalizesOpenAIWebSearchCitationTypeFromChunkMetadata(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	text := "Annotated answer"
+	stop := "stop"
+
+	input := []*llm.Response{
+		{
+			ID:     "msg_annotations_stream_web_search",
+			Object: "chat.completion.chunk",
+			Model:  "gpt-4o-search-preview",
+			TransformerMetadata: map[string]any{
+				"openai_responses_web_search_calls": []map[string]any{{
+					"id":     "ws_123",
+					"type":   "web_search_call",
+					"status": "completed",
+					"action": map[string]any{
+						"type":  "search",
+						"query": "latest ai news",
+					},
+				}},
+			},
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: &text,
+					},
+					Annotations: []llm.Annotation{{
+						Type: "url_citation",
+						URLCitation: &llm.URLCitation{
+							URL:   "https://example.com/result",
+							Title: "Example Result",
+						},
+					}},
+				},
+			}},
+		},
+		{
+			ID:     "msg_annotations_stream_web_search",
+			Object: "chat.completion.chunk",
+			Model:  "gpt-4o-search-preview",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &stop,
+			}},
+			Usage: &llm.Usage{},
+		},
+	}
+
+	events := collectInboundStreamEvents(t, transformer, input)
+
+	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{{
+		Type:  "web_search_result_location",
+		URL:   "https://example.com/result",
+		Title: "Example Result",
+	}})
+}
 
 func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	transformer := NewInboundTransformer()

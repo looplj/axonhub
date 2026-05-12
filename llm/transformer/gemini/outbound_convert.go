@@ -261,10 +261,11 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 					tools = append(tools, functionTool)
 				}
 
-			case llm.ToolTypeGoogleSearch:
-				if tool.Google != nil && tool.Google.Search != nil {
-					tools = append(tools, &Tool{GoogleSearch: &GoogleSearch{}})
+			case llm.ToolTypeGoogleSearch, llm.ToolTypeWebSearch:
+				if tool.Type == llm.ToolTypeGoogleSearch && (tool.Google == nil || tool.Google.Search == nil) {
+					break
 				}
+				tools = append(tools, &Tool{GoogleSearch: &GoogleSearch{}})
 
 			case llm.ToolTypeGoogleCodeExecution:
 				if tool.Google != nil && tool.Google.CodeExecution != nil {
@@ -533,6 +534,86 @@ func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bo
 // TransformerMetadataKeyGroundingMetadata is the key for storing GroundingMetadata in TransformerMetadata.
 const TransformerMetadataKeyGroundingMetadata = "gemini_grounding_metadata"
 
+func deriveGeminiAnnotations(candidate *Candidate) []llm.Annotation {
+	if candidate == nil {
+		return nil
+	}
+
+	if candidate.CitationMetadata != nil && len(candidate.CitationMetadata.Citations) > 0 {
+		annotations := make([]llm.Annotation, 0, len(candidate.CitationMetadata.Citations))
+		for _, citation := range candidate.CitationMetadata.Citations {
+			if citation == nil {
+				continue
+			}
+
+			annotations = append(annotations, llm.Annotation{
+				Type:       "url_citation",
+				StartIndex: lo.ToPtr(citation.StartIndex),
+				EndIndex:   lo.ToPtr(citation.EndIndex),
+				URLCitation: &llm.URLCitation{
+					URL:   citation.URI,
+					Title: citation.Title,
+				},
+			})
+		}
+
+		if len(annotations) > 0 {
+			return annotations
+		}
+	}
+
+	if candidate.GroundingMetadata == nil {
+		return nil
+	}
+
+	annotations := make([]llm.Annotation, 0)
+	for _, support := range candidate.GroundingMetadata.GroundingSupports {
+		if support == nil || support.Segment == nil {
+			continue
+		}
+
+		for _, idx := range support.GroundingChunkIndices {
+			if idx < 0 || int(idx) >= len(candidate.GroundingMetadata.GroundingChunks) {
+				continue
+			}
+
+			chunk := candidate.GroundingMetadata.GroundingChunks[idx]
+			if chunk == nil {
+				continue
+			}
+
+			url := ""
+			title := ""
+			switch {
+			case chunk.Web != nil:
+				url = chunk.Web.URI
+				title = chunk.Web.Title
+			case chunk.RetrievedContext != nil:
+				url = chunk.RetrievedContext.URI
+				title = chunk.RetrievedContext.Title
+			default:
+				continue
+			}
+
+			annotations = append(annotations, llm.Annotation{
+				Type:       "url_citation",
+				StartIndex: lo.ToPtr(int64(support.Segment.StartIndex)),
+				EndIndex:   lo.ToPtr(int64(support.Segment.EndIndex)),
+				URLCitation: &llm.URLCitation{
+					URL:   url,
+					Title: title,
+				},
+			})
+		}
+	}
+
+	if len(annotations) == 0 {
+		return nil
+	}
+
+	return annotations
+}
+
 // convertGeminiToLLMResponseWithState converts Gemini response with tool call index tracking.
 // Returns the response and the next tool call index to use.
 func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int) (*llm.Response, int) {
@@ -693,6 +774,10 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 		// Set reasoning content
 		if reasoningContent != "" {
 			msg.ReasoningContent = &reasoningContent
+		}
+
+		if annotations := deriveGeminiAnnotations(candidate); len(annotations) > 0 {
+			msg.Annotations = annotations
 		}
 
 		// Set Delta for streaming, Message for non-streaming

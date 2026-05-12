@@ -168,6 +168,11 @@ const TransformerMetadataKeyThinkingDisplay = "thinking_display"
 // Anthropic's automatic caching behavior is preserved.
 const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
 
+// TransformerMetadataKeyAnthropicResponseContent stores provider-native Anthropic response content blocks
+// so outbound->unified->inbound round-trip can restore Anthropic-only blocks such as
+// server_tool_use and web_search_tool_result without expanding the unified llm schema.
+const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_content"
+
 type Thinking struct {
 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
@@ -330,6 +335,9 @@ type MessageContentBlock struct {
 	// Text will be present if type is "text".
 	Text *string `json:"text,omitempty"`
 
+	// Citations will be present if type is "text".
+	Citations []TextCitation `json:"citations,omitempty"`
+
 	// Thinking will be present if type is "thinking".
 	Thinking *string `json:"thinking,omitempty"`
 
@@ -352,9 +360,26 @@ type MessageContentBlock struct {
 	// Tool result fields
 	ToolUseID *string `json:"tool_use_id,omitempty"`
 	// The content of the tool result.
-	// Type can be "text" or "image".
+	// Type can be "text", "image", or provider-native search result block types.
 	Content *MessageContent `json:"content,omitempty"`
 	IsError *bool           `json:"is_error,omitempty"`
+
+	// Provider-native web search result fields.
+	URL              string  `json:"url,omitempty"`
+	Title            string  `json:"title,omitempty"`
+	EncryptedContent *string `json:"encrypted_content,omitempty"`
+	PageAge          *string `json:"page_age,omitempty"`
+}
+
+
+// TextCitation represents a citation attached to an Anthropic text block.
+type TextCitation struct {
+	Type string `json:"type,omitempty"`
+	URL  string `json:"url,omitempty"`
+	Title string `json:"title,omitempty"`
+
+	EncryptedIndex *string `json:"encrypted_index,omitempty"`
+	CitedText      *string `json:"cited_text,omitempty"`
 }
 
 func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
@@ -429,6 +454,9 @@ type StreamDelta struct {
 
 	// PartialJSON will be present if type is "input_json_delta".
 	PartialJSON *string `json:"partial_json,omitempty"`
+
+	// Citation will be present if type is "citations_delta".
+	Citation *TextCitation `json:"citation,omitempty"`
 
 	// Thinking will be present if type is "thinking_delta".
 	Thinking *string `json:"thinking,omitempty"`

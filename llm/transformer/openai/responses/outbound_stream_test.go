@@ -132,6 +132,352 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	require.Contains(t, err.Error(), "Something went wrong")
 }
 
+func TestOutboundTransformer_TransformStream_PreservesFinalItemAnnotations(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type":"response.created",
+				"response":{
+					"id":"resp_stream_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"in_progress",
+					"output":[]
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: []byte(`{
+				"type":"response.output_item.added",
+				"output_index":0,
+				"item":{
+					"id":"msg_stream_annotations",
+					"type":"message",
+					"status":"in_progress",
+					"role":"assistant"
+				}
+			}`),
+		},
+		{
+			Type: "response.content_part.added",
+			Data: []byte(`{
+				"type":"response.content_part.added",
+				"item_id":"msg_stream_annotations",
+				"output_index":0,
+				"content_index":0,
+				"part":{
+					"type":"output_text",
+					"text":""
+				}
+			}`),
+		},
+		{
+			Type: "response.output_text.delta",
+			Data: []byte(`{
+				"type":"response.output_text.delta",
+				"item_id":"msg_stream_annotations",
+				"output_index":0,
+				"content_index":0,
+				"delta":"Search result"
+			}`),
+		},
+		{
+			Type: "response.output_text.done",
+			Data: []byte(`{
+				"type":"response.output_text.done",
+				"item_id":"msg_stream_annotations",
+				"output_index":0,
+				"content_index":0,
+				"text":"Search result"
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type":"response.output_item.done",
+				"output_index":0,
+				"item":{
+					"id":"msg_stream_annotations",
+					"type":"message",
+					"status":"completed",
+					"role":"assistant",
+					"content":[{
+						"type":"output_text",
+						"text":"Search result",
+						"annotations":[{
+							"type":"url_citation",
+							"start_index":0,
+							"end_index":6,
+							"url_citation":{
+								"url":"https://example.com/result",
+								"title":"Example Result"
+							}
+						}]
+					}]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type":"response.completed",
+				"response":{
+					"id":"resp_stream_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"completed",
+					"output":[]
+				}
+			}`),
+		},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, actual)
+
+	var found []llm.Annotation
+	for _, resp := range actual {
+		if resp == llm.DoneResponse {
+			continue
+		}
+		for _, choice := range resp.Choices {
+			if choice.Message != nil && len(choice.Message.Annotations) > 0 {
+				found = choice.Message.Annotations
+				break
+			}
+			if choice.Delta != nil && len(choice.Delta.Annotations) > 0 {
+				found = choice.Delta.Annotations
+				break
+			}
+		}
+		if len(found) > 0 {
+			break
+		}
+	}
+
+	require.Len(t, found, 1)
+	require.Equal(t, "url_citation", found[0].Type)
+	require.NotNil(t, found[0].URLCitation)
+	require.Equal(t, "https://example.com/result", found[0].URLCitation.URL)
+	require.Equal(t, "Example Result", found[0].URLCitation.Title)
+	require.NotNil(t, found[0].StartIndex)
+	require.NotNil(t, found[0].EndIndex)
+	require.EqualValues(t, 0, *found[0].StartIndex)
+	require.EqualValues(t, 6, *found[0].EndIndex)
+}
+
+func TestOutboundTransformer_TransformStream_PreservesWebSearchMetadataOnAnnotationChunk(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type":"response.created",
+				"response":{
+					"id":"resp_stream_web_search_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"in_progress",
+					"output":[]
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type":"response.output_item.done",
+				"output_index":0,
+				"item":{
+					"id":"ws_123",
+					"type":"web_search_call",
+					"status":"completed",
+					"action":{
+						"type":"search",
+						"query":"latest ai news",
+						"sources":[{"type":"url","url":"https://example.com/source","title":"Example Source"}]
+					}
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type":"response.output_item.done",
+				"output_index":1,
+				"item":{
+					"id":"msg_stream_web_search_annotations",
+					"type":"message",
+					"status":"completed",
+					"role":"assistant",
+					"content":[{
+						"type":"output_text",
+						"text":"Search result",
+						"annotations":[{
+							"type":"url_citation",
+							"url_citation":{
+								"url":"https://example.com/result",
+								"title":"Example Result"
+							}
+						}]
+					}]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type":"response.completed",
+				"response":{
+					"id":"resp_stream_web_search_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"completed",
+					"output":[]
+				}
+			}`),
+		},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, actual)
+
+	var annotationChunk *llm.Response
+	for _, resp := range actual {
+		if resp == llm.DoneResponse {
+			continue
+		}
+		for _, choice := range resp.Choices {
+			if choice.Delta != nil && len(choice.Delta.Annotations) > 0 {
+				annotationChunk = resp
+				break
+			}
+		}
+		if annotationChunk != nil {
+			break
+		}
+	}
+
+	require.NotNil(t, annotationChunk)
+	require.NotNil(t, annotationChunk.TransformerMetadata)
+	calls, ok := annotationChunk.TransformerMetadata[responsesWebSearchCallsTransformerMetadataKey]
+	require.True(t, ok)
+	require.NotNil(t, calls)
+}
+
+func TestOutboundTransformer_TransformStream_PreservesWebSearchMetadataWithoutAnnotations(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type":"response.created",
+				"response":{
+					"id":"resp_stream_web_search_no_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"in_progress",
+					"output":[]
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type":"response.output_item.done",
+				"output_index":0,
+				"item":{
+					"id":"ws_456",
+					"type":"web_search_call",
+					"status":"completed",
+					"action":{
+						"type":"search",
+						"query":"latest ai news",
+						"sources":[{"type":"url","url":"https://example.com/source","title":"Example Source"}]
+					}
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type":"response.output_item.done",
+				"output_index":1,
+				"item":{
+					"id":"msg_stream_web_search_no_annotations",
+					"type":"message",
+					"status":"completed",
+					"role":"assistant",
+					"content":[{
+						"type":"output_text",
+						"text":"Search result without inline citations"
+					}]
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type":"response.completed",
+				"response":{
+					"id":"resp_stream_web_search_no_annotations",
+					"object":"response",
+					"created_at":1700000000,
+					"model":"gpt-4o-search-preview",
+					"status":"completed",
+					"output":[]
+				}
+			}`),
+		},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, actual)
+
+	var metadataChunk *llm.Response
+	for _, resp := range actual {
+		if resp == llm.DoneResponse {
+			continue
+		}
+		if resp.TransformerMetadata != nil {
+			if _, ok := resp.TransformerMetadata[responsesWebSearchCallsTransformerMetadataKey]; ok {
+				metadataChunk = resp
+				break
+			}
+		}
+	}
+
+	require.NotNil(t, metadataChunk)
+	calls, ok := metadataChunk.TransformerMetadata[responsesWebSearchCallsTransformerMetadataKey]
+	require.True(t, ok)
+	require.NotNil(t, calls)
+}
+
 func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

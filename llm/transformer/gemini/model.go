@@ -123,6 +123,46 @@ type Tool struct {
 	UrlContext *UrlContext `json:"urlContext,omitempty"`
 }
 
+func (t *Tool) UnmarshalJSON(data []byte) error {
+	type toolAlias struct {
+		FunctionDeclarations      []*FunctionDeclaration `json:"functionDeclarations,omitempty"`
+		FunctionDeclarationsSnake []*FunctionDeclaration `json:"function_declarations,omitempty"`
+		CodeExecution             *CodeExecution         `json:"codeExecution,omitempty"`
+		CodeExecutionSnake        *CodeExecution         `json:"code_execution,omitempty"`
+		GoogleSearch              *GoogleSearch          `json:"googleSearch,omitempty"`
+		GoogleSearchSnake         *GoogleSearch          `json:"google_search,omitempty"`
+		UrlContext                *UrlContext            `json:"urlContext,omitempty"`
+		UrlContextSnake           *UrlContext            `json:"url_context,omitempty"`
+	}
+
+	var alias toolAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	t.FunctionDeclarations = alias.FunctionDeclarations
+	if len(t.FunctionDeclarations) == 0 {
+		t.FunctionDeclarations = alias.FunctionDeclarationsSnake
+	}
+
+	t.CodeExecution = alias.CodeExecution
+	if t.CodeExecution == nil {
+		t.CodeExecution = alias.CodeExecutionSnake
+	}
+
+	t.GoogleSearch = alias.GoogleSearch
+	if t.GoogleSearch == nil {
+		t.GoogleSearch = alias.GoogleSearchSnake
+	}
+
+	t.UrlContext = alias.UrlContext
+	if t.UrlContext == nil {
+		t.UrlContext = alias.UrlContextSnake
+	}
+
+	return nil
+}
+
 // FunctionDeclaration represents a function declaration.
 type FunctionDeclaration struct {
 	// Optional. Defines the function behavior.

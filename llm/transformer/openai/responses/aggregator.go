@@ -60,8 +60,9 @@ type aggregatedSummaryPart struct {
 
 // aggregatedContentPart holds the accumulated state for a content part.
 type aggregatedContentPart struct {
-	Type string
-	Text *strings.Builder
+	Type        string
+	Text        *strings.Builder
+	Annotations []Annotation
 }
 
 func newAggregatedItem() *aggregatedItem {
@@ -75,6 +76,22 @@ func newAggregatedContentPart() *aggregatedContentPart {
 	return &aggregatedContentPart{
 		Text: &strings.Builder{},
 	}
+}
+
+func ensureContentPart(item *aggregatedItem, contentIndex int) *aggregatedContentPart {
+	if item == nil || contentIndex < 0 {
+		return nil
+	}
+
+	for len(item.Content) <= contentIndex {
+		item.Content = append(item.Content, newAggregatedContentPart())
+	}
+
+	if item.Content[contentIndex] == nil {
+		item.Content[contentIndex] = newAggregatedContentPart()
+	}
+
+	return item.Content[contentIndex]
 }
 
 func ensureSummaryPart(item *aggregatedItem, summaryIndex int) *aggregatedSummaryPart {
@@ -265,6 +282,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 				if ev.Part.Text != nil {
 					contentPart.Text.WriteString(*ev.Part.Text)
 				}
+				contentPart.Annotations = append([]Annotation(nil), ev.Part.Annotations...)
 			}
 
 			item.Content = append(item.Content, contentPart)
@@ -449,6 +467,24 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					item.Arguments.WriteString(ev.Item.Arguments)
 				}
 
+				if ev.Item.Content != nil {
+					for idx, contentItem := range ev.Item.Content.Items {
+						part := ensureContentPart(item, idx)
+						if part == nil {
+							continue
+						}
+						if contentItem.Type != "" {
+							part.Type = contentItem.Type
+						}
+						if contentItem.Text != nil {
+							applyDoneText(part.Text, *contentItem.Text)
+						}
+						if contentItem.Annotations != nil {
+							part.Annotations = append([]Annotation(nil), contentItem.Annotations...)
+						}
+					}
+				}
+
 				if len(ev.Item.Summary) > 0 {
 					for idx, s := range ev.Item.Summary {
 						part := ensureSummaryPart(item, idx)
@@ -509,8 +545,9 @@ func (a *streamAggregator) buildResponse() *Response {
 				for _, cp := range item.Content {
 					text := cp.Text.String()
 					contentItems = append(contentItems, Item{
-						Type: cp.Type,
-						Text: &text,
+						Type:        cp.Type,
+						Text:        &text,
+						Annotations: append([]Annotation(nil), cp.Annotations...),
 					})
 				}
 

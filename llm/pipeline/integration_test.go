@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	responsestransformer "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 // mockExecutor implements the Executor interface for testing.
@@ -245,6 +246,106 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 	require.Equal(t, "claude-3-sonnet-20240229", finalResponse.Model)
 	require.Equal(t, "Hello! I'm Claude, how can I assist you today?", *finalResponse.Choices[0].Message.Content.Content)
 	require.Equal(t, "stop", *finalResponse.Choices[0].FinishReason)
+}
+
+func TestPipeline_Anthropic_to_OpenAIResponses_PreservesFlatURLCitationFields(t *testing.T) {
+	ctx := context.Background()
+
+	inbound := anthropic.NewInboundTransformer()
+	outbound, err := responsestransformer.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	mockResponsesBody := []byte(`{
+		"object":"response",
+		"id":"resp_flat_url_citation",
+		"created_at":1759161016,
+		"model":"gpt-4.1",
+		"status":"completed",
+		"output":[
+			{
+				"id":"msg_flat_url_citation",
+				"type":"message",
+				"status":"completed",
+				"role":"assistant",
+				"content":[
+					{
+						"type":"output_text",
+						"text":"Source grounded answer",
+						"annotations":[
+							{
+								"type":"url_citation",
+								"start_index":0,
+								"end_index":6,
+								"url":"https://example.com/flat",
+								"title":"Flat Citation"
+							}
+						]
+					}
+				]
+			}
+		],
+		"usage":{"input_tokens":10,"output_tokens":5,"total_tokens":15}
+	}`)
+
+	executor := &mockExecutor{
+		doFunc: func(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
+			require.Equal(t, http.MethodPost, request.Method)
+			require.Contains(t, request.URL, "/responses")
+			require.Nil(t, request.Auth)
+			require.Equal(t, "Bearer test-api-key", request.Headers.Get("Authorization"))
+
+			return &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: mockResponsesBody,
+			}, nil
+		},
+	}
+
+	factory := pipeline.NewFactory(executor)
+	pipeline := factory.Pipeline(inbound, outbound)
+
+	requestBody := map[string]any{
+		"model":      "claude-3-7-sonnet-latest",
+		"max_tokens": 1024,
+		"messages": []map[string]any{{
+			"role":    "user",
+			"content": "Search something",
+		}},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	httpRequest := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/messages",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: requestBodyBytes,
+	}
+
+	result, err := pipeline.Process(ctx, httpRequest)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.False(t, result.Stream)
+	require.NotNil(t, result.Response)
+
+	var finalResponse anthropic.Message
+	err = json.Unmarshal(result.Response.Body, &finalResponse)
+	require.NoError(t, err)
+	require.Equal(t, "resp_flat_url_citation", finalResponse.ID)
+	require.Equal(t, "gpt-4.1", finalResponse.Model)
+	require.Len(t, finalResponse.Content, 1)
+	require.Equal(t, "text", finalResponse.Content[0].Type)
+	require.Equal(t, "Source grounded answer", lo.FromPtr(finalResponse.Content[0].Text))
+	require.Len(t, finalResponse.Content[0].Citations, 1)
+	require.Equal(t, "url_citation", finalResponse.Content[0].Citations[0].Type)
+	require.Equal(t, "https://example.com/flat", finalResponse.Content[0].Citations[0].URL)
+	require.Equal(t, "Flat Citation", finalResponse.Content[0].Citations[0].Title)
 }
 
 // TestPipeline_Anthropic_to_OpenAI tests the pipeline with Anthropic inbound and OpenAI outbound transformers.

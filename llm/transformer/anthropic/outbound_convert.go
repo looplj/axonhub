@@ -912,6 +912,30 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	}, true
 }
 
+func llmAnnotationFromCitation(citation TextCitation) (llm.Annotation, bool) {
+	if citation.Type == "" {
+		return llm.Annotation{}, false
+	}
+
+	annotation := llm.Annotation{Type: citation.Type}
+	if citation.URL != "" || citation.Title != "" {
+		annotation.URLCitation = &llm.URLCitation{
+			URL:   citation.URL,
+			Title: citation.Title,
+		}
+	}
+
+	return annotation, true
+}
+
+func cloneAnthropicResponseContentBlocks(blocks []MessageContentBlock) []MessageContentBlock {
+	if len(blocks) == 0 {
+		return nil
+	}
+
+	return xjson.MustTo[[]MessageContentBlock](xjson.MustMarshal(blocks))
+}
+
 // convertToLlmResponse converts Anthropic Message to unified Response format.
 func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *llm.Response {
 	if anthropicResp == nil {
@@ -923,6 +947,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		}
 	}
 
+	var transformerMetadata map[string]any
 	resp := &llm.Response{
 		ID:          anthropicResp.ID,
 		Object:      "chat.completion",
@@ -939,6 +964,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		thinkingSignature    *string
 		redactedThinkingData *string
 		toolCalls            []llm.ToolCall
+		annotations          []llm.Annotation
 		textParts            []string
 	)
 
@@ -952,6 +978,11 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 					Text:     block.Text,
 					ImageURL: &llm.ImageURL{},
 				})
+			}
+			if len(block.Citations) > 0 {
+				annotations = append(annotations, lo.FilterMap(block.Citations, func(citation TextCitation, _ int) (llm.Annotation, bool) {
+					return llmAnnotationFromCitation(citation)
+				})...)
 			}
 		case "image":
 			if block.Source != nil {
@@ -976,6 +1007,11 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 				}
 				toolCalls = append(toolCalls, toolCall)
 			}
+		case "server_tool_use", "web_search_tool_result":
+			if transformerMetadata == nil {
+				transformerMetadata = map[string]any{}
+			}
+			transformerMetadata[TransformerMetadataKeyAnthropicResponseContent] = cloneAnthropicResponseContentBlocks(anthropicResp.Content)
 		case "thinking":
 			if block.Thinking != nil {
 				thinkingText = block.Thinking
@@ -1009,6 +1045,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		ReasoningContent:         thinkingText,
 		ReasoningSignature:       shared.EncodeAnthropicSignature(thinkingSignature),
 		RedactedReasoningContent: redactedThinkingData,
+		Annotations:              annotations,
 	}
 
 	choice := llm.Choice{
@@ -1020,6 +1057,9 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 	resp.Choices = []llm.Choice{choice}
 
 	resp.Usage = convertToLlmUsage(anthropicResp.Usage, platformType)
+	if transformerMetadata != nil {
+		resp.TransformerMetadata = transformerMetadata
+	}
 
 	return resp
 }

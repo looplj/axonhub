@@ -221,6 +221,93 @@ func TestConvertToolMessage(t *testing.T) {
 	}
 }
 
+func TestConvertWebSearchToTool(t *testing.T) {
+	tests := []struct {
+		name     string
+		src      llm.Tool
+		expected Tool
+	}{
+		{
+			name: "minimal web search tool preserves type without asserting nil internals",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+			},
+			expected: Tool{
+				Type: "web_search",
+			},
+		},
+		{
+			name: "web search maps explicit allowed domains and user location fields",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{
+					AllowedDomains: []string{"example.com", "docs.example.com"},
+					UserLocation: llm.WebSearchToolUserLocation{
+						Type:     "approximate",
+						City:     "San Francisco",
+						Region:   "CA",
+						Country:  "US",
+						Timezone: "America/Los_Angeles",
+					},
+				},
+			},
+			expected: Tool{
+				Type: "web_search",
+				Filters: &WebSearchFilters{
+					AllowedDomains: []string{"example.com", "docs.example.com"},
+				},
+				UserLocation: &WebSearchUserLocation{
+					Type:     "approximate",
+					City:     "San Francisco",
+					Region:   "CA",
+					Country:  "US",
+					Timezone: "America/Los_Angeles",
+				},
+			},
+		},
+		{
+			name: "web search defaults location type to approximate when omitted",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{
+					UserLocation: llm.WebSearchToolUserLocation{
+						Country: "US",
+					},
+				},
+			},
+			expected: Tool{
+				Type: "web_search",
+				UserLocation: &WebSearchUserLocation{
+					Type:    "approximate",
+					Country: "US",
+				},
+			},
+		},
+		{
+			name: "anthropic only strict and max uses are ignored when they are the only fields",
+			src: llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{
+					Strict:  lo.ToPtr(true),
+					MaxUses: lo.ToPtr(int64(3)),
+				},
+			},
+			expected: Tool{
+				Type: "web_search",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertWebSearchToTool(tt.src)
+			require.Equal(t, tt.expected, result)
+			require.Equal(t, "web_search", result.Type)
+			require.Empty(t, result.Parameters)
+		})
+	}
+}
+
 func TestConvertStreamOptions(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -737,6 +824,22 @@ func TestConvertOutputToMessage(t *testing.T) {
 			},
 		},
 		{
+			name: "message output with nil content",
+			output: []Item{
+				{
+					ID:      "msg_nil",
+					Type:    "message",
+					Content: nil,
+				},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Equal(t, "msg_nil", msg.ID)
+				require.Nil(t, msg.Content.Content)
+				require.Nil(t, msg.Content.MultipleContent)
+				require.Empty(t, msg.Annotations)
+			},
+		},
+		{
 			name: "direct output_text item",
 			output: []Item{
 				{Type: "output_text", Text: lo.ToPtr("Direct text")},
@@ -744,6 +847,101 @@ func TestConvertOutputToMessage(t *testing.T) {
 			validate: func(t *testing.T, msg llm.Message) {
 				require.NotNil(t, msg.Content.Content)
 				require.Equal(t, "Direct text", *msg.Content.Content)
+			},
+		},
+		{
+			name: "output_text annotations are converted",
+			output: []Item{
+				{
+					ID:   "msg_annotated",
+					Type: "message",
+					Content: &Input{Items: []Item{
+						{
+							Type: "output_text",
+							Text: lo.ToPtr("Alpha"),
+							Annotations: []Annotation{
+								{
+									Type:       "url_citation",
+									StartIndex: lo.ToPtr(int64(0)),
+									EndIndex:   lo.ToPtr(int64(5)),
+									URLCitation: &URLCitation{
+										URL:   "https://example.com/alpha",
+										Title: "Alpha Source",
+									},
+								},
+							},
+						},
+					}},
+				},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Equal(t, "msg_annotated", msg.ID)
+				require.NotNil(t, msg.Content.Content)
+				require.Equal(t, "Alpha", *msg.Content.Content)
+				require.Len(t, msg.Annotations, 1)
+				require.Equal(t, "url_citation", msg.Annotations[0].Type)
+				require.NotNil(t, msg.Annotations[0].StartIndex)
+				require.Equal(t, int64(0), *msg.Annotations[0].StartIndex)
+				require.NotNil(t, msg.Annotations[0].EndIndex)
+				require.Equal(t, int64(5), *msg.Annotations[0].EndIndex)
+				require.NotNil(t, msg.Annotations[0].URLCitation)
+				require.Equal(t, "https://example.com/alpha", msg.Annotations[0].URLCitation.URL)
+				require.Equal(t, "Alpha Source", msg.Annotations[0].URLCitation.Title)
+			},
+		},
+		{
+			name: "output_text annotations are rebased across items using rune length",
+			output: []Item{
+				{
+					Type: "message",
+					Content: &Input{Items: []Item{
+						{
+							Type: "output_text",
+							Text: lo.ToPtr("你好"),
+							Annotations: []Annotation{
+								{
+									Type:       "url_citation",
+									StartIndex: lo.ToPtr(int64(0)),
+									EndIndex:   lo.ToPtr(int64(2)),
+									URLCitation: &URLCitation{
+										URL:   "https://example.com/nihao",
+										Title: "Ni Hao",
+									},
+								},
+							},
+						},
+					}},
+				},
+				{
+					Type: "output_text",
+					Text: lo.ToPtr("世界"),
+					Annotations: []Annotation{
+						{
+							Type:       "url_citation",
+							StartIndex: lo.ToPtr(int64(0)),
+							EndIndex:   lo.ToPtr(int64(2)),
+							URLCitation: &URLCitation{
+								URL:   "https://example.com/shijie",
+								Title: "Shi Jie",
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.NotNil(t, msg.Content.Content)
+				require.Equal(t, "你好世界", *msg.Content.Content)
+				require.Len(t, msg.Annotations, 2)
+				require.NotNil(t, msg.Annotations[0].StartIndex)
+				require.Equal(t, int64(0), *msg.Annotations[0].StartIndex)
+				require.NotNil(t, msg.Annotations[0].EndIndex)
+				require.Equal(t, int64(2), *msg.Annotations[0].EndIndex)
+				require.NotNil(t, msg.Annotations[1].StartIndex)
+				require.Equal(t, int64(2), *msg.Annotations[1].StartIndex)
+				require.NotNil(t, msg.Annotations[1].EndIndex)
+				require.Equal(t, int64(4), *msg.Annotations[1].EndIndex)
+				require.NotNil(t, msg.Annotations[1].URLCitation)
+				require.Equal(t, "https://example.com/shijie", msg.Annotations[1].URLCitation.URL)
 			},
 		},
 		{

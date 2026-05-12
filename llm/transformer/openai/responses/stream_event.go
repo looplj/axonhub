@@ -111,6 +111,8 @@ type StreamEventContentPart struct {
 	Type string `json:"type"`
 	// The text of the part, for output_text.
 	Text *string `json:"text,omitempty"`
+	// The annotations of the output text part.
+	Annotations []Annotation `json:"annotations,omitzero"`
 	// The refusal reason, for refusal.
 	Refusal *string `json:"refusal,omitempty"`
 }

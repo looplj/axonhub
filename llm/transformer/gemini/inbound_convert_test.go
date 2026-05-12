@@ -2038,6 +2038,59 @@ func TestRoundTrip_LLMResponse_ToGemini_BackToLLM(t *testing.T) {
 	}
 }
 
+func TestConvertLLMToGeminiResponse_CitationMetadataFallback(t *testing.T) {
+	resp := convertLLMToGeminiResponse(&llm.Response{
+		ID:    "resp_gemini_fallback",
+		Model: "gemini-2.5-flash",
+		Choices: []llm.Choice{{
+			Message: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{Content: lo.ToPtr("Grounded answer")},
+				Annotations: []llm.Annotation{{
+					Type:       "url_citation",
+					StartIndex: lo.ToPtr(int64(0)),
+					EndIndex:   lo.ToPtr(int64(8)),
+					URLCitation: &llm.URLCitation{URL: "https://example.com/fallback", Title: "Fallback Source"},
+				}},
+			},
+		}},
+	}, false)
+
+	require.Len(t, resp.Candidates, 1)
+	require.Nil(t, resp.Candidates[0].GroundingMetadata)
+	require.NotNil(t, resp.Candidates[0].CitationMetadata)
+	require.Len(t, resp.Candidates[0].CitationMetadata.Citations, 1)
+	require.Equal(t, "https://example.com/fallback", resp.Candidates[0].CitationMetadata.Citations[0].URI)
+	require.Equal(t, "Fallback Source", resp.Candidates[0].CitationMetadata.Citations[0].Title)
+	require.Equal(t, int64(0), resp.Candidates[0].CitationMetadata.Citations[0].StartIndex)
+	require.Equal(t, int64(8), resp.Candidates[0].CitationMetadata.Citations[0].EndIndex)
+}
+
+func TestConvertLLMToGeminiResponse_GroundingMetadataTakesPrecedenceOverAnnotations(t *testing.T) {
+	resp := convertLLMToGeminiResponse(&llm.Response{
+		ID:    "resp_gemini_priority",
+		Model: "gemini-2.5-flash",
+		Choices: []llm.Choice{{
+			Message: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{Content: lo.ToPtr("Grounded answer")},
+				Annotations: []llm.Annotation{{
+					Type:        "url_citation",
+					URLCitation: &llm.URLCitation{URL: "https://example.com/ignore", Title: "Ignore Me"},
+				}},
+			},
+			TransformerMetadata: map[string]any{
+				TransformerMetadataKeyGroundingMetadata: &GroundingMetadata{WebSearchQueries: []string{"authoritative query"}},
+			},
+		}},
+	}, false)
+
+	require.Len(t, resp.Candidates, 1)
+	require.NotNil(t, resp.Candidates[0].GroundingMetadata)
+	require.Equal(t, []string{"authoritative query"}, resp.Candidates[0].GroundingMetadata.WebSearchQueries)
+	require.Nil(t, resp.Candidates[0].CitationMetadata)
+}
+
 func TestConvertLLMToGeminiResponse_GroundingMetadata(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -22,7 +22,7 @@ type ImageGeneration struct {
 }
 
 type Tool struct {
-	// Any of "function", "image_generation", "custom".
+	// Any of "function", "image_generation", "custom", "web_search".
 	Type        string `json:"type,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
@@ -34,6 +34,10 @@ type Tool struct {
 
 	// This field is for custom tool format definition.
 	Format *CustomToolFormat `json:"format,omitempty"`
+
+	// These fields are for web search.
+	Filters      *WebSearchFilters      `json:"filters,omitempty"`
+	UserLocation *WebSearchUserLocation `json:"user_location,omitempty"`
 
 	// This field is for ImageGeneration
 	Background string `json:"background,omitempty"`
@@ -53,6 +57,18 @@ type Tool struct {
 	Quality string `json:"quality,omitempty"`
 	// This field is for ImageGeneration
 	Size string `json:"size,omitempty"`
+}
+
+type WebSearchFilters struct {
+	AllowedDomains []string `json:"allowed_domains,omitempty"`
+}
+
+type WebSearchUserLocation struct {
+	Type     string `json:"type,omitempty"`
+	City     string `json:"city,omitempty"`
+	Country  string `json:"country,omitempty"`
+	Region   string `json:"region,omitempty"`
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // CustomToolFormat represents the format definition for a custom tool.
@@ -77,7 +93,7 @@ type Request struct {
 
 	// Input can be a string prompt or an array of input items.
 	Input Input `json:"input"`
-	// Tools includes the function/image_generation tools.
+	// Tools includes the function/image_generation/web_search/custom tools.
 	Tools []Tool `json:"tools,omitzero"`
 	// Parallel tool calls preference.
 	ParallelToolCalls *bool `json:"parallel_tool_calls,omitempty"`
@@ -196,8 +212,8 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 }
 
 func (t *ToolChoice) MarshalJSON() ([]byte, error) {
-	if t.Mode != nil && *t.Mode == "auto" {
-		return json.Marshal("auto")
+	if t.Mode != nil && t.Type == nil && t.Name == nil && len(t.Tools) == 0 {
+		return json.Marshal(*t.Mode)
 	}
 
 	// For other cases, marshal as object
@@ -352,7 +368,66 @@ func (i Input) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.Items)
 }
 
-type Annotation struct{}
+type Annotation struct {
+	// Type is the type of annotation, e.g., "url_citation".
+	Type string `json:"type,omitempty"`
+	// StartIndex is the start offset of the annotated span in the output text.
+	StartIndex *int64 `json:"start_index,omitempty"`
+	// EndIndex is the end offset of the annotated span in the output text.
+	EndIndex *int64 `json:"end_index,omitempty"`
+	// URLCitation contains URL citation details when Type is "url_citation".
+	URLCitation *URLCitation `json:"url_citation,omitempty"`
+}
+
+func (a *Annotation) UnmarshalJSON(data []byte) error {
+	type rawAnnotation Annotation
+
+	var raw struct {
+		rawAnnotation
+		URL   *string `json:"url,omitempty"`
+		Title *string `json:"title,omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	*a = Annotation(raw.rawAnnotation)
+	if a.URLCitation == nil && (raw.URL != nil || raw.Title != nil) {
+		a.URLCitation = &URLCitation{}
+		if raw.URL != nil {
+			a.URLCitation.URL = *raw.URL
+		}
+		if raw.Title != nil {
+			a.URLCitation.Title = *raw.Title
+		}
+	}
+
+	return nil
+}
+
+// URLCitation represents a URL-based citation.
+type URLCitation struct {
+	// URL is the citation URL.
+	URL string `json:"url,omitempty"`
+	// Title is the title of the cited source.
+	Title string `json:"title,omitempty"`
+}
+
+const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
+
+type WebSearchSource struct {
+	Type  string `json:"type,omitempty"`
+	URL   string `json:"url,omitempty"`
+	Title string `json:"title,omitempty"`
+}
+
+type WebSearchAction struct {
+	Type    string            `json:"type,omitempty"`
+	Query   string            `json:"query,omitempty"`
+	Queries []string          `json:"queries,omitempty"`
+	Sources []WebSearchSource `json:"sources,omitempty"`
+}
 
 // Item is a unified structure for both input and output items in the Responses API.
 // This follows the openai-go pattern where input and output items share the same structure.
@@ -422,6 +497,9 @@ type Item struct {
 	ReasoningContent []ReasoningContent `json:"reasoning_content,omitempty"`
 	// The encrypted content of the reasoning item.
 	EncryptedContent *string `json:"encrypted_content,omitempty"`
+
+	// Web search action fields (for type="web_search_call").
+	Action *WebSearchAction `json:"action,omitempty"`
 
 	// Compaction fields (for type="compaction")
 	// The identifier of the actor that created the item.
@@ -534,8 +612,9 @@ func (item Item) GetContentItems() []ContentItem {
 		}
 
 		result = append(result, ContentItem{
-			Type: ci.Type,
-			Text: text,
+			Type:        ci.Type,
+			Text:        text,
+			Annotations: append([]Annotation(nil), ci.Annotations...),
 		})
 	}
 
@@ -552,8 +631,9 @@ func (item *Item) SetContentItems(items []ContentItem) {
 	contentItems := make([]Item, 0, len(items))
 	for _, ci := range items {
 		contentItems = append(contentItems, Item{
-			Type: ci.Type,
-			Text: &ci.Text,
+			Type:        ci.Type,
+			Text:        &ci.Text,
+			Annotations: append([]Annotation(nil), ci.Annotations...),
 		})
 	}
 
@@ -669,9 +749,9 @@ type Response struct {
 }
 
 type ContentItem struct {
-	Type        string   `json:"type"`
-	Text        string   `json:"text,omitempty"`
-	Annotations []string `json:"annotations,omitempty"`
+	Type        string       `json:"type"`
+	Text        string       `json:"text,omitempty"`
+	Annotations []Annotation `json:"annotations,omitempty"`
 }
 
 type Error struct {

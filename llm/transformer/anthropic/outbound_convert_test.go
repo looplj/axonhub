@@ -517,6 +517,60 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 	}
 }
 
+func TestConvertToLlmResponse_WithTextBlockCitations(t *testing.T) {
+	anthropicResp := &Message{
+		ID:   "msg_citations",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{
+				Type: "text",
+				Text: lo.ToPtr("Answer with sources"),
+				Citations: []TextCitation{
+					{
+						Type:           "url_citation",
+						URL:            "https://example.com/a",
+						Title:          "Example A",
+						EncryptedIndex: lo.ToPtr("secret"),
+						CitedText:      lo.ToPtr("quoted"),
+					},
+					{
+						Type:  "url_citation",
+						URL:   "https://example.com/b",
+						Title: "Example B",
+					},
+				},
+			},
+		},
+		Model: "claude-3-sonnet-20240229",
+	}
+
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+	require.NotNil(t, result)
+	require.Len(t, result.Choices, 1)
+	require.NotNil(t, result.Choices[0].Message)
+	require.Equal(t, []llm.Annotation{
+		{
+			Type: "url_citation",
+			URLCitation: &llm.URLCitation{
+				URL:   "https://example.com/a",
+				Title: "Example A",
+			},
+		},
+		{
+			Type: "url_citation",
+			URLCitation: &llm.URLCitation{
+				URL:   "https://example.com/b",
+				Title: "Example B",
+			},
+		},
+	}, result.Choices[0].Message.Annotations)
+	for _, annotation := range result.Choices[0].Message.Annotations {
+		require.Nil(t, annotation.StartIndex)
+		require.Nil(t, annotation.EndIndex)
+	}
+}
+
 func TestConvertToAnthropicRequest(t *testing.T) {
 	tests := []struct {
 		name     string

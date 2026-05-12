@@ -392,6 +392,10 @@ type Message struct {
 type Annotation struct {
 	// Type is the type of annotation, e.g., "url_citation"
 	Type string `json:"type,omitempty"`
+	// StartIndex is the start Unicode code-point (rune) offset of the annotated span in the message content.
+	StartIndex *int64 `json:"start_index,omitempty"`
+	// EndIndex is the end Unicode code-point (rune) offset of the annotated span in the message content.
+	EndIndex *int64 `json:"end_index,omitempty"`
 	// URLCitation contains URL citation details when Type is "url_citation"
 	URLCitation *URLCitation `json:"url_citation,omitempty"`
 }

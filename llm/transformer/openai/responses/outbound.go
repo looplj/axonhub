@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -149,6 +150,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 			// Store image output format in TransformerMetadata
 			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
+		case llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch:
+			tool := convertWebSearchToTool(item)
+			tools = append(tools, tool)
 		case llm.ToolTypeResponsesCustomTool:
 			tool := convertCustomToTool(item)
 			tools = append(tools, tool)
@@ -293,12 +297,13 @@ func (t *OutboundTransformer) transformStandardResponse(
 	}
 
 	llmResp := &llm.Response{
-		Object:             "chat.completion",
-		ID:                 resp.ID,
-		Model:              resp.Model,
-		Created:            resp.CreatedAt,
-		PreviousResponseID: resp.PreviousResponseID,
-		Choices:            make([]llm.Choice, 0),
+		Object:              "chat.completion",
+		ID:                  resp.ID,
+		Model:               resp.Model,
+		Created:             resp.CreatedAt,
+		PreviousResponseID:  resp.PreviousResponseID,
+		Choices:             make([]llm.Choice, 0),
+		TransformerMetadata: map[string]any{},
 	}
 
 	// Convert usage if present
@@ -306,12 +311,11 @@ func (t *OutboundTransformer) transformStandardResponse(
 		llmResp.Usage = resp.Usage.ToUsage()
 	}
 
-	var transformerMetadata map[string]any
-	if httpResp.Request != nil {
-		transformerMetadata = httpResp.Request.TransformerMetadata
+	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+		llmResp.TransformerMetadata = maps.Clone(httpResp.Request.TransformerMetadata)
 	}
 
-	msg := convertOutputToMessage(resp.Output, transformerMetadata)
+	msg := convertOutputToMessage(resp.Output, llmResp.TransformerMetadata)
 
 	choice := llm.Choice{
 		Index:   0,

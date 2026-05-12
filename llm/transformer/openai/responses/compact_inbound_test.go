@@ -233,6 +233,158 @@ func TestCompactInboundTransformer_TransformResponse(t *testing.T) {
 	})
 }
 
+
+func TestCompactInboundTransformer_TransformResponse_AttachesAnnotationsToFirstTextItem(t *testing.T) {
+	transformer := NewCompactInboundTransformer()
+	ctx := context.Background()
+
+	llmResp := &llm.Response{
+		RequestType: llm.RequestTypeCompact,
+		APIFormat:   llm.APIFormatOpenAIResponseCompact,
+		Compact: &llm.CompactResponse{
+			ID:        "resp_annotations",
+			CreatedAt: 1764968001,
+			Object:    "response.compaction",
+			Output: []llm.Message{{
+				ID:   "msg_annotations",
+				Role: "assistant",
+				Annotations: []llm.Annotation{{
+					Type:       "url_citation",
+					StartIndex: lo.ToPtr(int64(0)),
+					EndIndex:   lo.ToPtr(int64(5)),
+					URLCitation: &llm.URLCitation{
+						URL:   "https://example.com/compact",
+						Title: "Compact Example",
+					},
+				}},
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("Hello")},
+						{Type: "text", Text: lo.ToPtr(" world")},
+					},
+				},
+			}},
+		},
+	}
+
+	httpResp, err := transformer.TransformResponse(ctx, llmResp)
+	require.NoError(t, err)
+
+	var compactResp CompactAPIResponse
+	err = json.Unmarshal(httpResp.Body, &compactResp)
+	require.NoError(t, err)
+
+	require.Len(t, compactResp.Output, 1)
+	require.NotNil(t, compactResp.Output[0].Content)
+	require.Len(t, compactResp.Output[0].Content.Items, 2)
+	require.Len(t, compactResp.Output[0].Content.Items[0].Annotations, 1)
+	require.Empty(t, compactResp.Output[0].Content.Items[1].Annotations)
+	require.Equal(t, "https://example.com/compact", compactResp.Output[0].Content.Items[0].Annotations[0].URLCitation.URL)
+}
+
+func TestCompactInboundTransformer_TransformResponse_AttachesAnnotationsToFirstTextItemWhenCompactionSplitsText(t *testing.T) {
+	transformer := NewCompactInboundTransformer()
+	ctx := context.Background()
+
+	llmResp := &llm.Response{
+		RequestType: llm.RequestTypeCompact,
+		APIFormat:   llm.APIFormatOpenAIResponseCompact,
+		Compact: &llm.CompactResponse{
+			ID:        "resp_annotations_split",
+			CreatedAt: 1764968002,
+			Object:    "response.compaction",
+			Output: []llm.Message{{
+				ID:   "msg_annotations_split",
+				Role: "assistant",
+				Annotations: []llm.Annotation{{
+					Type:       "url_citation",
+					StartIndex: lo.ToPtr(int64(0)),
+					EndIndex:   lo.ToPtr(int64(5)),
+					URLCitation: &llm.URLCitation{
+						URL:   "https://example.com/compact-split",
+						Title: "Compact Split Example",
+					},
+				}},
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("Hello")},
+						{Type: "compaction_summary", Compact: &llm.CompactContent{ID: "cmp_1", EncryptedContent: "enc"}},
+						{Type: "text", Text: lo.ToPtr(" world")},
+					},
+				},
+			}},
+		},
+	}
+
+	httpResp, err := transformer.TransformResponse(ctx, llmResp)
+	require.NoError(t, err)
+
+	var compactResp CompactAPIResponse
+	err = json.Unmarshal(httpResp.Body, &compactResp)
+	require.NoError(t, err)
+
+	require.Len(t, compactResp.Output, 3)
+	require.Equal(t, "message", compactResp.Output[0].Type)
+	require.NotNil(t, compactResp.Output[0].Content)
+	require.Len(t, compactResp.Output[0].Content.Items, 1)
+	require.Len(t, compactResp.Output[0].Content.Items[0].Annotations, 1)
+	require.Equal(t, "https://example.com/compact-split", compactResp.Output[0].Content.Items[0].Annotations[0].URLCitation.URL)
+	require.Equal(t, "compaction_summary", compactResp.Output[1].Type)
+	require.Equal(t, "message", compactResp.Output[2].Type)
+	require.NotNil(t, compactResp.Output[2].Content)
+	require.Len(t, compactResp.Output[2].Content.Items, 1)
+	require.Empty(t, compactResp.Output[2].Content.Items[0].Annotations)
+}
+
+func TestCompactInboundTransformer_TransformResponse_AttachesAnnotationsToFirstEligibleTextItemAfterImage(t *testing.T) {
+	transformer := NewCompactInboundTransformer()
+	ctx := context.Background()
+
+	llmResp := &llm.Response{
+		RequestType: llm.RequestTypeCompact,
+		APIFormat:   llm.APIFormatOpenAIResponseCompact,
+		Compact: &llm.CompactResponse{
+			ID:        "resp_annotations_after_image",
+			CreatedAt: 1764968003,
+			Object:    "response.compaction",
+			Output: []llm.Message{{
+				ID:   "msg_annotations_after_image",
+				Role: "assistant",
+				Annotations: []llm.Annotation{{
+					Type:       "url_citation",
+					StartIndex: lo.ToPtr(int64(0)),
+					EndIndex:   lo.ToPtr(int64(5)),
+					URLCitation: &llm.URLCitation{
+						URL:   "https://example.com/after-image",
+						Title: "After Image Example",
+					},
+				}},
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/image.png"}},
+						{Type: "text", Text: lo.ToPtr("Hello")},
+					},
+				},
+			}},
+		},
+	}
+
+	httpResp, err := transformer.TransformResponse(ctx, llmResp)
+	require.NoError(t, err)
+
+	var compactResp CompactAPIResponse
+	err = json.Unmarshal(httpResp.Body, &compactResp)
+	require.NoError(t, err)
+
+	require.Len(t, compactResp.Output, 1)
+	require.NotNil(t, compactResp.Output[0].Content)
+	require.Len(t, compactResp.Output[0].Content.Items, 2)
+	require.Equal(t, "input_image", compactResp.Output[0].Content.Items[0].Type)
+	require.Equal(t, "output_text", compactResp.Output[0].Content.Items[1].Type)
+	require.Len(t, compactResp.Output[0].Content.Items[1].Annotations, 1)
+	require.Equal(t, "https://example.com/after-image", compactResp.Output[0].Content.Items[1].Annotations[0].URLCitation.URL)
+}
+
 func TestCompactInboundTransformer_TransformStream(t *testing.T) {
 	transformer := NewCompactInboundTransformer()
 	ctx := context.Background()

@@ -67,6 +67,10 @@ type outboundStreamState struct {
 	// Reasoning signature tracking
 	encryptedContentEmitted map[string]bool
 	hasEncryptedReasoning   bool
+
+	// Transformer metadata tracking
+	transformerMetadata        map[string]any
+	transformerMetadataEmitted bool
 }
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
@@ -77,6 +81,7 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 			itemToCallID:            make(map[string]string),
 			toolCallIndex:           make(map[string]int),
 			encryptedContentEmitted: make(map[string]bool),
+			transformerMetadata:     make(map[string]any),
 		},
 	}
 }
@@ -430,7 +435,37 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		// Reasoning content completed - skip, content was already streamed via deltas
 		return nil // Intentionally skip this event
 
-	case StreamEventTypeOutputItemDone, StreamEventTypeContentPartDone,
+	case StreamEventTypeOutputItemDone:
+		if streamEvent.Item == nil {
+			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "web_search_call" {
+			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
+			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type != "message" {
+			return nil // Intentionally skip this event
+		}
+
+		msg := convertOutputToMessage([]Item{*streamEvent.Item}, s.state.transformerMetadata)
+		if len(msg.Annotations) == 0 {
+			return nil // Intentionally skip this event
+		}
+		if len(s.state.transformerMetadata) > 0 {
+			resp.TransformerMetadata = s.state.transformerMetadata
+			s.state.transformerMetadataEmitted = true
+		}
+
+		resp.Choices = []llm.Choice{
+			{
+				Index: 0,
+				Delta: &llm.Message{
+					Annotations: msg.Annotations,
+				},
+			},
+		}
+
+	case StreamEventTypeContentPartDone,
 		StreamEventTypeReasoningSummaryPartAdded, StreamEventTypeReasoningSummaryPartDone:
 		// These events don't need special handling - skip
 		return nil // Intentionally skip this event
@@ -441,6 +476,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
+		}
+		if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
+			resp.TransformerMetadata = s.state.transformerMetadata
+			s.state.transformerMetadataEmitted = true
 		}
 
 		finishReason := "stop"

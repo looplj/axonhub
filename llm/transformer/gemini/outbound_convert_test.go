@@ -825,6 +825,32 @@ func TestConvertLLMToGeminiRequest_Tools(t *testing.T) {
 			},
 		},
 		{
+			name: "request with generic web search tool maps to google search",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Search the web"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type:      llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.Len(t, result.Tools, 1)
+				require.NotNil(t, result.Tools[0].GoogleSearch)
+				require.Nil(t, result.Tools[0].FunctionDeclarations)
+				require.Nil(t, result.Tools[0].CodeExecution)
+			},
+		},
+		{
 			name: "request with code execution tool",
 			input: &llm.Request{
 				Messages: []llm.Message{
@@ -2801,6 +2827,66 @@ func TestConvertLLMRoleToGeminiRole(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestConvertGeminiToLLMResponse_CitationMetadata(t *testing.T) {
+	resp := convertGeminiToLLMResponse(&GenerateContentResponse{
+		ResponseID:   "resp_citation_meta",
+		ModelVersion: "gemini-2.5-flash",
+		Candidates: []*Candidate{{
+			Index:   0,
+			Content: &Content{Role: "model", Parts: []*Part{{Text: "Grounded answer"}}},
+			CitationMetadata: &CitationMetadata{Citations: []*Citation{{
+				StartIndex: 0,
+				EndIndex:   8,
+				URI:        "https://example.com/citation",
+				Title:      "Citation Source",
+			}}},
+			FinishReason: "STOP",
+		}},
+	}, false)
+
+	require.Len(t, resp.Choices, 1)
+	require.NotNil(t, resp.Choices[0].Message)
+	require.Len(t, resp.Choices[0].Message.Annotations, 1)
+	require.Equal(t, "url_citation", resp.Choices[0].Message.Annotations[0].Type)
+	require.NotNil(t, resp.Choices[0].Message.Annotations[0].URLCitation)
+	require.Equal(t, "https://example.com/citation", resp.Choices[0].Message.Annotations[0].URLCitation.URL)
+	require.Equal(t, "Citation Source", resp.Choices[0].Message.Annotations[0].URLCitation.Title)
+	require.Equal(t, int64(0), lo.FromPtr(resp.Choices[0].Message.Annotations[0].StartIndex))
+	require.Equal(t, int64(8), lo.FromPtr(resp.Choices[0].Message.Annotations[0].EndIndex))
+}
+
+func TestConvertGeminiToLLMResponse_GroundingMetadataDerivesAnnotations(t *testing.T) {
+	resp := convertGeminiToLLMResponse(&GenerateContentResponse{
+		ResponseID:   "resp_grounding_annotations",
+		ModelVersion: "gemini-2.5-flash",
+		Candidates: []*Candidate{{
+			Index:   0,
+			Content: &Content{Role: "model", Parts: []*Part{{Text: "Grounded answer"}}},
+			GroundingMetadata: &GroundingMetadata{
+				GroundingChunks: []*GroundingChunk{{
+					Web: &GroundingChunkWeb{URI: "https://example.com/chunk", Title: "Chunk Source"},
+				}},
+				GroundingSupports: []*GroundingSupport{{
+					Segment:               &Segment{StartIndex: 0, EndIndex: 8},
+					GroundingChunkIndices: []int32{0},
+				}},
+			},
+			FinishReason: "STOP",
+		}},
+	}, false)
+
+	require.Len(t, resp.Choices, 1)
+	require.NotNil(t, resp.Choices[0].Message)
+	require.Len(t, resp.Choices[0].Message.Annotations, 1)
+	require.Equal(t, "url_citation", resp.Choices[0].Message.Annotations[0].Type)
+	require.NotNil(t, resp.Choices[0].Message.Annotations[0].URLCitation)
+	require.Equal(t, "https://example.com/chunk", resp.Choices[0].Message.Annotations[0].URLCitation.URL)
+	require.Equal(t, "Chunk Source", resp.Choices[0].Message.Annotations[0].URLCitation.Title)
+	require.Equal(t, int64(0), lo.FromPtr(resp.Choices[0].Message.Annotations[0].StartIndex))
+	require.Equal(t, int64(8), lo.FromPtr(resp.Choices[0].Message.Annotations[0].EndIndex))
+	require.NotNil(t, resp.Choices[0].TransformerMetadata)
 }
 
 func TestConvertGeminiToLLMResponse_GroundingMetadata(t *testing.T) {

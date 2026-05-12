@@ -22,9 +22,10 @@ func (t *InboundTransformer) TransformStream(
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	return &responsesInboundStream{
-		source:    stream,
-		ctx:       ctx,
-		toolCalls: make(map[int]*llm.ToolCall),
+		source:              stream,
+		ctx:                 ctx,
+		toolCalls:           make(map[int]*llm.ToolCall),
+		transformerMetadata: make(map[string]any),
 	}, nil
 }
 
@@ -44,6 +45,7 @@ type responsesInboundStream struct {
 	hasContentPartStarted   bool
 	hasFinished             bool
 	responseCompleted       bool
+	pendingAnnotations      []llm.Annotation
 
 	// Response metadata
 	responseID string
@@ -68,8 +70,9 @@ type responsesInboundStream struct {
 	toolCallOutputIndex map[int]int // Maps tool call index to output index
 
 	// Response accumulation using streamAggregator
-	usage      *llm.Usage
-	aggregator *streamAggregator
+	usage               *llm.Usage
+	aggregator          *streamAggregator
+	transformerMetadata map[string]any
 
 	// Event queue
 	eventQueue []*httpclient.StreamEvent
@@ -173,6 +176,10 @@ func (s *responsesInboundStream) Next() bool {
 		s.usage = chunk.Usage
 	}
 
+	if len(chunk.TransformerMetadata) > 0 {
+		s.mergeTransformerMetadata(chunk.TransformerMetadata)
+	}
+
 	// Generate response.created event if this is the first chunk
 	if !s.hasResponseCreated {
 		s.hasResponseCreated = true
@@ -189,7 +196,6 @@ func (s *responsesInboundStream) Next() bool {
 		if s.usage != nil {
 			response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
 		}
-
 		err := s.enqueueEvent(&StreamEvent{
 			Type:     StreamEventTypeResponseCreated,
 			Response: response,
@@ -232,6 +238,13 @@ func (s *responsesInboundStream) Next() bool {
 			}
 
 			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
+		}
+
+		if choice.Message != nil && len(choice.Message.Annotations) > 0 {
+			s.pendingAnnotations = append(s.pendingAnnotations, choice.Message.Annotations...)
+		}
+		if choice.Delta != nil && len(choice.Delta.Annotations) > 0 {
+			s.pendingAnnotations = append(s.pendingAnnotations, choice.Delta.Annotations...)
 		}
 
 		// Handle text content delta
@@ -277,6 +290,9 @@ func (s *responsesInboundStream) Next() bool {
 		s.aggregator.status = "completed"
 		response := s.aggregator.buildResponse()
 		response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
+		if calls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata); len(calls) > 0 {
+			response.Output = append(append([]Item(nil), calls...), response.Output...)
+		}
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:     StreamEventTypeResponseCompleted,
@@ -290,6 +306,18 @@ func (s *responsesInboundStream) Next() bool {
 
 	// Continue to the next event
 	return s.Next()
+}
+
+func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]any) {
+	if len(metadata) == 0 {
+		return
+	}
+
+	if calls := getResponseWebSearchCallsFromMetadata(metadata); len(calls) > 0 {
+		existingCalls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata)
+		mergedCalls := append(existingCalls, calls...)
+		s.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = mergedCalls
+	}
 }
 
 func (s *responsesInboundStream) handleReasoningContent(content *string) error {
@@ -399,19 +427,26 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 	if !s.hasContentPartStarted {
 		s.hasContentPartStarted = true
 
+		textPartItems, _ := attachAnnotationsToFirstTextItem([]Item{{
+			Type:        "output_text",
+			Annotations: []Annotation{},
+		}}, s.pendingAnnotations)
+
 		err := s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeContentPartAdded,
 			ItemID:       &s.currentItemID,
 			OutputIndex:  s.outputIndex,
 			ContentIndex: &s.contentIndex,
 			Part: &StreamEventContentPart{
-				Type: "output_text",
-				Text: lo.ToPtr(""),
+				Type:        "output_text",
+				Text:        lo.ToPtr(""),
+				Annotations: textPartItems[0].Annotations,
 			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to enqueue content_part.added event: %w", err)
 		}
+		// Keep pendingAnnotations until output_item.done so the final message item preserves them.
 	}
 
 	// Accumulate text content
@@ -713,6 +748,8 @@ func (s *responsesInboundStream) closeMessageItem() error {
 			}},
 		},
 	}
+	item.Content.Items, _ = attachAnnotationsToFirstTextItem(item.Content.Items, s.pendingAnnotations)
+	s.pendingAnnotations = nil
 
 	err := s.enqueueEvent(&StreamEvent{
 		Type:        StreamEventTypeOutputItemDone,
@@ -751,14 +788,21 @@ func (s *responsesInboundStream) closeCurrentContentPart() error {
 	}
 
 	// Emit content_part.done with full text
+	contentPartItems, _ := attachAnnotationsToFirstTextItem([]Item{{
+		Type:        "output_text",
+		Text:        lo.ToPtr(fullText),
+		Annotations: []Annotation{},
+	}}, s.pendingAnnotations)
+
 	err = s.enqueueEvent(&StreamEvent{
 		Type:         StreamEventTypeContentPartDone,
 		ItemID:       &s.currentItemID,
 		OutputIndex:  s.outputIndex,
 		ContentIndex: &s.contentIndex,
 		Part: &StreamEventContentPart{
-			Type: "output_text",
-			Text: lo.ToPtr(fullText),
+			Type:        "output_text",
+			Text:        lo.ToPtr(fullText),
+			Annotations: contentPartItems[0].Annotations,
 		},
 	})
 	if err != nil {
