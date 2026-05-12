@@ -58,6 +58,7 @@ var defaultAutoBackupSettings = AutoBackupSettings{
 	IncludeModels:      true,
 	IncludeAPIKeys:     false,
 	IncludeModelPrices: true,
+	IncludeUsageStats:  false,
 	RetentionDays:      30,
 }
 

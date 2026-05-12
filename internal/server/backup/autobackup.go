@@ -95,6 +95,7 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 		IncludeModels:      settings.IncludeModels,
 		IncludeAPIKeys:     settings.IncludeAPIKeys,
 		IncludeModelPrices: settings.IncludeModelPrices,
+		IncludeUsageStats:  settings.IncludeUsageStats,
 	}
 
 	data, err := svc.BackupWithoutAuth(ctx, opts)

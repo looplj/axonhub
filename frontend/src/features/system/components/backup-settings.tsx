@@ -40,6 +40,7 @@ export function BackupSettings() {
     includeModelPrices: true,
     includeModels: true,
     includeAPIKeys: false,
+    includeUsageStats: true,
   });
 
   const [restoreOptions, setRestoreOptions] = useState<RestoreOptionsInput>({
@@ -47,6 +48,7 @@ export function BackupSettings() {
     includeModelPrices: true,
     includeModels: true,
     includeAPIKeys: false,
+    includeUsageStats: true,
     channelConflictStrategy: 'skip',
     modelConflictStrategy: 'skip',
     modelPriceConflictStrategy: 'skip',
@@ -63,6 +65,7 @@ export function BackupSettings() {
     includeModels: true,
     includeAPIKeys: false,
     includeModelPrices: true,
+    includeUsageStats: false,
     retentionDays: 0,
   });
 
@@ -77,6 +80,7 @@ export function BackupSettings() {
        autoBackupForm.includeModels !== autoBackupSettings.data.includeModels ||
        autoBackupForm.includeAPIKeys !== autoBackupSettings.data.includeAPIKeys ||
        autoBackupForm.includeModelPrices !== autoBackupSettings.data.includeModelPrices ||
+       autoBackupForm.includeUsageStats !== autoBackupSettings.data.includeUsageStats ||
        autoBackupForm.retentionDays !== autoBackupSettings.data.retentionDays
      );
    }, [autoBackupForm, autoBackupSettings.data]);
@@ -91,6 +95,7 @@ export function BackupSettings() {
         includeModels: autoBackupSettings.data.includeModels,
         includeAPIKeys: autoBackupSettings.data.includeAPIKeys,
         includeModelPrices: autoBackupSettings.data.includeModelPrices,
+        includeUsageStats: autoBackupSettings.data.includeUsageStats,
         retentionDays: autoBackupSettings.data.retentionDays,
       });
     }
@@ -121,6 +126,7 @@ export function BackupSettings() {
       includeModels: autoBackupForm.includeModels,
       includeAPIKeys: autoBackupForm.includeAPIKeys,
       includeModelPrices: autoBackupForm.includeModelPrices,
+      includeUsageStats: autoBackupForm.includeUsageStats,
       retentionDays: autoBackupForm.retentionDays,
     });
   };
@@ -171,6 +177,14 @@ export function BackupSettings() {
                 id="include-apikeys"
                 checked={backupOptions.includeAPIKeys}
                 onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeAPIKeys: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="include-usage-stats">{t('system.backup.includeUsageStats')}</Label>
+              <Switch
+                id="include-usage-stats"
+                checked={backupOptions.includeUsageStats}
+                onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeUsageStats: checked })}
               />
             </div>
           </div>
@@ -324,6 +338,17 @@ export function BackupSettings() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-1 items-center justify-between">
+                <Label htmlFor="restore-include-usage-stats">{t('system.backup.includeUsageStats')}</Label>
+                <Switch
+                  id="restore-include-usage-stats"
+                  checked={restoreOptions.includeUsageStats}
+                  onCheckedChange={(checked) => setRestoreOptions({ ...restoreOptions, includeUsageStats: checked })}
+                  disabled={!selectedFile}
+                />
+              </div>
+            </div>
           </div>
           <Button
             onClick={handleRestore}
@@ -440,6 +465,14 @@ export function BackupSettings() {
                 id="auto-include-model-prices"
                 checked={autoBackupForm.includeModelPrices}
                 onCheckedChange={(checked) => setAutoBackupForm({ ...autoBackupForm, includeModelPrices: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="auto-include-usage-stats">{t('system.backup.includeUsageStats')}</Label>
+              <Switch
+                id="auto-include-usage-stats"
+                checked={autoBackupForm.includeUsageStats}
+                onCheckedChange={(checked) => setAutoBackupForm({ ...autoBackupForm, includeUsageStats: checked })}
               />
             </div>
           </div>

@@ -218,12 +218,27 @@ type AutoBackupSettings struct {
 	IncludeModels      bool `json:"include_models"`
 	IncludeAPIKeys     bool `json:"include_api_keys"`
 	IncludeModelPrices bool `json:"include_model_prices"`
+	IncludeUsageStats  bool `json:"include_usage_stats"`
 	// RetentionDays defines how many days to keep backups (0 = keep all)
 	RetentionDays int `json:"retention_days"`
 	// LastBackupAt is the timestamp of the last successful backup
 	LastBackupAt *time.Time `json:"last_backup_at,omitempty"`
 	// LastBackupError is the error message from the last backup attempt (if any)
 	LastBackupError string `json:"last_backup_error,omitempty"`
+}
+
+type autoBackupSettingsJSON struct {
+	Enabled            bool            `json:"enabled"`
+	Frequency          BackupFrequency `json:"frequency"`
+	DataStorageID      int             `json:"data_storage_id"`
+	IncludeChannels    bool            `json:"include_channels"`
+	IncludeModels      bool            `json:"include_models"`
+	IncludeAPIKeys     bool            `json:"include_api_keys"`
+	IncludeModelPrices bool            `json:"include_model_prices"`
+	IncludeUsageStats  *bool           `json:"include_usage_stats"`
+	RetentionDays      int             `json:"retention_days"`
+	LastBackupAt       *time.Time      `json:"last_backup_at,omitempty"`
+	LastBackupError    string          `json:"last_backup_error,omitempty"`
 }
 
 // StoragePolicy represents the storage policy configuration.
@@ -1258,9 +1273,28 @@ func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSett
 		return nil, fmt.Errorf("failed to get auto backup settings: %w", err)
 	}
 
-	var settings AutoBackupSettings
-	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+	var stored autoBackupSettingsJSON
+	if err := json.Unmarshal([]byte(value), &stored); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal auto backup settings: %w", err)
+	}
+
+	includeUsageStats := defaultAutoBackupSettings.IncludeUsageStats
+	if stored.IncludeUsageStats != nil {
+		includeUsageStats = *stored.IncludeUsageStats
+	}
+
+	settings := AutoBackupSettings{
+		Enabled:            stored.Enabled,
+		Frequency:          stored.Frequency,
+		DataStorageID:      stored.DataStorageID,
+		IncludeChannels:    stored.IncludeChannels,
+		IncludeModels:      stored.IncludeModels,
+		IncludeAPIKeys:     stored.IncludeAPIKeys,
+		IncludeModelPrices: stored.IncludeModelPrices,
+		IncludeUsageStats:  includeUsageStats,
+		RetentionDays:      stored.RetentionDays,
+		LastBackupAt:       stored.LastBackupAt,
+		LastBackupError:    stored.LastBackupError,
 	}
 
 	return &settings, nil

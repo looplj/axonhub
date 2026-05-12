@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -16,6 +17,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -35,7 +38,7 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 		return err
 	}
 
-	if !lo.Contains([]string{BackupVersion, BackupVersionV1}, backupData.Version) {
+	if !lo.Contains([]string{BackupVersion, BackupVersionV2, BackupVersionV1}, backupData.Version) {
 		log.Warn(ctx, "backup version mismatch",
 			log.String("expected", BackupVersion),
 			log.String("got", backupData.Version))
@@ -115,6 +118,12 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 		}
 	}
 
+	if opts.IncludeUsageStats {
+		if err := svc.restoreUsageStats(ctx, db, backupData.UsageRequests, backupData.UsageLogs); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -163,6 +172,98 @@ func (svc *BackupService) buildChannelIDMap(ctx context.Context, db *ent.Client,
 	}
 
 	return idMap, nil
+}
+
+type usageRestoreResolver struct {
+	projectNames map[string]int
+	projectIDs   map[int]struct{}
+	channelNames map[string]int
+	channelIDs   map[int]struct{}
+	apiKeyKeys   map[string]int
+}
+
+func newUsageRestoreResolver(ctx context.Context, db *ent.Client) (*usageRestoreResolver, error) {
+	projects, err := db.Project.Query().
+		Select(project.FieldID, project.FieldName).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	channels, err := db.Channel.Query().
+		Select(channel.FieldID, channel.FieldName).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKeys, err := db.APIKey.Query().
+		Select(apikey.FieldID, apikey.FieldKey).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resolver := &usageRestoreResolver{
+		projectNames: make(map[string]int, len(projects)),
+		projectIDs:   make(map[int]struct{}, len(projects)),
+		channelNames: make(map[string]int, len(channels)),
+		channelIDs:   make(map[int]struct{}, len(channels)),
+		apiKeyKeys:   make(map[string]int, len(apiKeys)),
+	}
+
+	for _, proj := range projects {
+		resolver.projectIDs[proj.ID] = struct{}{}
+		resolver.projectNames[proj.Name] = proj.ID
+	}
+
+	for _, ch := range channels {
+		resolver.channelIDs[ch.ID] = struct{}{}
+		resolver.channelNames[ch.Name] = ch.ID
+	}
+
+	for _, ak := range apiKeys {
+		resolver.apiKeyKeys[ak.Key] = ak.ID
+	}
+
+	return resolver, nil
+}
+
+func (r *usageRestoreResolver) resolveProjectID(projectID int, projectName string) (int, bool) {
+	if projectName != "" {
+		id, ok := r.projectNames[projectName]
+		return id, ok
+	}
+
+	if projectID == 0 {
+		return 0, false
+	}
+
+	_, ok := r.projectIDs[projectID]
+	return projectID, ok
+}
+
+func (r *usageRestoreResolver) resolveChannelID(channelID int, channelName string) (int, bool) {
+	if channelName != "" {
+		id, ok := r.channelNames[channelName]
+		return id, ok
+	}
+
+	if channelID == 0 {
+		return 0, false
+	}
+
+	_, ok := r.channelIDs[channelID]
+	return channelID, ok
+}
+
+func (r *usageRestoreResolver) resolveAPIKeyID(apiKeyKey string) (int, bool) {
+	if apiKeyKey != "" {
+		id, ok := r.apiKeyKeys[apiKeyKey]
+		return id, ok
+	}
+
+	return 0, false
 }
 
 func remapModelSettingsChannelIDs(settings *objects.ModelSettings, channelIDMap map[int]int) {
@@ -726,4 +827,457 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 	}
 
 	return nil
+}
+
+func (svc *BackupService) restoreUsageStats(
+	ctx context.Context,
+	db *ent.Client,
+	requestsData []*BackupUsageRequest,
+	usageLogs []*BackupUsageLog,
+) error {
+	resolver, err := newUsageRestoreResolver(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	requestIDMap, err := svc.restoreUsageRequests(ctx, db, requestsData, resolver)
+	if err != nil {
+		return err
+	}
+
+	return svc.restoreUsageLogs(ctx, db, usageLogs, requestIDMap, resolver)
+}
+
+func (svc *BackupService) restoreUsageRequests(
+	ctx context.Context,
+	db *ent.Client,
+	requestsData []*BackupUsageRequest,
+	resolver *usageRestoreResolver,
+) (map[int]int, error) {
+	idMap := map[int]int{}
+	if len(requestsData) == 0 {
+		return idMap, nil
+	}
+
+	existingRequests, err := existingUsageRequests(ctx, db, requestsData)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, reqData := range requestsData {
+		if reqData == nil {
+			continue
+		}
+
+		oldID := reqData.ID
+		if oldID == 0 {
+			continue
+		}
+
+		projectID, ok := resolver.resolveProjectID(reqData.ProjectID, reqData.ProjectName)
+		if !ok {
+			log.Warn(ctx, "project not found for restoring usage request, skipping",
+				log.Int("request_id", oldID),
+				log.String("project", reqData.ProjectName),
+			)
+			continue
+		}
+
+		channelID, ok := resolver.resolveChannelID(reqData.ChannelID, reqData.ChannelName)
+		if !ok && hasBackupChannelRef(reqData.ChannelID, reqData.ChannelName) {
+			log.Warn(ctx, "channel not found for restoring usage request, restoring with null channel",
+				log.Int("request_id", oldID),
+				log.Int("channel_id", reqData.ChannelID),
+				log.String("channel", reqData.ChannelName),
+			)
+		}
+
+		apiKeyID, ok := resolver.resolveAPIKeyID(reqData.APIKeyKey)
+		if !ok && reqData.APIKeyKey != "" {
+			log.Warn(ctx, "API key not found for restoring usage request, restoring with null API key",
+				log.Int("request_id", oldID),
+			)
+		}
+
+		if existing, ok := existingRequests.byID[oldID]; ok {
+			if sameUsageRequest(existing, reqData, projectID, channelID, apiKeyID) {
+				idMap[oldID] = existing.ID
+				continue
+			}
+		}
+		if existing, ok := existingRequests.byFingerprint[usageRequestBackupFingerprint(reqData)]; ok {
+			idMap[oldID] = existing.ID
+			continue
+		}
+
+		created, err := db.Request.Create().
+			SetCreatedAt(reqData.CreatedAt).
+			SetUpdatedAt(reqData.UpdatedAt).
+			SetProjectID(projectID).
+			SetSource(reqData.Source).
+			SetModelID(reqData.ModelID).
+			SetFormat(reqData.Format).
+			SetRequestBody(reqData.RequestBody).
+			SetStatus(reqData.Status).
+			SetStream(reqData.Stream).
+			SetClientIP(reqData.ClientIP).
+			SetContentSaved(reqData.ContentSaved).
+			SetNillableAPIKeyID(nilIfZero(apiKeyID)).
+			SetNillableChannelID(nilIfZero(channelID)).
+			SetNillableReasoningEffort(nilIfEmpty(reqData.ReasoningEffort)).
+			SetRequestHeaders(reqData.RequestHeaders).
+			SetResponseBody(reqData.ResponseBody).
+			SetResponseChunks(reqData.ResponseChunks).
+			SetNillableExternalID(nilIfEmpty(reqData.ExternalID)).
+			SetNillableMetricsLatencyMs(reqData.MetricsLatencyMs).
+			SetNillableMetricsFirstTokenLatencyMs(reqData.MetricsFirstTokenLatencyMs).
+			SetNillableMetricsReasoningDurationMs(reqData.MetricsReasoningDurationMs).
+			SetNillableContentStorageID(reqData.ContentStorageID).
+			SetNillableContentStorageKey(reqData.ContentStorageKey).
+			SetNillableContentSavedAt(reqData.ContentSavedAt).
+			Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to restore usage request %d: %w", oldID, err)
+		}
+
+		idMap[oldID] = created.ID
+	}
+
+	return idMap, nil
+}
+
+func hasBackupChannelRef(channelID int, channelName string) bool {
+	return channelID != 0 || channelName != ""
+}
+
+type existingUsageRequestLookup struct {
+	byID          map[int]*ent.Request
+	byFingerprint map[string]*ent.Request
+}
+
+func existingUsageRequests(
+	ctx context.Context,
+	db *ent.Client,
+	requestsData []*BackupUsageRequest,
+) (*existingUsageRequestLookup, error) {
+	ids := make([]int, 0, len(requestsData))
+	createdAt := make([]time.Time, 0, len(requestsData))
+	createdAtSeen := map[time.Time]struct{}{}
+	for _, reqData := range requestsData {
+		if reqData == nil {
+			continue
+		}
+
+		if reqData.ID != 0 {
+			ids = append(ids, reqData.ID)
+		}
+
+		if !reqData.CreatedAt.IsZero() {
+			if _, ok := createdAtSeen[reqData.CreatedAt]; ok {
+				continue
+			}
+			createdAtSeen[reqData.CreatedAt] = struct{}{}
+			createdAt = append(createdAt, reqData.CreatedAt)
+		}
+	}
+
+	lookup := &existingUsageRequestLookup{
+		byID:          map[int]*ent.Request{},
+		byFingerprint: map[string]*ent.Request{},
+	}
+	for start := 0; start < len(ids); start += usageBackupBatchSize {
+		end := min(start+usageBackupBatchSize, len(ids))
+		requests, err := db.Request.Query().
+			Where(request.IDIn(ids[start:end]...)).
+			WithProject().
+			WithChannel().
+			WithAPIKey().
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, req := range requests {
+			addExistingUsageRequest(lookup, req)
+		}
+	}
+
+	for start := 0; start < len(createdAt); start += usageBackupBatchSize {
+		end := min(start+usageBackupBatchSize, len(createdAt))
+		requests, err := db.Request.Query().
+			Where(request.CreatedAtIn(createdAt[start:end]...)).
+			WithProject().
+			WithChannel().
+			WithAPIKey().
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, req := range requests {
+			addExistingUsageRequest(lookup, req)
+		}
+	}
+
+	return lookup, nil
+}
+
+func addExistingUsageRequest(lookup *existingUsageRequestLookup, req *ent.Request) {
+	lookup.byID[req.ID] = req
+	lookup.byFingerprint[usageRequestExistingFingerprint(req, true)] = req
+	lookup.byFingerprint[usageRequestExistingFingerprint(req, false)] = req
+}
+
+func usageRequestBackupFingerprint(req *BackupUsageRequest) string {
+	return usageRequestFingerprint(
+		req.CreatedAt,
+		req.ModelID,
+		req.Format,
+		string(req.Source),
+		string(req.Status),
+		req.Stream,
+		req.ClientIP,
+		req.ExternalID,
+		req.ReasoningEffort,
+		req.ProjectName,
+		req.ChannelName,
+		req.APIKeyKey,
+	)
+}
+
+func usageRequestExistingFingerprint(req *ent.Request, includeAPIKey bool) string {
+	projectName := ""
+	if req.Edges.Project != nil {
+		projectName = req.Edges.Project.Name
+	}
+
+	channelName := ""
+	if req.Edges.Channel != nil {
+		channelName = req.Edges.Channel.Name
+	}
+
+	apiKeyKey := ""
+	if includeAPIKey && req.Edges.APIKey != nil {
+		apiKeyKey = req.Edges.APIKey.Key
+	}
+
+	return usageRequestFingerprint(
+		req.CreatedAt,
+		req.ModelID,
+		req.Format,
+		string(req.Source),
+		string(req.Status),
+		req.Stream,
+		req.ClientIP,
+		req.ExternalID,
+		req.ReasoningEffort,
+		projectName,
+		channelName,
+		apiKeyKey,
+	)
+}
+
+func usageRequestFingerprint(
+	createdAt time.Time,
+	modelID string,
+	format string,
+	source string,
+	status string,
+	stream bool,
+	clientIP string,
+	externalID string,
+	reasoningEffort string,
+	projectName string,
+	channelName string,
+	apiKeyKey string,
+) string {
+	parts := []string{
+		createdAt.UTC().Format(time.RFC3339Nano),
+		modelID,
+		format,
+		source,
+		status,
+		fmt.Sprintf("%t", stream),
+		clientIP,
+		externalID,
+		reasoningEffort,
+		projectName,
+		channelName,
+		apiKeyKey,
+	}
+
+	return strings.Join(parts, "\x00")
+}
+
+func sameUsageRequest(existing *ent.Request, backup *BackupUsageRequest, projectID, channelID, apiKeyID int) bool {
+	apiKeyMatches := backup.APIKeyKey == "" || existing.APIKeyID == apiKeyID
+
+	return existing.ProjectID == projectID &&
+		existing.ChannelID == channelID &&
+		apiKeyMatches &&
+		existing.ModelID == backup.ModelID &&
+		existing.Format == backup.Format &&
+		existing.Source == backup.Source &&
+		existing.Status == backup.Status &&
+		existing.Stream == backup.Stream &&
+		existing.ClientIP == backup.ClientIP &&
+		existing.ExternalID == backup.ExternalID &&
+		existing.ReasoningEffort == backup.ReasoningEffort &&
+		existing.CreatedAt.Equal(backup.CreatedAt)
+}
+
+func (svc *BackupService) restoreUsageLogs(
+	ctx context.Context,
+	db *ent.Client,
+	usageLogs []*BackupUsageLog,
+	requestIDMap map[int]int,
+	resolver *usageRestoreResolver,
+) error {
+	if len(usageLogs) == 0 {
+		return nil
+	}
+
+	requestIDs := make([]int, 0, len(requestIDMap))
+	for _, requestID := range requestIDMap {
+		requestIDs = append(requestIDs, requestID)
+	}
+
+	existingLogRequestIDs := map[int]struct{}{}
+	for start := 0; start < len(requestIDs); start += usageBackupBatchSize {
+		end := min(start+usageBackupBatchSize, len(requestIDs))
+		logs, err := db.UsageLog.Query().
+			Where(usagelog.RequestIDIn(requestIDs[start:end]...)).
+			Select(usagelog.FieldRequestID).
+			All(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, usageLog := range logs {
+			existingLogRequestIDs[usageLog.RequestID] = struct{}{}
+		}
+	}
+
+	restoredLogRequestIDs := map[int]struct{}{}
+	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), usageBackupBatchSize))
+	flush := func() error {
+		if len(builders) == 0 {
+			return nil
+		}
+
+		if _, err := db.UsageLog.CreateBulk(builders...).Save(ctx); err != nil {
+			return fmt.Errorf("failed to restore usage logs: %w", err)
+		}
+
+		builders = builders[:0]
+
+		return nil
+	}
+
+	for _, usageData := range usageLogs {
+		if usageData == nil {
+			continue
+		}
+
+		requestID, ok := requestIDMap[usageData.RequestID]
+		if !ok {
+			log.Warn(ctx, "request not found for restoring usage log, skipping",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("request_id", usageData.RequestID),
+			)
+			continue
+		}
+
+		if _, existing := existingLogRequestIDs[requestID]; existing {
+			log.Warn(ctx, "usage log already exists for request, skipping",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("request_id", usageData.RequestID),
+			)
+			continue
+		}
+
+		if _, duplicate := restoredLogRequestIDs[requestID]; duplicate {
+			log.Warn(ctx, "duplicate usage log for request in backup, skipping",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("request_id", usageData.RequestID),
+			)
+			continue
+		}
+
+		projectID, ok := resolver.resolveProjectID(usageData.ProjectID, usageData.ProjectName)
+		if !ok {
+			log.Warn(ctx, "project not found for restoring usage log, skipping",
+				log.Int("usage_log_id", usageData.ID),
+				log.String("project", usageData.ProjectName),
+			)
+			continue
+		}
+
+		channelID, ok := resolver.resolveChannelID(usageData.ChannelID, usageData.ChannelName)
+		if !ok && hasBackupChannelRef(usageData.ChannelID, usageData.ChannelName) {
+			log.Warn(ctx, "channel not found for restoring usage log, restoring with null channel",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("channel_id", usageData.ChannelID),
+				log.String("channel", usageData.ChannelName),
+			)
+		}
+
+		apiKeyID, ok := resolver.resolveAPIKeyID(usageData.APIKeyKey)
+		if !ok && usageData.APIKeyKey != "" {
+			log.Warn(ctx, "API key not found for restoring usage log, restoring with null API key",
+				log.Int("usage_log_id", usageData.ID),
+			)
+		}
+
+		builders = append(builders, db.UsageLog.Create().
+			SetCreatedAt(usageData.CreatedAt).
+			SetUpdatedAt(usageData.UpdatedAt).
+			SetRequestID(requestID).
+			SetNillableAPIKeyID(nilIfZero(apiKeyID)).
+			SetProjectID(projectID).
+			SetNillableChannelID(nilIfZero(channelID)).
+			SetModelID(usageData.ModelID).
+			SetPromptTokens(usageData.PromptTokens).
+			SetCompletionTokens(usageData.CompletionTokens).
+			SetTotalTokens(usageData.TotalTokens).
+			SetPromptAudioTokens(usageData.PromptAudioTokens).
+			SetPromptCachedTokens(usageData.PromptCachedTokens).
+			SetPromptWriteCachedTokens(usageData.PromptWriteCachedTokens).
+			SetPromptWriteCachedTokens5m(usageData.PromptWriteCachedTokens5m).
+			SetPromptWriteCachedTokens1h(usageData.PromptWriteCachedTokens1h).
+			SetCompletionAudioTokens(usageData.CompletionAudioTokens).
+			SetCompletionReasoningTokens(usageData.CompletionReasoningTokens).
+			SetCompletionAcceptedPredictionTokens(usageData.CompletionAcceptedPredictionTokens).
+			SetCompletionRejectedPredictionTokens(usageData.CompletionRejectedPredictionTokens).
+			SetSource(usageData.Source).
+			SetFormat(usageData.Format).
+			SetNillableTotalCost(usageData.TotalCost).
+			SetCostItems(usageData.CostItems).
+			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)))
+		restoredLogRequestIDs[requestID] = struct{}{}
+
+		if len(builders) >= usageBackupBatchSize {
+			if err := flush(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return flush()
+}
+
+func nilIfZero(v int) *int {
+	if v == 0 {
+		return nil
+	}
+
+	return &v
+}
+
+func nilIfEmpty(v string) *string {
+	if v == "" {
+		return nil
+	}
+
+	return &v
 }

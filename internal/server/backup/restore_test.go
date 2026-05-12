@@ -687,3 +687,51 @@ func TestBackupService_Restore_ModelPriceConflictStrategy_Error(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "channel model price already exists")
 }
+
+func TestBackupService_Restore_UsageStats(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	user, _ := client.User.Query().First(ctx)
+	proj := createBackupTestProject(t, client, ctx, "Project1", "Test Project")
+	ch := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	ak := createBackupTestAPIKey(t, client, ctx, user, proj, "API Key 1", "sk-test-key-1")
+	_, usage := createBackupTestUsage(t, client, ctx, proj, ch, ak)
+
+	data, err := service.Backup(ctx, BackupOptions{
+		IncludeAPIKeys:    true,
+		IncludeUsageStats: true,
+	})
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Delete().Exec(ctx)
+	require.NoError(t, err)
+
+	_, err = client.Request.Delete().Exec(ctx)
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeUsageStats: true,
+	})
+	require.NoError(t, err)
+
+	requestsCount, err := client.Request.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, requestsCount)
+
+	usageLogs, err := client.UsageLog.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, usageLogs, 1)
+	require.Equal(t, int64(150), usageLogs[0].TotalTokens)
+	require.Equal(t, int64(20), usageLogs[0].PromptCachedTokens)
+	require.NotNil(t, usageLogs[0].TotalCost)
+	require.Equal(t, *usage.TotalCost, *usageLogs[0].TotalCost)
+	require.Equal(t, "price-ref", usageLogs[0].CostPriceReferenceID)
+
+	restoredRequest, err := client.Request.Get(ctx, usageLogs[0].RequestID)
+	require.NoError(t, err)
+	require.Equal(t, "gpt-4", restoredRequest.ModelID)
+	require.Equal(t, proj.ID, restoredRequest.ProjectID)
+	require.Equal(t, ch.ID, restoredRequest.ChannelID)
+	require.Equal(t, ak.ID, restoredRequest.APIKeyID)
+}
