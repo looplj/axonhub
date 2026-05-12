@@ -60,7 +60,6 @@ func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostI
 
 				if tierUnits <= 0 {
 					if tier.UpTo != nil && quantity <= *tier.UpTo {
-						// no more units beyond current quantity
 						break
 					}
 
@@ -86,6 +85,41 @@ func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostI
 			item.Subtotal = total
 
 			return item, total
+		}
+
+		return item, decimal.Zero
+	case objects.PricingModeVolume:
+		if pricing.UsageTiered != nil {
+			matchedIdx := -1
+
+			for i, tier := range pricing.UsageTiered.Tiers {
+				if tier.UpTo != nil && quantity <= *tier.UpTo {
+					matchedIdx = i
+					break
+				}
+
+				if tier.UpTo == nil {
+					matchedIdx = i
+					break
+				}
+			}
+
+			if matchedIdx >= 0 {
+				matchedTier := pricing.UsageTiered.Tiers[matchedIdx]
+				sub := matchedTier.PricePerUnit.Mul(unitsInMillionTokens(quantity))
+				item.Subtotal = sub
+				item.TierBreakdown = []objects.TierCost{
+					{
+						UpTo:     matchedTier.UpTo,
+						Units:    quantity,
+						Subtotal: sub,
+					},
+				}
+
+				return item, sub
+			}
+
+			return item, decimal.Zero
 		}
 
 		return item, decimal.Zero

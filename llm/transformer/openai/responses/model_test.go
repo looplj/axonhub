@@ -251,7 +251,7 @@ func TestResponseToolChoiceUnmarshalJSON_ClearsConflictingRepresentation(t *test
 func TestToolChoiceMarshalJSON_PreservesStringModes(t *testing.T) {
 	cases := []struct {
 		name     string
-		choice    ToolChoice
+		choice   ToolChoice
 		expected string
 	}{
 		{

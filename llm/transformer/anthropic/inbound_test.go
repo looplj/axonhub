@@ -1726,7 +1726,6 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 	})
 }
 
-
 func TestConvertToAnthropicResponse_WithAnnotations(t *testing.T) {
 	chatResp := &llm.Response{
 		ID:     "msg_annotations",
@@ -1752,7 +1751,7 @@ func TestConvertToAnthropicResponse_WithAnnotations(t *testing.T) {
 						},
 					},
 					{
-						Type: "url_citation",
+						Type:       "url_citation",
 						StartIndex: lo.ToPtr(int64(1)),
 						EndIndex:   lo.ToPtr(int64(3)),
 						URLCitation: &llm.URLCitation{

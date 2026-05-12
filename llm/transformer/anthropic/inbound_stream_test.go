@@ -218,7 +218,7 @@ func assertCitationsDeltaBeforeContentBlockStop(t *testing.T, events []StreamEve
 	t.Helper()
 
 	var (
-		citationEventIndexes []int
+		citationEventIndexes  []int
 		contentBlockStopIndex = -1
 		actualCitations       []TextCitation
 	)
