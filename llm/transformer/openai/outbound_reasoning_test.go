@@ -1,12 +1,15 @@
 package openai
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 )
 
 func TestMessageFromLLMWithConfig_ReasoningFieldContent(t *testing.T) {
@@ -235,9 +238,18 @@ func TestRequestFromLLMWithConfig_ReasoningFieldNone(t *testing.T) {
 	assert.Nil(t, assistantMsg.Reasoning, "Reasoning field should be nil when using ReasoningFieldNone")
 }
 
-func TestRequestFromLLM_DefaultNone(t *testing.T) {
+func TestOutboundTransformer_TransformRequest_DefaultReasoningFieldContent(t *testing.T) {
 	reasoningText := "This is my reasoning"
-	llmReq := &llm.Request{
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	req, err := transformer.TransformRequest(t.Context(), &llm.Request{
 		Model: "test-model",
 		Messages: []llm.Message{
 			{
@@ -246,14 +258,17 @@ func TestRequestFromLLM_DefaultNone(t *testing.T) {
 				Reasoning:        lo.ToPtr("Another reasoning"),
 			},
 		},
-	}
+	})
+	assert.NoError(t, err)
 
-	req := RequestFromLLM(llmReq, ReasoningFieldNone)
+	var oaiReq Request
+	err = json.Unmarshal(req.Body, &oaiReq)
+	assert.NoError(t, err)
+	assert.Len(t, oaiReq.Messages, 1)
 
-	assert.Len(t, req.Messages, 1)
-
-	assistantMsg := req.Messages[0]
+	assistantMsg := oaiReq.Messages[0]
 	assert.Equal(t, "assistant", assistantMsg.Role)
-	assert.Nil(t, assistantMsg.ReasoningContent, "ReasoningContent should be nil by default (ReasoningFieldNone)")
-	assert.Nil(t, assistantMsg.Reasoning, "Reasoning should be nil by default (ReasoningFieldNone)")
+	require.NotNil(t, assistantMsg.ReasoningContent, "ReasoningContent should be preserved by default (ReasoningFieldContent)")
+	assert.Equal(t, reasoningText, *assistantMsg.ReasoningContent)
+	assert.Nil(t, assistantMsg.Reasoning, "Reasoning field should be nil when defaulting to ReasoningFieldContent")
 }
