@@ -62,8 +62,8 @@ type Config struct {
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
 	// ReasoningField specifies which reasoning field to use in outbound messages.
-	// Use ReasoningFieldContent for DeepSeek/Gemini, ReasoningFieldReasoning for NanoGPT/OpenRouter,
-	// or ReasoningFieldNone (default) to strip all reasoning fields.
+	// Use ReasoningFieldContent (default) for DeepSeek/Mimo/Gemini, ReasoningFieldReasoning for NanoGPT/OpenRouter,
+	// or ReasoningFieldNone to strip all reasoning fields.
 	ReasoningField ReasoningField `json:"reasoning_field,omitempty"`
 }
 
@@ -167,10 +167,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	// Determine which reasoning field to use, default to ReasoningFieldNone
+	// Determine which reasoning field to use, default to ReasoningFieldContent.
+	// reasoning_content is the standard field used by most providers (OpenAI o-series,
+	// DeepSeek, Mimo, Gemini, etc.) to return chain-of-thought in responses, and some
+	// require it echoed back in assistant messages. Providers that don't support it
+	// safely ignore the field. Previously defaulted to ReasoningFieldNone to minimize
+	// payload, but this broke providers requiring echo-back (e.g., Mimo #1654).
+	// Channels that want to strip reasoning can explicitly set ReasoningFieldNone in config.
 	reasoningField := t.config.ReasoningField
 	if reasoningField == "" {
-		reasoningField = ReasoningFieldNone
+		reasoningField = ReasoningFieldContent
 	}
 
 	// Convert to OpenAI Request format (this strips helper fields)
