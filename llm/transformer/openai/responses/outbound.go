@@ -36,6 +36,13 @@ type Config struct {
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// StripInputReasoning removes reasoning items (type="reasoning") from the
+	// input array when forwarding requests. Some Responses API providers
+	// (e.g. GitHub Copilot) reject reasoning input items with a 400 error.
+	// The encrypted_content in these items is opaque and only useful for
+	// providers that support OpenAI-style reasoning caching.
+	StripInputReasoning bool `json:"strip_input_reasoning,omitempty"`
 }
 
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
@@ -167,7 +174,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
+		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, t.config.StripInputReasoning),
 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,

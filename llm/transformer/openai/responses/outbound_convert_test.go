@@ -704,7 +704,7 @@ func TestConvertInputFromMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertInputFromMessages(tt.msgs, tt.transformOptions)
+			result := convertInputFromMessages(tt.msgs, tt.transformOptions, false)
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -1403,8 +1403,87 @@ func TestConvertAssistantMessage_WithCompactContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertAssistantMessage(tt.msg)
+			result := convertAssistantMessage(tt.msg, false)
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestConvertAssistantMessage_StripInputReasoning(t *testing.T) {
+	encryptedContent := "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8"
+
+	t.Run("reasoning item included when stripInputReasoning is false", func(t *testing.T) {
+		msg := llm.Message{
+			Role:               "assistant",
+			ReasoningSignature: lo.ToPtr(encryptedContent),
+			ReasoningContent:   lo.ToPtr("I need to think about this"),
+			Content: llm.MessageContent{
+				Content: lo.ToPtr("Hello"),
+			},
+		}
+		items := convertAssistantMessage(msg, false)
+		// Should have: reasoning + message
+		require.Len(t, items, 2)
+		require.Equal(t, "reasoning", items[0].Type)
+		require.Equal(t, encryptedContent, *items[0].EncryptedContent)
+		require.Len(t, items[0].Summary, 1)
+		require.Equal(t, "I need to think about this", items[0].Summary[0].Text)
+		require.Equal(t, "message", items[1].Type)
+	})
+
+	t.Run("reasoning item stripped when stripInputReasoning is true", func(t *testing.T) {
+		msg := llm.Message{
+			Role:               "assistant",
+			ReasoningSignature: lo.ToPtr(encryptedContent),
+			ReasoningContent:   lo.ToPtr("I need to think about this"),
+			Content: llm.MessageContent{
+				Content: lo.ToPtr("Hello"),
+			},
+		}
+		items := convertAssistantMessage(msg, true)
+		// Should only have: message (no reasoning item)
+		require.Len(t, items, 1)
+		require.Equal(t, "message", items[0].Type)
+	})
+
+	t.Run("reasoning with tool calls preserved when stripInputReasoning is true", func(t *testing.T) {
+		msg := llm.Message{
+			Role:               "assistant",
+			ReasoningSignature: lo.ToPtr(encryptedContent),
+			ReasoningContent:   lo.ToPtr("Thinking..."),
+			Content: llm.MessageContent{
+				Content: lo.ToPtr(""),
+			},
+			ToolCalls: []llm.ToolCall{
+				{
+					ID:   "call_123",
+					Type: "function",
+					Function: llm.FunctionCall{
+						Name:      "get_weather",
+						Arguments: `{"city":"Tokyo"}`,
+					},
+				},
+			},
+		}
+		items := convertAssistantMessage(msg, true)
+		// Should have: message + function_call (no reasoning)
+		require.Len(t, items, 2)
+		require.Equal(t, "message", items[0].Type)
+		require.Equal(t, "function_call", items[1].Type)
+		require.Equal(t, "call_123", items[1].CallID)
+	})
+
+	t.Run("no reasoning signature produces no reasoning item regardless of flag", func(t *testing.T) {
+		msg := llm.Message{
+			Role: "assistant",
+			Content: llm.MessageContent{
+				Content: lo.ToPtr("Hello"),
+			},
+		}
+		itemsFalse := convertAssistantMessage(msg, false)
+		itemsTrue := convertAssistantMessage(msg, true)
+		require.Equal(t, itemsFalse, itemsTrue)
+		require.Len(t, itemsFalse, 1)
+		require.Equal(t, "message", itemsFalse[0].Type)
+	})
 }

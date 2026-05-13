@@ -80,8 +80,9 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 
 	// For GPT-5+ models that use Responses API
 	responsesTransformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
-		BaseURL:        baseURL,
-		APIKeyProvider: auth.NewStaticKeyProvider(""),
+		BaseURL:             baseURL,
+		APIKeyProvider:      auth.NewStaticKeyProvider(""),
+		StripInputReasoning: true, // Copilot Responses API rejects type="reasoning" input items
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create responses transformer: %w", err)
