@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -84,7 +85,9 @@ func (Request) Fields() []ent.Field {
 		// External ID for tracking requests in external systems
 		field.String("external_id").
 			Optional().
-			MaxLen(512),
+			SchemaType(map[string]string{
+				dialect.MySQL: "text",
+			}),
 		// The status of the request.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
 		// Whether the request is a streaming request
