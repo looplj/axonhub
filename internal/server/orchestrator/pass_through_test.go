@@ -101,7 +101,7 @@ func TestApplyPassThroughResponse_Enabled_ReturnsRaw(t *testing.T) {
 		},
 	}
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: nil,
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -208,7 +208,7 @@ func TestApplyPassThroughResponse_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		},
 	}
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: nil,
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -342,7 +342,7 @@ func TestIsPassThroughEnabled_DisablesWhenOriginalRequestWasNonStreamingButExecu
 		},
 	}
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: lo.ToPtr(false),
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -442,7 +442,7 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 		},
 	}
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: lo.ToPtr(true),
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -518,7 +518,7 @@ func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 		},
 	}
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: lo.ToPtr(true),
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -616,7 +616,7 @@ func TestCaptureRawProviderStream_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		},
 	}
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: lo.ToPtr(true),
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -744,8 +744,8 @@ func TestApplyPassThroughStream_ReturnsRawEvents(t *testing.T) {
 	}
 	rawCh := make(chan *httpclient.StreamEvent, 8)
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-		RawStreamCh:      rawCh,
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
+		RawStreamCh:           rawCh,
 		OriginalRequestStream: lo.ToPtr(true),
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -805,8 +805,8 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 	}
 	rawCh := make(chan *httpclient.StreamEvent, 8)
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-		RawStreamCh:      rawCh,
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
+		RawStreamCh:           rawCh,
 		OriginalRequestStream: lo.ToPtr(true),
 		LlmRequest: &llm.Request{
 			APIFormat: llm.APIFormatOpenAIChatCompletion,
@@ -1002,7 +1002,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	}
 
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: lo.ToPtr(true),
 		LlmRequest: &llm.Request{
 			APIFormat: format,
@@ -1080,7 +1080,7 @@ func TestPassThroughStream_ErrorPropagates(t *testing.T) {
 	}
 
 	state := &PersistenceState{
-		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 		OriginalRequestStream: lo.ToPtr(true),
 		LlmRequest: &llm.Request{
 			APIFormat: format,
@@ -1292,7 +1292,7 @@ func TestApplyPassThroughBodyPreservesAlignedStreamWithoutPatchingIt(t *testing.
 
 	outbound := &PersistentOutboundTransformer{
 		state: &PersistenceState{
-			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
 			OriginalRequestStream: lo.ToPtr(true),
 			LlmRequest: &llm.Request{
 				Model:     "gpt-4o",

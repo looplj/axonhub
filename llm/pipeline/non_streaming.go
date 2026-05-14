@@ -103,9 +103,8 @@ func (p *pipeline) autoAggregateStream(
 	}
 
 	if len(chunks) == 0 {
-		err := errors.New("empty stream chunks")
-		p.applyRawErrorResponseMiddlewares(ctx, err)
-		return nil, err
+		p.applyRawErrorResponseMiddlewares(ctx, ErrEmptyStreamChunks)
+		return nil, ErrEmptyStreamChunks
 	}
 
 	body, _, err := p.Inbound.AggregateStreamChunks(ctx, chunks)
@@ -115,9 +114,8 @@ func (p *pipeline) autoAggregateStream(
 	}
 
 	if len(body) == 0 {
-		err := errors.New("empty aggregated body")
-		p.applyRawErrorResponseMiddlewares(ctx, err)
-		return nil, err
+		p.applyRawErrorResponseMiddlewares(ctx, ErrEmptyAggregatedBody)
+		return nil, ErrEmptyAggregatedBody
 	}
 
 	resp := &httpclient.Response{

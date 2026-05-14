@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -489,22 +491,27 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
 	})
 
-	t.Run("retryable error does not depend on model index", func(t *testing.T) {
-		outbound := &PersistentOutboundTransformer{
-			wrapped: &mockTransformer{},
-			state: &PersistenceState{
-				CurrentCandidate: &ChannelModelsCandidate{
-					Channel: channel,
-					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
-				},
-				CurrentModelIndex: 0,
-			},
-		}
+		t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
+			for _, retryErr := range []error{
+				fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyResponse),
+				fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyStreamChunks),
+				fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyAggregatedBody),
+			} {
+				outbound := &PersistentOutboundTransformer{
+					wrapped: &mockTransformer{},
+					state: &PersistenceState{
+						CurrentCandidate: &ChannelModelsCandidate{
+							Channel: channel,
+							Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+						},
+						CurrentModelIndex: 0,
+					},
+				}
 
-		require.True(t, outbound.CanRetry(retryableErr))
-	})
+				require.True(t, outbound.CanRetry(retryErr))
+			}
+		})
 }
-
 
 func TestShouldForceStreamingForCandidate(t *testing.T) {
 	newCandidate := func(policy objects.CapabilityPolicy, apiFormat llm.APIFormat) *ChannelModelsCandidate {

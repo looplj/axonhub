@@ -267,10 +267,10 @@ func TestStreamPolicySelector_Select(t *testing.T) {
 			mock := &mockSelector{candidates: tt.candidates, err: tt.mockErr}
 			selector := WithStreamPolicySelector(mock)
 			req := &llm.Request{
-					Stream:      tt.reqStream,
-					RequestType: tt.reqType,
-					APIFormat:   tt.apiFormat,
-				}
+				Stream:      tt.reqStream,
+				RequestType: tt.reqType,
+				APIFormat:   tt.apiFormat,
+			}
 
 			got, err := selector.Select(context.Background(), req)
 
