@@ -118,6 +118,9 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 	if thinkingDisabled {
 		dsReq.Thinking.Type = "disabled"
+		// Clear ReasoningEffort to avoid sending "none" to DeepSeek API,
+		// which only accepts high/low/medium/max/xhigh.
+		dsReq.Request.ReasoningEffort = ""
 	}
 
 	if !thinkingDisabled {
