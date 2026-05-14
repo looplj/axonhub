@@ -971,6 +971,48 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
 }
 
+func TestApplyPassThroughBodySkipsWhenOutboundDisablesPassThrough(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-disabled-by-outbound",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "gpt-5.4",
+				APIFormat: llm.APIFormatOpenAIResponse,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIResponse),
+					Body:      []byte(`{"model":"gpt-5.4","input":[{"type":"reasoning","encrypted_content":"enc","summary":[]},{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}]}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body:      []byte(`{"model":"gpt-5.4","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}]}`),
+		Metadata: map[string]string{
+			httpclient.MetadataKeyDisablePassThroughBody: "true",
+		},
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, string(request.Body), string(processed.Body))
+	require.Equal(t, 1, len(gjson.GetBytes(processed.Body, "input").Array()))
+	require.Equal(t, "message", gjson.GetBytes(processed.Body, "input.0.type").String())
+}
+
 func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 	ctx := context.Background()
 
@@ -1055,6 +1097,15 @@ func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
 	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatGeminiContents, "gemini-2.5-pro")
 	require.NoError(t, err)
 	require.Equal(t, string(rawBody), string(merged))
+}
+
+func TestMergePassThroughBodyPatchesResponsesCompactModel(t *testing.T) {
+	rawBody := []byte(`{"model":"my-alias","input":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"hi"}]},{"type":"reasoning","encrypted_content":"enc","summary":[]}]}`)
+
+	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatOpenAIResponseCompact, "gpt-5.4")
+	require.NoError(t, err)
+	require.Equal(t, "gpt-5.4", gjson.GetBytes(merged, "model").String())
+	require.Equal(t, 2, len(gjson.GetBytes(merged, "input").Array()))
 }
 
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.

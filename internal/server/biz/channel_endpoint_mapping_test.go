@@ -101,6 +101,14 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 				llm.APIFormatSeedanceVideo.String(),
 			},
 		},
+		{
+			name: "github copilot exposes chat and compact",
+			typ:  channel.TypeGithubCopilot,
+			expected: []string{
+				llm.APIFormatOpenAIChatCompletion.String(),
+				llm.APIFormatOpenAIResponseCompact.String(),
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -617,6 +617,10 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 		Type:   httpclient.AuthTypeBearer,
 		APIKey: token,
 	}
+	if responsesReq.Metadata == nil {
+		responsesReq.Metadata = make(map[string]string, 1)
+	}
+	responsesReq.Metadata[httpclient.MetadataKeyDisablePassThroughBody] = "true"
 
 	// Add Copilot-specific headers
 	SetCopilotHeaders(responsesReq.Headers)

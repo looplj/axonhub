@@ -69,6 +69,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		if !outbound.isPassThroughEnabled(ctx, systemService) {
 			return request, nil
 		}
+		if request.Metadata != nil && request.Metadata[httpclient.MetadataKeyDisablePassThroughBody] == "true" {
+			return request, nil
+		}
 
 		channel := outbound.GetCurrentChannel()
 		llmReq := outbound.state.LlmRequest
@@ -115,7 +118,7 @@ func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model 
 }
 
 func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
-	//nolint:exhaustive // ohter format do not need model field.
+	//nolint:exhaustive // other formats do not need a top-level model field patched.
 	switch apiFormat {
 	case llm.APIFormatOpenAIChatCompletion,
 		llm.APIFormatOpenAIResponse,

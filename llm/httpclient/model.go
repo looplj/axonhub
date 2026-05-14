@@ -57,6 +57,8 @@ type Request struct {
 	SkipInboundQueryMerge bool `json:"-"`
 }
 
+const MetadataKeyDisablePassThroughBody = "disable_pass_through_body"
+
 // AuthConfig represents authentication configuration.
 type AuthConfig struct {
 	// Type represents the type of authentication.

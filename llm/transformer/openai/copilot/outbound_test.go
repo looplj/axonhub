@@ -300,6 +300,46 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			wantErr: false,
 			validate: func(t *testing.T, req *httpclient.Request) {
 				assert.Equal(t, DefaultCopilotBaseURL+"/v1/responses", req.URL)
+				assert.NotNil(t, req.Metadata)
+				assert.Equal(t, "true", req.Metadata[httpclient.MetadataKeyDisablePassThroughBody])
+			},
+		},
+		{
+			name: "compact requests use responses compact endpoint",
+			params: OutboundTransformerParams{
+				TokenProvider: &mockTokenProvider{token: mockToken},
+			},
+			request: &llm.Request{
+				Model:       "gpt-5.4",
+				RequestType: llm.RequestTypeCompact,
+				Compact: &llm.CompactRequest{
+					Input: []llm.Message{{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello, Copilot!")},
+					}},
+				},
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("Hello, Copilot!")},
+				}},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, req *httpclient.Request) {
+				assert.Equal(t, DefaultCopilotBaseURL+"/v1/responses/compact", req.URL)
+
+				var body map[string]any
+				err := json.Unmarshal(req.Body, &body)
+				require.NoError(t, err)
+
+				input, ok := body["input"].([]any)
+				require.True(t, ok)
+				require.Len(t, input, 1)
+
+				item, ok := input[0].(map[string]any)
+				require.True(t, ok)
+				assert.Equal(t, "message", item["type"])
+				assert.NotNil(t, req.Metadata)
+				assert.Equal(t, "true", req.Metadata[httpclient.MetadataKeyDisablePassThroughBody])
 			},
 		},
 		{
