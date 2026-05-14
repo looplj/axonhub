@@ -388,8 +388,16 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
 		llmRequest.Stream = streamPtr
+		if llmRequest.StreamOptions == nil {
+			llmRequest.StreamOptions = &llm.StreamOptions{}
+		}
+		llmRequest.StreamOptions.IncludeUsage = true
 		if p.state != nil && p.state.LlmRequest != nil {
 			p.state.LlmRequest.Stream = streamPtr
+			if p.state.LlmRequest.StreamOptions == nil {
+				p.state.LlmRequest.StreamOptions = &llm.StreamOptions{}
+			}
+			p.state.LlmRequest.StreamOptions.IncludeUsage = true
 		}
 	}
 

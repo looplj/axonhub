@@ -452,6 +452,9 @@ func TestChatCompletionOrchestrator_Process_NonStreamingRequireStreamCandidate(t
 	err = json.Unmarshal(executor.lastRequest.Body, &reqBody)
 	require.NoError(t, err)
 	assert.Equal(t, true, reqBody["stream"])
+	streamOptions, ok := reqBody["stream_options"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, true, streamOptions["include_usage"])
 }
 
 func TestChatCompletionOrchestrator_Process_NonStreamingRequireStreamCandidate_DisablesPassThroughBody(t *testing.T) {

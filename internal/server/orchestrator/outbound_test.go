@@ -491,26 +491,26 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
 	})
 
-		t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
-			for _, retryErr := range []error{
-				fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyResponse),
-				fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyStreamChunks),
-				fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyAggregatedBody),
-			} {
-				outbound := &PersistentOutboundTransformer{
-					wrapped: &mockTransformer{},
-					state: &PersistenceState{
-						CurrentCandidate: &ChannelModelsCandidate{
-							Channel: channel,
-							Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
-						},
-						CurrentModelIndex: 0,
+	t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
+		for _, retryErr := range []error{
+			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyResponse),
+			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyStreamChunks),
+			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyAggregatedBody),
+		} {
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{
+						Channel: channel,
+						Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
 					},
-				}
-
-				require.True(t, outbound.CanRetry(retryErr))
+					CurrentModelIndex: 0,
+				},
 			}
-		})
+
+			require.True(t, outbound.CanRetry(retryErr))
+		}
+	})
 }
 
 func TestShouldForceStreamingForCandidate(t *testing.T) {
