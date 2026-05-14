@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -46,7 +47,9 @@ func (RequestExecution) Fields() []ent.Field {
 		// External ID for tracking requests in external systems
 		field.String("external_id").
 			Optional().
-			MaxLen(512),
+			SchemaType(map[string]string{
+				dialect.MySQL: "text",
+			}),
 		field.String("model_id").Immutable(),
 		//  The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),

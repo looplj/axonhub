@@ -614,15 +614,19 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 			return m.ID
 		})
 
-		dbModels, err := handlers.EntClient.Model.Query().
-			Where(
-				model.StatusEQ(model.StatusEnabled),
-				model.ModelIDIn(visibleIDs...),
-			).
-			All(ctx)
-		if err != nil {
-			handlers.writeOpenAIInternalError(c, requestID, err)
-			return
+		var dbModels []*ent.Model
+		for _, chunk := range lo.Chunk(visibleIDs, biz.SQLiteMaxVariableLimit) {
+			chunkModels, err := handlers.EntClient.Model.Query().
+				Where(
+					model.StatusEQ(model.StatusEnabled),
+					model.ModelIDIn(chunk...),
+				).
+				All(ctx)
+			if err != nil {
+				handlers.writeOpenAIInternalError(c, requestID, err)
+				return
+			}
+			dbModels = append(dbModels, chunkModels...)
 		}
 
 		dbModelMap := make(map[string]*ent.Model, len(dbModels))
