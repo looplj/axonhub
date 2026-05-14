@@ -1099,13 +1099,12 @@ func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
 	require.Equal(t, string(rawBody), string(merged))
 }
 
-func TestMergePassThroughBodyPatchesResponsesCompactModel(t *testing.T) {
-	rawBody := []byte(`{"model":"my-alias","input":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"hi"}]},{"type":"reasoning","encrypted_content":"enc","summary":[]}]}`)
+func TestMergePassThroughBodySkipsResponsesCompactModelPatch(t *testing.T) {
+	rawBody := []byte(`{"model":"gpt-5.4","input":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"hi"}]},{"type":"reasoning","encrypted_content":"enc","summary":[]}]}`)
 
 	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatOpenAIResponseCompact, "gpt-5.4")
 	require.NoError(t, err)
-	require.Equal(t, "gpt-5.4", gjson.GetBytes(merged, "model").String())
-	require.Equal(t, 2, len(gjson.GetBytes(merged, "input").Array()))
+	require.Equal(t, string(rawBody), string(merged))
 }
 
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
