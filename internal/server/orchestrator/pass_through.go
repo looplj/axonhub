@@ -62,14 +62,10 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context
 }
 
 func passThroughStreamAligned(originalStream, effectiveStream *bool) bool {
-	if originalStream == nil && effectiveStream == nil {
-		return true
-	}
-	if originalStream == nil || effectiveStream == nil {
-		return false
-	}
+	originalEnabled := originalStream != nil && *originalStream
+	effectiveEnabled := effectiveStream != nil && *effectiveStream
 
-	return *originalStream == *effectiveStream
+	return originalEnabled == effectiveEnabled
 }
 
 // applyPassThroughRequestBody creates a middleware that reuses the original inbound request body when
