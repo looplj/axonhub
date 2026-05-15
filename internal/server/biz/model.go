@@ -628,8 +628,11 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 			}
 
 			// Channel-derived models matching the blacklist regex are excluded.
-			// Configured Model entities above are not affected.
+			// Configured Model entities above are not affected. Cache the decision
+			// in modelSet so the same model ID coming from another channel skips
+			// the regex match.
 			if blacklist != "" && xregexp.MatchString(blacklist, requestModel) {
+				modelSet[requestModel] = true
 				continue
 			}
 
