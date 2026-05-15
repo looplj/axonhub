@@ -41,7 +41,7 @@ func TestEffectiveModelAssociations_InheritsDeveloperSettings(t *testing.T) {
 		},
 	}, &ent.Model{
 		Developer: "openai",
-		ModelID:   "claude-opus-4-6",
+		ModelID:   "gpt-4o",
 		Settings: &objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{modelAssociation},
 		},
@@ -49,10 +49,10 @@ func TestEffectiveModelAssociations_InheritsDeveloperSettings(t *testing.T) {
 
 	require.Len(t, result, 3)
 	require.Equal(t, "channel_tags_model", result[0].Type)
-	require.Equal(t, "claude-opus-4-6", result[0].ChannelTagsModel.ModelID)
+	require.Equal(t, "gpt-4o", result[0].ChannelTagsModel.ModelID)
 	require.Same(t, modelAssociation, result[1])
 	require.Equal(t, "channel_model", result[2].Type)
-	require.Equal(t, "claude-opus-4-6", result[2].ChannelModel.ModelID)
+	require.Equal(t, "gpt-4o", result[2].ChannelModel.ModelID)
 	require.Empty(t, developerAssociationSamePriority.ChannelModel.ModelID)
 	require.Empty(t, developerAssociationHigherPriority.ChannelTagsModel.ModelID)
 }
@@ -117,6 +117,40 @@ func TestEffectiveModelAssociations_LegacyModelSettingsInheritByDefault(t *testi
 
 	require.Len(t, result, 1)
 	require.Equal(t, "gpt-4", result[0].ChannelModel.ModelID)
+}
+
+func TestCloneModelAssociation_DeepCopiesWhenCondition(t *testing.T) {
+	assoc := &objects.ModelAssociation{
+		Type: "channel_model",
+		When: &objects.ModelAssociationWhen{
+			Enabled: true,
+			Condition: &objects.Condition{
+				Type:  objects.ConditionTypeGroup,
+				Logic: "and",
+				Conditions: []objects.Condition{
+					{
+						Type:     objects.ConditionTypeCondition,
+						Field:    "prompt_tokens",
+						Operator: "gt",
+						Value:    100,
+					},
+				},
+			},
+		},
+		ChannelModel: &objects.ChannelModelAssociation{ChannelID: 10},
+	}
+
+	clone := cloneModelAssociation(assoc)
+	require.NotSame(t, assoc.When, clone.When)
+	require.NotSame(t, assoc.When.Condition, clone.When.Condition)
+
+	clone.When.Enabled = false
+	clone.When.Condition.Conditions[0].Field = "stream"
+	clone.When.Condition.Conditions[0].Value = true
+
+	require.True(t, assoc.When.Enabled)
+	require.Equal(t, "prompt_tokens", assoc.When.Condition.Conditions[0].Field)
+	require.Equal(t, 100, assoc.When.Condition.Conditions[0].Value)
 }
 
 func TestValidateSystemModelSettings_RejectsDuplicateDevelopers(t *testing.T) {

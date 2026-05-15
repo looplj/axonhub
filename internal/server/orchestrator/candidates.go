@@ -2,9 +2,12 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"hash"
+	"hash/fnv"
+	"io"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -352,12 +355,129 @@ func (s *DefaultSelector) resolveAssociations(
 }
 
 func modelAssociationSignature(associations []*objects.ModelAssociation) string {
-	data, err := json.Marshal(associations)
-	if err != nil {
-		return fmt.Sprintf("invalid:%d", len(associations))
+	h := fnv.New64a()
+	writeSignatureInt(h, len(associations))
+	for _, assoc := range associations {
+		writeAssociationSignature(h, assoc)
 	}
 
-	return string(data)
+	return strconv.FormatUint(h.Sum64(), 16)
+}
+
+func writeAssociationSignature(h hash.Hash64, assoc *objects.ModelAssociation) {
+	if assoc == nil {
+		writeSignatureString(h, "<nil>")
+		return
+	}
+
+	writeSignatureString(h, assoc.Type)
+	writeSignatureInt(h, assoc.Priority)
+	writeSignatureBool(h, assoc.Disabled)
+	writeAssociationWhenSignature(h, assoc.When)
+	if assoc.ChannelModel != nil {
+		writeSignatureString(h, "channelModel")
+		writeSignatureInt(h, assoc.ChannelModel.ChannelID)
+		writeSignatureString(h, assoc.ChannelModel.ModelID)
+	}
+	if assoc.ChannelRegex != nil {
+		writeSignatureString(h, "channelRegex")
+		writeSignatureInt(h, assoc.ChannelRegex.ChannelID)
+		writeSignatureString(h, assoc.ChannelRegex.Pattern)
+	}
+	if assoc.Regex != nil {
+		writeSignatureString(h, "regex")
+		writeSignatureString(h, assoc.Regex.Pattern)
+		writeExcludeSignature(h, assoc.Regex.Exclude)
+	}
+	if assoc.ModelID != nil {
+		writeSignatureString(h, "modelId")
+		writeSignatureString(h, assoc.ModelID.ModelID)
+		writeExcludeSignature(h, assoc.ModelID.Exclude)
+	}
+	if assoc.ChannelTagsModel != nil {
+		writeSignatureString(h, "channelTagsModel")
+		writeStringSliceSignature(h, assoc.ChannelTagsModel.ChannelTags)
+		writeSignatureString(h, assoc.ChannelTagsModel.ModelID)
+	}
+	if assoc.ChannelTagsRegex != nil {
+		writeSignatureString(h, "channelTagsRegex")
+		writeStringSliceSignature(h, assoc.ChannelTagsRegex.ChannelTags)
+		writeSignatureString(h, assoc.ChannelTagsRegex.Pattern)
+	}
+}
+
+func writeAssociationWhenSignature(h hash.Hash64, when *objects.ModelAssociationWhen) {
+	if when == nil {
+		writeSignatureString(h, "when:nil")
+		return
+	}
+
+	writeSignatureString(h, "when")
+	writeSignatureBool(h, when.Enabled)
+	writeConditionSignature(h, when.Condition)
+}
+
+func writeConditionSignature(h hash.Hash64, condition *objects.Condition) {
+	if condition == nil {
+		writeSignatureString(h, "condition:nil")
+		return
+	}
+
+	writeSignatureString(h, string(condition.Type))
+	writeSignatureString(h, condition.Logic)
+	writeSignatureString(h, condition.Field)
+	writeSignatureString(h, condition.Operator)
+	writeSignatureString(h, fmt.Sprintf("%T:%v", condition.Value, condition.Value))
+	writeSignatureInt(h, len(condition.Conditions))
+	for i := range condition.Conditions {
+		writeConditionSignature(h, &condition.Conditions[i])
+	}
+}
+
+func writeExcludeSignature(h hash.Hash64, excludes []*objects.ExcludeAssociation) {
+	writeSignatureInt(h, len(excludes))
+	for _, exclude := range excludes {
+		if exclude == nil {
+			writeSignatureString(h, "<nil>")
+			continue
+		}
+
+		writeSignatureString(h, exclude.ChannelNamePattern)
+		writeSignatureIntSlice(h, exclude.ChannelIds)
+		writeStringSliceSignature(h, exclude.ChannelTags)
+	}
+}
+
+func writeStringSliceSignature(h hash.Hash64, values []string) {
+	writeSignatureInt(h, len(values))
+	for _, value := range values {
+		writeSignatureString(h, value)
+	}
+}
+
+func writeSignatureIntSlice(h hash.Hash64, values []int) {
+	writeSignatureInt(h, len(values))
+	for _, value := range values {
+		writeSignatureInt(h, value)
+	}
+}
+
+func writeSignatureString(h hash.Hash64, value string) {
+	io.WriteString(h, value)
+	h.Write([]byte{0})
+}
+
+func writeSignatureInt(h hash.Hash64, value int) {
+	writeSignatureString(h, strconv.Itoa(value))
+}
+
+func writeSignatureBool(h hash.Hash64, value bool) {
+	if value {
+		writeSignatureString(h, "1")
+		return
+	}
+
+	writeSignatureString(h, "0")
 }
 
 func effectiveAssociationSourceCounts(systemSettings *biz.SystemModelSettings, m *ent.Model) (developerCount int, modelCount int, developerInheritanceDisabled bool) {

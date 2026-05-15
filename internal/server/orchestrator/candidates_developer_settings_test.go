@@ -164,3 +164,36 @@ func TestDefaultSelector_Select_InvalidatesCacheWhenDeveloperAssociationsChange(
 	selector.cacheMu.RUnlock()
 	require.NotSame(t, initialEntry, currentEntry)
 }
+
+func TestModelAssociationSignature_IncludesNestedCondition(t *testing.T) {
+	associations := []*objects.ModelAssociation{
+		{
+			Type:     "channel_model",
+			Priority: 1,
+			When: &objects.ModelAssociationWhen{
+				Enabled: true,
+				Condition: &objects.Condition{
+					Type:  objects.ConditionTypeGroup,
+					Logic: "and",
+					Conditions: []objects.Condition{
+						{
+							Type:     objects.ConditionTypeCondition,
+							Field:    "prompt_tokens",
+							Operator: "gt",
+							Value:    100,
+						},
+					},
+				},
+			},
+			ChannelModel: &objects.ChannelModelAssociation{
+				ChannelID: 1,
+				ModelID:   "gpt-4",
+			},
+		},
+	}
+
+	signature := modelAssociationSignature(associations)
+	associations[0].When.Condition.Conditions[0].Value = 200
+
+	require.NotEqual(t, signature, modelAssociationSignature(associations))
+}

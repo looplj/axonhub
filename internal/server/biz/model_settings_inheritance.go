@@ -194,6 +194,7 @@ func cloneModelAssociation(assoc *objects.ModelAssociation) *objects.ModelAssoci
 	}
 
 	clone := *assoc
+	clone.When = cloneModelAssociationWhen(assoc.When)
 	if assoc.ChannelModel != nil {
 		channelModel := *assoc.ChannelModel
 		clone.ChannelModel = &channelModel
@@ -224,6 +225,34 @@ func cloneModelAssociation(assoc *objects.ModelAssociation) *objects.ModelAssoci
 	}
 
 	return &clone
+}
+
+func cloneModelAssociationWhen(when *objects.ModelAssociationWhen) *objects.ModelAssociationWhen {
+	if when == nil {
+		return nil
+	}
+
+	clone := *when
+	if when.Condition != nil {
+		condition := cloneCondition(*when.Condition)
+		clone.Condition = &condition
+	}
+
+	return &clone
+}
+
+func cloneCondition(condition objects.Condition) objects.Condition {
+	clone := condition
+	if len(condition.Conditions) == 0 {
+		return clone
+	}
+
+	clone.Conditions = make([]objects.Condition, len(condition.Conditions))
+	for i := range condition.Conditions {
+		clone.Conditions[i] = cloneCondition(condition.Conditions[i])
+	}
+
+	return clone
 }
 
 func cloneExcludeAssociations(excludes []*objects.ExcludeAssociation) []*objects.ExcludeAssociation {
