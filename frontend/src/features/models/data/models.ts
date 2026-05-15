@@ -53,6 +53,7 @@ const MODELS_QUERY = `
             lastUpdated
           }
           settings {
+            disableDeveloperSettingsInheritance
             associations {
               type
               priority
@@ -171,6 +172,7 @@ const CREATE_MODEL_MUTATION = `
         lastUpdated
       }
       settings {
+        disableDeveloperSettingsInheritance
         associations {
           type
           priority
@@ -271,6 +273,7 @@ const BULK_CREATE_MODELS_MUTATION = `
         lastUpdated
       }
       settings {
+        disableDeveloperSettingsInheritance
         associations {
           type
           priority
@@ -371,6 +374,7 @@ const UPDATE_MODEL_MUTATION = `
         lastUpdated
       }
       settings {
+        disableDeveloperSettingsInheritance
         associations {
           type
           priority
@@ -683,11 +687,11 @@ export interface ModelAssociationInput {
   };
   regex?: {
     pattern: string;
-    exclude?: ExcludeAssociationInput[];
+    exclude?: ExcludeAssociationInput[] | null;
   };
   modelId?: {
     modelId: string;
-    exclude?: ExcludeAssociationInput[];
+    exclude?: ExcludeAssociationInput[] | null;
   };
   channelTagsModel?: {
     channelTags: string[];
@@ -700,9 +704,9 @@ export interface ModelAssociationInput {
 }
 
 export interface ExcludeAssociationInput {
-  channelNamePattern?: string;
-  channelIds?: number[];
-  channelTags?: string[];
+  channelNamePattern?: string | null;
+  channelIds?: number[] | null;
+  channelTags?: string[] | null;
 }
 
 export interface FilterConditionInput {
@@ -711,7 +715,7 @@ export interface FilterConditionInput {
   conditions?: FilterConditionInput[];
   field?: string;
   operator?: string;
-  value?: unknown;
+  value?: string | number | boolean;
 }
 
 export interface ChannelModelEntry {

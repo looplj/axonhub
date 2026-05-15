@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sync"
@@ -44,6 +45,7 @@ type CandidateSelector interface {
 // associationCacheEntry stores cached association resolution results.
 type associationCacheEntry struct {
 	associations            []*objects.ModelAssociation
+	associationSignature    string
 	candidates              []*resolvedAssociationCandidate
 	channelCount            int
 	latestChannelUpdateTime time.Time
@@ -138,7 +140,20 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
-	if model.Settings == nil || len(model.Settings.Associations) == 0 {
+	systemSettings := s.SystemService.ModelSettingsOrDefault(ctx)
+	developerAssociationCount, modelAssociationCount, developerInheritanceDisabled := effectiveAssociationSourceCounts(systemSettings, model)
+	associations := biz.EffectiveModelAssociations(systemSettings, model)
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "computed effective model associations",
+			log.String("model", model.ModelID),
+			log.String("developer", model.Developer),
+			log.Int("developer_association_count", developerAssociationCount),
+			log.Int("model_association_count", modelAssociationCount),
+			log.Bool("developer_inheritance_disabled", developerInheritanceDisabled),
+			log.Int("effective_association_count", len(associations)),
+		)
+	}
+	if len(associations) == 0 {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "model has no associations", log.String("model", req.Model))
 		}
@@ -149,12 +164,12 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "model associations found",
 			log.String("model", req.Model),
-			log.Int("association_count", len(model.Settings.Associations)),
-			log.Any("associations", model.Settings.Associations),
+			log.Int("association_count", len(associations)),
+			log.Any("associations", associations),
 		)
 	}
 
-	resolvedCandidates, err := s.resolveAssociations(ctx, model, model.Settings.Associations)
+	resolvedCandidates, err := s.resolveAssociations(ctx, model, associations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
 	}
@@ -210,6 +225,7 @@ func (s *DefaultSelector) resolveAssociations(
 
 	// Use model ID as cache key
 	modelID := model.ModelID
+	associationSignature := modelAssociationSignature(associations)
 	channelCount := len(channels)
 	latestChannelUpdateTime := s.getLatestChannelUpdateTime(channels)
 	latestModelUpdateTime := model.UpdatedAt
@@ -225,6 +241,7 @@ func (s *DefaultSelector) resolveAssociations(
 		// 4. Model hasn't been updated
 		// 5. Cache hasn't expired (5 minutes)
 		if entry.channelCacheVersion == channelCacheVersion &&
+			entry.associationSignature == associationSignature &&
 			entry.channelCount == channelCount &&
 			entry.latestChannelUpdateTime.Equal(latestChannelUpdateTime) &&
 			entry.latestModelUpdateTime.Equal(latestModelUpdateTime) &&
@@ -315,6 +332,7 @@ func (s *DefaultSelector) resolveAssociations(
 	s.cacheMu.Lock()
 	s.associationCache[modelID] = &associationCacheEntry{
 		associations:            append([]*objects.ModelAssociation(nil), associations...),
+		associationSignature:    associationSignature,
 		candidates:              resolvedCandidates,
 		channelCount:            channelCount,
 		latestChannelUpdateTime: latestChannelUpdateTime,
@@ -331,6 +349,40 @@ func (s *DefaultSelector) resolveAssociations(
 	}
 
 	return resolvedCandidates, nil
+}
+
+func modelAssociationSignature(associations []*objects.ModelAssociation) string {
+	data, err := json.Marshal(associations)
+	if err != nil {
+		return fmt.Sprintf("invalid:%d", len(associations))
+	}
+
+	return string(data)
+}
+
+func effectiveAssociationSourceCounts(systemSettings *biz.SystemModelSettings, m *ent.Model) (developerCount int, modelCount int, developerInheritanceDisabled bool) {
+	if m == nil {
+		return 0, 0, false
+	}
+
+	if m.Settings != nil {
+		modelCount = len(m.Settings.Associations)
+		developerInheritanceDisabled = m.Settings.DisableDeveloperSettingsInheritance
+	}
+
+	if systemSettings == nil || m.Developer == "" {
+		return developerCount, modelCount, developerInheritanceDisabled
+	}
+
+	for _, developerSettings := range systemSettings.DeveloperSettings {
+		if developerSettings == nil || developerSettings.Developer != m.Developer {
+			continue
+		}
+
+		return len(developerSettings.Associations), modelCount, developerInheritanceDisabled
+	}
+
+	return developerCount, modelCount, developerInheritanceDisabled
 }
 
 func aggregateChannelModelCandidates(resolvedCandidates []*resolvedAssociationCandidate) []*ChannelModelsCandidate {

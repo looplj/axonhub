@@ -42,10 +42,11 @@ export function ModelSettingsDialog() {
       defaultModelAPIIncludeAll: defaultModelAPIIncludeAll,
       autoReasoningEffort: autoReasoningEffort,
       modelBlacklistRegex: modelBlacklistRegex,
+      developerSettings: settings?.developerSettings || [],
     };
     await updateModelSettings.mutateAsync(input);
     setOpen(null);
-  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, autoReasoningEffort, modelBlacklistRegex, setOpen]);
+  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, autoReasoningEffort, modelBlacklistRegex, settings?.developerSettings, setOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(null);

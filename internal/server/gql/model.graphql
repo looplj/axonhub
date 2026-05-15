@@ -36,6 +36,7 @@ type ModelCardLimit {
 
 # ModelSettings represents model Association configuration
 type ModelSettings {
+  disableDeveloperSettingsInheritance: Boolean!
   associations: [ModelAssociation!]!
 }
 
@@ -130,6 +131,7 @@ input ModelCardLimitInput {
 }
 
 input ModelSettingsInput {
+  disableDeveloperSettingsInheritance: Boolean
   associations: [ModelAssociationInput!]!
 }
 

@@ -179,6 +179,7 @@ type SystemModelSettings {
   defaultModelAPIIncludeAll: Boolean!
   autoReasoningEffort: Boolean!
   modelBlacklistRegex: String!
+  developerSettings: [DeveloperModelSettings!]!
 }
 
 input UpdateSystemModelSettingsInput {
@@ -187,6 +188,17 @@ input UpdateSystemModelSettingsInput {
   defaultModelAPIIncludeAll: Boolean
   autoReasoningEffort: Boolean
   modelBlacklistRegex: String
+  developerSettings: [DeveloperModelSettingsInput!]
+}
+
+type DeveloperModelSettings {
+  developer: String!
+  associations: [ModelAssociation!]!
+}
+
+input DeveloperModelSettingsInput {
+  developer: String!
+  associations: [ModelAssociationInput!]!
 }
 
 input UpdateDefaultDataStorageInput {
