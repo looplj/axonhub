@@ -98,9 +98,9 @@ type channelMetricsResult struct {
 func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[int]*channelMetricsResult, error) {
 	// Single query to get request count and last failure time for all channels
 	type queryResult struct {
-		ChannelID     int       `json:"channel_id"`
-		RequestCount  int64     `json:"request_count"`
-		LastFailureAt time.Time `json:"last_failure_at"`
+		ChannelID     int        `json:"channel_id"`
+		RequestCount  int64      `json:"request_count"`
+		LastFailureAt *time.Time `json:"last_failure_at"`
 	}
 
 	var results []queryResult
@@ -112,8 +112,8 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 			requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
 		).
 		Modify(func(s *sql.Selector) {
-			// Use a subquery or join to get last failure time per channel
-			// For simplicity, we use MAX(CASE WHEN status = 'failed' THEN created_at END) to get last failure
+			// Use MAX(CASE WHEN ...) to get last failure time per channel.
+			// Returns NULL when there are no failed requests, which maps to nil for *time.Time.
 			s.Select(
 				s.C(requestexecution.FieldChannelID),
 				sql.As(sql.Count("*"), "request_count"),
@@ -133,8 +133,8 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 			ChannelID:    r.ChannelID,
 			RequestCount: r.RequestCount,
 		}
-		if !r.LastFailureAt.IsZero() {
-			m.LastFailureAt = &r.LastFailureAt
+		if r.LastFailureAt != nil {
+			m.LastFailureAt = r.LastFailureAt
 		}
 
 		metricsMap[r.ChannelID] = m
