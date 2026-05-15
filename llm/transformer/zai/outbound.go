@@ -124,7 +124,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	if llmReq.Metadata != nil {
-		zaiReq.UserID = llmReq.Metadata["user_id"]
+		zaiReq.UserID = openai.SanitizeUserStr(llmReq.Metadata["user_id"])
 		zaiReq.RequestID = llmReq.Metadata["request_id"]
 	}
 
