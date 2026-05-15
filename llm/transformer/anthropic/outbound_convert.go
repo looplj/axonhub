@@ -6,6 +6,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -122,7 +123,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	}
 
 	if chatReq.Metadata != nil && chatReq.Metadata["user_id"] != "" {
-		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
+		req.Metadata = &AnthropicMetadata{UserID: openai.SanitizeUserStr(chatReq.Metadata["user_id"])}
 	}
 
 	// Determine thinking config priority: adaptive > enabled > disabled

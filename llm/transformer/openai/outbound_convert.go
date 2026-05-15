@@ -32,7 +32,11 @@ func SanitizeUserStr(user string) string {
 		return user
 	}
 	h := sha256.Sum256([]byte(user))
-	return fmt.Sprintf("h_%s", hex.EncodeToString(h[:])[:maxUserLen-2])
+	hexStr := hex.EncodeToString(h[:])
+	if len(hexStr) > maxUserLen-2 {
+		hexStr = hexStr[:maxUserLen-2]
+	}
+	return fmt.Sprintf("h_%s", hexStr)
 }
 
 // sanitizeUser is an alias for package-internal use.

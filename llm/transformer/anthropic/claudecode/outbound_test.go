@@ -183,10 +183,13 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
-		// Should have generated user ID
+		// Should have generated user ID (may be sanitized to a hash if too long)
 		userID := gjson.GetBytes(httpReq.Body, "metadata.user_id").String()
 		assert.NotEmpty(t, userID)
-		assert.NotNil(t, ParseUserID(userID))
+		if parsed := ParseUserID(userID); parsed == nil {
+			// Sanitized format: "h_" prefix followed by hex hash
+			assert.True(t, strings.HasPrefix(userID, "h_"), "user_id should be either parseable v2 format or sanitized h_ hash")
+		}
 	})
 
 	t.Run("does not add billing cch when not official", func(t *testing.T) {
