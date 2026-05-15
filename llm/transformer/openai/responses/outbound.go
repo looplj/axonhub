@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -170,7 +171,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Store:                llmReq.Store,
 		ServiceTier:          llmReq.ServiceTier,
 		SafetyIdentifier:     llmReq.SafetyIdentifier,
-		User:                 llmReq.User,
+		User:                 openai.SanitizeUser(llmReq.User),
 		Metadata:             llmReq.Metadata,
 		MaxOutputTokens:      llmReq.MaxCompletionTokens,
 		TopLogprobs:          llmReq.TopLogprobs,

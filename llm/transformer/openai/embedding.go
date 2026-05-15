@@ -54,7 +54,7 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 		Model:          llmReq.Model,
 		EncodingFormat: llmReq.Embedding.EncodingFormat,
 		Dimensions:     llmReq.Embedding.Dimensions,
-		User:           llmReq.Embedding.User,
+		User:           sanitizeUserStr(llmReq.Embedding.User),
 	}
 
 	// Re-marshal to JSON (ensure clean output)

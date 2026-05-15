@@ -343,11 +343,12 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 
 	// Add user if specified
 	if chatReq.Image.User != "" {
-		if err := writer.WriteField("user", chatReq.Image.User); err != nil {
+		sanitized := sanitizeUserStr(chatReq.Image.User)
+		if err := writer.WriteField("user", sanitized); err != nil {
 			return nil, fmt.Errorf("failed to write user field: %w", err)
 		}
 
-		jsonBody["user"] = chatReq.Image.User
+		jsonBody["user"] = sanitized
 	}
 
 	if err := writer.Close(); err != nil {

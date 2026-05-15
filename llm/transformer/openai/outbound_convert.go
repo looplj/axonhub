@@ -1,10 +1,45 @@
 package openai
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 )
+
+// maxUserLen is the maximum allowed length for the user field.
+// Some upstream providers (e.g., Zhipu) reject user_id values longer than 128 characters.
+const maxUserLen = 128
+
+// SanitizeUser ensures the user string does not exceed maxUserLen characters.
+// If the input exceeds the limit, it returns a deterministic SHA256-based
+// identifier prefixed with "h_" so it remains unique and reproducible.
+// Returns nil unchanged.
+func SanitizeUser(user *string) *string {
+	if user == nil || *user == "" {
+		return user
+	}
+	s := SanitizeUserStr(*user)
+	return &s
+}
+
+// SanitizeUserStr is the string variant of SanitizeUser.
+func SanitizeUserStr(user string) string {
+	if user == "" || len(user) <= maxUserLen {
+		return user
+	}
+	h := sha256.Sum256([]byte(user))
+	return fmt.Sprintf("h_%s", hex.EncodeToString(h[:])[:maxUserLen-2])
+}
+
+// sanitizeUser is an alias for package-internal use.
+func sanitizeUser(user *string) *string { return SanitizeUser(user) }
+
+// sanitizeUserStr is an alias for package-internal use.
+func sanitizeUserStr(user string) string { return SanitizeUserStr(user) }
 
 // RequestFromLLM creates OpenAI Request from unified llm.Request.
 func RequestFromLLM(r *llm.Request) *Request {
@@ -26,7 +61,7 @@ func RequestFromLLM(r *llm.Request) *Request {
 		TopP:                r.TopP,
 		PromptCacheKey:      r.PromptCacheKey,
 		SafetyIdentifier:    r.SafetyIdentifier,
-		User:                r.User,
+		User:                sanitizeUser(r.User),
 		LogitBias:           r.LogitBias,
 		Metadata:            r.Metadata,
 		Modalities:          r.Modalities,
