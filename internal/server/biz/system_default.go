@@ -34,6 +34,8 @@ var defaultModelSettings = SystemModelSettings{
 	FallbackToChannelsOnModelNotFound: true,
 	QueryAllChannelModels:             true,
 	DefaultModelAPIIncludeAll:         false,
+	AutoReasoningEffort:               false,
+	ModelBlacklistRegex:               "",
 }
 
 var defaultChannelSetting = SystemChannelSettings{

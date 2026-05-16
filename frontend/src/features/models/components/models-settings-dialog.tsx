@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Loader2, Settings2, RefreshCcw, Layers, ListTree, BrainCircuit } from 'lucide-react';
+import { Loader2, Settings2, RefreshCcw, Layers, ListTree, BrainCircuit, Ban } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useModelSettings, useUpdateModelSettings, type UpdateModelSettingsInput } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
@@ -22,6 +23,7 @@ export function ModelSettingsDialog() {
   const [queryAllChannelModels, setQueryAllChannelModels] = React.useState(false);
   const [defaultModelAPIIncludeAll, setDefaultModelAPIIncludeAll] = React.useState(false);
   const [autoReasoningEffort, setAutoReasoningEffort] = React.useState(false);
+  const [modelBlacklistRegex, setModelBlacklistRegex] = React.useState('');
 
   React.useEffect(() => {
     if (settings) {
@@ -29,6 +31,7 @@ export function ModelSettingsDialog() {
       setQueryAllChannelModels(settings.queryAllChannelModels);
       setDefaultModelAPIIncludeAll(settings.defaultModelAPIIncludeAll);
       setAutoReasoningEffort(settings.autoReasoningEffort);
+      setModelBlacklistRegex(settings.modelBlacklistRegex ?? '');
     }
   }, [settings]);
 
@@ -38,10 +41,11 @@ export function ModelSettingsDialog() {
       queryAllChannelModels: queryAllChannelModels,
       defaultModelAPIIncludeAll: defaultModelAPIIncludeAll,
       autoReasoningEffort: autoReasoningEffort,
+      modelBlacklistRegex: modelBlacklistRegex,
     };
     await updateModelSettings.mutateAsync(input);
     setOpen(null);
-  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, autoReasoningEffort, setOpen]);
+  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, autoReasoningEffort, modelBlacklistRegex, setOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(null);
@@ -103,6 +107,25 @@ export function ModelSettingsDialog() {
                     className='scale-100 sm:scale-75'
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className={!queryAllChannelModels ? 'opacity-50' : undefined}>
+              <CardHeader className='pb-0'>
+                <CardTitle className='flex items-center gap-2 text-sm sm:text-base'>
+                  <Ban className='text-muted-foreground h-4 w-4' />
+                  {t('models.dialogs.settings.modelBlacklistRegex.label')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='pt-1 space-y-2'>
+                <p className='text-muted-foreground text-sm'>{t('models.dialogs.settings.modelBlacklistRegex.description')}</p>
+                <Input
+                  id='model-blacklist-regex'
+                  value={modelBlacklistRegex}
+                  onChange={(e) => setModelBlacklistRegex(e.target.value)}
+                  placeholder={t('models.dialogs.settings.modelBlacklistRegex.placeholder')}
+                  disabled={!queryAllChannelModels || updateModelSettings.isPending}
+                />
               </CardContent>
             </Card>
 

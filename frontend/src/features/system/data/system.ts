@@ -783,6 +783,7 @@ const MODEL_SETTINGS_QUERY = `
       queryAllChannelModels
       defaultModelAPIIncludeAll
       autoReasoningEffort
+      modelBlacklistRegex
     }
   }
 `;
@@ -850,6 +851,7 @@ export interface ModelSettings {
   queryAllChannelModels: boolean;
   defaultModelAPIIncludeAll: boolean;
   autoReasoningEffort: boolean;
+  modelBlacklistRegex: string;
 }
 
 export interface UpdateModelSettingsInput {
@@ -857,6 +859,7 @@ export interface UpdateModelSettingsInput {
   queryAllChannelModels?: boolean;
   defaultModelAPIIncludeAll?: boolean;
   autoReasoningEffort?: boolean;
+  modelBlacklistRegex?: string;
 }
 
 export function useModelSettings() {

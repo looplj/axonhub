@@ -1581,6 +1581,7 @@ type ComplexityRoot struct {
 		AutoReasoningEffort               func(childComplexity int) int
 		DefaultModelAPIIncludeAll         func(childComplexity int) int
 		FallbackToChannelsOnModelNotFound func(childComplexity int) int
+		ModelBlacklistRegex               func(childComplexity int) int
 		QueryAllChannelModels             func(childComplexity int) int
 	}
 
@@ -8969,6 +8970,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SystemModelSettings.FallbackToChannelsOnModelNotFound(childComplexity), true
+	case "SystemModelSettings.modelBlacklistRegex":
+		if e.complexity.SystemModelSettings.ModelBlacklistRegex == nil {
+			break
+		}
+
+		return e.complexity.SystemModelSettings.ModelBlacklistRegex(childComplexity), true
 	case "SystemModelSettings.queryAllChannelModels":
 		if e.complexity.SystemModelSettings.QueryAllChannelModels == nil {
 			break
@@ -41342,6 +41349,8 @@ func (ec *executionContext) fieldContext_Query_systemModelSettings(_ context.Con
 				return ec.fieldContext_SystemModelSettings_defaultModelAPIIncludeAll(ctx, field)
 			case "autoReasoningEffort":
 				return ec.fieldContext_SystemModelSettings_autoReasoningEffort(ctx, field)
+			case "modelBlacklistRegex":
+				return ec.fieldContext_SystemModelSettings_modelBlacklistRegex(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemModelSettings", field.Name)
 		},
@@ -48403,6 +48412,35 @@ func (ec *executionContext) fieldContext_SystemModelSettings_autoReasoningEffort
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemModelSettings_modelBlacklistRegex(ctx context.Context, field graphql.CollectedField, obj *biz.SystemModelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemModelSettings_modelBlacklistRegex,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelBlacklistRegex, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemModelSettings_modelBlacklistRegex(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemModelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -78523,7 +78561,7 @@ func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"fallbackToChannelsOnModelNotFound", "queryAllChannelModels", "defaultModelAPIIncludeAll", "autoReasoningEffort"}
+	fieldsInOrder := [...]string{"fallbackToChannelsOnModelNotFound", "queryAllChannelModels", "defaultModelAPIIncludeAll", "autoReasoningEffort", "modelBlacklistRegex"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -78558,6 +78596,13 @@ func (ec *executionContext) unmarshalInputUpdateSystemModelSettingsInput(ctx con
 				return it, err
 			}
 			it.AutoReasoningEffort = data
+		case "modelBlacklistRegex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelBlacklistRegex"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelBlacklistRegex = data
 		}
 	}
 
@@ -97219,6 +97264,11 @@ func (ec *executionContext) _SystemModelSettings(ctx context.Context, sel ast.Se
 			}
 		case "autoReasoningEffort":
 			out.Values[i] = ec._SystemModelSettings_autoReasoningEffort(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelBlacklistRegex":
+			out.Values[i] = ec._SystemModelSettings_modelBlacklistRegex(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
