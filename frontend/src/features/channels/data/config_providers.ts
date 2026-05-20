@@ -28,7 +28,8 @@ import {
   Qiniu,
   XiaomiMiMo,
   Fireworks,
-  Ollama
+  Ollama,
+  OpenCode,
 } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
@@ -238,6 +239,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Fireworks,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     channelTypes: ['fireworks'],
+  },
+  opencode_go: {
+    provider: 'opencode_go',
+    icon: OpenCode,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    channelTypes: ['opencode_go'],
   },
   ollama: {
     provider: 'ollama',

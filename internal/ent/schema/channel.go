@@ -88,6 +88,7 @@ func (Channel) Fields() []ent.Field {
 				"antigravity",
 				"nanogpt",
 				"nanogpt_responses",
+				"opencode_go",
 				"ollama",
 			).
 			Annotations(
