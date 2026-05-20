@@ -29,6 +29,7 @@ import {
   Fireworks,
   Ollama,
   AiHubMix,
+  OpenCode,
 } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
@@ -597,6 +598,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: Fireworks,
   },
+  opencode_go: {
+    channelType: 'opencode_go',
+    baseURL: 'https://opencode.ai/zen/go/v1',
+    defaultModels: ['opencode-go-v1'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: OpenCode,
+  },
   ollama: {
     channelType: 'ollama',
     baseURL: 'https://api.ollama.cloud',
@@ -657,6 +666,7 @@ export type Provider =
   | 'antigravity'
   | 'nanogpt'
   | 'fireworks'
+  | 'opencode_go'
   | 'ollama';
 
 /**
@@ -715,6 +725,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   nanogpt: 'nanogpt',
   nanogpt_responses: 'nanogpt',
   fireworks: 'fireworks',
+  opencode_go: 'opencode_go',
   ollama: 'ollama',
 };
 

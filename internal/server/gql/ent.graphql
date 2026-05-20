@@ -1305,6 +1305,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   antigravity
   nanogpt
   nanogpt_responses
+  opencode_go
   ollama
 }
 """
