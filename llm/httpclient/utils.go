@@ -1,6 +1,10 @@
 package httpclient
 
 import (
+	"bytes"
+	"compress/flate"
+	"compress/gzip"
+	"compress/zlib"
 	"fmt"
 	"io"
 	"net"
@@ -8,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/samber/lo"
 )
 
@@ -30,9 +35,92 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		return nil, fmt.Errorf("failed to read request body: %w", err)
 	}
 
+	if len(body) > 0 {
+		body, err = decodeRequestBody(body, req.Headers)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	req.Body = body
 
 	return req, nil
+}
+
+func decodeRequestBody(body []byte, headers http.Header) ([]byte, error) {
+	contentEncoding := headers.Get("Content-Encoding")
+	if contentEncoding == "" {
+		return body, nil
+	}
+
+	encoding := strings.ToLower(strings.TrimSpace(contentEncoding))
+
+	switch encoding {
+	case "identity", "":
+		return body, nil
+
+	case "gzip", "x-gzip":
+		reader, err := gzip.NewReader(bytes.NewReader(body))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer reader.Close()
+
+		decoded, err := io.ReadAll(reader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decompress gzip body: %w", err)
+		}
+
+		headers.Del("Content-Encoding")
+		headers.Del("Content-Length")
+
+		return decoded, nil
+
+	case "deflate":
+		// RFC 7230/2616 defines "deflate" as zlib (RFC 1950), but many clients send
+		// raw DEFLATE (RFC 1951). Try zlib first, fall back to raw DEFLATE.
+		decoded, err := decodeZlibOrFlate(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decompress deflate body: %w", err)
+		}
+
+		headers.Del("Content-Encoding")
+		headers.Del("Content-Length")
+
+		return decoded, nil
+
+	case "zstd":
+		decoder, err := zstd.NewReader(nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create zstd decoder: %w", err)
+		}
+		defer decoder.Close()
+
+		decoded, err := decoder.DecodeAll(body, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode zstd compressed body: %w", err)
+		}
+
+		headers.Del("Content-Encoding")
+		headers.Del("Content-Length")
+
+		return decoded, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported content encoding: %s", contentEncoding)
+	}
+}
+
+func decodeZlibOrFlate(body []byte) ([]byte, error) {
+	reader, err := zlib.NewReader(bytes.NewReader(body))
+	if err == nil {
+		defer reader.Close()
+		return io.ReadAll(reader)
+	}
+
+	flateReader := flate.NewReader(bytes.NewReader(body))
+	defer flateReader.Close()
+	return io.ReadAll(flateReader)
 }
 
 func getClientIP(req *http.Request) string {
