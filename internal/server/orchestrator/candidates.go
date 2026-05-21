@@ -463,8 +463,8 @@ func writeSignatureIntSlice(h hash.Hash64, values []int) {
 }
 
 func writeSignatureString(h hash.Hash64, value string) {
-	io.WriteString(h, value)
-	h.Write([]byte{0})
+	_, _ = io.WriteString(h, value)
+	_, _ = h.Write([]byte{0})
 }
 
 func writeSignatureInt(h hash.Hash64, value int) {
