@@ -80,6 +80,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/tmaxmax/go-sse v0.11.0 // indirect
 )
 
