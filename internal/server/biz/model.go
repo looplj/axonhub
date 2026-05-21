@@ -48,11 +48,19 @@ type ModelService struct {
 
 // validateModelSettings validates regex patterns in model settings.
 func (svc *ModelService) validateModelSettings(settings *objects.ModelSettings) error {
+	return validateModelSettings(settings)
+}
+
+func validateModelSettings(settings *objects.ModelSettings) error {
 	if settings == nil || len(settings.Associations) == 0 {
 		return nil
 	}
 
 	for _, assoc := range settings.Associations {
+		if assoc == nil {
+			continue
+		}
+
 		if err := validateModelAssociationWhen(assoc.When); err != nil {
 			return fmt.Errorf("invalid when condition: %w", err)
 		}
@@ -675,13 +683,11 @@ func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowe
 	}
 
 	var models []ModelFacade
+	systemSettings := svc.modelSettingsOrDefault(ctx)
 
 	for _, m := range enabledModels {
-		if m.Settings == nil {
-			continue
-		}
-
-		associations := MatchConnections(m.Settings.Associations, channels)
+		effectiveAssociations := EffectiveModelAssociations(systemSettings, m)
+		associations := MatchConnections(effectiveAssociations, channels)
 		if len(associations) > 0 {
 			models = append(models, ModelFacade{
 				ID:          m.ModelID,
@@ -698,33 +704,12 @@ func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowe
 
 // CountAssociatedChannels counts the number of unique channels associated with the given model associations.
 func (svc *ModelService) CountAssociatedChannels(ctx context.Context, associations []*objects.ModelAssociation) (int, error) {
-	if len(associations) == 0 {
-		return 0, nil
-	}
+	return svc.countAssociatedChannels(ctx, associations)
+}
 
-	// Query all enabled/disabled channels
-	channels, err := svc.entFromContext(ctx).Channel.Query().
-		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
-		All(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to query channels: %w", err)
-	}
-
-	if len(channels) == 0 {
-		return 0, nil
-	}
-
-	// Use the shared MatchAssociations function
-	connections := MatchConnections(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
-		return &Channel{Channel: ch}
-	}))
-
-	// Remove duplicate channels
-	connections = lo.UniqBy(connections, func(conn *ModelChannelConnection) int {
-		return conn.Channel.ID
-	})
-
-	return len(connections), nil
+// CountModelAssociatedChannels counts associated channels after applying developer-level inherited associations.
+func (svc *ModelService) CountModelAssociatedChannels(ctx context.Context, m *ent.Model) (int, error) {
+	return svc.countAssociatedChannels(ctx, EffectiveModelAssociations(svc.modelSettingsOrDefault(ctx), m))
 }
 
 func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*UnassociatedChannel, error) {
@@ -747,14 +732,49 @@ func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*Unas
 	}
 
 	allAssociations := make([]*objects.ModelAssociation, 0)
+	systemSettings := svc.modelSettingsOrDefault(ctx)
 
 	for _, m := range models {
-		if m.Settings != nil && len(m.Settings.Associations) > 0 {
-			allAssociations = append(allAssociations, m.Settings.Associations...)
-		}
+		allAssociations = append(allAssociations, EffectiveModelAssociations(systemSettings, m)...)
 	}
 
 	return findUnassociatedChannels(channels, allAssociations), nil
+}
+
+func (svc *ModelService) countAssociatedChannels(ctx context.Context, associations []*objects.ModelAssociation) (int, error) {
+	if len(associations) == 0 {
+		return 0, nil
+	}
+
+	// Query all enabled/disabled channels
+	channels, err := svc.entFromContext(ctx).Channel.Query().
+		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
+		All(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	if len(channels) == 0 {
+		return 0, nil
+	}
+
+	connections := MatchConnections(associations, lo.Map(channels, func(ch *ent.Channel, _ int) *Channel {
+		return &Channel{Channel: ch}
+	}))
+
+	connections = lo.UniqBy(connections, func(conn *ModelChannelConnection) int {
+		return conn.Channel.ID
+	})
+
+	return len(connections), nil
+}
+
+func (svc *ModelService) modelSettingsOrDefault(ctx context.Context) *SystemModelSettings {
+	if svc.systemService == nil {
+		return lo.ToPtr(defaultModelSettings)
+	}
+
+	return svc.systemService.ModelSettingsOrDefault(ctx)
 }
 
 func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.ModelAssociation) []*UnassociatedChannel {

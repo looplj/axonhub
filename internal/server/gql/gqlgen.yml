@@ -570,6 +570,12 @@ models:
   UpdateSystemModelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemModelSettings
+  DeveloperModelSettings:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DeveloperModelSettings
+  DeveloperModelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DeveloperModelSettings
   SystemChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings

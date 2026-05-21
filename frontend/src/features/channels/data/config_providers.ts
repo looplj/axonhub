@@ -44,7 +44,7 @@ export interface ProviderConfig {
 }
 
 /**
- * Provider configurations - groups channel types by provider/vendor
+ * Provider configurations - groups channel types by provider
  * Each provider can support multiple API formats (channel types)
  */
 export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {

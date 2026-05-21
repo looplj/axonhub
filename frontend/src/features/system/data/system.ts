@@ -5,6 +5,7 @@ import { getTokenFromStorage } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import type { ProxyConfig } from '@/features/channels/data/schema';
+import type { ModelAssociation } from '@/features/models/data/schema';
 
 // GraphQL queries and mutations
 const SYSTEM_VERSION_QUERY = `
@@ -784,6 +785,70 @@ const MODEL_SETTINGS_QUERY = `
       defaultModelAPIIncludeAll
       autoReasoningEffort
       modelBlacklistRegex
+      developerSettings {
+        developer
+        associations {
+          type
+          priority
+          disabled
+          when {
+            enabled
+            condition {
+              type
+              logic
+              field
+              operator
+              value
+              conditions {
+                type
+                logic
+                field
+                operator
+                value
+                conditions {
+                  type
+                  logic
+                  field
+                  operator
+                  value
+                }
+              }
+            }
+          }
+          channelModel {
+            channelId
+            modelId
+          }
+          channelRegex {
+            channelId
+            pattern
+          }
+          regex {
+            pattern
+            exclude {
+              channelNamePattern
+              channelIds
+              channelTags
+            }
+          }
+          modelId {
+            modelId
+            exclude {
+              channelNamePattern
+              channelIds
+              channelTags
+            }
+          }
+          channelTagsModel {
+            channelTags
+            modelId
+          }
+          channelTagsRegex {
+            channelTags
+            pattern
+          }
+        }
+      }
     }
   }
 `;
@@ -852,6 +917,7 @@ export interface ModelSettings {
   defaultModelAPIIncludeAll: boolean;
   autoReasoningEffort: boolean;
   modelBlacklistRegex: string;
+  developerSettings: DeveloperModelSettings[];
 }
 
 export interface UpdateModelSettingsInput {
@@ -860,6 +926,12 @@ export interface UpdateModelSettingsInput {
   defaultModelAPIIncludeAll?: boolean;
   autoReasoningEffort?: boolean;
   modelBlacklistRegex?: string;
+  developerSettings?: DeveloperModelSettings[];
+}
+
+export interface DeveloperModelSettings {
+  developer: string;
+  associations: ModelAssociation[];
 }
 
 export function useModelSettings() {
@@ -889,6 +961,7 @@ export function useUpdateModelSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['modelSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['models'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

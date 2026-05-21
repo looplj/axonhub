@@ -36,6 +36,7 @@ var defaultModelSettings = SystemModelSettings{
 	DefaultModelAPIIncludeAll:         false,
 	AutoReasoningEffort:               false,
 	ModelBlacklistRegex:               "",
+	DeveloperSettings:                 []*DeveloperModelSettings{},
 }
 
 var defaultChannelSetting = SystemChannelSettings{

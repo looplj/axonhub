@@ -18,7 +18,7 @@ import (
 
 // AssociatedChannelCount is the resolver for the associatedChannelCount field.
 func (r *modelResolver) AssociatedChannelCount(ctx context.Context, obj *ent.Model) (int, error) {
-	return r.modelService.CountAssociatedChannels(ctx, obj.Settings.Associations)
+	return r.modelService.CountModelAssociatedChannels(ctx, obj)
 }
 
 // CreateModel is the resolver for the createModel field.

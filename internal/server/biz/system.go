@@ -384,6 +384,17 @@ type SystemModelSettings struct {
 	// API output. Configured Model entities are not affected. An empty string
 	// disables the filter. Only effective when QueryAllChannelModels is true.
 	ModelBlacklistRegex string `json:"model_blacklist_regex"`
+
+	// DeveloperSettings stores reusable channel association rules keyed by model developer.
+	// Models with the same developer inherit these associations before applying their
+	// own model-level associations.
+	DeveloperSettings []*DeveloperModelSettings `json:"developer_settings"`
+}
+
+// DeveloperModelSettings represents reusable model association rules for one model developer.
+type DeveloperModelSettings struct {
+	Developer    string                      `json:"developer"`
+	Associations []*objects.ModelAssociation `json:"associations"`
 }
 
 type SystemChannelSettings struct {
@@ -1068,6 +1079,7 @@ func (s *SystemService) ModelSettings(ctx context.Context) (*SystemModelSettings
 	if err := json.Unmarshal([]byte(value), &settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal model settings: %w", err)
 	}
+	normalizeSystemModelSettings(&settings)
 
 	return &settings, nil
 }
@@ -1092,6 +1104,11 @@ func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *SystemModel
 func (s *SystemService) SetModelSettings(ctx context.Context, settings SystemModelSettings) error {
 	if err := xregexp.ValidateRegex(settings.ModelBlacklistRegex); err != nil {
 		return fmt.Errorf("invalid model blacklist regex: %w", err)
+	}
+
+	normalizeSystemModelSettings(&settings)
+	if err := validateSystemModelSettings(&settings); err != nil {
+		return err
 	}
 
 	jsonBytes, err := json.Marshal(settings)
