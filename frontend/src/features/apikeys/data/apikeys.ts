@@ -225,6 +225,21 @@ const BULK_ARCHIVE_APIKEYS_MUTATION = `
   }
 `;
 
+const ROTATE_APIKEY_MUTATION = `
+  mutation RotateAPIKey($id: ID!) {
+    rotateAPIKey(id: $id) {
+      id
+      key
+      name
+      type
+      status
+      scopes
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 const APIKEY_QUOTA_USAGES_QUERY = `
   query APIKeyQuotaUsages($apiKeyId: ID!) {
     apiKeyQuotaUsages(apiKeyId: $apiKeyId) {
@@ -670,6 +685,29 @@ export function useBulkArchiveApiKeys() {
     },
     onError: () => {
       toast.error(t('common.errors.internalServerError'));
+    },
+  });
+}
+
+export function useRotateApiKey() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const data = await graphqlRequest<{ rotateAPIKey: ApiKey }>(ROTATE_APIKEY_MUTATION, { id }, headers);
+      return apiKeySchema.parse(data.rotateAPIKey);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
+      queryClient.invalidateQueries({ queryKey: ['apiKey', variables] });
+      toast.success(t('apikeys.messages.rotateSuccess'));
+    },
+    onError: (error) => {
+      handleError(error, { context: t('apikeys.dialogs.rotate.title') });
     },
   });
 }

@@ -31,6 +31,7 @@ import {
   AiHubMix,
   OpenCode,
 } from '@lobehub/icons';
+import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -82,7 +83,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: ['deepseek-v3', 'qwen-plus', 'kimi-k2', 'glm-4.7'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-sky-100 text-sky-800 border-sky-200',
-    icon: OpenAI,
+    icon: AtlasCloudIcon,
   },
   openai_responses: {
     channelType: 'openai_responses',

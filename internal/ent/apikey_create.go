@@ -479,6 +479,18 @@ func (u *APIKeyUpsert) AddDeletedAt(v int) *APIKeyUpsert {
 	return u
 }
 
+// SetKey sets the "key" field.
+func (u *APIKeyUpsert) SetKey(v string) *APIKeyUpsert {
+	u.Set(apikey.FieldKey, v)
+	return u
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateKey() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldKey)
+	return u
+}
+
 // SetName sets the "name" field.
 func (u *APIKeyUpsert) SetName(v string) *APIKeyUpsert {
 	u.Set(apikey.FieldName, v)
@@ -571,9 +583,6 @@ func (u *APIKeyUpsertOne) UpdateNewValues() *APIKeyUpsertOne {
 		if _, exists := u.create.mutation.ProjectID(); exists {
 			s.SetIgnore(apikey.FieldProjectID)
 		}
-		if _, exists := u.create.mutation.Key(); exists {
-			s.SetIgnore(apikey.FieldKey)
-		}
 	}))
 	return u
 }
@@ -637,6 +646,20 @@ func (u *APIKeyUpsertOne) AddDeletedAt(v int) *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) UpdateDeletedAt() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *APIKeyUpsertOne) SetKey(v string) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateKey() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateKey()
 	})
 }
 
@@ -909,9 +932,6 @@ func (u *APIKeyUpsertBulk) UpdateNewValues() *APIKeyUpsertBulk {
 			if _, exists := b.mutation.ProjectID(); exists {
 				s.SetIgnore(apikey.FieldProjectID)
 			}
-			if _, exists := b.mutation.Key(); exists {
-				s.SetIgnore(apikey.FieldKey)
-			}
 		}
 	}))
 	return u
@@ -976,6 +996,20 @@ func (u *APIKeyUpsertBulk) AddDeletedAt(v int) *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) UpdateDeletedAt() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *APIKeyUpsertBulk) SetKey(v string) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateKey() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateKey()
 	})
 }
 

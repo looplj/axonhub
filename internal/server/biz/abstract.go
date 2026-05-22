@@ -11,6 +11,13 @@ type AbstractService struct {
 	db *ent.Client
 }
 
+// entFromContext returns the Ent client from context if it exists (e.g., in a transaction),
+// otherwise returns the default database client.
+//
+// Note: This method is primarily used for transaction support, NOT for privacy checks.
+// Ent's privacy policy is evaluated through the context passed to query/mutation methods,
+// regardless of which client is used. Privacy rules check context values like user and project ID
+// to enforce access control.
 func (a *AbstractService) entFromContext(ctx context.Context) *ent.Client {
 	db := ent.FromContext(ctx)
 	if db != nil {

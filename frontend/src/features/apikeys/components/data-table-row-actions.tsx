@@ -1,7 +1,7 @@
 import React from 'react';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive } from '@tabler/icons-react';
+import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive, IconRefresh } from '@tabler/icons-react';
 import { BarChart3 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -57,6 +57,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     setTimeout(() => setChartOpen(true), 0);
   };
 
+  const handleRotate = (apiKey: ApiKey) => {
+    setOpen(false);
+    setTimeout(() => openDialog('rotate', apiKey), 0);
+  };
+
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -108,6 +113,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                   {t('common.buttons.archive')}
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleRotate(apiKey)}>
+                <IconRefresh className='mr-2 h-4 w-4' />
+                {t('apikeys.dialogs.rotate.title')}
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

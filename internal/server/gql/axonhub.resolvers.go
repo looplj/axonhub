@@ -388,6 +388,11 @@ func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.
 	return r.apiKeyService.UpdateAPIKeyProfiles(ctx, id.ID, input)
 }
 
+// RotateAPIKey is the resolver for the rotateAPIKey field.
+func (r *mutationResolver) RotateAPIKey(ctx context.Context, id objects.GUID) (*ent.APIKey, error) {
+	return r.apiKeyService.RotateAPIKey(ctx, id.ID)
+}
+
 // BulkDisableAPIKeys is the resolver for the bulkDisableAPIKeys field.
 func (r *mutationResolver) BulkDisableAPIKeys(ctx context.Context, ids []*objects.GUID) (bool, error) {
 	apiKeyIDs := objects.IntGuids(ids)
