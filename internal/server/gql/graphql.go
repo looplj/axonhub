@@ -208,6 +208,10 @@ func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (
 			return nil, nil
 		}
 
+		if errors.Is(err, privacy.Deny) {
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("failed to load channel: %w", err)
 	}
 
@@ -222,6 +226,10 @@ func getNilableUser(ctx context.Context, client *ent.Client, userID int) (*ent.U
 	u, err := client.User.Query().Where(user.ID(userID)).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+
+		if errors.Is(err, privacy.Deny) {
 			return nil, nil
 		}
 
