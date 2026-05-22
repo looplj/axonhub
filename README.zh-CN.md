@@ -27,6 +27,20 @@
 
 ---
 
+## ❤️ 赞助商
+
+<div align="center">
+
+<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
+
+**[Atlas Cloud](https://www.atlascloud.ai/console/coding-plan)** 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
+
+查看 Atlas Cloud 的[全新编程计划促销](https://www.atlascloud.ai/console/coding-plan)，获取更经济实惠的 API 访问方案。
+
+</div>
+
+---
+
 ## 📖 项目介绍
 
 ### All-in-one AI 开发平台
@@ -44,6 +58,8 @@
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
 </div>
+
+---
 
 ### 核心特性 Core Features
 

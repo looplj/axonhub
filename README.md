@@ -27,6 +27,20 @@
 
 ---
 
+## ❤️ Sponsor
+
+<div align="center">
+
+<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
+
+**[Atlas Cloud](https://www.atlascloud.ai/console/coding-plan)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+
+Check out Atlas Cloud's [new coding plan promotion](https://www.atlascloud.ai/console/coding-plan) for more budget-friendly API access.
+
+</div>
+
+---
+
 ## 📖 Project Introduction
 
 ### All-in-one AI Development Platform
@@ -44,6 +58,8 @@ Whether you're using OpenAI SDK, Anthropic SDK, or any AI SDK, AxonHub transpare
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
 </div>
+
+---
 
 ### Core Features
 

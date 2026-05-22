@@ -27,6 +27,20 @@
 
 ---
 
+## ❤️ スポンサー
+
+<div align="center">
+
+<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
+
+**[Atlas Cloud](https://www.atlascloud.ai/console/coding-plan)** は、開発者に動画生成、画像生成、LLM API へアクセスできる単一の AI API を提供するフルモーダル AI 推論プラットフォームです。複数のベンダー統合を管理する代わりに、一度接続するだけで全モーダルにわたる 300 以上の厳選されたモデルへ統一アクセスできます。
+
+Atlas Cloud の[新しいコーディングプラン特典](https://www.atlascloud.ai/console/coding-plan)で、よりお得な API アクセスをご利用ください。
+
+</div>
+
+---
+
 ## 📖 プロジェクト紹介
 
 ### オールインワンAI開発プラットフォーム
