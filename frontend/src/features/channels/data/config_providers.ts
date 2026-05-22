@@ -54,6 +54,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-white-100 text-white-800 border-white-200',
     channelTypes: ['openai', 'openai_responses'],
   },
+  atlascloud: {
+    provider: 'atlascloud',
+    icon: OpenAI,
+    color: 'bg-sky-100 text-sky-800 border-sky-200',
+    channelTypes: ['atlascloud'],
+  },
   deepseek: {
     provider: 'deepseek',
     icon: DeepSeek,
