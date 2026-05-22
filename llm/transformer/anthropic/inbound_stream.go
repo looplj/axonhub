@@ -328,6 +328,26 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Handle reasoning content (thinking) delta
 		if choice.Delta != nil && choice.Delta.ReasoningContent != nil && *choice.Delta.ReasoningContent != "" {
+			// If the text content has started before the thinking content, we need to stop it
+			if s.hasTextContentStarted {
+				if err := s.flushPendingTextCitations(); err != nil {
+					s.err = fmt.Errorf("failed to flush text citations before thinking: %w", err)
+					return false
+				}
+
+				s.hasTextContentStarted = false
+
+				if err := s.enqueEvent(&StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}); err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
 			// If the tool content has started before the thinking content, we need to stop it
 			if s.hasToolContentStarted {
 				s.hasToolContentStarted = false

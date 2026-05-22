@@ -17,7 +17,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IconBan, IconCheck, IconX, IconTrash, IconChevronDown, IconChevronRight, IconChevronsDown, IconChevronsUp } from '@tabler/icons-react';
+import { IconBan, IconCheck, IconX, IconTrash, IconChevronDown, IconChevronRight, IconChevronsDown, IconChevronsUp, IconLink } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { PermissionGuard } from '@/components/permission-guard';
+import { useModelSettings } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
 import { Model } from '../data/schema';
 
@@ -66,7 +67,8 @@ export function ModelsTable({
 }: ModelsTableProps) {
   const { t } = useTranslation();
   const getDeveloperLabel = useDeveloperLabel();
-  const { setSelectedModels, setResetRowSelection, setOpen } = useModels();
+  const { setSelectedModels, setResetRowSelection, setOpen, setCurrentDeveloper } = useModels();
+  const { data: modelSettings } = useModelSettings();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -132,6 +134,13 @@ export function ModelsTable({
   }, [table, data, sorting]);
 
   const allGroupsCollapsed = groupedRows.size > 0 && collapsedGroups.size === groupedRows.size;
+  const developerRuleCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    modelSettings?.developerSettings?.forEach((settings) => {
+      counts.set(settings.developer, settings.associations?.length || 0);
+    });
+    return counts;
+  }, [modelSettings?.developerSettings]);
 
   const toggleGroup = useCallback((developer: string) => {
     setCollapsedGroups((prev) => {
@@ -243,6 +252,7 @@ export function ModelsTable({
             ) : groupedRows.size > 0 ? (
               Array.from(groupedRows.entries()).map(([developer, rows]) => {
                 const isCollapsed = collapsedGroups.has(developer);
+                const developerRuleCount = developerRuleCounts.get(developer) || 0;
                 return (
                   <React.Fragment key={developer}>
                     {/* Developer group header */}
@@ -261,6 +271,32 @@ export function ModelsTable({
                           <Badge variant='secondary' className='text-xs'>
                             {rows.length}
                           </Badge>
+                          {canWrite ? (
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              className='ml-auto h-7 px-2 text-xs'
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setCurrentDeveloper(developer);
+                                setOpen('developerAssociation');
+                              }}
+                            >
+                              <IconLink className='mr-1 h-3.5 w-3.5' />
+                              {t('models.actions.manageDeveloperAssociation')}
+                              <Badge variant='secondary' className='ml-1 h-5 min-w-5 justify-center px-1 text-[10px]'>
+                                {developerRuleCount}
+                              </Badge>
+                            </Button>
+                          ) : (
+                            <div className='text-muted-foreground ml-auto flex items-center gap-1.5 text-xs'>
+                              <IconLink className='h-3.5 w-3.5' />
+                              {t('models.actions.manageDeveloperAssociation')}
+                              <Badge variant='secondary' className='h-5 min-w-5 justify-center px-1 text-[10px]'>
+                                {developerRuleCount}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

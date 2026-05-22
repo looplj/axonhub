@@ -30,6 +30,18 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
+			name: "atlascloud keeps openai-compatible built-in endpoints",
+			typ:  channel.TypeAtlascloud,
+			expected: []string{
+				llm.APIFormatOpenAIChatCompletion.String(),
+				llm.APIFormatOpenAIEmbedding.String(),
+				llm.APIFormatOpenAIImageGeneration.String(),
+				llm.APIFormatOpenAIImageEdit.String(),
+				llm.APIFormatOpenAIImageVariation.String(),
+				llm.APIFormatOpenAIVideo.String(),
+			},
+		},
+		{
 			name: "vercel keeps openai-compatible built-in endpoints for compatibility",
 			typ:  channel.TypeVercel,
 			expected: []string{

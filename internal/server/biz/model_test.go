@@ -896,6 +896,187 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		require.True(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should be in result")
 	})
 
+	t.Run("ModelBlacklistRegex filters channel-derived models", func(t *testing.T) {
+		// Match deepseek-* family from channel models.
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+			ModelBlacklistRegex:   "deepseek.*",
+		}
+		err := systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			_ = systemSvc.SetModelSettings(ctx, SystemModelSettings{QueryAllChannelModels: true})
+		})
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		resultMap := make(map[string]bool)
+		for _, m := range result {
+			resultMap[m.ID] = true
+		}
+
+		// Filtered out
+		require.False(t, resultMap["deepseek-chat"], "deepseek-chat should be filtered")
+		require.False(t, resultMap["deepseek-reasoner"], "deepseek-reasoner should be filtered")
+		require.False(t, resultMap["deepseek/deepseek-chat"], "deepseek/deepseek-chat should be filtered")
+		require.False(t, resultMap["deepseek/deepseek-reasoner"], "deepseek/deepseek-reasoner should be filtered")
+
+		// Untouched
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be kept")
+		require.True(t, resultMap["claude-3-opus-20240229"], "claude-3-opus-20240229 should be kept")
+	})
+
+	t.Run("ModelBlacklistRegex empty pattern keeps all models", func(t *testing.T) {
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+			ModelBlacklistRegex:   "",
+		}
+		err := systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		resultMap := make(map[string]bool)
+		for _, m := range result {
+			resultMap[m.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4"], "gpt-4 should be present")
+		require.True(t, resultMap["deepseek-chat"], "deepseek-chat should be present (no blacklist)")
+	})
+
+	t.Run("ModelBlacklistRegex invalid pattern rejected at save", func(t *testing.T) {
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+			ModelBlacklistRegex:   "[unclosed",
+		}
+		err := systemSvc.SetModelSettings(ctx, modelSettings)
+		require.Error(t, err, "invalid regex should be rejected on save")
+	})
+
+	t.Run("ModelBlacklistRegex not effective when QueryAllChannelModels is false", func(t *testing.T) {
+		// A match-all pattern would wipe out all channel models if it ran.
+		// But QueryAllChannelModels=false short-circuits before the blacklist filter,
+		// so configured models must come through unaffected.
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: false,
+			ModelBlacklistRegex:   ".*",
+		}
+		err := systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			_ = systemSvc.SetModelSettings(ctx, SystemModelSettings{QueryAllChannelModels: true})
+		})
+
+		// Configured Model entity that should still be returned.
+		_, err = client.Model.Create().
+			SetDeveloper("openai").
+			SetModelID("gpt-4-blacklist-bypass").
+			SetName("GPT-4 Blacklist Bypass").
+			SetType(model.TypeChat).
+			SetGroup("gpt").
+			SetIcon("icon").
+			SetModelCard(&objects.ModelCard{}).
+			SetSettings(&objects.ModelSettings{
+				Associations: []*objects.ModelAssociation{
+					{Type: "model", ModelID: &objects.ModelIDAssociation{ModelID: "gpt-4"}},
+				},
+			}).
+			SetStatus(model.StatusEnabled).
+			Save(ctx)
+		require.NoError(t, err)
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		resultMap := make(map[string]bool)
+		for _, m := range result {
+			resultMap[m.ID] = true
+		}
+
+		require.True(t, resultMap["gpt-4-blacklist-bypass"],
+			"configured model should pass through when QueryAllChannelModels=false, regardless of blacklist")
+		// Channel-derived models must not appear (regular QueryAllChannelModels=false behavior).
+		require.False(t, resultMap["deepseek-chat"], "channel-only model should not be returned when QueryAllChannelModels=false")
+	})
+
+	t.Run("ModelBlacklistRegex does not filter configured Model entities", func(t *testing.T) {
+		// Configured models are added before the channel loop and registered in modelSet,
+		// so the blacklist filter (which only runs in the channel loop) cannot touch them.
+		_, err := client.Model.Create().
+			SetDeveloper("openai").
+			SetModelID("gpt-4-cfg-protected").
+			SetName("GPT-4 Configured Protected").
+			SetType(model.TypeChat).
+			SetGroup("gpt").
+			SetIcon("icon").
+			SetModelCard(&objects.ModelCard{}).
+			SetSettings(&objects.ModelSettings{
+				Associations: []*objects.ModelAssociation{
+					{Type: "model", ModelID: &objects.ModelIDAssociation{ModelID: "gpt-4"}},
+				},
+			}).
+			SetStatus(model.StatusEnabled).
+			Save(ctx)
+		require.NoError(t, err)
+
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+			ModelBlacklistRegex:   "gpt-4-cfg-protected", // would match if filter ran
+		}
+		err = systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			_ = systemSvc.SetModelSettings(ctx, SystemModelSettings{QueryAllChannelModels: true})
+		})
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		var found *ModelFacade
+		for i := range result {
+			if result[i].ID == "gpt-4-cfg-protected" {
+				found = &result[i]
+				break
+			}
+		}
+
+		require.NotNil(t, found, "configured model with id matching blacklist must still be returned")
+		require.Equal(t, "configured", found.OwnedBy, "model should be marked as configured, not from channel")
+	})
+
+	t.Run("ModelBlacklistRegex exact-string pattern uses exactMatch path", func(t *testing.T) {
+		// "deepseek-chat" has no regex metachars, so xregexp uses the exactMatch fast path.
+		// Verify the filter still works.
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+			ModelBlacklistRegex:   "deepseek-chat",
+		}
+		err := systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			_ = systemSvc.SetModelSettings(ctx, SystemModelSettings{QueryAllChannelModels: true})
+		})
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		resultMap := make(map[string]bool)
+		for _, m := range result {
+			resultMap[m.ID] = true
+		}
+
+		require.False(t, resultMap["deepseek-chat"], "exact-string blacklist should filter deepseek-chat")
+		require.True(t, resultMap["deepseek-reasoner"], "exact-string blacklist must not match deepseek-reasoner")
+		require.True(t, resultMap["deepseek/deepseek-chat"], "exact-string blacklist must not match prefixed deepseek/deepseek-chat")
+	})
+
 	t.Run("QueryAllChannelModels=false returns configured models only", func(t *testing.T) {
 		// Create system setting with QueryAllChannelModels=false
 		modelSettings := SystemModelSettings{

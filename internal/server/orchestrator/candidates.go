@@ -3,7 +3,11 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"hash"
+	"hash/fnv"
+	"io"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -44,6 +48,7 @@ type CandidateSelector interface {
 // associationCacheEntry stores cached association resolution results.
 type associationCacheEntry struct {
 	associations            []*objects.ModelAssociation
+	associationSignature    string
 	candidates              []*resolvedAssociationCandidate
 	channelCount            int
 	latestChannelUpdateTime time.Time
@@ -138,7 +143,20 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
-	if model.Settings == nil || len(model.Settings.Associations) == 0 {
+	systemSettings := s.SystemService.ModelSettingsOrDefault(ctx)
+	developerAssociationCount, modelAssociationCount, developerInheritanceDisabled := effectiveAssociationSourceCounts(systemSettings, model)
+	associations := biz.EffectiveModelAssociations(systemSettings, model)
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "computed effective model associations",
+			log.String("model", model.ModelID),
+			log.String("developer", model.Developer),
+			log.Int("developer_association_count", developerAssociationCount),
+			log.Int("model_association_count", modelAssociationCount),
+			log.Bool("developer_inheritance_disabled", developerInheritanceDisabled),
+			log.Int("effective_association_count", len(associations)),
+		)
+	}
+	if len(associations) == 0 {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "model has no associations", log.String("model", req.Model))
 		}
@@ -149,12 +167,12 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "model associations found",
 			log.String("model", req.Model),
-			log.Int("association_count", len(model.Settings.Associations)),
-			log.Any("associations", model.Settings.Associations),
+			log.Int("association_count", len(associations)),
+			log.Any("associations", associations),
 		)
 	}
 
-	resolvedCandidates, err := s.resolveAssociations(ctx, model, model.Settings.Associations)
+	resolvedCandidates, err := s.resolveAssociations(ctx, model, associations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
 	}
@@ -210,6 +228,7 @@ func (s *DefaultSelector) resolveAssociations(
 
 	// Use model ID as cache key
 	modelID := model.ModelID
+	associationSignature := modelAssociationSignature(associations)
 	channelCount := len(channels)
 	latestChannelUpdateTime := s.getLatestChannelUpdateTime(channels)
 	latestModelUpdateTime := model.UpdatedAt
@@ -225,6 +244,7 @@ func (s *DefaultSelector) resolveAssociations(
 		// 4. Model hasn't been updated
 		// 5. Cache hasn't expired (5 minutes)
 		if entry.channelCacheVersion == channelCacheVersion &&
+			entry.associationSignature == associationSignature &&
 			entry.channelCount == channelCount &&
 			entry.latestChannelUpdateTime.Equal(latestChannelUpdateTime) &&
 			entry.latestModelUpdateTime.Equal(latestModelUpdateTime) &&
@@ -315,6 +335,7 @@ func (s *DefaultSelector) resolveAssociations(
 	s.cacheMu.Lock()
 	s.associationCache[modelID] = &associationCacheEntry{
 		associations:            append([]*objects.ModelAssociation(nil), associations...),
+		associationSignature:    associationSignature,
 		candidates:              resolvedCandidates,
 		channelCount:            channelCount,
 		latestChannelUpdateTime: latestChannelUpdateTime,
@@ -331,6 +352,157 @@ func (s *DefaultSelector) resolveAssociations(
 	}
 
 	return resolvedCandidates, nil
+}
+
+func modelAssociationSignature(associations []*objects.ModelAssociation) string {
+	h := fnv.New64a()
+	writeSignatureInt(h, len(associations))
+	for _, assoc := range associations {
+		writeAssociationSignature(h, assoc)
+	}
+
+	return strconv.FormatUint(h.Sum64(), 16)
+}
+
+func writeAssociationSignature(h hash.Hash64, assoc *objects.ModelAssociation) {
+	if assoc == nil {
+		writeSignatureString(h, "<nil>")
+		return
+	}
+
+	writeSignatureString(h, assoc.Type)
+	writeSignatureInt(h, assoc.Priority)
+	writeSignatureBool(h, assoc.Disabled)
+	writeAssociationWhenSignature(h, assoc.When)
+	if assoc.ChannelModel != nil {
+		writeSignatureString(h, "channelModel")
+		writeSignatureInt(h, assoc.ChannelModel.ChannelID)
+		writeSignatureString(h, assoc.ChannelModel.ModelID)
+	}
+	if assoc.ChannelRegex != nil {
+		writeSignatureString(h, "channelRegex")
+		writeSignatureInt(h, assoc.ChannelRegex.ChannelID)
+		writeSignatureString(h, assoc.ChannelRegex.Pattern)
+	}
+	if assoc.Regex != nil {
+		writeSignatureString(h, "regex")
+		writeSignatureString(h, assoc.Regex.Pattern)
+		writeExcludeSignature(h, assoc.Regex.Exclude)
+	}
+	if assoc.ModelID != nil {
+		writeSignatureString(h, "modelId")
+		writeSignatureString(h, assoc.ModelID.ModelID)
+		writeExcludeSignature(h, assoc.ModelID.Exclude)
+	}
+	if assoc.ChannelTagsModel != nil {
+		writeSignatureString(h, "channelTagsModel")
+		writeStringSliceSignature(h, assoc.ChannelTagsModel.ChannelTags)
+		writeSignatureString(h, assoc.ChannelTagsModel.ModelID)
+	}
+	if assoc.ChannelTagsRegex != nil {
+		writeSignatureString(h, "channelTagsRegex")
+		writeStringSliceSignature(h, assoc.ChannelTagsRegex.ChannelTags)
+		writeSignatureString(h, assoc.ChannelTagsRegex.Pattern)
+	}
+}
+
+func writeAssociationWhenSignature(h hash.Hash64, when *objects.ModelAssociationWhen) {
+	if when == nil {
+		writeSignatureString(h, "when:nil")
+		return
+	}
+
+	writeSignatureString(h, "when")
+	writeSignatureBool(h, when.Enabled)
+	writeConditionSignature(h, when.Condition)
+}
+
+func writeConditionSignature(h hash.Hash64, condition *objects.Condition) {
+	if condition == nil {
+		writeSignatureString(h, "condition:nil")
+		return
+	}
+
+	writeSignatureString(h, string(condition.Type))
+	writeSignatureString(h, condition.Logic)
+	writeSignatureString(h, condition.Field)
+	writeSignatureString(h, condition.Operator)
+	writeSignatureString(h, fmt.Sprintf("%T:%v", condition.Value, condition.Value))
+	writeSignatureInt(h, len(condition.Conditions))
+	for i := range condition.Conditions {
+		writeConditionSignature(h, &condition.Conditions[i])
+	}
+}
+
+func writeExcludeSignature(h hash.Hash64, excludes []*objects.ExcludeAssociation) {
+	writeSignatureInt(h, len(excludes))
+	for _, exclude := range excludes {
+		if exclude == nil {
+			writeSignatureString(h, "<nil>")
+			continue
+		}
+
+		writeSignatureString(h, exclude.ChannelNamePattern)
+		writeSignatureIntSlice(h, exclude.ChannelIds)
+		writeStringSliceSignature(h, exclude.ChannelTags)
+	}
+}
+
+func writeStringSliceSignature(h hash.Hash64, values []string) {
+	writeSignatureInt(h, len(values))
+	for _, value := range values {
+		writeSignatureString(h, value)
+	}
+}
+
+func writeSignatureIntSlice(h hash.Hash64, values []int) {
+	writeSignatureInt(h, len(values))
+	for _, value := range values {
+		writeSignatureInt(h, value)
+	}
+}
+
+func writeSignatureString(h hash.Hash64, value string) {
+	_, _ = io.WriteString(h, value)
+	_, _ = h.Write([]byte{0})
+}
+
+func writeSignatureInt(h hash.Hash64, value int) {
+	writeSignatureString(h, strconv.Itoa(value))
+}
+
+func writeSignatureBool(h hash.Hash64, value bool) {
+	if value {
+		writeSignatureString(h, "1")
+		return
+	}
+
+	writeSignatureString(h, "0")
+}
+
+func effectiveAssociationSourceCounts(systemSettings *biz.SystemModelSettings, m *ent.Model) (developerCount int, modelCount int, developerInheritanceDisabled bool) {
+	if m == nil {
+		return 0, 0, false
+	}
+
+	if m.Settings != nil {
+		modelCount = len(m.Settings.Associations)
+		developerInheritanceDisabled = m.Settings.DisableDeveloperSettingsInheritance
+	}
+
+	if systemSettings == nil || m.Developer == "" {
+		return developerCount, modelCount, developerInheritanceDisabled
+	}
+
+	for _, developerSettings := range systemSettings.DeveloperSettings {
+		if developerSettings == nil || developerSettings.Developer != m.Developer {
+			continue
+		}
+
+		return len(developerSettings.Associations), modelCount, developerInheritanceDisabled
+	}
+
+	return developerCount, modelCount, developerInheritanceDisabled
 }
 
 func aggregateChannelModelCandidates(resolvedCandidates []*resolvedAssociationCandidate) []*ChannelModelsCandidate {

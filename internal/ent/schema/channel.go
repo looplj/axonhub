@@ -38,6 +38,7 @@ func (Channel) Fields() []ent.Field {
 			Values(
 				"openai",
 				"openai_responses",
+				"atlascloud",
 				"codex",
 				"vercel",
 				"anthropic",
@@ -88,6 +89,7 @@ func (Channel) Fields() []ent.Field {
 				"antigravity",
 				"nanogpt",
 				"nanogpt_responses",
+				"opencode_go",
 				"ollama",
 			).
 			Annotations(

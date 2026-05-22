@@ -67,9 +67,12 @@ API Key Profile: gpt-4 → claude-3-opus
 The system uses Model Association to decide which channels can handle the request.
 
 This step usually considers:
-- model association rules
+- model-level association rules
+- developer rules from the same model developer, unless the model has **Do not inherit developer settings** enabled
 - API Key Profile channel restrictions
 - whether the channel is enabled
+
+Developer rules select only a channel or channel tags. The concrete upstream model is matched from the current request's model ID, so one developer rule can serve multiple models from the same developer.
 
 ### 5. Content Processing
 

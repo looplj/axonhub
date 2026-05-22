@@ -557,6 +557,40 @@ func TestSystemService_BackwardCompatibility(t *testing.T) {
 	require.Len(t, policy.CleanupOptions, 1)
 }
 
+func TestSystemService_ModelSettingsBackwardCompatibility(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	oldModelSettings := map[string]any{
+		"fallback_to_channels_on_model_not_found": true,
+		"query_all_channel_models":                true,
+		"default_model_api_include_all":           false,
+		"auto_reasoning_effort":                   false,
+	}
+
+	oldModelSettingsJSON, err := json.Marshal(oldModelSettings)
+	require.NoError(t, err)
+
+	_, err = client.System.Create().
+		SetKey(SystemKeyModelSettings).
+		SetValue(string(oldModelSettingsJSON)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	settings, err := service.ModelSettings(ctx)
+	require.NoError(t, err)
+	require.True(t, settings.FallbackToChannelsOnModelNotFound)
+	require.True(t, settings.QueryAllChannelModels)
+	require.NotNil(t, settings.DeveloperSettings)
+	require.Empty(t, settings.DeveloperSettings)
+}
+
 func TestSystemService_GetSystemValue_NotFound(t *testing.T) {
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 

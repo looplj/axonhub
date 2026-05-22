@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -377,6 +378,23 @@ type SystemModelSettings struct {
 	// When true, the suffix is stripped from model and applied to request.reasoning_effort,
 	// overriding any reasoning_effort already set in the request.
 	AutoReasoningEffort bool `json:"auto_reasoning_effort"`
+
+	// ModelBlacklistRegex is a regex pattern. When QueryAllChannelModels is true,
+	// channel-derived model IDs matching this pattern are excluded from the models
+	// API output. Configured Model entities are not affected. An empty string
+	// disables the filter. Only effective when QueryAllChannelModels is true.
+	ModelBlacklistRegex string `json:"model_blacklist_regex"`
+
+	// DeveloperSettings stores reusable channel association rules keyed by model developer.
+	// Models with the same developer inherit these associations before applying their
+	// own model-level associations.
+	DeveloperSettings []*DeveloperModelSettings `json:"developer_settings"`
+}
+
+// DeveloperModelSettings represents reusable model association rules for one model developer.
+type DeveloperModelSettings struct {
+	Developer    string                      `json:"developer"`
+	Associations []*objects.ModelAssociation `json:"associations"`
 }
 
 type SystemChannelSettings struct {
@@ -1061,6 +1079,7 @@ func (s *SystemService) ModelSettings(ctx context.Context) (*SystemModelSettings
 	if err := json.Unmarshal([]byte(value), &settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal model settings: %w", err)
 	}
+	normalizeSystemModelSettings(&settings)
 
 	return &settings, nil
 }
@@ -1083,6 +1102,15 @@ func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *SystemModel
 
 // SetModelSettings sets the model settings configuration.
 func (s *SystemService) SetModelSettings(ctx context.Context, settings SystemModelSettings) error {
+	if err := xregexp.ValidateRegex(settings.ModelBlacklistRegex); err != nil {
+		return fmt.Errorf("invalid model blacklist regex: %w", err)
+	}
+
+	normalizeSystemModelSettings(&settings)
+	if err := validateSystemModelSettings(&settings); err != nil {
+		return err
+	}
+
 	jsonBytes, err := json.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal model settings: %w", err)
