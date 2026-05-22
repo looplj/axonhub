@@ -57,3 +57,35 @@ func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
 	_, ok = videoOutbound.(*openai.OutboundTransformer)
 	require.True(t, ok)
 }
+
+func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	entChannel := client.Channel.Create().
+		SetName("AtlasCloud Channel").
+		SetType(channel.TypeAtlascloud).
+		SetBaseURL("https://api.atlascloud.ai/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"deepseek-v3"}).
+		SetDefaultTestModel("deepseek-v3").
+		SaveX(ctx)
+
+	channelSvc := NewChannelServiceForTest(client)
+
+	built, err := channelSvc.buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+	require.NotNil(t, built)
+	require.NotNil(t, built.Outbound)
+	require.Len(t, built.Outbounds, 6)
+
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, built.Outbound.APIFormat())
+
+	embeddingOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIEmbedding.String())
+	require.NoError(t, err)
+	require.NotNil(t, embeddingOutbound)
+	_, ok := embeddingOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+}

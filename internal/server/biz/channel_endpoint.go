@@ -90,6 +90,7 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeOpenai:          openAICompatibleDefaultEndpoints,
 	channel.TypeOpenaiResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
+	channel.TypeAtlascloud:      openAICompatibleDefaultEndpoints,
 	channel.TypeCodex:           {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeVercel:          openAICompatibleDefaultEndpoints,
 	channel.TypeAnthropic:       {{APIFormat: llm.APIFormatAnthropicMessage.String()}},

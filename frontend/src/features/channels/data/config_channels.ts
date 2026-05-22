@@ -76,6 +76,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-white-100 text-white-800 border-white-200',
     icon: OpenAI,
   },
+  atlascloud: {
+    channelType: 'atlascloud',
+    baseURL: 'https://api.atlascloud.ai/v1',
+    defaultModels: ['deepseek-v3', 'qwen-plus', 'kimi-k2', 'glm-4.7'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-sky-100 text-sky-800 border-sky-200',
+    icon: OpenAI,
+  },
   openai_responses: {
     channelType: 'openai_responses',
     baseURL: 'https://api.openai.com/v1',
@@ -635,6 +643,7 @@ export const getDefaultModels = (channelType: ChannelType): string[] => {
  */
 export type Provider =
   | 'openai'
+  | 'atlascloud'
   | 'anthropic'
   | 'claudecode'
   | 'deepseek'
@@ -675,6 +684,7 @@ export type Provider =
 export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   openai: 'openai',
   openai_responses: 'openai',
+  atlascloud: 'atlascloud',
   openai_fake: 'openai',
   anthropic: 'anthropic',
   anthropic_aws: 'anthropic',
