@@ -31,13 +31,7 @@
 
 <div align="center">
 
-<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank">
-  <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" width="60"/>
-</a>
-
-<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank">
-  <img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" width="200"/>
-</a>
+<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://www.atlascloud.ai/console/coding-plan" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
 
 **[Atlas Cloud](https://www.atlascloud.ai/console/coding-plan)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
 
