@@ -59,6 +59,20 @@ func (_u *APIKeyUpdate) AddDeletedAt(v int) *APIKeyUpdate {
 	return _u
 }
 
+// SetKey sets the "key" field.
+func (_u *APIKeyUpdate) SetKey(v string) *APIKeyUpdate {
+	_u.mutation.SetKey(v)
+	return _u
+}
+
+// SetNillableKey sets the "key" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableKey(v *string) *APIKeyUpdate {
+	if v != nil {
+		_u.SetKey(*v)
+	}
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *APIKeyUpdate) SetName(v string) *APIKeyUpdate {
 	_u.mutation.SetName(v)
@@ -259,6 +273,9 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(apikey.FieldDeletedAt, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.Key(); ok {
+		_spec.SetField(apikey.FieldKey, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
 	}
@@ -376,6 +393,20 @@ func (_u *APIKeyUpdateOne) SetNillableDeletedAt(v *int) *APIKeyUpdateOne {
 // AddDeletedAt adds value to the "deleted_at" field.
 func (_u *APIKeyUpdateOne) AddDeletedAt(v int) *APIKeyUpdateOne {
 	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
+// SetKey sets the "key" field.
+func (_u *APIKeyUpdateOne) SetKey(v string) *APIKeyUpdateOne {
+	_u.mutation.SetKey(v)
+	return _u
+}
+
+// SetNillableKey sets the "key" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableKey(v *string) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetKey(*v)
+	}
 	return _u
 }
 
@@ -608,6 +639,9 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(apikey.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Key(); ok {
+		_spec.SetField(apikey.FieldKey, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)

@@ -31,6 +31,7 @@ import {
   Ollama,
   OpenCode,
 } from '@lobehub/icons';
+import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
@@ -56,7 +57,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
   atlascloud: {
     provider: 'atlascloud',
-    icon: OpenAI,
+    icon: AtlasCloudIcon,
     color: 'bg-sky-100 text-sky-800 border-sky-200',
     channelTypes: ['atlascloud'],
   },

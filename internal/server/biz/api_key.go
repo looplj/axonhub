@@ -636,6 +636,42 @@ func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error
 	return s.bulkUpdateAPIKeyStatus(ctx, ids, apikey.StatusArchived, "archive")
 }
 
+// RotateAPIKey rotates an API key by generating a new key value while preserving all other properties.
+// This is useful when a key is compromised or when an employee leaves, without losing usage statistics.
+func (s *APIKeyService) RotateAPIKey(ctx context.Context, id int) (*ent.APIKey, error) {
+	// Get the existing API key
+	existing, err := s.db.APIKey.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	// Cannot rotate noauth type API key
+	if existing.Type == apikey.TypeNoauth {
+		return nil, fmt.Errorf("noauth type API key cannot be rotated")
+	}
+
+	// Generate a new API key
+	newKey, err := GenerateAPIKey(s.keyPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate new API key: %w", err)
+	}
+
+	oldKey := existing.Key
+
+	// Update the key field directly using Ent
+	rotated, err := s.db.APIKey.UpdateOneID(id).
+		SetKey(newKey).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to rotate API key: %w", err)
+	}
+
+	// Invalidate caches for both old and new keys
+	s.invalidateAPIKeyCaches(ctx, oldKey, newKey)
+
+	return rotated, nil
+}
+
 func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, error) {
 	existing, err := s.GetAPIKey(ctx, NoAuthAPIKeyValue)
 	if err == nil {
