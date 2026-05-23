@@ -465,8 +465,13 @@ func (p *DeviceFlowProvider) StopAutoRefresh() {
 	}
 
 	if exec != nil {
-		if err := exec.Shutdown(context.Background()); err != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+
+		if err := exec.Shutdown(shutdownCtx); err != nil {
 			slog.WarnContext(context.Background(), "failed to shutdown device flow auto refresh executor", slog.Any("error", err))
+		} else {
+			slog.DebugContext(context.Background(), "device flow auto refresh executor shutdown completed")
 		}
 	}
 }
