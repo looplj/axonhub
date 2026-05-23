@@ -22,11 +22,11 @@
 
 <div align="center">
 
-<a href="https://www.atlascloud.ai?ref=6MQKFA" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://www.atlascloud.ai?ref=6MQKFA" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
+<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
 
-**[Atlas Cloud](https://www.atlascloud.ai?ref=6MQKFA)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
 
-Check out Atlas Cloud's [new coding plan promotion](https://www.atlascloud.ai/console/coding-plan) for more budget-friendly API access.
+Check out Atlas Cloud's [new coding plan promotion](https://lj.s.gy/jknt2V) for more budget-friendly API access.
 
 </div>
 

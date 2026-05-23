@@ -22,11 +22,11 @@
 
 <div align="center">
 
-<a href="https://www.atlascloud.ai?ref=6MQKFA" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://www.atlascloud.ai?ref=6MQKFA" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
+<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
 
-**[Atlas Cloud](https://www.atlascloud.ai?ref=6MQKFA)** 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
+**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
 
-查看 Atlas Cloud 的[全新 Coding plan 促销](https://www.atlascloud.ai/console/coding-plan)，获取更经济实惠的 API 访问方案。
+查看 Atlas Cloud 的[全新 Coding plan 促销](https://lj.s.gy/jknt2V)，获取更经济实惠的 API 访问方案。
 
 </div>
 
