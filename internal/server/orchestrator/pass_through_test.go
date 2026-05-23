@@ -403,7 +403,7 @@ func TestCaptureRawProviderStream_CloseStopsBlockedUpstream(t *testing.T) {
 			ID:   1,
 			Name: "test",
 			Settings: &objects.ChannelSettings{
-				PassThroughBody: lo.ToPtr(true),
+				PassThroughBody: true,
 			},
 		},
 	}
@@ -420,7 +420,7 @@ func TestCaptureRawProviderStream_CloseStopsBlockedUpstream(t *testing.T) {
 	}
 
 	src := newBlockingStream()
-	mw := captureRawProviderStream(outbound, nil)
+	mw := captureRawProviderStream(outbound)
 	result, err := mw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 

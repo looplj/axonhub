@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql/schema"
@@ -27,6 +28,8 @@ func NewEntClient(cfg Config) *ent.Client {
 		opts = append(opts, ent.Debug())
 	}
 
+	dsn := ensureSQLiteWAL(cfg.Dialect, cfg.DSN, cfg.DisableSQLiteAutoWAL)
+
 	var (
 		sqlDB     *sql.DB
 		dbDialect string
@@ -42,7 +45,7 @@ func NewEntClient(cfg Config) *ent.Client {
 
 		dbDialect = dialect.Postgres
 	case "sqlite3", "sqlite":
-		sqlDB, err = sql.Open("sqlite3", cfg.DSN)
+		sqlDB, err = sql.Open("sqlite3", dsn)
 		if err != nil {
 			panic(err)
 		}
@@ -100,4 +103,25 @@ func NewEntClient(cfg Config) *ent.Client {
 	}
 
 	return client
+}
+
+// ensureSQLiteWAL appends _pragma=journal_mode(WAL) to the DSN for SQLite dialects
+// unless WAL is explicitly disabled or the DSN already specifies a journal_mode pragma.
+func ensureSQLiteWAL(dialectName, dsn string, disable bool) string {
+	if disable {
+		return dsn
+	}
+
+	switch dialectName {
+	case "sqlite3", "sqlite":
+		if !strings.Contains(dsn, "journal_mode") {
+			if strings.Contains(dsn, "?") {
+				dsn += "&_pragma=journal_mode(WAL)"
+			} else {
+				dsn += "?_pragma=journal_mode(WAL)"
+			}
+		}
+	}
+
+	return dsn
 }
