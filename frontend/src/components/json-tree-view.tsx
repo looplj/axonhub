@@ -76,13 +76,14 @@ export function JsonViewer({
 type JsonNodeProps = {
   name: string;
   data: any;
+  parentData?: any;
   isRoot?: boolean;
   isArrayItem?: boolean;
   defaultExpanded?: boolean;
   level?: number;
 };
 
-function JsonNode({ name, data, isRoot = false, isArrayItem = false, defaultExpanded = true, level = 0 }: JsonNodeProps) {
+function JsonNode({ name, data, parentData, isRoot = false, isArrayItem = false, defaultExpanded = true, level = 0 }: JsonNodeProps) {
   const { hideArrayIndices, expandDepth } = React.useContext(JsonExpandContext);
   const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
   const [isCopied, setIsCopied] = React.useState(false);
@@ -154,7 +155,7 @@ function JsonNode({ name, data, isRoot = false, isArrayItem = false, defaultExpa
         {/* Leaf value — takes remaining width, allows text to truncate */}
         {!isExpandable && (
           <div className='min-w-0 flex-1 overflow-hidden'>
-            <JsonValue data={data} />
+            <JsonValue name={name} data={data} parentData={parentData} />
           </div>
         )}
 
@@ -179,6 +180,7 @@ function JsonNode({ name, data, isRoot = false, isArrayItem = false, defaultExpa
               key={key}
               name={key}
               data={data[key]}
+              parentData={data}
               isArrayItem={dataType === 'array'}
               level={level + 1}
               defaultExpanded={childDefaultExpanded}
@@ -207,6 +209,66 @@ function tryParseJson(str: string): any {
     }
   }
   return null;
+}
+
+const dataUrlImagePattern = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i;
+const bareBase64Pattern = /^[a-z0-9+/]+={0,2}$/i;
+const imageMimePattern = /^image\/(?!svg\+xml)[a-z0-9.+-]+$/i;
+
+function isLikelyImageFieldName(name: string): boolean {
+  const normalized = name.toLowerCase();
+  return [
+    'data',
+    'base64',
+    'b64',
+    'b64_json',
+    'image',
+    'image_data',
+    'image_base64',
+  ].includes(normalized);
+}
+
+function getSiblingString(parentData: any, keys: string[]): string | undefined {
+  if (!parentData || typeof parentData !== 'object' || Array.isArray(parentData)) return undefined;
+
+  for (const key of keys) {
+    const value = parentData[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+
+  return undefined;
+}
+
+function detectImageSource(name: string, value: string, parentData?: any): string | null {
+  const trimmed = value.trim();
+  if (dataUrlImagePattern.test(trimmed)) {
+    if (/svg\+xml/i.test(trimmed)) return null;
+    return trimmed.replace(/\s/g, '');
+  }
+
+  const siblingMediaType = getSiblingString(parentData, ['media_type', 'mediaType', 'mime_type', 'mimeType']);
+  const normalizedName = name.toLowerCase();
+  const mediaType = siblingMediaType || (normalizedName === 'b64_json' ? 'image/png' : undefined);
+  if (!mediaType || !imageMimePattern.test(mediaType) || !isLikelyImageFieldName(name)) {
+    return null;
+  }
+
+  const compact = trimmed.replace(/\s/g, '');
+  if (compact.length < 24 || compact.length % 4 !== 0 || !bareBase64Pattern.test(compact)) {
+    return null;
+  }
+
+  return `data:${mediaType};base64,${compact}`;
+}
+
+function formatBytesFromBase64(value: string): string {
+  const compact = value.replace(/\s/g, '');
+  const padding = compact.endsWith('==') ? 2 : compact.endsWith('=') ? 1 : 0;
+  const bytes = Math.max(0, Math.floor((compact.length * 3) / 4) - padding);
+
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
 }
 
 /**
@@ -248,10 +310,10 @@ function normalizeMultilineForDisplay(str: string): string {
     .join('\n');
 }
 
-function JsonValue({ data }: { data: any }) {
+function JsonValue({ name, data, parentData }: { name: string; data: any; parentData?: any }) {
   const { globalStringExpanded } = React.useContext(JsonExpandContext);
   const [localExpanded, setLocalExpanded] = React.useState<boolean | null>(null);
-  const [showParsed, setShowParsed] = React.useState(false);
+  const [showRawString, setShowRawString] = React.useState(false);
   const dataType = typeof data;
 
   // Derived: local override takes precedence, otherwise follow global.
@@ -260,7 +322,7 @@ function JsonValue({ data }: { data: any }) {
   // Reset local override whenever the global toggle changes.
   React.useEffect(() => {
     setLocalExpanded(null);
-    setShowParsed(false);
+    setShowRawString(false);
   }, [globalStringExpanded]);
 
   if (data === null) return <span className='text-rose-500'>null</span>;
@@ -271,8 +333,38 @@ function JsonValue({ data }: { data: any }) {
     case 'string': {
       const normalized = normalizeMultilineForDisplay(data);
       const parsedJson = tryParseJson(data);
+      const imageSource = detectImageSource(name, data, parentData);
 
-      if (parsedJson && showParsed) {
+      if (imageSource && !showRawString) {
+        return (
+          <div className='flex w-full min-w-0 flex-col gap-2'>
+            <div className='flex items-center gap-2'>
+              <span className='text-muted-foreground text-[10px] italic'>
+                image - {formatBytesFromBase64(imageSource.split(',')[1] || '')}
+              </span>
+              <button
+                className='text-muted-foreground hover:text-foreground text-[10px] underline'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRawString(true);
+                }}
+              >
+                raw
+              </button>
+            </div>
+            <a href={imageSource} target='_blank' rel='noreferrer' onClick={(e) => e.stopPropagation()} className='block w-fit max-w-full'>
+              <img
+                src={imageSource}
+                alt={name || 'base64 image'}
+                loading='lazy'
+                className='bg-background max-h-80 max-w-full rounded border object-contain'
+              />
+            </a>
+          </div>
+        );
+      }
+
+      if (parsedJson && !showRawString) {
         return (
           <div className='flex w-full min-w-0 flex-col gap-1'>
             <div className='flex items-center gap-2'>
@@ -281,7 +373,7 @@ function JsonValue({ data }: { data: any }) {
                 className='text-muted-foreground hover:text-foreground text-[10px] underline'
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowParsed(false);
+                  setShowRawString(true);
                 }}
               >
                 raw
@@ -338,15 +430,15 @@ function JsonValue({ data }: { data: any }) {
               <MoreHorizontal className='text-muted-foreground h-3 w-3' />
             )}
           </span>
-          {parsedJson && isExpanded && (
+          {(parsedJson || imageSource) && showRawString && (
             <button
               className='text-muted-foreground hover:text-foreground ml-1 shrink-0 rounded px-1 text-[10px] underline'
               onClick={(e) => {
                 e.stopPropagation();
-                setShowParsed(true);
+                setShowRawString(false);
               }}
             >
-              parse
+              {imageSource ? 'image' : 'parse'}
             </button>
           )}
         </div>
