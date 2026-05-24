@@ -1563,6 +1563,11 @@
             }
           },
           "display_name": "GPT-5.5 Pro",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          },
           "type": "chat"
         },
         {
@@ -6887,6 +6892,66 @@
       "display_name": "google",
       "models": [
         {
+          "id": "gemini-3.5-flash",
+          "name": "Gemini 3.5 Flash",
+          "family": "gemini-flash",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-05-19",
+          "last_updated": "2026-05-19",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "cost": {
+            "input": 1.5,
+            "output": 9,
+            "cache_read": 0.15,
+            "input_audio": 1.5
+          },
+          "display_name": "Gemini 3.5 Flash",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "default_enabled": true,
+              "mode": "level",
+              "level": "high",
+              "level_options": [
+                "minimal",
+                "low",
+                "medium",
+                "high"
+              ],
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thought_signatures"
+              ]
+            }
+          },
+          "type": "chat"
+        },
+        {
           "id": "gemini-3.1-flash-lite",
           "name": "Gemini 3.1 Flash Lite",
           "family": "gemini-flash-lite",
@@ -6934,9 +6999,9 @@
         },
         {
           "id": "gemma-4-26b-a4b-it",
-          "name": "Gemma 4 26B",
+          "name": "Gemma 4 26B A4B IT",
           "family": "gemma",
-          "attachment": false,
+          "attachment": true,
           "reasoning": {
             "supported": true,
             "default": true
@@ -6957,17 +7022,17 @@
           },
           "open_weights": true,
           "limit": {
-            "context": 256000,
-            "output": 8192
+            "context": 262144,
+            "output": 32768
           },
-          "display_name": "Gemma 4 26B",
+          "display_name": "Gemma 4 26B A4B IT",
           "type": "chat"
         },
         {
           "id": "gemma-4-31b-it",
-          "name": "Gemma 4 31B",
+          "name": "Gemma 4 31B IT",
           "family": "gemma",
-          "attachment": false,
+          "attachment": true,
           "reasoning": {
             "supported": true,
             "default": true
@@ -6988,10 +7053,10 @@
           },
           "open_weights": true,
           "limit": {
-            "context": 256000,
-            "output": 8192
+            "context": 262144,
+            "output": 32768
           },
-          "display_name": "Gemma 4 31B",
+          "display_name": "Gemma 4 31B IT",
           "type": "chat"
         },
         {
@@ -7042,7 +7107,7 @@
         },
         {
           "id": "gemini-3.1-flash-image-preview",
-          "name": "Gemini 3.1 Flash Image (Preview)",
+          "name": "Nano Banana 2",
           "family": "gemini-flash",
           "attachment": true,
           "reasoning": {
@@ -7067,14 +7132,14 @@
           },
           "open_weights": false,
           "limit": {
-            "context": 131072,
-            "output": 32768
+            "context": 65536,
+            "output": 65536
           },
           "cost": {
             "input": 0.5,
             "output": 60
           },
-          "display_name": "Gemini 3.1 Flash Image (Preview)",
+          "display_name": "Nano Banana 2",
           "extra_capabilities": {
             "reasoning": {
               "supported": true
@@ -7317,8 +7382,8 @@
           },
           "open_weights": false,
           "limit": {
-            "context": 1000000,
-            "output": 64000
+            "context": 1048576,
+            "output": 65536
           },
           "cost": {
             "input": 2,
@@ -7403,138 +7468,6 @@
           "type": "chat"
         },
         {
-          "id": "gemini-2.5-flash-preview-09-2025",
-          "name": "Gemini 2.5 Flash Preview 09 2025",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true,
-            "budget": {
-              "min": 0,
-              "max": 24576,
-              "default": -1
-            }
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-09-25",
-          "last_updated": "2025-09-25",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 0.3,
-            "output": 2.5,
-            "cache_read": 0.075,
-            "input_audio": 1
-          },
-          "display_name": "Gemini 2.5 Flash Preview 09 2025",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": true,
-              "mode": "budget",
-              "budget": {
-                "min": 0,
-                "max": 24576,
-                "default": -1,
-                "auto": -1,
-                "off": 0,
-                "unit": "tokens"
-              },
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
-          "search": {
-            "supported": true,
-            "default": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "gemini-2.5-flash-lite-preview-09-2025",
-          "name": "Gemini 2.5 Flash Lite Preview 09 2025",
-          "family": "gemini-flash-lite",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": false,
-            "budget": {
-              "min": 512,
-              "max": 24576,
-              "default": -1
-            }
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-09-25",
-          "last_updated": "2025-09-25",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 0.1,
-            "output": 0.4,
-            "cache_read": 0.025
-          },
-          "display_name": "Gemini 2.5 Flash Lite Preview 09 2025",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": false,
-              "mode": "budget",
-              "budget": {
-                "min": 512,
-                "max": 24576,
-                "default": -1,
-                "auto": -1,
-                "unit": "tokens"
-              },
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
-          "search": {
-            "supported": true,
-            "default": false
-          },
-          "type": "chat"
-        },
-        {
           "id": "gemini-flash-lite-latest",
           "name": "Gemini Flash-Lite Latest",
           "family": "gemini-flash-lite",
@@ -7575,82 +7508,6 @@
           "type": "chat"
         },
         {
-          "id": "gemini-live-2.5-flash",
-          "name": "Gemini Live 2.5 Flash",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-09-01",
-          "last_updated": "2025-09-01",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video"
-            ],
-            "output": [
-              "text",
-              "audio"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 128000,
-            "output": 8000
-          },
-          "cost": {
-            "input": 0.5,
-            "output": 2,
-            "input_audio": 3,
-            "output_audio": 12
-          },
-          "display_name": "Gemini Live 2.5 Flash",
-          "type": "chat"
-        },
-        {
-          "id": "gemini-2.5-flash-image-preview",
-          "name": "Gemini 2.5 Flash Image Preview",
-          "family": "gemini-flash",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2025-06",
-          "release_date": "2025-08-26",
-          "last_updated": "2025-08-26",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text",
-              "image"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 32768,
-            "output": 32768
-          },
-          "cost": {
-            "input": 0.3,
-            "output": 30,
-            "cache_read": 0.075
-          },
-          "display_name": "Gemini 2.5 Flash Image Preview",
-          "type": "image-generation"
-        },
-        {
           "id": "gemini-2.5-flash-image",
           "name": "Gemini 2.5 Flash Image",
           "family": "gemini-flash",
@@ -7685,78 +7542,6 @@
           },
           "display_name": "Gemini 2.5 Flash Image",
           "type": "image-generation"
-        },
-        {
-          "id": "gemma-3n-e2b-it",
-          "name": "Gemma 3n 2B",
-          "family": "gemma",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-07-09",
-          "last_updated": "2025-07-09",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 8192,
-            "output": 2000
-          },
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "display_name": "Gemma 3n 2B",
-          "type": "chat"
-        },
-        {
-          "id": "gemini-live-2.5-flash-preview-native-audio",
-          "name": "Gemini Live 2.5 Flash Preview Native Audio",
-          "family": "gemini-flash",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": false,
-          "knowledge": "2025-01",
-          "release_date": "2025-06-17",
-          "last_updated": "2025-09-18",
-          "modalities": {
-            "input": [
-              "text",
-              "audio",
-              "video"
-            ],
-            "output": [
-              "text",
-              "audio"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 131072,
-            "output": 65536
-          },
-          "cost": {
-            "input": 0.5,
-            "output": 2,
-            "input_audio": 3,
-            "output_audio": 12
-          },
-          "display_name": "Gemini Live 2.5 Flash Preview Native Audio",
-          "type": "chat"
         },
         {
           "id": "gemini-2.5-flash-lite",
@@ -7825,217 +7610,6 @@
           "type": "chat"
         },
         {
-          "id": "gemini-2.5-flash-lite-preview-06-17",
-          "name": "Gemini 2.5 Flash Lite Preview 06-17",
-          "family": "gemini-flash-lite",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-06-17",
-          "last_updated": "2025-06-17",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 0.1,
-            "output": 0.4,
-            "cache_read": 0.025,
-            "input_audio": 0.3
-          },
-          "display_name": "Gemini 2.5 Flash Lite Preview 06-17",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": false,
-              "mode": "budget",
-              "budget": {
-                "min": 512,
-                "max": 24576,
-                "default": -1,
-                "auto": -1,
-                "unit": "tokens"
-              },
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
-          "type": "chat"
-        },
-        {
-          "id": "gemini-2.5-pro-preview-06-05",
-          "name": "Gemini 2.5 Pro Preview 06-05",
-          "family": "gemini-pro",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-06-05",
-          "last_updated": "2025-06-05",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 1.25,
-            "output": 10,
-            "cache_read": 0.31
-          },
-          "display_name": "Gemini 2.5 Pro Preview 06-05",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": true,
-              "mode": "budget",
-              "budget": {
-                "min": 128,
-                "max": 32768,
-                "default": -1,
-                "auto": -1,
-                "unit": "tokens"
-              },
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
-          "type": "chat"
-        },
-        {
-          "id": "gemini-2.5-flash-preview-05-20",
-          "name": "Gemini 2.5 Flash Preview 05-20",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-05-20",
-          "last_updated": "2025-05-20",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 0.15,
-            "output": 0.6,
-            "cache_read": 0.0375
-          },
-          "display_name": "Gemini 2.5 Flash Preview 05-20",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": true,
-              "mode": "budget",
-              "budget": {
-                "min": 0,
-                "max": 24576,
-                "default": -1,
-                "auto": -1,
-                "off": 0,
-                "unit": "tokens"
-              },
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
-          "type": "chat"
-        },
-        {
-          "id": "gemma-3n-e4b-it",
-          "name": "Gemma 3n 4B",
-          "family": "gemma",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-05-20",
-          "last_updated": "2025-05-20",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 8192,
-            "output": 2000
-          },
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "display_name": "Gemma 3n 4B",
-          "type": "chat"
-        },
-        {
           "id": "gemini-embedding-001",
           "name": "Gemini Embedding 001",
           "family": "gemini",
@@ -8059,7 +7633,7 @@
           "open_weights": false,
           "limit": {
             "context": 2048,
-            "output": 3072
+            "output": 1
           },
           "cost": {
             "input": 0.15,
@@ -8067,65 +7641,6 @@
           },
           "display_name": "Gemini Embedding 001",
           "type": "embedding"
-        },
-        {
-          "id": "gemini-2.5-pro-preview-05-06",
-          "name": "Gemini 2.5 Pro Preview 05-06",
-          "family": "gemini-pro",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-05-06",
-          "last_updated": "2025-05-06",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 1.25,
-            "output": 10,
-            "cache_read": 0.31
-          },
-          "display_name": "Gemini 2.5 Pro Preview 05-06",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": true,
-              "mode": "budget",
-              "budget": {
-                "min": 128,
-                "max": 32768,
-                "default": -1,
-                "auto": -1,
-                "unit": "tokens"
-              },
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
-          "type": "chat"
         },
         {
           "id": "gemini-2.5-pro-preview-tts",
@@ -8137,7 +7652,7 @@
             "default": true
           },
           "tool_call": false,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2025-01",
           "release_date": "2025-05-01",
           "last_updated": "2025-05-01",
@@ -8151,8 +7666,8 @@
           },
           "open_weights": false,
           "limit": {
-            "context": 8000,
-            "output": 16000
+            "context": 8192,
+            "output": 16384
           },
           "cost": {
             "input": 1,
@@ -8189,7 +7704,7 @@
             "supported": false
           },
           "tool_call": false,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2025-01",
           "release_date": "2025-05-01",
           "last_updated": "2025-05-01",
@@ -8203,73 +7718,14 @@
           },
           "open_weights": false,
           "limit": {
-            "context": 8000,
-            "output": 16000
+            "context": 8192,
+            "output": 16384
           },
           "cost": {
             "input": 0.5,
             "output": 10
           },
           "display_name": "Gemini 2.5 Flash Preview TTS",
-          "type": "chat"
-        },
-        {
-          "id": "gemini-2.5-flash-preview-04-17",
-          "name": "Gemini 2.5 Flash Preview 04-17",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-04-17",
-          "last_updated": "2025-04-17",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 0.15,
-            "output": 0.6,
-            "cache_read": 0.0375
-          },
-          "display_name": "Gemini 2.5 Flash Preview 04-17",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": true,
-              "mode": "budget",
-              "budget": {
-                "min": 0,
-                "max": 24576,
-                "default": -1,
-                "auto": -1,
-                "off": 0,
-                "unit": "tokens"
-              },
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
           "type": "chat"
         },
         {
@@ -8421,110 +7877,6 @@
           "type": "chat"
         },
         {
-          "id": "gemma-3-12b-it",
-          "name": "Gemma 3 12B",
-          "family": "gemma",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-03-13",
-          "last_updated": "2025-03-13",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 32768,
-            "output": 8192
-          },
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "display_name": "Gemma 3 12B",
-          "type": "chat"
-        },
-        {
-          "id": "gemma-3-4b-it",
-          "name": "Gemma 3 4B",
-          "family": "gemma",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-03-13",
-          "last_updated": "2025-03-13",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 32768,
-            "output": 8192
-          },
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "display_name": "Gemma 3 4B",
-          "type": "chat"
-        },
-        {
-          "id": "gemma-3-27b-it",
-          "name": "Gemma 3 27B",
-          "family": "gemma",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-03-12",
-          "last_updated": "2025-03-12",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "display_name": "Gemma 3 27B",
-          "type": "chat"
-        },
-        {
           "id": "gemini-2.0-flash-lite",
           "name": "Gemini 2.0 Flash Lite",
           "family": "gemini-flash-lite",
@@ -8604,114 +7956,138 @@
           "type": "chat"
         },
         {
-          "id": "gemini-1.5-flash-8b",
-          "name": "Gemini 1.5 Flash-8B",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
+          "id": "gemini-2.5-flash-preview-09-2025",
+          "name": "Gemini 2.5 Flash Preview 09 2025",
+          "display_name": "Gemini 2.5 Flash Preview 09 2025",
           "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2024-10-03",
-          "last_updated": "2024-10-03",
+          "attachment": true,
+          "tool_call": true,
           "modalities": {
             "input": [
               "text",
-              "image",
-              "audio",
-              "video"
+              "image"
             ],
             "output": [
               "text"
             ]
           },
-          "open_weights": false,
           "limit": {
-            "context": 1000000,
-            "output": 8192
+            "context": 1048576,
+            "output": 65536
           },
-          "cost": {
-            "input": 0.0375,
-            "output": 0.15,
-            "cache_read": 0.01
+          "reasoning": {
+            "supported": true,
+            "default": true,
+            "budget": {
+              "min": 0,
+              "max": 24576,
+              "default": -1
+            }
           },
-          "display_name": "Gemini 1.5 Flash-8B",
+          "search": {
+            "supported": true,
+            "default": false
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "default_enabled": true,
+              "mode": "budget",
+              "budget": {
+                "min": 0,
+                "max": 24576,
+                "default": -1,
+                "auto": -1,
+                "off": 0,
+                "unit": "tokens"
+              },
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thought_signatures"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
-          "id": "gemini-1.5-flash",
-          "name": "Gemini 1.5 Flash",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
+          "id": "gemini-2.5-flash-image-preview",
+          "name": "Gemini 2.5 Flash Image Preview",
+          "display_name": "Gemini 2.5 Flash Image Preview",
           "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2024-05-14",
-          "last_updated": "2024-05-14",
+          "attachment": false,
+          "tool_call": false,
           "modalities": {
             "input": [
               "text",
-              "image",
-              "audio",
-              "video"
+              "image"
             ],
             "output": [
-              "text"
+              "text",
+              "image"
             ]
           },
-          "open_weights": false,
           "limit": {
-            "context": 1000000,
-            "output": 8192
+            "context": 32768,
+            "output": 32768
           },
-          "cost": {
-            "input": 0.075,
-            "output": 0.3,
-            "cache_read": 0.01875
+          "reasoning": {
+            "supported": false
           },
-          "display_name": "Gemini 1.5 Flash",
-          "type": "chat"
+          "type": "image-generation"
         },
         {
-          "id": "gemini-1.5-pro",
-          "name": "Gemini 1.5 Pro",
-          "family": "gemini-pro",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
+          "id": "gemini-2.5-flash-lite-preview-09-2025",
+          "name": "Gemini 2.5 Flash Lite Preview 09 2025",
+          "display_name": "Gemini 2.5 Flash Lite Preview 09 2025",
           "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2024-02-15",
-          "last_updated": "2024-02-15",
+          "attachment": true,
+          "tool_call": true,
           "modalities": {
             "input": [
               "text",
-              "image",
-              "audio",
-              "video"
+              "image"
             ],
             "output": [
               "text"
             ]
           },
-          "open_weights": false,
           "limit": {
-            "context": 1000000,
-            "output": 8192
+            "context": 1048576,
+            "output": 65536
           },
-          "cost": {
-            "input": 1.25,
-            "output": 5,
-            "cache_read": 0.3125
+          "reasoning": {
+            "supported": true,
+            "default": false,
+            "budget": {
+              "min": 512,
+              "max": 24576,
+              "default": -1
+            }
           },
-          "display_name": "Gemini 1.5 Pro",
+          "search": {
+            "supported": true,
+            "default": false
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "default_enabled": false,
+              "mode": "budget",
+              "budget": {
+                "min": 512,
+                "max": 24576,
+                "default": -1,
+                "auto": -1,
+                "unit": "tokens"
+              },
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thought_signatures"
+              ]
+            }
+          },
           "type": "chat"
         },
         {
@@ -9395,6 +8771,94 @@
       "doc": "https://www.alibabacloud.com/help/en/model-studio/models",
       "display_name": "alibaba",
       "models": [
+        {
+          "id": "qwen3.7-max",
+          "name": "Qwen3.7 Max",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-05-21",
+          "last_updated": "2026-05-21",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "cost": {
+            "input": 2.5,
+            "output": 7.5,
+            "cache_read": 0.5,
+            "cache_write": 3.125
+          },
+          "display_name": "Qwen3.7 Max",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "type": "chat"
+        },
+        {
+          "id": "qwen3.6-flash",
+          "name": "Qwen3.6 Flash",
+          "family": "qwen3.6",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-27",
+          "last_updated": "2026-04-27",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "cost": {
+            "input": 0.1875,
+            "output": 1.125,
+            "cache_write": 0.234375
+          },
+          "display_name": "Qwen3.6 Flash",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          },
+          "type": "chat"
+        },
         {
           "id": "qwen3.6-27b",
           "name": "Qwen3.6 27B",
@@ -12726,12 +12190,13 @@
           },
           "tool_call": true,
           "temperature": true,
-          "release_date": "2026-05-01",
-          "last_updated": "2026-05-01",
+          "release_date": "2026-04-17",
+          "last_updated": "2026-04-17",
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -12772,6 +12237,59 @@
           "type": "chat"
         },
         {
+          "id": "grok-build-0.1",
+          "name": "Grok Build 0.1",
+          "family": "grok-build",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-16",
+          "last_updated": "2026-04-16",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 256000,
+            "output": 256000
+          },
+          "cost": {
+            "input": 1,
+            "output": 2,
+            "cache_read": 0.2,
+            "tiers": [
+              {
+                "input": 2,
+                "output": 4,
+                "cache_read": 0.4,
+                "tier": {
+                  "type": "context",
+                  "size": 200000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 2,
+              "output": 4,
+              "cache_read": 0.4
+            }
+          },
+          "display_name": "Grok Build 0.1",
+          "type": "chat"
+        },
+        {
           "id": "grok-imagine-image-quality",
           "name": "Grok Imagine Image Quality",
           "family": "grok",
@@ -12781,20 +12299,22 @@
           },
           "tool_call": false,
           "temperature": false,
-          "release_date": "2026-04",
-          "last_updated": "2026-05-16",
+          "release_date": "2026-04-03",
+          "last_updated": "2026-04-03",
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
-              "image"
+              "image",
+              "pdf"
             ]
           },
           "open_weights": false,
           "limit": {
-            "context": 1024,
+            "context": 8000,
             "output": 8192
           },
           "display_name": "Grok Imagine Image Quality",
@@ -12815,7 +12335,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -12827,13 +12348,13 @@
             "output": 30000
           },
           "cost": {
-            "input": 2,
-            "output": 6,
+            "input": 1.25,
+            "output": 2.5,
             "cache_read": 0.2,
             "tiers": [
               {
-                "input": 4,
-                "output": 12,
+                "input": 2.5,
+                "output": 5,
                 "cache_read": 0.4,
                 "tier": {
                   "type": "context",
@@ -12842,8 +12363,8 @@
               }
             ],
             "context_over_200k": {
-              "input": 4,
-              "output": 12,
+              "input": 2.5,
+              "output": 5,
               "cache_read": 0.4
             }
           },
@@ -12866,7 +12387,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -12878,13 +12400,13 @@
             "output": 30000
           },
           "cost": {
-            "input": 2,
-            "output": 6,
+            "input": 1.25,
+            "output": 2.5,
             "cache_read": 0.2,
             "tiers": [
               {
-                "input": 4,
-                "output": 12,
+                "input": 2.5,
+                "output": 5,
                 "cache_read": 0.4,
                 "tier": {
                   "type": "context",
@@ -12893,8 +12415,8 @@
               }
             ],
             "context_over_200k": {
-              "input": 4,
-              "output": 12,
+              "input": 2.5,
+              "output": 5,
               "cache_read": 0.4
             }
           },
@@ -12917,7 +12439,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -12929,13 +12452,13 @@
             "output": 30000
           },
           "cost": {
-            "input": 2,
-            "output": 6,
+            "input": 1.25,
+            "output": 2.5,
             "cache_read": 0.2,
             "tiers": [
               {
-                "input": 4,
-                "output": 12,
+                "input": 2.5,
+                "output": 5,
                 "cache_read": 0.4,
                 "tier": {
                   "type": "context",
@@ -12944,8 +12467,8 @@
               }
             ],
             "context_over_200k": {
-              "input": 4,
-              "output": 12,
+              "input": 2.5,
+              "output": 5,
               "cache_read": 0.4
             }
           },
@@ -12967,13 +12490,13 @@
           },
           "tool_call": false,
           "temperature": false,
-          "release_date": "2026-03",
-          "last_updated": "2026-05-16",
+          "release_date": "2026-01-28",
+          "last_updated": "2026-01-28",
           "modalities": {
             "input": [
               "text",
               "image",
-              "video"
+              "pdf"
             ],
             "output": [
               "video"
@@ -12997,305 +12520,25 @@
           },
           "tool_call": false,
           "temperature": false,
-          "release_date": "2026-03",
-          "last_updated": "2026-05-16",
+          "release_date": "2026-01-28",
+          "last_updated": "2026-01-28",
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
-              "image"
+              "image",
+              "pdf"
             ]
           },
           "open_weights": false,
           "limit": {
-            "context": 1024,
+            "context": 8000,
             "output": 8192
           },
           "display_name": "Grok Imagine Image",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-1212",
-          "name": "Grok 2 1212",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-12-12",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 120000,
-            "output": 100000
-          },
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "display_name": "Grok 2 1212",
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-vision-beta",
-          "name": "Grok Vision Beta",
-          "family": "grok-vision",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-11-01",
-          "last_updated": "2024-11-01",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 8192,
-            "output": 4096
-          },
-          "cost": {
-            "input": 5,
-            "output": 15,
-            "cache_read": 5
-          },
-          "display_name": "Grok Vision Beta",
-          "type": "chat"
-        },
-        {
-          "id": "grok-beta",
-          "name": "Grok Beta",
-          "family": "grok-beta",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-11-01",
-          "last_updated": "2024-11-01",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 131072,
-            "output": 4096
-          },
-          "cost": {
-            "input": 5,
-            "output": 15,
-            "cache_read": 5
-          },
-          "display_name": "Grok Beta",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-vision-1212",
-          "name": "Grok 2 Vision 1212",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 32000,
-            "output": 32000
-          },
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "display_name": "Grok 2 Vision 1212",
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-2",
-          "name": "Grok 2",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-08-20",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "display_name": "Grok 2",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-vision-latest",
-          "name": "Grok 2 Vision Latest",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 8192,
-            "output": 4096
-          },
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "display_name": "Grok 2 Vision Latest",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-vision",
-          "name": "Grok 2 Vision",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-08-20",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 8192,
-            "output": 4096
-          },
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "display_name": "Grok 2 Vision",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-latest",
-          "name": "Grok 2 Latest",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "display_name": "Grok 2 Latest",
           "type": "chat"
         },
         {
@@ -13384,6 +12627,34 @@
           "type": "chat"
         },
         {
+          "id": "grok-2-vision-1212",
+          "name": "Grok 2 Vision 1212",
+          "display_name": "Grok 2 Vision 1212",
+          "temperature": true,
+          "attachment": false,
+          "tool_call": false,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 32000,
+            "output": 32000
+          },
+          "reasoning": {
+            "supported": false
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
           "id": "grok-2-image-1212",
           "name": "Grok 2 Image 1212",
           "display_name": "Grok 2 Image 1212",
@@ -13415,6 +12686,33 @@
           "id": "grok-3-beta",
           "name": "Grok 3 Beta",
           "display_name": "Grok 3 Beta",
+          "temperature": true,
+          "attachment": false,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 120000,
+            "output": 100000
+          },
+          "reasoning": {
+            "supported": false
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "grok-2-1212",
+          "name": "Grok 2 1212",
+          "display_name": "Grok 2 1212",
           "temperature": true,
           "attachment": false,
           "tool_call": true,
@@ -13928,7 +13226,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-05-12T04:12:03Z",
+      "updated_at": "2026-05-19T12:12:53Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -13944,7 +13242,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -13973,12 +13271,8 @@
               "文本生成"
             ],
             "raw_limits": [
-              "上下文窗口: 32k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):12k",
-              "最大思维链: -",
-              "最大输入: -"
+              "上下文窗口: 32k 最大输入: - 最大回答(默认 4k):12k 最大思维链: -",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -13995,7 +13289,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14024,12 +13318,8 @@
               "文本生成"
             ],
             "raw_limits": [
-              "上下文窗口: 128k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):16k",
-              "最大思维链: -",
-              "最大输入: -"
+              "上下文窗口: 128k 最大输入: - 最大回答(默认 4k):16k 最大思维链: -",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14046,7 +13336,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14073,11 +13363,7 @@
               "文本生成"
             ],
             "raw_limits": [
-              "上下文窗口: 32k",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):12k",
-              "最大思维链: -",
-              "最大输入: -"
+              "上下文窗口: 32k 最大输入: - 最大回答(默认 4k):12k 最大思维链: -"
             ],
             "features": [
               "context-cache"
@@ -14094,7 +13380,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14122,12 +13408,8 @@
               "工具调用"
             ],
             "raw_limits": [
-              "上下文窗口: 32k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):12k",
-              "最大思维链: -",
-              "最大输入: -"
+              "上下文窗口: 32k 最大输入: - 最大回答(默认 4k):12k 最大思维链: -",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ]
           }
         },
@@ -14141,7 +13423,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14159,7 +13441,6 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "vector_dimension": 2048,
             "canonical_id": "doubao-embedding-vision",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-embedding-vision",
             "section_titles": [
@@ -14169,8 +13450,7 @@
               "多模态向量化"
             ],
             "raw_limits": [
-              "最大 RPM: 15000",
-              "最大 TPM: 1200000"
+              "最大 RPM: 15000 最大 TPM: 1200000"
             ]
           }
         },
@@ -14184,7 +13464,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14202,7 +13482,6 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "vector_dimension": 2048,
             "canonical_id": "doubao-embedding-vision",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-embedding-vision",
             "section_titles": [
@@ -14212,8 +13491,7 @@
               "多模态向量化"
             ],
             "raw_limits": [
-              "最大 RPM: 15000",
-              "最大 TPM: 1200000"
+              "最大 RPM: 15000 最大 TPM: 1200000"
             ]
           }
         },
@@ -14229,7 +13507,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14247,8 +13525,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 32000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6",
             "section_titles": [
@@ -14268,13 +13546,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 32k",
-              "最大回答(默认 4k):32k",
-              "最大思维链: 32k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):32k 最大思维链: 32k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14293,7 +13566,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14311,8 +13584,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 32000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6",
             "section_titles": [
@@ -14332,12 +13605,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):32k",
-              "最大思维链: 32k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):32k 最大思维链: 32k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14356,7 +13625,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14374,8 +13643,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 32000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6-flash",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6-flash",
             "section_titles": [
@@ -14387,7 +13656,6 @@
               "视觉理解能力"
             ],
             "capabilities": [
-              "多模态理解",
               "工具调用",
               "文本生成",
               "深度思考",
@@ -14395,12 +13663,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):32k",
-              "最大思维链: 32k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):32k 最大思维链: 32k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14419,7 +13683,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14437,8 +13701,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 32000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6-flash",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6-flash",
             "section_titles": [
@@ -14450,7 +13714,6 @@
               "视觉理解能力"
             ],
             "capabilities": [
-              "多模态理解",
               "工具调用",
               "文本生成",
               "深度思考",
@@ -14458,12 +13721,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):32k",
-              "最大思维链: 32k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):32k 最大思维链: 32k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14482,7 +13741,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14500,8 +13759,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 32000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6-vision",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6-vision",
             "section_titles": [
@@ -14522,12 +13781,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):32k",
-              "最大思维链: 32k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):32k 最大思维链: 32k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14546,7 +13801,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14564,8 +13819,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 32000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-8",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-8",
             "section_titles": [
@@ -14585,14 +13840,9 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 64k",
-              "最大回答(默认 4k):32k",
-              "最大回答(默认 4k):64k",
-              "最大思维链: 32k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):32k 最大思维链: 32k",
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):64k 最大思维链: 32k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14610,7 +13860,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14628,8 +13878,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 128000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-code",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-code",
             "section_titles": [
@@ -14647,12 +13897,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 128k",
-              "最大思维链: 128k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):128k 最大思维链: 128k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14671,7 +13917,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14689,8 +13935,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 128000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-lite",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-lite",
             "section_titles": [
@@ -14710,12 +13956,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 128k",
-              "最大思维链: 128k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):128k 最大思维链: 128k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14733,7 +13975,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14751,8 +13993,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 128000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-lite",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-lite",
             "section_titles": [
@@ -14769,12 +14011,8 @@
               "深度思考"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 128k",
-              "最大思维链: 128k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):128k 最大思维链: 128k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14793,7 +14031,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14811,8 +14049,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 128000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-mini",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
             "section_titles": [
@@ -14832,12 +14070,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 128k",
-              "最大思维链: 128k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):128k 最大思维链: 128k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14855,7 +14089,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14873,8 +14107,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 128000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-mini",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
             "section_titles": [
@@ -14891,12 +14125,8 @@
               "深度思考"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 128k",
-              "最大思维链: 128k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):128k 最大思维链: 128k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14914,7 +14144,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14932,8 +14162,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 128000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-pro",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-pro",
             "section_titles": [
@@ -14951,12 +14181,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k): 128k",
-              "最大思维链: 128k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):128k 最大思维链: 128k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -14973,7 +14199,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15003,11 +14229,8 @@
               "文本生成"
             ],
             "raw_limits": [
-              "上下文窗口: 128k",
-              "最大 RPM: 30000",
-              "最大 TPM: 5000000",
-              "最大回答(默认 4k):32k",
-              "最大输入: 96k"
+              "上下文窗口: 128k 最大输入: 96k 最大回答(默认 4k):32k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
               "context-cache"
@@ -15025,7 +14248,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15043,8 +14266,8 @@
           },
           "metadata": {
             "source": "volcengine-docs",
-            "max_input_tokens": 224000,
             "max_thinking_tokens": 32000,
+            "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-code",
             "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-code",
             "section_titles": [
@@ -15062,13 +14285,8 @@
               "视觉定位"
             ],
             "raw_limits": [
-              "上下文窗口: 256k",
-              "最大 RPM: 5000",
-              "最大 TPM: 1200000",
-              "最大回答(默认 4k): 32k",
-              "最大回答(默认 4k):32k",
-              "最大思维链: 32k",
-              "最大输入: 224k"
+              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k):32k 最大思维链: 32k",
+              "最大 RPM: 5000 最大 TPM: 1200000"
             ],
             "features": [
               "context-cache"
@@ -15085,7 +14303,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15112,11 +14330,8 @@
               "文本生成"
             ],
             "raw_limits": [
-              "上下文窗口: 4k",
-              "最大 RPM: 5000",
-              "最大回答(默认 3k):3k",
-              "最大思维链: -",
-              "最大输入: 1k"
+              "上下文窗口: 4k 最大输入: 1k 最大回答(默认 3k):3k 最大思维链: -",
+              "最大 RPM: 5000 500000 TPM"
             ]
           }
         },
@@ -15130,7 +14345,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15157,8 +14372,7 @@
               "文生视频"
             ],
             "raw_limits": [
-              "最大 RPM: 600",
-              "最大 TPD: 5000亿"
+              "default: 最大 RPM: 600 最大并发: 10flex: 最大 TPD: 5000亿"
             ]
           }
         },
@@ -15172,7 +14386,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15199,8 +14413,7 @@
               "文生视频"
             ],
             "raw_limits": [
-              "最大 RPM: 600",
-              "最大 TPD: 5000亿"
+              "default: 最大 RPM: 600 最大并发: 10flex: 最大 TPD: 5000亿"
             ]
           }
         },
@@ -15214,7 +14427,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15243,8 +14456,7 @@
               "音画同生"
             ],
             "raw_limits": [
-              "最大 RPM: 600",
-              "最大 TPD: 5000亿"
+              "default: 最大 RPM: 600 最大并发: 10flex: 最大 TPD: 5000亿"
             ]
           }
         },
@@ -15258,7 +14470,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15280,13 +14492,12 @@
             ],
             "capabilities": [
               "图生视频",
-              "延长视频",
               "文生视频",
               "编辑视频",
               "音画同生"
             ],
             "raw_limits": [
-              "最大 RPM:"
+              "default: 最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3flex: 暂不支持"
             ]
           }
         },
@@ -15300,7 +14511,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15322,13 +14533,12 @@
             ],
             "capabilities": [
               "图生视频",
-              "延长视频",
               "文生视频",
               "编辑视频",
               "音画同生"
             ],
             "raw_limits": [
-              "最大 RPM:"
+              "default: 最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3flex: 暂不支持"
             ]
           }
         },
@@ -15342,7 +14552,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -15371,7 +14581,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -15400,7 +14610,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
+          "last_updated": "2026-05-19T12:12:53Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15424,38 +14634,6 @@
             "capabilities": [
               "图生图",
               "文生图",
-              "生成组图"
-            ]
-          }
-        },
-        {
-          "id": "doubao-seedream-5-0-lite-260128",
-          "name": "doubao-seedream-5-0-lite-260128",
-          "display_name": "doubao-seedream-5-0-lite-260128",
-          "type": "image-generation",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "last_updated": "2026-05-12T04:12:03Z",
-          "vision": true,
-          "modalities": {
-            "input": [
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          },
-          "metadata": {
-            "source": "volcengine-docs",
-            "canonical_id": "doubao-seedream-5-0-lite",
-            "section_titles": [
-              "图片生成能力"
-            ],
-            "capabilities": [
-              "图生图",
               "生成组图"
             ]
           }
