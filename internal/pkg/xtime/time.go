@@ -1,6 +1,8 @@
 package xtime
 
 import (
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -94,4 +96,49 @@ func GetCalendarPeriods(loc *time.Location) CalendarPeriods {
 func FormatUTCOffset(offsetSeconds int) string {
 	loc := time.FixedZone("", offsetSeconds)
 	return time.Unix(0, 0).In(loc).Format("-07:00")
+}
+
+func ParseDailyTimeRange(value string) (time.Duration, time.Duration, error) {
+	parts := strings.Split(value, "-")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("daily_time must use HH:mm-HH:mm format")
+	}
+
+	start, err := parseDailyClock(parts[0])
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid daily_time start: %w", err)
+	}
+
+	end, err := parseDailyClock(parts[1])
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid daily_time end: %w", err)
+	}
+	if start == end {
+		return 0, 0, fmt.Errorf("daily_time start and end must be different")
+	}
+
+	return start, end, nil
+}
+
+func DailyTimeWithin(now time.Time, value string) bool {
+	start, end, err := ParseDailyTimeRange(value)
+	if err != nil {
+		return false
+	}
+
+	current := time.Duration(now.Hour())*time.Hour + time.Duration(now.Minute())*time.Minute
+	if start > end {
+		return current >= start || current < end
+	}
+
+	return current >= start && current < end
+}
+
+func parseDailyClock(value string) (time.Duration, error) {
+	parsed, err := time.Parse("15:04", strings.TrimSpace(value))
+	if err != nil {
+		return 0, fmt.Errorf("must use HH:mm")
+	}
+
+	return time.Duration(parsed.Hour())*time.Hour + time.Duration(parsed.Minute())*time.Minute, nil
 }

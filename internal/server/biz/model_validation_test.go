@@ -437,6 +437,132 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("valid request format condition", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "request_format",
+									Operator: "eq",
+									Value:    "anthropic/messages",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid daily time condition", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "daily_time",
+									Operator: "within",
+									Value:    "22:00-06:00",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid daily time condition rejects malformed range", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "daily_time",
+									Operator: "within",
+									Value:    "25:00-26:00",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid daily_time start")
+	})
+
+	t.Run("invalid daily time condition rejects unsupported operator", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "daily_time",
+									Operator: "eq",
+									Value:    "09:00-17:00",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `unsupported condition operator "eq" for daily_time`)
+	})
+
 	t.Run("disabled when allows empty condition", func(t *testing.T) {
 		settings := &objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
