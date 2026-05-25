@@ -204,6 +204,131 @@ func TestOutboundTransformer_TransformRequest_WebSearchRequiredToolChoice(t *tes
 	require.Equal(t, "required", payload["tool_choice"])
 }
 
+func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoice(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "Search and run shell.",
+			"tools": [
+				{
+					"type": "tool_search",
+					"name": "search_docs",
+					"namespace": "docs"
+				},
+				{
+					"type": "function",
+					"name": "get_weather",
+					"parameters": {"type": "object", "properties": {}}
+				}
+			],
+			"tool_choice": {
+				"type": "tool_search",
+				"tools": [
+					{"type": "tool_search", "name": "search_docs"}
+				]
+			}
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Model = "mapped-model"
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.Equal(t, "mapped-model", payload["model"])
+
+	tools, ok := payload["tools"].([]any)
+	require.True(t, ok)
+	require.Len(t, tools, 2)
+	rawTool, ok := tools[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tool_search", rawTool["type"])
+	require.Equal(t, "docs", rawTool["namespace"])
+
+	toolChoice, ok := payload["tool_choice"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tool_search", toolChoice["type"])
+	require.Len(t, toolChoice["tools"], 1)
+}
+
+func TestOutboundTransformer_TransformRequest_DoesNotReplayRawToolWhenToolsChanged(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "Search and run shell.",
+			"tools": [
+				{"type": "tool_search", "name": "search_docs", "namespace": "docs"},
+				{"type": "function", "name": "get_weather", "parameters": {"type": "object", "properties": {}}}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Tools = []llm.Tool{{
+		Type: "function",
+		Function: llm.Function{
+			Name:       "different_tool",
+			Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
+		},
+	}}
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	tools, ok := payload["tools"].([]any)
+	require.True(t, ok)
+	require.Len(t, tools, 1)
+	tool, ok := tools[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "function", tool["type"])
+	require.Equal(t, "different_tool", tool["name"])
+}
+
+func TestProviderExtensions_NotSerializedWithLLMRequest(t *testing.T) {
+	req := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hi")},
+		}},
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					RawTools: []llm.OpenAIResponsesRawFragment{{
+						Type: "tool_search",
+						Raw:  json.RawMessage(`{"secret":"raw prompt"}`),
+					}},
+					RawToolChoice: json.RawMessage(`{"secret":"raw choice"}`),
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+	require.NotContains(t, string(data), "raw prompt")
+	require.NotContains(t, string(data), "raw choice")
+	require.NotContains(t, string(data), "provider_extensions")
+}
+
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 
