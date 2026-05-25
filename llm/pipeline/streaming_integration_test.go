@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -16,6 +18,34 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
+
+type streamUpgradeOutboundWrapper struct {
+	transformer.Outbound
+}
+
+type emptyAggregateInboundWrapper struct {
+	transformer.Inbound
+}
+
+type emptyJSONObjectAggregateInboundWrapper struct {
+	transformer.Inbound
+}
+
+func (w *streamUpgradeOutboundWrapper) TransformRequest(ctx context.Context, request *llm.Request) (*httpclient.Request, error) {
+	if request != nil && (request.Stream == nil || !*request.Stream) {
+		request.Stream = lo.ToPtr(true)
+	}
+
+	return w.Outbound.TransformRequest(ctx, request)
+}
+
+func (w *emptyAggregateInboundWrapper) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	return nil, llm.ResponseMeta{}, nil
+}
+
+func (w *emptyJSONObjectAggregateInboundWrapper) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	return []byte(`{}`), llm.ResponseMeta{ID: "agg-empty"}, nil
+}
 
 // TestPipeline_Streaming_OpenAI_to_OpenAI tests streaming pipeline with OpenAI inbound and outbound transformers.
 func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
@@ -407,7 +437,288 @@ func TestPipeline_Streaming_Anthropic_to_Anthropic(t *testing.T) {
 	require.NotEmpty(t, lastEvent.Data)
 }
 
-// TestPipeline_Streaming_WithTestData tests streaming with actual test data files.
+func TestPipeline_NonStreaming_AutoAggregateUpgradedStream(t *testing.T) {
+	ctx := context.Background()
+
+	inbound := openai.NewInboundTransformer()
+	baseOutbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	outbound := &streamUpgradeOutboundWrapper{Outbound: baseOutbound}
+
+	streamEvents, err := xtest.LoadStreamChunks(t, "openai-tool.stream.jsonl")
+	require.NoError(t, err)
+
+	executor := &mockExecutor{
+		doStreamFunc: func(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			require.Equal(t, http.MethodPost, request.Method)
+			require.Contains(t, request.URL, "/chat/completions")
+			require.Nil(t, request.Auth)
+			require.Equal(t, "Bearer test-api-key", request.Headers.Get("Authorization"))
+
+			var reqBody map[string]any
+			err := json.Unmarshal(request.Body, &reqBody)
+			require.NoError(t, err)
+			require.Equal(t, true, reqBody["stream"])
+
+			return streams.SliceStream(streamEvents), nil
+		},
+	}
+
+	factory := pipeline.NewFactory(executor)
+	pipeline := factory.Pipeline(inbound, outbound)
+
+	requestBody := map[string]any{
+		"model": "gpt-4",
+		"messages": []map[string]any{
+			{
+				"role":    "user",
+				"content": "What is the weather in New York City?",
+			},
+		},
+		"tools": []map[string]any{
+			{
+				"type": "function",
+				"function": map[string]any{
+					"name":        "get_weather",
+					"description": "Get weather at the given location",
+					"parameters": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"location": map[string]any{
+								"type": "string",
+							},
+						},
+						"required": []string{"location"},
+					},
+				},
+			},
+		},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	httpRequest := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: requestBodyBytes,
+	}
+
+	result, err := pipeline.Process(ctx, httpRequest)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.False(t, result.Stream)
+	require.NotNil(t, result.Response)
+	require.Equal(t, http.StatusOK, result.Response.StatusCode)
+	require.Equal(t, "application/json", result.Response.Headers.Get("Content-Type"))
+
+	var finalResponse map[string]any
+	err = json.Unmarshal(result.Response.Body, &finalResponse)
+	require.NoError(t, err)
+	require.Equal(t, "chat.completion", finalResponse["object"])
+	require.NotEmpty(t, finalResponse["choices"])
+}
+
+func TestPipeline_NonStreaming_AutoAggregateUpgradedStream_OpenAIEmptyStreamChunks(t *testing.T) {
+	ctx := context.Background()
+
+	inbound := openai.NewInboundTransformer()
+	baseOutbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	outbound := &streamUpgradeOutboundWrapper{Outbound: baseOutbound}
+
+	executor := &mockExecutor{
+		doStreamFunc: func(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			require.Equal(t, http.MethodPost, request.Method)
+			require.Contains(t, request.URL, "/chat/completions")
+			return streams.SliceStream([]*httpclient.StreamEvent{}), nil
+		},
+	}
+
+	factory := pipeline.NewFactory(executor)
+	pipeline := factory.Pipeline(inbound, outbound)
+
+	requestBody := map[string]any{
+		"model": "gpt-4",
+		"messages": []map[string]any{
+			{
+				"role":    "user",
+				"content": "Test message",
+			},
+		},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	httpRequest := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: requestBodyBytes,
+	}
+
+	result, err := pipeline.Process(ctx, httpRequest)
+	require.Nil(t, result)
+	require.ErrorContains(t, err, "failed to auto-aggregate streaming response")
+	require.ErrorContains(t, err, "empty stream chunks")
+}
+
+func TestPipeline_NonStreaming_AutoAggregateUpgradedStream_AnthropicEmptyStreamChunks(t *testing.T) {
+	ctx := context.Background()
+
+	inbound := anthropic.NewInboundTransformer()
+	baseOutbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	outbound := &streamUpgradeOutboundWrapper{Outbound: baseOutbound}
+
+	executor := &mockExecutor{
+		doStreamFunc: func(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			require.Equal(t, http.MethodPost, request.Method)
+			require.Contains(t, request.URL, "/v1/messages")
+			return streams.SliceStream([]*httpclient.StreamEvent{}), nil
+		},
+	}
+
+	factory := pipeline.NewFactory(executor)
+	pipeline := factory.Pipeline(inbound, outbound)
+
+	requestBody := map[string]any{
+		"model":      "claude-3-sonnet-20240229",
+		"max_tokens": 1024,
+		"messages": []map[string]any{
+			{
+				"role":    "user",
+				"content": "Test message",
+			},
+		},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	httpRequest := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/messages",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: requestBodyBytes,
+	}
+
+	result, err := pipeline.Process(ctx, httpRequest)
+	require.Nil(t, result)
+	require.ErrorContains(t, err, "failed to auto-aggregate streaming response")
+	require.ErrorContains(t, err, "empty stream chunks")
+}
+
+func TestPipeline_NonStreaming_AutoAggregateUpgradedStream_EmptyAggregatedBody(t *testing.T) {
+	ctx := context.Background()
+
+	baseInbound := openai.NewInboundTransformer()
+	inbound := &emptyAggregateInboundWrapper{Inbound: baseInbound}
+	baseOutbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	outbound := &streamUpgradeOutboundWrapper{Outbound: baseOutbound}
+
+	executor := &mockExecutor{
+		doStreamFunc: func(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			require.Equal(t, http.MethodPost, request.Method)
+			require.Contains(t, request.URL, "/chat/completions")
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("[DONE]")}}), nil
+		},
+	}
+
+	factory := pipeline.NewFactory(executor)
+	pipeline := factory.Pipeline(inbound, outbound)
+
+	requestBody := map[string]any{
+		"model": "gpt-4",
+		"messages": []map[string]any{
+			{
+				"role":    "user",
+				"content": "Test message",
+			},
+		},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	httpRequest := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: requestBodyBytes,
+	}
+
+	result, err := pipeline.Process(ctx, httpRequest)
+	require.Nil(t, result)
+	require.ErrorContains(t, err, "failed to auto-aggregate streaming response")
+	require.ErrorContains(t, err, "empty aggregated body")
+}
+
+
+func TestPipeline_NonStreaming_AutoAggregateUpgradedStream_EmptyJSONObjectAggregatedBodyAllowed(t *testing.T) {
+	ctx := context.Background()
+
+	inbound := &emptyJSONObjectAggregateInboundWrapper{Inbound: openai.NewInboundTransformer()}
+	baseOutbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	outbound := &streamUpgradeOutboundWrapper{Outbound: baseOutbound}
+
+	executor := &mockExecutor{
+		doStreamFunc: func(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			require.Equal(t, http.MethodPost, request.Method)
+			require.Contains(t, request.URL, "/chat/completions")
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte(`{"stub":true}`)}}), nil
+		},
+	}
+
+	factory := pipeline.NewFactory(executor)
+	pipeline := factory.Pipeline(inbound, outbound)
+
+	requestBody := map[string]any{
+		"model": "gpt-4",
+		"messages": []map[string]any{
+			{
+				"role":    "user",
+				"content": "Test message",
+			},
+		},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	httpRequest := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: requestBodyBytes,
+	}
+
+	result, err := pipeline.Process(ctx, httpRequest)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.False(t, result.Stream)
+	require.NotNil(t, result.Response)
+	require.Equal(t, "{}", string(result.Response.Body))
+}
 func TestPipeline_Streaming_WithTestData(t *testing.T) {
 	tests := []struct {
 		name                string
