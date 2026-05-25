@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"time"
 	"unicode"
 
 	"github.com/samber/lo"
@@ -35,6 +36,8 @@ func filterResolvedCandidatesForRequest(
 
 	promptTokens := estimatePromptTokens(req)
 	stream := reqStream(req)
+	requestFormat := reqAPIFormat(req)
+	now := time.Now()
 	filtered := make([]*resolvedAssociationCandidate, 0, len(resolvedCandidates))
 
 	for _, candidate := range resolvedCandidates {
@@ -42,7 +45,7 @@ func filterResolvedCandidatesForRequest(
 			continue
 		}
 
-		if !matchesAssociationWhen(promptTokens, stream, candidate.when) {
+		if !matchesAssociationWhen(promptTokens, stream, requestFormat, now, candidate.when) {
 			continue
 		}
 
@@ -86,7 +89,15 @@ func reqStream(req *llm.Request) bool {
 	return *req.Stream
 }
 
-func matchesAssociationWhen(promptTokens int64, stream bool, when *objects.ModelAssociationWhen) bool {
+func reqAPIFormat(req *llm.Request) string {
+	if req == nil {
+		return ""
+	}
+
+	return string(req.APIFormat)
+}
+
+func matchesAssociationWhen(promptTokens int64, stream bool, requestFormat string, now time.Time, when *objects.ModelAssociationWhen) bool {
 	if when == nil {
 		return true
 	}
@@ -96,8 +107,10 @@ func matchesAssociationWhen(promptTokens int64, stream bool, when *objects.Model
 	}
 
 	if when.Condition != nil && !objects.Evaluate(*when.Condition, map[string]any{
-		"prompt_tokens": promptTokens,
-		"stream":        stream,
+		"prompt_tokens":  promptTokens,
+		"stream":         stream,
+		"request_format": requestFormat,
+		"now":            now,
 	}) {
 		return false
 	}
