@@ -18,12 +18,17 @@
 
 </div>
 
----
+## ❤️ Sponsor
 
-> NOTE
->
-> 1. This project is maintained by an individual. The author makes no warranties and assumes no liability for risks arising from its use. Please evaluate carefully.
-> 2. The core scope of this project does not include 2api (subscription-to-API conversion). If you need that, consider other open-source projects focused on 2api.
+<div align="center">
+
+<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
+
+**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+
+Check out Atlas Cloud's [new coding plan promotion](https://lj.s.gy/jknt2V) for more budget-friendly API access.
+
+</div>
 
 ---
 
@@ -44,6 +49,8 @@ Whether you're using OpenAI SDK, Anthropic SDK, or any AI SDK, AxonHub transpare
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
 </div>
+
+---
 
 ### Core Features
 

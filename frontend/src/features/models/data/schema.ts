@@ -90,7 +90,16 @@ export const channelTagsRegexAssociationSchema = z.object({
 });
 export type ChannelTagsRegexAssociation = z.infer<typeof channelTagsRegexAssociationSchema>;
 
-export const filterConditionSchema = z.object({
+export type FilterCondition = {
+  type: 'condition' | 'group';
+  logic?: string;
+  conditions?: FilterCondition[];
+  field?: string;
+  operator?: string;
+  value?: string | number | boolean;
+};
+
+export const filterConditionSchema: z.ZodType<FilterCondition> = z.object({
   type: z.enum(['condition', 'group']).default('condition'),
   logic: z.string().optional(),
   conditions: z.array(z.lazy(() => filterConditionSchema)).optional().default([]),
@@ -98,7 +107,6 @@ export const filterConditionSchema = z.object({
   operator: z.string().optional(),
   value: z.any().optional(),
 });
-export type FilterCondition = z.infer<typeof filterConditionSchema>;
 
 export const modelAssociationWhenSchema = z.object({
   enabled: z.boolean().optional().default(false),
@@ -121,6 +129,7 @@ export const modelAssociationSchema = z.object({
 export type ModelAssociation = z.infer<typeof modelAssociationSchema>;
 
 export const modelSettingsSchema = z.object({
+  disableDeveloperSettingsInheritance: z.boolean().optional().default(false),
   associations: z.array(modelAssociationSchema).optional().default([]),
 });
 export type ModelSettings = z.infer<typeof modelSettingsSchema>;

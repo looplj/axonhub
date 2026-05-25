@@ -1104,3 +1104,167 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 		require.Contains(t, err.Error(), "deny rule")
 	})
 }
+
+func TestAPIKeyService_RotateAPIKey(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
+	defer client.Close()
+
+	// Setup context with privacy.Allow for data preparation
+	setupCtx := ent.NewContext(context.Background(), client)
+	setupCtx = authz.WithTestBypass(setupCtx)
+
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	ownerUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	projectName := uuid.NewString()
+	testProject, err := client.Project.Create().
+		SetName(projectName).
+		SetDescription(projectName).
+		SetStatus(project.StatusActive).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	ctxWithUser := contexts.WithUser(setupCtx, ownerUser)
+
+	t.Run("rotate user type API key successfully", func(t *testing.T) {
+		// Create an API key
+		originalKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Key to Rotate",
+			ProjectID: testProject.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, originalKey)
+
+		originalKeyValue := originalKey.Key
+		originalID := originalKey.ID
+		originalName := originalKey.Name
+		originalType := originalKey.Type
+		originalScopes := originalKey.Scopes
+
+		// Rotate the API key
+		rotatedKey, err := apiKeyService.RotateAPIKey(ctxWithUser, originalID)
+		require.NoError(t, err)
+		require.NotNil(t, rotatedKey)
+
+		// Verify the key has changed
+		require.NotEqual(t, originalKeyValue, rotatedKey.Key)
+		require.NotEmpty(t, rotatedKey.Key)
+
+		// Verify ID and other properties are preserved
+		require.Equal(t, originalID, rotatedKey.ID)
+		require.Equal(t, originalName, rotatedKey.Name)
+		require.Equal(t, originalType, rotatedKey.Type)
+		require.Equal(t, originalScopes, rotatedKey.Scopes)
+		require.Equal(t, testProject.ID, rotatedKey.ProjectID)
+		require.Equal(t, ownerUser.ID, rotatedKey.UserID)
+
+		// Verify the old key is no longer valid
+		_, err = apiKeyService.GetAPIKey(ctxWithUser, originalKeyValue)
+		require.Error(t, err)
+
+		// Verify the new key is valid
+		fetchedKey, err := apiKeyService.GetAPIKey(ctxWithUser, rotatedKey.Key)
+		require.NoError(t, err)
+		require.Equal(t, rotatedKey.ID, fetchedKey.ID)
+	})
+
+	t.Run("rotate service account type API key successfully", func(t *testing.T) {
+		serviceAccountType := apikey.TypeServiceAccount
+		customScopes := []string{"read_channels", "write_channels"}
+
+		// Create a service account API key
+		originalKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Service Key to Rotate",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+			Scopes:    customScopes,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, originalKey)
+
+		originalKeyValue := originalKey.Key
+		originalID := originalKey.ID
+
+		// Rotate the API key
+		rotatedKey, err := apiKeyService.RotateAPIKey(ctxWithUser, originalID)
+		require.NoError(t, err)
+		require.NotNil(t, rotatedKey)
+
+		// Verify the key has changed but properties are preserved
+		require.NotEqual(t, originalKeyValue, rotatedKey.Key)
+		require.Equal(t, originalID, rotatedKey.ID)
+		require.Equal(t, apikey.TypeServiceAccount, rotatedKey.Type)
+		require.Equal(t, customScopes, rotatedKey.Scopes)
+	})
+
+	t.Run("cannot rotate noauth type API key", func(t *testing.T) {
+		// Create a noauth API key directly
+		noauthKey, err := client.APIKey.Create().
+			SetName("No Auth Key").
+			SetKey("test-noauth-key-for-rotation").
+			SetUserID(ownerUser.ID).
+			SetProjectID(testProject.ID).
+			SetType(apikey.TypeNoauth).
+			SetStatus(apikey.StatusEnabled).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		// Try to rotate the noauth key
+		_, err = apiKeyService.RotateAPIKey(ctxWithUser, noauthKey.ID)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "noauth type API key cannot be rotated")
+	})
+
+	t.Run("rotate non-existent API key returns error", func(t *testing.T) {
+		_, err := apiKeyService.RotateAPIKey(ctxWithUser, 999999)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to get API key")
+	})
+
+	t.Run("cannot rotate API key from different project", func(t *testing.T) {
+		// Create another project
+		anotherProject, err := client.Project.Create().
+			SetName(uuid.NewString()).
+			SetDescription("Another Project").
+			SetStatus(project.StatusActive).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		// Create another user
+		anotherUser, err := client.User.Create().
+			SetEmail(fmt.Sprintf("another-%d@example.com", time.Now().UnixNano())).
+			SetPassword(hashedPassword).
+			SetFirstName("Another").
+			SetLastName("User").
+			SetStatus(user.StatusActivated).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		// Create an API key in the original project
+		apiKeyInProjectA, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Key in Project A",
+			ProjectID: testProject.ID,
+		})
+		require.NoError(t, err)
+
+		// Create a context for another user without test bypass
+		anotherUserCtx := ent.NewContext(context.Background(), client)
+		anotherUserCtx = contexts.WithUser(anotherUserCtx, anotherUser)
+		anotherUserCtx = contexts.WithProjectID(anotherUserCtx, anotherProject.ID)
+
+		// Try to rotate the API key from project A using project B user's context
+		_, err = apiKeyService.RotateAPIKey(anotherUserCtx, apiKeyInProjectA.ID)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to get API key")
+	})
+}

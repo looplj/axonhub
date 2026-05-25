@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import { z } from 'zod';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconPlus, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle } from '@tabler/icons-react';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
 import { extractNumberIDAsNumber } from '@/lib/utils';
@@ -18,7 +18,9 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { FilterBuilder, type FilterBuilderCondition, type FilterBuilderField, type FilterBuilderGroupListValue } from '@/components/filter-builder';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAllChannelSummarys, useAllChannelTags } from '@/features/channels/data/channels';
+import { useModelSettings, useUpdateModelSettings } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
@@ -55,7 +57,7 @@ const whenFilterFields: FilterBuilderField[] = [
 function isValidConditionOperator(field: string, operator: string): boolean {
   const fieldConfig = whenFilterFields.find((f) => f.value === field);
   if (!fieldConfig) return false;
-  return fieldConfig.operators.some((op) => op.value === operator);
+  return Boolean(fieldConfig.operators?.some((op) => op.value === operator));
 }
 
 const DEFAULT_WHEN_CONDITION: FilterBuilderGroupListValue = {
@@ -176,6 +178,7 @@ function validateWhenGroupList(value: FilterBuilderGroupListValue, ctx: z.Refine
 }
 
 const associationFormSchema = z.object({
+  disableDeveloperSettingsInheritance: z.boolean().default(false),
   associations: z
     .array(
       z.object({
@@ -184,6 +187,7 @@ const associationFormSchema = z.object({
         disabled: z.boolean().default(false),
         whenEnabled: z.boolean().default(false),
         whenCondition: z.custom<FilterBuilderGroupListValue>().default(DEFAULT_WHEN_CONDITION),
+        inheritModel: z.boolean().default(false),
         channelId: z.number().optional(),
         channelTags: z.array(z.string()).optional(),
         modelId: z.string().optional(),
@@ -196,6 +200,13 @@ const associationFormSchema = z.object({
     .max(10, 'Cannot have more than 10 associations')
     .superRefine((associations, ctx) => {
       associations.forEach((assoc, index) => {
+        if (assoc.inheritModel && assoc.type !== 'channel_model' && assoc.type !== 'channel_tags_model') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Developer rules can only select channels or channel tags',
+            path: [index, 'type'],
+          });
+        }
         if (assoc.type === 'channel_model' || assoc.type === 'channel_regex') {
           if (!assoc.channelId) {
             ctx.addIssue({
@@ -215,7 +226,7 @@ const associationFormSchema = z.object({
           }
         }
         if (assoc.type === 'channel_model' || assoc.type === 'model' || assoc.type === 'channel_tags_model') {
-          if (!assoc.modelId || assoc.modelId.trim() === '') {
+          if (!assoc.inheritModel && (!assoc.modelId || assoc.modelId.trim() === '')) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: 'Model ID is required',
@@ -240,12 +251,276 @@ const associationFormSchema = z.object({
 });
 
 type AssociationFormData = z.infer<typeof associationFormSchema>;
+type AssociationFormRow = AssociationFormData['associations'][number];
+type ExcludeInputList = NonNullable<ModelAssociationInput['regex']>['exclude'];
+type ChannelOption = {
+  value: number;
+  label: string;
+  type: string;
+  status: string;
+  tags: string[];
+  allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }>;
+};
+
+function associationModelID(assoc: AssociationFormRow, inheritedModelID?: string) {
+  if (assoc.inheritModel) {
+    return inheritedModelID ?? '';
+  }
+
+  return assoc.modelId ?? '';
+}
+
+function isCompleteAssociationFormRow(assoc: AssociationFormRow, inheritedModelID?: string) {
+  if (assoc.type === 'channel_model') {
+    return Boolean(assoc.channelId && (associationModelID(assoc, inheritedModelID) || assoc.inheritModel));
+  }
+  if (assoc.type === 'channel_regex') {
+    return Boolean(assoc.channelId && assoc.pattern);
+  }
+  if (assoc.type === 'regex') {
+    return Boolean(assoc.pattern);
+  }
+  if (assoc.type === 'model') {
+    return Boolean(associationModelID(assoc, inheritedModelID) || assoc.inheritModel);
+  }
+  if (assoc.type === 'channel_tags_model') {
+    return Boolean(assoc.channelTags && assoc.channelTags.length > 0 && (associationModelID(assoc, inheritedModelID) || assoc.inheritModel));
+  }
+  if (assoc.type === 'channel_tags_regex') {
+    return Boolean(assoc.channelTags && assoc.channelTags.length > 0 && assoc.pattern);
+  }
+  return false;
+}
+
+function buildExcludeInput(assoc: AssociationFormRow): ExcludeInputList {
+  const hasExclude =
+    assoc.excludeChannelNamePattern ||
+    (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0) ||
+    (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0);
+
+  if (!hasExclude) {
+    return undefined;
+  }
+
+  return [
+    {
+      channelNamePattern: assoc.excludeChannelNamePattern || null,
+      channelIds: assoc.excludeChannelIds || null,
+      channelTags: assoc.excludeChannelTags || null,
+    },
+  ];
+}
+
+function formAssociationToInput(assoc: AssociationFormRow, inheritedModelID?: string): ModelAssociationInput | undefined {
+  if (!isCompleteAssociationFormRow(assoc, inheritedModelID)) {
+    return undefined;
+  }
+
+  const modelID = associationModelID(assoc, inheritedModelID);
+  const base = {
+    priority: assoc.priority ?? 0,
+    disabled: assoc.disabled ?? false,
+    when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition) || undefined,
+  };
+
+  if (assoc.type === 'channel_model') {
+    return {
+      ...base,
+      type: 'channel_model',
+      channelModel: {
+        channelId: assoc.channelId!,
+        modelId: modelID,
+      },
+    };
+  }
+
+  if (assoc.type === 'channel_regex') {
+    return {
+      ...base,
+      type: 'channel_regex',
+      channelRegex: {
+        channelId: assoc.channelId!,
+        pattern: assoc.pattern!,
+      },
+    };
+  }
+
+  if (assoc.type === 'regex') {
+    return {
+      ...base,
+      type: 'regex',
+      regex: {
+        pattern: assoc.pattern!,
+        exclude: buildExcludeInput(assoc),
+      },
+    };
+  }
+
+  if (assoc.type === 'model') {
+    return {
+      ...base,
+      type: 'model',
+      modelId: {
+        modelId: modelID,
+        exclude: buildExcludeInput(assoc),
+      },
+    };
+  }
+
+  if (assoc.type === 'channel_tags_model') {
+    return {
+      ...base,
+      type: 'channel_tags_model',
+      channelTagsModel: {
+        channelTags: assoc.channelTags!,
+        modelId: modelID,
+      },
+    };
+  }
+
+  return {
+    ...base,
+    type: 'channel_tags_regex',
+    channelTagsRegex: {
+      channelTags: assoc.channelTags!,
+      pattern: assoc.pattern!,
+    },
+  };
+}
+
+function formAssociationToModelAssociation(assoc: AssociationFormRow): ModelAssociation {
+  const input = formAssociationToInput(assoc);
+  return {
+    type: assoc.type,
+    priority: assoc.priority ?? 0,
+    disabled: assoc.disabled ?? false,
+    when: input?.when ? { enabled: Boolean(input.when.enabled), condition: input.when.condition ?? null } : null,
+    channelModel: input?.channelModel || null,
+    channelRegex: input?.channelRegex || null,
+    regex: input?.regex || null,
+    modelId: input?.modelId || null,
+    channelTagsModel: input?.channelTagsModel || null,
+    channelTagsRegex: input?.channelTagsRegex || null,
+  };
+}
+
+function modelAssociationToInput(assoc: ModelAssociation, inheritedModelID?: string): ModelAssociationInput {
+  const channelModel = assoc.channelModel
+    ? {
+        ...assoc.channelModel,
+        modelId: inheritedModelID ?? assoc.channelModel.modelId,
+      }
+    : undefined;
+  const modelId = assoc.modelId
+    ? {
+        ...assoc.modelId,
+        modelId: inheritedModelID ?? assoc.modelId.modelId,
+      }
+    : undefined;
+  const channelTagsModel = assoc.channelTagsModel
+    ? {
+        ...assoc.channelTagsModel,
+        modelId: inheritedModelID ?? assoc.channelTagsModel.modelId,
+      }
+    : undefined;
+
+  return {
+    type: assoc.type,
+    priority: assoc.priority ?? 0,
+    disabled: assoc.disabled ?? false,
+    when: assoc.when
+      ? {
+          enabled: assoc.when.enabled,
+          condition: assoc.when.condition || undefined,
+        }
+      : undefined,
+    channelModel,
+    channelRegex: assoc.channelRegex || undefined,
+    regex: assoc.regex || undefined,
+    modelId,
+    channelTagsModel,
+    channelTagsRegex: assoc.channelTagsRegex || undefined,
+  };
+}
+
+function modelAssociationToFormRow(assoc: ModelAssociation, inheritModel = false): AssociationFormRow {
+  const exclude = assoc.regex?.exclude?.[0] || assoc.modelId?.exclude?.[0];
+  const promptTokensCondition = readPromptTokensCondition(assoc.when);
+  return {
+    type: assoc.type,
+    priority: assoc.priority ?? 0,
+    disabled: assoc.disabled ?? false,
+    inheritModel,
+    whenEnabled: promptTokensCondition.enabled,
+    whenCondition:
+      promptTokensCondition.enabled && (promptTokensCondition.condition.groups?.length || 0) === 0
+        ? { groups: [DEFAULT_WHEN_GROUP] }
+        : promptTokensCondition.condition,
+    channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
+    channelTags: assoc.channelTagsModel?.channelTags || assoc.channelTagsRegex?.channelTags || [],
+    modelId: inheritModel ? '' : assoc.channelModel?.modelId || assoc.modelId?.modelId || assoc.channelTagsModel?.modelId,
+    pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern || assoc.channelTagsRegex?.pattern,
+    excludeChannelNamePattern: exclude?.channelNamePattern || '',
+    excludeChannelIds: exclude?.channelIds || [],
+    excludeChannelTags: exclude?.channelTags || [],
+  };
+}
+
+function sortAssociationsByPriority<T extends { priority?: number }>(associations: T[]) {
+  return [...associations].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+}
+
+function buildDeveloperChannelPreview(associations: AssociationFormRow[], channelOptions: ChannelOption[]): ModelChannelConnection[] {
+  const seen = new Set<number>();
+  const connections: ModelChannelConnection[] = [];
+
+  const addChannel = (channel: ChannelOption) => {
+    if (seen.has(channel.value)) {
+      return;
+    }
+
+    seen.add(channel.value);
+    connections.push({
+      channel: {
+        id: channel.value.toString(),
+        name: channel.label,
+        type: channel.type,
+        status: channel.status,
+      },
+      models: [],
+    });
+  };
+
+  sortAssociationsByPriority(associations).forEach((assoc) => {
+    if (assoc.disabled) {
+      return;
+    }
+
+    if (assoc.type === 'channel_model' && assoc.channelId) {
+      const channel = channelOptions.find((item) => item.value === assoc.channelId);
+      if (channel) {
+        addChannel(channel);
+      }
+      return;
+    }
+
+    if (assoc.type === 'channel_tags_model' && assoc.channelTags && assoc.channelTags.length > 0) {
+      channelOptions
+        .filter((channel) => assoc.channelTags?.some((tag) => channel.tags.includes(tag)))
+        .forEach(addChannel);
+    }
+  });
+
+  return connections;
+}
 
 export function ModelsAssociationDialog() {
-  const { t } = useTranslation();
-  const { open, setOpen, currentRow } = useModels();
+  const { t, i18n } = useTranslation();
+  const { open, setOpen, currentRow, currentDeveloper, setCurrentDeveloper } = useModels();
   const updateModel = useUpdateModel();
-  const { data: channelsData } = useAllChannelSummarys(undefined, { enabled: open === 'association' });
+  const updateModelSettings = useUpdateModelSettings();
+  const { data: settings, isLoading: isSettingsLoading } = useModelSettings();
+  const { data: channelsData } = useAllChannelSummarys(undefined, { enabled: open === 'association' || open === 'developerAssociation' });
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
   const { data: allTags = [] } = useAllChannelTags();
   const { mutateAsync: queryConnections } = useQueryModelChannelConnections();
@@ -253,7 +528,18 @@ export function ModelsAssociationDialog() {
   const [channelFilter, setChannelFilter] = useState('');
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
-  const isOpen = open === 'association';
+  const isOpen = open === 'association' || open === 'developerAssociation';
+  const isDeveloperMode = open === 'developerAssociation';
+  const activeDeveloper = isDeveloperMode ? currentDeveloper : currentRow?.developer || null;
+  const developerLabel = useMemo(() => {
+    if (!activeDeveloper) return '';
+    const key = `models.developers.${activeDeveloper}`;
+    return i18n.exists(key) ? t(key) : activeDeveloper;
+  }, [activeDeveloper, i18n, t]);
+  const developerAssociations = useMemo(
+    () => settings?.developerSettings?.find((item) => item.developer === activeDeveloper)?.associations || [],
+    [activeDeveloper, settings?.developerSettings]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -265,15 +551,14 @@ export function ModelsAssociationDialog() {
   }, [isOpen, fetchModels]);
 
   // Build channel options for select
-  const channelOptions = useMemo((): {
-    value: number;
-    label: string;
-    allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }>;
-  }[] => {
+  const channelOptions = useMemo((): ChannelOption[] => {
     if (!channelsData?.edges) return [];
     return channelsData.edges.map((edge) => ({
       value: extractNumberIDAsNumber(edge.node.id),
       label: edge.node.name,
+      type: edge.node.type,
+      status: edge.node.status,
+      tags: edge.node.tags || [],
       allModelEntries: edge.node.allModelEntries || [],
     }));
   }, [channelsData]);
@@ -288,11 +573,22 @@ export function ModelsAssociationDialog() {
   }, [availableModels]);
 
   const form = useForm<AssociationFormData>({
-    resolver: zodResolver(associationFormSchema),
+    resolver: zodResolver(associationFormSchema) as Resolver<AssociationFormData>,
     defaultValues: {
+      disableDeveloperSettingsInheritance: false,
       associations: [],
     },
   });
+
+  const disableDeveloperSettingsInheritance = useWatch({
+    control: form.control,
+    name: 'disableDeveloperSettingsInheritance',
+    defaultValue: false,
+  });
+  const inheritedAssociations = useMemo(
+    () => (isDeveloperMode || disableDeveloperSettingsInheritance ? [] : developerAssociations),
+    [disableDeveloperSettingsInheritance, isDeveloperMode, developerAssociations]
+  );
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -316,118 +612,26 @@ export function ModelsAssociationDialog() {
       return;
     }
 
-    let debouncedAssociations;
+    let debouncedAssociations: AssociationFormRow[];
     try {
-      debouncedAssociations = JSON.parse(debouncedAssociationsString);
+      debouncedAssociations = JSON.parse(debouncedAssociationsString) || [];
     } catch {
-      setConnections([]);
-      return;
-    }
-
-    if (!debouncedAssociations || debouncedAssociations.length === 0) {
       setConnections([]);
       return;
     }
 
     const fetchConnections = async () => {
       try {
-        const sortedDebouncedAssociations = [...debouncedAssociations].sort((a: any, b: any) => (a.priority ?? 0) - (b.priority ?? 0));
-        const associations: ModelAssociationInput[] = sortedDebouncedAssociations
-          .filter((assoc: any) => {
-            if (assoc.type === 'channel_model') {
-              return assoc.channelId && assoc.modelId;
-            } else if (assoc.type === 'channel_regex') {
-              return assoc.channelId && assoc.pattern;
-            } else if (assoc.type === 'regex') {
-              return assoc.pattern;
-            } else if (assoc.type === 'model') {
-              return assoc.modelId;
-            } else if (assoc.type === 'channel_tags_model') {
-              return assoc.channelTags && assoc.channelTags.length > 0 && assoc.modelId;
-            } else if (assoc.type === 'channel_tags_regex') {
-              return assoc.channelTags && assoc.channelTags.length > 0 && assoc.pattern;
-            }
-            return false;
-          })
-          .map((assoc: any): ModelAssociationInput | undefined => {
-            const hasExclude =
-              assoc.excludeChannelNamePattern ||
-              (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0) ||
-              (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0);
-            const exclude = hasExclude
-              ? [
-                {
-                  channelNamePattern: assoc.excludeChannelNamePattern || null,
-                  channelIds: assoc.excludeChannelIds || null,
-                  channelTags: assoc.excludeChannelTags || null,
-                },
-              ]
-              : undefined;
+        if (isDeveloperMode) {
+          setConnections(buildDeveloperChannelPreview(debouncedAssociations, channelOptions));
+          return;
+        }
 
-            if (assoc.type === 'channel_model') {
-              return {
-                type: 'channel_model' as const,
-                disabled: assoc.disabled ?? false,
-                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-                channelModel: {
-                  channelId: assoc.channelId!,
-                  modelId: assoc.modelId!,
-                },
-              };
-            } else if (assoc.type === 'channel_regex') {
-              return {
-                type: 'channel_regex' as const,
-                disabled: assoc.disabled ?? false,
-                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-                channelRegex: {
-                  channelId: assoc.channelId!,
-                  pattern: assoc.pattern!,
-                },
-              };
-            } else if (assoc.type === 'regex') {
-              return {
-                type: 'regex' as const,
-                disabled: assoc.disabled ?? false,
-                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-                regex: {
-                  pattern: assoc.pattern!,
-                  exclude,
-                },
-              };
-            } else if (assoc.type === 'model') {
-              return {
-                type: 'model' as const,
-                disabled: assoc.disabled ?? false,
-                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-                modelId: {
-                  modelId: assoc.modelId!,
-                  exclude,
-                },
-              };
-            } else if (assoc.type === 'channel_tags_model') {
-              return {
-                type: 'channel_tags_model' as const,
-                disabled: assoc.disabled ?? false,
-                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-                channelTagsModel: {
-                  channelTags: assoc.channelTags!,
-                  modelId: assoc.modelId!,
-                },
-              };
-            } else if (assoc.type === 'channel_tags_regex') {
-              return {
-                type: 'channel_tags_regex' as const,
-                disabled: assoc.disabled ?? false,
-                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-                channelTagsRegex: {
-                  channelTags: assoc.channelTags!,
-                  pattern: assoc.pattern!,
-                },
-              };
-            }
-            return undefined;
-          })
+        const inheritedInputs = inheritedAssociations.map((assoc) => modelAssociationToInput(assoc, currentRow?.modelID));
+        const formInputs = sortAssociationsByPriority(debouncedAssociations)
+          .map((assoc) => formAssociationToInput(assoc))
           .filter((item): item is ModelAssociationInput => item !== undefined);
+        const associations = sortAssociationsByPriority([...formInputs, ...inheritedInputs]);
 
         if (associations.length > 0) {
           const result = await queryConnections(associations);
@@ -442,171 +646,52 @@ export function ModelsAssociationDialog() {
     };
 
     fetchConnections();
-  }, [debouncedAssociationsString, isOpen, queryConnections]);
+  }, [channelOptions, currentRow?.modelID, debouncedAssociationsString, inheritedAssociations, isOpen, isDeveloperMode, queryConnections]);
 
   useEffect(() => {
-    if (isOpen && currentRow) {
-      const associations = currentRow.settings?.associations || [];
+    if (isOpen) {
+      const associations = isDeveloperMode ? developerAssociations : currentRow?.settings?.associations || [];
       form.reset({
-        associations: associations.map((assoc) => {
-          const exclude = assoc.regex?.exclude?.[0] || assoc.modelId?.exclude?.[0];
-          const promptTokensCondition = readPromptTokensCondition(assoc.when);
-          return {
-            type: assoc.type,
-            priority: assoc.priority ?? 0,
-            disabled: assoc.disabled ?? false,
-            whenEnabled: promptTokensCondition.enabled,
-            whenCondition: promptTokensCondition.enabled && (promptTokensCondition.condition.groups?.length || 0) === 0
-              ? { groups: [DEFAULT_WHEN_GROUP] }
-              : promptTokensCondition.condition,
-            channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
-            channelTags: assoc.channelTagsModel?.channelTags || assoc.channelTagsRegex?.channelTags || [],
-            modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId || assoc.channelTagsModel?.modelId,
-            pattern: assoc.channelRegex?.pattern || assoc.regex?.pattern || assoc.channelTagsRegex?.pattern,
-            excludeChannelNamePattern: exclude?.channelNamePattern || '',
-            excludeChannelIds: exclude?.channelIds || [],
-            excludeChannelTags: exclude?.channelTags || [],
-          };
-        }),
+        disableDeveloperSettingsInheritance: isDeveloperMode ? false : currentRow?.settings?.disableDeveloperSettingsInheritance ?? false,
+        associations: associations
+          .filter((assoc) => !isDeveloperMode || assoc.type === 'channel_model' || assoc.type === 'channel_tags_model')
+          .map((assoc) => modelAssociationToFormRow(assoc, isDeveloperMode)),
       });
     }
-  }, [isOpen, currentRow, form]);
+  }, [isOpen, isDeveloperMode, currentRow, developerAssociations, form]);
 
   const onSubmit = async (data: AssociationFormData) => {
-    if (!currentRow) return;
+    if (isDeveloperMode && (!settings || !activeDeveloper)) return;
+    if (!isDeveloperMode && !currentRow) return;
 
     try {
-      const sortedAssociations = [...data.associations].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
-      const associations: ModelAssociation[] = sortedAssociations.map((assoc) => {
-        if (assoc.type === 'channel_model') {
-          return {
-            type: 'channel_model',
-            priority: assoc.priority ?? 0,
-            disabled: assoc.disabled ?? false,
-            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-            channelModel: {
-              channelId: assoc.channelId || 0,
-              modelId: assoc.modelId || '',
-            },
-            channelRegex: null,
-            regex: null,
-            modelId: null,
-            channelTagsModel: null,
-            channelTagsRegex: null,
-          };
-        } else if (assoc.type === 'channel_regex') {
-          return {
-            type: 'channel_regex',
-            priority: assoc.priority ?? 0,
-            disabled: assoc.disabled ?? false,
-            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-            channelModel: null,
-            channelRegex: {
-              channelId: assoc.channelId || 0,
-              pattern: assoc.pattern || '',
-            },
-            regex: null,
-            modelId: null,
-            channelTagsModel: null,
-            channelTagsRegex: null,
-          };
-        } else if (assoc.type === 'channel_tags_model') {
-          return {
-            type: 'channel_tags_model',
-            priority: assoc.priority ?? 0,
-            disabled: assoc.disabled ?? false,
-            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-            channelModel: null,
-            channelRegex: null,
-            regex: null,
-            modelId: null,
-            channelTagsModel: {
-              channelTags: assoc.channelTags || [],
-              modelId: assoc.modelId || '',
-            },
-            channelTagsRegex: null,
-          };
-        } else if (assoc.type === 'channel_tags_regex') {
-          return {
-            type: 'channel_tags_regex',
-            priority: assoc.priority ?? 0,
-            disabled: assoc.disabled ?? false,
-            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-            channelModel: null,
-            channelRegex: null,
-            regex: null,
-            modelId: null,
-            channelTagsModel: null,
-            channelTagsRegex: {
-              channelTags: assoc.channelTags || [],
-              pattern: assoc.pattern || '',
-            },
-          };
-        } else if (assoc.type === 'regex') {
-          const hasExclude =
-            assoc.excludeChannelNamePattern ||
-            (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0) ||
-            (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0);
-          const exclude = hasExclude
-            ? [
-              {
-                channelNamePattern: assoc.excludeChannelNamePattern || null,
-                channelIds: assoc.excludeChannelIds || null,
-                channelTags: assoc.excludeChannelTags || null,
-              },
-            ]
-            : null;
-          return {
-            type: 'regex',
-            priority: assoc.priority ?? 0,
-            disabled: assoc.disabled ?? false,
-            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-            channelModel: null,
-            channelRegex: null,
-            regex: {
-              pattern: assoc.pattern || '',
-              exclude,
-            },
-            modelId: null,
-            channelTagsModel: null,
-            channelTagsRegex: null,
-          };
-        } else {
-          const hasExclude =
-            assoc.excludeChannelNamePattern ||
-            (assoc.excludeChannelIds && assoc.excludeChannelIds.length > 0) ||
-            (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0);
-          const exclude = hasExclude
-            ? [
-              {
-                channelNamePattern: assoc.excludeChannelNamePattern || null,
-                channelIds: assoc.excludeChannelIds || null,
-                channelTags: assoc.excludeChannelTags || null,
-              },
-            ]
-            : null;
-          return {
-            type: 'model',
-            priority: assoc.priority ?? 0,
-            disabled: assoc.disabled ?? false,
-            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
-            channelModel: null,
-            channelRegex: null,
-            regex: null,
-            modelId: {
-              modelId: assoc.modelId || '',
-              exclude,
-            },
-            channelTagsModel: null,
-            channelTagsRegex: null,
-          };
+      const associations = sortAssociationsByPriority(data.associations).map(formAssociationToModelAssociation);
+
+      if (isDeveloperMode) {
+        const nextDeveloperSettings = [...(settings?.developerSettings || []).filter((item) => item.developer !== activeDeveloper)];
+        if (associations.length > 0) {
+          nextDeveloperSettings.push({
+            developer: activeDeveloper!,
+            associations,
+          });
         }
-      });
+
+        await updateModelSettings.mutateAsync({
+          fallbackToChannelsOnModelNotFound: settings!.fallbackToChannelsOnModelNotFound,
+          queryAllChannelModels: settings!.queryAllChannelModels,
+          defaultModelAPIIncludeAll: settings!.defaultModelAPIIncludeAll,
+          autoReasoningEffort: settings!.autoReasoningEffort,
+          developerSettings: nextDeveloperSettings.sort((a, b) => a.developer.localeCompare(b.developer)),
+        });
+        handleClose();
+        return;
+      }
 
       await updateModel.mutateAsync({
-        id: currentRow.id,
+        id: currentRow!.id,
         input: {
           settings: {
+            disableDeveloperSettingsInheritance: data.disableDeveloperSettingsInheritance ?? false,
             associations,
           },
         },
@@ -619,10 +704,11 @@ export function ModelsAssociationDialog() {
 
   const handleClose = useCallback(() => {
     setOpen(null);
+    setCurrentDeveloper(null);
     form.reset();
     setConnections([]);
     setChannelFilter('');
-  }, [setOpen, form]);
+  }, [setOpen, setCurrentDeveloper, form]);
 
   const handleAddAssociation = useCallback(() => {
     if (fields.length >= 10) return;
@@ -645,8 +731,9 @@ export function ModelsAssociationDialog() {
       excludeChannelNamePattern: '',
       excludeChannelIds: [],
       excludeChannelTags: [],
+      inheritModel: isDeveloperMode,
     });
-  }, [append, fields.length, form]);
+  }, [append, fields.length, form, isDeveloperMode]);
 
   // Filter connections by channel name
   const filteredConnections = useMemo(() => {
@@ -659,8 +746,42 @@ export function ModelsAssociationDialog() {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent ref={dialogContentRef} className='flex h-[90vh] max-h-[800px] flex-col w-full max-w-full sm:max-w-6xl'>
         <DialogHeader className='shrink-0 text-left'>
-          <DialogTitle className='text-lg sm:text-xl'>{t('models.dialogs.association.title')}</DialogTitle>
-          <DialogDescription className='text-sm sm:text-base'>{t('models.dialogs.association.description', { name: currentRow?.name })}</DialogDescription>
+          <DialogTitle className='text-lg sm:text-xl'>
+            {isDeveloperMode ? t('models.dialogs.developerAssociation.title') : t('models.dialogs.association.title')}
+          </DialogTitle>
+          <DialogDescription className='text-sm sm:text-base'>
+            {isDeveloperMode
+              ? t('models.dialogs.developerAssociation.description', { name: developerLabel })
+              : t('models.dialogs.association.description', { name: currentRow?.name })}
+          </DialogDescription>
+          <Alert className='mt-3 py-2.5'>
+            <IconInfoCircle className='h-4 w-4' />
+            <AlertDescription className='text-xs sm:text-sm'>
+              {isDeveloperMode
+                ? t('models.dialogs.developerAssociation.inheritanceHelp', { name: developerLabel })
+                : t('models.dialogs.association.inheritanceHelp')}
+            </AlertDescription>
+          </Alert>
+          {!isDeveloperMode && (
+            <div className='mt-3 flex items-start justify-between gap-4 rounded-lg border px-4 py-3'>
+              <div className='space-y-1'>
+                <div className='text-sm font-medium'>{t('models.dialogs.association.disableDeveloperInheritance.label')}</div>
+                <p className='text-muted-foreground text-xs sm:text-sm'>
+                  {t('models.dialogs.association.disableDeveloperInheritance.description')}
+                </p>
+              </div>
+              <Switch
+                checked={disableDeveloperSettingsInheritance}
+                onCheckedChange={(checked) =>
+                  form.setValue('disableDeveloperSettingsInheritance', checked, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+                className='mt-0.5 shrink-0'
+              />
+            </div>
+          )}
         </DialogHeader>
 
         <div className='flex min-h-0 flex-1 flex-col gap-6 sm:flex-row'>
@@ -670,9 +791,7 @@ export function ModelsAssociationDialog() {
             <div className='flex-1 overflow-y-auto py-4'>
               <Form {...form}>
                 <form id='association-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-3'>
-                  {fields.length === 0 && (
-                    <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>
-                  )}
+                  {fields.length === 0 && <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>}
 
                   {fields.length > 0 && (
                     <div className='grid grid-cols-[2.25rem_3rem_1fr_2.25rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-3 sm:px-[13px] pb-2'>
@@ -696,6 +815,7 @@ export function ModelsAssociationDialog() {
                         key={field.id}
                         index={index}
                         form={form}
+                        isDeveloperMode={isDeveloperMode}
                         channelOptions={channelOptions}
                         allModelOptions={allModelOptions}
                         allTags={allTags}
@@ -716,11 +836,13 @@ export function ModelsAssociationDialog() {
             </div>
           </div>
 
-          {/* Right Side - Preview */}
+            {/* Right Side - Preview */}
           <div className='flex min-h-0 flex-1 flex-col border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-6'>
             <div className='shrink-0 space-y-2 pb-4'>
               <h3 className='text-sm font-semibold'>{t('models.dialogs.association.preview')}</h3>
-              <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.previewDescription')}</p>
+              <p className='text-muted-foreground text-xs'>
+                {isDeveloperMode ? t('models.dialogs.developerAssociation.previewDescription') : t('models.dialogs.association.previewDescription')}
+              </p>
               <Input
                 placeholder={t('models.dialogs.association.filterByChannel')}
                 value={channelFilter}
@@ -745,7 +867,12 @@ export function ModelsAssociationDialog() {
           <Button type='button' variant='outline' onClick={handleClose} className='w-full sm:w-auto'>
             {t('common.buttons.cancel')}
           </Button>
-          <Button type='submit' form='association-form' disabled={updateModel.isPending || !form.formState.isValid} className='w-full sm:w-auto'>
+          <Button
+            type='submit'
+            form='association-form'
+            disabled={updateModel.isPending || updateModelSettings.isPending || isSettingsLoading || !form.formState.isValid}
+            className='w-full sm:w-auto'
+          >
             {t('common.buttons.save')}
           </Button>
         </DialogFooter>
@@ -803,7 +930,7 @@ function normalizeWhenCondition(
     };
   }
 
-  if (!isValidConditionOperator(condition.field, condition.operator)) {
+  if (!condition.field || !condition.operator || !isValidConditionOperator(condition.field, condition.operator)) {
     return null;
   }
 
@@ -870,14 +997,39 @@ function buildAssociationWhen(enabled?: boolean, value?: FilterBuilderGroupListV
 interface AssociationRowProps {
   index: number;
   form: ReturnType<typeof useForm<AssociationFormData>>;
-  channelOptions: { value: number; label: string; allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }> }[];
+  isDeveloperMode: boolean;
+  channelOptions: ChannelOption[];
   allModelOptions: { value: string; label: string }[];
   allTags: string[];
   onRemove: () => void;
   portalContainer: HTMLElement | null;
 }
 
-function AssociationRow({ index, form, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
+function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: boolean }) {
+  const { t } = useTranslation();
+
+  if (isDeveloperMode) {
+    return (
+      <SelectContent>
+        <SelectItem value='channel_model'>{t('models.dialogs.association.developerTypes.channel')}</SelectItem>
+        <SelectItem value='channel_tags_model'>{t('models.dialogs.association.developerTypes.channelTags')}</SelectItem>
+      </SelectContent>
+    );
+  }
+
+  return (
+    <SelectContent>
+      <SelectItem value='channel_model'>{t('models.dialogs.association.types.channelModel')}</SelectItem>
+      <SelectItem value='channel_regex'>{t('models.dialogs.association.types.channelRegex')}</SelectItem>
+      <SelectItem value='channel_tags_model'>{t('models.dialogs.association.types.channelTagsModel')}</SelectItem>
+      <SelectItem value='channel_tags_regex'>{t('models.dialogs.association.types.channelTagsRegex')}</SelectItem>
+      <SelectItem value='model'>{t('models.dialogs.association.types.model')}</SelectItem>
+      <SelectItem value='regex'>{t('models.dialogs.association.types.regex')}</SelectItem>
+    </SelectContent>
+  );
+}
+
+function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
   const { t } = useTranslation();
 
   const type = form.watch(`associations.${index}.type`);
@@ -901,10 +1053,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
 
   const showChannel = type === 'channel_model' || type === 'channel_regex';
   const showChannelTags = type === 'channel_tags_model' || type === 'channel_tags_regex';
-  const showModel = type === 'channel_model' || type === 'model' || type === 'channel_tags_model';
-  const showPattern = type === 'channel_regex' || type === 'regex' || type === 'channel_tags_regex';
-  const showExclude = type === 'regex' || type === 'model';
-  const showModelPatternOnSecondRow = type === 'channel_model' || type === 'channel_regex';
+  const showModel = !isDeveloperMode && (type === 'channel_model' || type === 'model' || type === 'channel_tags_model');
+  const showPattern = !isDeveloperMode && (type === 'channel_regex' || type === 'regex' || type === 'channel_tags_regex');
+  const showExclude = !isDeveloperMode && (type === 'regex' || type === 'model');
+  const showModelPatternOnSecondRow = !isDeveloperMode && (type === 'channel_model' || type === 'channel_regex');
   const hasExcludeData =
     excludeChannelNamePattern ||
     (excludeChannelIds && excludeChannelIds.length > 0) ||
@@ -998,14 +1150,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                   <SelectTrigger className='h-10 sm:h-9 w-full text-xs'>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='channel_model'>{t('models.dialogs.association.types.channelModel')}</SelectItem>
-                    <SelectItem value='channel_regex'>{t('models.dialogs.association.types.channelRegex')}</SelectItem>
-                    <SelectItem value='channel_tags_model'>{t('models.dialogs.association.types.channelTagsModel')}</SelectItem>
-                    <SelectItem value='channel_tags_regex'>{t('models.dialogs.association.types.channelTagsRegex')}</SelectItem>
-                    <SelectItem value='model'>{t('models.dialogs.association.types.model')}</SelectItem>
-                    <SelectItem value='regex'>{t('models.dialogs.association.types.regex')}</SelectItem>
-                  </SelectContent>
+                  <AssociationTypeSelectContent isDeveloperMode={isDeveloperMode} />
                 </Select>
               </FormControl>
               <FormMessage />
@@ -1105,14 +1250,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
                   <SelectTrigger className='h-10 w-full text-xs'>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='channel_model'>{t('models.dialogs.association.types.channelModel')}</SelectItem>
-                    <SelectItem value='channel_regex'>{t('models.dialogs.association.types.channelRegex')}</SelectItem>
-                    <SelectItem value='channel_tags_model'>{t('models.dialogs.association.types.channelTagsModel')}</SelectItem>
-                    <SelectItem value='channel_tags_regex'>{t('models.dialogs.association.types.channelTagsRegex')}</SelectItem>
-                    <SelectItem value='model'>{t('models.dialogs.association.types.model')}</SelectItem>
-                    <SelectItem value='regex'>{t('models.dialogs.association.types.regex')}</SelectItem>
-                  </SelectContent>
+                  <AssociationTypeSelectContent isDeveloperMode={isDeveloperMode} />
                 </Select>
               </FormControl>
               <FormMessage />
@@ -1385,7 +1523,13 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
         (() => {
           let hint = null;
           const selectedChannel = channelOptions.find((c) => c.value === channelId);
-          if (type === 'channel_model' && channelId && modelId) {
+          if (isDeveloperMode && type === 'channel_model' && channelId) {
+            hint = t('models.dialogs.association.developerRuleHints.channel', {
+              channel: selectedChannel?.label || channelId.toString(),
+            });
+          } else if (isDeveloperMode && type === 'channel_tags_model' && channelTags && channelTags.length > 0) {
+            hint = t('models.dialogs.association.developerRuleHints.channelTags', { tags: channelTags.join(', ') });
+          } else if (type === 'channel_model' && channelId && modelId) {
             hint = t('models.dialogs.association.ruleHints.channelModel', {
               model: modelId,
               channel: selectedChannel?.label || channelId.toString(),

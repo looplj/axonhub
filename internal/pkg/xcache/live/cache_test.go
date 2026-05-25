@@ -224,10 +224,9 @@ func TestCache_OnSwap(t *testing.T) {
 		InitialValue:    "old_data",
 		RefreshInterval: time.Hour,
 		OnSwap: func(old, new string) {
-			atomic.AddInt32(&swapCalled, 1)
-
 			oldValue = old
 			newValue = new
+			atomic.AddInt32(&swapCalled, 1)
 		},
 	})
 	defer cache.Stop()

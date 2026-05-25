@@ -250,13 +250,14 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		return nil, err
 	}
 
+	// Make the original raw request available before request middlewares run.
+	llmRequest.RawRequest = request
+
 	// Step 2: Apply before request middlewares
 	llmRequest, err = p.applyBeforeRequestMiddlewares(ctx, llmRequest)
 	if err != nil {
 		return nil, err
 	}
-
-	llmRequest.RawRequest = request
 
 	var lastErr error
 

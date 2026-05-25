@@ -29,7 +29,9 @@ import {
   Fireworks,
   Ollama,
   AiHubMix,
+  OpenCode,
 } from '@lobehub/icons';
+import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -74,6 +76,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-white-100 text-white-800 border-white-200',
     icon: OpenAI,
+  },
+  atlascloud: {
+    channelType: 'atlascloud',
+    baseURL: 'https://api.atlascloud.ai/v1',
+    defaultModels: ['deepseek-v3', 'qwen-plus', 'kimi-k2', 'glm-4.7'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-sky-100 text-sky-800 border-sky-200',
+    icon: AtlasCloudIcon,
   },
   openai_responses: {
     channelType: 'openai_responses',
@@ -597,6 +607,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: Fireworks,
   },
+  opencode_go: {
+    channelType: 'opencode_go',
+    baseURL: 'https://opencode.ai/zen/go/v1',
+    defaultModels: ['opencode-go-v1'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: OpenCode,
+  },
   ollama: {
     channelType: 'ollama',
     baseURL: 'https://api.ollama.cloud',
@@ -626,6 +644,7 @@ export const getDefaultModels = (channelType: ChannelType): string[] => {
  */
 export type Provider =
   | 'openai'
+  | 'atlascloud'
   | 'anthropic'
   | 'claudecode'
   | 'deepseek'
@@ -657,6 +676,7 @@ export type Provider =
   | 'antigravity'
   | 'nanogpt'
   | 'fireworks'
+  | 'opencode_go'
   | 'ollama';
 
 /**
@@ -665,6 +685,7 @@ export type Provider =
 export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   openai: 'openai',
   openai_responses: 'openai',
+  atlascloud: 'atlascloud',
   openai_fake: 'openai',
   anthropic: 'anthropic',
   anthropic_aws: 'anthropic',
@@ -715,6 +736,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   nanogpt: 'nanogpt',
   nanogpt_responses: 'nanogpt',
   fireworks: 'fireworks',
+  opencode_go: 'opencode_go',
   ollama: 'ollama',
 };
 

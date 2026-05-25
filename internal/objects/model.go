@@ -37,7 +37,8 @@ type ModelCard struct {
 }
 
 type ModelSettings struct {
-	Associations []*ModelAssociation `json:"associations"`
+	DisableDeveloperSettingsInheritance bool                `json:"disableDeveloperSettingsInheritance"`
+	Associations                        []*ModelAssociation `json:"associations"`
 }
 
 type ModelAssociation struct {

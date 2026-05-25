@@ -173,7 +173,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
         onOpenChange(state);
       }}
     >
-      <DialogContent className='sm:max-w-2xl'>
+      <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-2xl'>
         <DialogHeader className='text-left'>
           <DialogTitle>{t('channels.dialogs.rateLimit.title')}</DialogTitle>
           <DialogDescription>{t('channels.dialogs.rateLimit.description', { name: currentRow.name })}</DialogDescription>

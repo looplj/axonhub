@@ -332,8 +332,13 @@ func (p *TokenProvider) StopAutoRefresh() {
 	}
 
 	if exec != nil {
-		if err := exec.Shutdown(context.Background()); err != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+
+		if err := exec.Shutdown(shutdownCtx); err != nil {
 			slog.WarnContext(context.Background(), "failed to shutdown token provider auto refresh executor", slog.Any("error", err))
+		} else {
+			slog.DebugContext(context.Background(), "token provider auto refresh executor shutdown completed")
 		}
 	}
 }

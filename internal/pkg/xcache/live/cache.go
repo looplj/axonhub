@@ -225,8 +225,13 @@ func (c *Cache[T]) loadInternal(ctx context.Context, force bool) error {
 	c.lastUpdate = newUpdateTime
 	c.mu.Unlock()
 
-	// Call OnSwap callback for cleanup with panic recovery
+	// Call OnSwap callback for cleanup with panic recovery.
+	// OnSwap runs synchronously to ensure cacheVersion increments atomically
+	// with the data swap, so readers never see stale version numbers.
+	// The underlying callbacks (e.g. token provider stop) are bounded by timeouts
+	// to prevent indefinite blocking of the worker goroutine.
 	if c.onSwap != nil {
+		log.Debug(ctx, "live cache onSwap starting", log.String("name", c.name))
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -238,6 +243,7 @@ func (c *Cache[T]) loadInternal(ctx context.Context, force bool) error {
 
 			c.onSwap(old, newData)
 		}()
+		log.Debug(ctx, "live cache onSwap completed", log.String("name", c.name))
 	}
 
 	log.Info(ctx, "cache refreshed", log.String("name", c.name), log.Time("update_time", newUpdateTime))

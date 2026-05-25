@@ -8,6 +8,7 @@ type DialogType =
   | 'delete'
   | 'archive'
   | 'association'
+  | 'developerAssociation'
   | 'settings'
   | 'bulkEnable'
   | 'bulkDisable'
@@ -19,6 +20,8 @@ interface ModelsContextType {
   setOpen: (open: DialogType) => void;
   currentRow: Model | null;
   setCurrentRow: (row: Model | null) => void;
+  currentDeveloper: string | null;
+  setCurrentDeveloper: (developer: string | null) => void;
   selectedModels: Model[];
   setSelectedModels: (models: Model[]) => void;
   resetRowSelection: (() => void) | null;
@@ -30,6 +33,7 @@ const ModelsContext = createContext<ModelsContextType | undefined>(undefined);
 export function ModelsProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState<DialogType>(null);
   const [currentRow, setCurrentRow] = useState<Model | null>(null);
+  const [currentDeveloper, setCurrentDeveloper] = useState<string | null>(null);
   const [selectedModels, setSelectedModels] = useState<Model[]>([]);
   const [resetRowSelection, setResetRowSelection] = useState<(() => void) | null>(null);
 
@@ -39,6 +43,10 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
 
   const handleSetCurrentRow = useCallback((row: Model | null) => {
     setCurrentRow(row);
+  }, []);
+
+  const handleSetCurrentDeveloper = useCallback((developer: string | null) => {
+    setCurrentDeveloper(developer);
   }, []);
 
   const handleSetSelectedModels = useCallback((models: Model[]) => {
@@ -55,6 +63,8 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
       setOpen: handleSetOpen,
       currentRow,
       setCurrentRow: handleSetCurrentRow,
+      currentDeveloper,
+      setCurrentDeveloper: handleSetCurrentDeveloper,
       selectedModels,
       setSelectedModels: handleSetSelectedModels,
       resetRowSelection,
@@ -65,6 +75,8 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
       handleSetOpen,
       currentRow,
       handleSetCurrentRow,
+      currentDeveloper,
+      handleSetCurrentDeveloper,
       selectedModels,
       handleSetSelectedModels,
       resetRowSelection,
