@@ -46,6 +46,9 @@ const (
 	// SystemKeyBrandLogo is the key for the brand logo (base64 encoded).
 	SystemKeyBrandLogo = "system_brand_logo"
 
+	// SystemKeyTitle is the key for the browser page title.
+	SystemKeyTitle = "system_title"
+
 	// SystemKeyStoreChunks is the key used to store the store_chunks flag in the system table.
 	// If set to true, the system will store chunks in the database.
 	// Default value is false.
@@ -818,6 +821,28 @@ func (s *SystemService) BrandLogo(ctx context.Context) (string, error) {
 // SetBrandLogo sets the brand logo (base64 encoded).
 func (s *SystemService) SetBrandLogo(ctx context.Context, brandLogo string) error {
 	return s.setSystemValue(ctx, SystemKeyBrandLogo, brandLogo)
+}
+
+// Title retrieves the browser page title.
+func (s *SystemService) Title(ctx context.Context) (string, error) {
+	ctx = authz.WithSystemBypass(ctx, "system-title")
+	client := s.entFromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyTitle)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", nil
+		}
+
+		return "", fmt.Errorf("failed to get title: %w", err)
+	}
+
+	return sys.Value, nil
+}
+
+// SetTitle sets the browser page title.
+func (s *SystemService) SetTitle(ctx context.Context, title string) error {
+	return s.setSystemValue(ctx, SystemKeyTitle, title)
 }
 
 func (s *SystemService) getSystemValue(ctx context.Context, key string) (string, error) {

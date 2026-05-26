@@ -36,6 +36,13 @@ func (r *mutationResolver) UpdateBrandSettings(ctx context.Context, input Update
 		}
 	}
 
+	if input.Title != nil {
+		err := r.systemService.SetTitle(ctx, *input.Title)
+		if err != nil {
+			return false, fmt.Errorf("failed to update title setting: %w", err)
+		}
+	}
+
 	return true, nil
 }
 
@@ -341,9 +348,15 @@ func (r *queryResolver) BrandSettings(ctx context.Context) (*BrandSettings, erro
 		return nil, fmt.Errorf("failed to get brand logo: %w", err)
 	}
 
+	title, err := r.systemService.Title(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get title: %w", err)
+	}
+
 	return &BrandSettings{
 		BrandName: &brandName,
 		BrandLogo: &brandLogo,
+		Title:     &title,
 	}, nil
 }
 
