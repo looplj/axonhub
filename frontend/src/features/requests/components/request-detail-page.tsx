@@ -342,8 +342,8 @@ export default function RequestDetailPage() {
   const handleBack = () => {
     navigate({
       to: '/project/requests',
-      search: currentSearch as any,
-    } as any);
+      search: currentSearch,
+    });
   };
 
   return (

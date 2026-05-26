@@ -5,6 +5,7 @@ import {
   DEFAULT_END_TIME,
   DEFAULT_START_TIME,
   buildDateRangeWhereClause,
+  isSameTime,
   normalizeDateTimeRangeValue,
   type DateTimeRangeValue,
   type TimeValue,
@@ -251,14 +252,14 @@ function RequestsContent() {
   const updateRequestSearch = useCallback(
     (apply: (draft: Record<string, unknown>) => void) => {
       navigate({
-        search: ((prev: Record<string, unknown> | undefined) => {
+        search: (prev: Record<string, unknown> | undefined) => {
           const draft = { ...((prev ?? {}) as Record<string, unknown>) };
           apply(draft);
           clearRequestCursorSearch(draft);
           return draft;
-        }) as any,
+        },
         replace: true,
-      } as any);
+      });
     },
     [navigate]
   );
@@ -289,20 +290,29 @@ function RequestsContent() {
           return;
         }
 
-        if (normalizedRange?.from) {
+        if (normalizedRange.from) {
           draft[REQUEST_FILTER_SEARCH_KEYS.createdAtFrom] = formatSearchDate(normalizedRange.from);
+          if (isSameTime(normalizedRange.startTime, DEFAULT_START_TIME)) {
+            delete draft[REQUEST_FILTER_SEARCH_KEYS.createdAtStartTime];
+          } else {
+            draft[REQUEST_FILTER_SEARCH_KEYS.createdAtStartTime] = formatSearchTime(normalizedRange.startTime);
+          }
         } else {
           delete draft[REQUEST_FILTER_SEARCH_KEYS.createdAtFrom];
+          delete draft[REQUEST_FILTER_SEARCH_KEYS.createdAtStartTime];
         }
 
-        if (normalizedRange?.to) {
+        if (normalizedRange.to) {
           draft[REQUEST_FILTER_SEARCH_KEYS.createdAtTo] = formatSearchDate(normalizedRange.to);
+          if (isSameTime(normalizedRange.endTime, DEFAULT_END_TIME)) {
+            delete draft[REQUEST_FILTER_SEARCH_KEYS.createdAtEndTime];
+          } else {
+            draft[REQUEST_FILTER_SEARCH_KEYS.createdAtEndTime] = formatSearchTime(normalizedRange.endTime);
+          }
         } else {
           delete draft[REQUEST_FILTER_SEARCH_KEYS.createdAtTo];
+          delete draft[REQUEST_FILTER_SEARCH_KEYS.createdAtEndTime];
         }
-
-        draft[REQUEST_FILTER_SEARCH_KEYS.createdAtStartTime] = formatSearchTime(normalizedRange.startTime);
-        draft[REQUEST_FILTER_SEARCH_KEYS.createdAtEndTime] = formatSearchTime(normalizedRange.endTime);
       });
     },
     [updateRequestSearch]
@@ -317,8 +327,8 @@ function RequestsContent() {
       navigate({
         to: '/project/requests/$requestId',
         params: { requestId },
-        search: currentSearch as any,
-      } as any);
+        search: currentSearch,
+      });
     },
     [navigate, currentSearch]
   );
