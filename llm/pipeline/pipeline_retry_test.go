@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -16,7 +17,9 @@ import (
 type mockInbound struct {
 	transformer.Inbound
 
-	transformRequest func(context.Context, *httpclient.Request) (*llm.Request, error)
+	transformRequest      func(context.Context, *httpclient.Request) (*llm.Request, error)
+	transformStream       func(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error)
+	aggregateStreamChunks func(context.Context, []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
 
 func (m *mockInbound) TransformRequest(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
@@ -32,10 +35,22 @@ func (m *mockInbound) TransformResponse(ctx context.Context, resp *llm.Response)
 }
 
 func (m *mockInbound) TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error) {
+	if m.transformStream != nil {
+		return m.transformStream(ctx, stream)
+	}
+
 	// Pass-through: convert each llm.Response to an empty StreamEvent
 	return streams.Map(stream, func(resp *llm.Response) *httpclient.StreamEvent {
 		return &httpclient.StreamEvent{}
 	}), nil
+}
+
+func (m *mockInbound) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	if m.aggregateStreamChunks != nil {
+		return m.aggregateStreamChunks(ctx, chunks)
+	}
+
+	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 
 type mockOutbound struct {
@@ -340,4 +355,60 @@ func TestPipeline_Process_RetryLogic(t *testing.T) {
 		require.Nil(t, res)
 		require.Equal(t, 4, execCalls)
 	})
+}
+
+func TestPipeline_Process_RetryPreservesOriginalStreamIntent(t *testing.T) {
+	ctx := context.Background()
+
+	inbound := &mockInbound{
+		aggregateStreamChunks: func(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+			return []byte(`{"ok":true}`), llm.ResponseMeta{}, nil
+		},
+	}
+
+	attempts := 0
+	executor := &mockExecutor{
+		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+			if attempts == 1 {
+				return nil, errors.New("temporary stream failure")
+			}
+
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("chunk")}}), nil
+		},
+	}
+
+	transformAttempts := 0
+	outbound := &mockOutbound{
+		canRetry: func(err error) bool { return true },
+		prepareForRetry: func(ctx context.Context) error {
+			return nil
+		},
+		transformRequest: func(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
+			transformAttempts++
+			require.False(t, req.Stream != nil && *req.Stream, "attempt %d should begin as non-stream", transformAttempts)
+			req.Stream = lo.ToPtr(true)
+
+			return &httpclient.Request{}, nil
+		},
+		transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return streams.SliceStream([]*llm.Response{{}}), nil
+		},
+	}
+
+	p := &pipeline{
+		Executor:              executor,
+		Inbound:               inbound,
+		Outbound:              outbound,
+		maxSameChannelRetries: 1,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.False(t, res.Stream)
+	require.NotNil(t, res.Response)
+	require.Equal(t, `{"ok":true}`, string(res.Response.Body))
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 2, transformAttempts)
 }

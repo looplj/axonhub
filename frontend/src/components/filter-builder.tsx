@@ -14,6 +14,7 @@ export type FilterBuilderOperator = {
 export type FilterBuilderField = {
   label: string;
   operators?: FilterBuilderOperator[];
+  options?: Array<{ label: string; value: string }>;
   placeholder?: string;
   type: FilterBuilderFieldType;
   value: string;
@@ -395,6 +396,25 @@ function GroupEditor({
                     <SelectContent>
                       <SelectItem value='true'>true</SelectItem>
                       <SelectItem value='false'>false</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : field.options && field.options.length > 0 ? (
+                  <Select
+                    value={String(condition.value ?? '')}
+                    onValueChange={(nextValue) =>
+                      updateConditions(conditions.map((item, itemIndex) => (itemIndex === index ? { ...item, value: nextValue } : item)))
+                    }
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className='h-10 w-full text-xs'>
+                      <SelectValue placeholder={field.placeholder || valueLabel} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 ) : (

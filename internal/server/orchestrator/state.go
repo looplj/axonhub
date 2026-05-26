@@ -33,6 +33,10 @@ type PersistenceState struct {
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request
 
+	// OriginalRequestStream stores the client's original stream intent before any
+	// candidate-specific forcing to provider-side streaming happens.
+	OriginalRequestStream *bool
+
 	// Persistence state
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution

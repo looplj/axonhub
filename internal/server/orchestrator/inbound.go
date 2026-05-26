@@ -268,6 +268,7 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 	llmRequest.RawRequest = request
 	p.state.RawRequest = request
 	p.state.LlmRequest = llmRequest
+	p.state.OriginalRequestStream = llmRequest.Stream
 
 	return llmRequest, nil
 }

@@ -376,6 +376,160 @@ func TestChatCompletionOrchestrator_Process_NonStreaming(t *testing.T) {
 	assert.Equal(t, int64(30), dbUsageLog.TotalTokens)
 }
 
+func TestChatCompletionOrchestrator_Process_NonStreamingRequireStreamCandidate(t *testing.T) {
+	ctx := context.Background()
+	ctx = authz.WithTestBypass(ctx)
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+
+	project := createTestProject(t, ctx, client)
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Require Stream Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-api-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetPolicies(objects.ChannelPolicies{Stream: objects.CapabilityPolicyRequire}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+
+	streamEvents := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-require-stream","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"role":"assistant","content":"Need provider stream"}}]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-require-stream","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":11,"completion_tokens":13,"total_tokens":24}}`),
+		},
+	}
+
+	executor := &mockExecutor{
+		streamEvents: streamEvents,
+	}
+
+	outbound, err := openai.NewOutboundTransformer(ch.BaseURL, ch.Credentials.APIKey)
+	require.NoError(t, err)
+
+	bizChannel := &biz.Channel{
+		Channel:  ch,
+		Outbound: outbound,
+	}
+
+	channelSelector := &staticChannelSelector{candidates: channelsToTestCandidates([]*biz.Channel{bizChannel}, "gpt-4")}
+
+	orchestrator := &ChatCompletionOrchestrator{
+		channelSelector:       channelSelector,
+		Inbound:               openai.NewInboundTransformer(),
+		RequestService:        requestService,
+		ChannelService:        channelService,
+		PromptProvider:        &stubPromptProvider{},
+		SystemService:         systemService,
+		UsageLogService:       usageLogService,
+		PipelineFactory:       pipeline.NewFactory(executor),
+		ModelMapper:           NewModelMapper(),
+		channelLimiterManager: NewChannelLimiterManager(),
+		Middlewares: []pipeline.Middleware{
+			stream.EnsureUsage(),
+		},
+	}
+
+	httpRequest := buildTestRequest("gpt-4", "Hello!", false)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+
+	result, err := orchestrator.Process(ctx, httpRequest)
+	require.NoError(t, err)
+	require.NotNil(t, result.ChatCompletion)
+	assert.Nil(t, result.ChatCompletionStream)
+	assert.True(t, executor.requestCalled)
+	require.NotNil(t, executor.lastRequest)
+
+	var reqBody map[string]any
+	err = json.Unmarshal(executor.lastRequest.Body, &reqBody)
+	require.NoError(t, err)
+	assert.Equal(t, true, reqBody["stream"])
+	streamOptions, ok := reqBody["stream_options"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, true, streamOptions["include_usage"])
+}
+
+func TestChatCompletionOrchestrator_Process_NonStreamingRequireStreamCandidate_DisablesPassThroughBody(t *testing.T) {
+	ctx := context.Background()
+	ctx = authz.WithTestBypass(ctx)
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+
+	project := createTestProject(t, ctx, client)
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Require Stream PassThrough Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-api-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetPolicies(objects.ChannelPolicies{Stream: objects.CapabilityPolicyRequire}).
+		SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+
+	streamEvents := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-pass-through-upgrade","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"role":"assistant","content":"Upgraded"}}]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-pass-through-upgrade","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":9,"total_tokens":16}}`),
+		},
+	}
+
+	executor := &mockExecutor{streamEvents: streamEvents}
+
+	outbound, err := openai.NewOutboundTransformer(ch.BaseURL, ch.Credentials.APIKey)
+	require.NoError(t, err)
+
+	bizChannel := &biz.Channel{Channel: ch, Outbound: outbound}
+	channelSelector := &staticChannelSelector{candidates: channelsToTestCandidates([]*biz.Channel{bizChannel}, "gpt-4")}
+
+	orchestrator := &ChatCompletionOrchestrator{
+		channelSelector:       channelSelector,
+		Inbound:               openai.NewInboundTransformer(),
+		RequestService:        requestService,
+		ChannelService:        channelService,
+		PromptProvider:        &stubPromptProvider{},
+		SystemService:         systemService,
+		UsageLogService:       usageLogService,
+		PipelineFactory:       pipeline.NewFactory(executor),
+		ModelMapper:           NewModelMapper(),
+		channelLimiterManager: NewChannelLimiterManager(),
+		Middlewares: []pipeline.Middleware{
+			stream.EnsureUsage(),
+		},
+	}
+
+	httpRequest := buildTestRequest("gpt-4", "Hello!", false)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+
+	result, err := orchestrator.Process(ctx, httpRequest)
+	require.NoError(t, err)
+	require.NotNil(t, result.ChatCompletion)
+	require.NotNil(t, executor.lastRequest)
+
+	var reqBody map[string]any
+	err = json.Unmarshal(executor.lastRequest.Body, &reqBody)
+	require.NoError(t, err)
+	assert.Equal(t, true, reqBody["stream"])
+	assert.Equal(t, "gpt-4", reqBody["model"])
+	assert.NotContains(t, string(executor.lastRequest.Body), `"stream":false`)
+}
+
 // TestChatCompletionOrchestrator_Process_WithModelMapping tests model mapping from API key.
 func TestChatCompletionOrchestrator_Process_WithModelMapping(t *testing.T) {
 	ctx := context.Background()

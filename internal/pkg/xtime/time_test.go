@@ -1,6 +1,7 @@
 package xtime
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -253,6 +254,131 @@ func TestFormatUTCOffset(t *testing.T) {
 			got := FormatUTCOffset(tt.offsetSeconds)
 			if got != tt.want {
 				t.Errorf("FormatUTCOffset(%d) = %q, want %q", tt.offsetSeconds, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseDailyTimeRange(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		wantErr string
+	}{
+		{
+			name:  "daytime range",
+			value: "09:00-17:00",
+		},
+		{
+			name:  "overnight range",
+			value: "22:00-06:00",
+		},
+		{
+			name:    "malformed range",
+			value:   "09:00",
+			wantErr: "daily_time must use HH:mm-HH:mm format",
+		},
+		{
+			name:    "invalid start",
+			value:   "25:00-06:00",
+			wantErr: "invalid daily_time start",
+		},
+		{
+			name:    "invalid end",
+			value:   "22:00-26:00",
+			wantErr: "invalid daily_time end",
+		},
+		{
+			name:    "same endpoints",
+			value:   "09:00-09:00",
+			wantErr: "daily_time start and end must be different",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := ParseDailyTimeRange(tt.value)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("ParseDailyTimeRange(%q) error = %v", tt.value, err)
+				}
+
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("ParseDailyTimeRange(%q) expected error containing %q", tt.value, tt.wantErr)
+			}
+
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("ParseDailyTimeRange(%q) error = %q, want contains %q", tt.value, err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDailyTimeWithin(t *testing.T) {
+	tests := []struct {
+		name  string
+		now   time.Time
+		value string
+		want  bool
+	}{
+		{
+			name:  "inside daytime range",
+			now:   time.Date(2026, 5, 25, 10, 0, 0, 0, time.Local),
+			value: "09:00-17:00",
+			want:  true,
+		},
+		{
+			name:  "outside daytime range",
+			now:   time.Date(2026, 5, 25, 18, 0, 0, 0, time.Local),
+			value: "09:00-17:00",
+			want:  false,
+		},
+		{
+			name:  "start is inclusive",
+			now:   time.Date(2026, 5, 25, 9, 0, 0, 0, time.Local),
+			value: "09:00-17:00",
+			want:  true,
+		},
+		{
+			name:  "end is exclusive",
+			now:   time.Date(2026, 5, 25, 17, 0, 0, 0, time.Local),
+			value: "09:00-17:00",
+			want:  false,
+		},
+		{
+			name:  "inside overnight range before midnight",
+			now:   time.Date(2026, 5, 25, 23, 30, 0, 0, time.Local),
+			value: "22:00-06:00",
+			want:  true,
+		},
+		{
+			name:  "inside overnight range after midnight",
+			now:   time.Date(2026, 5, 25, 5, 59, 0, 0, time.Local),
+			value: "22:00-06:00",
+			want:  true,
+		},
+		{
+			name:  "outside overnight range",
+			now:   time.Date(2026, 5, 25, 12, 0, 0, 0, time.Local),
+			value: "22:00-06:00",
+			want:  false,
+		},
+		{
+			name:  "invalid range returns false",
+			now:   time.Date(2026, 5, 25, 12, 0, 0, 0, time.Local),
+			value: "09:00-09:00",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DailyTimeWithin(tt.now, tt.value)
+			if got != tt.want {
+				t.Fatalf("DailyTimeWithin(%v, %q) = %v, want %v", tt.now, tt.value, got, tt.want)
 			}
 		})
 	}
