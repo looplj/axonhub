@@ -197,6 +197,27 @@ func TestValidateEndpoints(t *testing.T) {
 	})
 }
 
+func TestPrimaryEndpointTransport(t *testing.T) {
+	t.Run("infers websocket from primary base url", func(t *testing.T) {
+		transport := primaryEndpointTransport(&ent.Channel{
+			BaseURL: "wss://api.openai.com/v1/responses##",
+		}, llm.APIFormatOpenAIResponse.String())
+
+		require.Equal(t, objects.ChannelEndpointTransportWebSocket, transport)
+	})
+
+	t.Run("uses matching endpoint transport override", func(t *testing.T) {
+		transport := primaryEndpointTransport(&ent.Channel{
+			BaseURL: "https://api.openai.com/v1",
+			Endpoints: []objects.ChannelEndpoint{
+				{APIFormat: llm.APIFormatOpenAIResponse.String(), Transport: objects.ChannelEndpointTransportWebSocket},
+			},
+		}, llm.APIFormatOpenAIResponse.String())
+
+		require.Equal(t, objects.ChannelEndpointTransportWebSocket, transport)
+	})
+}
+
 func TestResolveEndpoints_MergesDefaultsAndUserOverrides(t *testing.T) {
 	ch := &Channel{
 		Channel: &ent.Channel{

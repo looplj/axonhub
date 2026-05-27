@@ -242,6 +242,26 @@ func endpointTransport(ep objects.ChannelEndpoint) string {
 	return ""
 }
 
+func primaryEndpointTransport(c *ent.Channel, apiFormat string) string {
+	if c == nil {
+		return ""
+	}
+
+	for _, ep := range c.Endpoints {
+		if ep.APIFormat != apiFormat {
+			continue
+		}
+
+		if ep.BaseURL == "" {
+			ep.BaseURL = c.BaseURL
+		}
+
+		return endpointTransport(ep)
+	}
+
+	return endpointTransport(objects.ChannelEndpoint{BaseURL: c.BaseURL})
+}
+
 func (svc *ChannelService) buildCodexOutbound(
 	c *ent.Channel,
 	ch *Channel,
@@ -805,7 +825,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 		return ch, nil
 	case channel.TypeCodex:
-		transport := endpointTransport(objects.ChannelEndpoint{BaseURL: c.BaseURL})
+		transport := primaryEndpointTransport(c, llm.APIFormatOpenAIResponse.String())
 		transformer, err := svc.buildCodexOutbound(c, ch, c.BaseURL, transport, httpClient)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
@@ -893,6 +913,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
+			Transport:      primaryEndpointTransport(c, llm.APIFormatOpenAIResponse.String()),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
