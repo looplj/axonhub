@@ -252,6 +252,11 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 
 		select {
 		case pc.inFlight <- struct{}{}:
+			if pc.isClosed() {
+				<-pc.inFlight
+				e.evict(pc)
+				continue
+			}
 			if pc.expired(time.Now(), e.maxLifetime) {
 				<-pc.inFlight
 				e.evict(pc)

@@ -13,12 +13,29 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func webSocketTestContext() context.Context {
 	return shared.WithSessionScope(context.Background(), "test-scope")
+}
+
+func TestOutboundCustomizeExecutorReusesWebSocketExecutor(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+		Transport:      TransportWebSocket,
+	})
+	require.NoError(t, err)
+
+	first, ok := outbound.CustomizeExecutor(nil).(*WebSocketExecutor)
+	require.True(t, ok)
+	second, ok := outbound.CustomizeExecutor(nil).(*WebSocketExecutor)
+	require.True(t, ok)
+
+	require.Same(t, first, second)
 }
 
 func TestWebSocketExecutorDoStreamSendsResponseCreate(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/samber/lo"
 
@@ -94,11 +95,21 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 		return executor
 	}
 
-	return NewWebSocketExecutor(executor)
+	t.executorMu.Lock()
+	defer t.executorMu.Unlock()
+
+	if t.webSocketExecutor == nil {
+		t.webSocketExecutor = NewWebSocketExecutor(executor)
+	}
+
+	return t.webSocketExecutor
 }
 
 type OutboundTransformer struct {
 	config *Config
+
+	executorMu        sync.Mutex
+	webSocketExecutor *WebSocketExecutor
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
