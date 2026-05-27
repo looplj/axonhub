@@ -11,6 +11,7 @@ type Config struct {
 	ConnMaxLifetime      time.Duration `conf:"conn_max_lifetime" yaml:"conn_max_lifetime" json:"conn_max_lifetime"`
 	ConnMaxIdleTime      time.Duration `conf:"conn_max_idle_time" yaml:"conn_max_idle_time" json:"conn_max_idle_time"`
 	DisableSQLiteAutoWAL bool          `conf:"disable_sqlite_auto_wal" yaml:"disable_sqlite_auto_wal" json:"disable_sqlite_auto_wal"`
+	DisableSchemaInit    bool          `conf:"disable_schema_init" yaml:"disable_schema_init" json:"disable_schema_init"`
 
 	ReadReplica ReadReplicaConfig `conf:"read_replica" yaml:"read_replica" json:"read_replica"`
 }
