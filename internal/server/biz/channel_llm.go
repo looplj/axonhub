@@ -335,6 +335,8 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	baseURL := c.BaseURL
 	if ep.BaseURL != "" {
 		baseURL = ep.BaseURL
+	} else {
+		ep.BaseURL = baseURL
 	}
 
 	switch ep.APIFormat {

@@ -11,7 +11,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
@@ -87,5 +89,39 @@ func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, embeddingOutbound)
 	_, ok := embeddingOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+}
+
+func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	entChannel := client.Channel.Create().
+		SetName("Responses WebSocket Channel").
+		SetType(channel.TypeOpenaiResponses).
+		SetBaseURL("wss://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-5"}).
+		SetDefaultTestModel("gpt-5").
+		SetEndpoints([]objects.ChannelEndpoint{{
+			APIFormat: llm.APIFormatOpenAIResponse.String(),
+			Path:      "/custom/responses",
+		}}).
+		SaveX(ctx)
+
+	channelSvc := NewChannelServiceForTest(client)
+
+	built, err := channelSvc.buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+
+	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIResponse.String())
+	require.NoError(t, err)
+	custom, ok := outbound.(pipeline.ChannelCustomizedExecutor)
+	require.True(t, ok)
+
+	executor := custom.CustomizeExecutor(nil)
+	_, ok = executor.(*responses.WebSocketExecutor)
 	require.True(t, ok)
 }
