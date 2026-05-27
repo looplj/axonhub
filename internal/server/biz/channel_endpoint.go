@@ -48,6 +48,14 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 
 		seen[ep.APIFormat] = true
 
+		if ep.Transport != "" && ep.Transport != objects.ChannelEndpointTransportHTTP && ep.Transport != objects.ChannelEndpointTransportWebSocket {
+			return fmt.Errorf("endpoint[%d]: unsupported transport %q", i, ep.Transport)
+		}
+
+		if ep.Transport == objects.ChannelEndpointTransportWebSocket && ep.APIFormat != llm.APIFormatOpenAIResponse.String() {
+			return fmt.Errorf("endpoint[%d]: websocket transport only supports api_format %q", i, llm.APIFormatOpenAIResponse.String())
+		}
+
 		if ep.Path != "" {
 			if strings.HasPrefix(ep.Path, "http://") || strings.HasPrefix(ep.Path, "https://") {
 				return fmt.Errorf("endpoint[%d]: path must not be a full URL, got %q", i, ep.Path)

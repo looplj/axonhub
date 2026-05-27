@@ -168,6 +168,21 @@ func TestValidateEndpoints(t *testing.T) {
 		require.Contains(t, err.Error(), "path must not be a full URL")
 	})
 
+	t.Run("websocket transport only supports responses", func(t *testing.T) {
+		err := ValidateEndpoints([]objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Transport: objects.ChannelEndpointTransportWebSocket},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "websocket transport only supports")
+	})
+
+	t.Run("websocket responses endpoint passes validation", func(t *testing.T) {
+		err := ValidateEndpoints([]objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIResponse.String(), Transport: objects.ChannelEndpointTransportWebSocket},
+		})
+		require.NoError(t, err)
+	})
+
 	t.Run("valid endpoints pass validation", func(t *testing.T) {
 		err := ValidateEndpoints([]objects.ChannelEndpoint{
 			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
