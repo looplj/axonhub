@@ -1,13 +1,20 @@
 package responses
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,13 +22,34 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const WebSocketBetaHeaderValue = "responses_websockets=2026-02-06"
 
+const (
+	webSocketSessionHeader        = "Session_id"
+	webSocketAccountIDHeader      = "Chatgpt-Account-Id"
+	webSocketOriginatorHeader     = "Originator"
+	webSocketUserAgentHeader      = "User-Agent"
+	webSocketOrgHeader            = "OpenAI-Organization"
+	webSocketProjectHeader        = "OpenAI-Project"
+	defaultWebSocketIdleTTL       = 10 * time.Minute
+	defaultWebSocketMaxLifetime   = 30 * time.Minute
+	defaultWebSocketMaxPoolSize   = 128
+	defaultWebSocketMaxRetainedIn = 1 << 20
+)
+
 type WebSocketExecutor struct {
 	inner  pipeline.Executor
 	dialer *websocket.Dialer
+
+	mu               sync.Mutex
+	pool             map[webSocketPoolKey]*pooledWebSocketConn
+	idleTTL          time.Duration
+	maxLifetime      time.Duration
+	maxPoolSize      int
+	maxRetainedInput int
 }
 
 func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
@@ -34,8 +62,13 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 	}
 
 	return &WebSocketExecutor{
-		inner:  inner,
-		dialer: dialer,
+		inner:            inner,
+		dialer:           dialer,
+		pool:             map[webSocketPoolKey]*pooledWebSocketConn{},
+		idleTTL:          defaultWebSocketIdleTTL,
+		maxLifetime:      defaultWebSocketMaxLifetime,
+		maxPoolSize:      defaultWebSocketMaxPoolSize,
+		maxRetainedInput: defaultWebSocketMaxRetainedIn,
 	}
 }
 
@@ -90,6 +123,11 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 		return nil, err
 	}
 
+	payload, err := buildWebSocketCreatePayload(request.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	headers := request.Headers.Clone()
 	if headers == nil {
 		headers = http.Header{}
@@ -104,6 +142,169 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	}
 	headers.Set("OpenAI-Beta", WebSocketBetaHeaderValue)
 
+	lease, err := e.acquirePreparedLease(ctx, request, wsURL, headers, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := lease.conn.WriteJSON(payload); err != nil {
+		lease.release(true)
+		return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
+	}
+
+	stream := &webSocketStream{ctx: ctx, lease: lease, done: make(chan struct{})}
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = stream.Close()
+		case <-stream.done:
+		}
+	}()
+
+	return stream, nil
+}
+
+func (e *WebSocketExecutor) Inner() pipeline.Executor {
+	if e == nil {
+		return nil
+	}
+	return e.inner
+}
+
+type webSocketPoolKey struct {
+	URL        string
+	SessionID  string
+	Scope      string
+	Auth       string
+	AccountID  string
+	Originator string
+	UserAgent  string
+	Org        string
+	Project    string
+	BetaHeader string
+	Headers    string
+}
+
+type pooledWebSocketConn struct {
+	key        webSocketPoolKey
+	conn       *websocket.Conn
+	inFlight   chan struct{}
+	createdAt  time.Time
+	lastUsedAt time.Time
+	used       bool
+
+	mu             sync.Mutex
+	closed         bool
+	lastInput      []json.RawMessage
+	lastResponseID string
+}
+
+type webSocketLease struct {
+	conn          *websocket.Conn
+	owner         *WebSocketExecutor
+	pooled        *pooledWebSocketConn
+	reused        bool
+	nextFullInput []json.RawMessage
+	once          sync.Once
+}
+
+func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header, payload map[string]any) (*webSocketLease, error) {
+	lease, err := e.acquire(ctx, request, wsURL, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
+		lease.release(true)
+		var reconnectErr *webSocketReconnectRequiredError
+		if !errors.As(err, &reconnectErr) {
+			return nil, err
+		}
+
+		lease, err = e.acquire(ctx, request, wsURL, headers)
+		if err != nil {
+			return nil, err
+		}
+		if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
+			lease.release(true)
+			return nil, err
+		}
+	}
+
+	return lease, nil
+}
+
+func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*webSocketLease, error) {
+	key, ok := e.poolKey(ctx, request, wsURL, headers)
+	if !ok {
+		conn, err := e.dial(ctx, request, wsURL, headers)
+		if err != nil {
+			return nil, err
+		}
+		return &webSocketLease{conn: conn}, nil
+	}
+
+	for {
+		pc, err := e.getOrDialPooled(ctx, request, key, wsURL, headers)
+		if err != nil {
+			return nil, err
+		}
+
+		select {
+		case pc.inFlight <- struct{}{}:
+			if pc.expired(time.Now(), e.maxLifetime) {
+				<-pc.inFlight
+				e.evict(pc)
+				continue
+			}
+			return &webSocketLease{conn: pc.conn, owner: e, pooled: pc, reused: pc.used}, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
+func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpclient.Request, key webSocketPoolKey, wsURL string, headers http.Header) (*pooledWebSocketConn, error) {
+	now := time.Now()
+	e.mu.Lock()
+	e.cleanupExpiredLocked(now)
+	if pc := e.pool[key]; pc != nil && !pc.isClosed() {
+		e.mu.Unlock()
+		return pc, nil
+	}
+	e.mu.Unlock()
+
+	conn, err := e.dial(ctx, request, wsURL, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	pc := &pooledWebSocketConn{
+		key:        key,
+		conn:       conn,
+		inFlight:   make(chan struct{}, 1),
+		createdAt:  now,
+		lastUsedAt: now,
+	}
+
+	e.mu.Lock()
+	if existing := e.pool[key]; existing != nil && !existing.isClosed() {
+		e.mu.Unlock()
+		_ = conn.Close()
+		return existing, nil
+	}
+	if e.maxPoolSize > 0 && len(e.pool) >= e.maxPoolSize && !e.evictOldestIdleLocked() {
+		e.mu.Unlock()
+		_ = conn.Close()
+		return nil, fmt.Errorf("websocket session pool is full")
+	}
+	e.pool[key] = pc
+	e.mu.Unlock()
+
+	return pc, nil
+}
+
+func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*websocket.Conn, error) {
 	dialer := e.dialer
 	if dialer == nil {
 		dialer = websocket.DefaultDialer
@@ -113,25 +314,212 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	if err != nil {
 		return nil, newWebSocketDialError(request, resp, err)
 	}
-
-	payload, err := buildWebSocketCreatePayload(request.Body)
-	if err != nil {
-		_ = conn.Close()
-		return nil, err
-	}
-	if err := conn.WriteJSON(payload); err != nil {
-		_ = conn.Close()
-		return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
-	}
-
-	return &webSocketStream{conn: conn}, nil
+	return conn, nil
 }
 
-func (e *WebSocketExecutor) Inner() pipeline.Executor {
-	if e == nil {
-		return nil
+func (e *WebSocketExecutor) poolKey(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (webSocketPoolKey, bool) {
+	sessionID := strings.TrimSpace(headers.Get(webSocketSessionHeader))
+	if sessionID == "" {
+		if value, ok := shared.GetSessionID(ctx); ok {
+			sessionID = strings.TrimSpace(value)
+		}
 	}
-	return e.inner
+	if sessionID == "" {
+		return webSocketPoolKey{}, false
+	}
+	scope, ok := shared.GetSessionScope(ctx)
+	if !ok || strings.TrimSpace(scope) == "" {
+		return webSocketPoolKey{}, false
+	}
+
+	return webSocketPoolKey{
+		URL:        wsURL,
+		SessionID:  sessionID,
+		Scope:      strings.TrimSpace(scope),
+		Auth:       authPoolIdentity(request.Auth, headers),
+		AccountID:  strings.TrimSpace(headers.Get(webSocketAccountIDHeader)),
+		Originator: strings.TrimSpace(headers.Get(webSocketOriginatorHeader)),
+		UserAgent:  strings.TrimSpace(headers.Get(webSocketUserAgentHeader)),
+		Org:        strings.TrimSpace(headers.Get(webSocketOrgHeader)),
+		Project:    strings.TrimSpace(headers.Get(webSocketProjectHeader)),
+		BetaHeader: strings.TrimSpace(headers.Get("OpenAI-Beta")),
+		Headers:    headerPoolIdentity(headers),
+	}, true
+}
+
+func headerPoolIdentity(headers http.Header) string {
+	if len(headers) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(headers))
+	for key := range headers {
+		keys = append(keys, http.CanonicalHeaderKey(key))
+	}
+	sort.Strings(keys)
+
+	var builder strings.Builder
+	for _, key := range keys {
+		values := slices.Clone(headers.Values(key))
+		sort.Strings(values)
+		builder.WriteString(key)
+		builder.WriteByte(':')
+		for _, value := range values {
+			builder.WriteString(value)
+			builder.WriteByte('\x00')
+		}
+		builder.WriteByte('\n')
+	}
+
+	return hashSecret(builder.String())
+}
+
+func authPoolIdentity(auth *httpclient.AuthConfig, headers http.Header) string {
+	if auth != nil {
+		return auth.Type + ":" + auth.HeaderKey + ":" + hashSecret(auth.APIKey)
+	}
+	return hashSecret(headers.Get("Authorization"))
+}
+
+func hashSecret(value string) string {
+	if value == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
+}
+
+func (e *WebSocketExecutor) evictOldestIdleLocked() bool {
+	var oldestKey webSocketPoolKey
+	var oldest *pooledWebSocketConn
+	for key, pc := range e.pool {
+		if pc == nil || pc.isClosed() {
+			delete(e.pool, key)
+			continue
+		}
+		if len(pc.inFlight) > 0 {
+			continue
+		}
+		if oldest == nil || pc.lastUsedAt.Before(oldest.lastUsedAt) {
+			oldestKey = key
+			oldest = pc
+		}
+	}
+	if oldest == nil {
+		return false
+	}
+	delete(e.pool, oldestKey)
+	oldest.close()
+	return true
+}
+
+func (e *WebSocketExecutor) cleanupExpiredLocked(now time.Time) {
+	for key, pc := range e.pool {
+		if pc == nil || pc.isClosed() {
+			delete(e.pool, key)
+			continue
+		}
+		if len(pc.inFlight) > 0 {
+			continue
+		}
+		if now.Sub(pc.lastUsedAt) > e.idleTTL || pc.expired(now, e.maxLifetime) {
+			delete(e.pool, key)
+			pc.close()
+		}
+	}
+}
+
+func (e *WebSocketExecutor) evict(pc *pooledWebSocketConn) {
+	if pc == nil {
+		return
+	}
+	e.mu.Lock()
+	if e.pool[pc.key] == pc {
+		delete(e.pool, pc.key)
+	}
+	e.mu.Unlock()
+	pc.close()
+}
+
+func (pc *pooledWebSocketConn) expired(now time.Time, maxLifetime time.Duration) bool {
+	return maxLifetime > 0 && now.Sub(pc.createdAt) > maxLifetime
+}
+
+func (pc *pooledWebSocketConn) isClosed() bool {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	return pc.closed
+}
+
+func (pc *pooledWebSocketConn) markUsed() {
+	pc.mu.Lock()
+	pc.lastUsedAt = time.Now()
+	pc.used = true
+	pc.mu.Unlock()
+}
+
+func (pc *pooledWebSocketConn) close() {
+	pc.mu.Lock()
+	if pc.closed {
+		pc.mu.Unlock()
+		return
+	}
+	pc.closed = true
+	pc.lastInput = nil
+	pc.lastResponseID = ""
+	pc.mu.Unlock()
+	_ = pc.conn.Close()
+}
+
+func (pc *pooledWebSocketConn) previousTurn() ([]json.RawMessage, string) {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	return cloneRawMessages(pc.lastInput), pc.lastResponseID
+}
+
+func (pc *pooledWebSocketConn) rememberTurn(input []json.RawMessage, responseID string, maxInputBytes int) bool {
+	if strings.TrimSpace(responseID) == "" {
+		return false
+	}
+	if len(input) == 0 {
+		pc.mu.Lock()
+		pc.lastInput = nil
+		pc.lastResponseID = ""
+		pc.mu.Unlock()
+		return true
+	}
+	if maxInputBytes > 0 && rawMessagesSize(input) > maxInputBytes {
+		return false
+	}
+	pc.mu.Lock()
+	pc.lastInput = cloneRawMessages(input)
+	pc.lastResponseID = strings.TrimSpace(responseID)
+	pc.mu.Unlock()
+	return true
+}
+
+func (l *webSocketLease) release(evict bool) {
+	if l == nil {
+		return
+	}
+	l.once.Do(func() {
+		if l.pooled == nil {
+			_ = l.conn.Close()
+			return
+		}
+		if evict {
+			if l.owner != nil {
+				l.owner.evict(l.pooled)
+			} else {
+				l.pooled.close()
+			}
+		} else {
+			l.pooled.markUsed()
+		}
+		select {
+		case <-l.pooled.inFlight:
+		default:
+		}
+	})
 }
 
 func toWebSocketURL(rawURL string) (string, error) {
@@ -151,6 +539,105 @@ func toWebSocketURL(rawURL string) (string, error) {
 	}
 
 	return u.String(), nil
+}
+
+type webSocketReconnectRequiredError struct{}
+
+func (e *webSocketReconnectRequiredError) Error() string {
+	return "websocket session context changed; reconnect and send full context"
+}
+
+func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLease) error {
+	if lease == nil || lease.pooled == nil {
+		return nil
+	}
+
+	fullInput, ok, err := payloadInputItems(payload)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	lease.nextFullInput = cloneRawMessages(fullInput)
+
+	previousInput, previousResponseID := lease.pooled.previousTurn()
+	if !lease.reused || previousResponseID == "" || len(previousInput) == 0 {
+		return nil
+	}
+
+	suffix, ok := inputSuffix(previousInput, fullInput)
+	if !ok || len(suffix) == 0 {
+		return &webSocketReconnectRequiredError{}
+	}
+
+	payload["input"] = suffix
+	payload["previous_response_id"] = previousResponseID
+
+	return nil
+}
+
+func payloadInputItems(payload map[string]any) ([]json.RawMessage, bool, error) {
+	inputValue, ok := payload["input"]
+	if !ok || inputValue == nil {
+		return nil, false, nil
+	}
+
+	inputRaw, err := json.Marshal(inputValue)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to encode websocket input payload: %w", err)
+	}
+
+	var items []json.RawMessage
+	if err := json.Unmarshal(inputRaw, &items); err != nil {
+		return nil, false, nil
+	}
+
+	return items, true, nil
+}
+
+func inputSuffix(previous, current []json.RawMessage) ([]json.RawMessage, bool) {
+	if len(previous) >= len(current) {
+		return nil, false
+	}
+	for i := range previous {
+		if !jsonRawEqual(previous[i], current[i]) {
+			return nil, false
+		}
+	}
+
+	return cloneRawMessages(current[len(previous):]), true
+}
+
+func jsonRawEqual(a, b json.RawMessage) bool {
+	var compactA bytes.Buffer
+	if err := json.Compact(&compactA, a); err != nil {
+		return bytes.Equal(a, b)
+	}
+	var compactB bytes.Buffer
+	if err := json.Compact(&compactB, b); err != nil {
+		return bytes.Equal(a, b)
+	}
+	return bytes.Equal(compactA.Bytes(), compactB.Bytes())
+}
+
+func cloneRawMessages(src []json.RawMessage) []json.RawMessage {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]json.RawMessage, len(src))
+	for i := range src {
+		out[i] = append(json.RawMessage(nil), src[i]...)
+	}
+	return out
+}
+
+func rawMessagesSize(messages []json.RawMessage) int {
+	total := 0
+	for _, msg := range messages {
+		total += len(msg)
+	}
+	return total
 }
 
 func buildWebSocketCreatePayload(body []byte) (map[string]any, error) {
@@ -214,52 +701,124 @@ func newWebSocketDialError(request *httpclient.Request, resp *http.Response, err
 }
 
 type webSocketStream struct {
-	conn    *websocket.Conn
-	current *httpclient.StreamEvent
-	err     error
-	closed  bool
+	ctx      context.Context
+	lease    *webSocketLease
+	done     chan struct{}
+	doneOnce sync.Once
+	mu       sync.Mutex
+	current  *httpclient.StreamEvent
+	err      error
+	closed   bool
 }
 
 func (s *webSocketStream) Next() bool {
-	if s.err != nil || s.closed {
+	if s.isClosed() {
 		return false
 	}
+	select {
+	case <-s.ctx.Done():
+		s.setErr(s.ctx.Err())
+		s.finish(true)
+		return false
+	default:
+	}
 
-	_, msg, err := s.conn.ReadMessage()
+	_, msg, err := s.lease.conn.ReadMessage()
 	if err != nil {
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
+			s.finish(true)
 			return false
 		}
-		s.err = err
+		s.setErr(err)
+		s.finish(true)
 		return false
 	}
 
 	typ := streamEventType(msg)
-	s.current = &httpclient.StreamEvent{
+	s.setCurrent(&httpclient.StreamEvent{
 		Type: typ,
 		Data: normalizeWebSocketEvent(msg),
-	}
+	})
 	if isTerminalWebSocketEvent(typ) {
-		s.closed = true
+		evict := terminalWebSocketEventEvicts(typ)
+		if typ == "response.completed" {
+			responseID := responseIDFromWebSocketEvent(msg)
+			if responseID == "" {
+				evict = true
+			} else if !s.lease.rememberTurn(responseID) {
+				evict = true
+			}
+		}
+		s.finish(evict)
 	}
 
 	return true
 }
 
 func (s *webSocketStream) Current() *httpclient.StreamEvent {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.current
 }
 
 func (s *webSocketStream) Err() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.err
 }
 
 func (s *webSocketStream) Close() error {
-	if s.closed {
-		return nil
+	s.finish(true)
+	return nil
+}
+
+func (s *webSocketStream) isClosed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.err != nil || s.closed
+}
+
+func (s *webSocketStream) setCurrent(event *httpclient.StreamEvent) {
+	s.mu.Lock()
+	s.current = event
+	s.mu.Unlock()
+}
+
+func (s *webSocketStream) setErr(err error) {
+	s.mu.Lock()
+	s.err = err
+	s.mu.Unlock()
+}
+
+func (s *webSocketStream) finish(evict bool) {
+	s.doneOnce.Do(func() {
+		s.mu.Lock()
+		s.closed = true
+		s.mu.Unlock()
+		s.lease.release(evict)
+		close(s.done)
+	})
+}
+
+func (l *webSocketLease) rememberTurn(responseID string) bool {
+	if l == nil || l.pooled == nil {
+		return false
 	}
-	s.closed = true
-	return s.conn.Close()
+	maxInputBytes := 0
+	if l.owner != nil {
+		maxInputBytes = l.owner.maxRetainedInput
+	}
+	return l.pooled.rememberTurn(l.nextFullInput, responseID, maxInputBytes)
+}
+
+func responseIDFromWebSocketEvent(raw []byte) string {
+	var payload struct {
+		Response struct {
+			ID string `json:"id"`
+		} `json:"response"`
+	}
+	_ = json.Unmarshal(raw, &payload)
+	return payload.Response.ID
 }
 
 func streamEventType(raw []byte) string {
@@ -272,7 +831,16 @@ func streamEventType(raw []byte) string {
 
 func isTerminalWebSocketEvent(eventType string) bool {
 	switch eventType {
-	case "response.completed", "response.failed", "response.cancelled", "error":
+	case "response.completed", "response.failed", "response.cancelled", "response.incomplete", "error":
+		return true
+	default:
+		return false
+	}
+}
+
+func terminalWebSocketEventEvicts(eventType string) bool {
+	switch eventType {
+	case "response.failed", "response.cancelled", "response.incomplete", "error":
 		return true
 	default:
 		return false
