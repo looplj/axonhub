@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"reflect"
 	"sync"
 
 	"github.com/google/uuid"
@@ -36,8 +37,8 @@ type OutboundTransformer struct {
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
 
-	executorMu        sync.Mutex
-	webSocketExecutor *responses.WebSocketExecutor
+	executorMu         sync.Mutex
+	webSocketExecutors map[pipeline.Executor]*responses.WebSocketExecutor
 }
 
 var (
@@ -233,14 +234,32 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 }
 
 func (t *OutboundTransformer) customizeWebSocketExecutor(executor pipeline.Executor) pipeline.Executor {
+	if !executorComparable(executor) {
+		return responses.NewWebSocketExecutor(executor)
+	}
+
 	t.executorMu.Lock()
 	defer t.executorMu.Unlock()
 
-	if t.webSocketExecutor == nil {
-		t.webSocketExecutor = responses.NewWebSocketExecutor(executor)
+	if t.webSocketExecutors == nil {
+		t.webSocketExecutors = make(map[pipeline.Executor]*responses.WebSocketExecutor)
+	}
+	if cached, ok := t.webSocketExecutors[executor]; ok {
+		return cached
 	}
 
-	return t.webSocketExecutor
+	webSocketExecutor := responses.NewWebSocketExecutor(executor)
+	t.webSocketExecutors[executor] = webSocketExecutor
+
+	return webSocketExecutor
+}
+
+func executorComparable(executor pipeline.Executor) bool {
+	if executor == nil {
+		return true
+	}
+
+	return reflect.TypeOf(executor).Comparable()
 }
 
 type codexExecutor struct {

@@ -120,7 +120,7 @@ func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
 }
 
-func TestCodexOutbound_CustomizeExecutorReusesWebSocketExecutor(t *testing.T) {
+func TestCodexOutbound_CustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 	outbound, err := NewOutboundTransformer(Params{
 		BaseURL:       "wss://chatgpt.com/backend-api/codex/responses##",
 		Transport:     responses.TransportWebSocket,
@@ -128,17 +128,27 @@ func TestCodexOutbound_CustomizeExecutorReusesWebSocketExecutor(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	first, ok := outbound.CustomizeExecutor(nil).(*codexExecutor)
+	firstClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled})
+	secondClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://127.0.0.1:18081"})
+
+	first, ok := outbound.CustomizeExecutor(firstClient).(*codexExecutor)
 	require.True(t, ok)
 	firstInner, ok := first.inner.(*responses.WebSocketExecutor)
 	require.True(t, ok)
 
-	second, ok := outbound.CustomizeExecutor(nil).(*codexExecutor)
+	second, ok := outbound.CustomizeExecutor(secondClient).(*codexExecutor)
 	require.True(t, ok)
 	secondInner, ok := second.inner.(*responses.WebSocketExecutor)
 	require.True(t, ok)
+	again, ok := outbound.CustomizeExecutor(firstClient).(*codexExecutor)
+	require.True(t, ok)
+	againInner, ok := again.inner.(*responses.WebSocketExecutor)
+	require.True(t, ok)
 
-	require.Same(t, firstInner, secondInner)
+	require.NotSame(t, firstInner, secondInner)
+	require.Same(t, firstInner, againInner)
+	require.Same(t, firstClient, firstInner.Inner())
+	require.Same(t, secondClient, secondInner.Inner())
 }
 
 func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T) {
