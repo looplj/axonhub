@@ -112,11 +112,13 @@ const CREATE_CHANNEL_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -171,11 +173,13 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -231,11 +235,13 @@ const UPDATE_CHANNEL_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -296,11 +302,13 @@ const SAVE_CHANNEL_ENDPOINTS_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -968,7 +976,7 @@ export function useUpdateChannel() {
 
 export interface SaveChannelEndpointsInput {
   channelID: string;
-  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string }>;
+  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string; transport?: string }>;
 }
 
 export function useSaveChannelEndpoints() {

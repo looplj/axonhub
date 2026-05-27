@@ -170,6 +170,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           apiFormat: ep.apiFormat,
           path: ep.path || undefined,
           baseURL: ep.baseURL || undefined,
+          transport: ep.transport || undefined,
         })),
       });
       onOpenChange(false);
