@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -95,21 +96,39 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 		return executor
 	}
 
+	if !executorComparable(executor) {
+		return NewWebSocketExecutor(executor)
+	}
+
 	t.executorMu.Lock()
 	defer t.executorMu.Unlock()
 
-	if t.webSocketExecutor == nil {
-		t.webSocketExecutor = NewWebSocketExecutor(executor)
+	if t.webSocketExecutors == nil {
+		t.webSocketExecutors = make(map[pipeline.Executor]*WebSocketExecutor)
+	}
+	if cached, ok := t.webSocketExecutors[executor]; ok {
+		return cached
 	}
 
-	return t.webSocketExecutor
+	webSocketExecutor := NewWebSocketExecutor(executor)
+	t.webSocketExecutors[executor] = webSocketExecutor
+
+	return webSocketExecutor
+}
+
+func executorComparable(executor pipeline.Executor) bool {
+	if executor == nil {
+		return true
+	}
+
+	return reflect.TypeOf(executor).Comparable()
 }
 
 type OutboundTransformer struct {
 	config *Config
 
-	executorMu        sync.Mutex
-	webSocketExecutor *WebSocketExecutor
+	executorMu         sync.Mutex
+	webSocketExecutors map[pipeline.Executor]*WebSocketExecutor
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {

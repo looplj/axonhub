@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -22,7 +23,16 @@ func webSocketTestContext() context.Context {
 	return shared.WithSessionScope(context.Background(), "test-scope")
 }
 
-func TestOutboundCustomizeExecutorReusesWebSocketExecutor(t *testing.T) {
+func mustParseURL(t *testing.T, rawURL string) *url.URL {
+	t.Helper()
+
+	parsed, err := url.Parse(rawURL)
+	require.NoError(t, err)
+
+	return parsed
+}
+
+func TestOutboundCustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 	outbound, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL:        "https://api.openai.com/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
@@ -30,12 +40,28 @@ func TestOutboundCustomizeExecutorReusesWebSocketExecutor(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	first, ok := outbound.CustomizeExecutor(nil).(*WebSocketExecutor)
+	firstClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled})
+	secondClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://127.0.0.1:18080"})
+
+	first, ok := outbound.CustomizeExecutor(firstClient).(*WebSocketExecutor)
 	require.True(t, ok)
-	second, ok := outbound.CustomizeExecutor(nil).(*WebSocketExecutor)
+	second, ok := outbound.CustomizeExecutor(secondClient).(*WebSocketExecutor)
+	require.True(t, ok)
+	again, ok := outbound.CustomizeExecutor(firstClient).(*WebSocketExecutor)
 	require.True(t, ok)
 
-	require.Same(t, first, second)
+	require.NotSame(t, first, second)
+	require.Same(t, first, again)
+	require.Same(t, firstClient, first.Inner())
+	require.Same(t, secondClient, second.Inner())
+
+	req := &http.Request{URL: mustParseURL(t, "https://example.com/v1/responses")}
+	firstProxy, err := first.dialer.Proxy(req)
+	require.NoError(t, err)
+	require.Nil(t, firstProxy)
+	secondProxy, err := second.dialer.Proxy(req)
+	require.NoError(t, err)
+	require.Equal(t, "http://127.0.0.1:18080", secondProxy.String())
 }
 
 func TestWebSocketExecutorDoStreamSendsResponseCreate(t *testing.T) {
