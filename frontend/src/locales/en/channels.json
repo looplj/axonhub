@@ -284,6 +284,7 @@
   "channels.dialogs.fields.apiFormat.claudecode.description": "Complete OAuth flow above to authenticate with Claude Code. The credentials will be auto-filled.",
   "channels.dialogs.fields.apiFormat.formats.openai/chat_completions": "OpenAI (Chat Completions)",
   "channels.dialogs.fields.apiFormat.formats.openai/responses": "OpenAI (Responses)",
+  "channels.dialogs.fields.apiFormat.formats.openai/responses_websocket": "OpenAI (Responses WebSocket)",
   "channels.dialogs.fields.apiFormat.formats.anthropic/messages": "Anthropic (Messages)",
   "channels.dialogs.fields.apiFormat.formats.gemini/contents": "Gemini (Contents)",
   "channels.dialogs.fields.apiFormat.kimiCoding.label": "Kimi Coding (api.kimi.com)",

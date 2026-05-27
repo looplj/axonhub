@@ -282,6 +282,7 @@
   "channels.dialogs.fields.apiFormat.claudecode.description": "完成上方的 OAuth 流程以通过 Claude Code 进行身份验证。凭证将自动填充。",
   "channels.dialogs.fields.apiFormat.formats.openai/chat_completions": "OpenAI (Chat Completions)",
   "channels.dialogs.fields.apiFormat.formats.openai/responses": "OpenAI (Responses)",
+  "channels.dialogs.fields.apiFormat.formats.openai/responses_websocket": "OpenAI (Responses WebSocket)",
   "channels.dialogs.fields.apiFormat.formats.anthropic/messages": "Anthropic (Messages)",
   "channels.dialogs.fields.apiFormat.formats.gemini/contents": "Gemini (Contents)",
   "channels.dialogs.fields.provider.label": "服务商",
