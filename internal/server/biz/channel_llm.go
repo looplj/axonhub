@@ -229,6 +229,78 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel) (*Channel, 
 	return ch, nil
 }
 
+func endpointTransport(ep objects.ChannelEndpoint) string {
+	if ep.Transport != "" {
+		return ep.Transport
+	}
+
+	baseURL := strings.TrimSpace(strings.ToLower(ep.BaseURL))
+	if strings.HasPrefix(baseURL, "ws://") || strings.HasPrefix(baseURL, "wss://") {
+		return objects.ChannelEndpointTransportWebSocket
+	}
+
+	return ""
+}
+
+func (svc *ChannelService) buildCodexOutbound(
+	c *ent.Channel,
+	ch *Channel,
+	baseURL string,
+	transport string,
+	httpClient *httpclient.HttpClient,
+) (transformer.Outbound, error) {
+	if c.Credentials.IsOAuth() {
+		credsJSON := strings.TrimSpace(c.Credentials.APIKey)
+		if c.Credentials.OAuth != nil {
+			o := c.Credentials.OAuth
+
+			creds, err := (&oauth.OAuthCredentials{
+				AccessToken:  o.AccessToken,
+				RefreshToken: o.RefreshToken,
+				ClientID:     o.ClientID,
+				ExpiresAt:    o.ExpiresAt,
+				TokenType:    o.TokenType,
+				Scopes:       o.Scopes,
+			}).ToJSON()
+			if err != nil {
+				return nil, fmt.Errorf("failed to encode codex oauth credentials: %w", err)
+			}
+
+			credsJSON = creds
+		}
+
+		creds, err := oauth.ParseCredentialsJSON(credsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse codex oauth credentials: %w", err)
+		}
+
+		p := codex.NewTokenProvider(codex.TokenProviderParams{
+			Credentials: creds,
+			HTTPClient:  httpClient,
+			OnRefreshed: svc.onTokenRefreshed(c),
+		})
+
+		if ch != nil && ch.startTokenProvider == nil {
+			setupAutoRefresh(ch, p, oauth.AutoRefreshOptions{})
+		}
+
+		return codex.NewOutboundTransformer(codex.Params{
+			TokenProvider: p,
+			BaseURL:       baseURL,
+			Transport:     transport,
+		})
+	}
+
+	apiKeyProvider := getAPIKeyProvider(ch)
+	tokens := oauth.NewAPIKeyTokenProvider(apiKeyProvider.Get)
+
+	return codex.NewOutboundTransformer(codex.Params{
+		TokenProvider: tokens,
+		BaseURL:       baseURL,
+		Transport:     transport,
+	})
+}
+
 // buildNonDefaultEndpointOutbound creates a transformer for a user-configured
 // endpoint override. Default endpoints are handled by buildChannelWithOutbounds
 // and always use the primary outbound.
@@ -261,10 +333,16 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		})
 	case llm.APIFormatOpenAIResponse.String(),
 		llm.APIFormatOpenAIResponseCompact.String():
+		transport := endpointTransport(ep)
+		if c.Type == channel.TypeCodex && ep.APIFormat == llm.APIFormatOpenAIResponse.String() {
+			return svc.buildCodexOutbound(c, ch, baseURL, transport, ch.HTTPClient)
+		}
+
 		return responses.NewOutboundTransformerWithConfig(&responses.Config{
 			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider,
 			EndpointPath:   ep.Path,
+			Transport:      transport,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),
@@ -727,60 +805,8 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 		return ch, nil
 	case channel.TypeCodex:
-		// Check if using OAuth credentials first
-		if c.Credentials.IsOAuth() {
-			credsJSON := strings.TrimSpace(c.Credentials.APIKey)
-			if c.Credentials.OAuth != nil {
-				o := c.Credentials.OAuth
-
-				creds, err := (&oauth.OAuthCredentials{
-					AccessToken:  o.AccessToken,
-					RefreshToken: o.RefreshToken,
-					ClientID:     o.ClientID,
-					ExpiresAt:    o.ExpiresAt,
-					TokenType:    o.TokenType,
-					Scopes:       o.Scopes,
-				}).ToJSON()
-				if err != nil {
-					return nil, fmt.Errorf("failed to encode codex oauth credentials: %w", err)
-				}
-
-				credsJSON = creds
-			}
-
-			creds, err := oauth.ParseCredentialsJSON(credsJSON)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse codex oauth credentials: %w", err)
-			}
-
-			p := codex.NewTokenProvider(codex.TokenProviderParams{
-				Credentials: creds,
-				HTTPClient:  httpClient,
-				OnRefreshed: svc.onTokenRefreshed(c),
-			})
-
-			transformer, err := codex.NewOutboundTransformer(codex.Params{
-				TokenProvider: p,
-				BaseURL:       c.BaseURL,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
-			}
-
-			ch.Outbound = transformer
-			setupAutoRefresh(ch, p, oauth.AutoRefreshOptions{})
-
-			return ch, nil
-		}
-
-		// Non-OAuth: use APIKeyProvider for multi-key rotation support
-		apiKeyProvider := getAPIKeyProvider(ch)
-		tokens := oauth.NewAPIKeyTokenProvider(apiKeyProvider.Get)
-
-		transformer, err := codex.NewOutboundTransformer(codex.Params{
-			TokenProvider: tokens,
-			BaseURL:       c.BaseURL,
-		})
+		transport := endpointTransport(objects.ChannelEndpoint{BaseURL: c.BaseURL})
+		transformer, err := svc.buildCodexOutbound(c, ch, c.BaseURL, transport, httpClient)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
 		}
