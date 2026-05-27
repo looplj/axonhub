@@ -99,6 +99,12 @@ func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 			expected: "https://api.openai.com/custom/responses",
 		},
 		{
+			name:     "websocket codex base with # suffix",
+			baseURL:  "wss://chatgpt.com/backend-api/codex#",
+			rawURL:   true,
+			expected: "wss://chatgpt.com/backend-api/codex/responses",
+		},
+		{
 			name:     "raw url with explicit config",
 			baseURL:  "https://api.openai.com/custom#",
 			rawURL:   true,
