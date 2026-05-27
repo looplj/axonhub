@@ -201,7 +201,57 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 	}
 
+	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
+		inputRaw, err := json.Marshal(input)
+		if err != nil {
+			return nil, err
+		}
+		obj["input"] = inputRaw
+	}
+
 	return json.Marshal(obj)
+}
+
+func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {
+	if requestExt == nil || len(requestExt.RawInputItems) == 0 {
+		return nil, false
+	}
+
+	var structuredItems []json.RawMessage
+	if len(structuredRaw) > 0 {
+		if err := json.Unmarshal(structuredRaw, &structuredItems); err != nil {
+			return nil, false
+		}
+	}
+
+	total := len(structuredItems) + len(requestExt.RawInputItems)
+	items := make([]json.RawMessage, 0, total)
+	structuredIndex := 0
+	rawByIndex := make(map[int]json.RawMessage, len(requestExt.RawInputItems))
+	for _, fragment := range requestExt.RawInputItems {
+		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
+			return nil, false
+		}
+		rawByIndex[fragment.OriginalIndex] = cloneRaw(fragment.Raw)
+	}
+
+	for i := 0; i < total; i++ {
+		if raw, ok := rawByIndex[i]; ok {
+			items = append(items, raw)
+			continue
+		}
+		if structuredIndex >= len(structuredItems) {
+			return nil, false
+		}
+		items = append(items, cloneRaw(structuredItems[structuredIndex]))
+		structuredIndex++
+	}
+
+	if structuredIndex != len(structuredItems) {
+		return nil, false
+	}
+
+	return items, true
 }
 
 func mergeRawOnlyTools(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {
