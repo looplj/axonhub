@@ -163,3 +163,5 @@ config.schema.json
 *.db-wal
 *.agent/summary
 .factory
+.omo/
+.playwright-mcp/
