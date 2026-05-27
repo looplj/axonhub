@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func TestCodexOutbound_StreamAcceptHeader(t *testing.T) {
@@ -117,6 +118,27 @@ func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
 	assert.Contains(t, strings.ToLower(headers.Get("User-Agent")), legacyCodexOriginator())
 	assert.Equal(t, testChatAccountID, headers.Get("Chatgpt-Account-Id"))
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
+}
+
+func TestCodexOutbound_CustomizeExecutorReusesWebSocketExecutor(t *testing.T) {
+	outbound, err := NewOutboundTransformer(Params{
+		BaseURL:       "wss://chatgpt.com/backend-api/codex/responses##",
+		Transport:     responses.TransportWebSocket,
+		TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{AccessToken: testAccessTokenWithAccountID(t), ExpiresAt: time.Now().Add(time.Hour)}},
+	})
+	require.NoError(t, err)
+
+	first, ok := outbound.CustomizeExecutor(nil).(*codexExecutor)
+	require.True(t, ok)
+	firstInner, ok := first.inner.(*responses.WebSocketExecutor)
+	require.True(t, ok)
+
+	second, ok := outbound.CustomizeExecutor(nil).(*codexExecutor)
+	require.True(t, ok)
+	secondInner, ok := second.inner.(*responses.WebSocketExecutor)
+	require.True(t, ok)
+
+	require.Same(t, firstInner, secondInner)
 }
 
 func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T) {

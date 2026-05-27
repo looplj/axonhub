@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -34,6 +35,9 @@ type OutboundTransformer struct {
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
+
+	executorMu        sync.Mutex
+	webSocketExecutor *responses.WebSocketExecutor
 }
 
 var (
@@ -219,13 +223,24 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, req *ht
 func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
 	inner := executor
 	if t != nil && t.transport == responses.TransportWebSocket {
-		inner = responses.NewWebSocketExecutor(inner)
+		inner = t.customizeWebSocketExecutor(inner)
 	}
 
 	return &codexExecutor{
 		inner:       inner,
 		transformer: t,
 	}
+}
+
+func (t *OutboundTransformer) customizeWebSocketExecutor(executor pipeline.Executor) pipeline.Executor {
+	t.executorMu.Lock()
+	defer t.executorMu.Unlock()
+
+	if t.webSocketExecutor == nil {
+		t.webSocketExecutor = responses.NewWebSocketExecutor(executor)
+	}
+
+	return t.webSocketExecutor
 }
 
 type codexExecutor struct {
