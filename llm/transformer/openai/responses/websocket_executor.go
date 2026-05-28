@@ -287,17 +287,13 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 
 		select {
 		case pc.inFlight <- struct{}{}:
-			if pc.isClosed() {
+			closed, expired, used := pc.leaseState(time.Now(), e.maxLifetime)
+			if closed || expired {
 				<-pc.inFlight
 				e.evict(pc)
 				continue
 			}
-			if pc.expired(time.Now(), e.maxLifetime) {
-				<-pc.inFlight
-				e.evict(pc)
-				continue
-			}
-			return &webSocketLease{conn: pc.conn, owner: e, pooled: pc, reused: pc.used}, nil
+			return &webSocketLease{conn: pc.conn, owner: e, pooled: pc, reused: used}, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -432,14 +428,19 @@ func (e *WebSocketExecutor) evictOldestIdleLocked() bool {
 	var oldestKey webSocketPoolKey
 	var oldest *pooledWebSocketConn
 	for key, pc := range e.pool {
-		if pc == nil || pc.isClosed() {
+		if pc == nil {
+			delete(e.pool, key)
+			continue
+		}
+		closed, lastUsedAt, _ := pc.poolState(time.Now(), e.maxLifetime)
+		if closed {
 			delete(e.pool, key)
 			continue
 		}
 		if len(pc.inFlight) > 0 {
 			continue
 		}
-		if oldest == nil || pc.lastUsedAt.Before(oldest.lastUsedAt) {
+		if oldest == nil || lastUsedAt.Before(oldest.poolLastUsedAt()) {
 			oldestKey = key
 			oldest = pc
 		}
@@ -454,14 +455,19 @@ func (e *WebSocketExecutor) evictOldestIdleLocked() bool {
 
 func (e *WebSocketExecutor) cleanupExpiredLocked(now time.Time) {
 	for key, pc := range e.pool {
-		if pc == nil || pc.isClosed() {
+		if pc == nil {
+			delete(e.pool, key)
+			continue
+		}
+		closed, lastUsedAt, expired := pc.poolState(now, e.maxLifetime)
+		if closed {
 			delete(e.pool, key)
 			continue
 		}
 		if len(pc.inFlight) > 0 {
 			continue
 		}
-		if now.Sub(pc.lastUsedAt) > e.idleTTL || pc.expired(now, e.maxLifetime) {
+		if now.Sub(lastUsedAt) > e.idleTTL || expired {
 			delete(e.pool, key)
 			pc.close()
 		}
@@ -480,8 +486,22 @@ func (e *WebSocketExecutor) evict(pc *pooledWebSocketConn) {
 	pc.close()
 }
 
-func (pc *pooledWebSocketConn) expired(now time.Time, maxLifetime time.Duration) bool {
-	return maxLifetime > 0 && now.Sub(pc.createdAt) > maxLifetime
+func (pc *pooledWebSocketConn) leaseState(now time.Time, maxLifetime time.Duration) (closed bool, expired bool, used bool) {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	return pc.closed, maxLifetime > 0 && now.Sub(pc.createdAt) > maxLifetime, pc.used
+}
+
+func (pc *pooledWebSocketConn) poolState(now time.Time, maxLifetime time.Duration) (closed bool, lastUsedAt time.Time, expired bool) {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	return pc.closed, pc.lastUsedAt, maxLifetime > 0 && now.Sub(pc.createdAt) > maxLifetime
+}
+
+func (pc *pooledWebSocketConn) poolLastUsedAt() time.Time {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	return pc.lastUsedAt
 }
 
 func (pc *pooledWebSocketConn) isClosed() bool {
