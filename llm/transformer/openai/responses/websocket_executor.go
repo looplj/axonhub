@@ -965,18 +965,15 @@ type webSocketStream struct {
 	err      error
 	closed   bool
 	sawEvent bool
+	terminal bool
 }
 
 func (s *webSocketStream) Next() bool {
-	if s.isClosed() {
+	if s.contextCancelled() {
 		return false
 	}
-	select {
-	case <-s.ctx.Done():
-		s.setErr(s.ctx.Err())
-		s.finish(true)
+	if s.isClosed() {
 		return false
-	default:
 	}
 
 	_, msg, err := s.lease.conn.ReadMessage()
@@ -1001,6 +998,7 @@ func (s *webSocketStream) Next() bool {
 		Data: normalizeWebSocketEvent(msg),
 	})
 	if isTerminalWebSocketEvent(typ) {
+		s.markTerminal()
 		// Only top-level `error` events are transport failures. Response-level
 		// terminal events are yielded and then close the stream normally so the
 		// non-streaming Do path can aggregate their response object.
@@ -1036,6 +1034,25 @@ func (s *webSocketStream) Close() error {
 	return nil
 }
 
+func (s *webSocketStream) contextCancelled() bool {
+	select {
+	case <-s.ctx.Done():
+		s.setContextErr()
+		s.finish(true)
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *webSocketStream) setContextErr() {
+	s.mu.Lock()
+	if s.err == nil && !s.terminal {
+		s.err = s.ctx.Err()
+	}
+	s.mu.Unlock()
+}
+
 func (s *webSocketStream) isClosed() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1053,6 +1070,12 @@ func (s *webSocketStream) hasSeenEvent() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.sawEvent
+}
+
+func (s *webSocketStream) markTerminal() {
+	s.mu.Lock()
+	s.terminal = true
+	s.mu.Unlock()
 }
 
 func (s *webSocketStream) setErr(err error) {

@@ -203,6 +203,28 @@ func TestWebSocketStreamReportsContextCancellationWhileReadBlocks(t *testing.T) 
 	require.ErrorIs(t, stream.Err(), context.Canceled)
 }
 
+func TestWebSocketStreamReportsContextCancellationWhenAlreadyClosed(t *testing.T) {
+	ctx, cancel := context.WithCancel(webSocketTestContext())
+	stream := &webSocketStream{ctx: ctx, done: make(chan struct{})}
+
+	stream.finish(true)
+	cancel()
+
+	require.False(t, stream.Next())
+	require.ErrorIs(t, stream.Err(), context.Canceled)
+}
+
+func TestWebSocketStreamDoesNotOverwriteTerminalResponseWithContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(webSocketTestContext())
+	stream := &webSocketStream{ctx: ctx, done: make(chan struct{})}
+	stream.markTerminal()
+	stream.finish(false)
+	cancel()
+
+	require.False(t, stream.Next())
+	require.NoError(t, stream.Err())
+}
+
 func TestWebSocketExecutorDoReturnsErrorForTopLevelErrorEvent(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
