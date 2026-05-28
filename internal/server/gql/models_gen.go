@@ -94,6 +94,7 @@ type BackupPayload struct {
 type BrandSettings struct {
 	BrandName *string `json:"brandName,omitempty"`
 	BrandLogo *string `json:"brandLogo,omitempty"`
+	Title     *string `json:"title,omitempty"`
 }
 
 type BulkImportChannelsInput struct {
@@ -508,6 +509,7 @@ type UpdateAutoBackupSettingsInput struct {
 type UpdateBrandSettingsInput struct {
 	BrandName *string `json:"brandName,omitempty"`
 	BrandLogo *string `json:"brandLogo,omitempty"`
+	Title     *string `json:"title,omitempty"`
 }
 
 type UpdateDefaultDataStorageInput struct {
