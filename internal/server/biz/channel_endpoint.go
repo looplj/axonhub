@@ -52,8 +52,8 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 			return fmt.Errorf("endpoint[%d]: unsupported transport %q", i, ep.Transport)
 		}
 
-		if ep.Transport == objects.ChannelEndpointTransportWebSocket && ep.APIFormat != llm.APIFormatOpenAIResponse.String() {
-			return fmt.Errorf("endpoint[%d]: websocket transport only supports api_format %q", i, llm.APIFormatOpenAIResponse.String())
+		if ep.Transport == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
+			return fmt.Errorf("endpoint[%d]: websocket transport only supports api_format %q or %q", i, llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseCompact.String())
 		}
 
 		if ep.Path != "" {
@@ -68,6 +68,10 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 	}
 
 	return nil
+}
+
+func supportsWebSocketTransport(apiFormat string) bool {
+	return apiFormat == llm.APIFormatOpenAIResponse.String() || apiFormat == llm.APIFormatOpenAIResponseCompact.String()
 }
 
 var openAICompatibleDefaultEndpoints = []objects.ChannelEndpoint{

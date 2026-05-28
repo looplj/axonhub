@@ -183,6 +183,13 @@ func TestValidateEndpoints(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("websocket compact responses endpoint passes validation", func(t *testing.T) {
+		err := ValidateEndpoints([]objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIResponseCompact.String(), Transport: objects.ChannelEndpointTransportWebSocket},
+		})
+		require.NoError(t, err)
+	})
+
 	t.Run("valid endpoints pass validation", func(t *testing.T) {
 		err := ValidateEndpoints([]objects.ChannelEndpoint{
 			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
