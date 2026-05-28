@@ -407,6 +407,10 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 		_ = conn.Close()
 		return existing, nil
 	}
+	// maxPoolSize is a hard cap on tracked pooled sessions (idle + in-flight).
+	// If every tracked session is currently in-flight, this returns capacity
+	// backpressure instead of opening unbounded overflow WebSockets. Same-session
+	// concurrency does not hit this branch; it waits on that session's inFlight slot.
 	if e.maxPoolSize > 0 && len(e.pool) >= e.maxPoolSize && !e.evictOldestIdleLocked() {
 		e.mu.Unlock()
 		_ = conn.Close()
