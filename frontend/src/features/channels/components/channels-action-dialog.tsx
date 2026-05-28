@@ -858,7 +858,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('baseURL', baseURL, { shouldDirty: true });
       }
     },
-    [derivedChannelType, form, isOAuthChannel, selectedProvider, selectedType]
+    [derivedChannelType, form, isDuplicate, isOAuthChannel, selectedProvider, selectedType]
   );
 
   const handleGeminiVertexChange = useCallback(
