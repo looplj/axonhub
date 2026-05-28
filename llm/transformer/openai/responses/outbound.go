@@ -96,7 +96,7 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 		return executor
 	}
 
-	if !executorComparable(executor) {
+	if !ExecutorComparable(executor) {
 		return NewWebSocketExecutor(executor)
 	}
 
@@ -116,7 +116,25 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 	return webSocketExecutor
 }
 
-func executorComparable(executor pipeline.Executor) bool {
+func (t *OutboundTransformer) Stop() {
+	if t == nil {
+		return
+	}
+
+	t.executorMu.Lock()
+	executors := make([]*WebSocketExecutor, 0, len(t.webSocketExecutors))
+	for _, executor := range t.webSocketExecutors {
+		executors = append(executors, executor)
+	}
+	t.webSocketExecutors = nil
+	t.executorMu.Unlock()
+
+	for _, executor := range executors {
+		_ = executor.Close()
+	}
+}
+
+func ExecutorComparable(executor pipeline.Executor) bool {
 	if executor == nil {
 		return true
 	}

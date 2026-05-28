@@ -1151,6 +1151,58 @@ func TestWebSocketExecutorBackgroundCleanupClosesIdleConnections(t *testing.T) {
 	}
 }
 
+func TestWebSocketExecutorCloseClosesIdleConnections(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	connectionClosed := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		defer close(connectionClosed)
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id":         "resp_close",
+				"object":     "response",
+				"created_at": 1700000000,
+				"model":      "gpt-5",
+				"status":     "completed",
+				"output":     []any{},
+			},
+		}))
+		_, _, _ = conn.ReadMessage()
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"close-session"},
+		},
+		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body: []byte(`{"model":"gpt-5"}`),
+	})
+	require.NoError(t, err)
+	require.True(t, stream.Next())
+	require.Equal(t, "response.completed", stream.Current().Type)
+	require.False(t, stream.Next())
+	require.NoError(t, stream.Err())
+	require.NoError(t, executor.Close())
+
+	select {
+	case <-connectionClosed:
+	case <-time.After(time.Second):
+		t.Fatal("idle websocket connection was not closed by executor Close")
+	}
+	require.Empty(t, executor.pool)
+	require.False(t, executor.cleanupScheduled)
+}
+
 func TestNormalizeWebSocketEventFlattensNestedError(t *testing.T) {
 	raw := []byte(`{"type":"error","status":400,"error":{"type":"invalid_request_error","message":"bad request","param":"model","code":"bad_model"}}`)
 

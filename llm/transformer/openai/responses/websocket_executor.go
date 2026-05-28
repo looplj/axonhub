@@ -48,6 +48,8 @@ type WebSocketExecutor struct {
 	mu               sync.Mutex
 	pool             map[webSocketPoolKey]*pooledWebSocketConn
 	cleanupScheduled bool
+	cleanupTimer     *time.Timer
+	closed           bool
 	idleTTL          time.Duration
 	maxLifetime      time.Duration
 	maxPoolSize      int
@@ -213,6 +215,38 @@ func (e *WebSocketExecutor) Inner() pipeline.Executor {
 	return e.inner
 }
 
+func (e *WebSocketExecutor) Close() error {
+	if e == nil {
+		return nil
+	}
+
+	e.mu.Lock()
+	e.closed = true
+	if e.cleanupTimer != nil {
+		e.cleanupTimer.Stop()
+		e.cleanupTimer = nil
+	}
+	e.cleanupScheduled = false
+	idle := make([]*pooledWebSocketConn, 0, len(e.pool))
+	for key, pc := range e.pool {
+		if pc == nil {
+			delete(e.pool, key)
+			continue
+		}
+		if len(pc.inFlight) > 0 {
+			continue
+		}
+		delete(e.pool, key)
+		idle = append(idle, pc)
+	}
+	e.mu.Unlock()
+
+	for _, pc := range idle {
+		pc.close()
+	}
+	return nil
+}
+
 type webSocketPoolKey struct {
 	URL        string
 	SessionID  string
@@ -332,6 +366,10 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpclient.Request, key webSocketPoolKey, wsURL string, headers http.Header) (*pooledWebSocketConn, error) {
 	now := time.Now()
 	e.mu.Lock()
+	if e.closed {
+		e.mu.Unlock()
+		return nil, fmt.Errorf("websocket executor is closed")
+	}
 	e.cleanupExpiredLocked(now)
 	if pc := e.pool[key]; pc != nil && !pc.isClosed() {
 		e.mu.Unlock()
@@ -353,6 +391,11 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 	}
 
 	e.mu.Lock()
+	if e.closed {
+		e.mu.Unlock()
+		_ = conn.Close()
+		return nil, fmt.Errorf("websocket executor is closed")
+	}
 	if existing := e.pool[key]; existing != nil && !existing.isClosed() {
 		e.mu.Unlock()
 		_ = conn.Close()
@@ -570,18 +613,23 @@ func (e *WebSocketExecutor) scheduleCleanup() {
 }
 
 func (e *WebSocketExecutor) scheduleCleanupLocked(now time.Time) {
-	if e.cleanupScheduled || len(e.pool) == 0 || (e.idleTTL <= 0 && e.maxLifetime <= 0) {
+	if e.closed || e.cleanupScheduled || len(e.pool) == 0 || (e.idleTTL <= 0 && e.maxLifetime <= 0) {
 		return
 	}
 	delay := e.nextCleanupDelayLocked(now)
 	e.cleanupScheduled = true
-	time.AfterFunc(delay, e.runScheduledCleanup)
+	e.cleanupTimer = time.AfterFunc(delay, e.runScheduledCleanup)
 }
 
 func (e *WebSocketExecutor) runScheduledCleanup() {
 	now := time.Now()
 	e.mu.Lock()
 	e.cleanupScheduled = false
+	e.cleanupTimer = nil
+	if e.closed {
+		e.mu.Unlock()
+		return
+	}
 	e.cleanupExpiredLocked(now)
 	e.scheduleCleanupLocked(now)
 	e.mu.Unlock()
@@ -723,23 +771,35 @@ func (l *webSocketLease) release(evict bool) {
 			_ = l.conn.Close()
 			return
 		}
-		if evict {
-			if l.owner != nil {
-				l.owner.evict(l.pooled)
-			} else {
-				l.pooled.close()
-			}
+		if l.owner != nil {
+			l.owner.releasePooled(l.pooled, evict)
+		} else if evict {
+			l.pooled.close()
 		} else {
 			l.pooled.markUsed()
-			if l.owner != nil {
-				l.owner.scheduleCleanup()
-			}
 		}
 		select {
 		case <-l.pooled.inFlight:
 		default:
 		}
 	})
+}
+
+func (e *WebSocketExecutor) releasePooled(pc *pooledWebSocketConn, evict bool) {
+	e.mu.Lock()
+	closed := e.closed
+	if (evict || closed) && e.pool[pc.key] == pc {
+		delete(e.pool, pc.key)
+	}
+	e.mu.Unlock()
+
+	if evict || closed {
+		pc.close()
+		return
+	}
+
+	pc.markUsed()
+	e.scheduleCleanup()
 }
 
 func toWebSocketURL(rawURL string) (string, error) {
