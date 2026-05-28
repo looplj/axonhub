@@ -83,6 +83,20 @@ function getResponsesTransportFromBaseURL(baseURL?: string): ResponsesTransport 
   return baseURL?.trim().toLowerCase().startsWith('ws') ? 'websocket' : 'http';
 }
 
+function baseURLMatchesResponsesTransport(baseURL: string | undefined, transport: ResponsesTransport): boolean {
+  const normalized = baseURL?.trim().toLowerCase() ?? '';
+  if (transport === 'websocket') {
+    return normalized.startsWith('ws://') || normalized.startsWith('wss://');
+  }
+  return normalized.startsWith('http://') || normalized.startsWith('https://');
+}
+
+function getResponsesTransportBaseURLError(transport: ResponsesTransport): string {
+  return transport === 'websocket'
+    ? 'channels.dialogs.fields.baseURL.errors.websocketScheme'
+    : 'channels.dialogs.fields.baseURL.errors.httpScheme';
+}
+
 function getResponsesTransportFromChannel(channel?: Pick<Channel, 'baseURL' | 'endpoints'>): ResponsesTransport {
   const responsesEndpoint = channel?.endpoints?.find((endpoint) => endpoint.apiFormat === OPENAI_RESPONSES);
   if (responsesEndpoint?.transport === 'http' || responsesEndpoint?.transport === 'websocket') return responsesEndpoint.transport;
@@ -686,12 +700,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const baseURLPlaceholder = useMemo(() => {
     const currentType = selectedType || derivedChannelType;
+    if (selectedApiFormat === OPENAI_RESPONSES && responsesTransport === 'websocket') {
+      const websocketBaseURL = getResponsesWebSocketBaseURL(currentType);
+      if (websocketBaseURL) {
+        return websocketBaseURL;
+      }
+    }
     const defaultURL = getDefaultBaseURL(currentType);
     if (defaultURL) {
       return defaultURL;
     }
     return t('channels.dialogs.fields.baseURL.placeholder');
-  }, [selectedType, derivedChannelType, t]);
+  }, [selectedType, derivedChannelType, selectedApiFormat, responsesTransport, t]);
 
   // Sync form type when provider or API format changes
   const handleProviderChange = useCallback(
@@ -1053,12 +1073,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       ) {
         const currentType = selectedType || derivedChannelType;
         const baseURL =
-          isCodexType && responsesTransport === 'websocket'
-            ? getResponsesWebSocketBaseURL('codex')
-            : getDefaultBaseURL(currentType);
+          isCodexType && responsesTransport === 'websocket' ? getResponsesWebSocketBaseURL('codex') : getDefaultBaseURL(currentType);
         if (baseURL) {
           dataWithModels.baseURL = baseURL;
         }
+      }
+
+      if (selectedApiFormat === OPENAI_RESPONSES && !baseURLMatchesResponsesTransport(dataWithModels.baseURL, responsesTransport)) {
+        form.setError('baseURL', {
+          type: 'manual',
+          message: t(getResponsesTransportBaseURLError(responsesTransport)),
+        });
+        return;
       }
 
       if (isEdit && currentRow) {
@@ -1528,7 +1554,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
               setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS);
-              setResponsesTransport(getResponsesTransportFromBaseURL(initialRow.baseURL));
+              setResponsesTransport(getResponsesTransportFromChannel(initialRow));
               setUseGeminiVertex(initialRow.type === 'gemini_vertex');
               setUseAnthropicAws(initialRow.type === 'anthropic_aws');
               setUseKimiCoding(initialRow.type === 'moonshot_coding');
