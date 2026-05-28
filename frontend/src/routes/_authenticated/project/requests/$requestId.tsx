@@ -11,5 +11,6 @@ function ProtectedRequestDetail() {
 }
 
 export const Route = createFileRoute('/_authenticated/project/requests/$requestId')({
+  validateSearch: (search: Record<string, unknown>) => search,
   component: ProtectedRequestDetail,
 });
