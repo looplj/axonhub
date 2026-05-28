@@ -2,6 +2,7 @@
 package responses
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -505,6 +506,37 @@ type Item struct {
 	// Compaction fields (for type="compaction")
 	// The identifier of the actor that created the item.
 	CreatedBy *string `json:"created_by,omitempty"`
+}
+
+func (item *Item) UnmarshalJSON(data []byte) error {
+	type itemAlias Item
+	raw := struct {
+		itemAlias
+		Arguments json.RawMessage `json:"arguments"`
+	}{}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	*item = Item(raw.itemAlias)
+	if len(raw.Arguments) == 0 || bytes.Equal(raw.Arguments, []byte("null")) {
+		return nil
+	}
+
+	var arguments string
+	if err := json.Unmarshal(raw.Arguments, &arguments); err == nil {
+		item.Arguments = arguments
+		return nil
+	}
+
+	var compacted bytes.Buffer
+	if err := json.Compact(&compacted, raw.Arguments); err != nil {
+		return err
+	}
+	item.Arguments = compacted.String()
+
+	return nil
 }
 
 // MarshalJSON omits summary for non-reasoning items and forces an empty array for reasoning items.
