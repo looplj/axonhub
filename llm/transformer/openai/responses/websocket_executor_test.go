@@ -419,6 +419,214 @@ func TestWebSocketExecutorKeepsExplicitPreviousResponseIDOnFreshConnection(t *te
 	require.NoError(t, stream.Close())
 }
 
+func TestWebSocketExecutorReconnectsForDifferentExplicitPreviousResponseID(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	var upgrades atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrade := upgrades.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+
+		if upgrade == 1 {
+			require.NotContains(t, payload, "previous_response_id")
+			require.NoError(t, conn.WriteJSON(map[string]any{
+				"type": "response.completed",
+				"response": map[string]any{
+					"id":         "resp_1",
+					"object":     "response",
+					"created_at": 1700000000,
+					"model":      "gpt-5",
+					"status":     "completed",
+					"output":     []any{},
+				},
+			}))
+			return
+		}
+
+		require.Equal(t, "client_prev", payload["previous_response_id"])
+		input, ok := payload["input"].([]any)
+		require.True(t, ok)
+		require.Len(t, input, 2)
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id":         "resp_2",
+				"object":     "response",
+				"created_at": 1700000000,
+				"model":      "gpt-5",
+				"status":     "completed",
+				"output":     []any{},
+			},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	ctx := webSocketTestContext()
+	for _, body := range [][]byte{
+		[]byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user"}]}`),
+		[]byte(`{"model":"gpt-5","previous_response_id":"client_prev","input":[{"id":"first","type":"message","role":"user"},{"id":"second","type":"message","role":"user"}]}`),
+	} {
+		stream, err := executor.DoStream(ctx, &httpclient.Request{
+			Method: http.MethodPost,
+			URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+			Headers: http.Header{
+				webSocketSessionHeader: []string{"explicit-reconnect"},
+			},
+			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+			Body: body,
+		})
+		require.NoError(t, err)
+		require.True(t, stream.Next())
+		require.Equal(t, "response.completed", stream.Current().Type)
+		require.False(t, stream.Next())
+		require.NoError(t, stream.Err())
+		require.NoError(t, stream.Close())
+	}
+
+	require.Equal(t, int32(2), upgrades.Load())
+}
+
+func TestWebSocketExecutorReconnectsWhenSuffixStartsWithAssistantOutput(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	var upgrades atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrade := upgrades.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+
+		if upgrade == 1 {
+			require.NotContains(t, payload, "previous_response_id")
+			require.NoError(t, conn.WriteJSON(map[string]any{
+				"type": "response.completed",
+				"response": map[string]any{
+					"id":         "resp_1",
+					"object":     "response",
+					"created_at": 1700000000,
+					"model":      "gpt-5",
+					"status":     "completed",
+					"output":     []any{},
+				},
+			}))
+			return
+		}
+
+		require.NotContains(t, payload, "previous_response_id")
+		input, ok := payload["input"].([]any)
+		require.True(t, ok)
+		require.Len(t, input, 3)
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id":         "resp_2",
+				"object":     "response",
+				"created_at": 1700000000,
+				"model":      "gpt-5",
+				"status":     "completed",
+				"output":     []any{},
+			},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	ctx := webSocketTestContext()
+	for _, body := range [][]byte{
+		[]byte(`{"model":"gpt-5","input":[{"id":"user_1","type":"message","role":"user"}]}`),
+		[]byte(`{"model":"gpt-5","input":[{"id":"user_1","type":"message","role":"user"},{"id":"assistant_1","type":"message","role":"assistant"},{"id":"user_2","type":"message","role":"user"}]}`),
+	} {
+		stream, err := executor.DoStream(ctx, &httpclient.Request{
+			Method: http.MethodPost,
+			URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+			Headers: http.Header{
+				webSocketSessionHeader: []string{"assistant-reconnect"},
+			},
+			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+			Body: body,
+		})
+		require.NoError(t, err)
+		require.True(t, stream.Next())
+		require.Equal(t, "response.completed", stream.Current().Type)
+		require.False(t, stream.Next())
+		require.NoError(t, stream.Err())
+		require.NoError(t, stream.Close())
+	}
+
+	require.Equal(t, int32(2), upgrades.Load())
+}
+
+func TestWebSocketStreamReturnsErrorWhenReusedConnectionClosesBeforeEvent(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	var upgrades atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrade := upgrades.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		if upgrade == 1 {
+			require.NoError(t, conn.WriteJSON(map[string]any{
+				"type": "response.completed",
+				"response": map[string]any{
+					"id":         "resp_1",
+					"object":     "response",
+					"created_at": 1700000000,
+					"model":      "gpt-5",
+					"status":     "completed",
+					"output":     []any{},
+				},
+			}))
+			require.NoError(t, conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")))
+			return
+		}
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	ctx := webSocketTestContext()
+	stream, err := executor.DoStream(ctx, &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"stale-close"},
+		},
+		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body: []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user"}]}`),
+	})
+	require.NoError(t, err)
+	require.True(t, stream.Next())
+	require.Equal(t, "response.completed", stream.Current().Type)
+	require.False(t, stream.Next())
+	require.NoError(t, stream.Err())
+	require.NoError(t, stream.Close())
+
+	stream, err = executor.DoStream(ctx, &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"stale-close"},
+		},
+		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body: []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user"},{"id":"second","type":"message","role":"user"}]}`),
+	})
+	if err != nil {
+		return
+	}
+	defer stream.Close()
+	require.False(t, stream.Next())
+	require.ErrorContains(t, stream.Err(), "websocket closed before response event")
+}
+
 func TestWebSocketExecutorSeparatesPoolByOrganizationHeaders(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32

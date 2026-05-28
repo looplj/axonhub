@@ -605,9 +605,12 @@ func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLea
 	if !lease.reused || previousResponseID == "" || len(previousInput) == 0 {
 		return nil
 	}
+	if explicitPreviousResponseID(payload) != "" && explicitPreviousResponseID(payload) != previousResponseID {
+		return &webSocketReconnectRequiredError{}
+	}
 
 	suffix, ok := inputSuffix(previousInput, fullInput)
-	if !ok || len(suffix) == 0 {
+	if !ok || len(suffix) == 0 || suffixStartsWithResponseOutput(suffix) {
 		return &webSocketReconnectRequiredError{}
 	}
 
@@ -615,6 +618,38 @@ func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLea
 	payload["previous_response_id"] = previousResponseID
 
 	return nil
+}
+
+func explicitPreviousResponseID(payload map[string]any) string {
+	value, ok := payload["previous_response_id"]
+	if !ok {
+		return ""
+	}
+	previousResponseID, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(previousResponseID)
+}
+
+func suffixStartsWithResponseOutput(suffix []json.RawMessage) bool {
+	if len(suffix) == 0 {
+		return false
+	}
+
+	var item struct {
+		Type string `json:"type"`
+		Role string `json:"role"`
+	}
+	if err := json.Unmarshal(suffix[0], &item); err != nil {
+		return false
+	}
+
+	switch item.Type {
+	case "reasoning", "function_call", "custom_tool_call":
+		return true
+	}
+	return item.Role == "assistant"
 }
 
 func payloadInputItems(payload map[string]any) ([]json.RawMessage, bool, error) {
@@ -749,6 +784,7 @@ type webSocketStream struct {
 	current  *httpclient.StreamEvent
 	err      error
 	closed   bool
+	sawEvent bool
 }
 
 func (s *webSocketStream) Next() bool {
@@ -768,6 +804,8 @@ func (s *webSocketStream) Next() bool {
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
 			if ctxErr := s.ctx.Err(); ctxErr != nil {
 				s.setErr(ctxErr)
+			} else if !s.hasSeenEvent() {
+				s.setErr(fmt.Errorf("websocket closed before response event"))
 			}
 			s.finish(true)
 			return false
@@ -824,7 +862,14 @@ func (s *webSocketStream) isClosed() bool {
 func (s *webSocketStream) setCurrent(event *httpclient.StreamEvent) {
 	s.mu.Lock()
 	s.current = event
+	s.sawEvent = true
 	s.mu.Unlock()
+}
+
+func (s *webSocketStream) hasSeenEvent() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sawEvent
 }
 
 func (s *webSocketStream) setErr(err error) {
