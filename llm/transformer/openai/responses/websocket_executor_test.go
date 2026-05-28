@@ -41,7 +41,7 @@ func TestOutboundCustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	firstClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled})
+	firstClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled}, httpclient.WithInsecureSkipVerify(true))
 	secondClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://127.0.0.1:18080"})
 
 	first, ok := outbound.CustomizeExecutor(firstClient).(*WebSocketExecutor)
@@ -55,6 +55,8 @@ func TestOutboundCustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 	require.Same(t, first, again)
 	require.Same(t, firstClient, first.Inner())
 	require.Same(t, secondClient, second.Inner())
+	require.NotNil(t, first.dialer.TLSClientConfig)
+	require.True(t, first.dialer.TLSClientConfig.InsecureSkipVerify)
 
 	req := &http.Request{URL: mustParseURL(t, "https://example.com/v1/responses")}
 	firstProxy, err := first.dialer.Proxy(req)

@@ -59,6 +59,11 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 	}
 	if hc, ok := inner.(*httpclient.HttpClient); ok {
 		dialer.Proxy = hc.ProxyFunc()
+		if native := hc.GetNativeClient(); native != nil {
+			if transport, ok := native.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil {
+				dialer.TLSClientConfig = transport.TLSClientConfig.Clone()
+			}
+		}
 	}
 
 	return &WebSocketExecutor{
