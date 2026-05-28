@@ -278,6 +278,35 @@ func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
 		if ch != nil && ch.stopTokenProvider != nil {
 			ch.stopTokenProvider()
 		}
+		stopChannelOutbounds(ch)
+	}
+}
+
+type stoppableOutbound interface {
+	Stop()
+}
+
+func stopChannelOutbounds(ch *Channel) {
+	if ch == nil {
+		return
+	}
+
+	seen := map[stoppableOutbound]struct{}{}
+	stopOutbound := func(out transformer.Outbound) {
+		stoppable, ok := out.(stoppableOutbound)
+		if !ok || stoppable == nil {
+			return
+		}
+		if _, ok := seen[stoppable]; ok {
+			return
+		}
+		seen[stoppable] = struct{}{}
+		stoppable.Stop()
+	}
+
+	stopOutbound(ch.Outbound)
+	for _, out := range ch.Outbounds {
+		stopOutbound(out)
 	}
 }
 

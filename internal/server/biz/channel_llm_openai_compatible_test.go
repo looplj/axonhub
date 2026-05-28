@@ -12,7 +12,10 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
@@ -171,4 +174,50 @@ func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
 	custom, ok := outbound.(pipeline.ChannelCustomizedExecutor)
 	require.True(t, ok)
 	require.NotNil(t, custom.CustomizeExecutor(nil))
+}
+
+type testStoppableOutbound struct {
+	stops int
+}
+
+func (t *testStoppableOutbound) APIFormat() llm.APIFormat { return llm.APIFormatOpenAIResponse }
+
+func (t *testStoppableOutbound) TransformRequest(context.Context, *llm.Request) (*httpclient.Request, error) {
+	return nil, nil
+}
+
+func (t *testStoppableOutbound) TransformResponse(context.Context, *httpclient.Response) (*llm.Response, error) {
+	return nil, nil
+}
+
+func (t *testStoppableOutbound) TransformStream(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	return nil, nil
+}
+
+func (t *testStoppableOutbound) TransformError(context.Context, *httpclient.Error) *llm.ResponseError {
+	return nil
+}
+
+func (t *testStoppableOutbound) AggregateStreamChunks(context.Context, *httpclient.Request, []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	return nil, llm.ResponseMeta{}, nil
+}
+
+func (t *testStoppableOutbound) Stop() {
+	t.stops++
+}
+
+func TestStopChannelOutboundsStopsEachOutboundOnce(t *testing.T) {
+	primary := &testStoppableOutbound{}
+	secondary := &testStoppableOutbound{}
+
+	stopChannelOutbounds(&Channel{
+		Outbound: primary,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatOpenAIResponse.String():        primary,
+			llm.APIFormatOpenAIResponseCompact.String(): secondary,
+		},
+	})
+
+	require.Equal(t, 1, primary.stops)
+	require.Equal(t, 1, secondary.stops)
 }

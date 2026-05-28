@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"reflect"
 	"sync"
 
 	"github.com/google/uuid"
@@ -242,7 +241,7 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 }
 
 func (t *OutboundTransformer) customizeWebSocketExecutor(executor pipeline.Executor) pipeline.Executor {
-	if !executorComparable(executor) {
+	if !responses.ExecutorComparable(executor) {
 		return responses.NewWebSocketExecutor(executor)
 	}
 
@@ -262,12 +261,22 @@ func (t *OutboundTransformer) customizeWebSocketExecutor(executor pipeline.Execu
 	return webSocketExecutor
 }
 
-func executorComparable(executor pipeline.Executor) bool {
-	if executor == nil {
-		return true
+func (t *OutboundTransformer) Stop() {
+	if t == nil {
+		return
 	}
 
-	return reflect.TypeOf(executor).Comparable()
+	t.executorMu.Lock()
+	executors := make([]*responses.WebSocketExecutor, 0, len(t.webSocketExecutors))
+	for _, executor := range t.webSocketExecutors {
+		executors = append(executors, executor)
+	}
+	t.webSocketExecutors = nil
+	t.executorMu.Unlock()
+
+	for _, executor := range executors {
+		_ = executor.Close()
+	}
 }
 
 type codexExecutor struct {
