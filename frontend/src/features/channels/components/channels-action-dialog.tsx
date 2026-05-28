@@ -1953,7 +1953,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   setAuthMode(mode);
                                   if (mode !== 'third-party') {
                                     const currentType = selectedType || derivedChannelType;
-                                    const defaultURL = getDefaultBaseURL(currentType);
+                                    const defaultURL =
+                                      isCodexType && responsesTransport === 'websocket'
+                                        ? getResponsesWebSocketBaseURL('codex')
+                                        : getDefaultBaseURL(currentType);
                                     if (defaultURL) {
                                       form.setValue('baseURL', defaultURL);
                                     }
