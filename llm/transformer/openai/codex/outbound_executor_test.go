@@ -122,7 +122,7 @@ func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
 
 func TestCodexOutbound_CustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 	outbound, err := NewOutboundTransformer(Params{
-		BaseURL:       "wss://chatgpt.com/backend-api/codex/responses##",
+		BaseURL:       "wss://chatgpt.com/backend-api/codex#",
 		Transport:     responses.TransportWebSocket,
 		TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{AccessToken: testAccessTokenWithAccountID(t), ExpiresAt: time.Now().Add(time.Hour)}},
 	})

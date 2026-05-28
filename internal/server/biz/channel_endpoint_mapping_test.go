@@ -200,7 +200,7 @@ func TestValidateEndpoints(t *testing.T) {
 func TestPrimaryEndpointTransport(t *testing.T) {
 	t.Run("infers websocket from primary base url", func(t *testing.T) {
 		transport := primaryEndpointTransport(&ent.Channel{
-			BaseURL: "wss://api.openai.com/v1/responses##",
+			BaseURL: "wss://api.openai.com/v1#",
 		}, llm.APIFormatOpenAIResponse.String())
 
 		require.Equal(t, objects.ChannelEndpointTransportWebSocket, transport)
