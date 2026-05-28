@@ -270,6 +270,18 @@ func (svc *ChannelService) buildCodexOutbound(
 	httpClient *httpclient.HttpClient,
 ) (transformer.Outbound, error) {
 	if c.Credentials.IsOAuth() {
+		if ch != nil {
+			if existing, ok := ch.Outbound.(*codex.OutboundTransformer); ok {
+				if tokens := existing.TokenProvider(); tokens != nil {
+					return codex.NewOutboundTransformer(codex.Params{
+						TokenProvider: tokens,
+						BaseURL:       baseURL,
+						Transport:     transport,
+					})
+				}
+			}
+		}
+
 		credsJSON := strings.TrimSpace(c.Credentials.APIKey)
 		if c.Credentials.OAuth != nil {
 			o := c.Credentials.OAuth

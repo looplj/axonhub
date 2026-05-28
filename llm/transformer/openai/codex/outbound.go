@@ -85,6 +85,14 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIResponse
 }
 
+func (t *OutboundTransformer) TokenProvider() oauth.TokenGetter {
+	if t == nil {
+		return nil
+	}
+
+	return t.tokens
+}
+
 func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
 	return t.responsesOutbound.TransformError(ctx, rawErr)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -157,8 +158,16 @@ func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
 	built, err := channelSvc.buildChannelWithOutbounds(entChannel)
 	require.NoError(t, err)
 
+	primary, ok := built.Outbound.(*codex.OutboundTransformer)
+	require.True(t, ok)
+	require.NotNil(t, primary.TokenProvider())
+
 	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIResponse.String())
 	require.NoError(t, err)
+	override, ok := outbound.(*codex.OutboundTransformer)
+	require.True(t, ok)
+	require.True(t, primary.TokenProvider() == override.TokenProvider())
+
 	custom, ok := outbound.(pipeline.ChannelCustomizedExecutor)
 	require.True(t, ok)
 	require.NotNil(t, custom.CustomizeExecutor(nil))
