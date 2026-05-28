@@ -28,14 +28,20 @@ import (
 const WebSocketBetaHeaderValue = "responses_websockets=2026-02-06"
 
 const (
-	webSocketSessionHeader        = "Session_id"
-	webSocketAccountIDHeader      = "Chatgpt-Account-Id"
-	webSocketOriginatorHeader     = "Originator"
-	webSocketUserAgentHeader      = "User-Agent"
-	webSocketOrgHeader            = "OpenAI-Organization"
-	webSocketProjectHeader        = "OpenAI-Project"
-	defaultWebSocketIdleTTL       = 10 * time.Minute
-	defaultWebSocketMaxLifetime   = 30 * time.Minute
+	webSocketSessionHeader    = "Session_id"
+	webSocketAccountIDHeader  = "Chatgpt-Account-Id"
+	webSocketOriginatorHeader = "Originator"
+	webSocketUserAgentHeader  = "User-Agent"
+	webSocketOrgHeader        = "OpenAI-Organization"
+	webSocketProjectHeader    = "OpenAI-Project"
+	// OpenAI limits Responses WebSocket connections to 60 minutes. The
+	// Codex store=false path depends on connection-local state: real upstream
+	// probes show reconnecting loses previous_response_id recovery, and
+	// prompt-cache hits appear only when the same WebSocket is reused. Keep
+	// useful idle connections close to the upstream cap, but leave enough
+	// headroom for a new turn to finish before that cap is reached.
+	defaultWebSocketIdleTTL       = 50 * time.Minute
+	defaultWebSocketMaxLifetime   = 50 * time.Minute
 	defaultWebSocketMaxPoolSize   = 128
 	defaultWebSocketMaxRetainedIn = 1 << 20
 	minWebSocketCleanupDelay      = 10 * time.Millisecond
