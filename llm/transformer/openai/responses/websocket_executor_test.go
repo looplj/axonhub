@@ -201,6 +201,82 @@ func TestWebSocketStreamReportsContextCancellationWhileReadBlocks(t *testing.T) 
 	require.ErrorIs(t, stream.Err(), context.Canceled)
 }
 
+func TestWebSocketExecutorDoReturnsErrorForTopLevelErrorEvent(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type":    "error",
+			"code":    "bad_request",
+			"message": "invalid websocket request",
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	resp, err := executor.Do(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Auth:   &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body:   []byte(`{"model":"gpt-5"}`),
+	})
+
+	require.Nil(t, resp)
+	require.ErrorContains(t, err, "bad_request: invalid websocket request")
+}
+
+func TestWebSocketExecutorDoAggregatesFailedResponseEvent(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		status := "failed"
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.failed",
+			"response": map[string]any{
+				"id":         "resp_failed",
+				"object":     "response",
+				"created_at": 1700000000,
+				"model":      "gpt-5",
+				"status":     status,
+				"error": map[string]any{
+					"code":    "server_error",
+					"message": "upstream failed",
+				},
+			},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	resp, err := executor.Do(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Auth:   &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body:   []byte(`{"model":"gpt-5"}`),
+	})
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body Response
+	require.NoError(t, json.Unmarshal(resp.Body, &body))
+	require.Equal(t, "resp_failed", body.ID)
+	require.NotNil(t, body.Status)
+	require.Equal(t, "failed", *body.Status)
+	require.NotNil(t, body.Error)
+	require.Equal(t, "server_error", body.Error.Code)
+	require.Equal(t, "upstream failed", body.Error.Message)
+}
+
 func TestWebSocketExecutorReusesConnectionForSameSession(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32

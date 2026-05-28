@@ -94,6 +94,9 @@ func (e *WebSocketExecutor) Do(ctx context.Context, request *httpclient.Request)
 	if err := stream.Err(); err != nil {
 		return nil, err
 	}
+	if err := topLevelWebSocketError(chunks); err != nil {
+		return nil, err
+	}
 
 	body, _, err := AggregateStreamChunks(ctx, chunks)
 	if err != nil {
@@ -108,6 +111,32 @@ func (e *WebSocketExecutor) Do(ctx context.Context, request *httpclient.Request)
 		Body:    body,
 		Request: request,
 	}, nil
+}
+
+func topLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
+	for _, chunk := range chunks {
+		if chunk == nil || chunk.Type != string(StreamEventTypeError) {
+			continue
+		}
+
+		var event StreamEvent
+		if err := json.Unmarshal(chunk.Data, &event); err != nil {
+			return fmt.Errorf("websocket error event")
+		}
+		if event.Code != "" && event.Message != "" {
+			return fmt.Errorf("websocket error event: %s: %s", event.Code, event.Message)
+		}
+		if event.Message != "" {
+			return fmt.Errorf("websocket error event: %s", event.Message)
+		}
+		if event.Code != "" {
+			return fmt.Errorf("websocket error event: %s", event.Code)
+		}
+
+		return fmt.Errorf("websocket error event")
+	}
+
+	return nil
 }
 
 func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
