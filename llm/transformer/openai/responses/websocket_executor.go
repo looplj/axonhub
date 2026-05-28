@@ -38,6 +38,7 @@ const (
 	defaultWebSocketMaxLifetime   = 30 * time.Minute
 	defaultWebSocketMaxPoolSize   = 128
 	defaultWebSocketMaxRetainedIn = 1 << 20
+	minWebSocketCleanupDelay      = 10 * time.Millisecond
 )
 
 type WebSocketExecutor struct {
@@ -46,6 +47,7 @@ type WebSocketExecutor struct {
 
 	mu               sync.Mutex
 	pool             map[webSocketPoolKey]*pooledWebSocketConn
+	cleanupScheduled bool
 	idleTTL          time.Duration
 	maxLifetime      time.Duration
 	maxPoolSize      int
@@ -335,6 +337,7 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 		return nil, fmt.Errorf("websocket session pool is full")
 	}
 	e.pool[key] = pc
+	e.scheduleCleanupLocked(now)
 	e.mu.Unlock()
 
 	return pc, nil
@@ -389,7 +392,14 @@ func headerPoolIdentity(headers http.Header) string {
 	}
 	keys := make([]string, 0, len(headers))
 	for key := range headers {
-		keys = append(keys, http.CanonicalHeaderKey(key))
+		canonical := http.CanonicalHeaderKey(key)
+		if _, excluded := webSocketPoolIdentityExcludedHeaders[canonical]; excluded {
+			continue
+		}
+		keys = append(keys, canonical)
+	}
+	if len(keys) == 0 {
+		return ""
 	}
 	sort.Strings(keys)
 
@@ -407,6 +417,55 @@ func headerPoolIdentity(headers http.Header) string {
 	}
 
 	return hashSecret(builder.String())
+}
+
+var webSocketPoolIdentityExcludedHeaders = canonicalHeaderSet(
+	// Already represented as dedicated webSocketPoolKey fields.
+	"Authorization",
+	webSocketSessionHeader,
+	webSocketAccountIDHeader,
+	webSocketOriginatorHeader,
+	webSocketUserAgentHeader,
+	webSocketOrgHeader,
+	webSocketProjectHeader,
+	"OpenAI-Beta",
+
+	// Protocol/request-shape headers do not affect the WebSocket session identity.
+	"Accept",
+	"Cache-Control",
+	"Connection",
+
+	// Per-request observability headers must not shard the session pool.
+	"Baggage",
+	"Traceparent",
+	"Tracestate",
+	"Sentry-Trace",
+	"Uber-Trace-Id",
+	"X-Amzn-Trace-Id",
+	"X-B3-Flags",
+	"X-B3-ParentSpanId",
+	"X-B3-Sampled",
+	"X-B3-SpanId",
+	"X-B3-TraceId",
+	"X-Cloud-Trace-Context",
+	"X-Client-Request-Id",
+	"X-Codex-Turn-Metadata",
+	"X-Correlation-Id",
+	"X-Datadog-Parent-Id",
+	"X-Datadog-Sampling-Priority",
+	"X-Datadog-Trace-Id",
+	"X-Request-Id",
+	"X-Request-Start",
+	"X-Span-Id",
+	"X-Trace-Id",
+)
+
+func canonicalHeaderSet(keys ...string) map[string]struct{} {
+	set := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		set[http.CanonicalHeaderKey(key)] = struct{}{}
+	}
+	return set
 }
 
 func authPoolIdentity(auth *httpclient.AuthConfig, headers http.Header) string {
@@ -467,11 +526,82 @@ func (e *WebSocketExecutor) cleanupExpiredLocked(now time.Time) {
 		if len(pc.inFlight) > 0 {
 			continue
 		}
-		if now.Sub(lastUsedAt) > e.idleTTL || expired {
+		if expired || (e.idleTTL > 0 && now.Sub(lastUsedAt) > e.idleTTL) {
 			delete(e.pool, key)
 			pc.close()
 		}
 	}
+}
+
+func (e *WebSocketExecutor) scheduleCleanup() {
+	if e == nil {
+		return
+	}
+	e.mu.Lock()
+	e.scheduleCleanupLocked(time.Now())
+	e.mu.Unlock()
+}
+
+func (e *WebSocketExecutor) scheduleCleanupLocked(now time.Time) {
+	if e.cleanupScheduled || len(e.pool) == 0 || (e.idleTTL <= 0 && e.maxLifetime <= 0) {
+		return
+	}
+	delay := e.nextCleanupDelayLocked(now)
+	e.cleanupScheduled = true
+	time.AfterFunc(delay, e.runScheduledCleanup)
+}
+
+func (e *WebSocketExecutor) runScheduledCleanup() {
+	now := time.Now()
+	e.mu.Lock()
+	e.cleanupScheduled = false
+	e.cleanupExpiredLocked(now)
+	e.scheduleCleanupLocked(now)
+	e.mu.Unlock()
+}
+
+func (e *WebSocketExecutor) nextCleanupDelayLocked(now time.Time) time.Duration {
+	var delay time.Duration
+	for _, pc := range e.pool {
+		if pc == nil || len(pc.inFlight) > 0 {
+			continue
+		}
+		closed, lastUsedAt, expired := pc.poolState(now, e.maxLifetime)
+		if closed || expired {
+			return minWebSocketCleanupDelay
+		}
+		if e.idleTTL > 0 {
+			remaining := e.idleTTL - now.Sub(lastUsedAt)
+			if remaining <= 0 {
+				return minWebSocketCleanupDelay
+			}
+			if delay == 0 || remaining < delay {
+				delay = remaining
+			}
+		}
+		if e.maxLifetime > 0 {
+			remaining := e.maxLifetime - now.Sub(pc.createdAt)
+			if remaining <= 0 {
+				return minWebSocketCleanupDelay
+			}
+			if delay == 0 || remaining < delay {
+				delay = remaining
+			}
+		}
+	}
+	if delay <= 0 {
+		if e.idleTTL > 0 {
+			return e.idleTTL
+		}
+		if e.maxLifetime > 0 {
+			return e.maxLifetime
+		}
+		return minWebSocketCleanupDelay
+	}
+	if delay < minWebSocketCleanupDelay {
+		return minWebSocketCleanupDelay
+	}
+	return delay
 }
 
 func (e *WebSocketExecutor) evict(pc *pooledWebSocketConn) {
@@ -574,6 +704,9 @@ func (l *webSocketLease) release(evict bool) {
 			}
 		} else {
 			l.pooled.markUsed()
+			if l.owner != nil {
+				l.owner.scheduleCleanup()
+			}
 		}
 		select {
 		case <-l.pooled.inFlight:

@@ -955,6 +955,78 @@ func TestWebSocketExecutorEvictsPooledConnectionOnEarlyClose(t *testing.T) {
 	require.Equal(t, int32(2), upgrades.Load())
 }
 
+func TestHeaderPoolIdentityIgnoresPerRequestTraceHeaders(t *testing.T) {
+	base := http.Header{
+		"X-Trace-Id":           []string{"trace-1"},
+		"X-Request-Id":         []string{"request-1"},
+		"Traceparent":          []string{"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"},
+		"X-Custom-Routing":     []string{"stable"},
+		"OpenAI-Beta":          []string{WebSocketBetaHeaderValue},
+		webSocketSessionHeader: []string{"session-1"},
+	}
+	changedTrace := base.Clone()
+	changedTrace.Set("X-Trace-Id", "trace-2")
+	changedTrace.Set("X-Request-Id", "request-2")
+	changedTrace.Set("Traceparent", "00-cccccccccccccccccccccccccccccccc-dddddddddddddddd-01")
+
+	reKeyed := base.Clone()
+	reKeyed.Set("X-Custom-Routing", "other")
+
+	require.Equal(t, headerPoolIdentity(base), headerPoolIdentity(changedTrace))
+	require.NotEqual(t, headerPoolIdentity(base), headerPoolIdentity(reKeyed))
+}
+
+func TestWebSocketExecutorBackgroundCleanupClosesIdleConnections(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	connectionClosed := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		defer close(connectionClosed)
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id":         "resp_cleanup",
+				"object":     "response",
+				"created_at": 1700000000,
+				"model":      "gpt-5",
+				"status":     "completed",
+				"output":     []any{},
+			},
+		}))
+		_, _, _ = conn.ReadMessage()
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	executor.idleTTL = 20 * time.Millisecond
+	executor.maxLifetime = time.Hour
+	stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"cleanup-session"},
+		},
+		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body: []byte(`{"model":"gpt-5"}`),
+	})
+	require.NoError(t, err)
+	require.True(t, stream.Next())
+	require.Equal(t, "response.completed", stream.Current().Type)
+	require.False(t, stream.Next())
+	require.NoError(t, stream.Err())
+
+	select {
+	case <-connectionClosed:
+	case <-time.After(time.Second):
+		t.Fatal("idle websocket connection was not closed by background cleanup")
+	}
+}
+
 func TestNormalizeWebSocketEventFlattensNestedError(t *testing.T) {
 	raw := []byte(`{"type":"error","status":400,"error":{"type":"invalid_request_error","message":"bad request","param":"model","code":"bad_model"}}`)
 
