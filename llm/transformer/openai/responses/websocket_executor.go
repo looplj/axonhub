@@ -731,6 +731,9 @@ func (s *webSocketStream) Next() bool {
 	_, msg, err := s.lease.conn.ReadMessage()
 	if err != nil {
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
+			if ctxErr := s.ctx.Err(); ctxErr != nil {
+				s.setErr(ctxErr)
+			}
 			s.finish(true)
 			return false
 		}

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
@@ -154,6 +155,50 @@ func TestWebSocketStreamStopsAfterTerminalEventWithoutCloseFrame(t *testing.T) {
 	require.Equal(t, "response.completed", stream.Current().Type)
 	require.False(t, stream.Next())
 	require.NoError(t, stream.Err())
+}
+
+func TestWebSocketStreamReportsContextCancellationWhileReadBlocks(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	payloadRead := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		close(payloadRead)
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(webSocketTestContext())
+	executor := NewWebSocketExecutor(nil)
+	stream, err := executor.DoStream(ctx, &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Auth:   &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body:   []byte(`{"model":"gpt-5"}`),
+	})
+	require.NoError(t, err)
+	defer stream.Close()
+
+	<-payloadRead
+	nextResult := make(chan bool, 1)
+	go func() {
+		nextResult <- stream.Next()
+	}()
+
+	time.Sleep(10 * time.Millisecond)
+	cancel()
+
+	select {
+	case ok := <-nextResult:
+		require.False(t, ok)
+	case <-time.After(time.Second):
+		t.Fatal("stream.Next did not unblock after context cancellation")
+	}
+	require.ErrorIs(t, stream.Err(), context.Canceled)
 }
 
 func TestWebSocketExecutorReusesConnectionForSameSession(t *testing.T) {
