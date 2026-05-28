@@ -17,7 +17,13 @@ type ChannelEndpoint struct {
 	APIFormat string `json:"api_format"`
 	Path      string `json:"path,omitempty"`
 	BaseURL   string `json:"base_url,omitempty"`
+	Transport string `json:"transport,omitempty"`
 }
+
+const (
+	ChannelEndpointTransportHTTP      = "http"
+	ChannelEndpointTransportWebSocket = "websocket"
+)
 
 type (
 	ProxyType   = httpclient.ProxyType

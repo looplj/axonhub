@@ -74,12 +74,14 @@ type ChannelEndpoint {
   apiFormat: String!
   path: String
   baseURL: String
+  transport: String
 }
 
 input ChannelEndpointInput {
   apiFormat: String!
   path: String
   baseURL: String
+  transport: String
 }
 
 input SaveChannelEndpointsInput {

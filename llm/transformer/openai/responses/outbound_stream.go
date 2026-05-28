@@ -17,7 +17,7 @@ import (
 )
 
 // ErrStreamIncomplete is returned when the stream ends without a terminal event
-// (response.completed, response.failed, or response.incomplete).
+// (response.completed, response.failed, response.cancelled, or response.incomplete).
 var ErrStreamIncomplete = errors.New("stream ended without terminal event")
 
 // TransformStream transforms OpenAI Responses API SSE events to unified llm.Response stream.
@@ -530,6 +530,17 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		// Response incomplete (e.g., max tokens)
 		s.responseCompleted = true
 		finishReason := "length"
+		resp.Choices = []llm.Choice{
+			{
+				Index:        0,
+				FinishReason: &finishReason,
+			},
+		}
+
+	case StreamEventTypeResponseCancelled:
+		// Response cancelled
+		s.responseCompleted = true
+		finishReason := "cancelled"
 		resp.Choices = []llm.Choice{
 			{
 				Index:        0,

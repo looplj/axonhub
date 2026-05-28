@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -29,10 +30,14 @@ const (
 //
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
-	tokens oauth.TokenGetter
+	tokens    oauth.TokenGetter
+	transport string
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
+
+	executorMu         sync.Mutex
+	webSocketExecutors map[pipeline.Executor]*responses.WebSocketExecutor
 }
 
 var (
@@ -43,6 +48,7 @@ var (
 type Params struct {
 	TokenProvider oauth.TokenGetter
 	BaseURL       string
+	Transport     string
 }
 
 func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
@@ -61,6 +67,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	ro, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 		BaseURL:        baseURL,
 		APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
+		Transport:      params.Transport,
 	})
 	if err != nil {
 		return nil, err
@@ -68,12 +75,21 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 
 	return &OutboundTransformer{
 		tokens:            params.TokenProvider,
+		transport:         params.Transport,
 		responsesOutbound: ro,
 	}, nil
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIResponse
+}
+
+func (t *OutboundTransformer) TokenProvider() oauth.TokenGetter {
+	if t == nil {
+		return nil
+	}
+
+	return t.tokens
 }
 
 func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
@@ -213,9 +229,53 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, req *ht
 }
 
 func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	inner := executor
+	if t != nil && t.transport == responses.TransportWebSocket {
+		inner = t.customizeWebSocketExecutor(inner)
+	}
+
 	return &codexExecutor{
-		inner:       executor,
+		inner:       inner,
 		transformer: t,
+	}
+}
+
+func (t *OutboundTransformer) customizeWebSocketExecutor(executor pipeline.Executor) pipeline.Executor {
+	if !responses.ExecutorComparable(executor) {
+		return responses.NewWebSocketExecutor(executor)
+	}
+
+	t.executorMu.Lock()
+	defer t.executorMu.Unlock()
+
+	if t.webSocketExecutors == nil {
+		t.webSocketExecutors = make(map[pipeline.Executor]*responses.WebSocketExecutor)
+	}
+	if cached, ok := t.webSocketExecutors[executor]; ok {
+		return cached
+	}
+
+	webSocketExecutor := responses.NewWebSocketExecutor(executor)
+	t.webSocketExecutors[executor] = webSocketExecutor
+
+	return webSocketExecutor
+}
+
+func (t *OutboundTransformer) Stop() {
+	if t == nil {
+		return
+	}
+
+	t.executorMu.Lock()
+	executors := make([]*responses.WebSocketExecutor, 0, len(t.webSocketExecutors))
+	for _, executor := range t.webSocketExecutors {
+		executors = append(executors, executor)
+	}
+	t.webSocketExecutors = nil
+	t.executorMu.Unlock()
+
+	for _, executor := range executors {
+		_ = executor.Close()
 	}
 }
 
@@ -254,6 +314,9 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	}
 
 	if err := stream.Err(); err != nil {
+		return nil, err
+	}
+	if err := responses.TopLevelWebSocketError(chunks); err != nil {
 		return nil, err
 	}
 

@@ -278,6 +278,35 @@ func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
 		if ch != nil && ch.stopTokenProvider != nil {
 			ch.stopTokenProvider()
 		}
+		stopChannelOutbounds(ch)
+	}
+}
+
+type stoppableOutbound interface {
+	Stop()
+}
+
+func stopChannelOutbounds(ch *Channel) {
+	if ch == nil {
+		return
+	}
+
+	seen := map[stoppableOutbound]struct{}{}
+	stopOutbound := func(out transformer.Outbound) {
+		stoppable, ok := out.(stoppableOutbound)
+		if !ok || stoppable == nil {
+			return
+		}
+		if _, ok := seen[stoppable]; ok {
+			return
+		}
+		seen[stoppable] = struct{}{}
+		stoppable.Stop()
+	}
+
+	stopOutbound(ch.Outbound)
+	for _, out := range ch.Outbounds {
+		stopOutbound(out)
 	}
 }
 
@@ -662,8 +691,8 @@ func (svc *ChannelService) asyncReloadChannels() {
 }
 
 // SaveChannelEndpoints updates the endpoints field for a channel.
-// Validates that api_format values are unique and do not conflict with the
-// channel type's default endpoints.
+// Validates user-configured endpoint overrides before storing them. Runtime
+// endpoint resolution merges matching api_format entries with defaults.
 func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveChannelEndpointsInput) (*ent.Channel, error) {
 	if err := ValidateEndpoints(input.Endpoints); err != nil {
 		return nil, fmt.Errorf("invalid endpoints: %w", err)
@@ -672,15 +701,6 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 	ch, err := svc.entFromContext(ctx).Channel.Get(ctx, input.ChannelID.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel: %w", err)
-	}
-
-	defaults := DefaultEndpointsForChannelType(ch.Type)
-	for _, userEP := range input.Endpoints {
-		for _, defaultEP := range defaults {
-			if userEP.APIFormat == defaultEP.APIFormat {
-				return nil, fmt.Errorf("endpoint api_format %q conflicts with default endpoint for channel type %s", userEP.APIFormat, ch.Type)
-			}
-		}
 	}
 
 	ch, err = svc.entFromContext(ctx).Channel.UpdateOne(ch).

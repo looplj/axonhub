@@ -83,6 +83,14 @@ func (hc *HttpClient) GetNativeClient() *http.Client {
 	return hc.client
 }
 
+func (hc *HttpClient) ProxyFunc() func(*http.Request) (*url.URL, error) {
+	if hc == nil {
+		return http.ProxyFromEnvironment
+	}
+
+	return getProxyFunc(hc.proxyConfig)
+}
+
 // getProxyFunc returns a proxy function based on the proxy configuration.
 func getProxyFunc(config *ProxyConfig) func(*http.Request) (*url.URL, error) {
 	// Handle nil config (backward compatibility) - default to environment
