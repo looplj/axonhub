@@ -1077,8 +1077,12 @@ func (s *webSocketStream) Next() bool {
 			responseID := responseIDFromWebSocketEvent(msg)
 			if responseID == "" {
 				evict = true
-			} else if !s.lease.rememberTurn(responseID) {
-				evict = true
+			} else {
+				// Retaining the full input is a local cache optimization for
+				// future incremental sends. If the input exceeds the memory
+				// budget, keep the healthy WebSocket connection and let the
+				// next turn send full context instead of evicting the session.
+				s.lease.rememberTurn(responseID)
 			}
 		}
 		s.finish(evict)

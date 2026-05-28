@@ -946,6 +946,66 @@ func TestWebSocketExecutorSendsOnlyNewInputOnReusedSession(t *testing.T) {
 	require.Equal(t, int32(1), upgrades.Load())
 }
 
+func TestWebSocketExecutorKeepsConnectionWhenInputExceedsRetainedLimit(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	var upgrades atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrades.Add(1)
+
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		for i := 0; i < 2; i++ {
+			var payload map[string]any
+			if err := conn.ReadJSON(&payload); err != nil {
+				return
+			}
+			require.NotContains(t, payload, "previous_response_id")
+			input, ok := payload["input"].([]any)
+			require.True(t, ok)
+			require.Len(t, input, 1)
+
+			require.NoError(t, conn.WriteJSON(map[string]any{
+				"type": "response.completed",
+				"response": map[string]any{
+					"id":         fmt.Sprintf("resp_%d", i+1),
+					"object":     "response",
+					"created_at": 1700000000 + i,
+					"model":      "gpt-5",
+					"status":     "completed",
+					"output":     []any{},
+				},
+			}))
+		}
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	executor.maxRetainedInput = 1
+	body := []byte(`{"model":"gpt-5","input":[{"id":"large","type":"message","role":"user","content":[{"type":"input_text","text":"larger than retained limit"}]}]}`)
+
+	for i := 0; i < 2; i++ {
+		stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+			Method: http.MethodPost,
+			URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+			Headers: http.Header{
+				webSocketSessionHeader: []string{"large-input-session"},
+			},
+			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+			Body: body,
+		})
+		require.NoError(t, err)
+		require.True(t, stream.Next())
+		require.Equal(t, "response.completed", stream.Current().Type)
+		require.False(t, stream.Next())
+		require.NoError(t, stream.Err())
+		require.NoError(t, stream.Close())
+	}
+
+	require.Equal(t, int32(1), upgrades.Load())
+}
+
 func TestWebSocketExecutorReconnectsWhenInputIsNotAppendOnly(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32
