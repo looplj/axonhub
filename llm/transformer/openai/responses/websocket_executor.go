@@ -110,6 +110,11 @@ func (e *WebSocketExecutor) Do(ctx context.Context, request *httpclient.Request)
 		return nil, err
 	}
 
+	// Response-level terminal events (response.failed, response.cancelled,
+	// response.incomplete) are valid Responses API payloads, not transport
+	// failures. Keep them as HTTP 200 response objects so callers can inspect
+	// body.status/error/incomplete_details instead of retrying or disabling the
+	// channel as if the WebSocket transport failed.
 	return &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Headers: http.Header{
@@ -974,6 +979,9 @@ func (s *webSocketStream) Next() bool {
 		Data: normalizeWebSocketEvent(msg),
 	})
 	if isTerminalWebSocketEvent(typ) {
+		// Only top-level `error` events are transport failures. Response-level
+		// terminal events are yielded and then close the stream normally so the
+		// non-streaming Do path can aggregate their response object.
 		evict := terminalWebSocketEventEvicts(typ)
 		if typ == "response.completed" {
 			responseID := responseIDFromWebSocketEvent(msg)

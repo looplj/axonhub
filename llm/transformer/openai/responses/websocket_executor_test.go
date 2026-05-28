@@ -279,6 +279,88 @@ func TestWebSocketExecutorDoAggregatesFailedResponseEvent(t *testing.T) {
 	require.Equal(t, "upstream failed", body.Error.Message)
 }
 
+func TestWebSocketExecutorDoAggregatesCancelledAndIncompleteResponseEvents(t *testing.T) {
+	tests := []struct {
+		name       string
+		eventType  string
+		status     string
+		responseID string
+		response   map[string]any
+		assertBody func(*testing.T, Response)
+	}{
+		{
+			name:       "cancelled",
+			eventType:  "response.cancelled",
+			status:     "canceled",
+			responseID: "resp_cancelled",
+			response:   map[string]any{},
+		},
+		{
+			name:       "incomplete",
+			eventType:  "response.incomplete",
+			status:     "incomplete",
+			responseID: "resp_incomplete",
+			response: map[string]any{
+				"incomplete_details": map[string]any{"reason": "max_output_tokens"},
+			},
+			assertBody: func(t *testing.T, body Response) {
+				t.Helper()
+				require.NotNil(t, body.IncompleteDetails)
+				require.Equal(t, "max_output_tokens", body.IncompleteDetails.Reason)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			upgrader := websocket.Upgrader{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				conn, err := upgrader.Upgrade(w, r, nil)
+				require.NoError(t, err)
+				defer conn.Close()
+
+				var payload map[string]any
+				require.NoError(t, conn.ReadJSON(&payload))
+				response := map[string]any{
+					"id":         tt.responseID,
+					"object":     "response",
+					"created_at": 1700000000,
+					"model":      "gpt-5",
+					"status":     tt.status,
+					"output":     []any{},
+				}
+				for key, value := range tt.response {
+					response[key] = value
+				}
+				require.NoError(t, conn.WriteJSON(map[string]any{
+					"type":     tt.eventType,
+					"response": response,
+				}))
+			}))
+			defer server.Close()
+
+			executor := NewWebSocketExecutor(nil)
+			resp, err := executor.Do(webSocketTestContext(), &httpclient.Request{
+				Method: http.MethodPost,
+				URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+				Auth:   &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+				Body:   []byte(`{"model":"gpt-5"}`),
+			})
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			var body Response
+			require.NoError(t, json.Unmarshal(resp.Body, &body))
+			require.Equal(t, tt.responseID, body.ID)
+			require.NotNil(t, body.Status)
+			require.Equal(t, tt.status, *body.Status)
+			if tt.assertBody != nil {
+				tt.assertBody(t, body)
+			}
+		})
+	}
+}
+
 func TestWebSocketExecutorReusesConnectionForSameSession(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32
