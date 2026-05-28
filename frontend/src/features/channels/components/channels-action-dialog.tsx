@@ -77,7 +77,7 @@ type ResponsesTransport = 'http' | 'websocket';
 
 const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses:websocket';
 const OPENAI_RESPONSES_WEBSOCKET_BASE_URL = 'wss://api.openai.com/v1/responses##';
-const CODEX_RESPONSES_WEBSOCKET_BASE_URL = 'wss://chatgpt.com/backend-api/codex#';
+const CODEX_RESPONSES_WEBSOCKET_BASE_URL = 'wss://chatgpt.com/backend-api/codex/responses##';
 
 function getResponsesTransportFromBaseURL(baseURL?: string): ResponsesTransport {
   return baseURL?.trim().toLowerCase().startsWith('ws') ? 'websocket' : 'http';
@@ -1048,7 +1048,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         !isDuplicate
       ) {
         const currentType = selectedType || derivedChannelType;
-        const baseURL = getDefaultBaseURL(currentType);
+        const baseURL =
+          isCodexType && responsesTransport === 'websocket'
+            ? getResponsesWebSocketBaseURL('codex')
+            : getDefaultBaseURL(currentType);
         if (baseURL) {
           dataWithModels.baseURL = baseURL;
         }

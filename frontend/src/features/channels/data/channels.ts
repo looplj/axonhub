@@ -719,11 +719,13 @@ const QUERY_CHANNELS_QUERY = `
             apiFormat
             path
             baseURL
+            transport
           }
           endpoints {
             apiFormat
             path
             baseURL
+            transport
           }
           disabledAPIKeys {
             key
