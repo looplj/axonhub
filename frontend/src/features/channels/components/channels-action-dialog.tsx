@@ -85,7 +85,7 @@ function getResponsesTransportFromBaseURL(baseURL?: string): ResponsesTransport 
 
 function getResponsesTransportFromChannel(channel?: Pick<Channel, 'baseURL' | 'endpoints'>): ResponsesTransport {
   const responsesEndpoint = channel?.endpoints?.find((endpoint) => endpoint.apiFormat === OPENAI_RESPONSES);
-  if (responsesEndpoint?.transport === 'websocket') return 'websocket';
+  if (responsesEndpoint?.transport === 'http' || responsesEndpoint?.transport === 'websocket') return responsesEndpoint.transport;
   return getResponsesTransportFromBaseURL(channel?.baseURL);
 }
 
