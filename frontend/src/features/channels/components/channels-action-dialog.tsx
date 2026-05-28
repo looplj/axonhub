@@ -83,6 +83,12 @@ function getResponsesTransportFromBaseURL(baseURL?: string): ResponsesTransport 
   return baseURL?.trim().toLowerCase().startsWith('ws') ? 'websocket' : 'http';
 }
 
+function getResponsesTransportFromChannel(channel?: Pick<Channel, 'baseURL' | 'endpoints'>): ResponsesTransport {
+  const responsesEndpoint = channel?.endpoints?.find((endpoint) => endpoint.apiFormat === OPENAI_RESPONSES);
+  if (responsesEndpoint?.transport === 'websocket') return 'websocket';
+  return getResponsesTransportFromBaseURL(channel?.baseURL);
+}
+
 function getResponsesWebSocketBaseURL(channelType: ChannelType): string | undefined {
   if (channelType === 'codex') return CODEX_RESPONSES_WEBSOCKET_BASE_URL;
   if (channelType === 'openai_responses') return OPENAI_RESPONSES_WEBSOCKET_BASE_URL;
@@ -372,9 +378,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return 'openai/chat_completions';
   });
-  const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() =>
-    getResponsesTransportFromBaseURL(initialRow?.baseURL)
-  );
+  const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const [useGeminiVertex, setUseGeminiVertex] = useState(() => {
     if (initialRow) {
       return initialRow.type === 'gemini_vertex';
@@ -401,7 +405,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSelectedProvider(provider);
     const apiFormat = CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS;
     setSelectedApiFormat(apiFormat);
-    setResponsesTransport(getResponsesTransportFromBaseURL(initialRow.baseURL));
+    setResponsesTransport(getResponsesTransportFromChannel(initialRow));
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
     setUseAnthropicAws(initialRow.type === 'anthropic_aws');
     setUseKimiCoding(initialRow.type === 'moonshot_coding');

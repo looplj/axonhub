@@ -368,11 +368,13 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           apiFormat
           path
           baseURL
+          transport
         }
         endpoints {
           apiFormat
           path
           baseURL
+          transport
         }
         settings {
           extraModelPrefix
@@ -552,11 +554,13 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           apiFormat
           path
           baseURL
+          transport
         }
         endpoints {
           apiFormat
           path
           baseURL
+          transport
         }
         settings {
           extraModelPrefix
@@ -595,6 +599,7 @@ const ALL_CHANNEL_SUMMARYS_QUERY = `
         apiFormat
         path
         baseURL
+        transport
       }
       allModelEntries {
         requestModel
