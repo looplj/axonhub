@@ -854,7 +854,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       const channelType = selectedProvider === 'codex' ? 'codex' : selectedType || derivedChannelType;
       const baseURL = transport === 'websocket' ? getResponsesWebSocketBaseURL(channelType) : getDefaultBaseURL(channelType);
-      if (baseURL) {
+      if (baseURL && !isDuplicate) {
         form.setValue('baseURL', baseURL, { shouldDirty: true });
       }
     },

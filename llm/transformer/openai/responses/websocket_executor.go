@@ -251,6 +251,7 @@ type webSocketLease struct {
 }
 
 func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header, payload map[string]any) (*webSocketLease, error) {
+	originalPayload := clonePayloadMap(payload)
 	lease, err := e.acquire(ctx, request, wsURL, headers)
 	if err != nil {
 		return nil, err
@@ -263,6 +264,7 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 			return nil, err
 		}
 
+		restorePayloadMap(payload, originalPayload)
 		lease, err = e.acquire(ctx, request, wsURL, headers)
 		if err != nil {
 			return nil, err
@@ -274,6 +276,26 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 	}
 
 	return lease, nil
+}
+
+func clonePayloadMap(payload map[string]any) map[string]any {
+	if payload == nil {
+		return nil
+	}
+	clone := make(map[string]any, len(payload))
+	for key, value := range payload {
+		clone[key] = value
+	}
+	return clone
+}
+
+func restorePayloadMap(payload, original map[string]any) {
+	for key := range payload {
+		delete(payload, key)
+	}
+	for key, value := range original {
+		payload[key] = value
+	}
 }
 
 func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*webSocketLease, error) {

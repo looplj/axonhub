@@ -573,6 +573,26 @@ func TestWebSocketExecutorReconnectsForDifferentExplicitPreviousResponseID(t *te
 	require.Equal(t, int32(2), upgrades.Load())
 }
 
+func TestRestorePayloadMapRestoresMutatedPayload(t *testing.T) {
+	originalInput := []any{
+		map[string]any{"id": "user_1", "type": "message", "role": "user"},
+		map[string]any{"id": "user_2", "type": "message", "role": "user"},
+	}
+	payload := map[string]any{
+		"model": "gpt-5",
+		"input": originalInput,
+	}
+	original := clonePayloadMap(payload)
+
+	payload["input"] = []json.RawMessage{json.RawMessage(`{"id":"user_2","type":"message","role":"user"}`)}
+	payload["previous_response_id"] = "resp_1"
+	restorePayloadMap(payload, original)
+
+	require.Equal(t, "gpt-5", payload["model"])
+	require.Equal(t, originalInput, payload["input"])
+	require.NotContains(t, payload, "previous_response_id")
+}
+
 func TestWebSocketExecutorReconnectsWhenSuffixStartsWithAssistantOutput(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32
