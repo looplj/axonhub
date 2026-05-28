@@ -42,6 +42,18 @@ func TestAggregateStreamChunks(t *testing.T) {
 	}
 }
 
+func TestAggregateStreamChunks_CancelledFallbackUsesCanonicalStatus(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.cancelled", Data: []byte(`{"type":"response.cancelled","response":{"id":"resp_canceled","object":"response","created_at":1700000000,"model":"gpt-5","output":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	var body Response
+	require.NoError(t, json.Unmarshal(resultBytes, &body))
+	require.NotNil(t, body.Status)
+	require.Equal(t, "canceled", *body.Status)
+}
+
 func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 	tests := []struct {
 		name             string

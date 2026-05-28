@@ -515,19 +515,19 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 
 	case StreamEventTypeResponseFailed:
 		a.applyResponseSnapshot(ev.Response)
-		if a.status == "" {
+		if ev.Response == nil || ev.Response.Status == nil {
 			a.status = "failed"
 		}
 
 	case StreamEventTypeResponseCancelled:
 		a.applyResponseSnapshot(ev.Response)
-		if a.status == "" {
-			a.status = "cancelled"
+		if ev.Response == nil || ev.Response.Status == nil {
+			a.status = "canceled"
 		}
 
 	case StreamEventTypeResponseIncomplete:
 		a.applyResponseSnapshot(ev.Response)
-		if a.status == "" {
+		if ev.Response == nil || ev.Response.Status == nil {
 			a.status = "incomplete"
 		}
 	}

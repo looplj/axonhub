@@ -191,6 +191,33 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 	assert.Equal(t, "gpt-5-codex", body["model"])
 }
 
+func TestCodexOutbound_DoReturnsWebSocketErrorEvents(t *testing.T) {
+	ctx := context.Background()
+	accessToken := testAccessTokenWithAccountID(t)
+
+	outbound, err := NewOutboundTransformer(Params{
+		BaseURL: "https://chatgpt.com/backend-api/codex#",
+		TokenProvider: staticTokenGetter{
+			creds: &oauth.OAuthCredentials{
+				AccessToken: accessToken,
+				ExpiresAt:   time.Now().Add(time.Hour),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	request := buildCodexStreamRequest(t, ctx, outbound, false)
+	executor := outbound.CustomizeExecutor(&mockCodexExecutor{
+		streamEvents: []*httpclient.StreamEvent{
+			{Type: "error", Data: []byte(`{"type":"error","code":"bad_request","message":"invalid websocket request"}`)},
+		},
+	})
+
+	response, err := executor.Do(ctx, request)
+	require.Nil(t, response)
+	require.ErrorContains(t, err, "bad_request: invalid websocket request")
+}
+
 var _ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
 
 type mockCodexExecutor struct {

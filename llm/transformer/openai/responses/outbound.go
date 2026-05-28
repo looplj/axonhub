@@ -383,6 +383,8 @@ func (t *OutboundTransformer) transformStandardResponse(
 			choice.FinishReason = lo.ToPtr("error")
 		case "incomplete":
 			choice.FinishReason = lo.ToPtr("length")
+		case "canceled", "cancelled":
+			choice.FinishReason = lo.ToPtr("cancelled")
 		}
 	}
 

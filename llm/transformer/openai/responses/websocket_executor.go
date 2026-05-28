@@ -99,7 +99,7 @@ func (e *WebSocketExecutor) Do(ctx context.Context, request *httpclient.Request)
 	if err := stream.Err(); err != nil {
 		return nil, err
 	}
-	if err := topLevelWebSocketError(chunks); err != nil {
+	if err := TopLevelWebSocketError(chunks); err != nil {
 		return nil, err
 	}
 
@@ -118,7 +118,8 @@ func (e *WebSocketExecutor) Do(ctx context.Context, request *httpclient.Request)
 	}, nil
 }
 
-func topLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
+// TopLevelWebSocketError returns an error when collected WebSocket stream events contain a top-level protocol error.
+func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 	for _, chunk := range chunks {
 		if chunk == nil || chunk.Type != string(StreamEventTypeError) {
 			continue

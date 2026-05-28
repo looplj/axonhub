@@ -299,6 +299,9 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	if err := stream.Err(); err != nil {
 		return nil, err
 	}
+	if err := responses.TopLevelWebSocketError(chunks); err != nil {
+		return nil, err
+	}
 
 	body, _, err := e.transformer.AggregateStreamChunks(ctx, request, chunks)
 	if err != nil {
