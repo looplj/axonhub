@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -124,4 +125,41 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	executor := custom.CustomizeExecutor(nil)
 	_, ok = executor.(*responses.WebSocketExecutor)
 	require.True(t, ok)
+}
+
+func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	entChannel := client.Channel.Create().
+		SetName("Codex OAuth WebSocket Channel").
+		SetType(channel.TypeCodex).
+		SetBaseURL("wss://chatgpt.com/backend-api/codex#").
+		SetCredentials(objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{
+				AccessToken:  "access-token",
+				RefreshToken: "refresh-token",
+				ExpiresAt:    time.Now().Add(time.Hour),
+			},
+		}).
+		SetSupportedModels([]string{"gpt-5.5"}).
+		SetDefaultTestModel("gpt-5.5").
+		SetEndpoints([]objects.ChannelEndpoint{{
+			APIFormat: llm.APIFormatOpenAIResponse.String(),
+			Transport: objects.ChannelEndpointTransportWebSocket,
+		}}).
+		SaveX(ctx)
+
+	channelSvc := NewChannelServiceForTest(client)
+
+	built, err := channelSvc.buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+
+	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIResponse.String())
+	require.NoError(t, err)
+	custom, ok := outbound.(pipeline.ChannelCustomizedExecutor)
+	require.True(t, ok)
+	require.NotNil(t, custom.CustomizeExecutor(nil))
 }
