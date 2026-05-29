@@ -78,6 +78,10 @@ func tryGetTraceIDFromBody(c *gin.Context, config tracing.Config) (string, error
 func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		traceID := getTraceIDFromHeader(c, config)
+		if traceID == "" && config.OpenCodeTraceEnabled {
+			traceID = tryExtractTraceIDFromOpenCodeRequest(c)
+		}
+
 		if traceID == "" && config.ClaudeCodeTraceEnabled {
 			var err error
 
@@ -186,6 +190,18 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 	log.Debug(c.Request.Context(), "Extracted trace ID from claude code payload", log.String("trace_id", traceID))
 
 	return traceID, nil
+}
+
+// tryExtractTraceIDFromOpenCodeRequest extracts the trace ID from the OpenCode session affinity header.
+func tryExtractTraceIDFromOpenCodeRequest(c *gin.Context) string {
+	traceID := c.GetHeader("x-session-affinity")
+	if traceID == "" {
+		return ""
+	}
+
+	log.Debug(c.Request.Context(), "Extracted trace ID from opencode header", log.String("trace_id", traceID))
+
+	return traceID
 }
 
 // tryExtractTraceIDFromCodexRequest extracts the trace ID from the Codex session header.
