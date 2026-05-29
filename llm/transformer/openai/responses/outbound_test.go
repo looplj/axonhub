@@ -67,6 +67,20 @@ func TestNewOutboundTransformer(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformResponse_CanceledFinishReason(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"id":"resp_canceled","object":"response","created_at":1700000000,"status":"canceled","model":"gpt-5","output":[]}`),
+	})
+	require.NoError(t, err)
+	require.Len(t, result.Choices, 1)
+	require.NotNil(t, result.Choices[0].FinishReason)
+	require.Equal(t, "cancelled", *result.Choices[0].FinishReason)
+}
+
 func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -97,6 +111,12 @@ func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 			baseURL:  "https://api.openai.com/custom#",
 			rawURL:   true,
 			expected: "https://api.openai.com/custom/responses",
+		},
+		{
+			name:     "websocket codex base with # suffix",
+			baseURL:  "wss://chatgpt.com/backend-api/codex#",
+			rawURL:   true,
+			expected: "wss://chatgpt.com/backend-api/codex/responses",
 		},
 		{
 			name:     "raw url with explicit config",
@@ -258,6 +278,57 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoi
 	require.True(t, ok)
 	require.Equal(t, "tool_search", toolChoice["type"])
 	require.Len(t, toolChoice["tools"], 1)
+}
+
+func TestOutboundTransformer_TransformRequest_ReplaysProviderRawInputItems(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": [
+				{
+					"type": "tool_search_call",
+					"call_id": "call_search",
+					"status": "completed",
+					"arguments": {"query":"image generation","limit":10}
+				},
+				{
+					"type": "message",
+					"role": "user",
+					"content": [{"type":"input_text","text":"hello"}]
+				}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	input, ok := payload["input"].([]any)
+	require.True(t, ok)
+	require.Len(t, input, 2)
+
+	rawItem, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tool_search_call", rawItem["type"])
+	arguments, ok := rawItem["arguments"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "image generation", arguments["query"])
+	require.Equal(t, float64(10), arguments["limit"])
+
+	message, ok := input[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "message", message["type"])
 }
 
 func TestOutboundTransformer_TransformRequest_DoesNotReplayRawToolWhenToolsChanged(t *testing.T) {

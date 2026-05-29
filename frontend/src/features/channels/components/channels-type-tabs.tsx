@@ -22,10 +22,16 @@ interface GroupedTypeCount {
  */
 function groupTypesByPrefix(typeCounts: ChannelTypeCount[]): GroupedTypeCount[] {
   const groups = new Map<string, { types: string[]; totalCount: number }>();
+  // Only fold `<prefix>_<suffix>` under `<prefix>` when `<prefix>` itself is
+  // also a known channel type in this batch — otherwise the bare prefix has
+  // no i18n entry and the tab label falls back to the raw key
+  // (e.g. `opencode_go` has no sibling `opencode`, so it stays as
+  // `opencode_go`; `deepseek_anthropic` + `deepseek` still fold to `deepseek`).
+  const knownTypes = new Set(typeCounts.map(({ type }) => type));
 
   typeCounts.forEach(({ type, count }) => {
-    // Find the base prefix (before the first underscore or the whole string)
-    const prefix = type.split('_')[0];
+    const candidatePrefix = type.split('_')[0];
+    const prefix = knownTypes.has(candidatePrefix) ? candidatePrefix : type;
 
     if (!groups.has(prefix)) {
       groups.set(prefix, { types: [], totalCount: 0 });

@@ -41,6 +41,7 @@ export const channelEndpointSchema = z.object({
   apiFormat: z.string().min(1),
   path: z.string().optional(),
   baseURL: z.url('Invalid URL').optional().or(z.literal('')),
+  transport: z.enum(['http', 'websocket']).optional().or(z.literal('')),
 });
 export type ChannelEndpoint = z.infer<typeof channelEndpointSchema>;
 
@@ -693,6 +694,7 @@ export const channelSummarySchema = z.object({
   baseURL: z.string(),
   orderingWeight: z.number(),
   tags: z.array(z.string()).optional().default([]).nullable(),
+  endpoints: z.array(channelEndpointSchema).optional().default([]),
   allModelEntries: z.array(channelModelEntrySchema).optional().default([]),
 });
 export type ChannelSummary = z.infer<typeof channelSummarySchema>;

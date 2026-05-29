@@ -686,8 +686,12 @@ func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Exec
 		// Use the channel's own HTTP client, which is pre-configured with its proxy settings.
 		customizedExecutor = channel.HTTPClient
 	}
-	// 2. Allow the specific outbound transformer (e.g., for AWS signing) to further customize the client.
-	if custom, ok := channel.Outbound.(pipeline.ChannelCustomizedExecutor); ok {
+	// 2. Allow the selected outbound transformer (e.g., for AWS signing or Responses WebSocket) to further customize the client.
+	outbound := p.wrapped
+	if outbound == nil {
+		outbound = channel.Outbound
+	}
+	if custom, ok := outbound.(pipeline.ChannelCustomizedExecutor); ok {
 		return custom.CustomizeExecutor(customizedExecutor)
 	}
 

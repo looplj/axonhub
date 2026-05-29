@@ -104,12 +104,8 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   }, [open, channel.endpoints]);
 
   const usedApiFormats = useMemo(() => new Set(endpoints.map((ep) => ep.apiFormat)), [endpoints]);
-  const defaultApiFormats = useMemo(() => new Set(defaultEndpoints.map((ep) => ep.apiFormat)), [defaultEndpoints]);
 
-  const availableApiFormats = useMemo(
-    () => configurableChannelEndpointApiFormats.filter((f) => !usedApiFormats.has(f) && !defaultApiFormats.has(f)),
-    [defaultApiFormats, usedApiFormats]
-  );
+  const availableApiFormats = useMemo(() => configurableChannelEndpointApiFormats.filter((f) => !usedApiFormats.has(f)), [usedApiFormats]);
 
   const handleAddEndpoint = useCallback(() => {
     setError(null);
@@ -122,11 +118,6 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
     if (!ALLOWED_API_FORMATS.includes(newApiFormat as (typeof ALLOWED_API_FORMATS)[number])) {
       setError(t('channels.endpoints.invalidApiFormat', 'Unsupported API format'));
-      return;
-    }
-
-    if (defaultApiFormats.has(newApiFormat)) {
-      setError(t('channels.endpoints.defaultConflictError', 'Cannot override a default endpoint'));
       return;
     }
 
@@ -149,7 +140,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     setNewApiFormat('');
     setNewPath('');
     setNewBaseURL('');
-  }, [defaultApiFormats, newApiFormat, newPath, newBaseURL, usedApiFormats, t]);
+  }, [newApiFormat, newPath, newBaseURL, usedApiFormats, t]);
 
   const handleRemoveEndpoint = useCallback((apiFormat: string) => {
     setEndpoints((prev) => prev.filter((ep) => ep.apiFormat !== apiFormat));
@@ -172,12 +163,6 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
       return;
     }
 
-    const conflictingDefaultApiFormat = apiFormats.find((format) => defaultApiFormats.has(format));
-    if (conflictingDefaultApiFormat) {
-      setError(t('channels.endpoints.defaultConflictError', 'Cannot override a default endpoint'));
-      return;
-    }
-
     try {
       await saveEndpoints.mutateAsync({
         channelID: channel.id,
@@ -185,13 +170,14 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           apiFormat: ep.apiFormat,
           path: ep.path || undefined,
           baseURL: ep.baseURL || undefined,
+          transport: ep.transport || undefined,
         })),
       });
       onOpenChange(false);
     } catch {
       // error handled by hook
     }
-  }, [channel.id, defaultApiFormats, endpoints, onOpenChange, saveEndpoints, t]);
+  }, [channel.id, endpoints, onOpenChange, saveEndpoints, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

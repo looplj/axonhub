@@ -340,6 +340,7 @@ type ComplexityRoot struct {
 		APIFormat func(childComplexity int) int
 		BaseURL   func(childComplexity int) int
 		Path      func(childComplexity int) int
+		Transport func(childComplexity int) int
 	}
 
 	ChannelLimiterStats struct {
@@ -3252,6 +3253,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelEndpoint.Path(childComplexity), true
+	case "ChannelEndpoint.transport":
+		if e.complexity.ChannelEndpoint.Transport == nil {
+			break
+		}
+
+		return e.complexity.ChannelEndpoint.Transport(childComplexity), true
 
 	case "ChannelLimiterStats.capacity":
 		if e.complexity.ChannelLimiterStats.Capacity == nil {
@@ -18144,6 +18151,8 @@ func (ec *executionContext) fieldContext_Channel_endpoints(_ context.Context, fi
 				return ec.fieldContext_ChannelEndpoint_path(ctx, field)
 			case "baseURL":
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
+			case "transport":
+				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -18477,6 +18486,8 @@ func (ec *executionContext) fieldContext_Channel_defaultEndpoints(_ context.Cont
 				return ec.fieldContext_ChannelEndpoint_path(ctx, field)
 			case "baseURL":
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
+			case "transport":
+				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -19074,6 +19085,35 @@ func (ec *executionContext) _ChannelEndpoint_baseURL(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_ChannelEndpoint_baseURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelEndpoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelEndpoint_transport(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelEndpoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelEndpoint_transport,
+		func(ctx context.Context) (any, error) {
+			return obj.Transport, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelEndpoint_transport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelEndpoint",
 		Field:      field,
@@ -59609,7 +59649,7 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL"}
+	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59637,6 +59677,13 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 				return it, err
 			}
 			it.BaseURL = data
+		case "transport":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transport"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Transport = data
 		}
 	}
 
@@ -85370,6 +85417,8 @@ func (ec *executionContext) _ChannelEndpoint(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelEndpoint_path(ctx, field, obj)
 		case "baseURL":
 			out.Values[i] = ec._ChannelEndpoint_baseURL(ctx, field, obj)
+		case "transport":
+			out.Values[i] = ec._ChannelEndpoint_transport(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

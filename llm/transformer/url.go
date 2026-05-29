@@ -6,9 +6,13 @@ import (
 
 // NormalizeBaseURL normalizes the base URL for API endpoints.
 // It ensures that the URL ends with the specified version and handles special cases:
-// - URLs ending with "#" are treated as raw URLs (version not appended)
-// - Trailing slashes are removed
-// - Version is appended only if not already present.
+//   - URLs ending with "#" have the marker stripped and skip version appending.
+//     Endpoint paths such as "/responses" may still be appended later by BuildRequestURL.
+//   - Trailing slashes are removed.
+//   - Version is appended only if not already present.
+//
+// This is distinct from transformer-specific "##" handling, which enables true raw URL mode
+// where no default endpoint path is appended.
 func NormalizeBaseURL(url, version string) string {
 	if url == "" {
 		return ""

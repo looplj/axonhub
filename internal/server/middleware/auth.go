@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // WithAPIKeyAuth 中间件用于验证 API key.
@@ -55,6 +57,8 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
 		}
 
+		ctx = withSessionScopeForAPIKey(ctx, apiKey)
+
 		ctx, err = withAPIKeyPrincipal(ctx, apiKey)
 		if err != nil {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
@@ -90,6 +94,8 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 		}
 
 		ctx := contexts.WithUser(c.Request.Context(), user)
+
+		ctx = shared.WithSessionScope(ctx, "user:"+strconv.Itoa(user.ID))
 
 		ctx, err = withUserPrincipal(ctx, user)
 		if err != nil {
@@ -138,6 +144,8 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
 		}
 
+		ctx = withSessionScopeForAPIKey(ctx, apiKey)
+
 		ctx, err = withAPIKeyPrincipal(ctx, apiKey)
 		if err != nil {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
@@ -182,6 +190,8 @@ func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
 		}
 
+		ctx = withSessionScopeForAPIKey(ctx, apiKey)
+
 		ctx, err = withAPIKeyPrincipal(ctx, apiKey)
 		if err != nil {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
@@ -201,6 +211,14 @@ func WithSource(source request.Source) gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
+}
+
+func withSessionScopeForAPIKey(ctx context.Context, key *ent.APIKey) context.Context {
+	scope := "api_key:" + strconv.Itoa(key.ID)
+	if key.Edges.Project != nil {
+		scope += ":project:" + strconv.Itoa(key.Edges.Project.ID)
+	}
+	return shared.WithSessionScope(ctx, scope)
 }
 
 func withUserPrincipal(ctx context.Context, user *ent.User) (context.Context, error) {

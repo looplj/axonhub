@@ -202,6 +202,29 @@ func TestItemUnmarshalJSON_Compaction(t *testing.T) {
 	}
 }
 
+func TestItemUnmarshalJSON_AcceptsObjectArguments(t *testing.T) {
+	var item Item
+	err := json.Unmarshal([]byte(`{
+		"type": "tool_search_call",
+		"call_id": "call_123",
+		"arguments": {"query":"image generation","limit":10}
+	}`), &item)
+	require.NoError(t, err)
+	require.Equal(t, "tool_search_call", item.Type)
+	require.Equal(t, `{"query":"image generation","limit":10}`, item.Arguments)
+}
+
+func TestItemUnmarshalJSON_AcceptsStringArguments(t *testing.T) {
+	var item Item
+	err := json.Unmarshal([]byte(`{
+		"type": "function_call",
+		"call_id": "call_123",
+		"arguments": "{\"location\":\"NYC\"}"
+	}`), &item)
+	require.NoError(t, err)
+	require.Equal(t, `{"location":"NYC"}`, item.Arguments)
+}
+
 func TestInputUnmarshalJSON_ClearsConflictingRepresentation(t *testing.T) {
 	input := Input{
 		Text: lo.ToPtr("stale"),
