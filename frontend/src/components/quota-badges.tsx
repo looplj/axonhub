@@ -45,16 +45,7 @@ function getBatteryIcon(level: BatteryLevel) {
     default:
       return Battery;
   }
-  } else if (channel.type === 'openai' && channel.providerType === 'apertis') {
-    const qd = channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined;
-    // Use subscription cycle quota percentage if subscriber, otherwise PAYG token usage
-    if (qd?.is_subscriber && qd.subscription?.cycle_quota_limit) {
-      percentage = (qd.subscription.cycle_quota_used / qd.subscription.cycle_quota_limit) * 100;
-    } else if (qd?.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number') {
-      percentage = (qd.payg.token_used / qd.payg.token_total) * 100;
-    }
 }
-
 function getBatteryLevel(percentage: number, status: string): BatteryLevel {
   if (status === 'exhausted') return 'warning';
   const remaining = 100 - percentage;
@@ -124,16 +115,20 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (kwhIncluded > 0) {
       percentage = (kwhUsed / kwhIncluded) * 100;
     }
-  }
   } else if (channel.type === 'openai' && channel.providerType === 'apertis') {
-    const qd = channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined;
-    // Use subscription cycle quota percentage if subscriber, otherwise PAYG token usage
-    if (qd?.is_subscriber && qd.subscription?.cycle_quota_limit) {
-      percentage = (qd.subscription.cycle_quota_used / qd.subscription.cycle_quota_limit) * 100;
-    } else if (qd?.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number') {
-      percentage = (qd.payg.token_used / qd.payg.token_total) * 100;
-    }
+    percentage = getApertisPercentage(channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined);
+  }
   return percentage;
+}
+function getApertisPercentage(qd: ProviderApertisQuotaData | undefined): number {
+  if (!qd) return 0;
+  if (qd.is_subscriber && qd.subscription?.cycle_quota_limit) {
+    return (qd.subscription.cycle_quota_used / qd.subscription.cycle_quota_limit) * 100;
+  }
+  if (qd.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number') {
+    return (qd.payg.token_used / qd.payg.token_total) * 100;
+  }
+  return 0;
 }
 
 function ProgressBar({
@@ -175,14 +170,6 @@ function ProgressBar({
     }
     bgStyle = { backgroundColor: `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)` };
   }
-  } else if (channel.type === 'openai' && channel.providerType === 'apertis') {
-    const qd = channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined;
-    // Use subscription cycle quota percentage if subscriber, otherwise PAYG token usage
-    if (qd?.is_subscriber && qd.subscription?.cycle_quota_limit) {
-      percentage = (qd.subscription.cycle_quota_used / qd.subscription.cycle_quota_limit) * 100;
-    } else if (qd?.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number') {
-      percentage = (qd.payg.token_used / qd.payg.token_total) * 100;
-    }
 
   return (
     <div className='bg-muted/60 h-1.5 w-full overflow-hidden rounded-full'>

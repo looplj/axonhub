@@ -21,6 +21,18 @@ type apertisRoundTripFunc func(*http.Request) (*http.Response, error)
 func (f apertisRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
+// mockApertisResponse creates a mock HTTP response with the given JSON body.
+func mockApertisResponse(body string, statusCode ...int) *http.Response {
+	code := http.StatusOK
+	if len(statusCode) > 0 {
+		code = statusCode[0]
+	}
+	return &http.Response{
+		StatusCode: code,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+}
 
 func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
@@ -40,11 +52,7 @@ func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -79,11 +87,7 @@ func TestApertis_CheckQuota_WarningState(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -115,11 +119,7 @@ func TestApertis_CheckQuota_ExhaustedState(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -162,11 +162,7 @@ func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -210,11 +206,7 @@ func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -255,11 +247,7 @@ func TestApertis_CheckQuota_SubscriptionSuspended(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -290,11 +278,7 @@ func TestApertis_CheckQuota_UnlimitedTokens(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -332,11 +316,7 @@ func TestApertis_CheckQuota_MissingCredentials(t *testing.T) {
 func TestApertis_CheckQuota_MalformedJSON(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(`{invalid json`)),
-			}, nil
+			return mockApertisResponse(`{invalid json`), nil
 		}),
 	})
 
@@ -355,11 +335,7 @@ func TestApertis_CheckQuota_MalformedJSON(t *testing.T) {
 func TestApertis_CheckQuota_HTTPError(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusUnauthorized,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(`{"error": "invalid key"}`)),
-			}, nil
+			return mockApertisResponse(`{"error": "invalid key"}`, http.StatusUnauthorized), nil
 		}),
 	})
 
@@ -392,11 +368,7 @@ func TestApertis_CheckQuota_CustomBaseURL(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -429,11 +401,7 @@ func TestApertis_CheckQuota_EmptyBaseURL(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -496,11 +464,7 @@ func TestApertis_NextResetTimeParsing(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 
@@ -545,11 +509,7 @@ func TestApertis_RawDataContainsAllFields(t *testing.T) {
 				}
 			}`
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
+			return mockApertisResponse(body), nil
 		}),
 	})
 

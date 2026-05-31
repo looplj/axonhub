@@ -64,7 +64,7 @@ func (c *ApertisQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 	if apiKey == "" {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: "apertis",
+			ProviderType: ApertisProviderType,
 			Ready:        false,
 			RawData:      map[string]any{"error": "missing API key"},
 		}, nil
@@ -83,7 +83,7 @@ func (c *ApertisQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 	if err != nil {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: "apertis",
+			ProviderType: ApertisProviderType,
 			Ready:        false,
 			RawData:      map[string]any{"error": fmt.Sprintf("request failed: %v", err)},
 		}, err
@@ -92,7 +92,7 @@ func (c *ApertisQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 	if resp.StatusCode != http.StatusOK {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: "apertis",
+			ProviderType: ApertisProviderType,
 			Ready:        false,
 			RawData:      map[string]any{"error": fmt.Sprintf("HTTP %d", resp.StatusCode)},
 		}, fmt.Errorf("apertis API returned status %d", resp.StatusCode)
@@ -107,14 +107,14 @@ func (c *ApertisQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: "apertis",
+			ProviderType: ApertisProviderType,
 			Ready:        false,
 			RawData:      map[string]any{"error": fmt.Sprintf("failed to parse JSON: %v", err)},
 		}, err
 	}
 
 	quotaData := QuotaData{
-		ProviderType: "apertis",
+		ProviderType: ApertisProviderType,
 		RawData:      convertApertisResponseToMap(resp),
 	}
 
@@ -147,12 +147,12 @@ func (c *ApertisQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 func buildApertisQuotaURL(baseURL string) string {
 	schemeHost := strings.TrimSpace(baseURL)
 	if schemeHost == "" {
-		schemeHost = "https://api.apertis.ai"
+		schemeHost = ApertisDefaultBaseURL
 	}
 
 	parsed, err := url.Parse(schemeHost)
 	if err != nil {
-		return "https://api.apertis.ai/v1/dashboard/billing/credits"
+		return ApertisDefaultBaseURL + "/v1/dashboard/billing/credits"
 	}
 
 	scheme := parsed.Scheme
@@ -198,26 +198,22 @@ func determineApertisStatus(resp *ApertisBillingCreditsResponse) string {
 			if total, ok := toFloat64(resp.Payg.TokenTotal); ok {
 				if total > 0 {
 					usageRatio := resp.Payg.TokenUsed / total
-					if usageRatio >= WarningThresholdRatio {
+					if usageRatio > WarningThresholdRatio {
 						return "warning"
 					}
 				}
 			}
 		}
-
-		// Check subscription cycle usage ratio for warning
-		if resp.Subscription != nil && resp.Subscription.CycleQuotaLimit > 0 {
-			usageRatio := float64(resp.Subscription.CycleQuotaUsed) / float64(resp.Subscription.CycleQuotaLimit)
-			if usageRatio >= WarningThresholdRatio {
-				return "warning"
-			}
+	}
+	// Check subscription cycle usage ratio for warning (outside PAYG guard to handle subscribers without PAYG)
+	if resp.Subscription != nil && resp.Subscription.CycleQuotaLimit > 0 {
+		usageRatio := float64(resp.Subscription.CycleQuotaUsed) / float64(resp.Subscription.CycleQuotaLimit)
+		if usageRatio > WarningThresholdRatio {
+			return "warning"
 		}
 	}
-
 	return "available"
 }
-
-// buildApertisLimits builds the limit status list from the response.
 func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.Time) []QuotaLimitStatus {
 	var limits []QuotaLimitStatus
 
@@ -235,7 +231,7 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 				usageRatio = resp.Payg.TokenUsed / total
 				if resp.Payg.TokenUsed >= total {
 					tokenStatus = "exhausted"
-				} else if usageRatio >= WarningThresholdRatio {
+				} else if usageRatio > WarningThresholdRatio {
 					tokenStatus = "warning"
 				} else {
 					tokenStatus = "available"
@@ -264,7 +260,7 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 			usageRatio = float64(resp.Subscription.CycleQuotaUsed) / float64(resp.Subscription.CycleQuotaLimit)
 			if resp.Subscription.CycleQuotaRemaining <= 0 {
 				subStatus = "exhausted"
-			} else if usageRatio >= WarningThresholdRatio {
+			} else if usageRatio > WarningThresholdRatio {
 				subStatus = "warning"
 			} else {
 				subStatus = "available"
