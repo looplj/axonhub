@@ -3744,6 +3744,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   wafer
   synthetic
   neuralwatt
+  apertis
 }
 """
 ProviderQuotaStatusStatus is enum for the field status

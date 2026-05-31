@@ -142,6 +142,29 @@ export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
   subscription?: { kwh_included?: number | null; kwh_used?: number | null; kwh_remaining?: number | null; in_overage?: boolean | null; status?: string | null; plan?: string | null } | null;
 }
 
+export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
+  is_subscriber?: boolean;
+  payg?: {
+    account_credits?: number;
+    token_used?: number;
+    token_total?: number | string;
+    token_remaining?: number | string;
+    token_is_unlimited?: boolean;
+  };
+  subscription?: {
+    plan_type?: string;
+    status?: string;
+    cycle_quota_limit?: number;
+    cycle_quota_used?: number;
+    cycle_quota_remaining?: number;
+    cycle_start?: string;
+    cycle_end?: string;
+    payg_fallback_enabled?: boolean;
+    payg_spent_usd?: number;
+    payg_limit_usd?: number;
+  };
+}
+
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
@@ -204,12 +227,86 @@ export type ProviderQuotaChannel = {
     }
     | {
       type: 'openai'
+      providerType: 'apertis'
+      quotaStatus?: {
+        quotaData: ProviderApertisQuotaData
+      }
+    }
+    | {
+      type: 'openai'
       providerType?: undefined
       quotaStatus?: {
         quotaData: ProviderQuotaDataCommon
       }
     }
   )
+
+type QueryChannelsResponse = {
+  queryChannels: {
+    edges: Array<{
+      node: {
+        id: string;
+        name: string;
+        type: string;
+        providerQuotaStatus: {
+          status: 'available' | 'warning' | 'exhausted' | 'unknown';
+          nextResetAt: string | null;
+          ready: boolean;
+          quotaData: unknown;
+          providerType?: string;
+        };
+      };
+    }>;
+  };
+};
+
+function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][0]['node']): ProviderQuotaChannel {
+  const quotaStatus = node.providerQuotaStatus;
+  const providerType = quotaStatus?.providerType;
+  
+  const base = {
+    id: node.id,
+    name: node.name,
+    quotaStatus: {
+      status: quotaStatus.status,
+      nextResetAt: quotaStatus.nextResetAt,
+      ready: quotaStatus.ready,
+    },
+  };
+
+  if (node.type === 'claudecode') {
+    return { ...base, type: 'claudecode' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderClaudeQuotaData } };
+  }
+  if (node.type === 'codex') {
+    return { ...base, type: 'codex' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCodexQuotaData } };
+  }
+  if (node.type === 'github_copilot') {
+    return { ...base, type: 'github_copilot' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderGitHubCopilotQuotaData } };
+  }
+  if (node.type === 'nanogpt') {
+    return { ...base, type: 'nanogpt' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData } };
+  }
+  if (node.type === 'nanogpt_responses') {
+    return { ...base, type: 'nanogpt_responses' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData } };
+  }
+  if (node.type === 'openai') {
+    if (providerType === 'wafer') {
+      return { ...base, type: 'openai' as const, providerType: 'wafer' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderWaferQuotaData } };
+    }
+    if (providerType === 'synthetic') {
+      return { ...base, type: 'openai' as const, providerType: 'synthetic' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderSyntheticQuotaData } };
+    }
+    if (providerType === 'neuralwatt') {
+      return { ...base, type: 'openai' as const, providerType: 'neuralwatt' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNeuralWattQuotaData } };
+    }
+    if (providerType === 'apertis') {
+      return { ...base, type: 'openai' as const, providerType: 'apertis' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderApertisQuotaData } };
+    }
+    return { ...base, type: 'openai' as const, providerType: undefined, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
+  }
+  
+  return { ...base, type: node.type as ProviderQuotaChannel['type'], quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
+}
 
 export function useProviderQuotaStatuses() {
   const { data } = useQuery({
@@ -220,27 +317,17 @@ export function useProviderQuotaStatuses() {
           statusIn: ['enabled']
         }
       };
-      return graphqlRequest<any>(PROVIDER_QUOTA_STATUSES_QUERY, { input });
+      return graphqlRequest<QueryChannelsResponse>(PROVIDER_QUOTA_STATUSES_QUERY, { input });
     },
     refetchInterval: 60000,
     refetchIntervalInBackground: true,
   });
 
-  const channels = data?.queryChannels?.edges?.map((e: any) => e.node) || [];
+  const channels = data?.queryChannels?.edges?.map((e) => e.node) ?? [];
 
   // Filter for quota-enabled channels (any channel with providerQuotaStatus)
-  const oauthChannels = channels.filter((c: any) => c.providerQuotaStatus != null);
+  const oauthChannels = channels.filter((c) => c.providerQuotaStatus != null);
 
-  // Map to standard format - providerQuotaStatus is a single object, not an edge/node structure
-  return oauthChannels.map((channel: any): ProviderQuotaChannel => {
-    const quotaStatus = channel.providerQuotaStatus;
-    const providerType = quotaStatus?.providerType;
-    return {
-      id: channel.id,
-      name: channel.name,
-      type: channel.type,
-      ...(channel.type === 'openai' ? { providerType: providerType || undefined } : {}),
-      quotaStatus,
-    };
-  });
+  // Map to standard format
+  return oauthChannels.map(parseChannelNode);
 }
