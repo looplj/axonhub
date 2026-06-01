@@ -324,14 +324,7 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 	}
 
 	createBuilder := svc.entFromContext(ctx).Model.Create().
-		SetDeveloper(input.Developer).
-		SetModelID(input.ModelID).
-		SetIcon(input.Icon).
-		SetType(*input.Type).
-		SetName(input.Name).
-		SetGroup(input.Group).
-		SetModelCard(input.ModelCard).
-		SetSettings(input.Settings)
+		SetInput(input)
 
 	if input.Remark != nil {
 		createBuilder.SetRemark(*input.Remark)
@@ -389,14 +382,7 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 	bulk := make([]*ent.ModelCreate, len(inputs))
 	for i, input := range inputs {
 		createBuilder := svc.entFromContext(ctx).Model.Create().
-			SetDeveloper(input.Developer).
-			SetModelID(input.ModelID).
-			SetIcon(input.Icon).
-			SetType(*input.Type).
-			SetName(input.Name).
-			SetGroup(input.Group).
-			SetModelCard(input.ModelCard).
-			SetSettings(input.Settings)
+			SetInput(*input)
 
 		if input.Remark != nil {
 			createBuilder.SetRemark(*input.Remark)
