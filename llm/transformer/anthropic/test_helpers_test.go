@@ -11,6 +11,10 @@ var ignoreCacheControlOpts = []cmp.Option{
 	cmpopts.IgnoreFields(Tool{}, "CacheControl"),
 	cmpopts.IgnoreFields(MessageContentBlock{}, "CacheControl"),
 	cmpopts.IgnoreFields(SystemPromptPart{}, "CacheControl"),
+	// MessageContent.Raw is an internal byte-passthrough escape hatch used to
+	// survive unknown-field round-trips (e.g. *_tool_result.content entries).
+	// Its formatting is not part of semantic equality.
+	cmpopts.IgnoreFields(MessageContent{}, "Raw"),
 }
 
 // ignoreCacheControlWithNormalize 在忽略 cache_control 的基础上，
