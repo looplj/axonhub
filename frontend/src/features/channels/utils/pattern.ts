@@ -14,29 +14,41 @@ function containsRegexChars(pattern: string): boolean {
   return REGEX_SPECIAL_CHARS_RE.test(pattern);
 }
 
+// The channel UI documents only (?i) for case-insensitive model filters.
+// Leave other regexp2 inline modifiers to backend-only/API usage so preview
+// validation does not imply broader UI support than intended for model IDs.
+const SUPPORTED_INLINE_MODIFIER_FLAGS = new Set(['i']);
+
 /**
- * Adds ^ prefix and $ suffix if not already present (accounting for common inline
- * modifier groups like (?i), (?m), (?s) that may precede the anchor).
+ * Compiles a pattern after translating backend-style leading inline modifiers
+ * like (?i) into JavaScript RegExp flags.
  */
-function ensureAnchored(pattern: string): string {
-  const { modifier, body } = splitInlineModifier(pattern);
+function compilePattern(pattern: string): RegExp {
+  const { flags, body } = splitInlineModifier(pattern);
   const normalizedBody = body.replace(/^\^/, '').replace(/\$$/, '');
-  return `${modifier}^(?:${normalizedBody})$`;
+  return new RegExp(`^(?:${normalizedBody})$`, flags);
 }
 
-function splitInlineModifier(pattern: string): { modifier: string; body: string } {
-  const match = pattern.match(/^\(\?([a-z]+)\)/);
-  if (!match) {
-    return { modifier: '', body: pattern };
+function splitInlineModifier(pattern: string): { flags: string; body: string } {
+  if (!pattern.startsWith('(?')) {
+    return { flags: '', body: pattern };
   }
 
-  if (/[ :=!<]/.test(match[1])) {
-    return { modifier: '', body: pattern };
+  const end = pattern.indexOf(')');
+  if (end <= 2) {
+    return { flags: '', body: pattern };
   }
 
+  const modifier = pattern.slice(2, end);
+  const hasUnsupportedModifier = [...modifier].some((flag) => !SUPPORTED_INLINE_MODIFIER_FLAGS.has(flag));
+  if (!/^[a-z]+$/.test(modifier) || hasUnsupportedModifier) {
+    return { flags: '', body: pattern };
+  }
+
+  const flags = [...new Set(modifier)].join('');
   return {
-    modifier: match[0],
-    body: pattern.slice(match[0].length),
+    flags,
+    body: pattern.slice(end + 1),
   };
 }
 
@@ -52,7 +64,20 @@ export function matchesModelPattern(model: string, pattern: string): boolean {
   }
 
   try {
-    return new RegExp(ensureAnchored(pattern)).test(model);
+    return compilePattern(pattern).test(model);
+  } catch {
+    return false;
+  }
+}
+
+export function isValidModelPattern(pattern: string): boolean {
+  if (!pattern) return true;
+  if (pattern === '*') return true;
+  if (!containsRegexChars(pattern)) return true;
+
+  try {
+    compilePattern(pattern);
+    return true;
   } catch {
     return false;
   }

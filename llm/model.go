@@ -390,6 +390,40 @@ type Message struct {
 
 	// Copilot-only: X-Initiator quota tracking. Ignored by other providers.
 	Attribution string `json:"attribution,omitempty"`
+
+	// InlineToolResults carries assistant-inlined tool results (e.g. Anthropic
+	// *_tool_result blocks produced during a server-side tool turn). Downstream
+	// inbound transformers that can represent inline tool outputs (OpenAI
+	// Responses function_call_output, Anthropic *_tool_result content block)
+	// should emit them in place; others (OpenAI Chat Completions, plain text
+	// UIs) can safely drop the field.
+	InlineToolResults []InlineToolResult `json:"inline_tool_results,omitempty"`
+}
+
+// InlineToolResult represents a tool result that is emitted inline within the
+// assistant turn, rather than as a separate tool-role message. Used to carry
+// Anthropic server-side tool results (web_search_tool_result,
+// code_execution_tool_result, mcp_tool_result, ...) without losing the
+// information that is otherwise not representable in OpenAI Chat Completions
+// format. OpenAI Responses inbound transformers may render these as
+// `function_call_output` output items.
+type InlineToolResult struct {
+	// ToolCallID is the originating *_tool_use id this result corresponds to.
+	ToolCallID string `json:"tool_call_id,omitempty"`
+
+	// Output is a best-effort text serialization of the tool result content,
+	// suitable for OpenAI Responses `function_call_output.output`.
+	Output string `json:"output,omitempty"`
+
+	// IsError indicates that the tool result represents an error.
+	IsError bool `json:"is_error,omitempty"`
+
+	// TransformerMetadata carries provider-specific fields. Anthropic uses:
+	//   anthropic_type                 — original block type (e.g.
+	//                                    "web_search_tool_result")
+	//   anthropic_caller               — raw JSON caller object (optional)
+	//   anthropic_tool_result_content  — raw JSON of the original content
+	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 }
 
 // Annotation represents a citation or reference annotation in a message.

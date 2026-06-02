@@ -495,6 +495,10 @@ func TestTransformRequest_Integration(t *testing.T) {
 			name:        "parallel2 multiple tool request",
 			requestFile: `anthropic-parallel2_multiple_tool.request.json`,
 		},
+		{
+			name:        "server_tool_use web_search request",
+			requestFile: `anthropic-server-tool.request.json`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -719,6 +723,10 @@ func TestTransformResponse_Integration(t *testing.T) {
 			requestFile:  `anthropic-cache-usage.response.json`,
 			expectedFile: `anthropic-cache-usage.response.json`,
 		},
+		// Note: anthropic-server-tool.response.json is covered by the
+		// dedicated TestAnthropicResponse_RoundTrip_ServerToolUse test, which
+		// tolerates the cosmetic differences (input JSON whitespace,
+		// ServiceTier on Usage) that this strict table does not.
 	}
 
 	for _, tt := range tests {
