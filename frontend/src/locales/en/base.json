@@ -159,6 +159,7 @@
   "common.errors.duplicateName": "Name '{{value}}' already exists. Please choose a different name.",
   "common.errors.duplicateKey": "This item already exists. Please use different values.",
   "common.errors.notFound": "{{resource}} not found",
+  "common.errors.resourceFallback": "Resource",
   "common.errors.forbidden": "You don't have permission to perform this action",
   "common.success.duplicated": "Duplicated successfully",
   "common.success.copiedToClipboard": "Copied to clipboard!",

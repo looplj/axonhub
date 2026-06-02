@@ -201,6 +201,7 @@
   "common.errors.duplicateName": "名称 '{{value}}' 已存在，请选择其他名称。",
   "common.errors.duplicateKey": "该项已存在，请使用不同的值。",
   "common.errors.notFound": "{{resource}} 未找到",
+  "common.errors.resourceFallback": "资源",
   "common.errors.forbidden": "您没有权限执行此操作",
   "common.success.duplicated": "复制成功",
   "common.success.copiedToClipboard": "已复制到剪贴板！",
