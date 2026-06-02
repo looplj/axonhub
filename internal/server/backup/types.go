@@ -190,9 +190,10 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 }
 
 const (
-	BackupVersion   = "1.2"
+	BackupVersion   = "1.3"
 	BackupVersionV1 = "1.0"
 	BackupVersionV2 = "1.1"
+	BackupVersionV3 = "1.2"
 )
 
 type BackupOptions struct {
@@ -202,6 +203,7 @@ type BackupOptions struct {
 	IncludeAPIKeys     bool
 	IncludeModelPrices bool
 	IncludeUsageStats  bool
+	IncludeRequestLogs bool
 }
 
 type ConflictStrategy string
@@ -219,6 +221,7 @@ type RestoreOptions struct {
 	IncludeAPIKeys             bool
 	IncludeModelPrices         bool
 	IncludeUsageStats          bool
+	IncludeRequestLogs         bool
 	ProjectConflictStrategy    ConflictStrategy
 	ChannelConflictStrategy    ConflictStrategy
 	ModelConflictStrategy      ConflictStrategy
