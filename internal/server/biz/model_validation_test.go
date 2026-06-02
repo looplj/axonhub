@@ -721,7 +721,9 @@ func TestModelService_CreateModel_WithRegexValidation(t *testing.T) {
 			ModelID:   "test-model",
 			Type:      lo.ToPtr(model.TypeChat),
 			Name:      "Test Model",
+			Icon:      "DeepSeek",
 			Group:     "test-group",
+			ModelCard: &objects.ModelCard{},
 			Settings: &objects.ModelSettings{
 				Associations: []*objects.ModelAssociation{
 					{
@@ -746,7 +748,9 @@ func TestModelService_CreateModel_WithRegexValidation(t *testing.T) {
 			ModelID:   "invalid-model",
 			Type:      lo.ToPtr(model.TypeChat),
 			Name:      "Invalid Model",
+			Icon:      "DeepSeek",
 			Group:     "test-group",
+			ModelCard: &objects.ModelCard{},
 			Settings: &objects.ModelSettings{
 				Associations: []*objects.ModelAssociation{
 					{
@@ -764,6 +768,72 @@ func TestModelService_CreateModel_WithRegexValidation(t *testing.T) {
 		require.Nil(t, model)
 		require.Contains(t, err.Error(), "invalid regex pattern")
 	})
+}
+
+func TestModelService_CreateModel_DefaultsTypeToChat(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+	svc := &ModelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	createdModel, err := svc.CreateModel(ctx, ent.CreateModelInput{
+		Developer: "test-dev",
+		ModelID:   "test-model",
+		Name:      "Test Model",
+		Icon:      "DeepSeek",
+		Group:     "test-group",
+		ModelCard: &objects.ModelCard{},
+		Settings:  &objects.ModelSettings{},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, createdModel)
+	require.Equal(t, model.TypeChat, createdModel.Type)
+}
+
+func TestModelService_BulkCreateModels_DefaultsTypeToChat(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+	svc := &ModelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	createdModels, err := svc.BulkCreateModels(ctx, []*ent.CreateModelInput{
+		{
+			Developer: "test-dev",
+			ModelID:   "test-model-a",
+			Name:      "Test Model A",
+			Icon:      "DeepSeek",
+			Group:     "test-group",
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+		},
+		{
+			Developer: "test-dev",
+			ModelID:   "test-model-b",
+			Name:      "Test Model B",
+			Icon:      "DeepSeek",
+			Group:     "test-group",
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createdModels, 2)
+	require.Equal(t, model.TypeChat, createdModels[0].Type)
+	require.Equal(t, model.TypeChat, createdModels[1].Type)
 }
 
 func TestModelService_UpdateModel_WithRegexValidation(t *testing.T) {
@@ -785,7 +855,10 @@ func TestModelService_UpdateModel_WithRegexValidation(t *testing.T) {
 		ModelID:   "test-model",
 		Type:      lo.ToPtr(model.TypeChat),
 		Name:      "Test Model",
+		Icon:      "DeepSeek",
 		Group:     "test-group",
+		ModelCard: &objects.ModelCard{},
+		Settings:  &objects.ModelSettings{},
 	})
 	require.NoError(t, err)
 
