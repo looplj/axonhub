@@ -61,7 +61,7 @@ func NewEntClient(cfg Config) *ent.Client {
 	opts = append(opts, ent.Driver(drv))
 	client := ent.NewClient(opts...)
 
-	if !cfg.DisableSchemaInit {
+	if !cfg.DisableAutoMigration {
 		err = client.Schema.Create(
 			context.Background(),
 			migrate.WithGlobalUniqueID(false),
