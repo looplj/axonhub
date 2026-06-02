@@ -37,6 +37,16 @@ func TestSplitAutoReasoningEffortModel(t *testing.T) {
 			wantNormalized: true,
 		},
 		{
+			name:           "ignores qwen max model",
+			model:          "qwen3.7-max",
+			wantNormalized: false,
+		},
+		{
+			name:           "ignores namespaced qwen max model",
+			model:          "qwen/qwen3-max",
+			wantNormalized: false,
+		},
+		{
 			name:           "supports uppercase suffix",
 			model:          "gpt-5.4-HIGH",
 			wantBaseModel:  "gpt-5.4",
@@ -110,6 +120,17 @@ func TestAutoReasoningEffortMiddleware_OnInboundLlmRequest(t *testing.T) {
 			},
 			wantModel:  "gpt-5.4",
 			wantEffort: "max",
+		},
+		{
+			name: "enabled setting keeps qwen max model unchanged",
+			settings: biz.SystemModelSettings{
+				AutoReasoningEffort: true,
+			},
+			request: &llm.Request{
+				Model: "qwen3.7-max",
+			},
+			wantModel:  "qwen3.7-max",
+			wantEffort: "",
 		},
 		{
 			name: "suffix reasoning effort overrides explicit request value",
