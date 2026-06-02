@@ -7,5 +7,7 @@ bindings:
     type: string
   DecimalInput:
     type: string
+  Time:
+    type: string
 optional: pointer_omitempty
 use_struct_references: true

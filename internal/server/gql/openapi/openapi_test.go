@@ -3,6 +3,9 @@ package openapi
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -158,9 +161,13 @@ func setupOpenAPI(t *testing.T, serviceAccountScopes []string) (*mutationResolve
 		Ent: client,
 	})
 
+	systemSvc := biz.NewSystemService(biz.SystemServiceParams{Ent: client})
+	quotaSvc := biz.NewQuotaService(client, systemSvc)
+
 	resolver := &Resolver{
 		apiKeyService:                apiKeySvc,
 		apiKeyProfileTemplateService: tmplSvc,
+		quotaService:                 quotaSvc,
 	}
 
 	// Real call ctx: API key principal, no privacy bypass.
@@ -335,4 +342,219 @@ func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_MissingReadScopeDenied(t *tes
 		APIKeyID:   objects.GUID{ID: fx.targetKey.ID},
 	})
 	require.Error(t, err)
+}
+
+// setKeyQuotaProfile gives an API key a single "Default" profile carrying an
+// all-time quota, written through a privacy-bypass context (same pattern the
+// fixtures use). It lets the quota-usage tests exercise a key that actually has
+// a quota to report.
+func setKeyQuotaProfile(t *testing.T, client *ent.Client, keyID int) {
+	t.Helper()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	reqs := int64(100)
+	tokens := int64(1000)
+
+	_, err := client.APIKey.UpdateOneID(keyID).
+		SetProfiles(&objects.APIKeyProfiles{
+			ActiveProfile: "Default",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "Default",
+					Quota: &objects.APIKeyQuota{
+						Requests:    &reqs,
+						TotalTokens: &tokens,
+						Period: objects.APIKeyQuotaPeriod{
+							Type: objects.APIKeyQuotaPeriodTypeAllTime,
+						},
+					},
+				},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_ByID(t *testing.T) {
+	mr, fx, ctx, client := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+	setKeyQuotaProfile(t, client, fx.targetKey.ID)
+
+	qr := &queryResolver{mr.Resolver}
+
+	got, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "Default", got[0].ProfileName)
+	require.NotNil(t, got[0].Quota)
+	require.NotNil(t, got[0].Usage)
+	// No usage_log rows → zero usage.
+	require.Equal(t, 0, got[0].Usage.RequestCount)
+	require.Equal(t, 0, got[0].Usage.TotalTokens)
+	require.True(t, got[0].Usage.TotalCost.IsZero())
+	require.NotNil(t, got[0].Window)
+	// all_time window: open start, end = now.
+	require.Nil(t, got[0].Window.Start)
+	require.NotNil(t, got[0].Window.End)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_ByKey(t *testing.T) {
+	mr, fx, ctx, client := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+	setKeyQuotaProfile(t, client, fx.targetKey.ID)
+
+	qr := &queryResolver{mr.Resolver}
+
+	keyVal := fx.targetKey.Key
+
+	got, err := qr.APIKeyQuotaUsages(ctx, nil, &keyVal)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "Default", got[0].ProfileName)
+}
+
+// A key whose profiles carry no quota returns an empty (non-nil) list.
+func TestOpenAPIResolver_APIKeyQuotaUsages_NoQuotaReturnsEmpty(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	// targetKey fixture has a "Default" profile without quota.
+	got, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Empty(t, got)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_CrossProjectDenied_ByID(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	// Foreign-project key id is filtered out by the privacy project boundary.
+	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.otherKey.ID}, nil)
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_CrossProjectDenied_ByKey(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	// Same boundary applies to plaintext-key lookup: the foreign key is invisible,
+	// so existence is not leaked (uniform NotFound).
+	otherVal := fx.otherKey.Key
+
+	_, err := qr.APIKeyQuotaUsages(ctx, nil, &otherVal)
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_MissingReadScopeDenied(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeWriteAPIKeys), // 缺 read
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil)
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_RequiresExactlyOneArg(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	// Neither provided.
+	_, err := qr.APIKeyQuotaUsages(ctx, nil, nil)
+	require.Error(t, err)
+
+	// Both provided.
+	keyVal := fx.targetKey.Key
+	_, err = qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, &keyVal)
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_InvalidGUIDType(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	// A GUID of the wrong type must be rejected before any DB lookup.
+	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: "Channel", ID: fx.targetKey.ID}, nil)
+	require.Error(t, err)
+}
+
+// newOpenAPIGraphqlHandler wires the real production handler (NewGraphqlHandlers)
+// around an in-memory ent client, so transport-level behavior is tested as
+// shipped — not a test-local server config.
+func newOpenAPIGraphqlHandler(t *testing.T) *GraphqlHandler {
+	t.Helper()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent_handler?mode=memory&_fk=1")
+	t.Cleanup(func() { _ = client.Close() })
+
+	cacheCfg := xcache.Config{Mode: xcache.ModeMemory}
+
+	projectSvc := &biz.ProjectService{
+		ProjectCache: xcache.NewFromConfig[xcache.Entry[ent.Project]](cacheCfg),
+	}
+
+	apiKeySvc := biz.NewAPIKeyService(biz.APIKeyServiceParams{
+		CacheConfig:    cacheCfg,
+		Ent:            client,
+		ProjectService: projectSvc,
+		KeyPrefix:      "ah",
+	})
+	t.Cleanup(apiKeySvc.Stop)
+
+	tmplSvc := biz.NewAPIKeyProfileTemplateService(biz.APIKeyProfileTemplateServiceParams{Ent: client})
+	systemSvc := biz.NewSystemService(biz.SystemServiceParams{Ent: client})
+	quotaSvc := biz.NewQuotaService(client, systemSvc)
+
+	return NewGraphqlHandlers(Dependencies{
+		Ent:                          client,
+		APIKeyService:                apiKeySvc,
+		APIKeyProfileTemplateService: tmplSvc,
+		QuotaService:                 quotaSvc,
+	})
+}
+
+// Regression: the OpenAPI GraphQL endpoint must reject GET so a plaintext `key`
+// lookup variable can never travel in the URL. POST must keep working.
+func TestOpenAPIHandler_RejectsGET(t *testing.T) {
+	h := newOpenAPIGraphqlHandler(t)
+
+	// GET carrying an operation in the query string → no transport matches →
+	// gqlgen replies 400 "transport not supported".
+	getRec := httptest.NewRecorder()
+	getReq := httptest.NewRequest(http.MethodGet, "/openapi/v1/graphql?query=%7B__typename%7D", nil)
+	h.Graphql.ServeHTTP(getRec, getReq)
+
+	require.Equal(t, http.StatusBadRequest, getRec.Code, "GET must be rejected at the transport layer")
+	require.Contains(t, getRec.Body.String(), "transport not supported")
+
+	// POST is still served (we only removed GET): a no-auth introspection of the
+	// Query root type succeeds at the transport layer (200, no transport error).
+	postRec := httptest.NewRecorder()
+	postReq := httptest.NewRequest(http.MethodPost, "/openapi/v1/graphql", strings.NewReader(`{"query":"{ __typename }"}`))
+	postReq.Header.Set("Content-Type", "application/json")
+	h.Graphql.ServeHTTP(postRec, postReq)
+
+	require.Equal(t, http.StatusOK, postRec.Code)
+	require.NotContains(t, postRec.Body.String(), "transport not supported")
+	require.Contains(t, postRec.Body.String(), "Query")
 }

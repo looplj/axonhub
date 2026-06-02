@@ -111,6 +111,48 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 	}, nil
 }
 
+// ProfileQuotaUsage is the per-profile quota usage of an API key, shared by the
+// admin and OpenAPI GraphQL resolvers so the "iterate profiles → GetQuota" logic
+// lives in one place.
+type ProfileQuotaUsage struct {
+	ProfileName string
+	Quota       *objects.APIKeyQuota
+	Window      QuotaWindow
+	Usage       QuotaUsage
+}
+
+// ProfileQuotaUsages returns the realtime quota usage for every profile on the
+// given API key that has a quota configured. The caller is responsible for
+// loading the key (and thereby applying authorization); this method only reads
+// usage aggregates for the key's id.
+func (s *QuotaService) ProfileQuotaUsages(ctx context.Context, apiKey *ent.APIKey) ([]ProfileQuotaUsage, error) {
+	if apiKey.Profiles == nil || len(apiKey.Profiles.Profiles) == 0 {
+		return nil, nil
+	}
+
+	out := make([]ProfileQuotaUsage, 0, len(apiKey.Profiles.Profiles))
+
+	for _, p := range apiKey.Profiles.Profiles {
+		if p.Quota == nil {
+			continue
+		}
+
+		res, err := s.GetQuota(ctx, apiKey.ID, p.Quota)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, ProfileQuotaUsage{
+			ProfileName: p.Name,
+			Quota:       p.Quota,
+			Window:      res.Window,
+			Usage:       res.Usage,
+		})
+	}
+
+	return out, nil
+}
+
 func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *objects.APIKeyQuota) (QuotaResult, error) {
 	if quota == nil {
 		return QuotaResult{}, nil
