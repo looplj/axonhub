@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	maxImageBodySize        = 20 * 1024 * 1024
-	defaultMaxImageFileSize = 4 * 1024 * 1024
-	maxImageCount           = 10
+	defaultMaxImageFileSize = 50 * 1024 * 1024
+	maxImageCount           = 16
+	maxImageBodySize        = defaultMaxImageFileSize*maxImageCount + 16*1024*1024
 )
 
 var maxImageFileSize = initMaxImageFileSize()

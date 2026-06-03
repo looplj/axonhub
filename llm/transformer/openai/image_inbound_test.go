@@ -238,6 +238,31 @@ func TestImageInboundTransformer_TransformRequest_Edit_Multipart_MixedImageField
 	assert.Len(t, llmReq.Image.Images, 2)
 }
 
+func TestImageInboundTransformer_TransformRequest_Edit_Multipart_AcceptsImageAboveLegacy4MBLimit(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	imageData := bytes.Repeat([]byte{0x89}, 5*1024*1024)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	require.NoError(t, writer.WriteField("prompt", "edit image"))
+	addFilePart(t, writer, "image", "large.png", "image/png", imageData)
+	require.NoError(t, writer.Close())
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{writer.FormDataContentType()}},
+		Body:    body.Bytes(),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.Image)
+	require.Len(t, llmReq.Image.Images, 1)
+	assert.Len(t, llmReq.Image.Images[0], len(imageData))
+}
+
 func TestImageInboundTransformer_TransformResponse_ToImagesResponse(t *testing.T) {
 	inbound := NewImageGenerationInboundTransformer()
 
