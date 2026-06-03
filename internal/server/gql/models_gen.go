@@ -546,6 +546,10 @@ type UpdateQuotaEnforcementSettingsInput struct {
 	Mode    *biz.QuotaEnforcementMode `json:"mode,omitempty"`
 }
 
+type UpdateSecuritySettingsInput struct {
+	BlockedIPs []string `json:"blockedIPs,omitempty"`
+}
+
 type UpdateUserAgentPassThroughSettingsInput struct {
 	Enabled bool `json:"enabled"`
 }

@@ -109,6 +109,10 @@ const (
 	// SystemKeyQuotaEnforcementSettings is the key used to store the quota enforcement settings.
 	// The value is JSON-encoded QuotaEnforcementSettings struct.
 	SystemKeyQuotaEnforcementSettings = "quota_enforcement_settings"
+
+	// SystemKeySecuritySettings is the key used to store security settings.
+	// The value is JSON-encoded SecuritySettings struct.
+	SystemKeySecuritySettings = "security_settings"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -198,6 +202,12 @@ type QuotaEnforcementSettings struct {
 	Enabled bool `json:"enabled"`
 	// Mode defines how quota is enforced.
 	Mode QuotaEnforcementMode `json:"mode"`
+}
+
+// SecuritySettings represents system-wide request access controls.
+type SecuritySettings struct {
+	// BlockedIPs contains IP addresses or CIDR ranges that cannot use external APIs.
+	BlockedIPs []string `json:"blocked_ips"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -1534,6 +1544,79 @@ func (s *SystemService) SetQuotaEnforcementSettings(ctx context.Context, setting
 	}
 
 	return s.setSystemValue(ctx, SystemKeyQuotaEnforcementSettings, string(jsonBytes))
+}
+
+// SecuritySettings retrieves the security settings.
+func (s *SystemService) SecuritySettings(ctx context.Context) (*SecuritySettings, error) {
+	value, err := s.getSystemValue(ctx, SystemKeySecuritySettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultSecuritySettings), nil
+		}
+
+		return nil, fmt.Errorf("failed to get security settings: %w", err)
+	}
+
+	var settings SecuritySettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal security settings: %w", err)
+	}
+
+	normalizeSecuritySettings(&settings)
+
+	return &settings, nil
+}
+
+// SecuritySettingsOrDefault retrieves the security settings or returns the default.
+func (s *SystemService) SecuritySettingsOrDefault(ctx context.Context) *SecuritySettings {
+	settings, err := s.SecuritySettings(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to get security settings", log.Cause(err))
+
+		return lo.ToPtr(defaultSecuritySettings)
+	}
+
+	return settings
+}
+
+// SetSecuritySettings sets the security settings.
+func (s *SystemService) SetSecuritySettings(ctx context.Context, settings SecuritySettings) error {
+	normalizeSecuritySettings(&settings)
+
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal security settings: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeySecuritySettings, string(jsonBytes))
+}
+
+func normalizeSecuritySettings(settings *SecuritySettings) {
+	if settings == nil {
+		return
+	}
+
+	if settings.BlockedIPs == nil {
+		settings.BlockedIPs = []string{}
+	}
+
+	seen := make(map[string]struct{}, len(settings.BlockedIPs))
+	blockedIPs := make([]string, 0, len(settings.BlockedIPs))
+	for _, value := range settings.BlockedIPs {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+
+		if _, ok := seen[value]; ok {
+			continue
+		}
+
+		seen[value] = struct{}{}
+		blockedIPs = append(blockedIPs, value)
+	}
+
+	settings.BlockedIPs = blockedIPs
 }
 
 // UpdateAutoBackupLastRun updates the last backup timestamp and error status.
