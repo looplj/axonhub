@@ -110,6 +110,8 @@ export const channelTypeSchema = z.enum([
   'opencode_go',
   'opencode_go_anthropic',
   'ollama',
+  'evolink',
+  'evolink_anthropic',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
