@@ -436,7 +436,7 @@ func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
 // convertModelToOpenAIExtended transforms an ent.Model to OpenAIModel with extended metadata fields.
 // It safely handles nil ModelCard, Cost, and Limit fields.
 // The include set specifies which optional fields to populate. If nil or empty, all fields are populated.
-// Supported field names: name, description, context_length, max_output_tokens, modalities, capabilities, pricing, icon, type
+// Supported field names: name, description, context_length, max_output_tokens, modalities, capabilities, pricing, icon, type.
 func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIModel {
 	result := OpenAIModel{
 		ID:      m.ModelID,
@@ -474,9 +474,17 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 	if m.ModelCard != nil {
 		// Modalities, Capabilities, ContextLength, MaxOutputTokens, Pricing come from ModelCard
 		if shouldInclude("modalities") {
+			input := m.ModelCard.Modalities.Input
+			if input == nil {
+				input = []string{}
+			}
+			output := m.ModelCard.Modalities.Output
+			if output == nil {
+				output = []string{}
+			}
 			result.Modalities = &Modalities{
-				Input:  m.ModelCard.Modalities.Input,
-				Output: m.ModelCard.Modalities.Output,
+				Input:  input,
+				Output: output,
 			}
 		}
 		if shouldInclude("capabilities") {
