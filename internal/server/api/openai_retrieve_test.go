@@ -242,10 +242,10 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsEmptyModalitiesWhenZeroValue(t *tes
 		SetGroup("gpt").
 		SetIcon("openai").
 		SetModelCard(&objects.ModelCard{
-			Vision: true,
+			Vision:   true,
 			ToolCall: true,
-			Limit:  objects.ModelCardLimit{Context: 200000, Output: 8192},
-			Cost:   objects.ModelCardCost{Input: 2, Output: 8},
+			Limit:    objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:     objects.ModelCardCost{Input: 2, Output: 8},
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
@@ -554,7 +554,7 @@ func TestOpenAIHandlers_ListModels_ExtendedModeRespectsAPIKeyProfile(t *testing.
 	})
 
 	handlers := &OpenAIHandlers{
-		ModelService:  biz.NewModelService(biz.ModelServiceParams{
+		ModelService: biz.NewModelService(biz.ModelServiceParams{
 			ChannelService: channelSvc,
 			SystemService:  systemSvc,
 			Ent:            client,
@@ -622,7 +622,7 @@ func TestOpenAIHandlers_ListModels_ExtendedModeFallsBackToBasicForMissingDBModel
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{{
-				Type: "channel_model",
+				Type:         "channel_model",
 				ChannelModel: &objects.ChannelModelAssociation{ChannelID: openaiCh.ID, ModelID: "gpt-4.1"},
 			}},
 		}).
