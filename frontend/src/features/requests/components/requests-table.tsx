@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -14,15 +14,15 @@ import {
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
-import type { DateTimeRangeValue } from '@/utils/date-range';
 import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
-import { useRequestsColumns } from './requests-columns';
 import { RequestBodyDrawer } from './request-body-drawer';
+import { useRequestsColumns } from './requests-columns';
 
 const MotionTableRow = motion.create(TableRow);
 
@@ -43,21 +43,38 @@ interface RequestsTableProps {
   sourceFilter: string[];
   channelFilter: string[];
   apiKeyFilter: string[];
+  modelIDFilter: string;
   dateRange?: DateTimeRangeValue;
   queryWhere?: Record<string, any>;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
-  onStatusFilterChange: (filters: string[]) => void;
-  onSourceFilterChange: (filters: string[]) => void;
-  onChannelFilterChange: (filters: string[]) => void;
-  onApiKeyFilterChange: (filters: string[]) => void;
-  onModelIDFilterChange: (filter: string) => void;
+  onFiltersChange: (filters: RequestTableFilters) => void;
   onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
+  onResetFilters: () => void;
+  onViewDetail: (requestId: string) => void;
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefresh?: boolean;
   onAutoRefreshChange?: (enabled: boolean) => void;
+}
+
+export interface RequestTableFilters {
+  statusFilter: string[];
+  sourceFilter: string[];
+  channelFilter: string[];
+  apiKeyFilter: string[];
+  modelIDFilter: string;
+}
+
+function getFilterArrayValue(filters: ColumnFiltersState, id: string) {
+  const value = filters.find((filter) => filter.id === id)?.value;
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function getFilterStringValue(filters: ColumnFiltersState, id: string) {
+  const value = filters.find((filter) => filter.id === id)?.value;
+  return typeof value === 'string' ? value : '';
 }
 
 export function RequestsTable({
@@ -70,17 +87,16 @@ export function RequestsTable({
   sourceFilter,
   channelFilter,
   apiKeyFilter,
+  modelIDFilter,
   dateRange,
   queryWhere,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
-  onStatusFilterChange,
-  onSourceFilterChange,
-  onChannelFilterChange,
-  onApiKeyFilterChange,
-  onModelIDFilterChange,
+  onFiltersChange,
   onDateRangeChange,
+  onResetFilters,
+  onViewDetail,
   onRefresh,
   showRefresh,
   autoRefresh = false,
@@ -98,9 +114,8 @@ export function RequestsTable({
     setDrawerOpen(true);
   }, []);
 
-  const requestsColumns = useRequestsColumns({ onBodyClick: handleBodyClick });
+  const requestsColumns = useRequestsColumns({ onBodyClick: handleBodyClick, onViewDetail });
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     const stored = localStorage.getItem('requests-table-column-visibility');
@@ -122,46 +137,40 @@ export function RequestsTable({
 
   const displayedData = useAnimatedList(data, autoRefresh, pageSize);
 
-  // Sync filters with the server state
-  const handleColumnFiltersChange = (updater: any) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
-    setColumnFilters(newFilters);
+  const columnFilters = useMemo<ColumnFiltersState>(() => {
+    const filters: ColumnFiltersState = [];
+    if (statusFilter.length > 0) {
+      filters.push({ id: 'status', value: statusFilter });
+    }
+    if (sourceFilter.length > 0) {
+      filters.push({ id: 'source', value: sourceFilter });
+    }
+    if (channelFilter.length > 0) {
+      filters.push({ id: 'channel', value: channelFilter });
+    }
+    if (apiKeyFilter.length > 0) {
+      filters.push({ id: 'apiKey', value: apiKeyFilter });
+    }
+    if (modelIDFilter) {
+      filters.push({ id: 'modelID', value: modelIDFilter });
+    }
+    return filters;
+  }, [statusFilter, sourceFilter, channelFilter, apiKeyFilter, modelIDFilter]);
 
-    const statusFilterValue = newFilters.find((filter: any) => filter.id === 'status')?.value;
-    const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value;
-    const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value;
-    const apiKeyFilterValue = newFilters.find((filter: any) => filter.id === 'apiKey')?.value;
-    const modelIDFilterValue = newFilters.find((filter: any) => filter.id === 'modelID')?.value;
+  const handleColumnFiltersChange = useCallback(
+    (updater: any) => {
+      const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
 
-    const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : [];
-    onStatusFilterChange(statusFilterArray);
-
-    const sourceFilterArray = Array.isArray(sourceFilterValue) ? sourceFilterValue : [];
-    onSourceFilterChange(sourceFilterArray);
-
-    const channelFilterArray = Array.isArray(channelFilterValue) ? channelFilterValue : [];
-    onChannelFilterChange(channelFilterArray);
-
-    const apiKeyFilterArray = Array.isArray(apiKeyFilterValue) ? apiKeyFilterValue : [];
-    onApiKeyFilterChange(apiKeyFilterArray);
-
-    onModelIDFilterChange(typeof modelIDFilterValue === 'string' ? modelIDFilterValue : '');
-  };
-
-  // Initialize filters in column filters if they exist
-  const initialColumnFilters = [];
-  if (statusFilter.length > 0) {
-    initialColumnFilters.push({ id: 'status', value: statusFilter });
-  }
-  if (sourceFilter.length > 0) {
-    initialColumnFilters.push({ id: 'source', value: sourceFilter });
-  }
-  if (channelFilter.length > 0) {
-    initialColumnFilters.push({ id: 'channel', value: channelFilter });
-  }
-  if (apiKeyFilter.length > 0) {
-    initialColumnFilters.push({ id: 'apiKey', value: apiKeyFilter });
-  }
+      onFiltersChange({
+        statusFilter: getFilterArrayValue(newFilters, 'status'),
+        sourceFilter: getFilterArrayValue(newFilters, 'source'),
+        channelFilter: getFilterArrayValue(newFilters, 'channel'),
+        apiKeyFilter: getFilterArrayValue(newFilters, 'apiKey'),
+        modelIDFilter: getFilterStringValue(newFilters, 'modelID'),
+      });
+    },
+    [columnFilters, onFiltersChange]
+  );
 
   const table = useReactTable({
     data: displayedData,
@@ -171,11 +180,7 @@ export function RequestsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters:
-        columnFilters.length === 0 &&
-        (statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0 || apiKeyFilter.length > 0)
-          ? initialColumnFilters
-          : columnFilters,
+      columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -198,77 +203,74 @@ export function RequestsTable({
         table={table}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
+        onResetFilters={onResetFilters}
         onRefresh={onRefresh}
         showRefresh={showRefresh}
-        apiKeyFilter={apiKeyFilter}
-        onApiKeyFilterChange={onApiKeyFilterChange}
-        sourceFilter={sourceFilter}
-        onSourceFilterChange={onSourceFilterChange}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
       />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
         <div className='min-w-max'>
           <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
-          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row border-0'>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
-            {loading ? (
-              <TableSkeleton rows={pageSize} columns={requestsColumns.length} />
-            ) : table.getRowModel().rows?.length ? (
-              <AnimatePresence initial={false} mode='popLayout'>
-                {table.getRowModel().rows.map((row) => (
-                  <MotionTableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                    initial={{ opacity: 0, y: -20, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{
-                      type: 'spring',
-                      stiffness: 500,
-                      damping: 30,
-                      mass: 1,
-                      opacity: { duration: 0.2 },
-                    }}
-                    layout
-                    className='group/row hover:bg-muted/50 data-[state=selected]:bg-muted'
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className={`${cell.column.columnDef.meta?.className ?? ''} border-b border-[var(--table-border)] py-3 group-last/row:border-0`}
+            <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className='group/row border-0'>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </MotionTableRow>
-                ))}
-              </AnimatePresence>
-            ) : (
-              <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell colSpan={requestsColumns.length} className='h-24 !bg-[var(--table-background)] text-center'>
-                  {t('common.noData')}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
+              {loading ? (
+                <TableSkeleton rows={pageSize} columns={requestsColumns.length} />
+              ) : table.getRowModel().rows?.length ? (
+                <AnimatePresence initial={false} mode='popLayout'>
+                  {table.getRowModel().rows.map((row) => (
+                    <MotionTableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && 'selected'}
+                      initial={{ opacity: 0, y: -20, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 500,
+                        damping: 30,
+                        mass: 1,
+                        opacity: { duration: 0.2 },
+                      }}
+                      layout
+                      className='group/row hover:bg-muted/50 data-[state=selected]:bg-muted'
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={`${cell.column.columnDef.meta?.className ?? ''} border-b border-[var(--table-border)] py-3 group-last/row:border-0`}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </MotionTableRow>
+                  ))}
+                </AnimatePresence>
+              ) : (
+                <TableRow className='!bg-[var(--table-background)]'>
+                  <TableCell colSpan={requestsColumns.length} className='h-24 !bg-[var(--table-background)] text-center'>
+                    {t('common.noData')}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
       <div className='mt-4 flex-shrink-0'>
@@ -292,6 +294,7 @@ export function RequestsTable({
         initialRequests={data}
         pageInfo={pageInfo}
         queryWhere={queryWhere}
+        onViewDetail={onViewDetail}
       />
     </div>
   );

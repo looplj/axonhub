@@ -40,6 +40,10 @@ type Config struct {
 	// CodexTraceEnabled enables extracting trace IDs from Codex request headers.
 	// Default to false.
 	CodexTraceEnabled bool `conf:"codex_trace_enabled" yaml:"codex_trace_enabled" json:"codex_trace_enabled"`
+
+	// OpenCodeTraceEnabled enables extracting trace IDs from OpenCode request headers.
+	// Default to false.
+	OpenCodeTraceEnabled bool `conf:"opencode_trace_enabled" yaml:"opencode_trace_enabled" json:"opencode_trace_enabled"`
 }
 
 // GenerateTraceID generate trace id, format as at-{{uuid}}.

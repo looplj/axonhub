@@ -3,9 +3,11 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -14,9 +16,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -378,6 +382,46 @@ func TestSelectOutboundForCandidate(t *testing.T) {
 	})
 }
 
+func TestPersistentOutboundTransformer_TransformRequest_ResetsStreamCompletedForNewAttempt(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:              1,
+			Name:            "test-channel",
+			SupportedModels: []string{"gpt-4"},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			StreamCompleted: true,
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{Channel: channel, Priority: 0, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}}},
+			},
+			CurrentCandidateIndex: 0,
+			RequestExec:           &ent.RequestExecution{ID: 1},
+		},
+	}
+
+	text := "Hello"
+	llmRequest := &llm.Request{
+		Model: "gpt-4",
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{
+				Content: &text,
+			},
+		}},
+	}
+
+	_, err := processor.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+	require.False(t, processor.state.StreamCompleted)
+}
+
 func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
@@ -447,28 +491,90 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
 	})
 
-	t.Run("retryable error does not depend on model index", func(t *testing.T) {
-		outbound := &PersistentOutboundTransformer{
-			wrapped: &mockTransformer{},
-			state: &PersistenceState{
-				CurrentCandidate: &ChannelModelsCandidate{
-					Channel: channel,
-					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+	t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
+		for _, retryErr := range []error{
+			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyResponse),
+			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyStreamChunks),
+			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyAggregatedBody),
+		} {
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{
+						Channel: channel,
+						Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+					},
+					CurrentModelIndex: 0,
 				},
-				CurrentModelIndex: 0,
+			}
+
+			require.True(t, outbound.CanRetry(retryErr))
+		}
+	})
+}
+
+func TestShouldForceStreamingForCandidate(t *testing.T) {
+	newCandidate := func(policy objects.CapabilityPolicy, apiFormat llm.APIFormat) *ChannelModelsCandidate {
+		return &ChannelModelsCandidate{
+			APIFormat: apiFormat.String(),
+			Channel: &biz.Channel{
+				Channel: &ent.Channel{
+					Policies: objects.ChannelPolicies{Stream: policy},
+				},
 			},
 		}
+	}
 
-		require.True(t, outbound.CanRetry(retryableErr))
+	t.Run("supported require-stream fallback request forces streaming", func(t *testing.T) {
+		require.True(t, shouldForceStreamingForCandidate(
+			newCandidate(objects.CapabilityPolicyRequire, llm.APIFormatOpenAIChatCompletion),
+			&llm.Request{RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion},
+		))
+	})
+
+	t.Run("native non-stream candidate does not force streaming", func(t *testing.T) {
+		require.False(t, shouldForceStreamingForCandidate(
+			newCandidate(objects.CapabilityPolicyUnlimited, llm.APIFormatOpenAIChatCompletion),
+			&llm.Request{RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion},
+		))
+	})
+
+	t.Run("unsupported embedding request does not force streaming", func(t *testing.T) {
+		require.False(t, shouldForceStreamingForCandidate(
+			newCandidate(objects.CapabilityPolicyRequire, llm.APIFormatOpenAIEmbedding),
+			&llm.Request{RequestType: llm.RequestTypeEmbedding, APIFormat: llm.APIFormatOpenAIEmbedding},
+		))
+	})
+
+	t.Run("unsupported compact request does not force streaming", func(t *testing.T) {
+		require.False(t, shouldForceStreamingForCandidate(
+			newCandidate(objects.CapabilityPolicyRequire, llm.APIFormatOpenAIResponseCompact),
+			&llm.Request{RequestType: llm.RequestTypeCompact, APIFormat: llm.APIFormatOpenAIResponseCompact},
+		))
+	})
+
+	t.Run("client requested stream keeps existing streaming path", func(t *testing.T) {
+		require.False(t, shouldForceStreamingForCandidate(
+			newCandidate(objects.CapabilityPolicyRequire, llm.APIFormatOpenAIChatCompletion),
+			&llm.Request{Stream: lo.ToPtr(true), RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion},
+		))
 	})
 }
 
 func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
-	t.Run("usage means completed", func(t *testing.T) {
+	t.Run("usage with completion tokens means completed", func(t *testing.T) {
 		require.True(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))
 	})
 
-	t.Run("missing usage is not completed", func(t *testing.T) {
+	t.Run("usage with zero completion tokens is not completed", func(t *testing.T) {
+		require.False(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 0, TotalTokens: 10}}))
+	})
+
+	t.Run("response id without usage is not completed", func(t *testing.T) {
+		require.False(t, isCompletedAggregated(llm.ResponseMeta{ID: "resp_123"}))
+	})
+
+	t.Run("missing usage and id is not completed", func(t *testing.T) {
 		require.False(t, isCompletedAggregated(llm.ResponseMeta{}))
 	})
 }

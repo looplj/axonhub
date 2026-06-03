@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -193,6 +194,10 @@ func validateFilterLeaf(condition objects.Condition) error {
 		return validatePromptTokensLeaf(condition)
 	case "stream":
 		return validateStreamLeaf(condition)
+	case "request_format":
+		return validateStringEqualityLeaf(condition, "request_format")
+	case "daily_time":
+		return validateDailyTimeLeaf(condition)
 	default:
 		return fmt.Errorf("unsupported condition field %q", condition.Field)
 	}
@@ -234,6 +239,40 @@ func validateStreamLeaf(condition objects.Condition) error {
 	default:
 		return fmt.Errorf("condition value for stream must be a boolean, got %T", condition.Value)
 	}
+}
+
+func validateStringEqualityLeaf(condition objects.Condition, field string) error {
+	switch condition.Operator {
+	case "eq", "ne", "=", "==", "!=":
+	default:
+		return fmt.Errorf("unsupported condition operator %q for %s", condition.Operator, field)
+	}
+
+	value, ok := condition.Value.(string)
+	if !ok || value == "" {
+		return fmt.Errorf("condition value for %s must be a non-empty string", field)
+	}
+
+	return nil
+}
+
+func validateDailyTimeLeaf(condition objects.Condition) error {
+	switch condition.Operator {
+	case "within", "not_within":
+	default:
+		return fmt.Errorf("unsupported condition operator %q for daily_time", condition.Operator)
+	}
+
+	value, ok := condition.Value.(string)
+	if !ok || value == "" {
+		return fmt.Errorf("condition value for daily_time must be a daily time range")
+	}
+
+	if _, _, err := xtime.ParseDailyTimeRange(value); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func filterValueToInt64(value any) (int64, bool) {
@@ -285,14 +324,7 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 	}
 
 	createBuilder := svc.entFromContext(ctx).Model.Create().
-		SetDeveloper(input.Developer).
-		SetModelID(input.ModelID).
-		SetIcon(input.Icon).
-		SetType(*input.Type).
-		SetName(input.Name).
-		SetGroup(input.Group).
-		SetModelCard(input.ModelCard).
-		SetSettings(input.Settings)
+		SetInput(input)
 
 	if input.Remark != nil {
 		createBuilder.SetRemark(*input.Remark)
@@ -350,14 +382,7 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 	bulk := make([]*ent.ModelCreate, len(inputs))
 	for i, input := range inputs {
 		createBuilder := svc.entFromContext(ctx).Model.Create().
-			SetDeveloper(input.Developer).
-			SetModelID(input.ModelID).
-			SetIcon(input.Icon).
-			SetType(*input.Type).
-			SetName(input.Name).
-			SetGroup(input.Group).
-			SetModelCard(input.ModelCard).
-			SetSettings(input.Settings)
+			SetInput(*input)
 
 		if input.Remark != nil {
 			createBuilder.SetRemark(*input.Remark)

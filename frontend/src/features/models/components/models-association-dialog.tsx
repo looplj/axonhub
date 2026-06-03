@@ -30,6 +30,27 @@ import { ChannelModelsList } from './channel-models-list';
 
 const MAX_ASSOCIATION_PRIORITY = 10;
 
+const requestFormatConditionOptions = [
+  'openai/chat_completions',
+  'openai/completions',
+  'openai/responses',
+  'openai/responses_compact',
+  'openai/image_generation',
+  'openai/image_edit',
+  'openai/image_variation',
+  'openai/embeddings',
+  'openai/video',
+  'anthropic/messages',
+  'gemini/contents',
+  'gemini/embeddings',
+  'aisdk/text',
+  'aisdk/datastream',
+  'jina/rerank',
+  'jina/embeddings',
+  'ollama/chat',
+  'seedance/video',
+] as const;
+
 const whenFilterFields: FilterBuilderField[] = [
   {
     value: 'prompt_tokens',
@@ -52,7 +73,38 @@ const whenFilterFields: FilterBuilderField[] = [
       { value: 'ne', label: '!= Not equal' },
     ],
   },
+  {
+    value: 'request_format',
+    label: 'Request format',
+    type: 'string',
+    placeholder: 'Select request format',
+    operators: [
+      { value: 'eq', label: '= Equals' },
+      { value: 'ne', label: '!= Not equal' },
+    ],
+    options: requestFormatConditionOptions.map((format) => ({
+      value: format,
+      label: format,
+    })),
+  },
+  {
+    value: 'daily_time',
+    label: 'Daily time',
+    type: 'string',
+    placeholder: 'HH:mm-HH:mm',
+    operators: [
+      { value: 'within', label: 'Within' },
+      { value: 'not_within', label: 'Not within' },
+    ],
+  },
 ];
+
+const dailyTimeRangePattern = /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/;
+
+function dailyTimeRangeHasDifferentEndpoints(value: string): boolean {
+  const [start, end] = value.split('-');
+  return Boolean(start && end && start !== end);
+}
 
 function isValidConditionOperator(field: string, operator: string): boolean {
   const fieldConfig = whenFilterFields.find((f) => f.value === field);
@@ -84,6 +136,22 @@ function hasConditionNodeData(condition?: FilterBuilderCondition): boolean {
 
 function hasGroupListData(value?: FilterBuilderGroupListValue) {
   return (value?.groups || []).some((group) => hasConditionNodeData(group));
+}
+
+function hasDailyTimeConditionNode(condition?: FilterBuilderCondition): boolean {
+  if (!condition) {
+    return false;
+  }
+
+  if (condition.type === 'group') {
+    return (condition.conditions || []).some((item) => hasDailyTimeConditionNode(item));
+  }
+
+  return condition.field === 'daily_time';
+}
+
+function hasDailyTimeCondition(value?: FilterBuilderGroupListValue) {
+  return (value?.groups || []).some((group) => hasDailyTimeConditionNode(group));
 }
 
 function validateWhenConditionNode(
@@ -149,6 +217,27 @@ function validateWhenConditionNode(
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Value must be a boolean',
+      path: [...path, 'value'],
+    });
+  }
+  if ((condition.field === 'request_format' || condition.field === 'daily_time') && typeof condition.value !== 'string') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Value must be text',
+      path: [...path, 'value'],
+    });
+  }
+  if (condition.field === 'daily_time' && (typeof condition.value !== 'string' || !dailyTimeRangePattern.test(condition.value))) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Value must use HH:mm-HH:mm format',
+      path: [...path, 'value'],
+    });
+  }
+  if (condition.field === 'daily_time' && typeof condition.value === 'string' && dailyTimeRangePattern.test(condition.value) && !dailyTimeRangeHasDifferentEndpoints(condition.value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Start and end time must be different',
       path: [...path, 'value'],
     });
   }
@@ -1398,10 +1487,14 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                       fields={whenFilterFields.map((item) => ({
                         ...item,
                         label: t(`models.dialogs.association.conditions.fields.${item.value}`),
-                        placeholder: t('models.dialogs.association.conditions.valuePlaceholder'),
+                        placeholder: t(`models.dialogs.association.conditions.placeholders.${item.value}`, { defaultValue: item.placeholder }),
                         operators: item.operators?.map((operator) => ({
                           value: operator.value,
                           label: t(`models.dialogs.association.conditions.operators.${operator.value}`),
+                        })),
+                        options: item.options?.map((option) => ({
+                          ...option,
+                          label: t(`models.dialogs.association.conditions.formatOptions.${option.value}`, { defaultValue: option.label }),
                         })),
                       }))}
                       fieldLabel={t('models.dialogs.association.conditions.fieldLabel')}
@@ -1418,7 +1511,12 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
               )}
             />
             {hasGroupListData(whenCondition) && (
-              <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.conditions.conditionsHint')}</p>
+              <div className='space-y-1'>
+                <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.conditions.conditionsHint')}</p>
+                {hasDailyTimeCondition(whenCondition) && (
+                  <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.conditions.dailyTimeTimezoneHint')}</p>
+                )}
+              </div>
             )}
           </div>
         )}

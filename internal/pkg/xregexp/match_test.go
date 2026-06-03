@@ -200,6 +200,12 @@ func TestMatchString(t *testing.T) {
 			str:      "gpt-5.1-codex",
 			expected: true,
 		},
+		{
+			name:     "case insensitive modifier matches uppercase",
+			pattern:  "(?i)^gpt-4",
+			str:      "GPT-4",
+			expected: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -282,6 +288,12 @@ func TestFilter(t *testing.T) {
 			items:    []string{"gpt-5.2", "gpt-5.2-mini", "claude-opus-4-6", "claude-opus-4-6-sonnet", "gemini-3.1-pro"},
 			pattern:  "^gpt-5.2|claude-opus-4-6|gemini-3.1-pro",
 			expected: []string{"gpt-5.2", "claude-opus-4-6", "gemini-3.1-pro"},
+		},
+		{
+			name:     "case insensitive modifier filters uppercase",
+			items:    []string{"GPT-4", "gpt-4o", "claude-3"},
+			pattern:  "(?i)^gpt-4.*",
+			expected: []string{"GPT-4", "gpt-4o"},
 		},
 	}
 

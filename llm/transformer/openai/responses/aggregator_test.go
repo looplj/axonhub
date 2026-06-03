@@ -42,6 +42,34 @@ func TestAggregateStreamChunks(t *testing.T) {
 	}
 }
 
+func TestAggregateStreamChunks_CancelledFallbackUsesCanonicalStatus(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.cancelled", Data: []byte(`{"type":"response.cancelled","response":{"id":"resp_canceled","object":"response","created_at":1700000000,"model":"gpt-5","output":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	var body Response
+	require.NoError(t, json.Unmarshal(resultBytes, &body))
+	require.NotNil(t, body.Status)
+	require.Equal(t, "canceled", *body.Status)
+}
+
+func TestAggregateStreamChunks_CancelledSnapshotPreservesStatus(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_canceled","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.cancelled", Data: []byte(`{"type":"response.cancelled","response":{"id":"resp_canceled","object":"response","created_at":1700000001,"model":"gpt-5-codex","status":"canceled","output":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	var body Response
+	require.NoError(t, json.Unmarshal(resultBytes, &body))
+	require.Equal(t, "resp_canceled", body.ID)
+	require.Equal(t, "gpt-5-codex", body.Model)
+	require.Equal(t, int64(1700000001), body.CreatedAt)
+	require.NotNil(t, body.Status)
+	require.Equal(t, "canceled", *body.Status)
+}
+
 func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 	tests := []struct {
 		name             string

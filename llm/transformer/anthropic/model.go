@@ -270,6 +270,18 @@ type MessageParam struct {
 type MessageContent struct {
 	Content         *string               `json:"content,omitempty"`
 	MultipleContent []MessageContentBlock `json:"multiple_content,omitempty"`
+
+	// Raw, when non-nil, is emitted verbatim by MarshalJSON. It is used to
+	// round-trip *_tool_result content bytes without losing unknown fields.
+	// The field is not serialized in JSON; only MarshalJSON consults it.
+	Raw json.RawMessage `json:"-"`
+}
+
+// SetRaw configures MessageContent to emit the given JSON bytes verbatim on
+// the next MarshalJSON call. Used by round-trip paths (e.g. Anthropic
+// *_tool_result restoration) to preserve bytes the proxy does not parse.
+func (m *MessageContent) SetRaw(raw json.RawMessage) {
+	m.Raw = raw
 }
 
 func (m MessageContent) ExtractTrivalBlocks(cacheControl *CacheControl) []MessageContentBlock {
@@ -296,6 +308,10 @@ func (m MessageContent) ExtractTrivalBlocks(cacheControl *CacheControl) []Messag
 }
 
 func (c MessageContent) MarshalJSON() ([]byte, error) {
+	if len(c.Raw) > 0 {
+		return c.Raw, nil
+	}
+
 	if c.Content != nil {
 		return json.Marshal(c.Content)
 	}
@@ -313,6 +329,10 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &blocks)
 	if err == nil {
 		c.MultipleContent = blocks
+		// Preserve the original bytes so unknown nested fields (e.g.
+		// web_search_result's url/title/encrypted_content) survive a
+		// round-trip via MarshalJSON.
+		c.Raw = append(c.Raw[:0], data...)
 		return nil
 	}
 
@@ -369,6 +389,11 @@ type MessageContentBlock struct {
 	Title            string  `json:"title,omitempty"`
 	EncryptedContent *string `json:"encrypted_content,omitempty"`
 	PageAge          *string `json:"page_age,omitempty"`
+
+	// Caller is optional on Anthropic server-side tool blocks (*_tool_use,
+	// *_tool_result). It is kept as json.RawMessage to avoid version-matrix
+	// churn (direct / code_execution_20250825 / code_execution_20260120 / ...).
+	Caller json.RawMessage `json:"caller,omitempty"`
 }
 
 // TextCitation represents a citation attached to an Anthropic text block.

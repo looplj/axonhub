@@ -162,6 +162,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.trace.extra_trace_body_fields", []string{})
 	v.SetDefault("server.trace.claude_code_trace_enabled", false)
 	v.SetDefault("server.trace.codex_trace_enabled", false)
+	v.SetDefault("server.trace.opencode_trace_enabled", false)
 
 	// Dashboard defaults
 	v.SetDefault("server.dashboard.all_time_token_stats_soft_ttl", "1h")
@@ -185,6 +186,7 @@ func setDefaults(v *viper.Viper) {
 	// Database defaults
 	v.SetDefault("db.dialect", "sqlite3")
 	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)")
+	v.SetDefault("db.disable_auto_migration", false)
 	v.SetDefault("db.disable_sqlite_auto_wal", false)
 	v.SetDefault("db.debug", false)
 	v.SetDefault("db.max_open_conns", 20)

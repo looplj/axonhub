@@ -1,0 +1,47 @@
+{
+  "max_tokens": 64000,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Perform a web search for the query: What's 42?",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    }
+  ],
+  "model": "claude-opus-4-7",
+  "system": [
+    {
+      "type": "text",
+      "text": "You are Claude Code, Anthropic's official CLI for Claude."
+    },
+    {
+      "type": "text",
+      "text": "You are an assistant for performing a web search tool use",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "thinking": {
+    "type": "adaptive"
+  },
+  "output_config": {
+    "effort": "xhigh"
+  },
+  "tools": [
+    {
+      "type": "web_search_20250305",
+      "name": "web_search",
+      "cache_control": {
+        "type": "ephemeral"
+      },
+      "max_uses": 8
+    }
+  ]
+}

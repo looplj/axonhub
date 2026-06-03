@@ -73,10 +73,27 @@ func splitAutoReasoningEffortModel(model string) (baseModel string, reasoningEff
 		return "", "", false
 	}
 
+	if effort == "max" && isQwenMaxModel(model) {
+		return "", "", false
+	}
+
 	base := model[:lastDash]
 	if base == "" {
 		return "", "", false
 	}
 
 	return base, effort, true
+}
+
+func isQwenMaxModel(model string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(model))
+	if !strings.HasSuffix(normalized, "-max") {
+		return false
+	}
+
+	if lastSlash := strings.LastIndex(normalized, "/"); lastSlash >= 0 {
+		normalized = normalized[lastSlash+1:]
+	}
+
+	return strings.HasPrefix(normalized, "qwen")
 }

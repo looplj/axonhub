@@ -54,8 +54,8 @@ export function ModelSettingsDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className='w-full max-w-full sm:max-w-[720px]'>
-        <DialogHeader>
+      <DialogContent className='flex max-h-[90vh] w-full max-w-full flex-col overflow-hidden sm:max-w-[720px]'>
+        <DialogHeader className='shrink-0'>
           <DialogTitle className='flex items-center gap-2 text-lg sm:text-xl'>
             <Settings2 className='h-5 w-5' />
             {t('models.dialogs.settings.title')}
@@ -68,7 +68,7 @@ export function ModelSettingsDialog() {
             <Loader2 className='h-8 w-8 animate-spin' />
           </div>
         ) : (
-          <div className='space-y-4'>
+          <div className='min-h-0 flex-1 space-y-4 overflow-y-auto pr-1'>
             <Card>
               <CardHeader className='pb-0'>
                 <CardTitle className='flex items-center gap-2 text-sm sm:text-base'>
@@ -174,7 +174,7 @@ export function ModelSettingsDialog() {
           </div>
         )}
 
-        <DialogFooter className='flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-2'>
+        <DialogFooter className='flex shrink-0 flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-2'>
           <Button variant='outline' onClick={handleClose} disabled={updateModelSettings.isPending} className='w-full sm:w-auto h-10 sm:h-9'>
             {t('common.buttons.cancel')}
           </Button>

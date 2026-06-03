@@ -154,6 +154,43 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "captures responses provider raw tools and tool choice",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-4o",
+					"input": "Search and run shell.",
+					"tools": [
+						{
+							"type": "tool_search",
+							"name": "search_docs",
+							"namespace": "docs"
+						},
+						{
+							"type": "function",
+							"name": "get_weather",
+							"parameters": {"type": "object", "properties": {}}
+						}
+					],
+					"tool_choice": {
+						"type": "tool_search",
+						"tools": [
+							{"type": "tool_search", "name": "search_docs"}
+						]
+					}
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Len(t, result.Tools, 1)
+				require.NotNil(t, result.ProviderExtensions)
+				require.NotNil(t, result.ProviderExtensions.OpenAIResponses)
+				require.NotNil(t, result.ProviderExtensions.OpenAIResponses.Request)
+				require.Len(t, result.ProviderExtensions.OpenAIResponses.Request.RawTools, 1)
+				require.JSONEq(t, `{"type":"tool_search","name":"search_docs","namespace":"docs"}`, string(result.ProviderExtensions.OpenAIResponses.Request.RawTools[0].Raw))
+				require.JSONEq(t, `{"type":"tool_search","tools":[{"type":"tool_search","name":"search_docs"}]}`, string(result.ProviderExtensions.OpenAIResponses.Request.RawToolChoice))
+			},
+		},
+		{
 			name: "request with image generation tool",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{

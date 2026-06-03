@@ -35,8 +35,8 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
             fullReasoning += part.thinking || '';
           } else if (part.type === 'reasoning') {
             fullReasoning += part.text || part.reasoning || '';
-          } else if (part.type === 'tool_use') {
-            // Anthropic tool_use: normalize to OpenAI-compatible structure
+          } else if (part.type === 'tool_use' || (typeof part.type === 'string' && part.type.endsWith('_tool_use'))) {
+            // Anthropic tool_use / *_tool_use: normalize to OpenAI-compatible structure
             collectedToolCalls.push({
               id: part.id,
               type: 'function',
@@ -120,7 +120,7 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
     const openaiToolCallMap = new Map<number, any>();
 
     // Anthropic content block state: keyed by block index
-    // Each block: { type: 'thinking' | 'text' | 'tool_use', content: string, id?: string, name?: string }
+    // Each block: { type: 'thinking' | 'text' | 'tool_use' | '<prefix>_tool_use', content: string, id?: string, name?: string }
     const anthropicBlockMap = new Map<number, { type: string; content: string; id?: string; name?: string }>();
     let isAnthropicFormat = false;
 
@@ -303,7 +303,7 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
           fullReasoning += block.content;
         } else if (block.type === 'text') {
           fullContent += block.content;
-        } else if (block.type === 'tool_use') {
+        } else if (block.type === 'tool_use' || block.type.endsWith('_tool_use')) {
           collectedToolCalls.push({
             id: block.id,
             type: 'function',

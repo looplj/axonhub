@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 type ConditionType string
@@ -46,13 +49,34 @@ func (c *Condition) UnmarshalJSON(data []byte) error {
 
 var compiledConditionCache sync.Map // map[string]*vm.Program
 
+var dailyTimeWithinFunction = expr.Function(
+	"dailyTimeWithin",
+	func(params ...any) (any, error) {
+		if len(params) != 2 {
+			return false, nil
+		}
+
+		now, ok := params[0].(time.Time)
+		if !ok {
+			return false, nil
+		}
+
+		value, ok := params[1].(string)
+		if !ok {
+			return false, nil
+		}
+
+		return xtime.DailyTimeWithin(now, value), nil
+	},
+)
+
 //nolint:forcetypeassert // Checked.
 func compileCondition(expression string) (*vm.Program, error) {
 	if cached, ok := compiledConditionCache.Load(expression); ok {
 		return cached.(*vm.Program), nil
 	}
 
-	program, err := expr.Compile(expression, expr.AsBool())
+	program, err := expr.Compile(expression, expr.AsBool(), dailyTimeWithinFunction)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +160,22 @@ func conditionToExpr(condition Condition) (string, error) {
 	field := strings.TrimSpace(condition.Field)
 	if field == "" {
 		return "", fmt.Errorf("field is required")
+	}
+
+	if field == "daily_time" {
+		valueExpr, err := literalExpr(condition.Value)
+		if err != nil {
+			return "", err
+		}
+
+		switch strings.TrimSpace(strings.ToLower(condition.Operator)) {
+		case "within":
+			return "dailyTimeWithin(now, " + valueExpr + ")", nil
+		case "not_within":
+			return "!dailyTimeWithin(now, " + valueExpr + ")", nil
+		default:
+			return "", fmt.Errorf("unsupported operator %q for daily_time", condition.Operator)
+		}
 	}
 
 	operator := normalizeOperator(condition.Operator)

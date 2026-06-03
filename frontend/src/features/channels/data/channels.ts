@@ -112,11 +112,13 @@ const CREATE_CHANNEL_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -171,11 +173,13 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -231,11 +235,13 @@ const UPDATE_CHANNEL_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -296,11 +302,13 @@ const SAVE_CHANNEL_ENDPOINTS_MUTATION = `
         apiFormat
         path
         baseURL
+        transport
       }
       endpoints {
         apiFormat
         path
         baseURL
+        transport
       }
     }
   }
@@ -360,11 +368,13 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           apiFormat
           path
           baseURL
+          transport
         }
         endpoints {
           apiFormat
           path
           baseURL
+          transport
         }
         settings {
           extraModelPrefix
@@ -544,11 +554,13 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           apiFormat
           path
           baseURL
+          transport
         }
         endpoints {
           apiFormat
           path
           baseURL
+          transport
         }
         settings {
           extraModelPrefix
@@ -587,6 +599,7 @@ const ALL_CHANNEL_SUMMARYS_QUERY = `
         apiFormat
         path
         baseURL
+        transport
       }
       allModelEntries {
         requestModel
@@ -711,11 +724,13 @@ const QUERY_CHANNELS_QUERY = `
             apiFormat
             path
             baseURL
+            transport
           }
           endpoints {
             apiFormat
             path
             baseURL
+            transport
           }
           disabledAPIKeys {
             key
@@ -968,7 +983,7 @@ export function useUpdateChannel() {
 
 export interface SaveChannelEndpointsInput {
   channelID: string;
-  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string }>;
+  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string; transport?: string }>;
 }
 
 export function useSaveChannelEndpoints() {

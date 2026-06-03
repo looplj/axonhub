@@ -21,6 +21,7 @@ type SystemStatus {
 type BrandSettings {
   brandName: String
   brandLogo: String
+  title: String
 }
 
 type StoragePolicy {
@@ -40,6 +41,7 @@ type CleanupOption {
 input UpdateBrandSettingsInput {
   brandName: String
   brandLogo: String
+  title: String
 }
 
 input UpdateStoragePolicyInput {

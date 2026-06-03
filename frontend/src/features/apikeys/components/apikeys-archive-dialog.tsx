@@ -1,6 +1,6 @@
 'use client';
 
-import { IconArchive, IconInfoCircle } from '@tabler/icons-react';
+import { IconArchive, IconCheck, IconInfoCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useApiKeysContext } from '../context/apikeys-context';
@@ -13,22 +13,29 @@ export function ApiKeysArchiveDialog() {
 
   if (!selectedApiKey) return null;
 
+  const isArchived = selectedApiKey.status === 'archived';
+
   const handleArchive = async () => {
     try {
       await updateApiKeyStatus.mutateAsync({
         id: selectedApiKey.id,
-        status: 'archived',
+        status: isArchived ? 'enabled' : 'archived',
       });
       closeDialog('archive');
-      resetRowSelection(); // 清空选中的行
+      resetRowSelection();
     } catch (_error) {
       // Error will be handled by the mutation's error state
     }
   };
 
   const getDescription = () => {
-    const baseDescription = t('apikeys.dialogs.archive.description', { name: selectedApiKey.name });
-    const warningText = t('apikeys.dialogs.archive.warning');
+    const baseDescription = t(
+      isArchived ? 'apikeys.dialogs.archive.restoreDescription' : 'apikeys.dialogs.archive.description',
+      { name: selectedApiKey.name }
+    );
+    const warningText = t(
+      isArchived ? 'apikeys.dialogs.archive.restoreInfo' : 'apikeys.dialogs.archive.warning'
+    );
 
     return (
       <div className='space-y-3'>
@@ -52,13 +59,17 @@ export function ApiKeysArchiveDialog() {
       handleConfirm={handleArchive}
       disabled={updateApiKeyStatus.isPending}
       title={
-        <span className='text-orange-600'>
-          <IconArchive className='mr-1 inline-block stroke-orange-600' size={18} />
-          {t('apikeys.dialogs.archive.title')}
+        <span className={isArchived ? 'text-green-600' : 'text-orange-600'}>
+          {isArchived ? (
+            <IconCheck className='mr-1 inline-block stroke-green-600' size={18} />
+          ) : (
+            <IconArchive className='mr-1 inline-block stroke-orange-600' size={18} />
+          )}
+          {t(isArchived ? 'apikeys.dialogs.archive.restoreTitle' : 'apikeys.dialogs.archive.title')}
         </span>
       }
       desc={getDescription()}
-      confirmText={t('common.buttons.archive')}
+      confirmText={t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
       cancelBtnText={t('common.buttons.cancel')}
     />
   );

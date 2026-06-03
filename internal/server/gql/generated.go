@@ -268,6 +268,7 @@ type ComplexityRoot struct {
 	BrandSettings struct {
 		BrandLogo func(childComplexity int) int
 		BrandName func(childComplexity int) int
+		Title     func(childComplexity int) int
 	}
 
 	BulkImportChannelsResult struct {
@@ -339,6 +340,7 @@ type ComplexityRoot struct {
 		APIFormat func(childComplexity int) int
 		BaseURL   func(childComplexity int) int
 		Path      func(childComplexity int) int
+		Transport func(childComplexity int) int
 	}
 
 	ChannelLimiterStats struct {
@@ -2923,6 +2925,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BrandSettings.BrandName(childComplexity), true
+	case "BrandSettings.title":
+		if e.complexity.BrandSettings.Title == nil {
+			break
+		}
+
+		return e.complexity.BrandSettings.Title(childComplexity), true
 
 	case "BulkImportChannelsResult.channels":
 		if e.complexity.BulkImportChannelsResult.Channels == nil {
@@ -3245,6 +3253,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelEndpoint.Path(childComplexity), true
+	case "ChannelEndpoint.transport":
+		if e.complexity.ChannelEndpoint.Transport == nil {
+			break
+		}
+
+		return e.complexity.ChannelEndpoint.Transport(childComplexity), true
 
 	case "ChannelLimiterStats.capacity":
 		if e.complexity.ChannelLimiterStats.Capacity == nil {
@@ -17168,6 +17182,35 @@ func (ec *executionContext) fieldContext_BrandSettings_brandLogo(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _BrandSettings_title(ctx context.Context, field graphql.CollectedField, obj *BrandSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BrandSettings_title,
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BrandSettings_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BrandSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BulkImportChannelsResult_success(ctx context.Context, field graphql.CollectedField, obj *biz.BulkImportChannelsResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18108,6 +18151,8 @@ func (ec *executionContext) fieldContext_Channel_endpoints(_ context.Context, fi
 				return ec.fieldContext_ChannelEndpoint_path(ctx, field)
 			case "baseURL":
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
+			case "transport":
+				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -18441,6 +18486,8 @@ func (ec *executionContext) fieldContext_Channel_defaultEndpoints(_ context.Cont
 				return ec.fieldContext_ChannelEndpoint_path(ctx, field)
 			case "baseURL":
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
+			case "transport":
+				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -19038,6 +19085,35 @@ func (ec *executionContext) _ChannelEndpoint_baseURL(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_ChannelEndpoint_baseURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelEndpoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelEndpoint_transport(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelEndpoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelEndpoint_transport,
+		func(ctx context.Context) (any, error) {
+			return obj.Transport, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelEndpoint_transport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelEndpoint",
 		Field:      field,
@@ -41426,6 +41502,8 @@ func (ec *executionContext) fieldContext_Query_brandSettings(_ context.Context, 
 				return ec.fieldContext_BrandSettings_brandName(ctx, field)
 			case "brandLogo":
 				return ec.fieldContext_BrandSettings_brandLogo(ctx, field)
+			case "title":
+				return ec.fieldContext_BrandSettings_title(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BrandSettings", field.Name)
 		},
@@ -59571,7 +59649,7 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL"}
+	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59599,6 +59677,13 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 				return it, err
 			}
 			it.BaseURL = data
+		case "transport":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transport"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Transport = data
 		}
 	}
 
@@ -77219,7 +77304,7 @@ func (ec *executionContext) unmarshalInputUpdateBrandSettingsInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"brandName", "brandLogo"}
+	fieldsInOrder := [...]string{"brandName", "brandLogo", "title"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77240,6 +77325,13 @@ func (ec *executionContext) unmarshalInputUpdateBrandSettingsInput(ctx context.C
 				return it, err
 			}
 			it.BrandLogo = data
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
 		}
 	}
 
@@ -84504,6 +84596,8 @@ func (ec *executionContext) _BrandSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BrandSettings_brandName(ctx, field, obj)
 		case "brandLogo":
 			out.Values[i] = ec._BrandSettings_brandLogo(ctx, field, obj)
+		case "title":
+			out.Values[i] = ec._BrandSettings_title(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -85323,6 +85417,8 @@ func (ec *executionContext) _ChannelEndpoint(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelEndpoint_path(ctx, field, obj)
 		case "baseURL":
 			out.Values[i] = ec._ChannelEndpoint_baseURL(ctx, field, obj)
+		case "transport":
+			out.Values[i] = ec._ChannelEndpoint_transport(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

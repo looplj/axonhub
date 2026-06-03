@@ -18,6 +18,7 @@ export function BrandSettings() {
   const { isLoading, setIsLoading } = useSystemContext();
 
   const [brandName, setBrandName] = useState('');
+  const [title, setTitle] = useState('');
   const [brandLogo, setBrandLogo] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,6 +26,7 @@ export function BrandSettings() {
   React.useEffect(() => {
     if (settings) {
       setBrandName(settings.brandName ?? '');
+      setTitle(settings.title ?? '');
       setBrandLogo(settings.brandLogo ?? '');
     }
   }, [settings]);
@@ -73,6 +75,7 @@ export function BrandSettings() {
     try {
       await updateSettings.mutateAsync({
         brandName: brandName.trim() || undefined,
+        title: title.trim() !== '' ? title.trim() : null,
         brandLogo: brandLogo || undefined,
       });
     } finally {
@@ -80,7 +83,11 @@ export function BrandSettings() {
     }
   };
 
-  const hasChanges = settings ? (settings.brandName ?? '') !== brandName || (settings.brandLogo ?? '') !== brandLogo : false;
+  const hasChanges = settings
+    ? (settings.brandName ?? '') !== brandName ||
+      (settings.title ?? '') !== title ||
+      (settings.brandLogo ?? '') !== brandLogo
+    : false;
 
   if (isLoadingSettings) {
     return (
@@ -111,6 +118,20 @@ export function BrandSettings() {
               className='max-w-md'
             />
             <div className='text-muted-foreground text-sm'>{t('system.brand.brandName.description')}</div>
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='page-title'>{t('system.brand.titleLabel')}</Label>
+            <Input
+              id='page-title'
+              type='text'
+              placeholder={t('system.brand.titlePlaceholder')}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={isLoading}
+              className='max-w-md'
+            />
+            <div className='text-muted-foreground text-sm'>{t('system.brand.titleDescription')}</div>
           </div>
 
           <div className='space-y-2'>

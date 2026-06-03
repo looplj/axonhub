@@ -10,6 +10,12 @@ import (
 // This error triggers channel retry when empty response detection is enabled.
 var ErrEmptyResponse = errors.New("empty response detected")
 
+// ErrEmptyStreamChunks indicates an auto-upgraded streaming request produced no inbound chunks.
+var ErrEmptyStreamChunks = errors.New("empty stream chunks")
+
+// ErrEmptyAggregatedBody indicates inbound chunk aggregation produced an empty body.
+var ErrEmptyAggregatedBody = errors.New("empty aggregated body")
+
 func hasMessageContent(msg *llm.Message) bool {
 	if msg == nil {
 		return false

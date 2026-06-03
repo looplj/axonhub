@@ -132,6 +132,30 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	require.Contains(t, err.Error(), "Something went wrong")
 }
 
+func TestOutboundTransformer_TransformStream_ResponseCancelledCompletes(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_cancelled","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.cancelled", Data: []byte(`{"type":"response.cancelled","response":{"id":"resp_cancelled","object":"response","created_at":1700000000,"model":"gpt-5","status":"canceled","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+	require.Len(t, responses, 3)
+	require.Equal(t, llm.DoneResponse, responses[2])
+	require.Equal(t, "resp_cancelled", responses[1].ID)
+	require.Equal(t, "gpt-5", responses[1].Model)
+	require.Equal(t, int64(1700000000), responses[1].Created)
+	require.NotEmpty(t, responses[1].Choices)
+	require.NotNil(t, responses[1].Choices[0].FinishReason)
+	require.Equal(t, "cancelled", *responses[1].Choices[0].FinishReason)
+}
+
 func TestOutboundTransformer_TransformStream_PreservesFinalItemAnnotations(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

@@ -66,8 +66,16 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 	return rawReq, nil
 }
 
-func isModelSupportResponseFormat(model string) bool {
-	return !strings.HasPrefix(model, "gpt-image-")
+func supportsImageGenerationResponseFormat(model string) bool {
+	return model == "dall-e-2" || model == "dall-e-3"
+}
+
+func supportsImageEditResponseFormat(model string) bool {
+	return model == "dall-e-2"
+}
+
+func supportsImageVariationResponseFormat(model string) bool {
+	return model == "" || model == "dall-e-2"
 }
 
 // buildImageGenerateRequest builds request for Image Generation API (images/generations).
@@ -123,11 +131,11 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 		reqBody["partial_images"] = *img.PartialImages
 	}
 
-	if img.ResponseFormat != "" && isModelSupportResponseFormat(model) {
+	if img.ResponseFormat != "" && supportsImageGenerationResponseFormat(model) {
 		reqBody["response_format"] = img.ResponseFormat
 	}
 
-	if isModelSupportResponseFormat(chatReq.Model) {
+	if supportsImageGenerationResponseFormat(chatReq.Model) {
 		if _, ok := reqBody["response_format"]; !ok {
 			reqBody["response_format"] = "b64_json"
 		}
@@ -212,10 +220,15 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
+	imageFieldName := "image"
+	if len(formFiles) > 1 {
+		imageFieldName = "image[]"
+	}
+
 	// Add images with proper MIME headers
 	for _, formFile := range formFiles {
 		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image"; filename="%s"`, formFile.Filename))
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, imageFieldName, formFile.Filename))
 		h.Set("Content-Type", formFile.ContentType)
 
 		part, err := writer.CreatePart(h)
@@ -325,7 +338,7 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 			jsonBody["partial_images"] = *img.PartialImages
 		}
 
-		if img.ResponseFormat != "" && model != "gpt-image-1" {
+		if img.ResponseFormat != "" && supportsImageEditResponseFormat(model) {
 			if err := writer.WriteField("response_format", img.ResponseFormat); err != nil {
 				return nil, fmt.Errorf("failed to write response_format field: %w", err)
 			}
@@ -334,7 +347,7 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 		}
 	}
 
-	if model != "gpt-image-1" {
+	if supportsImageEditResponseFormat(model) {
 		if _, ok := jsonBody["response_format"]; !ok {
 			if err := writer.WriteField("response_format", "b64_json"); err != nil {
 				return nil, fmt.Errorf("failed to write response_format field: %w", err)
@@ -460,7 +473,7 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, a
 			jsonBody["size"] = img.Size
 		}
 
-		if img.ResponseFormat != "" && model != "gpt-image-1" {
+		if img.ResponseFormat != "" && supportsImageVariationResponseFormat(model) {
 			if err := writer.WriteField("response_format", img.ResponseFormat); err != nil {
 				return nil, fmt.Errorf("failed to write response_format field: %w", err)
 			}
@@ -469,7 +482,7 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, a
 		}
 	}
 
-	if model != "gpt-image-1" {
+	if supportsImageVariationResponseFormat(model) {
 		if _, ok := jsonBody["response_format"]; !ok {
 			if err := writer.WriteField("response_format", "b64_json"); err != nil {
 				return nil, fmt.Errorf("failed to write response_format field: %w", err)

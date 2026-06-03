@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -73,6 +74,30 @@ func TestToExpr(t *testing.T) {
 		})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), `unsupported operator "contains"`)
+	})
+
+	t.Run("daily time within", func(t *testing.T) {
+		expr, err := ToExpr(Condition{
+			Conditions: []Condition{{
+				Field:    "daily_time",
+				Operator: "within",
+				Value:    "22:00-06:00",
+			}},
+		})
+		require.NoError(t, err)
+		require.Equal(t, `(dailyTimeWithin(now, "22:00-06:00"))`, expr)
+	})
+
+	t.Run("daily time not within", func(t *testing.T) {
+		expr, err := ToExpr(Condition{
+			Conditions: []Condition{{
+				Field:    "daily_time",
+				Operator: "not_within",
+				Value:    "09:00-17:00",
+			}},
+		})
+		require.NoError(t, err)
+		require.Equal(t, `(!dailyTimeWithin(now, "09:00-17:00"))`, expr)
 	})
 }
 
@@ -217,6 +242,54 @@ func TestEvaluate(t *testing.T) {
 				}},
 			},
 			data: map[string]any{"model": "gpt-4o"},
+			want: false,
+		},
+		{
+			name: "daily time within matches across midnight",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "daily_time",
+					Operator: "within",
+					Value:    "22:00-06:00",
+				}},
+			},
+			data: map[string]any{"now": time.Date(2026, 5, 25, 23, 30, 0, 0, time.Local)},
+			want: true,
+		},
+		{
+			name: "daily time within does not match outside range",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "daily_time",
+					Operator: "within",
+					Value:    "22:00-06:00",
+				}},
+			},
+			data: map[string]any{"now": time.Date(2026, 5, 25, 12, 0, 0, 0, time.Local)},
+			want: false,
+		},
+		{
+			name: "daily time not within matches outside range",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "daily_time",
+					Operator: "not_within",
+					Value:    "09:00-17:00",
+				}},
+			},
+			data: map[string]any{"now": time.Date(2026, 5, 25, 18, 0, 0, 0, time.Local)},
+			want: true,
+		},
+		{
+			name: "daily time without now returns false",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "daily_time",
+					Operator: "within",
+					Value:    "09:00-17:00",
+				}},
+			},
+			data: map[string]any{},
 			want: false,
 		},
 	}

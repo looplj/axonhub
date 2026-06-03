@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -311,6 +314,22 @@ type PersistentOutboundTransformer struct {
 	state   *PersistenceState
 }
 
+func shouldForceStreamingForCandidate(candidate *ChannelModelsCandidate, req *llm.Request) bool {
+	if candidate == nil || candidate.Channel == nil || req == nil {
+		return false
+	}
+
+	if req.Stream != nil && *req.Stream {
+		return false
+	}
+
+	if candidate.Channel.Policies.Stream != objects.CapabilityPolicyRequire {
+		return false
+	}
+
+	return supportsAutoAggregateRequest(req)
+}
+
 func selectOutboundForCandidate(candidate *ChannelModelsCandidate) transformer.Outbound {
 	if candidate == nil || candidate.Channel == nil {
 		return nil
@@ -349,6 +368,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	entry := candidate.Models[p.state.CurrentModelIndex]
 
 	p.state.CurrentCandidate = candidate
+	p.state.StreamCompleted = false
 
 	p.wrapped = selectOutboundForCandidate(candidate)
 
@@ -364,6 +384,22 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
+
+	if shouldForceStreamingForCandidate(candidate, llmRequest) {
+		streamPtr := lo.ToPtr(true)
+		llmRequest.Stream = streamPtr
+		if llmRequest.StreamOptions == nil {
+			llmRequest.StreamOptions = &llm.StreamOptions{}
+		}
+		llmRequest.StreamOptions.IncludeUsage = true
+		if p.state != nil && p.state.LlmRequest != nil {
+			p.state.LlmRequest.Stream = streamPtr
+			if p.state.LlmRequest.StreamOptions == nil {
+				p.state.LlmRequest.StreamOptions = &llm.StreamOptions{}
+			}
+			p.state.LlmRequest.StreamOptions.IncludeUsage = true
+		}
+	}
 
 	return p.wrapped.TransformRequest(ctx, llmRequest)
 }
@@ -536,7 +572,9 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 
 	// Empty response detection: allow same-channel retry so the pipeline can
 	// re-execute the request against the same (or next model in the) channel.
-	if errors.Is(err, pipeline.ErrEmptyResponse) {
+	if errors.Is(err, pipeline.ErrEmptyResponse) ||
+		errors.Is(err, pipeline.ErrEmptyStreamChunks) ||
+		errors.Is(err, pipeline.ErrEmptyAggregatedBody) {
 		log.Debug(context.Background(), "empty response detected",
 			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
 		)
@@ -648,8 +686,12 @@ func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Exec
 		// Use the channel's own HTTP client, which is pre-configured with its proxy settings.
 		customizedExecutor = channel.HTTPClient
 	}
-	// 2. Allow the specific outbound transformer (e.g., for AWS signing) to further customize the client.
-	if custom, ok := channel.Outbound.(pipeline.ChannelCustomizedExecutor); ok {
+	// 2. Allow the selected outbound transformer (e.g., for AWS signing or Responses WebSocket) to further customize the client.
+	outbound := p.wrapped
+	if outbound == nil {
+		outbound = channel.Outbound
+	}
+	if custom, ok := outbound.(pipeline.ChannelCustomizedExecutor); ok {
 		return custom.CustomizeExecutor(customizedExecutor)
 	}
 
