@@ -18,6 +18,10 @@ const API_FORMAT_PATHS: Record<ApiFormat, string> = {
   'openai/image_edit': '/v1/images/edits',
   'openai/image_variation': '/v1/images/variations',
   'openai/embeddings': '/v1/embeddings',
+  'openai/video': '/v1/videos',
+  'openai/audio_speech': '/v1/audio/speech',
+  'openai/audio_transcriptions': '/v1/audio/transcriptions',
+  'openai/audio_translations': '/v1/audio/translations',
   'anthropic/messages': '/v1/messages',
   'gemini/contents': '/v1beta/models/{model}:generateContent',
   'aisdk/text': '/api/chat',
@@ -74,8 +78,17 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
 
   const curlParts = [`curl '${url}'`];
 
+  // Audio transcription/translation use multipart/form-data, not JSON.
+  const isMultipartAudio =
+    resolvedApiFormat === 'openai/audio_transcriptions' || resolvedApiFormat === 'openai/audio_translations';
+
   if (headers && typeof headers === 'object') {
     const skipHeaders = ['content-length', 'host', 'connection', 'accept-encoding', 'transfer-encoding'];
+    // For multipart, curl -F generates its own Content-Type with a fresh boundary;
+    // the logged header carries a stale boundary and must be dropped.
+    if (isMultipartAudio) {
+      skipHeaders.push('content-type');
+    }
     Object.entries(headers).forEach(([key, value]) => {
       if (!skipHeaders.includes(key.toLowerCase()) && value) {
         const headerValue = String(value).replace(/'/g, "'\\''");
@@ -84,13 +97,38 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
     });
   }
 
-  if (body) {
+  if (body && isMultipartAudio) {
+    // The logged body replaces the binary file with a placeholder; emit -F flags
+    // so the generated cURL is reproducible (user supplies a local file path).
+    const parsed = typeof body === 'string' ? safeJsonParse(body) : body;
+    if (parsed && typeof parsed === 'object') {
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (key === 'file') {
+          curlParts.push(`  -F 'file=@/path/to/audio.mp3'`);
+          return;
+        }
+        const values = Array.isArray(value) ? value : [value];
+        values.forEach((v) => {
+          const fieldValue = String(v).replace(/'/g, "'\\''");
+          curlParts.push(`  -F '${key}=${fieldValue}'`);
+        });
+      });
+    }
+  } else if (body) {
     const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
     const escapedBody = bodyStr.replace(/'/g, "'\\''");
     curlParts.push(`  -d '${escapedBody}'`);
   }
 
   return curlParts.join(' \\\n');
+}
+
+function safeJsonParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
 }
 
 export function generateRequestCurl(headers: any, body: any, apiFormat?: ApiFormat): string {

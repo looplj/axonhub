@@ -58,6 +58,9 @@ type OpenAIHandlers struct {
 	ImageVariationHandlers     *ChatCompletionHandlers
 	VideoHandlers              *ChatCompletionHandlers
 	VideoInboundTransformer    *openai.VideoInboundTransformer
+	SpeechHandlers             *ChatCompletionHandlers
+	TranscriptionHandlers      *ChatCompletionHandlers
+	TranslationHandlers        *ChatCompletionHandlers
 	EntClient                  *ent.Client
 }
 
@@ -224,6 +227,57 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 		ChannelService:          params.ChannelService,
 		ModelService:            params.ModelService,
 		SystemService:           params.SystemService,
+		SpeechHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewSpeechInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		TranscriptionHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewTranscriptionInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		TranslationHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewTranslationInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
 	}
 }
 
@@ -245,6 +299,21 @@ func (handlers *OpenAIHandlers) CompactResponse(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 	handlers.EmbeddingHandlers.ChatCompletion(c)
+}
+
+// CreateSpeech handles POST /v1/audio/speech (text-to-speech). The response is binary audio.
+func (handlers *OpenAIHandlers) CreateSpeech(c *gin.Context) {
+	handlers.SpeechHandlers.ChatCompletion(c)
+}
+
+// CreateTranscription handles POST /v1/audio/transcriptions (speech-to-text).
+func (handlers *OpenAIHandlers) CreateTranscription(c *gin.Context) {
+	handlers.TranscriptionHandlers.ChatCompletion(c)
+}
+
+// CreateTranslation handles POST /v1/audio/translations (speech-to-text translation).
+func (handlers *OpenAIHandlers) CreateTranslation(c *gin.Context) {
+	handlers.TranslationHandlers.ChatCompletion(c)
 }
 
 func (handlers *OpenAIHandlers) CreateImage(c *gin.Context) {

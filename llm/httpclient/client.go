@@ -199,7 +199,11 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
 
-	rawReq.Header.Set("Accept", "application/json")
+	// Only set the default Accept when the transformer did not specify one
+	// (e.g. TTS sets Accept: */* to receive binary audio).
+	if rawReq.Header.Get("Accept") == "" {
+		rawReq.Header.Set("Accept", "application/json")
+	}
 
 	rawResp, err := hc.client.Do(rawReq)
 	if err != nil {

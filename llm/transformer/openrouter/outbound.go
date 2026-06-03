@@ -89,7 +89,10 @@ func (t *OutboundTransformer) TransformRequest(
 		// continue
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationRequest(llmReq)
-	case llm.RequestTypeEmbedding:
+	case llm.RequestTypeEmbedding,
+		llm.RequestTypeSpeech,
+		llm.RequestTypeTranscription,
+		llm.RequestTypeTranslation:
 		return t.Outbound.TransformRequest(ctx, llmReq)
 	case llm.RequestTypeCompact:
 		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
@@ -274,6 +277,17 @@ func (t *OutboundTransformer) TransformResponse(
 	// Check if this is an image generation request
 	if httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
 		return t.transformImageGenerationResponse(httpResp)
+	}
+
+	// Audio (speech/transcription/translation) responses are handled by the underlying
+	// OpenAI transformer, which routes on APIFormat (binary audio for speech, JSON for STT).
+	if httpResp.Request != nil {
+		switch httpResp.Request.RequestType {
+		case llm.RequestTypeSpeech.String(),
+			llm.RequestTypeTranscription.String(),
+			llm.RequestTypeTranslation.String():
+			return t.Outbound.TransformResponse(ctx, httpResp)
+		}
 	}
 
 	// Check for HTTP error status codes

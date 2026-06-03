@@ -21,6 +21,9 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAIImageEdit.String():       {},
 	llm.APIFormatOpenAIImageVariation.String():  {},
 	llm.APIFormatOpenAIVideo.String():           {},
+	llm.APIFormatOpenAISpeech.String():          {},
+	llm.APIFormatOpenAITranscription.String():   {},
+	llm.APIFormatOpenAITranslation.String():     {},
 	llm.APIFormatAnthropicMessage.String():      {},
 	llm.APIFormatGeminiContents.String():        {},
 	llm.APIFormatGeminiEmbedding.String():       {},
@@ -83,6 +86,16 @@ var openAICompatibleDefaultEndpoints = []objects.ChannelEndpoint{
 	{APIFormat: llm.APIFormatOpenAIVideo.String()},
 }
 
+// openAIFullDefaultEndpoints includes the audio endpoints on top of the compatible set.
+// Audio defaults are only granted to channel types confirmed to support the OpenAI
+// /audio/* APIs; other compatible channels can opt in via custom endpoints.
+var openAIFullDefaultEndpoints = append(
+	append([]objects.ChannelEndpoint{}, openAICompatibleDefaultEndpoints...),
+	objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAISpeech.String()},
+	objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAITranscription.String()},
+	objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAITranslation.String()},
+)
+
 var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 	{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
 }
@@ -100,7 +113,7 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 // built-in contract. User-configured custom endpoints remain external overrides
 // and are not modeled here.
 var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
-	channel.TypeOpenai:          openAICompatibleDefaultEndpoints,
+	channel.TypeOpenai:          openAIFullDefaultEndpoints,
 	channel.TypeOpenaiResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeAtlascloud:      openAICompatibleDefaultEndpoints,
 	channel.TypeCodex:           {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
@@ -126,16 +139,21 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
 		{APIFormat: llm.APIFormatSeedanceVideo.String()},
 	},
-	channel.TypeDoubaoAnthropic:     {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeMoonshot:            {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
-	channel.TypeMoonshotAnthropic:   {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeZhipu:               {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
-	channel.TypeZai:                 {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
-	channel.TypeZhipuAnthropic:      {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeZaiAnthropic:        {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeAnthropicFake:       {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeOpenaiFake:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
-	channel.TypeOpenrouter:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeDoubaoAnthropic:   {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeMoonshot:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeMoonshotAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeZhipu:             {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeZai:               {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeZhipuAnthropic:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeZaiAnthropic:      {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeAnthropicFake:     {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeOpenaiFake:        {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeOpenrouter: {
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAISpeech.String()},
+		{APIFormat: llm.APIFormatOpenAITranscription.String()},
+		{APIFormat: llm.APIFormatOpenAITranslation.String()},
+	},
 	channel.TypeXiaomi:              openAIChatOnlyDefaultEndpoints,
 	channel.TypeXiaomiAnthropic:     {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeXai:                 {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
@@ -163,7 +181,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeClaudecode:       {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeCerebras:         {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
 	channel.TypeAntigravity:      {{APIFormat: llm.APIFormatGeminiContents.String()}},
-	channel.TypeNanogpt:          openAICompatibleDefaultEndpoints,
+	channel.TypeNanogpt:          openAIFullDefaultEndpoints,
 	channel.TypeNanogptResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeOpencodeGo:       openAIChatOnlyDefaultEndpoints,
 	channel.TypeOllama:           {{APIFormat: llm.APIFormatOllamaChat.String()}},

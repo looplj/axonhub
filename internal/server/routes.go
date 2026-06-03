@@ -179,6 +179,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		openaiGroup.POST("/videos", handlers.OpenAI.CreateVideo)
 		openaiGroup.GET("/videos/:id", handlers.OpenAI.GetVideo)
 		openaiGroup.DELETE("/videos/:id", handlers.OpenAI.DeleteVideo)
+		openaiGroup.POST("/audio/speech", handlers.OpenAI.CreateSpeech)
+		openaiGroup.POST("/audio/transcriptions", handlers.OpenAI.CreateTranscription)
+		openaiGroup.POST("/audio/translations", handlers.OpenAI.CreateTranslation)
 		// DO NOT SUPPORT IMAGE VARIATION
 		// openaiGroup.POST("/images/variations", handlers.OpenAI.CreateImageVariation)
 
