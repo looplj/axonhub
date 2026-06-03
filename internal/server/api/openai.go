@@ -345,6 +345,11 @@ func (handlers *OpenAIHandlers) DeleteVideo(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+type Modalities struct {
+	Input  []string `json:"input"`
+	Output []string `json:"output"`
+}
+
 type Capabilities struct {
 	Vision    bool `json:"vision"`
 	ToolCall  bool `json:"tool_call"`
@@ -369,6 +374,7 @@ type OpenAIModel struct {
 	Description     string        `json:"description,omitempty"`
 	ContextLength   int           `json:"context_length,omitempty"`
 	MaxOutputTokens int           `json:"max_output_tokens,omitempty"`
+	Modalities      *Modalities   `json:"modalities,omitempty"`
 	Capabilities    *Capabilities `json:"capabilities,omitempty"`
 	Pricing         *Pricing      `json:"pricing,omitempty"`
 	Icon            string        `json:"icon,omitempty"`
@@ -407,7 +413,7 @@ func parseOpenAIModelInclude(includeParam string, defaultIncludeAll bool) (map[s
 		}
 	}
 
-	extendedFields := []string{"name", "description", "context_length", "max_output_tokens", "capabilities", "pricing", "icon", "type"}
+	extendedFields := []string{"name", "description", "context_length", "max_output_tokens", "modalities", "capabilities", "pricing", "icon", "type"}
 	for _, field := range extendedFields {
 		if include[field] {
 			needFullData = true
@@ -430,7 +436,7 @@ func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
 // convertModelToOpenAIExtended transforms an ent.Model to OpenAIModel with extended metadata fields.
 // It safely handles nil ModelCard, Cost, and Limit fields.
 // The include set specifies which optional fields to populate. If nil or empty, all fields are populated.
-// Supported field names: name, description, context_length, max_output_tokens, capabilities, pricing, icon, type
+// Supported field names: name, description, context_length, max_output_tokens, modalities, capabilities, pricing, icon, type.
 func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIModel {
 	result := OpenAIModel{
 		ID:      m.ModelID,
@@ -466,7 +472,21 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 	}
 
 	if m.ModelCard != nil {
-		// Capabilities, ContextLength, MaxOutputTokens, Pricing come from ModelCard
+		// Modalities, Capabilities, ContextLength, MaxOutputTokens, Pricing come from ModelCard
+		if shouldInclude("modalities") {
+			input := m.ModelCard.Modalities.Input
+			if input == nil {
+				input = []string{}
+			}
+			output := m.ModelCard.Modalities.Output
+			if output == nil {
+				output = []string{}
+			}
+			result.Modalities = &Modalities{
+				Input:  input,
+				Output: output,
+			}
+		}
 		if shouldInclude("capabilities") {
 			caps := Capabilities{
 				Vision:    m.ModelCard.Vision,

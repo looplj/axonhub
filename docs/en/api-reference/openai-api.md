@@ -332,6 +332,7 @@ AxonHub provides an enhanced `/v1/models` endpoint that lists available models w
 | `description` | string | Model description |
 | `context_length` | integer | Maximum context length in tokens |
 | `max_output_tokens` | integer | Maximum output tokens |
+| `modalities` | object | Model supported input/output types (input, output) |
 | `capabilities` | object | Model capabilities (vision, tool_call, reasoning) |
 | `pricing` | object | Pricing information (input, output, cache_read, cache_write) |
 | `icon` | string | Model icon URL |
@@ -378,6 +379,10 @@ When using `?include=all` or selective fields, the response includes extended me
       "description": "GPT-4 model with advanced reasoning capabilities",
       "context_length": 8192,
       "max_output_tokens": 4096,
+      "modalities": {
+        "input": ["text", "image"],
+        "output": ["text"]
+      },
       "capabilities": {
         "vision": false,
         "tool_call": true,
@@ -403,6 +408,9 @@ When using `?include=all` or selective fields, the response includes extended me
 - `description` - Detailed model description
 - `context_length` - Maximum tokens in context window
 - `max_output_tokens` - Maximum tokens in response
+- `modalities` - Model supported input/output modality types:
+  - `input` - Array of supported input types (e.g. `text`, `image`, `audio`, `video`, `pdf`)
+  - `output` - Array of supported output types (e.g. `text`)
 - `capabilities` - Object with boolean flags:
   - `vision` - Supports image inputs
   - `tool_call` - Supports function calling
