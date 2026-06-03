@@ -249,6 +249,14 @@ export interface UpdateVideoStorageSettingsInput {
   scanLimit?: number;
 }
 
+export interface SecuritySettings {
+  blockedIPs: string[];
+}
+
+export interface UpdateSecuritySettingsInput {
+  blockedIPs?: string[];
+}
+
 export interface StoragePolicy {
   storeChunks: boolean;
   livePreview: boolean;
@@ -915,6 +923,20 @@ const UPDATE_VIDEO_STORAGE_SETTINGS_MUTATION = `
   }
 `;
 
+const SECURITY_SETTINGS_QUERY = `
+  query SecuritySettings {
+    securitySettings {
+      blockedIPs
+    }
+  }
+`;
+
+const UPDATE_SECURITY_SETTINGS_MUTATION = `
+  mutation UpdateSecuritySettings($input: UpdateSecuritySettingsInput!) {
+    updateSecuritySettings(input: $input)
+  }
+`;
+
 export interface ModelSettings {
   fallbackToChannelsOnModelNotFound: boolean;
   queryAllChannelModels: boolean;
@@ -1105,6 +1127,41 @@ export function useUpdateVideoStorageSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['videoStorageSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+export function useSecuritySettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['securitySettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ securitySettings: SecuritySettings }>(SECURITY_SETTINGS_QUERY);
+        return data.securitySettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateSecuritySettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateSecuritySettingsInput) => {
+      const data = await graphqlRequest<{ updateSecuritySettings: boolean }>(UPDATE_SECURITY_SETTINGS_MUTATION, { input });
+      return data.updateSecuritySettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['securitySettings'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

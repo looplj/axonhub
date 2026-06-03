@@ -4,8 +4,9 @@ import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeftRight, FileText } from 'lucide-react';
+import { ArrowLeftRight, Ban, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
@@ -13,7 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
-import { useGeneralSettings } from '@/features/system/data/system';
+import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
@@ -28,9 +30,45 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const permissions = useRequestPermissions();
+  const { hasScope } = usePermissions();
   const { data: settings } = useGeneralSettings();
+  const { data: securitySettings } = useSecuritySettings();
+  const updateSecuritySettings = useUpdateSecuritySettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
   const [displayMode, setDisplayMode] = useDisplayMode();
+  const canManageSecuritySettings = hasScope('write_settings');
+
+  const blockedIPs = securitySettings?.blockedIPs ?? [];
+
+  const normalizeBlockedIPs = (ips: string[]) =>
+    Array.from(
+      new Set(
+        ips
+          .map((ip) => ip.trim())
+          .filter((ip) => ip.length > 0)
+      )
+    );
+
+  const handleBlockIP = async (clientIP: string) => {
+    const normalizedIP = clientIP.trim();
+    if (!normalizedIP) return;
+
+    const nextBlockedIPs = normalizeBlockedIPs([...blockedIPs, normalizedIP]);
+    if (nextBlockedIPs.length === blockedIPs.length && blockedIPs.includes(normalizedIP)) {
+      toast.info(t('requests.actions.ipAlreadyBlocked'));
+      return;
+    }
+
+    await updateSecuritySettings.mutateAsync({ blockedIPs: nextBlockedIPs });
+  };
+
+  const handleUnblockIP = async (clientIP: string) => {
+    const normalizedIP = clientIP.trim();
+    if (!normalizedIP) return;
+
+    const nextBlockedIPs = blockedIPs.filter((ip) => ip.trim() !== normalizedIP);
+    await updateSecuritySettings.mutateAsync({ blockedIPs: nextBlockedIPs });
+  };
 
   // Define all columns
   const columns: ColumnDef<Request>[] = [
@@ -188,8 +226,63 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.clientIP')} />,
       enableSorting: false,
       cell: ({ row }) => {
-        const clientIP = row.getValue('clientIP') as string;
-        return <div className='font-mono text-xs'>{clientIP || '-'}</div>;
+        const clientIP = (row.getValue('clientIP') as string) || '';
+        const normalizedIP = clientIP.trim();
+
+        if (!normalizedIP) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        const isBlocked = blockedIPs.includes(normalizedIP);
+
+        return (
+          <div className='flex items-center gap-2'>
+            <span className='font-mono text-xs'>{normalizedIP}</span>
+            {canManageSecuritySettings && (
+              isBlocked ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon-sm'
+                      className='h-6 w-6 shrink-0 rounded-full text-red-500/80 hover:bg-red-50 hover:text-red-600 dark:text-red-300/80 dark:hover:bg-red-950/30 dark:hover:text-red-300'
+                      disabled={updateSecuritySettings.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleUnblockIP(normalizedIP);
+                      }}
+                      aria-label={t('requests.actions.unblockIP')}
+                    >
+                      <Ban className='h-3.5 w-3.5' />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('requests.actions.unblockIP')}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon-sm'
+                      className='text-muted-foreground h-6 w-6 shrink-0 rounded-md border border-dashed border-transparent hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:hover:border-red-800/50 dark:hover:bg-red-950/30 dark:hover:text-red-300'
+                      disabled={updateSecuritySettings.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleBlockIP(normalizedIP);
+                      }}
+                      aria-label={t('requests.actions.blockIP')}
+                    >
+                      <Ban className='h-3.5 w-3.5' />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('requests.actions.blockIP')}</TooltipContent>
+                </Tooltip>
+              )
+            )}
+          </div>
+        );
       },
     },
     // Channel column - only show if user has permission to view channels

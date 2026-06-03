@@ -76,3 +76,7 @@ var defaultQuotaEnforcementSettings = QuotaEnforcementSettings{
 	Enabled: false,
 	Mode:    QuotaEnforcementModeExhaustedOnly,
 }
+
+var defaultSecuritySettings = SecuritySettings{
+	BlockedIPs: []string{},
+}

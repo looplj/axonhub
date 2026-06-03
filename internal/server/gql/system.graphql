@@ -175,6 +175,14 @@ input UpdateQuotaEnforcementSettingsInput {
   mode: QuotaEnforcementMode
 }
 
+type SecuritySettings {
+  blockedIPs: [String!]!
+}
+
+input UpdateSecuritySettingsInput {
+  blockedIPs: [String!]
+}
+
 type SystemModelSettings {
   fallbackToChannelsOnModelNotFound: Boolean!
   queryAllChannelModels: Boolean!
@@ -357,6 +365,7 @@ extend type Mutation {
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
   updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   updateQuotaEnforcementSettings(input: UpdateQuotaEnforcementSettingsInput!): Boolean!
+  updateSecuritySettings(input: UpdateSecuritySettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
   triggerGcCleanup(input: TriggerGcCleanupInput!): Boolean!
   saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
@@ -424,6 +433,7 @@ extend type Query {
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!
   quotaEnforcementSettings: QuotaEnforcementSettings!
+  securitySettings: SecuritySettings!
   proxyPresets: [ProxyPreset!]!
   userAgentPassThroughSettings: UserAgentPassThroughSettings!
   passThroughSettings: PassThroughSettings!
