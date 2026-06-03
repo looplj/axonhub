@@ -341,12 +341,12 @@ func TestBackupService_Backup_WithUsageStats(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, BackupVersion, backupData.Version)
-	require.Len(t, backupData.UsageRequests, 1)
+	require.Len(t, backupData.UsageRequests, 0)
 	require.Len(t, backupData.UsageLogs, 1)
-	require.Equal(t, req.ID, backupData.UsageRequests[0].ID)
-	require.Equal(t, "Project1", backupData.UsageRequests[0].ProjectName)
-	require.Equal(t, "Channel 1", backupData.UsageRequests[0].ChannelName)
-	require.Empty(t, backupData.UsageRequests[0].APIKeyKey)
+	require.Equal(t, req.ID, backupData.UsageLogs[0].RequestID)
+	require.Equal(t, "Project1", backupData.UsageLogs[0].ProjectName)
+	require.Equal(t, "Channel 1", backupData.UsageLogs[0].ChannelName)
+	require.Empty(t, backupData.UsageLogs[0].APIKeyKey)
 	require.Equal(t, usage.RequestID, backupData.UsageLogs[0].RequestID)
 	require.Equal(t, int64(150), backupData.UsageLogs[0].TotalTokens)
 	require.Equal(t, "price-ref", backupData.UsageLogs[0].CostPriceReferenceID)
@@ -354,6 +354,48 @@ func TestBackupService_Backup_WithUsageStats(t *testing.T) {
 	data, err = service.Backup(ctx, BackupOptions{
 		IncludeAPIKeys:    true,
 		IncludeUsageStats: true,
+	})
+	require.NoError(t, err)
+
+	err = json.Unmarshal(data, &backupData)
+	require.NoError(t, err)
+	require.Equal(t, "sk-test-key-1", backupData.UsageLogs[0].APIKeyKey)
+}
+
+func TestBackupService_Backup_WithRequestLogs(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	user, _ := client.User.Query().First(ctx)
+	proj := createBackupTestProject(t, client, ctx, "Project1", "Test Project")
+	ch := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	ak := createBackupTestAPIKey(t, client, ctx, user, proj, "API Key 1", "sk-test-key-1")
+	req, _ := createBackupTestUsage(t, client, ctx, proj, ch, ak)
+
+	data, err := service.Backup(ctx, BackupOptions{
+		IncludeRequestLogs: true,
+	})
+	require.NoError(t, err)
+	require.NotContains(t, string(data), "sk-test-key-1")
+	require.NotContains(t, string(data), `"usage_logs"`)
+	require.Contains(t, string(data), `"usage_requests"`)
+	require.Contains(t, string(data), `"request_body"`)
+
+	var backupData BackupData
+	err = json.Unmarshal(data, &backupData)
+	require.NoError(t, err)
+
+	require.Equal(t, BackupVersion, backupData.Version)
+	require.Len(t, backupData.UsageRequests, 1)
+	require.Len(t, backupData.UsageLogs, 0)
+	require.Equal(t, req.ID, backupData.UsageRequests[0].ID)
+	require.Equal(t, "Project1", backupData.UsageRequests[0].ProjectName)
+	require.Equal(t, "Channel 1", backupData.UsageRequests[0].ChannelName)
+	require.Empty(t, backupData.UsageRequests[0].APIKeyKey)
+
+	data, err = service.Backup(ctx, BackupOptions{
+		IncludeAPIKeys:     true,
+		IncludeRequestLogs: true,
 	})
 	require.NoError(t, err)
 

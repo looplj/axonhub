@@ -131,13 +131,16 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 		usageLogDataList     []*BackupUsageLog
 	)
 
-	if opts.IncludeUsageStats {
+	if opts.IncludeRequestLogs {
 		var err error
 		usageRequestDataList, err = svc.backupUsageRequests(ctx, opts.IncludeAPIKeys)
 		if err != nil {
 			return nil, err
 		}
+	}
 
+	if opts.IncludeUsageStats {
+		var err error
 		usageLogDataList, err = svc.backupUsageLogs(ctx, opts.IncludeAPIKeys)
 		if err != nil {
 			return nil, err
@@ -156,7 +159,7 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 		UsageLogs:          usageLogDataList,
 	}
 
-	if opts.IncludeUsageStats {
+	if opts.IncludeUsageStats || opts.IncludeRequestLogs {
 		return json.Marshal(backupData)
 	}
 

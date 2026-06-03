@@ -233,6 +233,7 @@ type AutoBackupSettings struct {
 	IncludeAPIKeys     bool `json:"include_api_keys"`
 	IncludeModelPrices bool `json:"include_model_prices"`
 	IncludeUsageStats  bool `json:"include_usage_stats"`
+	IncludeRequestLogs bool `json:"include_request_logs"`
 	// RetentionDays defines how many days to keep backups (0 = keep all)
 	RetentionDays int `json:"retention_days"`
 	// LastBackupAt is the timestamp of the last successful backup
@@ -250,6 +251,7 @@ type autoBackupSettingsJSON struct {
 	IncludeAPIKeys     bool            `json:"include_api_keys"`
 	IncludeModelPrices bool            `json:"include_model_prices"`
 	IncludeUsageStats  *bool           `json:"include_usage_stats"`
+	IncludeRequestLogs *bool           `json:"include_request_logs"`
 	RetentionDays      int             `json:"retention_days"`
 	LastBackupAt       *time.Time      `json:"last_backup_at,omitempty"`
 	LastBackupError    string          `json:"last_backup_error,omitempty"`
@@ -1345,6 +1347,10 @@ func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSett
 	if stored.IncludeUsageStats != nil {
 		includeUsageStats = *stored.IncludeUsageStats
 	}
+	includeRequestLogs := defaultAutoBackupSettings.IncludeRequestLogs
+	if stored.IncludeRequestLogs != nil {
+		includeRequestLogs = *stored.IncludeRequestLogs
+	}
 
 	settings := AutoBackupSettings{
 		Enabled:            stored.Enabled,
@@ -1355,6 +1361,7 @@ func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSett
 		IncludeAPIKeys:     stored.IncludeAPIKeys,
 		IncludeModelPrices: stored.IncludeModelPrices,
 		IncludeUsageStats:  includeUsageStats,
+		IncludeRequestLogs: includeRequestLogs,
 		RetentionDays:      stored.RetentionDays,
 		LastBackupAt:       stored.LastBackupAt,
 		LastBackupError:    stored.LastBackupError,

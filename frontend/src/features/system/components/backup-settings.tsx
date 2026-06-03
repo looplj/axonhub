@@ -41,6 +41,7 @@ export function BackupSettings() {
     includeModels: true,
     includeAPIKeys: false,
     includeUsageStats: true,
+    includeRequestLogs: false,
   });
 
   const [restoreOptions, setRestoreOptions] = useState<RestoreOptionsInput>({
@@ -49,6 +50,7 @@ export function BackupSettings() {
     includeModels: true,
     includeAPIKeys: false,
     includeUsageStats: true,
+    includeRequestLogs: false,
     channelConflictStrategy: 'skip',
     modelConflictStrategy: 'skip',
     modelPriceConflictStrategy: 'skip',
@@ -66,6 +68,7 @@ export function BackupSettings() {
     includeAPIKeys: false,
     includeModelPrices: true,
     includeUsageStats: false,
+    includeRequestLogs: false,
     retentionDays: 0,
   });
 
@@ -81,6 +84,7 @@ export function BackupSettings() {
        autoBackupForm.includeAPIKeys !== autoBackupSettings.data.includeAPIKeys ||
        autoBackupForm.includeModelPrices !== autoBackupSettings.data.includeModelPrices ||
        autoBackupForm.includeUsageStats !== autoBackupSettings.data.includeUsageStats ||
+       autoBackupForm.includeRequestLogs !== autoBackupSettings.data.includeRequestLogs ||
        autoBackupForm.retentionDays !== autoBackupSettings.data.retentionDays
      );
    }, [autoBackupForm, autoBackupSettings.data]);
@@ -96,6 +100,7 @@ export function BackupSettings() {
         includeAPIKeys: autoBackupSettings.data.includeAPIKeys,
         includeModelPrices: autoBackupSettings.data.includeModelPrices,
         includeUsageStats: autoBackupSettings.data.includeUsageStats,
+        includeRequestLogs: autoBackupSettings.data.includeRequestLogs,
         retentionDays: autoBackupSettings.data.retentionDays,
       });
     }
@@ -127,6 +132,7 @@ export function BackupSettings() {
       includeAPIKeys: autoBackupForm.includeAPIKeys,
       includeModelPrices: autoBackupForm.includeModelPrices,
       includeUsageStats: autoBackupForm.includeUsageStats,
+      includeRequestLogs: autoBackupForm.includeRequestLogs,
       retentionDays: autoBackupForm.retentionDays,
     });
   };
@@ -185,6 +191,14 @@ export function BackupSettings() {
                 id="include-usage-stats"
                 checked={backupOptions.includeUsageStats}
                 onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeUsageStats: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="include-request-logs">{t('system.backup.includeRequestLogs')}</Label>
+              <Switch
+                id="include-request-logs"
+                checked={backupOptions.includeRequestLogs}
+                onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, includeRequestLogs: checked })}
               />
             </div>
           </div>
@@ -349,6 +363,17 @@ export function BackupSettings() {
                 />
               </div>
             </div>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-1 items-center justify-between">
+                <Label htmlFor="restore-include-request-logs">{t('system.backup.includeRequestLogs')}</Label>
+                <Switch
+                  id="restore-include-request-logs"
+                  checked={restoreOptions.includeRequestLogs}
+                  onCheckedChange={(checked) => setRestoreOptions({ ...restoreOptions, includeRequestLogs: checked })}
+                  disabled={!selectedFile}
+                />
+              </div>
+            </div>
           </div>
           <Button
             onClick={handleRestore}
@@ -473,6 +498,14 @@ export function BackupSettings() {
                 id="auto-include-usage-stats"
                 checked={autoBackupForm.includeUsageStats}
                 onCheckedChange={(checked) => setAutoBackupForm({ ...autoBackupForm, includeUsageStats: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="auto-include-request-logs">{t('system.backup.includeRequestLogs')}</Label>
+              <Switch
+                id="auto-include-request-logs"
+                checked={autoBackupForm.includeRequestLogs}
+                onCheckedChange={(checked) => setAutoBackupForm({ ...autoBackupForm, includeRequestLogs: checked })}
               />
             </div>
           </div>
