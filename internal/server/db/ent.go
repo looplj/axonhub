@@ -61,21 +61,23 @@ func NewEntClient(cfg Config) *ent.Client {
 	opts = append(opts, ent.Driver(drv))
 	client := ent.NewClient(opts...)
 
-	err = client.Schema.Create(
-		context.Background(),
-		migrate.WithGlobalUniqueID(false),
-		migrate.WithForeignKeys(false),
-		migrate.WithDropIndex(true),
-		migrate.WithDropColumn(true),
-		schema.WithHooks(schemahook.V0_3_0),
-	)
-	if err != nil {
-		panic(err)
-	}
+	if !cfg.DisableAutoMigration {
+		err = client.Schema.Create(
+			context.Background(),
+			migrate.WithGlobalUniqueID(false),
+			migrate.WithForeignKeys(false),
+			migrate.WithDropIndex(true),
+			migrate.WithDropColumn(true),
+			schema.WithHooks(schemahook.V0_3_0),
+		)
+		if err != nil {
+			panic(err)
+		}
 
-	migrator := datamigrate.NewMigrator(client)
-	if err := migrator.Run(context.Background()); err != nil {
-		panic(err)
+		migrator := datamigrate.NewMigrator(client)
+		if err := migrator.Run(context.Background()); err != nil {
+			panic(err)
+		}
 	}
 
 	return client
