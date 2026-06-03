@@ -161,11 +161,12 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsExtendedConfiguredModel(t *testing.
 		SetIcon("openai").
 		SetRemark(remark).
 		SetModelCard(&objects.ModelCard{
-			Vision:    true,
-			ToolCall:  true,
-			Reasoning: objects.ModelCardReasoning{Supported: true},
-			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
-			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Vision:     true,
+			ToolCall:   true,
+			Reasoning:  objects.ModelCardReasoning{Supported: true},
+			Limit:      objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:       objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}, Output: []string{"text"}},
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
@@ -209,6 +210,9 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsExtendedConfiguredModel(t *testing.
 	require.Equal(t, 8.0, got.Pricing.Output)
 	require.Equal(t, 0.5, got.Pricing.CacheRead)
 	require.Equal(t, 1.0, got.Pricing.CacheWrite)
+	require.NotNil(t, got.Modalities)
+	require.Equal(t, []string{"text", "image"}, got.Modalities.Input)
+	require.Equal(t, []string{"text"}, got.Modalities.Output)
 }
 
 func TestOpenAIHandlers_RetrieveModel_ReturnsNotFound(t *testing.T) {
@@ -256,11 +260,12 @@ func TestOpenAIHandlers_ListModels_UsesBasicFieldsByDefault(t *testing.T) {
 		SetIcon("openai").
 		SetRemark(remark).
 		SetModelCard(&objects.ModelCard{
-			Vision:    true,
-			ToolCall:  true,
-			Reasoning: objects.ModelCardReasoning{Supported: true},
-			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
-			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Vision:     true,
+			ToolCall:   true,
+			Reasoning:  objects.ModelCardReasoning{Supported: true},
+			Limit:      objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:       objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}, Output: []string{"text"}},
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
@@ -292,6 +297,7 @@ func TestOpenAIHandlers_ListModels_UsesBasicFieldsByDefault(t *testing.T) {
 	require.Empty(t, got.Data[0].Name)
 	require.Nil(t, got.Data[0].Capabilities)
 	require.Nil(t, got.Data[0].Pricing)
+	require.Nil(t, got.Data[0].Modalities)
 }
 
 func TestOpenAIHandlers_ListModels_UsesExtendedFieldsWhenConfiguredAsDefault(t *testing.T) {
@@ -329,11 +335,12 @@ func TestOpenAIHandlers_ListModels_UsesExtendedFieldsWhenConfiguredAsDefault(t *
 		SetIcon("openai").
 		SetRemark(remark).
 		SetModelCard(&objects.ModelCard{
-			Vision:    true,
-			ToolCall:  true,
-			Reasoning: objects.ModelCardReasoning{Supported: true},
-			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
-			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Vision:     true,
+			ToolCall:   true,
+			Reasoning:  objects.ModelCardReasoning{Supported: true},
+			Limit:      objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:       objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}, Output: []string{"text"}},
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
@@ -366,6 +373,9 @@ func TestOpenAIHandlers_ListModels_UsesExtendedFieldsWhenConfiguredAsDefault(t *
 	require.Equal(t, remark, got.Data[0].Description)
 	require.NotNil(t, got.Data[0].Capabilities)
 	require.NotNil(t, got.Data[0].Pricing)
+	require.NotNil(t, got.Data[0].Modalities)
+	require.Equal(t, []string{"text", "image"}, got.Data[0].Modalities.Input)
+	require.Equal(t, []string{"text"}, got.Data[0].Modalities.Output)
 }
 
 func TestOpenAIHandlers_ListModels_ExtendedModeRespectsAPIKeyProfile(t *testing.T) {
