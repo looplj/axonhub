@@ -686,6 +686,12 @@ type Response struct {
 	// Transcription is the speech-to-text (STT) response, will present if the request is a transcription or translation request.
 	Transcription *TranscriptionResponse `json:"transcription,omitempty"`
 
+	// SpeechStreamEvent carries one SSE event of a streaming TTS response (stream_format="sse").
+	SpeechStreamEvent *SpeechStreamEvent `json:"speech_stream_event,omitempty"`
+
+	// TranscriptionStreamEvent carries one SSE event of a streaming STT response (stream=true).
+	TranscriptionStreamEvent *TranscriptionStreamEvent `json:"transcription_stream_event,omitempty"`
+
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.
 	// if it is embedding request, it will be embedding.

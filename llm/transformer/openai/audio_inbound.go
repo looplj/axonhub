@@ -99,9 +99,19 @@ func (t *AudioInboundTransformer) transformSpeechRequest(httpReq *httpclient.Req
 		return nil, fmt.Errorf("%w: voice is required", transformer.ErrInvalidRequest)
 	}
 
+	// Only SSE streaming is exposed. Binary chunked streams (the OpenAI default when
+	// no stream_format is set) require a non-SSE response carrier the gateway does
+	// not currently model; reject them up front rather than silently buffering.
+	streamFormat := strings.ToLower(strings.TrimSpace(body.StreamFormat))
+	if streamFormat != "" && streamFormat != "sse" {
+		return nil, fmt.Errorf("%w: unsupported stream_format: %q (only \"sse\" is supported)", transformer.ErrInvalidRequest, body.StreamFormat)
+	}
+
+	isStream := streamFormat == "sse"
+
 	return &llm.Request{
 		Model:       body.Model,
-		Stream:      lo.ToPtr(false),
+		Stream:      lo.ToPtr(isStream),
 		RawRequest:  httpReq,
 		RequestType: llm.RequestTypeSpeech,
 		APIFormat:   t.apiFormat,
@@ -111,6 +121,7 @@ func (t *AudioInboundTransformer) transformSpeechRequest(httpReq *httpclient.Req
 			ResponseFormat: body.ResponseFormat,
 			Speed:          body.Speed,
 			Instructions:   body.Instructions,
+			StreamFormat:   streamFormat,
 		},
 	}, nil
 }
@@ -135,11 +146,20 @@ func (t *AudioInboundTransformer) transformTranscriptionRequest(httpReq *httpcli
 		return nil, err
 	}
 
+	isStream, err := parseStreamField(form.First("stream"))
+	if err != nil {
+		return nil, err
+	}
+
+	extra := form.extraFields()
+	// stream is consumed by the gateway; do not forward it twice via Extra.
+	delete(extra, "stream")
+
 	httpReq.JSONBody = buildAudioJSONBody(form)
 
 	return &llm.Request{
 		Model:       model,
-		Stream:      lo.ToPtr(false),
+		Stream:      lo.ToPtr(isStream),
 		RawRequest:  httpReq,
 		RequestType: llm.RequestTypeTranscription,
 		APIFormat:   t.apiFormat,
@@ -150,7 +170,7 @@ func (t *AudioInboundTransformer) transformTranscriptionRequest(httpReq *httpcli
 			Prompt:         strings.TrimSpace(form.First("prompt")),
 			ResponseFormat: strings.TrimSpace(form.First("response_format")),
 			Temperature:    temperature,
-			Extra:          form.extraFields(),
+			Extra:          extra,
 		},
 	}, nil
 }
@@ -175,11 +195,19 @@ func (t *AudioInboundTransformer) transformTranslationRequest(httpReq *httpclien
 		return nil, err
 	}
 
+	isStream, err := parseStreamField(form.First("stream"))
+	if err != nil {
+		return nil, err
+	}
+
+	extra := form.extraFields()
+	delete(extra, "stream")
+
 	httpReq.JSONBody = buildAudioJSONBody(form)
 
 	return &llm.Request{
 		Model:       model,
-		Stream:      lo.ToPtr(false),
+		Stream:      lo.ToPtr(isStream),
 		RawRequest:  httpReq,
 		RequestType: llm.RequestTypeTranslation,
 		APIFormat:   t.apiFormat,
@@ -189,7 +217,7 @@ func (t *AudioInboundTransformer) transformTranslationRequest(httpReq *httpclien
 			Prompt:         strings.TrimSpace(form.First("prompt")),
 			ResponseFormat: strings.TrimSpace(form.First("response_format")),
 			Temperature:    temperature,
-			Extra:          form.extraFields(),
+			Extra:          extra,
 		},
 	}, nil
 }
@@ -267,8 +295,45 @@ func (t *AudioInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	}, nil
 }
 
+// TransformStream converts unified streaming audio responses back into SSE events.
+// Supports gpt-4o-mini-tts speech (stream_format="sse") and gpt-4o-transcribe STT (stream=true).
 func (t *AudioInboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error) {
-	return nil, fmt.Errorf("%w: audio request does not support streaming", transformer.ErrInvalidRequest)
+	return streams.NoNil(streams.MapErr(stream, func(resp *llm.Response) (*httpclient.StreamEvent, error) {
+		if resp == nil {
+			//nolint:nilnil // skip nil chunks
+			return nil, nil
+		}
+
+		// The DoneResponse sentinel is the pipeline-level end marker; the audio SSE
+		// streams have their own "*.done" events, so swallow the sentinel.
+		if resp == llm.DoneResponse || resp.Object == "[DONE]" {
+			//nolint:nilnil // skip pipeline sentinel
+			return nil, nil
+		}
+
+		if resp.SpeechStreamEvent != nil {
+			data, err := json.Marshal(resp.SpeechStreamEvent)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal speech stream event: %w", err)
+			}
+
+			// Propagate the event type so InboundPersistentStream.isTerminalStreamEvent
+			// can recognize speech.audio.done and mark the request as completed.
+			return &httpclient.StreamEvent{Type: resp.SpeechStreamEvent.Type, Data: data}, nil
+		}
+
+		if resp.TranscriptionStreamEvent != nil {
+			data, err := json.Marshal(resp.TranscriptionStreamEvent)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal transcription stream event: %w", err)
+			}
+
+			return &httpclient.StreamEvent{Type: resp.TranscriptionStreamEvent.Type, Data: data}, nil
+		}
+
+		//nolint:nilnil // unrelated event, skip
+		return nil, nil
+	})), nil
 }
 
 func (t *AudioInboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
@@ -276,8 +341,129 @@ func (t *AudioInboundTransformer) TransformError(ctx context.Context, rawErr err
 	return chatInbound.TransformError(ctx, rawErr)
 }
 
+// AggregateStreamChunks reassembles the streamed SSE events into a single JSON body for
+// persistence/logging. For STT it produces the equivalent of a non-streamed JSON response;
+// for TTS it returns a metadata summary (audio bytes are tracked separately via the
+// content_storage_* fields and never written into the JSON column).
 func (t *AudioInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
-	return nil, llm.ResponseMeta{}, fmt.Errorf("%w: audio request does not support streaming", transformer.ErrInvalidRequest)
+	if t.apiFormat == llm.APIFormatOpenAISpeech {
+		return aggregateSpeechStreamChunks(chunks)
+	}
+
+	return aggregateTranscriptionStreamChunks(chunks)
+}
+
+func aggregateSpeechStreamChunks(chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	var (
+		audioBytes int
+		usage      *llm.Usage
+	)
+
+	for _, chunk := range chunks {
+		if chunk == nil || len(chunk.Data) == 0 {
+			continue
+		}
+
+		if bytes.HasPrefix(chunk.Data, []byte("[DONE]")) {
+			continue
+		}
+
+		var ev llm.SpeechStreamEvent
+		if err := json.Unmarshal(chunk.Data, &ev); err != nil {
+			continue
+		}
+
+		if ev.AudioBase64 != "" {
+			// Estimate decoded byte count without actually decoding to keep aggregation cheap.
+			audioBytes += base64DecodedLen(ev.AudioBase64)
+		}
+
+		if ev.Usage != nil {
+			usage = ev.Usage
+		}
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"object":      "audio.speech.stream",
+		"audio_bytes": audioBytes,
+		"chunks":      len(chunks),
+	})
+	if err != nil {
+		return nil, llm.ResponseMeta{}, fmt.Errorf("failed to marshal speech stream aggregate: %w", err)
+	}
+
+	return body, llm.ResponseMeta{Usage: usage}, nil
+}
+
+func aggregateTranscriptionStreamChunks(chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	var (
+		deltaBuilder strings.Builder
+		finalText    string
+		usage        *llm.Usage
+	)
+
+	for _, chunk := range chunks {
+		if chunk == nil || len(chunk.Data) == 0 {
+			continue
+		}
+
+		if bytes.HasPrefix(chunk.Data, []byte("[DONE]")) {
+			continue
+		}
+
+		var ev llm.TranscriptionStreamEvent
+		if err := json.Unmarshal(chunk.Data, &ev); err != nil {
+			continue
+		}
+
+		switch ev.Type {
+		case "transcript.text.delta":
+			deltaBuilder.WriteString(ev.Delta)
+		case "transcript.text.done":
+			if ev.Text != "" {
+				finalText = ev.Text
+			}
+			if ev.Usage != nil {
+				usage = ev.Usage
+			}
+		}
+	}
+
+	text := finalText
+	if text == "" {
+		text = deltaBuilder.String()
+	}
+
+	body, err := json.Marshal(map[string]any{"text": text})
+	if err != nil {
+		return nil, llm.ResponseMeta{}, fmt.Errorf("failed to marshal transcription stream aggregate: %w", err)
+	}
+
+	return body, llm.ResponseMeta{Usage: usage}, nil
+}
+
+// base64DecodedLen returns the decoded byte length of a standard base64 string
+// (without allocating). It tolerates missing padding by ignoring trailing whitespace.
+func base64DecodedLen(s string) int {
+	n := len(strings.TrimRight(s, "="))
+	return n * 3 / 4
+}
+
+// parseStreamField parses the multipart "stream" field; tolerant of common boolean spellings.
+func parseStreamField(s string) (bool, error) {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return false, nil
+	}
+
+	switch s {
+	case "true", "1", "yes":
+		return true, nil
+	case "false", "0", "no":
+		return false, nil
+	default:
+		return false, fmt.Errorf("%w: invalid stream value: %q", transformer.ErrInvalidRequest, s)
+	}
 }
 
 // audioFormData holds the parsed multipart form of an STT request.

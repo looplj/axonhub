@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 func newAudioOutbound(t *testing.T) *OutboundTransformer {
@@ -295,4 +296,186 @@ func TestAudioRoundTrip_Speech(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, audio, clientResp.Body)
 	require.Equal(t, "audio/mpeg", clientResp.Headers.Get("Content-Type"))
+}
+
+// TestAudioStreaming_Speech verifies an end-to-end SSE streaming TTS round trip.
+func TestAudioStreaming_Speech(t *testing.T) {
+	inbound := NewSpeechInboundTransformer()
+	outbound := newAudioOutbound(t)
+
+	// Client requests stream_format=sse.
+	clientBody, _ := json.Marshal(map[string]any{
+		"model": "gpt-4o-mini-tts", "input": "Hi", "voice": "alloy",
+		"stream_format": "sse",
+	})
+
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Body:    clientBody,
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+	})
+	require.NoError(t, err)
+	require.True(t, *llmReq.Stream)
+
+	providerReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.Equal(t, "text/event-stream", providerReq.Headers.Get("Accept"))
+
+	// stream_format passed through to the provider body.
+	var providerBody map[string]any
+	require.NoError(t, json.Unmarshal(providerReq.Body, &providerBody))
+	require.Equal(t, "sse", providerBody["stream_format"])
+
+	// Simulate the provider's SSE events flowing through the outbound transformer.
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"speech.audio.delta","audio":"YWJjZA=="}`)},      // "abcd" → 4 bytes
+		{Data: []byte(`{"type":"speech.audio.delta","audio":"ZWZnaA=="}`)},      // "efgh" → 4 bytes
+		{Data: []byte(`{"type":"speech.audio.done","usage":{"total_tokens":12}}`)},
+		{Data: []byte("[DONE]")},
+	}
+	upstream := streams.SliceStream(events)
+
+	llmStream, err := outbound.TransformStream(context.Background(), providerReq, upstream)
+	require.NoError(t, err)
+
+	clientStream, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	collected := make([]string, 0)
+
+	var lastTyped *httpclient.StreamEvent
+
+	for clientStream.Next() {
+		ev := clientStream.Current()
+		require.NotNil(t, ev)
+		collected = append(collected, string(ev.Data))
+		lastTyped = ev
+	}
+
+	require.NoError(t, clientStream.Err())
+	// 3 events forwarded (delta, delta, done); [DONE] sentinel swallowed by inbound.
+	require.Len(t, collected, 3)
+	require.Contains(t, collected[0], `"speech.audio.delta"`)
+	require.Contains(t, collected[2], `"speech.audio.done"`)
+
+	// Terminal *.done event must carry its Type so the persistence layer can detect completion.
+	require.NotNil(t, lastTyped)
+	require.Equal(t, "speech.audio.done", lastTyped.Type)
+
+	// Aggregation should track audio byte count and surface usage.
+	body, meta, err := inbound.AggregateStreamChunks(context.Background(), events)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"audio_bytes":8`)
+	require.NotNil(t, meta.Usage)
+	require.EqualValues(t, 12, meta.Usage.TotalTokens)
+}
+
+// TestAudioStreaming_Transcription verifies an end-to-end SSE streaming STT round trip.
+func TestAudioStreaming_Transcription(t *testing.T) {
+	inbound := NewTranscriptionInboundTransformer()
+	outbound := newAudioOutbound(t)
+
+	// Multipart upload with stream=true.
+	buf := &bytes.Buffer{}
+	writer := multipart.NewWriter(buf)
+	part, err := writer.CreateFormFile("file", "a.mp3")
+	require.NoError(t, err)
+	_, err = part.Write([]byte("AUDIO"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("model", "gpt-4o-transcribe"))
+	require.NoError(t, writer.WriteField("stream", "true"))
+	require.NoError(t, writer.Close())
+
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Body:    buf.Bytes(),
+		Headers: http.Header{"Content-Type": []string{writer.FormDataContentType()}},
+	})
+	require.NoError(t, err)
+	require.True(t, *llmReq.Stream)
+	// stream consumed by gateway, must not leak into Extra (would be forwarded twice).
+	require.NotContains(t, llmReq.Transcription.Extra, "stream")
+
+	providerReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.Equal(t, "text/event-stream", providerReq.Headers.Get("Accept"))
+	// stream=true must appear once in the outbound multipart body.
+	require.Equal(t, 1, strings.Count(string(providerReq.Body), `name="stream"`))
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"transcript.text.delta","delta":"hello "}`)},
+		{Data: []byte(`{"type":"transcript.text.delta","delta":"world"}`)},
+		{Data: []byte(`{"type":"transcript.text.done","text":"hello world","usage":{"total_tokens":5}}`)},
+		{Data: []byte("[DONE]")},
+	}
+
+	llmStream, err := outbound.TransformStream(context.Background(), providerReq, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	clientStream, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	collected := make([]string, 0)
+
+	var lastTyped *httpclient.StreamEvent
+
+	for clientStream.Next() {
+		ev := clientStream.Current()
+		collected = append(collected, string(ev.Data))
+		lastTyped = ev
+	}
+	require.NoError(t, clientStream.Err())
+	require.Len(t, collected, 3)
+	require.Contains(t, collected[0], `"transcript.text.delta"`)
+	require.Contains(t, collected[2], `"transcript.text.done"`)
+
+	// Terminal *.done event must carry its Type so the persistence layer can detect completion.
+	require.NotNil(t, lastTyped)
+	require.Equal(t, "transcript.text.done", lastTyped.Type)
+
+	body, meta, err := inbound.AggregateStreamChunks(context.Background(), events)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"text":"hello world"`)
+	require.NotNil(t, meta.Usage)
+	require.EqualValues(t, 5, meta.Usage.TotalTokens)
+}
+
+// TestAudioStreaming_PropagatesErrorEvent verifies upstream stream-level errors arriving
+// after a 200 are surfaced as stream errors instead of being decoded as empty audio events.
+func TestAudioStreaming_PropagatesErrorEvent(t *testing.T) {
+	outbound := newAudioOutbound(t)
+
+	t.Run("speech", func(t *testing.T) {
+		req := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAISpeech)}
+		events := []*httpclient.StreamEvent{
+			{Data: []byte(`{"type":"speech.audio.delta","audio":"YWJjZA=="}`)},
+			{Type: "error", Data: []byte(`{"error":{"message":"upstream broke","type":"server_error"}}`)},
+		}
+
+		llmStream, err := outbound.TransformStream(context.Background(), req, streams.SliceStream(events))
+		require.NoError(t, err)
+
+		var lastErr error
+		for llmStream.Next() {
+			_ = llmStream.Current()
+		}
+		lastErr = llmStream.Err()
+		require.Error(t, lastErr)
+		require.Contains(t, lastErr.Error(), "upstream broke")
+	})
+
+	t.Run("transcription", func(t *testing.T) {
+		req := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAITranscription)}
+		events := []*httpclient.StreamEvent{
+			{Data: []byte(`{"type":"transcript.text.delta","delta":"hi"}`)},
+			{Data: []byte(`{"error":{"message":"rate limited","code":"rate_limit"}}`)},
+		}
+
+		llmStream, err := outbound.TransformStream(context.Background(), req, streams.SliceStream(events))
+		require.NoError(t, err)
+
+		for llmStream.Next() {
+			_ = llmStream.Current()
+		}
+		require.Error(t, llmStream.Err())
+		require.Contains(t, llmStream.Err().Error(), "rate limited")
+	})
 }

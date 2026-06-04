@@ -24,6 +24,8 @@ type SpeechRequestBody struct {
 	ResponseFormat string   `json:"response_format,omitempty"`
 	Speed          *float64 `json:"speed,omitempty"`
 	Instructions   string   `json:"instructions,omitempty"`
+	// StreamFormat="sse" requests an SSE stream from gpt-4o-mini-tts.
+	StreamFormat string `json:"stream_format,omitempty"`
 }
 
 // buildSpeechRequest builds the HTTP request for the OpenAI text-to-speech API (/audio/speech).
@@ -48,6 +50,7 @@ func (t *OutboundTransformer) buildSpeechRequest(ctx context.Context, llmReq *ll
 		ResponseFormat: llmReq.Speech.ResponseFormat,
 		Speed:          llmReq.Speech.Speed,
 		Instructions:   llmReq.Speech.Instructions,
+		StreamFormat:   llmReq.Speech.StreamFormat,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal speech request: %w", err)
@@ -55,8 +58,13 @@ func (t *OutboundTransformer) buildSpeechRequest(ctx context.Context, llmReq *ll
 
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
-	// Audio is returned as a binary stream; accept anything.
-	headers.Set("Accept", "*/*")
+	if llmReq.Speech.StreamFormat == "sse" {
+		// Streaming TTS returns text/event-stream.
+		headers.Set("Accept", "text/event-stream")
+	} else {
+		// Non-streaming audio is returned as a binary stream; accept anything.
+		headers.Set("Accept", "*/*")
+	}
 
 	return &httpclient.Request{
 		Method:      http.MethodPost,
@@ -106,7 +114,12 @@ func (t *OutboundTransformer) buildTranscriptionRequest(ctx context.Context, llm
 		fields[name] = values
 	}
 
-	return t.buildAudioMultipartRequest(ctx, "/audio/transcriptions", llm.RequestTypeTranscription, llm.APIFormatOpenAITranscription, tr.File, tr.FileName, fields)
+	stream := llmReq.Stream != nil && *llmReq.Stream
+	if stream {
+		fields["stream"] = []string{"true"}
+	}
+
+	return t.buildAudioMultipartRequest(ctx, "/audio/transcriptions", llm.RequestTypeTranscription, llm.APIFormatOpenAITranscription, tr.File, tr.FileName, fields, stream)
 }
 
 // buildTranslationRequest builds the multipart HTTP request for the OpenAI /audio/translations API.
@@ -138,7 +151,12 @@ func (t *OutboundTransformer) buildTranslationRequest(ctx context.Context, llmRe
 		fields[name] = values
 	}
 
-	return t.buildAudioMultipartRequest(ctx, "/audio/translations", llm.RequestTypeTranslation, llm.APIFormatOpenAITranslation, tr.File, tr.FileName, fields)
+	stream := llmReq.Stream != nil && *llmReq.Stream
+	if stream {
+		fields["stream"] = []string{"true"}
+	}
+
+	return t.buildAudioMultipartRequest(ctx, "/audio/translations", llm.RequestTypeTranslation, llm.APIFormatOpenAITranslation, tr.File, tr.FileName, fields, stream)
 }
 
 // buildAudioMultipartRequest assembles a multipart/form-data request for STT endpoints,
@@ -151,6 +169,7 @@ func (t *OutboundTransformer) buildAudioMultipartRequest(
 	file []byte,
 	fileName string,
 	fields map[string][]string,
+	stream bool,
 ) (*httpclient.Request, error) {
 	fileName = sanitizeAudioFileName(fileName)
 	if fileName == "" {
@@ -204,7 +223,11 @@ func (t *OutboundTransformer) buildAudioMultipartRequest(
 
 	headers := make(http.Header)
 	headers.Set("Content-Type", writer.FormDataContentType())
-	headers.Set("Accept", "application/json")
+	if stream {
+		headers.Set("Accept", "text/event-stream")
+	} else {
+		headers.Set("Accept", "application/json")
+	}
 
 	return &httpclient.Request{
 		Method:      http.MethodPost,
@@ -241,6 +264,71 @@ func (t *OutboundTransformer) buildAudioURL(defaultPath string) string {
 	}
 
 	return t.config.BaseURL + defaultPath
+}
+
+// transformSpeechStreamChunk parses one SSE event from a streaming TTS response.
+// Lines like `data: {...}` have already been split by the SSE decoder; the Data field
+// is the raw JSON payload of the event.
+func transformSpeechStreamChunk(event *httpclient.StreamEvent) (*llm.Response, error) {
+	if event == nil || len(event.Data) == 0 {
+		//nolint:nilnil // skip empty heartbeats
+		return nil, nil
+	}
+
+	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+		return llm.DoneResponse, nil
+	}
+
+	// Reuse the chat-stream error-event detector so upstream `event: error` or
+	// `{"error":{...}}` payloads arriving after a 200 are surfaced as stream errors
+	// rather than silently decoded into empty audio events.
+	if streamErr := parseStreamErrorEvent(event); streamErr != nil {
+		return nil, streamErr
+	}
+
+	var ev llm.SpeechStreamEvent
+	if err := json.Unmarshal(event.Data, &ev); err != nil {
+		return nil, fmt.Errorf("failed to decode speech stream event: %w", err)
+	}
+
+	return &llm.Response{
+		RequestType:       llm.RequestTypeSpeech,
+		APIFormat:         llm.APIFormatOpenAISpeech,
+		SpeechStreamEvent: &ev,
+		Usage:             ev.Usage,
+	}, nil
+}
+
+// transformTranscriptionStreamChunkFor returns a decoder for streaming STT/translation SSE events.
+func transformTranscriptionStreamChunkFor(apiFormat llm.APIFormat) func(*httpclient.StreamEvent) (*llm.Response, error) {
+	requestType := requestTypeForAudioFormat(apiFormat)
+
+	return func(event *httpclient.StreamEvent) (*llm.Response, error) {
+		if event == nil || len(event.Data) == 0 {
+			//nolint:nilnil // skip empty heartbeats
+			return nil, nil
+		}
+
+		if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+			return llm.DoneResponse, nil
+		}
+
+		if streamErr := parseStreamErrorEvent(event); streamErr != nil {
+			return nil, streamErr
+		}
+
+		var ev llm.TranscriptionStreamEvent
+		if err := json.Unmarshal(event.Data, &ev); err != nil {
+			return nil, fmt.Errorf("failed to decode transcription stream event: %w", err)
+		}
+
+		return &llm.Response{
+			RequestType:              requestType,
+			APIFormat:                apiFormat,
+			TranscriptionStreamEvent: &ev,
+			Usage:                    ev.Usage,
+		}, nil
+	}
 }
 
 // transformSpeechResponse transforms the binary audio response into a unified llm.Response.

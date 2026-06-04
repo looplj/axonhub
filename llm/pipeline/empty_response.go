@@ -87,6 +87,14 @@ func hasResponseContent(resp *llm.Response) bool {
 		return true
 	}
 
+	if resp.SpeechStreamEvent != nil && (resp.SpeechStreamEvent.AudioBase64 != "" || resp.SpeechStreamEvent.Type != "") {
+		return true
+	}
+
+	if resp.TranscriptionStreamEvent != nil && (resp.TranscriptionStreamEvent.Delta != "" || resp.TranscriptionStreamEvent.Text != "" || resp.TranscriptionStreamEvent.Type != "") {
+		return true
+	}
+
 	if resp.Completion != nil {
 		for _, choice := range resp.Completion.Choices {
 			if choice.Text != "" {

@@ -81,9 +81,32 @@ func TestAudioInboundTransformer_Speech(t *testing.T) {
 		require.Equal(t, "audio/mpeg", resp.Headers.Get("Content-Type"))
 	})
 
-	t.Run("stream not supported", func(t *testing.T) {
-		_, err := tr.TransformStream(context.Background(), nil)
+	t.Run("unsupported stream_format rejected", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]any{
+			"model": "gpt-4o-mini-tts", "input": "hi", "voice": "alloy",
+			"stream_format": "audio",
+		})
+		_, err := tr.TransformRequest(context.Background(), &httpclient.Request{
+			Body:    body,
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+		})
 		require.Error(t, err)
+		require.Contains(t, err.Error(), "stream_format")
+	})
+
+	t.Run("sse stream_format enables streaming", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]any{
+			"model": "gpt-4o-mini-tts", "input": "hi", "voice": "alloy",
+			"stream_format": "sse",
+		})
+		req, err := tr.TransformRequest(context.Background(), &httpclient.Request{
+			Body:    body,
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, req.Stream)
+		require.True(t, *req.Stream)
+		require.Equal(t, "sse", req.Speech.StreamFormat)
 	})
 }
 

@@ -115,6 +115,17 @@ func (t *OutboundTransformer) TransformResponse(
 
 // TransformStream transforms a stream of HTTP events to a stream of llm.Response.
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	// Audio streaming (TTS sse / STT) uses dedicated event schemas owned by the OpenAI
+	// transformer; delegate so chat-completion parsing is not applied.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech),
+			string(llm.APIFormatOpenAITranscription),
+			string(llm.APIFormatOpenAITranslation):
+			return t.Outbound.TransformStream(ctx, req, stream)
+		}
+	}
+
 	// Filter out upstream DONE events
 	filteredStream := streams.Filter(stream, func(event *httpclient.StreamEvent) bool {
 		return !bytes.HasPrefix(event.Data, []byte("[DONE]"))
@@ -159,6 +170,16 @@ func nanoGPTChunkTransform(ctx context.Context, chunk *httpclient.StreamEvent) (
 }
 
 // AggregateStreamChunks aggregates stream chunks into a single response.
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	// Audio streaming uses dedicated event schemas; delegate to the embedded OpenAI transformer.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech),
+			string(llm.APIFormatOpenAITranscription),
+			string(llm.APIFormatOpenAITranslation):
+			return t.Outbound.AggregateStreamChunks(ctx, req, chunks)
+		}
+	}
+
 	return openai.AggregateStreamChunks(ctx, chunks, nanoGPTChunkTransform)
 }

@@ -1,5 +1,7 @@
 package llm
 
+import "encoding/json"
+
 // SpeechRequest is the unified text-to-speech (TTS) request structure.
 // It maps to OpenAI's POST /v1/audio/speech API.
 // Note: Common fields like Model are in the parent Request struct, not here.
@@ -18,6 +20,23 @@ type SpeechRequest struct {
 
 	// Instructions controls the voice tone for supported models (e.g. gpt-4o-mini-tts).
 	Instructions string `json:"instructions,omitempty"`
+
+	// StreamFormat opts into SSE streaming for gpt-4o-mini-tts. Only "sse" is supported;
+	// the binary chunked stream (no stream_format) is not exposed by the gateway.
+	StreamFormat string `json:"stream_format,omitempty"`
+}
+
+// SpeechStreamEvent represents a single SSE event emitted by the OpenAI streaming TTS API.
+// The unified gateway carries these events transparently for stream_format="sse".
+type SpeechStreamEvent struct {
+	// Type is the SSE event type, e.g. "speech.audio.delta" or "speech.audio.done".
+	Type string `json:"type"`
+
+	// AudioBase64 holds the base64-encoded audio chunk for delta events.
+	AudioBase64 string `json:"audio,omitempty"`
+
+	// Usage is populated on the terminal speech.audio.done event.
+	Usage *Usage `json:"usage,omitempty"`
 }
 
 // SpeechResponse represents the unified TTS response.
@@ -57,6 +76,25 @@ type TranscriptionRequest struct {
 	// provider as-is to keep OpenAI compatibility. Values keep multiplicity for
 	// repeated fields.
 	Extra map[string][]string `json:"extra,omitempty"`
+}
+
+// TranscriptionStreamEvent represents a single SSE event emitted by the OpenAI streaming
+// transcription/translation API. Carried transparently by the gateway when stream=true.
+type TranscriptionStreamEvent struct {
+	// Type is the SSE event type, e.g. "transcript.text.delta" or "transcript.text.done".
+	Type string `json:"type"`
+
+	// Delta is the incremental transcript fragment for delta events.
+	Delta string `json:"delta,omitempty"`
+
+	// Text is the full transcript on the terminal transcript.text.done event.
+	Text string `json:"text,omitempty"`
+
+	// Logprobs is preserved when present (verbose_json + include["logprobs"]).
+	Logprobs json.RawMessage `json:"logprobs,omitempty"`
+
+	// Usage is populated on the terminal transcript.text.done event.
+	Usage *Usage `json:"usage,omitempty"`
 }
 
 // TranslationRequest is the unified speech-to-text (STT) translation request structure.
