@@ -410,10 +410,13 @@ func (s *DataStorageService) createS3Fs(ctx context.Context, s3Config *objects.S
 		o.UsePathStyle = s3Config.PathStyle
 	})
 
-	baseFs := s3fs.NewFsFromClient(s3Config.BucketName, client)
-	cachedFs := afero.NewCacheOnReadFs(baseFs, afero.NewMemMapFs(), 5*time.Minute)
-
-	return cachedFs, nil
+	// NOTE: do NOT wrap baseFs in afero.NewCacheOnReadFs(..., afero.NewMemMapFs(), ...).
+	// That in-memory layer is never evicted (afero's cacheTime only re-checks
+	// freshness on read), so it retained a copy of every request/response body
+	// ever written and caused recurring OOMs. Request/response bodies are
+	// write-once and read rarely (admin request-detail view), so reads go
+	// directly to the object store instead of through an in-memory cache.
+	return s3fs.NewFsFromClient(s3Config.BucketName, client), nil
 }
 
 // createGcsFs creates a GCS filesystem using the afero gcsfs adapter.
@@ -436,11 +439,10 @@ func (s *DataStorageService) createGcsFs(ctx context.Context, gcsConfig *objects
 		return nil, fmt.Errorf("failed to create GCS filesystem: %w", err)
 	}
 
-	basePathFs := afero.NewBasePathFs(fs, gcsConfig.BucketName)
-
-	cachedFs := afero.NewCacheOnReadFs(basePathFs, afero.NewMemMapFs(), 5*time.Minute)
-
-	return cachedFs, nil
+	// NOTE: do NOT wrap in afero.NewCacheOnReadFs(..., afero.NewMemMapFs(), ...).
+	// The in-memory layer is never evicted and leaks every body forever (see
+	// createS3Fs). Reads go directly to the object store.
+	return afero.NewBasePathFs(fs, gcsConfig.BucketName), nil
 }
 
 // createWebDAVFs creates a WebDAV filesystem using the afero-webdav adapter.
