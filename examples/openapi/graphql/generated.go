@@ -4,6 +4,7 @@ package graphql
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Khan/genqlient/graphql"
 )
@@ -165,9 +166,9 @@ func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage) GetUsage() *
 
 // APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage includes the requested fields of the GraphQL type APIKeyQuotaUsage.
 type APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage struct {
-	RequestCount int    `json:"requestCount"`
-	TotalTokens  int    `json:"totalTokens"`
-	TotalCost    string `json:"totalCost"`
+	RequestCount int         `json:"requestCount"`
+	TotalTokens  int         `json:"totalTokens"`
+	TotalCost    json.Number `json:"totalCost"`
 }
 
 // GetRequestCount returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.RequestCount, and is useful for accessing the field via an interface.
@@ -181,7 +182,7 @@ func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuo
 }
 
 // GetTotalCost returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.TotalCost, and is useful for accessing the field via an interface.
-func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetTotalCost() string {
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetTotalCost() json.Number {
 	return v.TotalCost
 }
 

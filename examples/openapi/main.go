@@ -110,6 +110,13 @@ func queryQuotaUsage(ctx context.Context, client graphql.Client) {
 	}
 
 	for _, usage := range resp.ApiKeyQuotaUsages {
+		// usage is non-null per the schema, but it is a pointer in the generated
+		// client (use_struct_references), so guard against a malformed response.
+		if usage.Usage == nil {
+			fmt.Printf("- profile=%s (响应缺少 usage)\n", usage.ProfileName)
+			continue
+		}
+
 		fmt.Printf("- profile=%s requests=%d totalTokens=%d totalCost=%s\n",
 			usage.ProfileName,
 			usage.Usage.RequestCount,
