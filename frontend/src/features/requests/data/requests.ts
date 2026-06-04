@@ -23,12 +23,20 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
           }`
     : '';
 
-  const channelFields = permissions.canViewChannels
+  const requestChannelFields = permissions.canViewChannels
     ? `
                 channel {
                   id
                   name
                 }`
+    : '';
+
+  const executionChannelFields = permissions.canViewChannels
+    ? `
+                  channel {
+                    id
+                    name
+                  }`
     : '';
 
   return `
@@ -45,7 +53,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
           node {
             id
             createdAt
-            updatedAt${apiKeyFields}${channelFields}
+            updatedAt${apiKeyFields}${requestChannelFields}
             source
             modelID
             format
@@ -60,11 +68,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
               edges {
                 node {
                   modelID
-                  status
-                  channel {
-                    id
-                    name
-                  }
+                  status${executionChannelFields}
                 }
                 cursor
               }
