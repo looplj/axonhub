@@ -221,3 +221,53 @@ func TestStopChannelOutboundsStopsEachOutboundOnce(t *testing.T) {
 	require.Equal(t, 1, primary.stops)
 	require.Equal(t, 1, secondary.stops)
 }
+
+func TestOnEnabledChannelsSwapDoesNotWaitForOldCleanup(t *testing.T) {
+	cleanupStarted := make(chan struct{})
+	releaseCleanup := make(chan struct{})
+	cleanupDone := make(chan struct{})
+	startCount := 0
+
+	svc := &ChannelService{}
+	old := &Channel{
+		stopTokenProvider: func() {
+			close(cleanupStarted)
+			<-releaseCleanup
+			close(cleanupDone)
+		},
+	}
+	next := &Channel{
+		startTokenProvider: func() {
+			startCount++
+		},
+	}
+
+	returned := make(chan struct{})
+	go func() {
+		svc.onEnabledChannelsSwap([]*Channel{old}, []*Channel{next})
+		close(returned)
+	}()
+
+	select {
+	case <-returned:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("onEnabledChannelsSwap waited for old channel cleanup")
+	}
+
+	require.Equal(t, int64(1), svc.GetCacheVersion())
+	require.Equal(t, 1, startCount)
+
+	select {
+	case <-cleanupStarted:
+	case <-time.After(time.Second):
+		t.Fatal("old channel cleanup did not start")
+	}
+
+	close(releaseCleanup)
+
+	select {
+	case <-cleanupDone:
+	case <-time.After(time.Second):
+		t.Fatal("old channel cleanup did not finish")
+	}
+}

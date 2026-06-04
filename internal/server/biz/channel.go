@@ -274,7 +274,22 @@ func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
 		}
 	}
 
-	for _, ch := range old {
+	if len(old) == 0 {
+		return
+	}
+
+	oldChannels := append([]*Channel(nil), old...)
+	go svc.cleanupSwappedChannels(oldChannels)
+}
+
+func (svc *ChannelService) cleanupSwappedChannels(channels []*Channel) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(context.Background(), "channel cache cleanup panicked", log.Any("panic", r))
+		}
+	}()
+
+	for _, ch := range channels {
 		if ch != nil && ch.stopTokenProvider != nil {
 			ch.stopTokenProvider()
 		}
