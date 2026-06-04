@@ -131,7 +131,7 @@ func setupE2E(t *testing.T) e2eEnv {
 	foreign := mustKey("foreign", otherProj.ID, apikey.TypeUser, nil, quotaProfile)
 
 	// Two usage rows for the target key → requestCount=2, totalTokens=300, totalCost=2.
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		req := client.Request.Create().
 			SetProjectID(proj.ID).SetAPIKeyID(target.ID).SetModelID("m").
 			SetFormat("openai/chat_completions").SetStatus(request.StatusCompleted).
