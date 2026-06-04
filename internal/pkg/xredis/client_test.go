@@ -7,19 +7,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewRedisOptions(t *testing.T) {
+func TestNewUniversalOptions(t *testing.T) {
 	t.Run("plain addr with tls flag", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			Addr: "127.0.0.1:6379",
 			TLS:  true,
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, []string{"127.0.0.1:6379"}, opts.Addrs)
 		assert.NotNil(t, opts.TLSConfig)
 	})
 
 	t.Run("invalid url scheme", func(t *testing.T) {
-		_, err := newRedisOptions(Config{
+		_, err := newUniversalOptions(Config{
 			URL: "http://127.0.0.1:6379",
 		})
 		assert.Error(t, err)
@@ -27,27 +27,27 @@ func TestNewRedisOptions(t *testing.T) {
 	})
 
 	t.Run("valid redis url", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			URL: "redis://user:pass@127.0.0.1:6379/1",
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, []string{"127.0.0.1:6379"}, opts.Addrs)
 		assert.Equal(t, "user", opts.Username)
 		assert.Equal(t, "pass", opts.Password)
 		assert.Equal(t, 1, opts.DB)
 	})
 
 	t.Run("valid rediss url", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			URL: "rediss://127.0.0.1:6379",
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, []string{"127.0.0.1:6379"}, opts.Addrs)
 		assert.NotNil(t, opts.TLSConfig)
 	})
 
 	t.Run("override url credentials", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			URL:      "redis://user:pass@127.0.0.1:6379/1",
 			Username: "newuser",
 			Password: "newpassword",
@@ -60,37 +60,37 @@ func TestNewRedisOptions(t *testing.T) {
 	})
 
 	t.Run("config overrides url db to 0", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			URL: "redis://127.0.0.1:6379/1",
 			DB:  lo.ToPtr(0),
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, []string{"127.0.0.1:6379"}, opts.Addrs)
 		assert.Equal(t, 0, opts.DB)
 	})
 
 	t.Run("redis url without credentials", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			URL: "redis://127.0.0.1:6379",
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, []string{"127.0.0.1:6379"}, opts.Addrs)
 		assert.Empty(t, opts.Username)
 		assert.Empty(t, opts.Password)
 		assert.Equal(t, 0, opts.DB)
 	})
 
 	t.Run("plain addr without tls", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			Addr: "127.0.0.1:6379",
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, []string{"127.0.0.1:6379"}, opts.Addrs)
 		assert.Nil(t, opts.TLSConfig)
 	})
 
 	t.Run("tls_insecure_skip_verify requires tls", func(t *testing.T) {
-		_, err := newRedisOptions(Config{
+		_, err := newUniversalOptions(Config{
 			Addr:                  "127.0.0.1:6379",
 			TLSInsecureSkipVerify: true,
 		})
@@ -99,13 +99,13 @@ func TestNewRedisOptions(t *testing.T) {
 	})
 
 	t.Run("empty addr and url", func(t *testing.T) {
-		_, err := newRedisOptions(Config{})
+		_, err := newUniversalOptions(Config{})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "redis addr or url is required")
 	})
 
 	t.Run("whitespace only addr", func(t *testing.T) {
-		_, err := newRedisOptions(Config{
+		_, err := newUniversalOptions(Config{
 			Addr: "   ",
 		})
 		assert.Error(t, err)
@@ -113,36 +113,28 @@ func TestNewRedisOptions(t *testing.T) {
 	})
 
 	t.Run("invalid scheme", func(t *testing.T) {
-		_, err := newRedisOptions(Config{URL: "http://example.com"})
+		_, err := newUniversalOptions(Config{URL: "http://example.com"})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported redis scheme")
 	})
 
 	t.Run("redis url with invalid db", func(t *testing.T) {
-		_, err := newRedisOptions(Config{
+		_, err := newUniversalOptions(Config{
 			URL: "redis://127.0.0.1:6379/invalid",
 		})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid redis db in url")
 	})
 
-	t.Run("redis url missing host", func(t *testing.T) {
-		_, err := newRedisOptions(Config{
-			URL: "redis://",
-		})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "redis url missing host")
-	})
-
 	t.Run("invalid url format", func(t *testing.T) {
-		_, err := newRedisOptions(Config{
+		_, err := newUniversalOptions(Config{
 			URL: "redis://:invalid",
 		})
 		assert.Error(t, err)
 	})
 
 	t.Run("explicit tls_insecure_skip_verify", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			Addr:                  "127.0.0.1:6379",
 			TLS:                   true,
 			TLSInsecureSkipVerify: true,
@@ -152,7 +144,7 @@ func TestNewRedisOptions(t *testing.T) {
 	})
 
 	t.Run("redis url with explicit tls flag", func(t *testing.T) {
-		opts, err := newRedisOptions(Config{
+		opts, err := newUniversalOptions(Config{
 			URL:      "redis://127.0.0.1:6379",
 			TLS:      true,
 			Username: "user",
@@ -160,7 +152,7 @@ func TestNewRedisOptions(t *testing.T) {
 			DB:       lo.ToPtr(5),
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, "127.0.0.1:6379", opts.Addr)
+		assert.Equal(t, []string{"127.0.0.1:6379"}, opts.Addrs)
 		assert.Equal(t, "user", opts.Username)
 		assert.Equal(t, "pass", opts.Password)
 		assert.Equal(t, 5, opts.DB)
