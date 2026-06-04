@@ -163,15 +163,13 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 }
 
 // UpdateOwnProfile updates fields users are allowed to change for their own account.
-func (s *UserService) UpdateOwnProfile(ctx context.Context, id int, input ent.UpdateUserInput) (*ent.User, error) {
+func (s *UserService) UpdateOwnProfile(ctx context.Context, input ent.UpdateUserInput) (*ent.User, error) {
 	currentUser, ok := contexts.GetUser(ctx)
 	if !ok || currentUser == nil {
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	if currentUser.ID != id {
-		return nil, fmt.Errorf("permission denied: cannot update another user's profile")
-	}
+	id := currentUser.ID
 
 	return authz.RunWithSystemBypass(ctx, "update-own-profile", func(ctx context.Context) (*ent.User, error) {
 		client := s.entFromContext(ctx)
