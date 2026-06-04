@@ -1498,3 +1498,84 @@ func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, processedRequest)
 }
+
+func TestApplyPassThroughBodySkipsMultipartAudio(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-multipart-audio",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+
+	// The inbound multipart body uses the client boundary; the outbound transformer
+	// rebuilds the multipart body with a new boundary, so the inbound bytes must not
+	// replace the outbound body.
+	inboundBody := []byte("--client-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nwhisper-1\r\n--client-boundary--\r\n")
+	outboundBody := []byte("--new-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nmapped-whisper\r\n--new-boundary--\r\n")
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "mapped-whisper",
+				APIFormat: llm.APIFormatOpenAITranscription,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAITranscription),
+					Body:      inboundBody,
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAITranscription),
+		Body:      outboundBody,
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, outboundBody, processed.Body)
+}
+
+func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-speech",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "tts-1-hd",
+				APIFormat: llm.APIFormatOpenAISpeech,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAISpeech),
+					Body:      []byte(`{"model":"my-tts-alias","input":"hello","voice":"alloy"}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAISpeech),
+		Body:      []byte(`{"model":"tts-1-hd","input":"hello","voice":"alloy"}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "tts-1-hd", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, "alloy", gjson.GetBytes(processed.Body, "voice").String())
+}

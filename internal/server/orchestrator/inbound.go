@@ -84,7 +84,11 @@ func isTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 		// For Responses API, check for response.completed event
 		event.Type == "response.completed" ||
 		// For Anthropic Messages API, check for message_stop event
-		event.Type == "message_stop"
+		event.Type == "message_stop" ||
+		// For OpenAI audio APIs (TTS sse / STT stream) which have no [DONE] sentinel:
+		// rely on the terminal *.done event surfaced as StreamEvent.Type.
+		event.Type == "speech.audio.done" ||
+		event.Type == "transcript.text.done"
 }
 
 func (ts *InboundPersistentStream) Err() error {

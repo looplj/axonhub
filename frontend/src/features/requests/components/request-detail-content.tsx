@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { DashboardIcon } from '@radix-ui/react-icons';
 import { zhCN, enUS } from 'date-fns/locale';
@@ -40,6 +40,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
   const [showCurlPreview, setShowCurlPreview] = useState(false);
   const [curlCommand, setCurlCommand] = useState('');
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
+  const [audioObjectUrl, setAudioObjectUrl] = useState<string | null>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [audioLoadFailed, setAudioLoadFailed] = useState(false);
   const [responseView, setResponseView] = useState<'preview' | 'json'>('preview');
 
   const { data: settings } = useGeneralSettings();
@@ -118,40 +121,61 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     toast.success(t('requests.actions.download'));
   };
 
+  const isSpeechRequest = request?.format === 'openai/audio_speech';
+  const isVideoRequest = request?.format === 'openai/video' || request?.format === 'seedance/video';
+  const hasStoredContent = !!(request?.contentSaved && request?.contentStorageKey);
+
+  // fetchStoredContent downloads the binary artifact (video/audio) saved to external storage
+  // via the content-type-agnostic /admin/requests/:id/content endpoint.
+  const fetchStoredContent = useCallback(async (): Promise<{ blob: Blob; filename: string } | null> => {
+    if (!request?.contentSaved || !request?.contentStorageKey || !projectId) return null;
+
+    const requestIdNumber = extractNumberID(request.id);
+    if (!requestIdNumber) return null;
+
+    const token = getTokenFromStorage();
+    if (!token) {
+      toast.error(t('common.errors.sessionExpiredSignIn'));
+      return null;
+    }
+
+    const url = `/admin/requests/${encodeURIComponent(requestIdNumber)}/content`;
+    const resp = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Project-ID': projectId,
+      },
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+
+    const contentDisposition = resp.headers.get('Content-Disposition') || '';
+    const filenameMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
+    // Return empty string when the header is absent so callers can apply their own
+    // extension-aware fallback (e.g. .mp4 for video, .mp3 for audio). A non-empty
+    // generic fallback here would silently shadow those defaults.
+    const filename = filenameMatch?.[1] ?? '';
+    const blob = await resp.blob();
+
+    return { blob, filename };
+  }, [request, projectId, t]);
+
   const downloadVideo = async () => {
-    if (!request?.contentSaved || !request?.contentStorageKey || !projectId) return;
+    if (!hasStoredContent || !projectId) return;
 
     const requestIdNumber = extractNumberID(request.id);
     if (!requestIdNumber) return;
 
-    const url = `/admin/requests/${encodeURIComponent(requestIdNumber)}/content`;
-
     try {
       setIsDownloadingVideo(true);
 
-      const token = getTokenFromStorage();
-      if (!token) {
-        toast.error(t('common.errors.sessionExpiredSignIn'));
-        return;
-      }
+      const result = await fetchStoredContent();
+      if (!result) return;
 
-      const resp = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-Project-ID': projectId,
-        },
-      });
-
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
-
-      const contentDisposition = resp.headers.get('Content-Disposition') || '';
-      const filenameMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
-      const filename = filenameMatch?.[1] || `video-${requestIdNumber}.mp4`;
-
-      const blob = await resp.blob();
-      const objectUrl = URL.createObjectURL(blob);
+      const filename = result.filename || `video-${requestIdNumber}.mp4`;
+      const objectUrl = URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = objectUrl;
       a.download = filename;
@@ -166,6 +190,73 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
       setIsDownloadingVideo(false);
     }
   };
+
+  const downloadAudio = async () => {
+    if (!hasStoredContent || !projectId) return;
+
+    const requestIdNumber = extractNumberID(request.id);
+    if (!requestIdNumber) return;
+
+    try {
+      setIsLoadingAudio(true);
+
+      const result = await fetchStoredContent();
+      if (!result) return;
+
+      const filename = result.filename || `audio-${requestIdNumber}.mp3`;
+      const objectUrl = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+      toast.success(t('requests.actions.download'));
+    } catch (_err) {
+      toast.error(t('common.errors.operationFailed', { operation: t('requests.actions.downloadAudio') }));
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
+
+  // Load the stored audio artifact into an object URL for inline playback (TTS).
+  useEffect(() => {
+    if (!isSpeechRequest || !hasStoredContent) {
+      return;
+    }
+
+    let cancelled = false;
+    let createdUrl: string | null = null;
+
+    (async () => {
+      try {
+        setIsLoadingAudio(true);
+        setAudioLoadFailed(false);
+        const result = await fetchStoredContent();
+        if (cancelled) return;
+        if (!result) {
+          setAudioLoadFailed(true);
+          return;
+        }
+
+        createdUrl = URL.createObjectURL(result.blob);
+        setAudioObjectUrl(createdUrl);
+      } catch (_err) {
+        // Surface the failure in the preview instead of showing "no response data".
+        if (!cancelled) setAudioLoadFailed(true);
+      } finally {
+        if (!cancelled) setIsLoadingAudio(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+      setAudioObjectUrl(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSpeechRequest, hasStoredContent, request?.id]);
 
   const showResponseChunksModal = useCallback(() => {
     if (request?.responseChunks) {
@@ -476,9 +567,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                   </TabsList>
 
                   <div className='flex flex-wrap items-center gap-2'>
-                    {(request.format === 'openai/video' || request.format === 'seedance/video') &&
-                      request.contentSaved &&
-                      request.contentStorageKey && (
+                    {isVideoRequest && hasStoredContent && (
                       <Button
                         variant='outline'
                         size='sm'
@@ -488,6 +577,18 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                       >
                         <Download className='mr-2 h-4 w-4' />
                         {t('requests.actions.downloadVideo')}
+                      </Button>
+                    )}
+                    {isSpeechRequest && hasStoredContent && (
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={downloadAudio}
+                        disabled={isLoadingAudio}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
+                        <Download className='mr-2 h-4 w-4' />
+                        {t('requests.actions.downloadAudio')}
                       </Button>
                     )}
                     <Button
@@ -533,7 +634,31 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
 
                 <div className='mt-6'>
                   <TabsContent value='preview' className='mt-0 transition-all focus-visible:outline-none'>
-                    {hasPreviewData || isLive ? (
+                    {isSpeechRequest ? (
+                      <div className='bg-muted/20 flex min-h-[200px] w-full flex-col items-center justify-center gap-4 rounded-lg border p-6'>
+                        {audioObjectUrl ? (
+                          <audio controls src={audioObjectUrl} className='w-full max-w-xl'>
+                            {t('requests.detail.audioNotSupported')}
+                          </audio>
+                        ) : isLoadingAudio ? (
+                          <div className='space-y-4 text-center'>
+                            <div className='border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2'></div>
+                            <p className='text-muted-foreground text-sm'>{t('common.loading')}...</p>
+                          </div>
+                        ) : (
+                          <div className='space-y-3 text-center'>
+                            <FileText className='text-muted-foreground mx-auto h-12 w-12' />
+                            <p className='text-muted-foreground text-base'>
+                              {audioLoadFailed
+                                ? t('requests.detail.audioLoadFailed')
+                                : hasStoredContent
+                                  ? t('requests.detail.noResponse')
+                                  : t('requests.detail.audioNotStored')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : hasPreviewData || isLive ? (
                       <ResponseFlow
                         chunks={request.responseChunks}
                         body={request.responseBody}

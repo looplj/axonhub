@@ -259,3 +259,14 @@ func TestInboundPersistentStream_Close_WithAggregationError(t *testing.T) {
 	assert.False(t, state.StreamCompleted, "StreamCompleted should remain false after Close() with aggregation error")
 	assert.True(t, mockStream.closed, "Stream should be closed")
 }
+
+func TestIsTerminalStreamEvent_AudioDoneEvents(t *testing.T) {
+	// OpenAI audio SSE streams have no [DONE] sentinel; terminal completion is
+	// signaled by typed *.done events surfaced via StreamEvent.Type.
+	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.done"}))
+	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.done"}))
+
+	// Other events must not be treated as terminal.
+	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.delta"}))
+	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.delta"}))
+}

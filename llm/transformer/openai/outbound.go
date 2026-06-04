@@ -157,6 +157,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeVideo:
 		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeSpeech:
+		return t.buildSpeechRequest(ctx, llmReq)
+	case llm.RequestTypeTranscription:
+		return t.buildTranscriptionRequest(ctx, llmReq)
+	case llm.RequestTypeTranslation:
+		return t.buildTranslationRequest(ctx, llmReq)
 	case llm.RequestTypeCompact:
 		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	case llm.RequestTypeRerank:
@@ -252,6 +258,12 @@ func (t *OutboundTransformer) TransformResponse(
 			return t.transformEmbeddingResponse(ctx, httpResp)
 		case string(llm.APIFormatOpenAIVideo):
 			return transformVideoResponse(httpResp)
+		case string(llm.APIFormatOpenAISpeech):
+			return transformSpeechResponse(httpResp)
+		case string(llm.APIFormatOpenAITranscription):
+			return transformTranscriptionResponse(httpResp, llm.APIFormatOpenAITranscription)
+		case string(llm.APIFormatOpenAITranslation):
+			return transformTranscriptionResponse(httpResp, llm.APIFormatOpenAITranslation)
 		}
 	}
 
@@ -268,6 +280,19 @@ func (t *OutboundTransformer) TransformResponse(
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	// Audio APIs use dedicated SSE event schemas; route them to the audio decoder so
+	// chat-completion parsing is not applied to transcript.text.delta / speech.audio.delta.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech):
+			return streams.MapErr(stream, transformSpeechStreamChunk), nil
+		case string(llm.APIFormatOpenAITranscription):
+			return streams.MapErr(stream, transformTranscriptionStreamChunkFor(llm.APIFormatOpenAITranscription)), nil
+		case string(llm.APIFormatOpenAITranslation):
+			return streams.MapErr(stream, transformTranscriptionStreamChunkFor(llm.APIFormatOpenAITranslation)), nil
+		}
+	}
+
 	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
 	}), nil
@@ -424,9 +449,18 @@ func (t *OutboundTransformer) GetConfig() *Config {
 }
 
 func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context, _ *httpclient.Request,
+	ctx context.Context, req *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech):
+			return aggregateSpeechStreamChunks(chunks)
+		case string(llm.APIFormatOpenAITranscription), string(llm.APIFormatOpenAITranslation):
+			return aggregateTranscriptionStreamChunks(chunks)
+		}
+	}
+
 	return AggregateStreamChunks(ctx, chunks, DefaultTransformChunk)
 }
 

@@ -12480,6 +12480,106 @@
           "type": "chat"
         },
         {
+          "id": "gpt-4o-mini-tts",
+          "name": "GPT-4o mini TTS",
+          "family": "gpt-mini",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "knowledge": "2023-09",
+          "release_date": "2025-03-20",
+          "last_updated": "2025-03-20",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 2000,
+            "output": 0
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 12
+          },
+          "display_name": "GPT-4o mini TTS",
+          "type": "chat"
+        },
+        {
+          "id": "gpt-4o-transcribe",
+          "name": "GPT-4o Transcribe",
+          "family": "gpt-4o",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "knowledge": "2024-05",
+          "release_date": "2025-03-20",
+          "last_updated": "2025-03-20",
+          "modalities": {
+            "input": [
+              "audio",
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 16000,
+            "output": 2000
+          },
+          "cost": {
+            "input": 2.5,
+            "output": 10
+          },
+          "display_name": "GPT-4o Transcribe",
+          "type": "chat"
+        },
+        {
+          "id": "whisper-1",
+          "name": "Whisper",
+          "family": "whisper",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "knowledge": "2023-09",
+          "release_date": "2023-03-01",
+          "last_updated": "2023-03-01",
+          "modalities": {
+            "input": [
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 0,
+            "output": 0
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Whisper",
+          "type": "chat"
+        },
+        {
           "id": "o3-deep-research",
           "name": "o3-deep-research",
           "family": "o",

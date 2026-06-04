@@ -48,6 +48,36 @@ func TestHasResponseContent(t *testing.T) {
 		}))
 	})
 
+	t.Run("speech response audio", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Speech: &llm.SpeechResponse{Audio: []byte{0x01, 0x02}},
+		}))
+	})
+
+	t.Run("empty speech response", func(t *testing.T) {
+		require.False(t, hasResponseContent(&llm.Response{
+			Speech: &llm.SpeechResponse{},
+		}))
+	})
+
+	t.Run("transcription response text", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Transcription: &llm.TranscriptionResponse{Text: "hello"},
+		}))
+	})
+
+	t.Run("transcription response raw", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Transcription: &llm.TranscriptionResponse{Raw: []byte("1\n00:00:00,000 --> 00:00:01,000\nhi\n")},
+		}))
+	})
+
+	t.Run("empty transcription response", func(t *testing.T) {
+		require.False(t, hasResponseContent(&llm.Response{
+			Transcription: &llm.TranscriptionResponse{},
+		}))
+	})
+
 	t.Run("embedding response data", func(t *testing.T) {
 		require.True(t, hasResponseContent(&llm.Response{
 			Embedding: &llm.EmbeddingResponse{
