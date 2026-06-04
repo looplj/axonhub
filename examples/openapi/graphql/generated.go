@@ -4,6 +4,7 @@ package graphql
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Khan/genqlient/graphql"
 )
@@ -139,6 +140,79 @@ var AllAPIKeyQuotaPeriodType = []APIKeyQuotaPeriodType{
 	APIKeyQuotaPeriodTypeAllTime,
 	APIKeyQuotaPeriodTypePastDuration,
 	APIKeyQuotaPeriodTypeCalendarDuration,
+}
+
+// APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage includes the requested fields of the GraphQL type APIKeyProfileQuotaUsage.
+type APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage struct {
+	ProfileName string                                                                            `json:"profileName"`
+	Window      *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow `json:"window"`
+	Usage       *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage   `json:"usage"`
+}
+
+// GetProfileName returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage.ProfileName, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage) GetProfileName() string {
+	return v.ProfileName
+}
+
+// GetWindow returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage.Window, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage) GetWindow() *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow {
+	return v.Window
+}
+
+// GetUsage returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage.Usage, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage) GetUsage() *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage {
+	return v.Usage
+}
+
+// APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage includes the requested fields of the GraphQL type APIKeyQuotaUsage.
+type APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage struct {
+	RequestCount int         `json:"requestCount"`
+	TotalTokens  int         `json:"totalTokens"`
+	TotalCost    json.Number `json:"totalCost"`
+}
+
+// GetRequestCount returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.RequestCount, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetRequestCount() int {
+	return v.RequestCount
+}
+
+// GetTotalTokens returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.TotalTokens, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetTotalTokens() int {
+	return v.TotalTokens
+}
+
+// GetTotalCost returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.TotalCost, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetTotalCost() json.Number {
+	return v.TotalCost
+}
+
+// APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow includes the requested fields of the GraphQL type APIKeyQuotaWindow.
+type APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow struct {
+	Start *string `json:"start"`
+	End   *string `json:"end"`
+}
+
+// GetStart returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow.Start, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow) GetStart() *string {
+	return v.Start
+}
+
+// GetEnd returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow.End, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow) GetEnd() *string {
+	return v.End
+}
+
+// APIKeyQuotaUsagesResponse is returned by APIKeyQuotaUsages on success.
+type APIKeyQuotaUsagesResponse struct {
+	// Returns quota usage for the profiles that have quota enabled on an API key.
+	// Provide exactly one of apiKeyId or key; both identify a key, and only keys
+	// inside the caller's own project are visible (requires the read_api_keys scope).
+	ApiKeyQuotaUsages []*APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage `json:"apiKeyQuotaUsages"`
+}
+
+// GetApiKeyQuotaUsages returns APIKeyQuotaUsagesResponse.ApiKeyQuotaUsages, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesResponse) GetApiKeyQuotaUsages() []*APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage {
+	return v.ApiKeyQuotaUsages
 }
 
 type ChannelTagsMatchMode string
@@ -448,6 +522,18 @@ func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyPro
 	return v.To
 }
 
+// __APIKeyQuotaUsagesInput is used internally by genqlient
+type __APIKeyQuotaUsagesInput struct {
+	ApiKeyId *string `json:"apiKeyId,omitempty"`
+	Key      *string `json:"key,omitempty"`
+}
+
+// GetApiKeyId returns __APIKeyQuotaUsagesInput.ApiKeyId, and is useful for accessing the field via an interface.
+func (v *__APIKeyQuotaUsagesInput) GetApiKeyId() *string { return v.ApiKeyId }
+
+// GetKey returns __APIKeyQuotaUsagesInput.Key, and is useful for accessing the field via an interface.
+func (v *__APIKeyQuotaUsagesInput) GetKey() *string { return v.Key }
+
 // __CreateAPIKeyInput is used internally by genqlient
 type __CreateAPIKeyInput struct {
 	Name string `json:"name"`
@@ -475,6 +561,53 @@ func (v *__UpdateAPIKeyProfilesInput) GetId() string { return v.Id }
 
 // GetInput returns __UpdateAPIKeyProfilesInput.Input, and is useful for accessing the field via an interface.
 func (v *__UpdateAPIKeyProfilesInput) GetInput() *UpdateAPIKeyProfilesInput { return v.Input }
+
+// The query executed by APIKeyQuotaUsages.
+const APIKeyQuotaUsages_Operation = `
+query APIKeyQuotaUsages ($apiKeyId: ID, $key: String) {
+	apiKeyQuotaUsages(apiKeyId: $apiKeyId, key: $key) {
+		profileName
+		window {
+			start
+			end
+		}
+		usage {
+			requestCount
+			totalTokens
+			totalCost
+		}
+	}
+}
+`
+
+// Provide exactly one of $apiKeyId or $key. Requires the read_api_keys scope and
+// only returns usage for keys inside the service account's own project.
+func APIKeyQuotaUsages(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	apiKeyId *string,
+	key *string,
+) (data_ *APIKeyQuotaUsagesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "APIKeyQuotaUsages",
+		Query:  APIKeyQuotaUsages_Operation,
+		Variables: &__APIKeyQuotaUsagesInput{
+			ApiKeyId: apiKeyId,
+			Key:      key,
+		},
+	}
+
+	data_ = &APIKeyQuotaUsagesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
 
 // The mutation executed by CreateAPIKey.
 const CreateAPIKey_Operation = `

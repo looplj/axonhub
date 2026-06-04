@@ -114,7 +114,10 @@ var apiKeyAuthConfig = &APIKeyConfig{
 	RequireBearer: true,
 }
 
-// WithOpenAPIAuth allows API key auth for createLLMAPIKey only.
+// WithOpenAPIAuth gates the OpenAPI GraphQL surface (/openapi/v1/graphql).
+// It accepts only service_account API keys and injects the API key principal,
+// project, and session scope so the ent privacy layer can enforce per-project,
+// scope-gated access for every query and mutation.
 func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, apiKeyAuthConfig)

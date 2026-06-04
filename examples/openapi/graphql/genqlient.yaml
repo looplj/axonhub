@@ -3,9 +3,16 @@ operations:
 - api_key.graphql
 generated: generated.go
 bindings:
+  # The server marshals the Decimal scalar as a bare JSON number (see
+  # internal/objects/decimal.go MarshalDecimal), so the output type must be able
+  # to decode a numeric token. json.Number does; a plain string does not.
   Decimal:
-    type: string
+    type: encoding/json.Number
+  # DecimalInput is sent as a quoted string, which the server's UnmarshalDecimal
+  # accepts, so string is fine on the input side.
   DecimalInput:
+    type: string
+  Time:
     type: string
 optional: pointer_omitempty
 use_struct_references: true

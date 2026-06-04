@@ -1,5 +1,6 @@
 scalar Decimal
 scalar DecimalInput
+scalar Time
 
 type APIKey {
   id: ID!
@@ -127,4 +128,31 @@ extend type Mutation {
   createLLMAPIKey(name: String!): APIKey!
   updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
   loadApiKeyProfileTemplate(input: LoadApiKeyProfileTemplateInput!): APIKey!
+}
+
+extend type Query {
+  """
+  Returns quota usage for the profiles that have quota enabled on an API key.
+  Provide exactly one of apiKeyId or key; both identify a key, and only keys
+  inside the caller's own project are visible (requires the read_api_keys scope).
+  """
+  apiKeyQuotaUsages(apiKeyId: ID, key: String): [APIKeyProfileQuotaUsage!]!
+}
+
+type APIKeyProfileQuotaUsage {
+  profileName: String!
+  quota: APIKeyQuota!
+  window: APIKeyQuotaWindow!
+  usage: APIKeyQuotaUsage!
+}
+
+type APIKeyQuotaUsage {
+  requestCount: Int!
+  totalTokens: Int!
+  totalCost: Decimal!
+}
+
+type APIKeyQuotaWindow {
+  start: Time
+  end: Time
 }

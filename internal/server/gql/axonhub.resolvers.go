@@ -753,34 +753,24 @@ func (r *queryResolver) APIKeyQuotaUsages(ctx context.Context, apiKeyID objects.
 		return nil, fmt.Errorf("failed to get api key: %w", err)
 	}
 
-	if apiKey.Profiles == nil || len(apiKey.Profiles.Profiles) == 0 {
-		return []*APIKeyProfileQuotaUsage{}, nil
+	usages, err := r.quotaService.ProfileQuotaUsages(ctx, apiKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get api key quota usage: %w", err)
 	}
 
-	quotaService := biz.NewQuotaService(r.client, r.systemService)
-
-	result := make([]*APIKeyProfileQuotaUsage, 0, len(apiKey.Profiles.Profiles))
-	for _, profile := range apiKey.Profiles.Profiles {
-		if profile.Quota == nil {
-			continue
-		}
-
-		quotaRes, err := quotaService.GetQuota(ctx, apiKey.ID, profile.Quota)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get api key quota usage: %w", err)
-		}
-
+	result := make([]*APIKeyProfileQuotaUsage, 0, len(usages))
+	for _, u := range usages {
 		result = append(result, &APIKeyProfileQuotaUsage{
-			ProfileName: profile.Name,
-			Quota:       profile.Quota,
+			ProfileName: u.ProfileName,
+			Quota:       u.Quota,
 			Window: &APIKeyQuotaWindow{
-				Start: quotaRes.Window.Start,
-				End:   quotaRes.Window.End,
+				Start: u.Window.Start,
+				End:   u.Window.End,
 			},
 			Usage: &APIKeyQuotaUsage{
-				RequestCount: int(quotaRes.Usage.RequestCount),
-				TotalTokens:  int(quotaRes.Usage.TotalTokens),
-				TotalCost:    quotaRes.Usage.TotalCost,
+				RequestCount: int(u.Usage.RequestCount),
+				TotalTokens:  int(u.Usage.TotalTokens),
+				TotalCost:    u.Usage.TotalCost,
 			},
 		})
 	}
