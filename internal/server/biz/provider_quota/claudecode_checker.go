@@ -54,7 +54,7 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 			Type:   httpclient.AuthTypeBearer,
 			APIKey: accessToken,
 		}).
-		WithHeader("anthropic-beta", claudecode.ClaudeCodeBetaHeader).
+		WithHeader("anthropic-beta", claudecode.ClaudeCodeQuotaCheckHeader).
 		WithHeader("anthropic-version", claudecode.ClaudeCodeVersionHeader).
 		WithHeader("anthropic-dangerous-direct-browser-access", claudecode.ClaudeCodeBrowserAccessHeader).
 		WithHeader("x-app", claudecode.ClaudeCodeAppHeader).

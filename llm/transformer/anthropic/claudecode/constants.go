@@ -34,5 +34,6 @@ const (
 	// ClaudeCodeAppHeader identifies the client application type.
 	ClaudeCodeAppHeader = "cli"
 	// ClaudeCodeQuotaCheckModel is the model used for quota checking requests.
-	ClaudeCodeQuotaCheckModel = "claude-haiku-4-5"
+	ClaudeCodeQuotaCheckModel  = "claude-haiku-4-5"
+	ClaudeCodeQuotaCheckHeader = "claude-code-20250219,interleaved-thinking-2025-05-14,redact-thinking-2026-02-12,context-management-2025-06-27,prompt-caching-scope-2026-01-05,mid-conversation-system-2026-04-07,effort-2025-11-24"
 )
