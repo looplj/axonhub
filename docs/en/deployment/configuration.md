@@ -185,6 +185,66 @@ cache:
 - `AXONHUB_CACHE_REDIS_TLS_INSECURE_SKIP_VERIFY`
 - `AXONHUB_CACHE_REDIS_EXPIRATION`
 
+#### Configure more parameters using URL
+**Standard URL for standalone mode**
+```
+redis://127.0.0.1:6379/0
+```
+
+**Standard URL for sentinel mode**
+```
+redis://?master_name=mymaster&addrs=127.0.0.1:26379&addrs=127.0.0.1:26380&addrs=127.0.0.1:26381
+```
+
+**Standard URL for cluster mode**
+```
+redis://?addrs=127.0.0.1:7000&addrs=127.0.0.1:7001&addrs=127.0.0.1:7002
+or
+redis://127.0.0.1:7000?is_cluster_mode=true
+```
+
+**Parameter explanation**
+| Parameter | Description | Example |
+|------|------|------|
+| addrs | Specify multiple addresses in the format addrs=host:port, repeatable | addrs=127.0.0.1:7000&addrs=127.0.0.1:7001 |
+| client_name | Client name, will be set as the Redis client's ClientName | client_name=axonhub |
+| db | Specify Redis DB number | db=1 or /1 in path |
+| protocol | Protocol version (integer, used internally by the library) | protocol=3 |
+| username | Connection username (for ACL) | username=default |
+| password | Connection password | password=secret |
+| sentinel_username | Sentinel authentication username | sentinel_username=sentineluser |
+| sentinel_password | Sentinel authentication password | sentinel_password=sentinelpass |
+| max_retries | Maximum retry attempts | max_retries=3 |
+| min_retry_backoff | Minimum retry backoff, supports units like s/ms or integer seconds | min_retry_backoff=100ms |
+| max_retry_backoff | Maximum retry backoff | max_retry_backoff=2s |
+| dial_timeout | Dial timeout | dial_timeout=5s |
+| read_timeout | Read timeout | read_timeout=3s |
+| write_timeout | Write timeout | write_timeout=3s |
+| context_timeout_enabled | Enable context-based timeout (true/false) | context_timeout_enabled=true |
+| read_buffer_size | Read buffer size (bytes) | read_buffer_size=4096 |
+| write_buffer_size | Write buffer size (bytes) | write_buffer_size=4096 |
+| pool_fifo | Whether the connection pool is FIFO (true/false) | pool_fifo=true |
+| pool_size | Connection pool size | pool_size=10 |
+| pool_timeout | Timeout to get a connection | pool_timeout=4s |
+| min_idle_conns | Minimum number of idle connections to keep | min_idle_conns=2 |
+| max_idle_conns | Maximum number of idle connections | max_idle_conns=10 |
+| max_active_conns | Maximum active connections (client-specific) | max_active_conns=0 |
+| conn_max_lifetime | Maximum connection lifetime | conn_max_lifetime=30m |
+| conn_max_idle_time | Maximum connection idle time | conn_max_idle_time=5m |
+| max_redirects | Maximum redirects (cluster) | max_redirects=8 |
+| read_only | Read-only mode (true/false) | read_only=true |
+| route_by_latency | Route by latency (true/false) | route_by_latency=true |
+| route_randomly | Route randomly (true/false) | route_randomly=true |
+| master_name | Master name in sentinel mode | master_name=mymaster |
+| disable_identity | Disable client identity (true/false) | disable_identity=true |
+| identity_suffix | Client identity suffix | identity_suffix=-axonhub |
+| failing_timeout_seconds | Failure detection timeout (seconds) | failing_timeout_seconds=30 |
+| unstable_resp3 | Use unstable RESP3 (true/false) | unstable_resp3=true |
+| is_cluster_mode | Force cluster mode (true/false) | is_cluster_mode=true |
+| tls_insecure_skip_verify | TLS skip verification (true/false) | tls_insecure_skip_verify=true |
+
+> **Note:** When `addr` and `addrs` configuration items exist and the `host` and `addrs` parameters are also configured in the `url`, their value order is: `addrs` > `addr` > `addrs` in url > `host` in url. Value priority is: configuration item > URL parameter part > URL main body part.
+
 ### Logging Configuration
 
 ```yaml

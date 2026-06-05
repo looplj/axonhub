@@ -185,6 +185,67 @@ cache:
 - `AXONHUB_CACHE_REDIS_TLS_INSECURE_SKIP_VERIFY`
 - `AXONHUB_CACHE_REDIS_EXPIRATION`
 
+#### 使用URL配置更多参数
+**standalone模式标准URL**
+```
+redis://127.0.0.1:6379/0
+```
+
+**sentinel模式标准URL**
+```
+redis://?master_name=mymaster&addrs=127.0.0.1:26379&addrs=127.0.0.1:26380&addrs=127.0.0.1:26381
+```
+
+**cluster模式标准URL**
+```
+redis://?addrs=127.0.0.1:7000&addrs=127.0.0.1:7001&addrs=127.0.0.1:7002
+或
+redis://127.0.0.1:7000?is_cluster_mode=true
+```
+
+**参数说明**
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| addrs | 指定多个地址，格式为 addrs=host:port，可重复 | addrs=127.0.0.1:7000&addrs=127.0.0.1:7001 |
+| client_name | 客户端名称，会设置为 Redis 客户端的 ClientName | client_name=axonhub |
+| db | 指定 Redis DB 序号（数字） | db=1 或 在路径中 /1 |
+| protocol | 协议版本（整型，库内部使用） | protocol=3 |
+| username | 连接用户名（用于 ACL） | username=default |
+| password | 连接密码 | password=secret |
+| sentinel_username | Sentinel 认证用户名 | sentinel_username=sentineluser |
+| sentinel_password | Sentinel 认证密码 | sentinel_password=sentinelpass |
+| max_retries | 最大重试次数 | max_retries=3 |
+| min_retry_backoff | 重试的最小退避时间，支持 s/ms 等单位或秒整数 | min_retry_backoff=100ms |
+| max_retry_backoff | 重试的最大退避时间 | max_retry_backoff=2s |
+| dial_timeout | 建立连接超时 | dial_timeout=5s |
+| read_timeout | 读超时 | read_timeout=3s |
+| write_timeout | 写超时 | write_timeout=3s |
+| context_timeout_enabled | 是否启用基于 context 的超时（true/false） | context_timeout_enabled=true |
+| read_buffer_size | 读缓冲区大小（字节） | read_buffer_size=4096 |
+| write_buffer_size | 写缓冲区大小（字节） | write_buffer_size=4096 |
+| pool_fifo | 连接池是否 FIFO（true/false） | pool_fifo=true |
+| pool_size | 连接池大小 | pool_size=10 |
+| pool_timeout | 获取连接的超时 | pool_timeout=4s |
+| min_idle_conns | 保持的最小空闲连接数 | min_idle_conns=2 |
+| max_idle_conns | 最大空闲连接数 | max_idle_conns=10 |
+| max_active_conns | 最大活动连接数（客户端特定） | max_active_conns=0 |
+| conn_max_lifetime | 连接最大生命周期 | conn_max_lifetime=30m |
+| conn_max_idle_time | 连接最大空闲时间 | conn_max_idle_time=5m |
+| max_redirects | 最大重定向次数（cluster） | max_redirects=8 |
+| read_only | 只读模式（true/false） | read_only=true |
+| route_by_latency | 按延迟路由（true/false） | route_by_latency=true |
+| route_randomly | 随机路由（true/false） | route_randomly=true |
+| master_name | sentinel 模式下的 master 名称 | master_name=mymaster |
+| disable_identity | 禁用客户端标识（true/false） | disable_identity=true |
+| identity_suffix | 客户端标识后缀 | identity_suffix=-axonhub |
+| failing_timeout_seconds | 失败检测超时（秒） | failing_timeout_seconds=30 |
+| unstable_resp3 | 使用不稳定的 RESP3（true/false） | unstable_resp3=true |
+| is_cluster_mode | 强制集群模式（true/false） | is_cluster_mode=true |
+| tls_insecure_skip_verify | TLS 跳过验证（true/false）| tls_insecure_skip_verify=true |
+
+> **提示：** 当 `addr`、`addrs` 配置项存在，并同时配置了`url`中的`host`和`addrs`参数，他们的取值顺序依次是: `addrs` > `addr` > `url`中的`addrs` > `url`中的`host`。取值优先级为：配置项 > URL 参数部分 > URL 主体部分。
+
+
 ### 日志配置
 
 ```yaml
