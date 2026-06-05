@@ -223,13 +223,11 @@ func (o *queryOptions) string(name string) string {
 	if len(vs) == 0 {
 		return ""
 	}
-	delete(o.q, name) // enable detection of unknown parameters
 	return vs[len(vs)-1]
 }
 
 func (o *queryOptions) strings(name string) []string {
 	vs := o.q[name]
-	delete(o.q, name)
 	return vs
 }
 
