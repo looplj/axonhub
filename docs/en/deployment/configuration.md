@@ -146,9 +146,19 @@ cache:
   # Redis cache configuration
   redis:
     url: ""                     # Redis connection URL(redis:// or rediss://)
-    addr: ""                    # Redis address: 127.0.0.1:6379
+    addr: ""                    # Redis address(Deprecated.): 127.0.0.1:6379
+    addrs:                      # Redis addresses，support standalone/sentinel/cluster mode
+      - 127.0.0.1:7000
+      - 127.0.0.1:7001
+      - 127.0.0.1:7002
     username: ""                # Overrides username in URL if set
     password: ""                # Overrides password in URL if set
+    master_name: "mymaster"     # Redis Sentinel Mode MasterName
+    sentinel_username: ""       # Redis Sentinel Mode sentinel username
+    sentinel_password: ""       # Redis Sentinel Mode sentinel password
+    is_cluster_mode: false      # Redis Cluster Mode enable flag(If addrs are configured with multiple addresses, no configuration is required)
+    route_randomly: false       # Redis Cluster Mode route randomly strategy
+    route_by_latency: false     # Redis Cluster Mode route latency strategy
     db: 0                       # Overrides DB in URL path (/0)
     tls: false                  # Enable TLS (also auto-enabled for rediss://)
     tls_insecure_skip_verify: false # Skip TLS cert verification (self-signed)
@@ -161,8 +171,15 @@ cache:
 - `AXONHUB_CACHE_MEMORY_CLEANUP_INTERVAL`
 - `AXONHUB_CACHE_REDIS_URL`
 - `AXONHUB_CACHE_REDIS_ADDR`
+- `AXONHUB_CACHE_REDIS_ADDRS`
 - `AXONHUB_CACHE_REDIS_USERNAME`
 - `AXONHUB_CACHE_REDIS_PASSWORD`
+- `AXONHUB_CACHE_REDIS_MASTER_NAME`
+- `AXONHUB_CACHE_REDIS_SENTINEL_USERNAME`
+- `AXONHUB_CACHE_REDIS_SENTINEL_PASSWORD`
+- `AXONHUB_CACHE_REDIS_ROUTE_BY_LATENCY`
+- `AXONHUB_CACHE_REDIS_ROUTE_RANDOMLY`
+- `AXONHUB_CACHE_REDIS_IS_CLUSTER_MODE`
 - `AXONHUB_CACHE_REDIS_DB`
 - `AXONHUB_CACHE_REDIS_TLS`
 - `AXONHUB_CACHE_REDIS_TLS_INSECURE_SKIP_VERIFY`
@@ -360,9 +377,28 @@ db:
 cache:
   mode: "redis"
   redis:
-    addr: "redis:6379"
+    # standalone mode
+    addrs: 
+      - "redis:6379"
     password: "redis-password"
     expiration: "30m"
+
+    # sentinel mode
+    addrs:
+      - "redis:26379"
+      - "redis:26380"
+      - "redis:26381"
+    master_name: mymaster
+    password: "redis-password"
+    sentinel_password: "sentinel-password"
+
+    # cluster mode
+    addrs:
+      - "redis:7000"
+      - "redis:7001"
+      - "redis:7002"
+    password: "redis-password"
+
 
 log:
   level: "warn"
@@ -426,11 +462,39 @@ username:password@tcp(host:3306)/database?parseTime=True&multiStatements=true&ch
 ### Performance
 
 1. **Use Redis for caching in production**
+   
+   **standalone mode**
    ```yaml
    cache:
      mode: "redis"
      redis:
-       addr: "redis:6379"
+       addrs: 
+         - "redis:6379"
+       expiration: "30m"
+   ```
+
+   **sentinel mode**
+   ```yaml
+   cache:
+     mode: "redis"
+     redis:
+       addrs:
+         - "redis:26379"
+         - "redis:26380"
+         - "redis:26381"
+       master_name: mymaster
+       expiration: "30m"
+   ```
+
+   **cluster mode**
+   ```yaml
+   cache:
+     mode: "redis"
+     redis:
+       addrs:
+         - "redis:7000"
+         - "redis:7001"
+         - "redis:7002"
        expiration: "30m"
    ```
 

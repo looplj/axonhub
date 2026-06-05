@@ -146,9 +146,19 @@ cache:
   # Redis 缓存配置
   redis:
     url: ""                     # Redis 连接 URL (redis:// 或 rediss://)
-    addr: ""                    # Redis 地址: 127.0.0.1:6379
+    addr: ""                    # Redis 地址(已弃用): 127.0.0.1:6379
+    addrs:                      # Redis 地址，支持standalone、sentinel和cluster模式
+      - 127.0.0.1:7000
+      - 127.0.0.1:7001
+      - 127.0.0.1:7002
     username: ""                # 如果设置，将覆盖 URL 中的用户名
     password: ""                # 如果设置，将覆盖 URL 中的密码
+    master_name: "mymaster"     # Redis Sentinel模式的 MasterName
+    sentinel_username: ""       # Redis Sentinel模式的 Sentinel用户名
+    sentinel_password: ""       # Redis Sentinel模式的 Sentinel密码
+    is_cluster_mode: false      # Redis Cluster模式的 开启标识（如果addrs配置多个地址时则无需配置）
+    route_randomly: false       # Redis Cluster模式的 路由策略-随机
+    route_by_latency: false     # Redis Cluster模式的 路由策略-延迟优先
     db: 0                       # 如果设置，将覆盖 URL 路径中的数据库编号 (/0)
     tls: false                  # 启用 TLS (rediss:// 也会自动启用)
     tls_insecure_skip_verify: false # 跳过 TLS 证书验证 (自签名证书)
@@ -161,8 +171,15 @@ cache:
 - `AXONHUB_CACHE_MEMORY_CLEANUP_INTERVAL`
 - `AXONHUB_CACHE_REDIS_URL`
 - `AXONHUB_CACHE_REDIS_ADDR`
+- `AXONHUB_CACHE_REDIS_ADDRS`
 - `AXONHUB_CACHE_REDIS_USERNAME`
 - `AXONHUB_CACHE_REDIS_PASSWORD`
+- `AXONHUB_CACHE_REDIS_MASTER_NAME`
+- `AXONHUB_CACHE_REDIS_SENTINEL_USERNAME`
+- `AXONHUB_CACHE_REDIS_SENTINEL_PASSWORD`
+- `AXONHUB_CACHE_REDIS_ROUTE_BY_LATENCY`
+- `AXONHUB_CACHE_REDIS_ROUTE_RANDOMLY`
+- `AXONHUB_CACHE_REDIS_IS_CLUSTER_MODE`
 - `AXONHUB_CACHE_REDIS_DB`
 - `AXONHUB_CACHE_REDIS_TLS`
 - `AXONHUB_CACHE_REDIS_TLS_INSECURE_SKIP_VERIFY`
@@ -317,9 +334,28 @@ db:
 cache:
   mode: "redis"
   redis:
-    addr: "redis:6379"
+    # standalone模式
+    addr: 
+      - "redis:6379"
     password: "redis-password"
     expiration: "30m"
+
+    # sentinel模式
+    addrs:
+      - "redis:26379"
+      - "redis:26380"
+      - "redis:26381"
+    master_name: mymaster
+    password: "redis-password"
+    sentinel_password: "sentinel-password"
+
+    # cluster模式
+    addrs:
+      - "redis:7000"
+      - "redis:7001"
+      - "redis:7002"
+    password: "redis-password"
+
 
 log:
   level: "warn"
@@ -383,11 +419,39 @@ username.root:password@tcp(host:4000)/database?tls=true&parseTime=true&multiStat
 ### 性能
 
 1. **在生产环境中使用 Redis 进行缓存**
+   
+   **standalone模式**
    ```yaml
    cache:
      mode: "redis"
      redis:
-       addr: "redis:6379"
+       addrs: 
+         - "redis:6379"
+       expiration: "30m"
+   ```
+
+   **sentinel模式**
+   ```yaml
+   cache:
+     mode: "redis"
+     redis:
+       addrs:
+         - "redis:26379"
+         - "redis:26380"
+         - "redis:26381"
+       master_name: mymaster
+       expiration: "30m"
+   ```
+
+   **cluster模式**
+   ```yaml
+   cache:
+     mode: "redis"
+     redis:
+       addrs:
+         - "redis:7000"
+         - "redis:7001"
+         - "redis:7002"
        expiration: "30m"
    ```
 
