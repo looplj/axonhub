@@ -243,7 +243,7 @@ func (o *queryOptions) int(name string) int {
 		return i
 	}
 	if o.err == nil {
-		o.err = fmt.Errorf("redis: invalid %s number: %s", name, err)
+		o.err = fmt.Errorf("redis: invalid %s number: %w", name, err)
 	}
 	return 0
 }
