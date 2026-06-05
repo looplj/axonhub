@@ -335,7 +335,7 @@ cache:
   mode: "redis"
   redis:
     # standalone模式
-    addr: 
+    addrs: 
       - "redis:6379"
     password: "redis-password"
     expiration: "30m"
