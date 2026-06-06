@@ -795,6 +795,56 @@ type jsonStreamEvent struct {
 	Data        json.RawMessage `json:"data"`
 }
 
+type binaryStreamChunkSummary struct {
+	Object      string `json:"object"`
+	ContentType string `json:"content_type"`
+	Bytes       int    `json:"bytes"`
+}
+
+func isBinaryStreamChunk(chunk *httpclient.StreamEvent) bool {
+	if chunk == nil {
+		return false
+	}
+
+	eventType := strings.ToLower(strings.TrimSpace(chunk.Type))
+
+	return strings.HasPrefix(eventType, "audio/") || eventType == "application/octet-stream"
+}
+
+func shouldSkipStoredStreamChunk(chunk *httpclient.StreamEvent) bool {
+	return chunk == nil ||
+		(!isBinaryStreamChunk(chunk) && bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data)) ||
+		chunk.Type == httpclient.BinaryStreamDoneEventType
+}
+
+func marshalStreamEventForStorage(chunk *httpclient.StreamEvent) (objects.JSONRawMessage, error) {
+	data := json.RawMessage(chunk.Data)
+	if isBinaryStreamChunk(chunk) {
+		// Prefer chunk.Size, which is set when the persistence layer summarized the
+		// raw audio chunk to avoid buffering audio bytes in memory.
+		byteCount := len(chunk.Data)
+		if byteCount == 0 {
+			byteCount = chunk.Size
+		}
+
+		var err error
+		data, err = json.Marshal(binaryStreamChunkSummary{
+			Object:      "binary.stream_chunk",
+			ContentType: strings.TrimSpace(chunk.Type),
+			Bytes:       byteCount,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return xjson.Marshal(jsonStreamEvent{
+		LastEventID: chunk.LastEventID,
+		Type:        chunk.Type,
+		Data:        data,
+	})
+}
+
 // SaveRequestExecutionChunks saves all response chunks to request execution at once.
 // Only stores chunks if the system StoreChunks setting is enabled.
 func (s *RequestService) SaveRequestExecutionChunks(
@@ -823,15 +873,11 @@ func (s *RequestService) SaveRequestExecutionChunks(
 	var chunkBytes []objects.JSONRawMessage
 
 	for _, chunk := range chunks {
-		if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+		if shouldSkipStoredStreamChunk(chunk) {
 			continue
 		}
 
-		b, err := xjson.Marshal(jsonStreamEvent{
-			LastEventID: chunk.LastEventID,
-			Type:        chunk.Type,
-			Data:        chunk.Data,
-		})
+		b, err := marshalStreamEventForStorage(chunk)
 		if err != nil {
 			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))
 
@@ -915,15 +961,11 @@ func (s *RequestService) SaveRequestChunks(
 	var chunkBytes []objects.JSONRawMessage
 
 	for _, chunk := range chunks {
-		if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+		if shouldSkipStoredStreamChunk(chunk) {
 			continue
 		}
 
-		b, err := xjson.Marshal(jsonStreamEvent{
-			LastEventID: chunk.LastEventID,
-			Type:        chunk.Type,
-			Data:        chunk.Data,
-		})
+		b, err := marshalStreamEventForStorage(chunk)
 		if err != nil {
 			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))
 

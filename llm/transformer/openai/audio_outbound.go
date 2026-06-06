@@ -24,7 +24,7 @@ type SpeechRequestBody struct {
 	ResponseFormat string   `json:"response_format,omitempty"`
 	Speed          *float64 `json:"speed,omitempty"`
 	Instructions   string   `json:"instructions,omitempty"`
-	// StreamFormat="sse" requests an SSE stream from gpt-4o-mini-tts.
+	// StreamFormat selects streaming output from /audio/speech. OpenAI supports "sse" and "audio"; audio is the default.
 	StreamFormat string `json:"stream_format,omitempty"`
 }
 
@@ -299,6 +299,47 @@ func transformSpeechStreamChunk(event *httpclient.StreamEvent) (*llm.Response, e
 	}, nil
 }
 
+func transformSpeechBinaryChunk(event *httpclient.StreamEvent) (*llm.Response, error) {
+	if event != nil && event.Type == httpclient.BinaryStreamDoneEventType {
+		return &llm.Response{
+			Object:      "[DONE]",
+			RequestType: llm.RequestTypeSpeech,
+			APIFormat:   llm.APIFormatOpenAISpeech,
+		}, nil
+	}
+
+	if event == nil || len(event.Data) == 0 {
+		//nolint:nilnil // skip empty chunks
+		return nil, nil
+	}
+
+	contentType := strings.TrimSpace(event.Type)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	return &llm.Response{
+		RequestType: llm.RequestTypeSpeech,
+		APIFormat:   llm.APIFormatOpenAISpeech,
+		SpeechAudioChunk: &llm.SpeechAudioChunk{
+			Audio:       bytes.Clone(event.Data),
+			ContentType: contentType,
+		},
+	}, nil
+}
+
+func isSpeechBinaryStreamEvent(event *httpclient.StreamEvent) bool {
+	if event == nil {
+		return false
+	}
+
+	eventType := strings.ToLower(strings.TrimSpace(event.Type))
+
+	return eventType == httpclient.BinaryStreamDoneEventType ||
+		strings.HasPrefix(eventType, "audio/") ||
+		eventType == "application/octet-stream"
+}
+
 // transformTranscriptionStreamChunkFor returns a decoder for streaming STT/translation SSE events.
 func transformTranscriptionStreamChunkFor(apiFormat llm.APIFormat) func(*httpclient.StreamEvent) (*llm.Response, error) {
 	requestType := requestTypeForAudioFormat(apiFormat)
@@ -328,6 +369,16 @@ func transformTranscriptionStreamChunkFor(apiFormat llm.APIFormat) func(*httpcli
 			TranscriptionStreamEvent: &ev,
 			Usage:                    ev.Usage,
 		}, nil
+	}
+}
+
+func speechStreamChunkTransformFor(_ *httpclient.Request) func(*httpclient.StreamEvent) (*llm.Response, error) {
+	return func(event *httpclient.StreamEvent) (*llm.Response, error) {
+		if isSpeechBinaryStreamEvent(event) {
+			return transformSpeechBinaryChunk(event)
+		}
+
+		return transformSpeechStreamChunk(event)
 	}
 }
 

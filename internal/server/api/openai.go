@@ -61,11 +61,13 @@ type OpenAIHandlers struct {
 	SpeechHandlers             *ChatCompletionHandlers
 	TranscriptionHandlers      *ChatCompletionHandlers
 	TranslationHandlers        *ChatCompletionHandlers
+	SpeechInboundTransformer   *openai.AudioInboundTransformer
 	EntClient                  *ent.Client
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	videoInbound := openai.NewVideoInboundTransformer()
+	speechInbound := openai.NewSpeechInboundTransformer()
 
 	return &OpenAIHandlers{
 		ChatCompletionHandlers: &ChatCompletionHandlers{
@@ -233,7 +235,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.DefaultSelector,
 				params.RequestService,
 				params.HttpClient,
-				openai.NewSpeechInboundTransformer(),
+				speechInbound,
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -244,6 +246,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.ProviderQuotaStatusProvider,
 			),
 		},
+		SpeechInboundTransformer: speechInbound,
 		TranscriptionHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
@@ -303,7 +306,34 @@ func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 
 // CreateSpeech handles POST /v1/audio/speech (text-to-speech). The response is binary audio.
 func (handlers *OpenAIHandlers) CreateSpeech(c *gin.Context) {
-	handlers.SpeechHandlers.ChatCompletion(c)
+	ctx := c.Request.Context()
+
+	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	if err != nil {
+		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	llmReq, err := handlers.SpeechInboundTransformer.TransformRequest(ctx, genericReq)
+	if err != nil {
+		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	isStream := llmReq.Stream != nil && *llmReq.Stream
+	if !isStream {
+		handlers.SpeechHandlers.ChatCompletionWithRequest(c, genericReq)
+		return
+	}
+
+	if llmReq.Speech != nil && llmReq.Speech.StreamFormat == "sse" {
+		handlers.SpeechHandlers.ChatCompletionWithRequest(c, genericReq)
+		return
+	}
+
+	handlers.SpeechHandlers.WithStreamWriter(WriteBinaryStream).ChatCompletionWithRequest(c, genericReq)
 }
 
 // CreateTranscription handles POST /v1/audio/transcriptions (speech-to-text).

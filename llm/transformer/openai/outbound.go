@@ -285,7 +285,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	if req != nil {
 		switch req.APIFormat {
 		case string(llm.APIFormatOpenAISpeech):
-			return streams.MapErr(stream, transformSpeechStreamChunk), nil
+			return streams.MapErr(stream, speechStreamChunkTransformFor(req)), nil
 		case string(llm.APIFormatOpenAITranscription):
 			return streams.MapErr(stream, transformTranscriptionStreamChunkFor(llm.APIFormatOpenAITranscription)), nil
 		case string(llm.APIFormatOpenAITranslation):

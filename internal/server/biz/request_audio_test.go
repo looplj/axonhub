@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,6 +14,8 @@ import (
 	entrequest "github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestRequestService_UpdateRequestCompletedWithAudio_ExternalStorage(t *testing.T) {
@@ -93,4 +96,54 @@ func TestRequestService_UpdateRequestCompletedWithAudio_ExternalStorage(t *testi
 	stored, err := dataStorageService.LoadData(ctx, ds, *updated.ContentStorageKey)
 	require.NoError(t, err)
 	require.Equal(t, audio, stored)
+}
+
+func TestMarshalStreamEventForStorage_BinaryAudioChunk(t *testing.T) {
+	raw, err := marshalStreamEventForStorage(&httpclient.StreamEvent{
+		Type: "audio/mpeg",
+		Data: []byte{0x7b, 0xff, 0x00},
+	})
+	require.NoError(t, err)
+
+	var got struct {
+		Event string `json:"event"`
+		Data  struct {
+			Object      string `json:"object"`
+			ContentType string `json:"content_type"`
+			Bytes       int    `json:"bytes"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &got))
+	require.Equal(t, "audio/mpeg", got.Event)
+	require.Equal(t, "binary.stream_chunk", got.Data.Object)
+	require.Equal(t, "audio/mpeg", got.Data.ContentType)
+	require.Equal(t, 3, got.Data.Bytes)
+}
+
+func TestMarshalStreamEventForStorage_BinaryAudioChunkUsesSizeWhenDataElided(t *testing.T) {
+	// Persistence summarizes binary audio chunks by clearing Data and recording Size,
+	// so storage marshaling must fall back to Size for the byte count.
+	raw, err := marshalStreamEventForStorage(&httpclient.StreamEvent{
+		Type: "audio/mpeg",
+		Size: 4096,
+	})
+	require.NoError(t, err)
+
+	var got struct {
+		Event string `json:"event"`
+		Data  struct {
+			Bytes int `json:"bytes"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &got))
+	require.Equal(t, "audio/mpeg", got.Event)
+	require.Equal(t, 4096, got.Data.Bytes)
+}
+
+func TestShouldSkipStoredStreamChunk_DoneSentinelDoesNotSkipBinaryAudio(t *testing.T) {
+	require.True(t, shouldSkipStoredStreamChunk(&httpclient.StreamEvent{Data: llm.DoneStreamEvent.Data}))
+	require.False(t, shouldSkipStoredStreamChunk(&httpclient.StreamEvent{
+		Type: "audio/mpeg",
+		Data: llm.DoneStreamEvent.Data,
+	}))
 }

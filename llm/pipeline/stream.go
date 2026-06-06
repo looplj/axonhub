@@ -50,7 +50,11 @@ func (p *pipeline) checkEmptyResponse(
 			return streams.PrependStream(llmStream, buffered...), nil
 		}
 
-		if event == llm.DoneResponse || hasFinishReason(event) {
+		// Recognize both the shared sentinel pointer (llm.DoneResponse) and a
+		// freshly-constructed "[DONE]" terminator: outbound transformers that emit
+		// terminal events as new *llm.Response (e.g. OpenAI TTS binary streams) must
+		// still trigger empty-response handling when no audio chunks were produced.
+		if event == llm.DoneResponse || (event != nil && event.Object == "[DONE]") || hasFinishReason(event) {
 			// Reached end without content — empty response
 			slog.WarnContext(ctx, "empty response detected",
 				slog.Int("events_read", len(buffered)),

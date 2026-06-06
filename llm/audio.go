@@ -2,6 +2,10 @@ package llm
 
 import "encoding/json"
 
+// SpeechStreamResponseID is the synthetic response ID used for aggregated
+// streaming TTS metadata.
+const SpeechStreamResponseID = "audio.speech.stream"
+
 // SpeechRequest is the unified text-to-speech (TTS) request structure.
 // It maps to OpenAI's POST /v1/audio/speech API.
 // Note: Common fields like Model are in the parent Request struct, not here.
@@ -21,8 +25,7 @@ type SpeechRequest struct {
 	// Instructions controls the voice tone for supported models (e.g. gpt-4o-mini-tts).
 	Instructions string `json:"instructions,omitempty"`
 
-	// StreamFormat opts into SSE streaming for gpt-4o-mini-tts. Only "sse" is supported;
-	// the binary chunked stream (no stream_format) is not exposed by the gateway.
+	// StreamFormat selects streaming output for /audio/speech. OpenAI supports "sse" and "audio"; audio is the default.
 	StreamFormat string `json:"stream_format,omitempty"`
 }
 
@@ -37,6 +40,16 @@ type SpeechStreamEvent struct {
 
 	// Usage is populated on the terminal speech.audio.done event.
 	Usage *Usage `json:"usage,omitempty"`
+}
+
+// SpeechAudioChunk represents one binary audio chunk emitted by streaming TTS
+// when the provider returns raw chunked audio instead of SSE.
+type SpeechAudioChunk struct {
+	// Audio is the raw audio bytes for this chunk.
+	Audio []byte `json:"-"`
+
+	// ContentType is the MIME type returned by the provider for the stream.
+	ContentType string `json:"-"`
 }
 
 // SpeechResponse represents the unified TTS response.

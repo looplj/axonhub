@@ -689,6 +689,10 @@ type Response struct {
 	// SpeechStreamEvent carries one SSE event of a streaming TTS response (stream_format="sse").
 	SpeechStreamEvent *SpeechStreamEvent `json:"speech_stream_event,omitempty"`
 
+	// SpeechAudioChunk carries one raw binary chunk of a streaming TTS response
+	// when the provider returns chunked audio instead of SSE.
+	SpeechAudioChunk *SpeechAudioChunk `json:"-"`
+
 	// TranscriptionStreamEvent carries one SSE event of a streaming STT response (stream=true).
 	TranscriptionStreamEvent *TranscriptionStreamEvent `json:"transcription_stream_event,omitempty"`
 
@@ -751,8 +755,9 @@ type TopLogprob struct {
 }
 
 type ResponseMeta struct {
-	ID    string `json:"id"`
-	Usage *Usage `json:"usage"`
+	ID        string `json:"id"`
+	Usage     *Usage `json:"usage"`
+	Completed bool   `json:"completed,omitempty"`
 }
 
 // Usage Represents the total token usage per request to OpenAI.

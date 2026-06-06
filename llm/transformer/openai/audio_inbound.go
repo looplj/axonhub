@@ -99,15 +99,16 @@ func (t *AudioInboundTransformer) transformSpeechRequest(httpReq *httpclient.Req
 		return nil, fmt.Errorf("%w: voice is required", transformer.ErrInvalidRequest)
 	}
 
-	// Only SSE streaming is exposed. Binary chunked streams (the OpenAI default when
-	// no stream_format is set) require a non-SSE response carrier the gateway does
-	// not currently model; reject them up front rather than silently buffering.
+	// stream_format is opt-in. When the client omits it, OpenAI returns a single
+	// binary audio body (non-streaming) and we keep that path so the gateway can
+	// persist the audio bytes to external storage via UpdateRequestCompletedWithAudio.
+	// Only explicit "sse" or "audio" engages the streaming pipeline.
 	streamFormat := strings.ToLower(strings.TrimSpace(body.StreamFormat))
-	if streamFormat != "" && streamFormat != "sse" {
-		return nil, fmt.Errorf("%w: unsupported stream_format: %q (only \"sse\" is supported)", transformer.ErrInvalidRequest, body.StreamFormat)
+	if streamFormat != "" && streamFormat != "sse" && streamFormat != "audio" {
+		return nil, fmt.Errorf("%w: unsupported stream_format: %q (only \"sse\" and \"audio\" are supported)", transformer.ErrInvalidRequest, body.StreamFormat)
 	}
 
-	isStream := streamFormat == "sse"
+	isStream := streamFormat != ""
 
 	return &llm.Request{
 		Model:       body.Model,
@@ -295,8 +296,9 @@ func (t *AudioInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	}, nil
 }
 
-// TransformStream converts unified streaming audio responses back into SSE events.
-// Supports gpt-4o-mini-tts speech (stream_format="sse") and gpt-4o-transcribe STT (stream=true).
+// TransformStream converts unified streaming audio responses back into client-facing
+// stream events. TTS supports both SSE and raw binary chunk streams; STT/translation
+// use SSE only.
 func (t *AudioInboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error) {
 	return streams.NoNil(streams.MapErr(stream, func(resp *llm.Response) (*httpclient.StreamEvent, error) {
 		if resp == nil {
@@ -304,9 +306,14 @@ func (t *AudioInboundTransformer) TransformStream(ctx context.Context, stream st
 			return nil, nil
 		}
 
-		// The DoneResponse sentinel is the pipeline-level end marker; the audio SSE
-		// streams have their own "*.done" events, so swallow the sentinel.
+		// The DoneResponse sentinel is the pipeline-level end marker. SSE audio
+		// streams have their own "*.done" events; binary speech streams need a
+		// client-facing binary.done so persistence can mark the stream complete.
 		if resp == llm.DoneResponse || resp.Object == "[DONE]" {
+			if t.apiFormat == llm.APIFormatOpenAISpeech && resp.RequestType == llm.RequestTypeSpeech {
+				return &httpclient.StreamEvent{Type: httpclient.BinaryStreamDoneEventType}, nil
+			}
+
 			//nolint:nilnil // skip pipeline sentinel
 			return nil, nil
 		}
@@ -320,6 +327,13 @@ func (t *AudioInboundTransformer) TransformStream(ctx context.Context, stream st
 			// Propagate the event type so InboundPersistentStream.isTerminalStreamEvent
 			// can recognize speech.audio.done and mark the request as completed.
 			return &httpclient.StreamEvent{Type: resp.SpeechStreamEvent.Type, Data: data}, nil
+		}
+
+		if resp.SpeechAudioChunk != nil {
+			return &httpclient.StreamEvent{
+				Type: resp.SpeechAudioChunk.ContentType,
+				Data: resp.SpeechAudioChunk.Audio,
+			}, nil
 		}
 
 		if resp.TranscriptionStreamEvent != nil {
@@ -357,14 +371,37 @@ func aggregateSpeechStreamChunks(chunks []*httpclient.StreamEvent) ([]byte, llm.
 	var (
 		audioBytes int
 		usage      *llm.Usage
+		completed  bool
 	)
 
 	for _, chunk := range chunks {
-		if chunk == nil || len(chunk.Data) == 0 {
+		if chunk == nil {
+			continue
+		}
+
+		if chunk.Type == httpclient.BinaryStreamDoneEventType {
+			completed = true
+			continue
+		}
+
+		if isSpeechBinaryStreamEvent(chunk) {
+			// Persistence layer may have replaced the binary payload with a size
+			// summary; fall back to chunk.Size when Data is empty.
+			if n := len(chunk.Data); n > 0 {
+				audioBytes += n
+			} else {
+				audioBytes += chunk.Size
+			}
+
+			continue
+		}
+
+		if len(chunk.Data) == 0 {
 			continue
 		}
 
 		if bytes.HasPrefix(chunk.Data, []byte("[DONE]")) {
+			completed = true
 			continue
 		}
 
@@ -378,13 +415,17 @@ func aggregateSpeechStreamChunks(chunks []*httpclient.StreamEvent) ([]byte, llm.
 			audioBytes += base64DecodedLen(ev.AudioBase64)
 		}
 
+		if ev.Type == "speech.audio.done" {
+			completed = true
+		}
+
 		if ev.Usage != nil {
 			usage = ev.Usage
 		}
 	}
 
 	body, err := json.Marshal(map[string]any{
-		"object":      "audio.speech.stream",
+		"object":      llm.SpeechStreamResponseID,
 		"audio_bytes": audioBytes,
 		"chunks":      len(chunks),
 	})
@@ -392,7 +433,13 @@ func aggregateSpeechStreamChunks(chunks []*httpclient.StreamEvent) ([]byte, llm.
 		return nil, llm.ResponseMeta{}, fmt.Errorf("failed to marshal speech stream aggregate: %w", err)
 	}
 
-	return body, llm.ResponseMeta{Usage: usage}, nil
+	meta := llm.ResponseMeta{
+		ID:        llm.SpeechStreamResponseID,
+		Usage:     usage,
+		Completed: completed,
+	}
+
+	return body, meta, nil
 }
 
 func aggregateTranscriptionStreamChunks(chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
@@ -400,6 +447,7 @@ func aggregateTranscriptionStreamChunks(chunks []*httpclient.StreamEvent) ([]byt
 		deltaBuilder strings.Builder
 		finalText    string
 		usage        *llm.Usage
+		completed    bool
 	)
 
 	for _, chunk := range chunks {
@@ -408,6 +456,7 @@ func aggregateTranscriptionStreamChunks(chunks []*httpclient.StreamEvent) ([]byt
 		}
 
 		if bytes.HasPrefix(chunk.Data, []byte("[DONE]")) {
+			completed = true
 			continue
 		}
 
@@ -420,6 +469,7 @@ func aggregateTranscriptionStreamChunks(chunks []*httpclient.StreamEvent) ([]byt
 		case "transcript.text.delta":
 			deltaBuilder.WriteString(ev.Delta)
 		case "transcript.text.done":
+			completed = true
 			if ev.Text != "" {
 				finalText = ev.Text
 			}
@@ -439,7 +489,7 @@ func aggregateTranscriptionStreamChunks(chunks []*httpclient.StreamEvent) ([]byt
 		return nil, llm.ResponseMeta{}, fmt.Errorf("failed to marshal transcription stream aggregate: %w", err)
 	}
 
-	return body, llm.ResponseMeta{Usage: usage}, nil
+	return body, llm.ResponseMeta{Usage: usage, Completed: completed}, nil
 }
 
 // base64DecodedLen returns the decoded byte length of a standard base64 string
