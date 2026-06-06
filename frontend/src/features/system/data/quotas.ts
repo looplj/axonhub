@@ -236,7 +236,42 @@ export type ProviderQuotaChannel = {
       }
     }
     | {
+      type: 'openai_responses'
+      providerType: 'wafer'
+      quotaStatus?: {
+        quotaData: ProviderWaferQuotaData
+      }
+    }
+    | {
+      type: 'openai_responses'
+      providerType: 'synthetic'
+      quotaStatus?: {
+        quotaData: ProviderSyntheticQuotaData
+      }
+    }
+    | {
+      type: 'openai_responses'
+      providerType: 'neuralwatt'
+      quotaStatus?: {
+        quotaData: ProviderNeuralWattQuotaData
+      }
+    }
+    | {
+      type: 'openai_responses'
+      providerType: 'apertis'
+      quotaStatus?: {
+        quotaData: ProviderApertisQuotaData
+      }
+    }
+    | {
       type: 'openai'
+      providerType?: undefined
+      quotaStatus?: {
+        quotaData: ProviderQuotaDataCommon
+      }
+    }
+    | {
+      type: 'openai_responses'
       providerType?: undefined
       quotaStatus?: {
         quotaData: ProviderQuotaDataCommon
@@ -307,7 +342,22 @@ function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][
     }
     return { ...base, type: 'openai' as const, providerType: undefined, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
   }
-  
+  if (node.type === 'openai_responses') {
+    if (providerType === 'wafer') {
+      return { ...base, type: 'openai_responses' as const, providerType: 'wafer' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderWaferQuotaData } };
+    }
+    if (providerType === 'synthetic') {
+      return { ...base, type: 'openai_responses' as const, providerType: 'synthetic' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderSyntheticQuotaData } };
+    }
+    if (providerType === 'neuralwatt') {
+      return { ...base, type: 'openai_responses' as const, providerType: 'neuralwatt' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNeuralWattQuotaData } };
+    }
+    if (providerType === 'apertis') {
+      return { ...base, type: 'openai_responses' as const, providerType: 'apertis' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderApertisQuotaData } };
+    }
+    return { ...base, type: 'openai_responses' as const, providerType: undefined, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
+  }
+
   return { ...base, type: node.type as ProviderQuotaChannel['type'], quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
 }
 

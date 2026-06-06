@@ -101,21 +101,21 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
-  } else if (channel.type === 'openai' && channel.providerType === 'wafer') {
+  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
-  } else if (channel.type === 'openai' && channel.providerType === 'synthetic') {
+  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'synthetic') {
     const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
     const weeklyPct = qd?.weeklyTokenLimit?.percentRemaining ?? 100;
     percentage = 100 - weeklyPct;
-  } else if (channel.type === 'openai' && channel.providerType === 'neuralwatt') {
+  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'neuralwatt') {
     const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
     const kwhIncluded = qd?.subscription?.kwh_included ?? 0;
     const kwhUsed = qd?.subscription?.kwh_used ?? 0;
     if (kwhIncluded > 0) {
       percentage = (kwhUsed / kwhIncluded) * 100;
     }
-  } else if (channel.type === 'openai' && channel.providerType === 'apertis') {
+  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'apertis') {
     percentage = getApertisPercentage(channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined);
   }
   return percentage;
@@ -686,7 +686,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {channel.type === 'openai' && channel.providerType === 'wafer' && (
+      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'wafer' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
@@ -726,7 +726,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {channel.type === 'openai' && channel.providerType === 'synthetic' && (
+      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'synthetic' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
@@ -811,7 +811,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {channel.type === 'openai' && channel.providerType === 'neuralwatt' && (
+      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'neuralwatt' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
@@ -878,7 +878,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {channel.type === 'openai' && channel.providerType === 'apertis' && (
+      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'apertis' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined;
@@ -1060,8 +1060,8 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       if (!existing) {
         acc.push(channel);
       }
-    } else if (channel.type === 'openai' && channel.providerType) {
-      const existing = acc.find((c) => c.type === 'openai' && c.providerType === channel.providerType);
+    } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType) {
+      const existing = acc.find((c) => (c.type === 'openai' || c.type === 'openai_responses') && c.providerType === channel.providerType);
       if (!existing) {
         acc.push(channel);
       }
