@@ -60,6 +60,8 @@ func TestNeuralWatt_CheckQuota_HappyPath(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
+
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// kwh_remaining = 3.0, kwh_included = 20.0 → 15% < 20% → warning
@@ -75,7 +77,8 @@ func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
 					"kwh_included": 20.0,
 					"kwh_used": 17.0,
 					"kwh_remaining": 3.0,
-					"in_overage": false
+					"in_overage": false,
+					"kwh_reset_date": "2026-06-02T05:58:36Z"
 				}
 			}`
 			return &http.Response{
@@ -96,6 +99,8 @@ func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "warning", quota.Status)
 	require.True(t, quota.Ready)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, expectedResetAt, *quota.NextResetAt)
 }
 
 func TestNeuralWatt_CheckQuota_ExhaustedState(t *testing.T) {
@@ -210,6 +215,8 @@ func TestNeuralWatt_CheckQuota_HTTPError(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
+
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
@@ -224,7 +231,8 @@ func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
 					"kwh_included": 20.0,
 					"kwh_used": 20.0,
 					"kwh_remaining": 0.0,
-					"in_overage": false
+					"in_overage": false,
+					"kwh_reset_date": "2026-06-02T05:58:36Z"
 				}
 			}`
 
@@ -246,6 +254,8 @@ func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "exhausted", quota.Status)
 	require.False(t, quota.Ready)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, expectedResetAt, *quota.NextResetAt)
 }
 
 func TestNeuralWatt_CheckQuota_SubscriptionWithoutKeyFields(t *testing.T) {
