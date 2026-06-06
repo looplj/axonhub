@@ -139,7 +139,7 @@ export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
 
 export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
   balance?: { credits_remaining_usd?: number | null; total_credits_usd?: number | null } | null;
-  subscription?: { kwh_included?: number | null; kwh_used?: number | null; kwh_remaining?: number | null; in_overage?: boolean | null; status?: string | null; plan?: string | null } | null;
+  subscription?: { kwh_included?: number | null; kwh_used?: number | null; kwh_remaining?: number | null; in_overage?: boolean | null; status?: string | null; plan?: string | null; kwh_reset_date?: string | null } | null;
 }
 
 export type ProviderQuotaChannel = {
