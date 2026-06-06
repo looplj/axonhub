@@ -685,7 +685,6 @@ export type Provider =
   | 'nanogpt'
   | 'fireworks'
   | 'opencode_go'
-  | 'opencode_go_anthropic'
   | 'ollama';
 
 /**
