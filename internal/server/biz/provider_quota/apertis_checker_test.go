@@ -50,6 +50,7 @@ func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 	require.Equal(t, "apertis", quota.ProviderType)
 	require.NotNil(t, quota.Limits)
 	require.Len(t, quota.Limits, 1)
+	require.Equal(t, QuotaLimitTypeToken, quota.Limits[0].Type)
 	require.Equal(t, "available", quota.Limits[0].Status)
 }
 
@@ -159,6 +160,7 @@ func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 
 	// Should have one limit: subscription cycle only (PAYG skipped for active subscription)
 	require.Len(t, quota.Limits, 1)
+	require.Equal(t, QuotaLimitTypeSubscriptionCycle, quota.Limits[0].Type)
 }
 
 func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
@@ -242,6 +244,18 @@ func TestApertis_CheckQuota_SubscriptionSuspended_WithPAYGCredits(t *testing.T) 
 	// Subscription is suspended but PAYG credits are available
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
+	// Subscription cycle limit should be exhausted (suspended), PAYG token limit is available
+	require.Len(t, quota.Limits, 2)
+	var subLimit, paygLimit QuotaLimitStatus
+	for _, l := range quota.Limits {
+		if l.Type == QuotaLimitTypeSubscriptionCycle {
+			subLimit = l
+		} else if l.Type == QuotaLimitTypeToken {
+			paygLimit = l
+		}
+	}
+	require.Equal(t, "exhausted", subLimit.Status, "suspended subscription cycle should be exhausted")
+	require.Equal(t, "available", paygLimit.Status)
 }
 
 func TestApertis_CheckQuota_SubscriptionSuspended_NoPAYGCredits(t *testing.T) {
@@ -284,6 +298,15 @@ func TestApertis_CheckQuota_SubscriptionSuspended_NoPAYGCredits(t *testing.T) {
 	// Subscription suspended and no PAYG credits
 	require.Equal(t, "exhausted", quota.Status)
 	require.False(t, quota.Ready)
+	// Subscription cycle limit should be exhausted (suspended)
+	require.Len(t, quota.Limits, 2)
+	var subLimit QuotaLimitStatus
+	for _, l := range quota.Limits {
+		if l.Type == QuotaLimitTypeSubscriptionCycle {
+			subLimit = l
+		}
+	}
+	require.Equal(t, "exhausted", subLimit.Status, "suspended subscription cycle should be exhausted")
 }
 
 func TestApertis_CheckQuota_SubscriptionExhausted_WithPAYGFallback(t *testing.T) {
@@ -329,6 +352,20 @@ func TestApertis_CheckQuota_SubscriptionExhausted_WithPAYGFallback(t *testing.T)
 	// Cycle quota is exhausted but PAYG fallback is enabled with credits
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
+	// Both subscription cycle (exhausted) and PAYG token (available) limits present
+	require.Len(t, quota.Limits, 2)
+	// Verify subscription cycle and PAYG token are separate limit types,
+	// so EffectiveStatus(QuotaLimitTypeToken) does not incorrectly merge them.
+	var subscriptionLimit, paygLimit QuotaLimitStatus
+	for _, l := range quota.Limits {
+		if l.Type == QuotaLimitTypeSubscriptionCycle {
+			subscriptionLimit = l
+		} else if l.Type == QuotaLimitTypeToken {
+			paygLimit = l
+		}
+	}
+	require.Equal(t, "exhausted", subscriptionLimit.Status)
+	require.Equal(t, "available", paygLimit.Status)
 }
 
 func TestApertis_CheckQuota_SubscriptionExhausted_NoPAYGFallback(t *testing.T) {
@@ -415,6 +452,7 @@ func TestApertis_CheckQuota_SubscriberWithUnlimitedPayg(t *testing.T) {
 	require.True(t, quota.Ready)
 	// Only subscription limit — PAYG skipped for active subscription
 	require.Len(t, quota.Limits, 1)
+	require.Equal(t, QuotaLimitTypeSubscriptionCycle, quota.Limits[0].Type)
 	require.Equal(t, "available", quota.Limits[0].Status)
 	// usageRatio = 183/600 ≈ 0.305
 	require.InDelta(t, 0.305, quota.Limits[0].UsageRatio, 0.001)

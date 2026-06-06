@@ -322,12 +322,18 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 		}
 	}
 
-	// Subscription cycle limit (if subscriber)
+	// Subscription cycle limit (if subscriber).
+	// Uses a distinct QuotaLimitTypeSubscriptionCycle so that EffectiveStatus
+	// does not merge subscription-cycle and PAYG-token limits under
+	// OR-semantics (available if EITHER source has quota).
 	if resp.IsSubscriber && resp.Subscription != nil {
 		var subStatus string
 		usageRatio := 0.0
 
-		if resp.Subscription.CycleQuotaLimit > 0 {
+		// Suspended/canceled subscriptions have no usable cycle quota.
+		if strings.EqualFold(resp.Subscription.Status, "suspended") || strings.EqualFold(resp.Subscription.Status, "cancelled") { //nolint:misspell // API domain value
+			subStatus = "exhausted"
+		} else if resp.Subscription.CycleQuotaLimit > 0 {
 			usageRatio = float64(resp.Subscription.CycleQuotaUsed) / float64(resp.Subscription.CycleQuotaLimit)
 			if resp.Subscription.CycleQuotaRemaining <= 0 {
 				subStatus = "exhausted"
@@ -341,7 +347,7 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 		}
 
 		limits = append(limits, QuotaLimitStatus{
-			Type:        QuotaLimitTypeToken, // Using token as general quota type
+			Type:        QuotaLimitTypeSubscriptionCycle,
 			Status:      subStatus,
 			UsageRatio:  usageRatio,
 			Ready:       IsReadyStatus(subStatus),
