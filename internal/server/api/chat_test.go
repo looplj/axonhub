@@ -106,6 +106,7 @@ func (s *trackingStream) Close() error                     { return nil }
 
 type failingResponseWriter struct {
 	gin.ResponseWriter
+
 	err    error
 	writes int
 }
