@@ -227,7 +227,7 @@ func determineApertisStatus(resp *ApertisBillingCreditsResponse) string {
 
 // determineSubscriptionStatus returns the status based on subscription state alone.
 func determineSubscriptionStatus(sub *ApertisSubscription) string {
-	if strings.EqualFold(sub.Status, "suspended") || strings.EqualFold(sub.Status, "cancelled") {
+	if strings.EqualFold(sub.Status, "suspended") || strings.EqualFold(sub.Status, "cancelled") { //nolint:misspell // API domain value
 		return "exhausted"
 	}
 
