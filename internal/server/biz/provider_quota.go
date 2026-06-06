@@ -330,7 +330,7 @@ func (svc *ProviderQuotaService) registerNeuralWattSupport() {
 }
 
 func (svc *ProviderQuotaService) registerApertisSupport() {
-	svc.checkers[provider_quota.ApertisProviderType] = provider_quota.NewApertisQuotaChecker(svc.httpClient)
+	svc.checkers["apertis"] = provider_quota.NewApertisQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) string {

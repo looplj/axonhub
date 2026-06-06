@@ -55,6 +55,10 @@ function getBatteryLevel(percentage: number, status: string): BatteryLevel {
   return 'full';
 }
 
+function isOpenaiType(t: string): t is 'openai' | 'openai_responses' {
+  return t === 'openai' || t === 'openai_responses';
+}
+
 function getChannelPercentage(channel: ProviderQuotaChannel): number {
   let percentage = 0;
   if (!channel.quotaStatus) return 0;
@@ -101,21 +105,21 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
-  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'wafer') {
+  } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
-  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'synthetic') {
+  } else if (isOpenaiType(channel.type) && channel.providerType === 'synthetic') {
     const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
     const weeklyPct = qd?.weeklyTokenLimit?.percentRemaining ?? 100;
     percentage = 100 - weeklyPct;
-  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'neuralwatt') {
+  } else if (isOpenaiType(channel.type) && channel.providerType === 'neuralwatt') {
     const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
     const kwhIncluded = qd?.subscription?.kwh_included ?? 0;
     const kwhUsed = qd?.subscription?.kwh_used ?? 0;
     if (kwhIncluded > 0) {
       percentage = (kwhUsed / kwhIncluded) * 100;
     }
-  } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'apertis') {
+  } else if (isOpenaiType(channel.type) && channel.providerType === 'apertis') {
     percentage = getApertisPercentage(channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined);
   }
   return percentage;
@@ -125,7 +129,7 @@ function getApertisPercentage(qd: ProviderApertisQuotaData | undefined): number 
   if (qd.is_subscriber && qd.subscription?.cycle_quota_limit) {
     return (qd.subscription.cycle_quota_used / qd.subscription.cycle_quota_limit) * 100;
   }
-  if (qd.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number') {
+  if (qd.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number' && typeof qd.payg.token_used === 'number') {
     return (qd.payg.token_used / qd.payg.token_total) * 100;
   }
   return 0;
@@ -686,7 +690,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'wafer' && (
+      {isOpenaiType(channel.type) && channel.providerType === 'wafer' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
@@ -726,7 +730,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'synthetic' && (
+      {isOpenaiType(channel.type) && channel.providerType === 'synthetic' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
@@ -811,7 +815,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'neuralwatt' && (
+      {isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
@@ -878,7 +882,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
-      {(channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType === 'apertis' && (
+      {isOpenaiType(channel.type) && channel.providerType === 'apertis' && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined;
@@ -901,7 +905,8 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                       <span className='text-muted-foreground font-medium'>
                         {planLabel}
                         <span className='font-normal opacity-70'>
-                          {' '}({subUsed}/{subTotal})
+                          {' '}
+                          ({subUsed}/{subTotal})
                         </span>
                       </span>
                       <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(subPct) })}</span>
@@ -924,7 +929,8 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                           {t('quota.label.payg_fallback')}
                           {spent != null && limit != null && (
                             <span className='font-normal opacity-70'>
-                              {' '}(${spent.toFixed(2)}/${limit.toFixed(2)})
+                              {' '}
+                              (${spent.toFixed(2)}/${limit.toFixed(2)})
                             </span>
                           )}
                         </span>
@@ -941,9 +947,18 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
 
             // For active subscribers without PAYG fallback, PAYG is only meaningful if there are real credits.
             // Otherwise it's just noise (0 credits, unlimited tokens, no fallback = nothing to show).
-            const hasPaygCredits = qd.payg && (qd.payg.account_credits > 0 || (typeof qd.payg.token_used === 'number' && qd.payg.token_used > 0));
-            const isPaygRelevant = !qd.is_subscriber || (qd.subscription?.status !== 'active') || qd.subscription?.payg_fallback_enabled || hasPaygCredits;
-            if (isPaygRelevant && qd.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number' && qd.payg.token_total > 0) {
+            const hasPaygCredits =
+              qd.payg && (qd.payg.account_credits > 0 || (typeof qd.payg.token_used === 'number' && qd.payg.token_used > 0));
+            const isPaygRelevant =
+              !qd.is_subscriber || qd.subscription?.status !== 'active' || qd.subscription?.payg_fallback_enabled || hasPaygCredits;
+            if (
+              isPaygRelevant &&
+              qd.payg &&
+              !qd.payg.token_is_unlimited &&
+              typeof qd.payg.token_total === 'number' &&
+              typeof qd.payg.token_used === 'number' &&
+              qd.payg.token_total > 0
+            ) {
               const tokenUsed = qd.payg.token_used;
               const tokenTotal = qd.payg.token_total;
               const tokenPct = (tokenUsed / tokenTotal) * 100;
@@ -955,10 +970,13 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                       <span className='text-muted-foreground font-medium'>
                         {t('quota.label.token_usage')}
                         <span className='font-normal opacity-70'>
-                          {' '}(${tokenUsed.toFixed(2)}/${tokenTotal.toFixed(2)})
+                          {' '}
+                          (${tokenUsed.toFixed(2)}/${tokenTotal.toFixed(2)})
                         </span>
                       </span>
-                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(tokenPct) })}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(tokenPct) })}
+                      </span>
                     </div>
                     <ProgressBar percentage={tokenPct} />
                   </div>
@@ -985,9 +1003,8 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
 
             // Monthly token spending limit (if configured) — hidden for active subscribers without fallback
             if (isPaygRelevant && qd.payg?.token_monthly_limit_usd != null && qd.payg.token_monthly_used_usd != null) {
-              const monthlyPct = qd.payg.token_monthly_limit_usd > 0
-                ? (qd.payg.token_monthly_used_usd / qd.payg.token_monthly_limit_usd) * 100
-                : 0;
+              const monthlyPct =
+                qd.payg.token_monthly_limit_usd > 0 ? (qd.payg.token_monthly_used_usd / qd.payg.token_monthly_limit_usd) * 100 : 0;
               items.push(
                 <div key='monthly' className='border-border/60 space-y-2.5 border-t border-dashed pt-3'>
                   <div className='space-y-1'>
@@ -995,10 +1012,13 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                       <span className='text-muted-foreground font-medium'>
                         {t('quota.label.monthly_limit')}
                         <span className='font-normal opacity-70'>
-                          {' '}(${qd.payg.token_monthly_used_usd.toFixed(2)}/${qd.payg.token_monthly_limit_usd.toFixed(2)})
+                          {' '}
+                          (${qd.payg.token_monthly_used_usd.toFixed(2)}/${qd.payg.token_monthly_limit_usd.toFixed(2)})
                         </span>
                       </span>
-                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(monthlyPct) })}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(monthlyPct) })}
+                      </span>
                     </div>
                     <ProgressBar percentage={monthlyPct} />
                   </div>
@@ -1060,8 +1080,8 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       if (!existing) {
         acc.push(channel);
       }
-    } else if ((channel.type === 'openai' || channel.type === 'openai_responses') && channel.providerType) {
-      const existing = acc.find((c) => (c.type === 'openai' || c.type === 'openai_responses') && c.providerType === channel.providerType);
+    } else if (isOpenaiType(channel.type) && channel.providerType) {
+      const existing = acc.find((c) => isOpenaiType(c.type) && c.providerType === channel.providerType);
       if (!existing) {
         acc.push(channel);
       }

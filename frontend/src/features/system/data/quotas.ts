@@ -35,7 +35,7 @@ export async function checkProviderQuotas() {
 type ProviderQuotaDataCommon = {
   plan_type?: string;
   error?: string;
-}
+};
 
 type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
   windows?: {
@@ -44,7 +44,7 @@ type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
     overage?: { utilization?: number; reset?: number; status?: string };
   };
   representative_claim?: string;
-}
+};
 
 type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
   rate_limit?: {
@@ -61,8 +61,7 @@ type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
       limit_window_seconds?: number;
     };
   };
-}
-
+};
 
 type CopilotQuotaSnapshot = {
   entitlement: number;
@@ -96,14 +95,14 @@ type ProviderGitHubCopilotQuotaData = ProviderQuotaDataCommon & {
     completions?: number;
     [key: string]: number | undefined;
   };
-}
+};
 
 export type NanoGPTQuotaWindow = {
   used?: number;
   remaining?: number;
   percentUsed?: number;
   resetAt?: number;
-}
+};
 
 export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
   state?: string;
@@ -120,7 +119,7 @@ export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
     dailyInputTokens?: NanoGPTQuotaWindow | null;
   };
   period?: { currentPeriodEnd?: string };
-}
+};
 
 export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
   current_period_used_percent?: number | null;
@@ -130,17 +129,35 @@ export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
   window_start?: string | null;
   window_end?: string | null;
   plan_tier?: string | null;
-}
+};
 
 export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
-  weeklyTokenLimit?: { percentRemaining?: number | null; remainingCredits?: string | null; maxCredits?: string | null; nextRegenAt?: string | null } | null;
-  rollingFiveHourLimit?: { limited?: boolean | null; remaining?: number | null; max?: number | null; nextTickAt?: string | null; tickPercent?: number | null } | null;
-}
+  weeklyTokenLimit?: {
+    percentRemaining?: number | null;
+    remainingCredits?: string | null;
+    maxCredits?: string | null;
+    nextRegenAt?: string | null;
+  } | null;
+  rollingFiveHourLimit?: {
+    limited?: boolean | null;
+    remaining?: number | null;
+    max?: number | null;
+    nextTickAt?: string | null;
+    tickPercent?: number | null;
+  } | null;
+};
 
 export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
   balance?: { credits_remaining_usd?: number | null; total_credits_usd?: number | null } | null;
-  subscription?: { kwh_included?: number | null; kwh_used?: number | null; kwh_remaining?: number | null; in_overage?: boolean | null; status?: string | null; plan?: string | null } | null;
-}
+  subscription?: {
+    kwh_included?: number | null;
+    kwh_used?: number | null;
+    kwh_remaining?: number | null;
+    in_overage?: boolean | null;
+    status?: string | null;
+    plan?: string | null;
+  } | null;
+};
 
 export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
   is_subscriber?: boolean;
@@ -166,7 +183,7 @@ export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
     payg_spent_usd?: number;
     payg_limit_usd?: number;
   };
-}
+};
 
 export type ProviderQuotaChannel = {
   id: string;
@@ -177,107 +194,72 @@ export type ProviderQuotaChannel = {
     ready: boolean;
   };
 } & (
-    | {
-      type: 'claudecode'
+  | {
+      type: 'claudecode';
       quotaStatus?: {
-        quotaData: ProviderClaudeQuotaData
-      }
+        quotaData: ProviderClaudeQuotaData;
+      };
     }
-    | {
-      type: 'codex'
+  | {
+      type: 'codex';
       quotaStatus?: {
-        quotaData: ProviderCodexQuotaData
-      }
+        quotaData: ProviderCodexQuotaData;
+      };
     }
-    | {
-      type: 'github_copilot'
+  | {
+      type: 'github_copilot';
       quotaStatus?: {
-        quotaData: ProviderGitHubCopilotQuotaData
-      }
+        quotaData: ProviderGitHubCopilotQuotaData;
+      };
     }
-    | {
-      type: 'nanogpt'
+  | {
+      type: 'nanogpt';
       quotaStatus?: {
-        quotaData: ProviderNanoGPTQuotaData
-      }
+        quotaData: ProviderNanoGPTQuotaData;
+      };
     }
-    | {
-      type: 'nanogpt_responses'
+  | {
+      type: 'nanogpt_responses';
       quotaStatus?: {
-        quotaData: ProviderNanoGPTQuotaData
-      }
+        quotaData: ProviderNanoGPTQuotaData;
+      };
     }
-    | {
-      type: 'openai'
-      providerType: 'wafer'
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'wafer';
       quotaStatus?: {
-        quotaData: ProviderWaferQuotaData
-      }
+        quotaData: ProviderWaferQuotaData;
+      };
     }
-    | {
-      type: 'openai'
-      providerType: 'synthetic'
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'synthetic';
       quotaStatus?: {
-        quotaData: ProviderSyntheticQuotaData
-      }
+        quotaData: ProviderSyntheticQuotaData;
+      };
     }
-    | {
-      type: 'openai'
-      providerType: 'neuralwatt'
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'neuralwatt';
       quotaStatus?: {
-        quotaData: ProviderNeuralWattQuotaData
-      }
+        quotaData: ProviderNeuralWattQuotaData;
+      };
     }
-    | {
-      type: 'openai'
-      providerType: 'apertis'
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'apertis';
       quotaStatus?: {
-        quotaData: ProviderApertisQuotaData
-      }
+        quotaData: ProviderApertisQuotaData;
+      };
     }
-    | {
-      type: 'openai_responses'
-      providerType: 'wafer'
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType?: undefined;
       quotaStatus?: {
-        quotaData: ProviderWaferQuotaData
-      }
+        quotaData: ProviderQuotaDataCommon;
+      };
     }
-    | {
-      type: 'openai_responses'
-      providerType: 'synthetic'
-      quotaStatus?: {
-        quotaData: ProviderSyntheticQuotaData
-      }
-    }
-    | {
-      type: 'openai_responses'
-      providerType: 'neuralwatt'
-      quotaStatus?: {
-        quotaData: ProviderNeuralWattQuotaData
-      }
-    }
-    | {
-      type: 'openai_responses'
-      providerType: 'apertis'
-      quotaStatus?: {
-        quotaData: ProviderApertisQuotaData
-      }
-    }
-    | {
-      type: 'openai'
-      providerType?: undefined
-      quotaStatus?: {
-        quotaData: ProviderQuotaDataCommon
-      }
-    }
-    | {
-      type: 'openai_responses'
-      providerType?: undefined
-      quotaStatus?: {
-        quotaData: ProviderQuotaDataCommon
-      }
-    }
-  )
+);
 
 type QueryChannelsResponse = {
   queryChannels: {
@@ -301,7 +283,7 @@ type QueryChannelsResponse = {
 function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][0]['node']): ProviderQuotaChannel {
   const quotaStatus = node.providerQuotaStatus;
   const providerType = quotaStatus?.providerType;
-  
+
   const base = {
     id: node.id,
     name: node.name,
@@ -313,52 +295,87 @@ function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][
   };
 
   if (node.type === 'claudecode') {
-    return { ...base, type: 'claudecode' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderClaudeQuotaData } };
+    return {
+      ...base,
+      type: 'claudecode' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderClaudeQuotaData },
+    };
   }
   if (node.type === 'codex') {
-    return { ...base, type: 'codex' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCodexQuotaData } };
+    return {
+      ...base,
+      type: 'codex' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCodexQuotaData },
+    };
   }
   if (node.type === 'github_copilot') {
-    return { ...base, type: 'github_copilot' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderGitHubCopilotQuotaData } };
+    return {
+      ...base,
+      type: 'github_copilot' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderGitHubCopilotQuotaData },
+    };
   }
   if (node.type === 'nanogpt') {
-    return { ...base, type: 'nanogpt' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData } };
+    return {
+      ...base,
+      type: 'nanogpt' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData },
+    };
   }
   if (node.type === 'nanogpt_responses') {
-    return { ...base, type: 'nanogpt_responses' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData } };
+    return {
+      ...base,
+      type: 'nanogpt_responses' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData },
+    };
   }
-  if (node.type === 'openai') {
+  if (node.type === 'openai' || node.type === 'openai_responses') {
+    const typeVal = node.type as 'openai' | 'openai_responses';
     if (providerType === 'wafer') {
-      return { ...base, type: 'openai' as const, providerType: 'wafer' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderWaferQuotaData } };
+      return {
+        ...base,
+        type: typeVal,
+        providerType: 'wafer' as const,
+        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderWaferQuotaData },
+      };
     }
     if (providerType === 'synthetic') {
-      return { ...base, type: 'openai' as const, providerType: 'synthetic' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderSyntheticQuotaData } };
+      return {
+        ...base,
+        type: typeVal,
+        providerType: 'synthetic' as const,
+        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderSyntheticQuotaData },
+      };
     }
     if (providerType === 'neuralwatt') {
-      return { ...base, type: 'openai' as const, providerType: 'neuralwatt' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNeuralWattQuotaData } };
+      return {
+        ...base,
+        type: typeVal,
+        providerType: 'neuralwatt' as const,
+        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNeuralWattQuotaData },
+      };
     }
     if (providerType === 'apertis') {
-      return { ...base, type: 'openai' as const, providerType: 'apertis' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderApertisQuotaData } };
+      return {
+        ...base,
+        type: typeVal,
+        providerType: 'apertis' as const,
+        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderApertisQuotaData },
+      };
     }
-    return { ...base, type: 'openai' as const, providerType: undefined, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
-  }
-  if (node.type === 'openai_responses') {
-    if (providerType === 'wafer') {
-      return { ...base, type: 'openai_responses' as const, providerType: 'wafer' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderWaferQuotaData } };
-    }
-    if (providerType === 'synthetic') {
-      return { ...base, type: 'openai_responses' as const, providerType: 'synthetic' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderSyntheticQuotaData } };
-    }
-    if (providerType === 'neuralwatt') {
-      return { ...base, type: 'openai_responses' as const, providerType: 'neuralwatt' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNeuralWattQuotaData } };
-    }
-    if (providerType === 'apertis') {
-      return { ...base, type: 'openai_responses' as const, providerType: 'apertis' as const, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderApertisQuotaData } };
-    }
-    return { ...base, type: 'openai_responses' as const, providerType: undefined, quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
+    return {
+      ...base,
+      type: typeVal,
+      providerType: undefined,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon },
+    };
   }
 
-  return { ...base, type: node.type as ProviderQuotaChannel['type'], quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon } };
+  return {
+    ...base,
+    type: node.type as ProviderQuotaChannel['type'],
+    quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon },
+  };
 }
 
 export function useProviderQuotaStatuses() {
@@ -367,8 +384,8 @@ export function useProviderQuotaStatuses() {
     queryFn: async () => {
       const input = {
         where: {
-          statusIn: ['enabled']
-        }
+          statusIn: ['enabled'],
+        },
       };
       return graphqlRequest<QueryChannelsResponse>(PROVIDER_QUOTA_STATUSES_QUERY, { input });
     },

@@ -14,6 +14,14 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+// betterStatusRank maps status strings to their priority ranks.
+var betterStatusRank = map[string]int{
+	"available": 3,
+	"warning":   2,
+	"exhausted": 1,
+	"unknown":   0,
+}
+
 // ApertisBillingCreditsResponse represents the response from the Apertis billing credits API.
 // The API returns PAYG credit balances and subscription quota details.
 type ApertisBillingCreditsResponse struct {
@@ -29,12 +37,12 @@ type ApertisBillingCreditsResponse struct {
 type ApertisPayg struct {
 	AccountCredits       float64     `json:"account_credits"`
 	TokenUsed            float64     `json:"token_used"`
-	TokenTotal           interface{} `json:"token_total"`              // Can be float64 or string "unlimited"
-	TokenRemaining       interface{} `json:"token_remaining"`           // Can be float64 or string "unlimited"
+	TokenTotal           any `json:"token_total"`     // Can be float64 or string "unlimited"
+	TokenRemaining       any `json:"token_remaining"` // Can be float64 or string "unlimited"
 	TokenIsUnlimited     bool        `json:"token_is_unlimited"`
-	TokenMonthlyLimitUSD *float64    `json:"token_monthly_limit_usd,omitempty"`  // Monthly spending limit for this token in USD
-	TokenMonthlyUsedUSD  *float64    `json:"token_monthly_used_usd,omitempty"`   // Spending by this token in current month in USD
-	MonthlyResetDay      *int        `json:"monthly_reset_day,omitempty"`        // Day of month when the monthly counter resets
+	TokenMonthlyLimitUSD *float64    `json:"token_monthly_limit_usd,omitempty"` // Monthly spending limit for this token in USD
+	TokenMonthlyUsedUSD  *float64    `json:"token_monthly_used_usd,omitempty"`  // Spending by this token in current month in USD
+	MonthlyResetDay      *int        `json:"monthly_reset_day,omitempty"`       // Day of month when the monthly counter resets
 }
 
 // ApertisSubscription represents subscription quota information.
@@ -72,7 +80,7 @@ func (c *ApertisQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 	if apiKey == "" {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: ApertisProviderType,
+			ProviderType: "apertis",
 			Ready:        false,
 			RawData:      map[string]any{"error": "missing API key"},
 		}, nil
@@ -91,7 +99,7 @@ func (c *ApertisQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 	if err != nil {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: ApertisProviderType,
+			ProviderType: "apertis",
 			Ready:        false,
 			RawData:      map[string]any{"error": fmt.Sprintf("request failed: %v", err)},
 		}, err
@@ -100,7 +108,7 @@ func (c *ApertisQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (
 	if resp.StatusCode != http.StatusOK {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: ApertisProviderType,
+			ProviderType: "apertis",
 			Ready:        false,
 			RawData:      map[string]any{"error": fmt.Sprintf("HTTP %d", resp.StatusCode)},
 		}, fmt.Errorf("apertis API returned status %d", resp.StatusCode)
@@ -115,14 +123,14 @@ func (c *ApertisQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return QuotaData{
 			Status:       "unknown",
-			ProviderType: ApertisProviderType,
+			ProviderType: "apertis",
 			Ready:        false,
 			RawData:      map[string]any{"error": fmt.Sprintf("failed to parse JSON: %v", err)},
 		}, err
 	}
 
 	quotaData := QuotaData{
-		ProviderType: ApertisProviderType,
+		ProviderType: "apertis",
 		RawData:      convertApertisResponseToMap(resp),
 	}
 
@@ -201,7 +209,7 @@ func determineApertisStatus(resp *ApertisBillingCreditsResponse) string {
 			if resp.Subscription.PaygFallbackEnabled {
 				shouldCheckPAYG = true
 			}
-			if resp.Subscription.Status == "suspended" || resp.Subscription.Status == "cancelled" {
+			if strings.EqualFold(resp.Subscription.Status, "suspended") || strings.EqualFold(resp.Subscription.Status, "cancelled") { //nolint:misspell // API domain value
 				shouldCheckPAYG = true
 			}
 			if resp.Subscription.CycleQuotaRemaining <= 0 {
@@ -248,12 +256,10 @@ func determinePaygStatus(payg *ApertisPayg) string {
 	}
 
 	// Check token-level usage ratio for warning
-	if !payg.TokenIsUnlimited {
-		if total, ok := toFloat64(payg.TokenTotal); ok && total > 0 {
-			usageRatio := payg.TokenUsed / total
-			if usageRatio > WarningThresholdRatio {
-				return "warning"
-			}
+	if total, ok := toFloat64(payg.TokenTotal); ok && total > 0 {
+		usageRatio := payg.TokenUsed / total
+		if usageRatio > WarningThresholdRatio {
+			return "warning"
 		}
 	}
 
@@ -263,53 +269,56 @@ func determinePaygStatus(payg *ApertisPayg) string {
 // betterStatus returns the more permissive of two statuses.
 // Order: available > warning > exhausted > unknown
 func betterStatus(a, b string) string {
-	rank := map[string]int{
-		"available": 3,
-		"warning":   2,
-		"exhausted": 1,
-		"unknown":   0,
-	}
-	if rank[b] > rank[a] {
+	if betterStatusRank[b] > betterStatusRank[a] {
 		return b
 	}
 	return a
 }
 func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.Time) []QuotaLimitStatus {
 	var limits []QuotaLimitStatus
-
-	// PAYG token limit — skip when an active subscription exists (subscription
-	// is the real limiting factor; PAYG is only relevant as a fallback).
-	if resp.Payg != nil && !(resp.IsSubscriber && resp.Subscription != nil && resp.Subscription.Status == "active") {
-		var tokenStatus string
-		var usageRatio float64
-
-		if resp.Payg.TokenIsUnlimited {
-			tokenStatus = "available"
-			usageRatio = 0
-		} else {
-			total, ok := toFloat64(resp.Payg.TokenTotal)
-			if ok && total > 0 {
-				usageRatio = resp.Payg.TokenUsed / total
-				if resp.Payg.TokenUsed >= total {
-					tokenStatus = "exhausted"
-				} else if usageRatio > WarningThresholdRatio {
-					tokenStatus = "warning"
-				} else {
-					tokenStatus = "available"
-				}
+	// PAYG token limit — skip only when an active subscription exists with
+	// remaining quota and no PAYG fallback is needed. When the subscription
+	// cycle is exhausted or PAYG fallback is enabled, PAYG serves as the
+	// active funding source and should be included.
+	if resp.Payg != nil {
+		// Skip PAYG limit only when subscription is active with remaining quota
+		// and PAYG fallback is not enabled. Match the same conditions used in
+		// determineApertisStatus for when PAYG should be considered.
+		shouldSkipPAYG := resp.IsSubscriber &&
+			resp.Subscription != nil &&
+			!resp.Subscription.PaygFallbackEnabled &&
+			resp.Subscription.Status == "active" &&
+			resp.Subscription.CycleQuotaRemaining > 0
+		if !shouldSkipPAYG {
+			var tokenStatus string
+			var usageRatio float64
+			if resp.Payg.TokenIsUnlimited {
+				tokenStatus = "available"
+				usageRatio = 0
 			} else {
-				// Can't determine usage ratio
-				tokenStatus = "unknown"
+				total, ok := toFloat64(resp.Payg.TokenTotal)
+				if ok && total > 0 {
+					usageRatio = resp.Payg.TokenUsed / total
+					if resp.Payg.TokenUsed >= total {
+						tokenStatus = "exhausted"
+					} else if usageRatio > WarningThresholdRatio {
+						tokenStatus = "warning"
+					} else {
+						tokenStatus = "available"
+					}
+				} else {
+					// Can't determine usage ratio
+					tokenStatus = "unknown"
+				}
 			}
+			limits = append(limits, QuotaLimitStatus{
+				Type:        QuotaLimitTypeToken,
+				Status:      tokenStatus,
+				UsageRatio:  usageRatio,
+				Ready:       IsReadyStatus(tokenStatus),
+				NextResetAt: nextResetAt,
+			})
 		}
-
-		limits = append(limits, QuotaLimitStatus{
-			Type:        QuotaLimitTypeToken,
-			Status:      tokenStatus,
-			UsageRatio:  usageRatio,
-			Ready:       IsReadyStatus(tokenStatus),
-			NextResetAt: nextResetAt,
-		})
 	}
 
 	// Subscription cycle limit (if subscriber)

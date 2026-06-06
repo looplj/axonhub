@@ -22,9 +22,6 @@ const (
 	QuotaLimitTypeToken QuotaLimitType = "token"
 )
 
-// ApertisProviderType is the provider type identifier for Apertis.
-const ApertisProviderType = "apertis"
-
 // ApertisDefaultBaseURL is the default base URL for the Apertis API.
 const ApertisDefaultBaseURL = "https://api.apertis.ai"
 

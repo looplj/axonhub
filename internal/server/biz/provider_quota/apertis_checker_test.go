@@ -16,27 +16,9 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-type apertisRoundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f apertisRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
-// mockApertisResponse creates a mock HTTP response with the given JSON body.
-func mockApertisResponse(body string, statusCode ...int) *http.Response {
-	code := http.StatusOK
-	if len(statusCode) > 0 {
-		code = statusCode[0]
-	}
-	return &http.Response{
-		StatusCode: code,
-		Header:     make(http.Header),
-		Body:       io.NopCloser(strings.NewReader(body)),
-	}
-}
-
 func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			require.Equal(t, "Bearer test-api-key", req.Header.Get("Authorization"))
 			require.Equal(t, "https://api.apertis.ai/v1/dashboard/billing/credits", req.URL.String())
 
@@ -52,7 +34,7 @@ func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -74,7 +56,7 @@ func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 
 func TestApertis_CheckQuota_WarningState(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": false,
@@ -87,7 +69,7 @@ func TestApertis_CheckQuota_WarningState(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -106,7 +88,7 @@ func TestApertis_CheckQuota_WarningState(t *testing.T) {
 
 func TestApertis_CheckQuota_ExhaustedState(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": false,
@@ -119,7 +101,7 @@ func TestApertis_CheckQuota_ExhaustedState(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -137,7 +119,7 @@ func TestApertis_CheckQuota_ExhaustedState(t *testing.T) {
 
 func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// Matches the official API docs subscription response
 			body := `{
 				"object": "billing_credits",
@@ -161,7 +143,7 @@ func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -182,7 +164,7 @@ func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 
 func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": true,
@@ -205,7 +187,7 @@ func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -223,7 +205,7 @@ func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
 
 func TestApertis_CheckQuota_SubscriptionSuspended_WithPAYGCredits(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": true,
@@ -246,7 +228,7 @@ func TestApertis_CheckQuota_SubscriptionSuspended_WithPAYGCredits(t *testing.T) 
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -265,7 +247,7 @@ func TestApertis_CheckQuota_SubscriptionSuspended_WithPAYGCredits(t *testing.T) 
 
 func TestApertis_CheckQuota_SubscriptionSuspended_NoPAYGCredits(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": true,
@@ -288,7 +270,7 @@ func TestApertis_CheckQuota_SubscriptionSuspended_NoPAYGCredits(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -307,7 +289,7 @@ func TestApertis_CheckQuota_SubscriptionSuspended_NoPAYGCredits(t *testing.T) {
 
 func TestApertis_CheckQuota_SubscriptionExhausted_WithPAYGFallback(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// Matches the official API docs "Subscription with PAYG Fallback" response
 			body := `{
 				"object": "billing_credits",
@@ -333,7 +315,7 @@ func TestApertis_CheckQuota_SubscriptionExhausted_WithPAYGFallback(t *testing.T)
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -352,7 +334,7 @@ func TestApertis_CheckQuota_SubscriptionExhausted_WithPAYGFallback(t *testing.T)
 
 func TestApertis_CheckQuota_SubscriptionExhausted_NoPAYGFallback(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": true,
@@ -375,7 +357,7 @@ func TestApertis_CheckQuota_SubscriptionExhausted_NoPAYGFallback(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -394,7 +376,7 @@ func TestApertis_CheckQuota_SubscriptionExhausted_NoPAYGFallback(t *testing.T) {
 
 func TestApertis_CheckQuota_SubscriberWithUnlimitedPayg(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// Real production response: active subscription, unlimited PAYG with 0 credits, no fallback
 			body := `{
 				"object": "billing_credits",
@@ -418,7 +400,7 @@ func TestApertis_CheckQuota_SubscriberWithUnlimitedPayg(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -447,7 +429,7 @@ func TestApertis_CheckQuota_SubscriberWithUnlimitedPayg(t *testing.T) {
 
 func TestApertis_CheckQuota_UnlimitedTokens(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// Matches the official API docs "PAYG with Unlimited Token" response
 			body := `{
 				"object": "billing_credits",
@@ -461,7 +443,7 @@ func TestApertis_CheckQuota_UnlimitedTokens(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -498,7 +480,7 @@ func TestApertis_CheckQuota_MissingCredentials(t *testing.T) {
 
 func TestApertis_CheckQuota_APIKeysFallback(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			require.Equal(t, "Bearer fallback-key", req.Header.Get("Authorization"))
 			require.Equal(t, "https://api.apertis.ai/v1/dashboard/billing/credits", req.URL.String())
 			body := `{
@@ -513,7 +495,7 @@ func TestApertis_CheckQuota_APIKeysFallback(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -532,8 +514,8 @@ func TestApertis_CheckQuota_APIKeysFallback(t *testing.T) {
 
 func TestApertis_CheckQuota_MalformedJSON(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return mockApertisResponse(`{invalid json`), nil
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{invalid json`))}, nil
 		}),
 	})
 
@@ -551,8 +533,8 @@ func TestApertis_CheckQuota_MalformedJSON(t *testing.T) {
 
 func TestApertis_CheckQuota_HTTPError(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return mockApertisResponse(`{"error": "invalid key"}`, http.StatusUnauthorized), nil
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusUnauthorized, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error": "invalid key"}`))}, nil
 		}),
 	})
 
@@ -570,7 +552,7 @@ func TestApertis_CheckQuota_HTTPError(t *testing.T) {
 
 func TestApertis_CheckQuota_CustomBaseURL(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			require.Equal(t, "https://custom.apertis.ai/v1/dashboard/billing/credits", req.URL.String())
 
 			body := `{
@@ -584,7 +566,7 @@ func TestApertis_CheckQuota_CustomBaseURL(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -602,7 +584,7 @@ func TestApertis_CheckQuota_CustomBaseURL(t *testing.T) {
 
 func TestApertis_CheckQuota_EmptyBaseURL(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			require.Equal(t, "https://api.apertis.ai/v1/dashboard/billing/credits", req.URL.String())
 
 			body := `{
@@ -616,7 +598,7 @@ func TestApertis_CheckQuota_EmptyBaseURL(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
@@ -656,7 +638,7 @@ func TestApertis_SupportsChannel(t *testing.T) {
 
 func TestApertis_NextResetTimeParsing(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": true,
@@ -678,7 +660,7 @@ func TestApertis_NextResetTimeParsing(t *testing.T) {
 					"payg_fallback_enabled": false
 				}
 			}`
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 
 		}),
 	})
@@ -699,7 +681,7 @@ func TestApertis_NextResetTimeParsing(t *testing.T) {
 
 func TestApertis_RawDataContainsAllFields(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
-		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": true,
@@ -727,7 +709,7 @@ func TestApertis_RawDataContainsAllFields(t *testing.T) {
 				}
 			}`
 
-			return mockApertisResponse(body), nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 		}),
 	})
 
