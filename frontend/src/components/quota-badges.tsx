@@ -46,6 +46,7 @@ function getBatteryIcon(level: BatteryLevel) {
       return Battery;
   }
 }
+
 function getBatteryLevel(percentage: number, status: string): BatteryLevel {
   if (status === 'exhausted') return 'warning';
   const remaining = 100 - percentage;
