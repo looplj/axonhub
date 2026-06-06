@@ -35,14 +35,14 @@ type ApertisBillingCreditsResponse struct {
 // All token_* fields are in USD. token_total and token_remaining can be the
 // string "unlimited" when token_is_unlimited is true.
 type ApertisPayg struct {
-	AccountCredits       float64     `json:"account_credits"`
-	TokenUsed            float64     `json:"token_used"`
-	TokenTotal           any `json:"token_total"`     // Can be float64 or string "unlimited"
-	TokenRemaining       any `json:"token_remaining"` // Can be float64 or string "unlimited"
-	TokenIsUnlimited     bool        `json:"token_is_unlimited"`
-	TokenMonthlyLimitUSD *float64    `json:"token_monthly_limit_usd,omitempty"` // Monthly spending limit for this token in USD
-	TokenMonthlyUsedUSD  *float64    `json:"token_monthly_used_usd,omitempty"`  // Spending by this token in current month in USD
-	MonthlyResetDay      *int        `json:"monthly_reset_day,omitempty"`       // Day of month when the monthly counter resets
+	AccountCredits       float64  `json:"account_credits"`
+	TokenUsed            float64  `json:"token_used"`
+	TokenTotal           any      `json:"token_total"`     // Can be float64 or string "unlimited"
+	TokenRemaining       any      `json:"token_remaining"` // Can be float64 or string "unlimited"
+	TokenIsUnlimited     bool     `json:"token_is_unlimited"`
+	TokenMonthlyLimitUSD *float64 `json:"token_monthly_limit_usd,omitempty"` // Monthly spending limit for this token in USD
+	TokenMonthlyUsedUSD  *float64 `json:"token_monthly_used_usd,omitempty"`  // Spending by this token in current month in USD
+	MonthlyResetDay      *int     `json:"monthly_reset_day,omitempty"`       // Day of month when the monthly counter resets
 }
 
 // ApertisSubscription represents subscription quota information.
@@ -184,7 +184,7 @@ func buildApertisQuotaURL(baseURL string) string {
 // Priority order for status determination:
 //  1. If subscription is active with remaining cycle quota → check if high usage (warning)
 //  2. If subscription cycle quota is exhausted BUT PAYG fallback is enabled with credits → available/warning
-//  3. If subscription is suspended/cancelled → fall through to PAYG check
+//  3. If subscription is suspended/canceled → fall through to PAYG check
 //  4. If PAYG account credits > 0 → available/warning based on token usage
 //  5. Otherwise → exhausted
 func determineApertisStatus(resp *ApertisBillingCreditsResponse) string {
@@ -199,13 +199,13 @@ func determineApertisStatus(resp *ApertisBillingCreditsResponse) string {
 	// --- PAYG path (always checked) ---
 	// PAYG is the fallback whenever subscription quota is unavailable.
 	// For subscribers, PAYG is only reachable when payg_fallback_enabled is true
-	// or when the subscription is suspended/cancelled (no cycle quota left).
+	// or when the subscription is suspended/canceled (no cycle quota left).
 	// For non-subscribers, PAYG is the only path.
 	if resp.Payg != nil {
 		shouldCheckPAYG := !resp.IsSubscriber
 		if resp.Subscription != nil {
 			// PAYG is available when fallback is enabled, or when
-			// the subscription itself is exhausted (suspended/cancelled/cycle used up)
+			// the subscription itself is exhausted (suspended/canceled/cycle used up)
 			if resp.Subscription.PaygFallbackEnabled {
 				shouldCheckPAYG = true
 			}
@@ -267,13 +267,14 @@ func determinePaygStatus(payg *ApertisPayg) string {
 }
 
 // betterStatus returns the more permissive of two statuses.
-// Order: available > warning > exhausted > unknown
+// Order: available > warning > exhausted > unknown.
 func betterStatus(a, b string) string {
 	if betterStatusRank[b] > betterStatusRank[a] {
 		return b
 	}
 	return a
 }
+
 func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.Time) []QuotaLimitStatus {
 	var limits []QuotaLimitStatus
 	// PAYG token limit — skip only when an active subscription exists with
@@ -410,8 +411,8 @@ func convertApertisResponseToMap(resp ApertisBillingCreditsResponse) map[string]
 	return rawData
 }
 
-// toFloat64 attempts to convert an interface{} to float64.
-func toFloat64(v interface{}) (float64, bool) {
+// toFloat64 attempts to convert a value to float64.
+func toFloat64(v any) (float64, bool) {
 	switch val := v.(type) {
 	case float64:
 		return val, true

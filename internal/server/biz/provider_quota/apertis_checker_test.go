@@ -8,12 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/stretchr/testify/require"
 )
 
 func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
@@ -661,7 +660,6 @@ func TestApertis_NextResetTimeParsing(t *testing.T) {
 				}
 			}`
 			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
-
 		}),
 	})
 
