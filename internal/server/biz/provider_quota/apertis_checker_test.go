@@ -44,10 +44,10 @@ func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 				"object": "billing_credits",
 				"is_subscriber": false,
 				"payg": {
-					"account_credits": 10.50,
-					"token_used": 50000,
-					"token_total": 100000,
-					"token_remaining": 50000,
+					"account_credits": 5.0,
+					"token_used": 2.0,
+					"token_total": 7.0,
+					"token_remaining": 5.0,
 					"token_is_unlimited": false
 				}
 			}`
@@ -80,9 +80,9 @@ func TestApertis_CheckQuota_WarningState(t *testing.T) {
 				"is_subscriber": false,
 				"payg": {
 					"account_credits": 50.00,
-					"token_used": 90000,
-					"token_total": 100000,
-					"token_remaining": 10000,
+					"token_used": 9.0,
+					"token_total": 10.0,
+					"token_remaining": 1.0,
 					"token_is_unlimited": false
 				}
 			}`
@@ -112,8 +112,8 @@ func TestApertis_CheckQuota_ExhaustedState(t *testing.T) {
 				"is_subscriber": false,
 				"payg": {
 					"account_credits": 0,
-					"token_used": 100000,
-					"token_total": 100000,
+					"token_used": 10.0,
+					"token_total": 10.0,
 					"token_remaining": 0,
 					"token_is_unlimited": false
 				}
@@ -138,27 +138,26 @@ func TestApertis_CheckQuota_ExhaustedState(t *testing.T) {
 func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// Matches the official API docs subscription response
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": true,
 				"payg": {
-					"account_credits": 5.00,
-					"token_used": 10000,
-					"token_total": 100000,
-					"token_remaining": 90000,
+					"account_credits": 9.98,
+					"token_used": 0.05,
+					"token_total": 1.0,
+					"token_remaining": 0.95,
 					"token_is_unlimited": false
 				},
 				"subscription": {
-					"plan_type": "pro",
+					"plan_type": "lite",
 					"status": "active",
-					"cycle_quota_limit": 1000000,
-					"cycle_quota_used": 100000,
-					"cycle_quota_remaining": 900000,
-					"cycle_start": "2026-01-01T00:00:00Z",
-					"cycle_end": "2026-02-01T00:00:00Z",
-					"payg_fallback_enabled": true,
-					"payg_spent_usd": 10.00,
-					"payg_limit_usd": 100.00
+					"cycle_quota_limit": 600,
+					"cycle_quota_used": 10,
+					"cycle_quota_remaining": 590,
+					"cycle_start": "2026-03-16T10:02:35Z",
+					"cycle_end": "2026-04-16T10:02:35Z",
+					"payg_fallback_enabled": false
 				}
 			}`
 
@@ -177,8 +176,8 @@ func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 	require.Equal(t, "available", quota.Status)
 	require.NotNil(t, quota.NextResetAt)
 
-	// Should have two limits: PAYG tokens and subscription cycle
-	require.Len(t, quota.Limits, 2)
+	// Should have one limit: subscription cycle only (PAYG skipped for active subscription)
+	require.Len(t, quota.Limits, 1)
 }
 
 func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
@@ -189,17 +188,17 @@ func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
 				"is_subscriber": true,
 				"payg": {
 					"account_credits": 100.00,
-					"token_used": 0,
-					"token_total": 100000,
-					"token_remaining": 100000,
+					"token_used": 0.5,
+					"token_total": 3.5,
+					"token_remaining": 3.0,
 					"token_is_unlimited": false
 				},
 				"subscription": {
 					"plan_type": "pro",
 					"status": "active",
-					"cycle_quota_limit": 1000000,
-					"cycle_quota_used": 850000,
-					"cycle_quota_remaining": 150000,
+					"cycle_quota_limit": 1000,
+					"cycle_quota_used": 850,
+					"cycle_quota_remaining": 150,
 					"cycle_start": "2026-01-01T00:00:00Z",
 					"cycle_end": "2026-02-01T00:00:00Z",
 					"payg_fallback_enabled": false
@@ -222,7 +221,7 @@ func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
 	require.Equal(t, "warning", quota.Status)
 }
 
-func TestApertis_CheckQuota_SubscriptionSuspended(t *testing.T) {
+func TestApertis_CheckQuota_SubscriptionSuspended_WithPAYGCredits(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
@@ -230,17 +229,17 @@ func TestApertis_CheckQuota_SubscriptionSuspended(t *testing.T) {
 				"is_subscriber": true,
 				"payg": {
 					"account_credits": 100.00,
-					"token_used": 0,
-					"token_total": 100000,
-					"token_remaining": 100000,
+					"token_used": 0.5,
+					"token_total": 3.5,
+					"token_remaining": 3.0,
 					"token_is_unlimited": false
 				},
 				"subscription": {
 					"plan_type": "pro",
 					"status": "suspended",
-					"cycle_quota_limit": 1000000,
-					"cycle_quota_used": 500000,
-					"cycle_quota_remaining": 500000,
+					"cycle_quota_limit": 1000,
+					"cycle_quota_used": 500,
+					"cycle_quota_remaining": 500,
 					"cycle_start": "2026-01-01T00:00:00Z",
 					"cycle_end": "2026-02-01T00:00:00Z",
 					"payg_fallback_enabled": false
@@ -259,19 +258,203 @@ func TestApertis_CheckQuota_SubscriptionSuspended(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	// Subscription is suspended but PAYG credits are available
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+}
+
+func TestApertis_CheckQuota_SubscriptionSuspended_NoPAYGCredits(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"object": "billing_credits",
+				"is_subscriber": true,
+				"payg": {
+					"account_credits": 0,
+					"token_used": 10.0,
+					"token_total": 10.0,
+					"token_remaining": 0,
+					"token_is_unlimited": false
+				},
+				"subscription": {
+					"plan_type": "pro",
+					"status": "suspended",
+					"cycle_quota_limit": 1000,
+					"cycle_quota_used": 500,
+					"cycle_quota_remaining": 500,
+					"cycle_start": "2026-01-01T00:00:00Z",
+					"cycle_end": "2026-02-01T00:00:00Z",
+					"payg_fallback_enabled": false
+				}
+			}`
+
+			return mockApertisResponse(body), nil
+		}),
+	})
+
+	checker := NewApertisQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	// Subscription suspended and no PAYG credits
 	require.Equal(t, "exhausted", quota.Status)
 	require.False(t, quota.Ready)
+}
+
+func TestApertis_CheckQuota_SubscriptionExhausted_WithPAYGFallback(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// Matches the official API docs "Subscription with PAYG Fallback" response
+			body := `{
+				"object": "billing_credits",
+				"is_subscriber": true,
+				"payg": {
+					"account_credits": 3.0,
+					"token_used": 0.5,
+					"token_total": 3.5,
+					"token_remaining": 3.0,
+					"token_is_unlimited": false
+				},
+				"subscription": {
+					"plan_type": "max",
+					"status": "active",
+					"cycle_quota_limit": 5000,
+					"cycle_quota_used": 5000,
+					"cycle_quota_remaining": 0,
+					"cycle_start": "2026-03-01T00:00:00Z",
+					"cycle_end": "2026-04-01T00:00:00Z",
+					"payg_fallback_enabled": true,
+					"payg_spent_usd": 2.5,
+					"payg_limit_usd": 10.0
+				}
+			}`
+
+			return mockApertisResponse(body), nil
+		}),
+	})
+
+	checker := NewApertisQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	// Cycle quota is exhausted but PAYG fallback is enabled with credits
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+}
+
+func TestApertis_CheckQuota_SubscriptionExhausted_NoPAYGFallback(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"object": "billing_credits",
+				"is_subscriber": true,
+				"payg": {
+					"account_credits": 0,
+					"token_used": 10.0,
+					"token_total": 10.0,
+					"token_remaining": 0,
+					"token_is_unlimited": false
+				},
+				"subscription": {
+					"plan_type": "lite",
+					"status": "active",
+					"cycle_quota_limit": 600,
+					"cycle_quota_used": 600,
+					"cycle_quota_remaining": 0,
+					"cycle_start": "2026-01-01T00:00:00Z",
+					"cycle_end": "2026-02-01T00:00:00Z",
+					"payg_fallback_enabled": false
+				}
+			}`
+
+			return mockApertisResponse(body), nil
+		}),
+	})
+
+	checker := NewApertisQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	// Cycle quota exhausted, no PAYG fallback, no PAYG credits
+	require.Equal(t, "exhausted", quota.Status)
+	require.False(t, quota.Ready)
+}
+
+func TestApertis_CheckQuota_SubscriberWithUnlimitedPayg(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// Real production response: active subscription, unlimited PAYG with 0 credits, no fallback
+			body := `{
+				"object": "billing_credits",
+				"is_subscriber": true,
+				"payg": {
+					"account_credits": 0,
+					"token_used": 0,
+					"token_total": "unlimited",
+					"token_remaining": "unlimited",
+					"token_is_unlimited": true
+				},
+				"subscription": {
+					"plan_type": "lite",
+					"status": "active",
+					"cycle_quota_limit": 600,
+					"cycle_quota_used": 183,
+					"cycle_quota_remaining": 417,
+					"cycle_start": "2026-05-20T23:28:04Z",
+					"cycle_end": "2026-06-20T23:28:04Z",
+					"payg_fallback_enabled": false
+				}
+			}`
+
+			return mockApertisResponse(body), nil
+		}),
+	})
+
+	checker := NewApertisQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+	// Only subscription limit — PAYG skipped for active subscription
+	require.Len(t, quota.Limits, 1)
+	require.Equal(t, "available", quota.Limits[0].Status)
+	// usageRatio = 183/600 ≈ 0.305
+	require.InDelta(t, 0.305, quota.Limits[0].UsageRatio, 0.001)
+	require.NotNil(t, quota.NextResetAt)
+
+	// RawData should still contain both payg and subscription
+	rawData := quota.RawData
+	require.Equal(t, true, rawData["is_subscriber"])
+	require.NotNil(t, rawData["subscription"])
 }
 
 func TestApertis_CheckQuota_UnlimitedTokens(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// Matches the official API docs "PAYG with Unlimited Token" response
 			body := `{
 				"object": "billing_credits",
 				"is_subscriber": false,
 				"payg": {
-					"account_credits": 50.00,
-					"token_used": 50000,
+					"account_credits": 500.00,
+					"token_used": 87.61,
 					"token_total": "unlimited",
 					"token_remaining": "unlimited",
 					"token_is_unlimited": true
@@ -311,6 +494,40 @@ func TestApertis_CheckQuota_MissingCredentials(t *testing.T) {
 	require.Equal(t, "apertis", quota.ProviderType)
 	require.False(t, quota.Ready)
 	require.Equal(t, "missing API key", quota.RawData["error"])
+}
+
+func TestApertis_CheckQuota_APIKeysFallback(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: apertisRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			require.Equal(t, "Bearer fallback-key", req.Header.Get("Authorization"))
+			require.Equal(t, "https://api.apertis.ai/v1/dashboard/billing/credits", req.URL.String())
+			body := `{
+				"object": "billing_credits",
+				"is_subscriber": false,
+				"payg": {
+					"account_credits": 5.0,
+					"token_used": 2.0,
+					"token_total": 7.0,
+					"token_remaining": 5.0,
+					"token_is_unlimited": false
+				}
+			}`
+
+			return mockApertisResponse(body), nil
+		}),
+	})
+
+	checker := NewApertisQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"fallback-key"},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+	require.Equal(t, "apertis", quota.ProviderType)
 }
 
 func TestApertis_CheckQuota_MalformedJSON(t *testing.T) {
@@ -360,11 +577,10 @@ func TestApertis_CheckQuota_CustomBaseURL(t *testing.T) {
 				"object": "billing_credits",
 				"is_subscriber": false,
 				"payg": {
-					"account_credits": 10.00,
+					"account_credits": 5.0,
 					"token_used": 0,
-					"token_total": 100000,
-					"token_remaining": 100000,
-					"token_is_unlimited": false
+					"token_total": 7.0,
+					"token_remaining": 7.0
 				}
 			}`
 
@@ -393,11 +609,10 @@ func TestApertis_CheckQuota_EmptyBaseURL(t *testing.T) {
 				"object": "billing_credits",
 				"is_subscriber": false,
 				"payg": {
-					"account_credits": 10.00,
+					"account_credits": 5.0,
 					"token_used": 0,
-					"token_total": 100000,
-					"token_remaining": 100000,
-					"token_is_unlimited": false
+					"token_total": 7.0,
+					"token_remaining": 7.0
 				}
 			}`
 
@@ -446,25 +661,25 @@ func TestApertis_NextResetTimeParsing(t *testing.T) {
 				"object": "billing_credits",
 				"is_subscriber": true,
 				"payg": {
-					"account_credits": 10.00,
-					"token_used": 0,
-					"token_total": 100000,
-					"token_remaining": 100000,
+					"account_credits": 9.98,
+					"token_used": 0.05,
+					"token_total": 1.0,
+					"token_remaining": 0.95,
 					"token_is_unlimited": false
 				},
 				"subscription": {
-					"plan_type": "pro",
+					"plan_type": "lite",
 					"status": "active",
-					"cycle_quota_limit": 1000000,
-					"cycle_quota_used": 100000,
-					"cycle_quota_remaining": 900000,
+					"cycle_quota_limit": 600,
+					"cycle_quota_used": 10,
+					"cycle_quota_remaining": 590,
 					"cycle_start": "2026-01-15T00:00:00Z",
 					"cycle_end": "2026-02-15T12:00:00Z",
 					"payg_fallback_enabled": false
 				}
 			}`
-
 			return mockApertisResponse(body), nil
+
 		}),
 	})
 
@@ -489,23 +704,26 @@ func TestApertis_RawDataContainsAllFields(t *testing.T) {
 				"object": "billing_credits",
 				"is_subscriber": true,
 				"payg": {
-					"account_credits": 10.00,
-					"token_used": 50000,
-					"token_total": 100000,
-					"token_remaining": 50000,
-					"token_is_unlimited": false
+					"account_credits": 9.98,
+					"token_used": 0.05,
+					"token_total": 1.0,
+					"token_remaining": 0.95,
+					"token_is_unlimited": false,
+					"token_monthly_limit_usd": 100.0,
+					"token_monthly_used_usd": 12.50,
+					"monthly_reset_day": 1
 				},
 				"subscription": {
-					"plan_type": "pro",
+					"plan_type": "max",
 					"status": "active",
-					"cycle_quota_limit": 1000000,
-					"cycle_quota_used": 100000,
-					"cycle_quota_remaining": 900000,
-					"cycle_start": "2026-01-01T00:00:00Z",
-					"cycle_end": "2026-02-01T00:00:00Z",
+					"cycle_quota_limit": 5000,
+					"cycle_quota_used": 5000,
+					"cycle_quota_remaining": 0,
+					"cycle_start": "2026-03-01T00:00:00Z",
+					"cycle_end": "2026-04-01T00:00:00Z",
 					"payg_fallback_enabled": true,
-					"payg_spent_usd": 5.00,
-					"payg_limit_usd": 50.00
+					"payg_spent_usd": 2.5,
+					"payg_limit_usd": 10.0
 				}
 			}`
 
@@ -527,21 +745,24 @@ func TestApertis_RawDataContainsAllFields(t *testing.T) {
 	require.Equal(t, true, rawData["is_subscriber"])
 
 	payg := rawData["payg"].(map[string]any)
-	require.Equal(t, 10.00, payg["account_credits"])
-	require.Equal(t, 50000.0, payg["token_used"])
-	require.Equal(t, 100000.0, payg["token_total"])
-	require.Equal(t, 50000.0, payg["token_remaining"])
+	require.Equal(t, 9.98, payg["account_credits"])
+	require.Equal(t, 0.05, payg["token_used"])
+	require.Equal(t, 1.0, payg["token_total"])
+	require.Equal(t, 0.95, payg["token_remaining"])
 	require.Equal(t, false, payg["token_is_unlimited"])
+	require.Equal(t, 100.0, payg["token_monthly_limit_usd"])
+	require.Equal(t, 12.50, payg["token_monthly_used_usd"])
+	require.Equal(t, 1, payg["monthly_reset_day"])
 
 	subscription := rawData["subscription"].(map[string]any)
-	require.Equal(t, "pro", subscription["plan_type"])
+	require.Equal(t, "max", subscription["plan_type"])
 	require.Equal(t, "active", subscription["status"])
-	require.Equal(t, 1000000, subscription["cycle_quota_limit"])
-	require.Equal(t, 100000, subscription["cycle_quota_used"])
-	require.Equal(t, 900000, subscription["cycle_quota_remaining"])
-	require.Equal(t, "2026-01-01T00:00:00Z", subscription["cycle_start"])
-	require.Equal(t, "2026-02-01T00:00:00Z", subscription["cycle_end"])
+	require.Equal(t, 5000, subscription["cycle_quota_limit"])
+	require.Equal(t, 5000, subscription["cycle_quota_used"])
+	require.Equal(t, 0, subscription["cycle_quota_remaining"])
+	require.Equal(t, "2026-03-01T00:00:00Z", subscription["cycle_start"])
+	require.Equal(t, "2026-04-01T00:00:00Z", subscription["cycle_end"])
 	require.Equal(t, true, subscription["payg_fallback_enabled"])
-	require.Equal(t, 5.00, subscription["payg_spent_usd"])
-	require.Equal(t, 50.00, subscription["payg_limit_usd"])
+	require.Equal(t, 2.5, subscription["payg_spent_usd"])
+	require.Equal(t, 10.0, subscription["payg_limit_usd"])
 }

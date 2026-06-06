@@ -145,11 +145,14 @@ export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
 export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
   is_subscriber?: boolean;
   payg?: {
-    account_credits?: number;
-    token_used?: number;
-    token_total?: number | string;
-    token_remaining?: number | string;
+    account_credits?: number; // Remaining account balance in USD
+    token_used?: number; // USD consumed by this token
+    token_total?: number | string; // USD allocated to this token, or "unlimited"
+    token_remaining?: number | string; // USD remaining for this token, or "unlimited"
     token_is_unlimited?: boolean;
+    token_monthly_limit_usd?: number; // Monthly spending limit for this token in USD
+    token_monthly_used_usd?: number; // Spending by this token in current month in USD
+    monthly_reset_day?: number; // Day of month when the monthly counter resets
   };
   subscription?: {
     plan_type?: string;

@@ -24,12 +24,17 @@ type ApertisBillingCreditsResponse struct {
 }
 
 // ApertisPayg represents PAYG (Pay-As-You-Go) credit information.
+// All token_* fields are in USD. token_total and token_remaining can be the
+// string "unlimited" when token_is_unlimited is true.
 type ApertisPayg struct {
-	AccountCredits float64     `json:"account_credits"`
-	TokenUsed      float64     `json:"token_used"`
-	TokenTotal     interface{} `json:"token_total"`     // Can be float64 or string "unlimited"
-	TokenRemaining interface{} `json:"token_remaining"` // Can be float64 or string "unlimited"
-	TokenIsUnlimited bool      `json:"token_is_unlimited"`
+	AccountCredits       float64     `json:"account_credits"`
+	TokenUsed            float64     `json:"token_used"`
+	TokenTotal           interface{} `json:"token_total"`              // Can be float64 or string "unlimited"
+	TokenRemaining       interface{} `json:"token_remaining"`           // Can be float64 or string "unlimited"
+	TokenIsUnlimited     bool        `json:"token_is_unlimited"`
+	TokenMonthlyLimitUSD *float64    `json:"token_monthly_limit_usd,omitempty"`  // Monthly spending limit for this token in USD
+	TokenMonthlyUsedUSD  *float64    `json:"token_monthly_used_usd,omitempty"`   // Spending by this token in current month in USD
+	MonthlyResetDay      *int        `json:"monthly_reset_day,omitempty"`        // Day of month when the monthly counter resets
 }
 
 // ApertisSubscription represents subscription quota information.
@@ -61,6 +66,9 @@ func NewApertisQuotaChecker(httpClient *httpclient.HttpClient) *ApertisQuotaChec
 // CheckQuota makes a request to the Apertis billing credits endpoint and returns normalized quota data.
 func (c *ApertisQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
 	apiKey := strings.TrimSpace(ch.Credentials.APIKey)
+	if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
+		apiKey = ch.Credentials.APIKeys[0]
+	}
 	if apiKey == "" {
 		return QuotaData{
 			Status:       "unknown",
@@ -164,61 +172,114 @@ func buildApertisQuotaURL(baseURL string) string {
 }
 
 // determineApertisStatus determines the overall quota status based on the response.
+//
+// Priority order for status determination:
+//  1. If subscription is active with remaining cycle quota → check if high usage (warning)
+//  2. If subscription cycle quota is exhausted BUT PAYG fallback is enabled with credits → available/warning
+//  3. If subscription is suspended/cancelled → fall through to PAYG check
+//  4. If PAYG account credits > 0 → available/warning based on token usage
+//  5. Otherwise → exhausted
 func determineApertisStatus(resp *ApertisBillingCreditsResponse) string {
-	// Check subscription status first
+	bestStatus := "exhausted"
+
+	// --- Subscription path ---
 	if resp.Subscription != nil {
-		// If subscription is suspended or cancelled, it's exhausted
-		if strings.EqualFold(resp.Subscription.Status, "suspended") ||
-			strings.EqualFold(resp.Subscription.Status, "cancelled") {
-			return "exhausted"
-		}
-
-		// If subscription cycle quota is exhausted
-		if resp.Subscription.CycleQuotaRemaining <= 0 {
-			return "exhausted"
-		}
+		subStatus := determineSubscriptionStatus(resp.Subscription)
+		bestStatus = betterStatus(bestStatus, subStatus)
 	}
 
-	// Check PAYG account credits
+	// --- PAYG path (always checked) ---
+	// PAYG is the fallback whenever subscription quota is unavailable.
+	// For subscribers, PAYG is only reachable when payg_fallback_enabled is true
+	// or when the subscription is suspended/cancelled (no cycle quota left).
+	// For non-subscribers, PAYG is the only path.
 	if resp.Payg != nil {
-		if resp.Payg.AccountCredits <= 0 {
-			// If not a subscriber, or subscriber without fallback, it's exhausted
-			if !resp.IsSubscriber {
-				return "exhausted"
+		shouldCheckPAYG := !resp.IsSubscriber
+		if resp.Subscription != nil {
+			// PAYG is available when fallback is enabled, or when
+			// the subscription itself is exhausted (suspended/cancelled/cycle used up)
+			if resp.Subscription.PaygFallbackEnabled {
+				shouldCheckPAYG = true
 			}
-			// If subscriber with fallback, check if fallback is also exhausted
-			if resp.Subscription != nil && !resp.Subscription.PaygFallbackEnabled {
-				return "exhausted"
+			if resp.Subscription.Status == "suspended" || resp.Subscription.Status == "cancelled" {
+				shouldCheckPAYG = true
+			}
+			if resp.Subscription.CycleQuotaRemaining <= 0 {
+				shouldCheckPAYG = true
 			}
 		}
-
-		// Check for warning state - token usage or subscription cycle usage >= 80%
-		if !resp.Payg.TokenIsUnlimited {
-			// Check token usage ratio
-			if total, ok := toFloat64(resp.Payg.TokenTotal); ok {
-				if total > 0 {
-					usageRatio := resp.Payg.TokenUsed / total
-					if usageRatio > WarningThresholdRatio {
-						return "warning"
-					}
-				}
-			}
+		if shouldCheckPAYG {
+			paygStatus := determinePaygStatus(resp.Payg)
+			bestStatus = betterStatus(bestStatus, paygStatus)
 		}
 	}
-	// Check subscription cycle usage ratio for warning (outside PAYG guard to handle subscribers without PAYG)
-	if resp.Subscription != nil && resp.Subscription.CycleQuotaLimit > 0 {
-		usageRatio := float64(resp.Subscription.CycleQuotaUsed) / float64(resp.Subscription.CycleQuotaLimit)
+
+	return bestStatus
+}
+
+// determineSubscriptionStatus returns the status based on subscription state alone.
+func determineSubscriptionStatus(sub *ApertisSubscription) string {
+	if strings.EqualFold(sub.Status, "suspended") || strings.EqualFold(sub.Status, "cancelled") {
+		return "exhausted"
+	}
+
+	if sub.CycleQuotaLimit > 0 {
+		usageRatio := float64(sub.CycleQuotaUsed) / float64(sub.CycleQuotaLimit)
+		if sub.CycleQuotaRemaining <= 0 {
+			return "exhausted"
+		}
 		if usageRatio > WarningThresholdRatio {
 			return "warning"
 		}
 	}
+
 	return "available"
+}
+
+// determinePaygStatus returns the status based on PAYG credits.
+func determinePaygStatus(payg *ApertisPayg) string {
+	// Unlimited token is always available regardless of account_credits.
+	if payg.TokenIsUnlimited {
+		return "available"
+	}
+
+	if payg.AccountCredits <= 0 {
+		return "exhausted"
+	}
+
+	// Check token-level usage ratio for warning
+	if !payg.TokenIsUnlimited {
+		if total, ok := toFloat64(payg.TokenTotal); ok && total > 0 {
+			usageRatio := payg.TokenUsed / total
+			if usageRatio > WarningThresholdRatio {
+				return "warning"
+			}
+		}
+	}
+
+	return "available"
+}
+
+// betterStatus returns the more permissive of two statuses.
+// Order: available > warning > exhausted > unknown
+func betterStatus(a, b string) string {
+	rank := map[string]int{
+		"available": 3,
+		"warning":   2,
+		"exhausted": 1,
+		"unknown":   0,
+	}
+	if rank[b] > rank[a] {
+		return b
+	}
+	return a
 }
 func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.Time) []QuotaLimitStatus {
 	var limits []QuotaLimitStatus
 
-	// Token limit (from PAYG)
-	if resp.Payg != nil {
+	// PAYG token limit — skip when an active subscription exists (subscription
+	// is the real limiting factor; PAYG is only relevant as a fallback).
+	if resp.Payg != nil && !(resp.IsSubscriber && resp.Subscription != nil && resp.Subscription.Status == "active") {
 		var tokenStatus string
 		var usageRatio float64
 
@@ -298,13 +359,23 @@ func convertApertisResponseToMap(resp ApertisBillingCreditsResponse) map[string]
 	}
 
 	if resp.Payg != nil {
-		rawData["payg"] = map[string]any{
+		paygMap := map[string]any{
 			"account_credits":    resp.Payg.AccountCredits,
 			"token_used":         resp.Payg.TokenUsed,
 			"token_total":        resp.Payg.TokenTotal,
 			"token_remaining":    resp.Payg.TokenRemaining,
 			"token_is_unlimited": resp.Payg.TokenIsUnlimited,
 		}
+		if resp.Payg.TokenMonthlyLimitUSD != nil {
+			paygMap["token_monthly_limit_usd"] = *resp.Payg.TokenMonthlyLimitUSD
+		}
+		if resp.Payg.TokenMonthlyUsedUSD != nil {
+			paygMap["token_monthly_used_usd"] = *resp.Payg.TokenMonthlyUsedUSD
+		}
+		if resp.Payg.MonthlyResetDay != nil {
+			paygMap["monthly_reset_day"] = *resp.Payg.MonthlyResetDay
+		}
+		rawData["payg"] = paygMap
 	}
 
 	if resp.Subscription != nil {
