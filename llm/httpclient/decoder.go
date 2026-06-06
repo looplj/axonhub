@@ -217,6 +217,7 @@ func NewBinaryChunkDecoder(contentType string) StreamDecoderFactory {
 			ctx:         ctx,
 			reader:      rc,
 			contentType: contentType,
+			buf:         make([]byte, 32*1024),
 		}
 	}
 }
@@ -225,6 +226,7 @@ type binaryChunkDecoder struct {
 	ctx         context.Context
 	reader      io.ReadCloser
 	contentType string
+	buf         []byte
 	current     *StreamEvent
 	err         error
 	pendingErr  error
@@ -260,8 +262,7 @@ func (d *binaryChunkDecoder) Next() bool {
 	default:
 	}
 
-	buf := make([]byte, 32*1024)
-	n, err := d.reader.Read(buf)
+	n, err := d.reader.Read(d.buf)
 	if n > 0 {
 		if err != nil && !errors.Is(err, io.EOF) {
 			if ctxErr := d.ctx.Err(); ctxErr != nil {
@@ -271,7 +272,7 @@ func (d *binaryChunkDecoder) Next() bool {
 			}
 		}
 
-		payload := bytes.Clone(buf[:n])
+		payload := bytes.Clone(d.buf[:n])
 		d.current = &StreamEvent{
 			Type: d.contentType,
 			Data: payload,

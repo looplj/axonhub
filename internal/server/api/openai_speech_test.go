@@ -74,6 +74,62 @@ func setupSpeechAPITestServices(t *testing.T, client *ent.Client) (*biz.ChannelS
 	return channelService, requestService, systemService, usageLogService
 }
 
+func TestShouldUseBinarySpeechStream(t *testing.T) {
+	tests := []struct {
+		name        string
+		contentType string
+		body        string
+		want        bool
+		wantErr     bool
+	}{
+		{
+			name:        "audio stream format",
+			contentType: "application/json",
+			body:        `{"stream_format":"audio"}`,
+			want:        true,
+		},
+		{
+			name:        "sse stream format",
+			contentType: "application/json",
+			body:        `{"stream_format":"sse"}`,
+		},
+		{
+			name:        "default non-stream",
+			contentType: "application/json",
+			body:        `{}`,
+		},
+		{
+			name:        "non-json content type lets transformer report validation",
+			contentType: "multipart/form-data",
+			body:        `{"stream_format":"audio"}`,
+		},
+		{
+			name:        "invalid json",
+			contentType: "application/json",
+			body:        `{`,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &httpclient.Request{
+				Headers: http.Header{"Content-Type": []string{tt.contentType}},
+				Body:    []byte(tt.body),
+			}
+
+			got, err := shouldUseBinarySpeechStream(req)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestOpenAIHandlers_CreateSpeech_AudioStreamEndToEnd(t *testing.T) {
 	ctx := ent.NewContext(authz.WithTestBypass(context.Background()), enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0"))
 	client := ent.FromContext(ctx)

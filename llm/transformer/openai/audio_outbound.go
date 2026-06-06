@@ -329,15 +329,8 @@ func transformSpeechBinaryChunk(event *httpclient.StreamEvent) (*llm.Response, e
 }
 
 func isSpeechBinaryStreamEvent(event *httpclient.StreamEvent) bool {
-	if event == nil {
-		return false
-	}
-
-	eventType := strings.ToLower(strings.TrimSpace(event.Type))
-
-	return eventType == httpclient.BinaryStreamDoneEventType ||
-		strings.HasPrefix(eventType, "audio/") ||
-		eventType == "application/octet-stream"
+	return event != nil &&
+		(event.Type == httpclient.BinaryStreamDoneEventType || event.IsBinaryAudioChunk())
 }
 
 // transformTranscriptionStreamChunkFor returns a decoder for streaming STT/translation SSE events.

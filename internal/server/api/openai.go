@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -63,6 +64,10 @@ type OpenAIHandlers struct {
 	TranslationHandlers        *ChatCompletionHandlers
 	SpeechInboundTransformer   *openai.AudioInboundTransformer
 	EntClient                  *ent.Client
+}
+
+type speechRouteRequestBody struct {
+	StreamFormat string `json:"stream_format"`
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
@@ -315,25 +320,43 @@ func (handlers *OpenAIHandlers) CreateSpeech(c *gin.Context) {
 		return
 	}
 
-	llmReq, err := handlers.SpeechInboundTransformer.TransformRequest(ctx, genericReq)
+	useBinaryStream, err := shouldUseBinarySpeechStream(genericReq)
 	if err != nil {
 		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 		return
 	}
 
-	isStream := llmReq.Stream != nil && *llmReq.Stream
-	if !isStream {
-		handlers.SpeechHandlers.ChatCompletionWithRequest(c, genericReq)
-		return
-	}
-
-	if llmReq.Speech != nil && llmReq.Speech.StreamFormat == "sse" {
+	if !useBinaryStream {
 		handlers.SpeechHandlers.ChatCompletionWithRequest(c, genericReq)
 		return
 	}
 
 	handlers.SpeechHandlers.WithStreamWriter(WriteBinaryStream).ChatCompletionWithRequest(c, genericReq)
+}
+
+func shouldUseBinarySpeechStream(genericReq *httpclient.Request) (bool, error) {
+	if genericReq == nil {
+		return false, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
+	}
+
+	if len(genericReq.Body) == 0 {
+		return false, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+
+	contentType := strings.ToLower(genericReq.Headers.Get("Content-Type"))
+	if contentType != "" && !strings.Contains(contentType, "application/json") {
+		return false, nil
+	}
+
+	var body speechRouteRequestBody
+	if err := json.Unmarshal(genericReq.Body, &body); err != nil {
+		return false, fmt.Errorf("%w: failed to decode speech request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	streamFormat := strings.ToLower(strings.TrimSpace(body.StreamFormat))
+
+	return streamFormat != "" && streamFormat != "sse", nil
 }
 
 // CreateTranscription handles POST /v1/audio/transcriptions (speech-to-text).
