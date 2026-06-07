@@ -236,6 +236,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 				Type:      "function_call",
 				CallID:    tc.ID,
 				Name:      tc.Function.Name,
+				Namespace: tc.Function.Namespace,
 				Arguments: tc.Function.Arguments,
 			})
 		}
@@ -648,6 +649,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				Type: "function",
 				Function: llm.FunctionCall{
 					Name:      outputItem.Name,
+					Namespace: outputItem.Namespace,
 					Arguments: outputItem.Arguments,
 				},
 			})
