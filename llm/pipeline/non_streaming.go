@@ -22,12 +22,15 @@ func (p *pipeline) notStream(
 
 	httpResp, err := executor.Do(attemptCtx, request)
 	if err != nil {
+		if p.isNonStreamAttemptTimeout(ctx, attemptCtx) {
+			err = p.nonStreamTimeoutError()
+			p.applyRawErrorResponseMiddlewares(attemptCtx, err)
+
+			return nil, err
+		}
+
 		// Apply error response middlewares
 		p.applyRawErrorResponseMiddlewares(attemptCtx, err)
-
-		if p.isNonStreamAttemptTimeout(ctx, attemptCtx) {
-			return nil, p.nonStreamTimeoutError()
-		}
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
 			return nil, WrapUpstreamError(p.Outbound.TransformError(attemptCtx, httpErr))
