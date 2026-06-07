@@ -91,6 +91,7 @@
   "channels.types.fireworks": "Fireworks",
   "channels.types.ollama": "Ollama",
   "channels.types.opencode_go": "OpenCode Go",
+  "channels.types.opencode_go_anthropic": "OpenCode Go (Anthropic)",
   "channels.providers.openai": "OpenAI",
   "channels.providers.atlascloud": "AtlasCloud",
   "channels.providers.anthropic": "Anthropic",

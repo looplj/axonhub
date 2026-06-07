@@ -609,9 +609,17 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   },
   opencode_go: {
     channelType: 'opencode_go',
-    baseURL: 'https://opencode.ai/zen/go/v1',
-    defaultModels: ['opencode-go-v1'],
+    baseURL: 'https://opencode.ai/zen/go',
+    defaultModels: ['glm-5.1', 'glm-5', 'kimi-k2.5', 'kimi-k2.6', 'deepseek-v4-pro', 'deepseek-v4-flash', 'mimo-v2.5', 'mimo-v2.5-pro'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: OpenCode,
+  },
+  opencode_go_anthropic: {
+    channelType: 'opencode_go_anthropic',
+    baseURL: 'https://opencode.ai/zen/go',
+    defaultModels: ['minimax-m3', 'minimax-m2.7', 'minimax-m2.5', 'qwen3.7-max', 'qwen3.7-plus', 'qwen3.6-plus'],
+    apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: OpenCode,
   },
@@ -737,6 +745,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   nanogpt_responses: 'nanogpt',
   fireworks: 'fireworks',
   opencode_go: 'opencode_go',
+  opencode_go_anthropic: 'opencode_go',
   ollama: 'ollama',
 };
 
