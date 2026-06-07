@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -61,11 +62,17 @@ type OpenAIHandlers struct {
 	SpeechHandlers             *ChatCompletionHandlers
 	TranscriptionHandlers      *ChatCompletionHandlers
 	TranslationHandlers        *ChatCompletionHandlers
+	SpeechInboundTransformer   *openai.AudioInboundTransformer
 	EntClient                  *ent.Client
+}
+
+type speechRouteRequestBody struct {
+	StreamFormat string `json:"stream_format"`
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	videoInbound := openai.NewVideoInboundTransformer()
+	speechInbound := openai.NewSpeechInboundTransformer()
 
 	return &OpenAIHandlers{
 		ChatCompletionHandlers: &ChatCompletionHandlers{
@@ -233,7 +240,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.DefaultSelector,
 				params.RequestService,
 				params.HttpClient,
-				openai.NewSpeechInboundTransformer(),
+				speechInbound,
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -244,6 +251,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.ProviderQuotaStatusProvider,
 			),
 		},
+		SpeechInboundTransformer: speechInbound,
 		TranscriptionHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
@@ -303,7 +311,52 @@ func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 
 // CreateSpeech handles POST /v1/audio/speech (text-to-speech). The response is binary audio.
 func (handlers *OpenAIHandlers) CreateSpeech(c *gin.Context) {
-	handlers.SpeechHandlers.ChatCompletion(c)
+	ctx := c.Request.Context()
+
+	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	if err != nil {
+		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	useBinaryStream, err := shouldUseBinarySpeechStream(genericReq)
+	if err != nil {
+		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	if !useBinaryStream {
+		handlers.SpeechHandlers.ChatCompletionWithRequest(c, genericReq)
+		return
+	}
+
+	handlers.SpeechHandlers.WithStreamWriter(WriteBinaryStream).ChatCompletionWithRequest(c, genericReq)
+}
+
+func shouldUseBinarySpeechStream(genericReq *httpclient.Request) (bool, error) {
+	if genericReq == nil {
+		return false, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
+	}
+
+	if len(genericReq.Body) == 0 {
+		return false, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+
+	contentType := strings.ToLower(genericReq.Headers.Get("Content-Type"))
+	if contentType != "" && !strings.Contains(contentType, "application/json") {
+		return false, nil
+	}
+
+	var body speechRouteRequestBody
+	if err := json.Unmarshal(genericReq.Body, &body); err != nil {
+		return false, fmt.Errorf("%w: failed to decode speech request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	streamFormat := strings.ToLower(strings.TrimSpace(body.StreamFormat))
+
+	return streamFormat != "" && streamFormat != "sse", nil
 }
 
 // CreateTranscription handles POST /v1/audio/transcriptions (speech-to-text).

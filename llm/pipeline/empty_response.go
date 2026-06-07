@@ -54,7 +54,7 @@ func hasMessageContent(msg *llm.Message) bool {
 
 // hasResponseContent checks if an llm.Response contains meaningful content.
 func hasResponseContent(resp *llm.Response) bool {
-	if resp == nil || resp == llm.DoneResponse {
+	if resp == nil || resp == llm.DoneResponse || resp.Object == "[DONE]" {
 		return false
 	}
 
@@ -87,7 +87,14 @@ func hasResponseContent(resp *llm.Response) bool {
 		return true
 	}
 
-	if resp.SpeechStreamEvent != nil && (resp.SpeechStreamEvent.AudioBase64 != "" || resp.SpeechStreamEvent.Type != "") {
+	// Only audio deltas count as content. A bare "speech.audio.done" event with
+	// no audio chunks must still be treated as empty so empty-response detection
+	// can retry instead of completing a request with audio_bytes=0.
+	if resp.SpeechStreamEvent != nil && resp.SpeechStreamEvent.AudioBase64 != "" {
+		return true
+	}
+
+	if resp.SpeechAudioChunk != nil && len(resp.SpeechAudioChunk.Audio) > 0 {
 		return true
 	}
 

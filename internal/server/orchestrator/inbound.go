@@ -67,7 +67,9 @@ func (ts *InboundPersistentStream) Next() bool {
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		ts.responseChunks = append(ts.responseChunks, event)
+		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
+		// summary to avoid buffering the full audio payload in memory.
+		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		if isTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
 		}
@@ -88,7 +90,8 @@ func isTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 		// For OpenAI audio APIs (TTS sse / STT stream) which have no [DONE] sentinel:
 		// rely on the terminal *.done event surfaced as StreamEvent.Type.
 		event.Type == "speech.audio.done" ||
-		event.Type == "transcript.text.done"
+		event.Type == "transcript.text.done" ||
+		event.Type == httpclient.BinaryStreamDoneEventType
 }
 
 func (ts *InboundPersistentStream) Err() error {

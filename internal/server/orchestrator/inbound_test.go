@@ -265,8 +265,10 @@ func TestIsTerminalStreamEvent_AudioDoneEvents(t *testing.T) {
 	// signaled by typed *.done events surfaced via StreamEvent.Type.
 	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.done"}))
 	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.done"}))
+	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: httpclient.BinaryStreamDoneEventType}))
 
 	// Other events must not be treated as terminal.
 	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.delta"}))
 	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.delta"}))
+	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "audio/mpeg"}))
 }

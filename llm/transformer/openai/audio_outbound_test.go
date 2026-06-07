@@ -35,8 +35,10 @@ func TestOutbound_BuildSpeechRequest(t *testing.T) {
 	out := newAudioOutbound(t)
 
 	speed := 1.5
+	stream := false
 	llmReq := &llm.Request{
 		Model:       "tts-1",
+		Stream:      &stream,
 		RequestType: llm.RequestTypeSpeech,
 		APIFormat:   llm.APIFormatOpenAISpeech,
 		Speech: &llm.SpeechRequest{
@@ -62,6 +64,10 @@ func TestOutbound_BuildSpeechRequest(t *testing.T) {
 	require.Equal(t, "wav", body.ResponseFormat)
 	require.NotNil(t, body.Speed)
 	require.InDelta(t, 1.5, *body.Speed, 1e-9)
+
+	var rawBody map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &rawBody))
+	require.NotContains(t, rawBody, "stream")
 }
 
 func TestOutbound_BuildTranscriptionRequest(t *testing.T) {
@@ -327,8 +333,8 @@ func TestAudioStreaming_Speech(t *testing.T) {
 
 	// Simulate the provider's SSE events flowing through the outbound transformer.
 	events := []*httpclient.StreamEvent{
-		{Data: []byte(`{"type":"speech.audio.delta","audio":"YWJjZA=="}`)},      // "abcd" → 4 bytes
-		{Data: []byte(`{"type":"speech.audio.delta","audio":"ZWZnaA=="}`)},      // "efgh" → 4 bytes
+		{Data: []byte(`{"type":"speech.audio.delta","audio":"YWJjZA=="}`)}, // "abcd" → 4 bytes
+		{Data: []byte(`{"type":"speech.audio.delta","audio":"ZWZnaA=="}`)}, // "efgh" → 4 bytes
 		{Data: []byte(`{"type":"speech.audio.done","usage":{"total_tokens":12}}`)},
 		{Data: []byte("[DONE]")},
 	}
@@ -365,8 +371,66 @@ func TestAudioStreaming_Speech(t *testing.T) {
 	body, meta, err := inbound.AggregateStreamChunks(context.Background(), events)
 	require.NoError(t, err)
 	require.Contains(t, string(body), `"audio_bytes":8`)
+	require.True(t, meta.Completed)
 	require.NotNil(t, meta.Usage)
 	require.EqualValues(t, 12, meta.Usage.TotalTokens)
+}
+
+func TestAudioStreaming_SpeechBinaryChunks(t *testing.T) {
+	inbound := NewSpeechInboundTransformer()
+	outbound := newAudioOutbound(t)
+
+	clientBody, _ := json.Marshal(map[string]any{
+		"model": "gpt-4o-mini-tts", "input": "Hi", "voice": "alloy",
+		"stream_format": "audio",
+	})
+
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Body:    clientBody,
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.Stream)
+	require.True(t, *llmReq.Stream)
+
+	providerReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.Equal(t, "*/*", providerReq.Headers.Get("Accept"))
+
+	var providerBody map[string]any
+	require.NoError(t, json.Unmarshal(providerReq.Body, &providerBody))
+	require.Equal(t, "audio", providerBody["stream_format"])
+	require.NotContains(t, providerBody, "stream")
+
+	events := []*httpclient.StreamEvent{
+		{Type: "audio/mpeg", Data: []byte{0x7b, 0x01, 0x02}},
+		{Type: "audio/mpeg", Data: []byte{0x04, 0x05}},
+		{Type: httpclient.BinaryStreamDoneEventType},
+	}
+
+	llmStream, err := outbound.TransformStream(context.Background(), providerReq, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	clientStream, err := inbound.TransformStream(context.Background(), llmStream)
+	require.NoError(t, err)
+
+	var chunks []*httpclient.StreamEvent
+	for clientStream.Next() {
+		chunks = append(chunks, clientStream.Current())
+	}
+	require.NoError(t, clientStream.Err())
+	require.Len(t, chunks, 3)
+	require.Equal(t, "audio/mpeg", chunks[0].Type)
+	require.Equal(t, []byte{0x7b, 0x01, 0x02}, chunks[0].Data)
+	require.Equal(t, []byte{0x04, 0x05}, chunks[1].Data)
+	require.Equal(t, httpclient.BinaryStreamDoneEventType, chunks[2].Type)
+
+	body, meta, err := inbound.AggregateStreamChunks(context.Background(), chunks)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"audio_bytes":5`)
+	require.Equal(t, llm.SpeechStreamResponseID, meta.ID)
+	require.True(t, meta.Completed)
+	require.Nil(t, meta.Usage)
 }
 
 // TestAudioStreaming_Transcription verifies an end-to-end SSE streaming STT round trip.
@@ -434,6 +498,7 @@ func TestAudioStreaming_Transcription(t *testing.T) {
 	body, meta, err := inbound.AggregateStreamChunks(context.Background(), events)
 	require.NoError(t, err)
 	require.Contains(t, string(body), `"text":"hello world"`)
+	require.True(t, meta.Completed)
 	require.NotNil(t, meta.Usage)
 	require.EqualValues(t, 5, meta.Usage.TotalTokens)
 }

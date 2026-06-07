@@ -84,7 +84,7 @@ func TestAudioInboundTransformer_Speech(t *testing.T) {
 	t.Run("unsupported stream_format rejected", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]any{
 			"model": "gpt-4o-mini-tts", "input": "hi", "voice": "alloy",
-			"stream_format": "audio",
+			"stream_format": "json",
 		})
 		_, err := tr.TransformRequest(context.Background(), &httpclient.Request{
 			Body:    body,
@@ -107,6 +107,35 @@ func TestAudioInboundTransformer_Speech(t *testing.T) {
 		require.NotNil(t, req.Stream)
 		require.True(t, *req.Stream)
 		require.Equal(t, "sse", req.Speech.StreamFormat)
+	})
+
+	t.Run("audio stream_format enables binary streaming", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]any{
+			"model": "gpt-4o-mini-tts", "input": "hi", "voice": "alloy",
+			"stream_format": "audio",
+		})
+		req, err := tr.TransformRequest(context.Background(), &httpclient.Request{
+			Body:    body,
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, req.Stream)
+		require.True(t, *req.Stream)
+		require.Equal(t, "audio", req.Speech.StreamFormat)
+	})
+
+	t.Run("missing stream_format stays non-streaming", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]any{
+			"model": "gpt-4o-mini-tts", "input": "hi", "voice": "alloy",
+		})
+		req, err := tr.TransformRequest(context.Background(), &httpclient.Request{
+			Body:    body,
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, req.Stream)
+		require.False(t, *req.Stream)
+		require.Empty(t, req.Speech.StreamFormat)
 	})
 }
 
