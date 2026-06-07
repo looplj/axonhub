@@ -126,6 +126,8 @@ type RetryPolicy {
   enabled: Boolean!
   autoDisableChannel: AutoDisableChannel!
   emptyResponseDetection: Boolean!
+  streamFirstByteTimeoutSeconds: Int!
+  nonStreamTimeoutSeconds: Int!
   upstreamErrorPolicy: UpstreamErrorPolicy!
 }
 
@@ -157,6 +159,8 @@ input UpdateRetryPolicyInput {
   enabled: Boolean
   autoDisableChannel: AutoDisableChannelInput
   emptyResponseDetection: Boolean
+  streamFirstByteTimeoutSeconds: Int
+  nonStreamTimeoutSeconds: Int
   upstreamErrorPolicy: UpstreamErrorPolicyInput
 }
 

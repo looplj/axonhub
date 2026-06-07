@@ -319,6 +319,14 @@ type RetryPolicy struct {
 	// contains meaningful content, and marks empty responses as failed attempts for retry handling.
 	EmptyResponseDetection bool `json:"empty_response_detection"`
 
+	// StreamFirstByteTimeoutSeconds defines the per-attempt timeout for the first
+	// event in a streaming response. Zero disables the timeout.
+	StreamFirstByteTimeoutSeconds int `json:"stream_first_byte_timeout_seconds"`
+
+	// NonStreamTimeoutSeconds defines the per-attempt timeout for non-streaming
+	// responses. Zero disables the timeout.
+	NonStreamTimeoutSeconds int `json:"non_stream_timeout_seconds"`
+
 	// UpstreamErrorPolicy controls how provider errors are exposed to API users.
 	UpstreamErrorPolicy UpstreamErrorPolicy `json:"upstream_error_policy"`
 }
@@ -1023,6 +1031,14 @@ func normalizeRetryPolicy(policy *RetryPolicy) {
 
 	if policy.AutoDisableChannel.Statuses == nil {
 		policy.AutoDisableChannel.Statuses = []AutoDisableChannelStatus{}
+	}
+
+	if policy.StreamFirstByteTimeoutSeconds < 0 {
+		policy.StreamFirstByteTimeoutSeconds = 0
+	}
+
+	if policy.NonStreamTimeoutSeconds < 0 {
+		policy.NonStreamTimeoutSeconds = 0
 	}
 
 	switch policy.UpstreamErrorPolicy.Mode {

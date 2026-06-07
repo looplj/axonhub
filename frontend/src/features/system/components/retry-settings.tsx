@@ -25,6 +25,8 @@ export function RetrySettings() {
     retryDelayMs: 1000,
     loadBalancerStrategy: 'adaptive',
     emptyResponseDetection: false,
+    streamFirstByteTimeoutSeconds: 0,
+    nonStreamTimeoutSeconds: 0,
     upstreamErrorPolicy: {
       mode: 'passthrough',
       customMessage: '',
@@ -44,6 +46,8 @@ export function RetrySettings() {
         retryDelayMs: retryPolicy.retryDelayMs,
         loadBalancerStrategy: retryPolicy.loadBalancerStrategy,
         emptyResponseDetection: retryPolicy.emptyResponseDetection,
+        streamFirstByteTimeoutSeconds: retryPolicy.streamFirstByteTimeoutSeconds || 0,
+        nonStreamTimeoutSeconds: retryPolicy.nonStreamTimeoutSeconds || 0,
         upstreamErrorPolicy: {
           mode: retryPolicy.upstreamErrorPolicy?.mode || 'passthrough',
           customMessage: retryPolicy.upstreamErrorPolicy?.customMessage || '',
@@ -261,6 +265,42 @@ export function RetrySettings() {
                     className='w-32'
                   />
                   <span className='text-muted-foreground text-sm'>ms</span>
+                </div>
+              </div>
+
+              {/* Streaming First Byte Timeout */}
+              <div className='space-y-2'>
+                <Label htmlFor='stream-first-byte-timeout'>{t('system.retry.streamFirstByteTimeoutSeconds.label')}</Label>
+                <div className='text-muted-foreground mb-2 text-sm'>{t('system.retry.streamFirstByteTimeoutSeconds.description')}</div>
+                <div className='flex items-center space-x-2'>
+                  <Input
+                    id='stream-first-byte-timeout'
+                    type='number'
+                    min='0'
+                    step='1'
+                    value={formData.streamFirstByteTimeoutSeconds || 0}
+                    onChange={(e) => handleInputChange('streamFirstByteTimeoutSeconds', parseInt(e.target.value) || 0)}
+                    className='w-32'
+                  />
+                  <span className='text-muted-foreground text-sm'>s</span>
+                </div>
+              </div>
+
+              {/* Non-Streaming Response Timeout */}
+              <div className='space-y-2'>
+                <Label htmlFor='non-stream-timeout'>{t('system.retry.nonStreamTimeoutSeconds.label')}</Label>
+                <div className='text-muted-foreground mb-2 text-sm'>{t('system.retry.nonStreamTimeoutSeconds.description')}</div>
+                <div className='flex items-center space-x-2'>
+                  <Input
+                    id='non-stream-timeout'
+                    type='number'
+                    min='0'
+                    step='1'
+                    value={formData.nonStreamTimeoutSeconds || 0}
+                    onChange={(e) => handleInputChange('nonStreamTimeoutSeconds', parseInt(e.target.value) || 0)}
+                    className='w-32'
+                  />
+                  <span className='text-muted-foreground text-sm'>s</span>
                 </div>
               </div>
 

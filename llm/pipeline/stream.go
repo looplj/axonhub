@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -86,6 +87,29 @@ func (p *pipeline) stream(
 	ctx context.Context,
 	executor Executor,
 	request *httpclient.Request,
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	return p.streamWithOptions(ctx, executor, request, streamOptions{
+		waitFirstEvent: true,
+	})
+}
+
+func (p *pipeline) streamForAutoAggregation(
+	ctx context.Context,
+	executor Executor,
+	request *httpclient.Request,
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	return p.streamWithOptions(ctx, executor, request, streamOptions{})
+}
+
+type streamOptions struct {
+	waitFirstEvent bool
+}
+
+func (p *pipeline) streamWithOptions(
+	ctx context.Context,
+	executor Executor,
+	request *httpclient.Request,
+	opts streamOptions,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	outboundStream, err := executor.DoStream(ctx, request)
 	if err != nil {
@@ -180,6 +204,15 @@ func (p *pipeline) stream(
 		return nil, fmt.Errorf("failed to apply inbound raw stream middlewares: %w", err)
 	}
 
+	if opts.waitFirstEvent {
+		inboundStream, err = p.waitFirstStreamEvent(ctx, inboundStream)
+		if err != nil {
+			p.applyRawErrorResponseMiddlewares(ctx, err)
+
+			return nil, err
+		}
+	}
+
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		inboundStream = streams.Map(
 			inboundStream,
@@ -191,4 +224,67 @@ func (p *pipeline) stream(
 	}
 
 	return inboundStream, nil
+}
+
+type firstStreamEventResult struct {
+	ok    bool
+	event *httpclient.StreamEvent
+	err   error
+}
+
+func (p *pipeline) waitFirstStreamEvent(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	if p.streamFirstByteTimeout <= 0 {
+		return stream, nil
+	}
+
+	resultCh := make(chan firstStreamEventResult, 1)
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err := fmt.Errorf("panic while waiting for stream first event: %v", recovered)
+				slog.ErrorContext(ctx, "panic while waiting for stream first event", slog.Any("panic", recovered))
+
+				select {
+				case resultCh <- firstStreamEventResult{err: err}:
+				default:
+				}
+			}
+		}()
+
+		if stream.Next() {
+			resultCh <- firstStreamEventResult{ok: true, event: stream.Current()}
+			return
+		}
+
+		resultCh <- firstStreamEventResult{err: stream.Err()}
+	}()
+
+	timer := time.NewTimer(p.streamFirstByteTimeout)
+	defer timer.Stop()
+
+	select {
+	case result := <-resultCh:
+		if result.err != nil {
+			_ = stream.Close()
+
+			return nil, result.err
+		}
+
+		if !result.ok {
+			return stream, nil
+		}
+
+		return streams.PrependStream(stream, result.event), nil
+	case <-timer.C:
+		_ = stream.Close()
+
+		return nil, fmt.Errorf("%w after %s", ErrStreamFirstByteTimeout, p.streamFirstByteTimeout)
+	case <-ctx.Done():
+		_ = stream.Close()
+
+		return nil, ctx.Err()
+	}
 }
