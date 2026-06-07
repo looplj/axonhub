@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -154,6 +155,7 @@ type mockMiddleware struct {
 	Middleware
 
 	errorCalls int
+	onRawError func(context.Context, error)
 }
 
 func (m *mockMiddleware) OnInboundLlmRequest(ctx context.Context, request *llm.Request) (*llm.Request, error) {
@@ -174,6 +176,9 @@ func (m *mockMiddleware) OnOutboundRawRequest(ctx context.Context, request *http
 
 func (m *mockMiddleware) OnOutboundRawError(ctx context.Context, err error) {
 	m.errorCalls++
+	if m.onRawError != nil {
+		m.onRawError(ctx, err)
+	}
 }
 
 func (m *mockMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
@@ -355,6 +360,256 @@ func TestPipeline_Process_RetryLogic(t *testing.T) {
 		require.Nil(t, res)
 		require.Equal(t, 4, execCalls)
 	})
+}
+
+func TestPipeline_Process_StreamFirstByteTimeoutBeforeResponseHeadersSwitchesChannel(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: lo.ToPtr(true)}, nil
+		},
+	}
+
+	attempts := 0
+	executor := &mockExecutor{
+		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+			if attempts == 1 {
+				<-ctx.Done()
+				return nil, ctx.Err()
+			}
+
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("chunk")}}), nil
+		},
+	}
+
+	switchCalls := 0
+	prepareCalls := 0
+	outbound := &mockOutbound{
+		canRetry: func(err error) bool {
+			return true
+		},
+		prepareForRetry: func(context.Context) error {
+			prepareCalls++
+			return nil
+		},
+		hasMoreChannels: func() bool {
+			return switchCalls == 0
+		},
+		nextChannel: func(context.Context) error {
+			switchCalls++
+			return nil
+		},
+		transformStream: func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return streams.SliceStream([]*llm.Response{{}}), nil
+		},
+	}
+
+	p := &pipeline{
+		Executor:               executor,
+		Inbound:                inbound,
+		Outbound:               outbound,
+		maxChannelRetries:      1,
+		maxSameChannelRetries:  1,
+		streamFirstByteTimeout: 20 * time.Millisecond,
+	}
+
+	startedAt := time.Now()
+	res, err := p.Process(ctx, &httpclient.Request{})
+
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.True(t, res.Stream)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, switchCalls)
+	require.Equal(t, 0, prepareCalls, "timeout retries should skip same-channel retry")
+	require.Less(t, time.Since(startedAt), 150*time.Millisecond)
+}
+
+func TestPipeline_Process_NonStreamTimeoutBeforeResponseHeadersSwitchesChannel(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+
+	inbound := &mockInbound{}
+
+	attempts := 0
+	executor := &mockExecutor{
+		do: func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+			attempts++
+			if attempts == 1 {
+				<-ctx.Done()
+				return nil, ctx.Err()
+			}
+
+			return &httpclient.Response{}, nil
+		},
+	}
+
+	switchCalls := 0
+	prepareCalls := 0
+	outbound := &mockOutbound{
+		canRetry: func(err error) bool {
+			return true
+		},
+		prepareForRetry: func(context.Context) error {
+			prepareCalls++
+			return nil
+		},
+		hasMoreChannels: func() bool {
+			return switchCalls == 0
+		},
+		nextChannel: func(context.Context) error {
+			switchCalls++
+			return nil
+		},
+	}
+
+	p := &pipeline{
+		Executor:                 executor,
+		Inbound:                  inbound,
+		Outbound:                 outbound,
+		maxChannelRetries:        1,
+		maxSameChannelRetries:    1,
+		nonStreamResponseTimeout: 20 * time.Millisecond,
+	}
+
+	startedAt := time.Now()
+	res, err := p.Process(ctx, &httpclient.Request{})
+
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.False(t, res.Stream)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, switchCalls)
+	require.Equal(t, 0, prepareCalls, "timeout retries should skip same-channel retry")
+	require.Less(t, time.Since(startedAt), 150*time.Millisecond)
+}
+
+func TestPipeline_Process_NonStreamTimeoutBeforeResponseHeadersReportsTimeoutToMiddleware(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+
+	inbound := &mockInbound{}
+
+	executor := &mockExecutor{
+		do: func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		},
+	}
+
+	var rawErrors []error
+	mw := &mockMiddleware{
+		onRawError: func(_ context.Context, err error) {
+			rawErrors = append(rawErrors, err)
+		},
+	}
+
+	p := &pipeline{
+		Executor:                 executor,
+		Inbound:                  inbound,
+		Outbound:                 &mockOutbound{},
+		middlewares:              []Middleware{mw},
+		nonStreamResponseTimeout: 20 * time.Millisecond,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+
+	require.Error(t, err)
+	require.Nil(t, res)
+	require.ErrorIs(t, err, ErrNonStreamResponseTimeout)
+	require.Len(t, rawErrors, 1)
+	require.ErrorIs(t, rawErrors[0], ErrNonStreamResponseTimeout)
+}
+
+func TestPipeline_Process_StreamFirstByteTimeoutStopsAfterFirstEvent(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+
+	const firstByteTimeout = 20 * time.Millisecond
+
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: lo.ToPtr(true)}, nil
+		},
+	}
+
+	executor := &mockExecutor{
+		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			return &delayedSecondEventStream{
+				ctx:   ctx,
+				delay: firstByteTimeout * 2,
+			}, nil
+		},
+	}
+
+	outbound := &mockOutbound{
+		transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return streams.Map(stream, func(*httpclient.StreamEvent) *llm.Response {
+				return &llm.Response{}
+			}), nil
+		},
+	}
+
+	p := &pipeline{
+		Executor:               executor,
+		Inbound:                inbound,
+		Outbound:               outbound,
+		streamFirstByteTimeout: firstByteTimeout,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.NotNil(t, res.EventStream)
+	defer res.EventStream.Close()
+
+	require.True(t, res.EventStream.Next(), "first event should be returned immediately")
+	require.True(t, res.EventStream.Next(), "second event should not be canceled by the first-byte timer")
+	require.NoError(t, res.EventStream.Err())
+}
+
+type delayedSecondEventStream struct {
+	ctx     context.Context
+	delay   time.Duration
+	index   int
+	current *httpclient.StreamEvent
+	err     error
+}
+
+func (s *delayedSecondEventStream) Next() bool {
+	switch s.index {
+	case 0:
+		s.index++
+		s.current = &httpclient.StreamEvent{Data: []byte("first")}
+		return true
+	case 1:
+		s.index++
+		select {
+		case <-time.After(s.delay):
+			s.current = &httpclient.StreamEvent{Data: []byte("second")}
+			return true
+		case <-s.ctx.Done():
+			s.err = s.ctx.Err()
+			return false
+		}
+	default:
+		return false
+	}
+}
+
+func (s *delayedSecondEventStream) Current() *httpclient.StreamEvent {
+	return s.current
+}
+
+func (s *delayedSecondEventStream) Err() error {
+	return s.err
+}
+
+func (s *delayedSecondEventStream) Close() error {
+	return nil
 }
 
 func TestPipeline_Process_RetryPreservesOriginalStreamIntent(t *testing.T) {
