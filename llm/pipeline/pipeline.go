@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -11,6 +12,14 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
+
+// ErrStreamFirstByteTimeout indicates that a streaming response did not produce
+// the first outbound event before the configured timeout.
+var ErrStreamFirstByteTimeout = errors.New("stream first byte timeout")
+
+// ErrNonStreamResponseTimeout indicates that a non-streaming response exceeded
+// the configured per-attempt timeout.
+var ErrNonStreamResponseTimeout = errors.New("non-stream response timeout")
 
 // Retryable interface for transformers that support channel switching.
 type Retryable interface {
@@ -73,6 +82,23 @@ func WithEmptyResponseDetection() Option {
 	}
 }
 
+// WithResponseTimeouts configures per-attempt response timeouts.
+//
+// streamFirstByteTimeout waits for the first streaming event before returning
+// the stream to callers. nonStreamResponseTimeout bounds a single non-streaming
+// attempt. A zero or negative duration disables the corresponding timeout.
+func WithResponseTimeouts(streamFirstByteTimeout, nonStreamResponseTimeout time.Duration) Option {
+	return func(p *pipeline) {
+		if streamFirstByteTimeout > 0 {
+			p.streamFirstByteTimeout = streamFirstByteTimeout
+		}
+
+		if nonStreamResponseTimeout > 0 {
+			p.nonStreamResponseTimeout = nonStreamResponseTimeout
+		}
+	}
+}
+
 // Factory creates pipeline instances.
 type Factory struct {
 	Executor Executor
@@ -107,14 +133,16 @@ func (f *Factory) Pipeline(
 
 // pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
-	Executor               Executor
-	Inbound                transformer.Inbound
-	Outbound               transformer.Outbound
-	middlewares            []Middleware
-	maxChannelRetries      int
-	maxSameChannelRetries  int
-	retryDelay             time.Duration
-	emptyResponseDetection bool
+	Executor                 Executor
+	Inbound                  transformer.Inbound
+	Outbound                 transformer.Outbound
+	middlewares              []Middleware
+	maxChannelRetries        int
+	maxSameChannelRetries    int
+	retryDelay               time.Duration
+	emptyResponseDetection   bool
+	streamFirstByteTimeout   time.Duration
+	nonStreamResponseTimeout time.Duration
 }
 
 type Result struct {
@@ -285,19 +313,23 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		// Determine retry strategy
 		canRetry := false
 
-		// 1. Try same-channel retry first if supported
-		if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
-			if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
-				if err := channelRetryable.PrepareForRetry(ctx); err == nil {
-					sameChannelRetries++
-					canRetry = true
+		// 1. Try same-channel retry first if supported. Timeout-triggered
+		// retries intentionally skip this path so the next channel is tried
+		// according to the load-balanced candidate order.
+		if !isResponseTimeout(lastErr) {
+			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
+				if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
+					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
+						sameChannelRetries++
+						canRetry = true
 
-					slog.DebugContext(ctx, "retrying same channel",
-						slog.Int("same_channel_attempt", sameChannelRetries),
-						slog.Int("max_same_channel_retries", p.getMaxSameChannelRetries()),
-					)
-				} else {
-					slog.WarnContext(ctx, "failed to prepare same channel retry, will try channel switch", slog.Any("error", err))
+						slog.DebugContext(ctx, "retrying same channel",
+							slog.Int("same_channel_attempt", sameChannelRetries),
+							slog.Int("max_same_channel_retries", p.getMaxSameChannelRetries()),
+						)
+					} else {
+						slog.WarnContext(ctx, "failed to prepare same channel retry, will try channel switch", slog.Any("error", err))
+					}
 				}
 			}
 		}
@@ -415,4 +447,8 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 // getMaxSameChannelRetries returns the maximum number of same-channel retries.
 func (p *pipeline) getMaxSameChannelRetries() int {
 	return p.maxSameChannelRetries
+}
+
+func isResponseTimeout(err error) bool {
+	return errors.Is(err, ErrStreamFirstByteTimeout) || errors.Is(err, ErrNonStreamResponseTimeout)
 }
