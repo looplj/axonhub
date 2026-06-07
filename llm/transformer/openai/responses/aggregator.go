@@ -326,6 +326,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					item.Name = ev.Name
 				}
 
+				if ev.Namespace != "" {
+					item.Namespace = ev.Namespace
+				}
+
 				if ev.Arguments != "" {
 					// Replace accumulated arguments with final version
 					item.Arguments.Reset()
