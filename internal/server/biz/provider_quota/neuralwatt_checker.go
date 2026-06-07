@@ -23,14 +23,13 @@ type NeuralWattBalance struct {
 }
 
 type NeuralWattSubscription struct {
-	Plan               *string  `json:"plan,omitempty"`
-	Status             *string  `json:"status,omitempty"`
-	CurrentPeriodStart *string  `json:"current_period_start,omitempty"`
-	CurrentPeriodEnd   *string  `json:"current_period_end,omitempty"`
-	KwhIncluded        *float64 `json:"kwh_included,omitempty"`
-	KwhUsed            *float64 `json:"kwh_used,omitempty"`
-	KwhRemaining       *float64 `json:"kwh_remaining,omitempty"`
-	InOverage          *bool    `json:"in_overage,omitempty"`
+	Plan         *string  `json:"plan,omitempty"`
+	Status       *string  `json:"status,omitempty"`
+	KwhIncluded  *float64 `json:"kwh_included,omitempty"`
+	KwhUsed      *float64 `json:"kwh_used,omitempty"`
+	KwhRemaining *float64 `json:"kwh_remaining,omitempty"`
+	InOverage    *bool    `json:"in_overage,omitempty"`
+	KwhResetDate *string  `json:"kwh_reset_date,omitempty"`
 }
 
 type NeuralWattUsageResponse struct {
@@ -106,8 +105,8 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	}
 
 	var nextResetAt *time.Time
-	if response.Subscription != nil && response.Subscription.CurrentPeriodEnd != nil {
-		if t, err := time.Parse(time.RFC3339, *response.Subscription.CurrentPeriodEnd); err == nil {
+	if response.Subscription != nil && response.Subscription.KwhResetDate != nil {
+		if t, err := time.Parse(time.RFC3339, *response.Subscription.KwhResetDate); err == nil {
 			nextResetAt = &t
 		}
 	}
@@ -209,13 +208,6 @@ func convertNeuralWattSubscriptionToMap(sub *NeuralWattSubscription) map[string]
 		result["status"] = *sub.Status
 	}
 
-	if sub.CurrentPeriodStart != nil {
-		result["current_period_start"] = *sub.CurrentPeriodStart
-	}
-
-	if sub.CurrentPeriodEnd != nil {
-		result["current_period_end"] = *sub.CurrentPeriodEnd
-	}
 
 	if sub.KwhIncluded != nil {
 		result["kwh_included"] = *sub.KwhIncluded
@@ -231,6 +223,10 @@ func convertNeuralWattSubscriptionToMap(sub *NeuralWattSubscription) map[string]
 
 	if sub.InOverage != nil {
 		result["in_overage"] = *sub.InOverage
+	}
+
+	if sub.KwhResetDate != nil {
+		result["kwh_reset_date"] = *sub.KwhResetDate
 	}
 
 	return result
