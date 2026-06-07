@@ -16,6 +16,18 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "high",
+                "max"
+              ]
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -76,6 +88,18 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "high",
+                "max"
+              ]
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -250,6 +274,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -302,6 +331,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -562,6 +596,18 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          ],
           "tool_call": true,
           "temperature": false,
           "release_date": "2026-05-28",
@@ -624,6 +670,18 @@
             "supported": true,
             "default": false
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          ],
           "tool_call": true,
           "temperature": false,
           "knowledge": "2026-01-31",
@@ -708,6 +766,21 @@
             "supported": true,
             "default": false
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "max"
+              ]
+            },
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-08-31",
@@ -773,6 +846,21 @@
             "supported": true,
             "default": false
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "max"
+              ]
+            },
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-05-31",
@@ -858,6 +946,20 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -901,6 +1003,20 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -939,6 +1055,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-02-28",
@@ -977,6 +1099,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-02-28",
@@ -1020,6 +1148,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-07-31",
@@ -1058,6 +1192,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-07-31",
@@ -1101,6 +1241,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -1144,6 +1290,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -1182,6 +1334,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -1225,6 +1383,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -1263,6 +1427,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -1301,6 +1471,12 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-03-31",
@@ -1339,6 +1515,12 @@
             "supported": true,
             "default": false
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-10-31",
@@ -1359,6 +1541,7 @@
             "context": 200000,
             "output": 64000
           },
+          "status": "deprecated",
           "cost": {
             "input": 3,
             "output": 15,
@@ -1453,6 +1636,7 @@
             "context": 200000,
             "output": 8192
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.8,
             "output": 4,
@@ -1490,6 +1674,7 @@
             "context": 200000,
             "output": 8192
           },
+          "status": "deprecated",
           "cost": {
             "input": 3,
             "output": 15,
@@ -1527,6 +1712,7 @@
             "context": 200000,
             "output": 8192
           },
+          "status": "deprecated",
           "cost": {
             "input": 3,
             "output": 15,
@@ -1564,6 +1750,7 @@
             "context": 200000,
             "output": 4096
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.25,
             "output": 1.25,
@@ -1601,6 +1788,7 @@
             "context": 200000,
             "output": 4096
           },
+          "status": "deprecated",
           "cost": {
             "input": 3,
             "output": 15,
@@ -1638,6 +1826,7 @@
             "context": 200000,
             "output": 4096
           },
+          "status": "deprecated",
           "cost": {
             "input": 15,
             "output": 75,
@@ -1656,6 +1845,61 @@
       "doc": "https://www.alibabacloud.com/help/en/model-studio/models",
       "display_name": "alibaba",
       "models": [
+        {
+          "id": "qwen3.7-plus",
+          "name": "Qwen3.7 Plus",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2026-06-02",
+          "last_updated": "2026-06-04",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0.5,
+            "output": 3,
+            "cache_read": 0.05,
+            "cache_write": 0.625,
+            "tiers": [
+              {
+                "input": 2,
+                "output": 6,
+                "cache_read": 0.2,
+                "cache_write": 2.5,
+                "tier": {
+                  "type": "context",
+                  "size": 128000
+                }
+              }
+            ]
+          },
+          "display_name": "Qwen3.7 Plus",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "type": "chat"
+        },
         {
           "id": "qwen3.7-max",
           "name": "Qwen3.7 Max",
@@ -4925,6 +5169,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -4993,6 +5242,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -5151,6 +5405,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -5204,6 +5463,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -5300,6 +5564,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -5357,6 +5626,15 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -5384,41 +5662,6 @@
           "type": "chat"
         },
         {
-          "id": "mistral-medium-latest",
-          "name": "Mistral Medium (latest)",
-          "family": "mistral-medium",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "release_date": "2026-04-29",
-          "last_updated": "2026-04-29",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "cost": {
-            "input": 1.5,
-            "output": 7.5
-          },
-          "display_name": "Mistral Medium (latest)",
-          "type": "chat"
-        },
-        {
           "id": "mistral-small-2603",
           "name": "Mistral Small 4",
           "family": "mistral-small",
@@ -5427,6 +5670,15 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-06",
@@ -5462,6 +5714,15 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-06",
@@ -5515,11 +5776,46 @@
             "context": 256000,
             "output": 256000
           },
+          "status": "deprecated",
           "cost": {
             "input": 0,
             "output": 0
           },
           "display_name": "Devstral Small 2",
+          "type": "chat"
+        },
+        {
+          "id": "devstral-latest",
+          "name": "Devstral 2",
+          "family": "devstral",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-12",
+          "release_date": "2025-12-09",
+          "last_updated": "2025-12-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "status": "deprecated",
+          "cost": {
+            "input": 0.4,
+            "output": 2
+          },
+          "display_name": "Devstral 2",
           "type": "chat"
         },
         {
@@ -5548,6 +5844,7 @@
             "context": 262144,
             "output": 262144
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.4,
             "output": 2
@@ -5581,6 +5878,7 @@
             "context": 262144,
             "output": 262144
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.4,
             "output": 2
@@ -5623,6 +5921,40 @@
           "type": "chat"
         },
         {
+          "id": "mistral-medium-latest",
+          "name": "Mistral Medium (latest)",
+          "family": "mistral-medium",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-05",
+          "release_date": "2025-08-12",
+          "last_updated": "2025-08-12",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "cost": {
+            "input": 0.4,
+            "output": 2
+          },
+          "display_name": "Mistral Medium (latest)",
+          "type": "chat"
+        },
+        {
           "id": "devstral-small-2507",
           "name": "Devstral Small",
           "family": "devstral",
@@ -5648,6 +5980,7 @@
             "context": 128000,
             "output": 128000
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.1,
             "output": 0.3
@@ -5681,6 +6014,7 @@
             "context": 128000,
             "output": 128000
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.4,
             "output": 2
@@ -5782,6 +6116,7 @@
             "context": 128000,
             "output": 128000
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.1,
             "output": 0.3
@@ -6126,6 +6461,40 @@
           "type": "chat"
         },
         {
+          "id": "open-mistral-nemo",
+          "name": "Open Mistral Nemo",
+          "family": "mistral-nemo",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-07",
+          "release_date": "2024-07-01",
+          "last_updated": "2024-07-01",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 128000,
+            "output": 128000
+          },
+          "status": "deprecated",
+          "cost": {
+            "input": 0.15,
+            "output": 0.15
+          },
+          "display_name": "Open Mistral Nemo",
+          "type": "chat"
+        },
+        {
           "id": "codestral-latest",
           "name": "Codestral (latest)",
           "family": "codestral",
@@ -6405,6 +6774,11 @@
             }
           },
           "display_name": "Grok Build 0.1",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          },
           "type": "chat"
         },
         {
@@ -6645,6 +7019,7 @@
             "input": [
               "text",
               "image",
+              "video",
               "pdf"
             ],
             "output": [
@@ -6903,6 +7278,7 @@
         {
           "id": "nvidia/nemotron-3-content-safety",
           "name": "nemotron-3-content-safety",
+          "family": "nemotron",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -6996,6 +7372,7 @@
         {
           "id": "nvidia/llama-nemotron-rerank-vl-1b-v2",
           "name": "llama-nemotron-rerank-vl-1b-v2",
+          "family": "nemotron",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -7028,6 +7405,7 @@
         {
           "id": "nvidia/nemotron-voicechat",
           "name": "nemotron-voicechat",
+          "family": "nemotron",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -7158,6 +7536,7 @@
         {
           "id": "nvidia/llama-nemotron-embed-vl-1b-v2",
           "name": "llama-nemotron-embed-vl-1b-v2",
+          "family": "nemotron",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -7190,6 +7569,7 @@
         {
           "id": "nvidia/nemotron-content-safety-reasoning-4b",
           "name": "nemotron-content-safety-reasoning-4b",
+          "family": "nemotron",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -7315,6 +7695,7 @@
         {
           "id": "nvidia/llama-3_1-nemotron-safety-guard-8b-v3",
           "name": "llama-3.1-nemotron-safety-guard-8b-v3",
+          "family": "nemotron",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -7735,6 +8116,7 @@
         {
           "id": "nvidia/nemotron-mini-4b-instruct",
           "name": "nemotron-mini-4b-instruct",
+          "family": "nemotron",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -7861,9 +8243,9 @@
     "stepfun": {
       "id": "stepfun",
       "api": "https://api.stepfun.com/v1",
-      "name": "StepFun (China)",
+      "name": "StepFun",
       "doc": "https://platform.stepfun.com/docs/zh/overview/concept",
-      "display_name": "StepFun (China)",
+      "display_name": "StepFun",
       "models": [
         {
           "id": "step-3.5-flash-2603",
@@ -7873,6 +8255,15 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-01",
@@ -8023,6 +8414,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -8075,6 +8471,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -8125,6 +8526,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -8175,6 +8581,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -8224,6 +8635,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8260,6 +8676,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8301,6 +8722,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "interleaved": {
             "field": "reasoning_content"
@@ -8351,6 +8777,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8387,6 +8818,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8428,6 +8864,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8464,6 +8905,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8500,6 +8946,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8536,6 +8987,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -8580,6 +9036,17 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -8640,6 +9107,17 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -8771,6 +9249,7 @@
             "context": 1048576,
             "output": 65536
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.25,
             "output": 1.5,
@@ -8909,6 +9388,16 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -8982,6 +9471,17 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -9034,6 +9534,59 @@
           "type": "chat"
         },
         {
+          "id": "gemini-3-pro-image-preview",
+          "name": "Nano Banana Pro",
+          "family": "gemini-pro",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2025-11-20",
+          "last_updated": "2025-11-20",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 65536,
+            "output": 32768
+          },
+          "cost": {
+            "input": 2,
+            "output": 120
+          },
+          "display_name": "Nano Banana Pro",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "default_enabled": true,
+              "mode": "level",
+              "level": "high",
+              "level_options": [
+                "low",
+                "high"
+              ],
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thought_signatures"
+              ]
+            }
+          },
+          "type": "image-generation"
+        },
+        {
           "id": "gemini-3-pro-preview",
           "name": "Gemini 3 Pro Preview",
           "family": "gemini-pro",
@@ -9042,6 +9595,15 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "high"
+              ]
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -9065,6 +9627,7 @@
             "context": 1048576,
             "output": 65536
           },
+          "status": "deprecated",
           "cost": {
             "input": 2,
             "output": 12,
@@ -9104,6 +9667,39 @@
               ]
             }
           },
+          "type": "chat"
+        },
+        {
+          "id": "gemini-2.5-flash-tts",
+          "name": "Gemini 2.5 Flash TTS",
+          "family": "gemini-flash",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2025-09-30",
+          "last_updated": "2025-12-10",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 32768,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0.5,
+            "output": 10
+          },
+          "display_name": "Gemini 2.5 Flash TTS",
           "type": "chat"
         },
         {
@@ -9237,6 +9833,16 @@
               "default": -1
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens",
+              "min": 512,
+              "max": 24576
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -9422,6 +10028,13 @@
               "default": -1
             }
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 128,
+              "max": 32768
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -9503,6 +10116,16 @@
               "default": -1
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens",
+              "min": 0,
+              "max": 24576
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -9584,6 +10207,7 @@
             "context": 1048576,
             "output": 8192
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.075,
             "output": 0.3
@@ -9623,6 +10247,7 @@
             "context": 1048576,
             "output": 8192
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.1,
             "output": 0.4,
@@ -9798,48 +10423,6 @@
             "supported": false
           },
           "type": "chat"
-        },
-        {
-          "id": "gemini-3-pro-image-preview",
-          "name": "gemini-3-pro-image-preview",
-          "display_name": "gemini-3-pro-image-preview",
-          "type": "image-generation",
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ]
-          },
-          "cost": {
-            "input": 2,
-            "output": 12,
-            "cache_read": 2
-          },
-          "limit": {
-            "context": 8192,
-            "output": 8192
-          },
-          "metadata": {
-            "description": "Gemini-3-Pro-Image-Preview (Nano Banana Pro) is a high-performance image generation and editing model built on Gemini 3 Pro. It delivers enhanced multimodal understanding and real-world semantic reasoning, enabling fast creation of well-structured visual content such as infographics, product sketches, and multi-subject scenes. It can also leverage real-time knowledge through Search grounding. The model excels in text rendering, consistent multi-image blending, and identity preservation, while offering fine-grained creative controls like localized edits, lighting and focus adjustments, camera transformations, and flexible aspect ratios. It’s ideal for rapid design, concept previews, product visualization, and everyday image generation workflows.",
-            "typeHints": [
-              "image_generation"
-            ],
-            "inputModalities": [
-              "text",
-              "image"
-            ],
-            "pricing": {
-              "cache_read": 2,
-              "input": 2,
-              "output": 12
-            },
-            "source": "public-provider-conf"
-          },
-          "vision": true
         },
         {
           "id": "imagen-4.0",
@@ -12335,6 +12918,7 @@
             "context": 128000,
             "output": 65536
           },
+          "status": "deprecated",
           "cost": {
             "input": 1.1,
             "output": 4.4,
@@ -12384,6 +12968,7 @@
             "context": 128000,
             "output": 32768
           },
+          "status": "deprecated",
           "cost": {
             "input": 15,
             "output": 60,
@@ -12477,106 +13062,6 @@
             "cache_read": 0.075
           },
           "display_name": "GPT-4o mini",
-          "type": "chat"
-        },
-        {
-          "id": "gpt-4o-mini-tts",
-          "name": "GPT-4o mini TTS",
-          "family": "gpt-mini",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": false,
-          "knowledge": "2023-09",
-          "release_date": "2025-03-20",
-          "last_updated": "2025-03-20",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "audio"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 2000,
-            "output": 0
-          },
-          "cost": {
-            "input": 0.6,
-            "output": 12
-          },
-          "display_name": "GPT-4o mini TTS",
-          "type": "chat"
-        },
-        {
-          "id": "gpt-4o-transcribe",
-          "name": "GPT-4o Transcribe",
-          "family": "gpt-4o",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": false,
-          "knowledge": "2024-05",
-          "release_date": "2025-03-20",
-          "last_updated": "2025-03-20",
-          "modalities": {
-            "input": [
-              "audio",
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 16000,
-            "output": 2000
-          },
-          "cost": {
-            "input": 2.5,
-            "output": 10
-          },
-          "display_name": "GPT-4o Transcribe",
-          "type": "chat"
-        },
-        {
-          "id": "whisper-1",
-          "name": "Whisper",
-          "family": "whisper",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": false,
-          "knowledge": "2023-09",
-          "release_date": "2023-03-01",
-          "last_updated": "2023-03-01",
-          "modalities": {
-            "input": [
-              "audio"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 0,
-            "output": 0
-          },
-          "cost": {
-            "input": 0,
-            "output": 0
-          },
-          "display_name": "Whisper",
           "type": "chat"
         },
         {
@@ -13085,6 +13570,52 @@
       "display_name": "MiniMax (minimax.io)",
       "models": [
         {
+          "id": "MiniMax-M3",
+          "name": "MiniMax-M3",
+          "family": "minimax",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-06-01",
+          "last_updated": "2026-06-01",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 512000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 2.4,
+            "cache_read": 0.12
+          },
+          "display_name": "MiniMax-M3",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "type": "chat"
+        },
+        {
           "id": "MiniMax-M2.7",
           "name": "MiniMax-M2.7",
           "family": "minimax",
@@ -13117,7 +13648,6 @@
             "cache_write": 0.375
           },
           "display_name": "MiniMax-M2.7",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -13128,7 +13658,8 @@
                 "thinking_blocks"
               ]
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "MiniMax-M2.7-highspeed",
@@ -13163,7 +13694,6 @@
             "cache_write": 0.375
           },
           "display_name": "MiniMax-M2.7-highspeed",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -13174,7 +13704,8 @@
                 "thinking_blocks"
               ]
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "MiniMax-M2.5-highspeed",
@@ -13209,12 +13740,12 @@
             "cache_write": 0.375
           },
           "display_name": "MiniMax-M2.5-highspeed",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "MiniMax-M2.5",
@@ -13249,12 +13780,12 @@
             "cache_write": 0.375
           },
           "display_name": "MiniMax-M2.5",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "MiniMax-M2.1",
@@ -13287,12 +13818,12 @@
             "output": 1.2
           },
           "display_name": "MiniMax-M2.1",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "MiniMax-M2",
@@ -13325,12 +13856,12 @@
             "output": 1.2
           },
           "display_name": "MiniMax-M2",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true
             }
-          }
+          },
+          "type": "chat"
         }
       ]
     },
@@ -14989,16 +15520,16 @@
       "models": [
         {
           "id": "kat-coder-pro-v2",
-          "name": "Kwaipilot: KAT-Coder-Pro V2",
+          "name": "KAT Coder Pro V2",
           "attachment": false,
           "reasoning": {
             "supported": false,
             "default": true
           },
-          "tool_call": true,
-          "temperature": true,
-          "release_date": "2026-03-27",
-          "last_updated": "2026-04-11",
+          "tool_call": false,
+          "structured_output": false,
+          "release_date": "2026-03-28",
+          "last_updated": "2026-03-28",
           "modalities": {
             "input": [
               "text"
@@ -15007,9 +15538,10 @@
               "text"
             ]
           },
-          "open_weights": true,
+          "open_weights": false,
           "limit": {
             "context": 256000,
+            "input": 256000,
             "output": 80000
           },
           "cost": {
@@ -15017,9 +15549,10 @@
             "output": 1.2,
             "cache_read": 0.06
           },
-          "display_name": "Kwaipilot: KAT-Coder-Pro V2",
+          "display_name": "KAT Coder Pro V2",
           "type": "chat",
           "family": "kat-coder",
+          "temperature": true,
           "metadata": {
             "source": "public-provider-conf"
           },
@@ -15127,16 +15660,18 @@
         },
         {
           "id": "kat-coder-pro-v1",
-          "name": "KAT Coder Pro V1",
+          "name": "KAT-Coder-Pro V1",
+          "family": "kat-coder",
           "attachment": false,
           "reasoning": {
-            "supported": false,
+            "supported": true,
             "default": true
           },
           "tool_call": false,
-          "structured_output": false,
-          "release_date": "2025-10-28",
-          "last_updated": "2025-10-28",
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-10-24",
+          "last_updated": "2025-10-24",
           "modalities": {
             "input": [
               "text"
@@ -15148,18 +15683,10 @@
           "open_weights": false,
           "limit": {
             "context": 256000,
-            "input": 256000,
-            "output": 32768
+            "output": 32000
           },
-          "cost": {
-            "input": 1.5,
-            "output": 6
-          },
-          "display_name": "KAT Coder Pro V1",
-          "type": "chat",
-          "family": "kat-coder",
-          "temperature": true,
-          "knowledge": "2024-10"
+          "display_name": "KAT-Coder-Pro V1",
+          "type": "chat"
         },
         {
           "id": "kat-dev",
