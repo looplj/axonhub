@@ -81,7 +81,7 @@ cache:
   # Redis cache configuration
   redis:
     # Simple mode: Use addr for plain host:port
-    addr: ""                    # Redis address (host:port) (env: AXONHUB_CACHE_REDIS_ADDR)
+    addr: ""                    # Deprecated. Redis address (host:port) (env: AXONHUB_CACHE_REDIS_ADDR)
 
     # URL mode: Use url for full redis:// or rediss:// URLs (takes priority over addr)
     # Supported formats:
@@ -91,9 +91,17 @@ cache:
     url: ""                     # Redis URL (env: AXONHUB_CACHE_REDIS_URL)
 
     # Optional overrides (apply to both addr and url modes)
+    addrs: []                   # Overrides URL host (env: AXONHUB_CACHE_REDIS_ADDRS)
     username: ""                # Overrides URL username (env: AXONHUB_CACHE_REDIS_USERNAME)
     password: ""                # Overrides URL password (env: AXONHUB_CACHE_REDIS_PASSWORD)
     db: 0                       # Overrides URL /db (env: AXONHUB_CACHE_REDIS_DB)
+    
+    master_name: ""             # Redis Sentinel Mode master_name (env: AXONHUB_CACHE_REDIS_MASTER_NAME)
+    sentinel_username: ""       # Redis Sentinel Mode sentinel_username (env: AXONHUB_CACHE_REDIS_SENTINEL_USERNAME)
+    sentinel_password: ""       # Redis Sentinel Mode sentinel_password (env: AXONHUB_CACHE_REDIS_SENTINEL_PASSWORD)
+    route_by_latency: false     # Redis v8 feature, NewFailoverClusterClient by route_by_latency (env: AXONHUB_CACHE_REDIS_ROUTE_BY_LATENCY)
+    route_randomly: false       # Redis v8 feature, NewFailoverClusterClient by route_randomly (env: AXONHUB_CACHE_REDIS_ROUTE_RANDOMLY)
+    is_cluster_mode: false      # Enable Redis Cluster Mode (env: AXONHUB_CACHE_REDIS_IS_CLUSTER_MODE)
     tls: false                  # Enable TLS for addr mode (env: AXONHUB_CACHE_REDIS_TLS)
     tls_insecure_skip_verify: false # Skip TLS cert verification (env: AXONHUB_CACHE_REDIS_TLS_INSECURE_SKIP_VERIFY)
     expiration: "30m"           # Redis cache TTL (env: AXONHUB_CACHE_REDIS_EXPIRATION)
