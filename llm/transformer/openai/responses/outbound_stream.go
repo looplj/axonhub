@@ -240,6 +240,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				Type: "function",
 				Function: llm.FunctionCall{
 					Name:      item.Name,
+					Namespace: item.Namespace,
 					Arguments: "",
 				},
 			}
@@ -257,7 +258,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 								Type:  "function",
 								Index: toolCallIdx,
 								Function: llm.FunctionCall{
-									Name: item.Name,
+									Name:      item.Name,
+									Namespace: item.Namespace,
 								},
 							},
 						},
@@ -340,7 +342,12 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		// Function call completed - update state but don't emit an event
 		if streamEvent.CallID != "" {
 			if tc, ok := s.state.toolCalls[streamEvent.CallID]; ok {
-				tc.Function.Name = streamEvent.Name
+				if streamEvent.Name != "" {
+					tc.Function.Name = streamEvent.Name
+				}
+				if streamEvent.Namespace != "" {
+					tc.Function.Namespace = streamEvent.Namespace
+				}
 				tc.Function.Arguments = streamEvent.Arguments
 			}
 		}

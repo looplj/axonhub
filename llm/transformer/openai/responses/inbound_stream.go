@@ -534,6 +534,7 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		ResponseCustomToolCall: tc.ResponseCustomToolCall,
 		Function: llm.FunctionCall{
 			Name:      tc.Function.Name,
+			Namespace: tc.Function.Namespace,
 			Arguments: "",
 		},
 	}
@@ -565,11 +566,12 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 
 	default:
 		item := &Item{
-			ID:     itemID,
-			Type:   "function_call",
-			Status: lo.ToPtr("in_progress"),
-			CallID: tc.ID,
-			Name:   tc.Function.Name,
+			ID:        itemID,
+			Type:      "function_call",
+			Status:    lo.ToPtr("in_progress"),
+			CallID:    tc.ID,
+			Name:      tc.Function.Name,
+			Namespace: tc.Function.Namespace,
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -889,6 +891,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				Status:    lo.ToPtr("completed"),
 				CallID:    tc.ID,
 				Name:      tc.Function.Name,
+				Namespace: tc.Function.Namespace,
 				Arguments: tc.Function.Arguments,
 			}
 

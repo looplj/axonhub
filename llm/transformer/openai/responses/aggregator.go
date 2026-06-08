@@ -43,6 +43,7 @@ type aggregatedItem struct {
 	Role             string
 	CallID           string
 	Name             string
+	Namespace        string
 	Arguments        *strings.Builder
 	EncryptedContent *string
 
@@ -258,6 +259,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			item.Role = ev.Item.Role
 			item.CallID = ev.Item.CallID
 			item.Name = ev.Item.Name
+			item.Namespace = ev.Item.Namespace
 			item.Arguments.WriteString(ev.Item.Arguments)
 			item.EncryptedContent = ev.Item.EncryptedContent
 			item.Input = ev.Item.Input
@@ -322,6 +324,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			if item := a.getItemForEvent(ev.OutputIndex, ev.ItemID); item != nil {
 				if ev.Name != "" {
 					item.Name = ev.Name
+				}
+
+				if ev.Namespace != "" {
+					item.Namespace = ev.Namespace
 				}
 
 				if ev.Arguments != "" {
@@ -615,6 +621,7 @@ func (a *streamAggregator) buildResponse() *Response {
 					Status:    lo.ToPtr(item.Status),
 					CallID:    item.CallID,
 					Name:      item.Name,
+					Namespace: item.Namespace,
 					Arguments: item.Arguments.String(),
 				})
 
