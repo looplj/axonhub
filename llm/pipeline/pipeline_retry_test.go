@@ -430,6 +430,61 @@ func TestPipeline_Process_StreamFirstByteTimeoutBeforeResponseHeadersSwitchesCha
 	require.Less(t, time.Since(startedAt), 150*time.Millisecond)
 }
 
+func TestPipeline_Process_StreamFirstByteTimeoutAfterFirstEventRaceReturnsTimeout(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: lo.ToPtr(true)}, nil
+		},
+	}
+
+	outbound := &mockOutbound{
+		transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return streams.Map(stream, func(*httpclient.StreamEvent) *llm.Response {
+				return &llm.Response{}
+			}), nil
+		},
+	}
+
+	for range 200 {
+		executor := &mockExecutor{
+			doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+				<-ctx.Done()
+				return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("chunk")}}), nil
+			},
+		}
+
+		p := &pipeline{
+			Executor:               executor,
+			Inbound:                inbound,
+			Outbound:               outbound,
+			streamFirstByteTimeout: time.Nanosecond,
+		}
+
+		res, err := p.Process(ctx, &httpclient.Request{})
+		if err == nil {
+			require.Nil(t, res, "timed-out first-byte attempts must not return a stream")
+		}
+
+		require.ErrorIs(t, err, ErrStreamFirstByteTimeout)
+	}
+}
+
+func TestPipeline_StreamFirstByteTimeoutAfterSuccessfulFirstEventReturnsTimeout(t *testing.T) {
+	p := &pipeline{streamFirstByteTimeout: 20 * time.Millisecond}
+	attempt := streamFirstByteAttempt{
+		enabled:  true,
+		timedOut: func() bool { return true },
+	}
+
+	err := p.streamFirstByteTimeoutAfterSuccessfulFirstEvent(context.Background(), attempt)
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrStreamFirstByteTimeout)
+}
+
 func TestPipeline_Process_NonStreamTimeoutBeforeResponseHeadersSwitchesChannel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
