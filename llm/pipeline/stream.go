@@ -98,12 +98,16 @@ func (p *pipeline) streamForAutoAggregation(
 	ctx context.Context,
 	executor Executor,
 	request *httpclient.Request,
+	normalizeError func(error) error,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	return p.streamWithOptions(ctx, executor, request, streamOptions{})
+	return p.streamWithOptions(ctx, executor, request, streamOptions{
+		normalizeError: normalizeError,
+	})
 }
 
 type streamOptions struct {
 	waitFirstEvent bool
+	normalizeError func(error) error
 }
 
 type streamFirstByteAttempt struct {
@@ -125,7 +129,7 @@ func (p *pipeline) streamWithOptions(
 
 	outboundStream, err := executor.DoStream(streamCtx, request)
 	if err != nil {
-		err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
 		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
@@ -144,7 +148,7 @@ func (p *pipeline) streamWithOptions(
 	outboundStream, err = p.applyRawStreamMiddlewares(streamCtx, outboundStream)
 	if err != nil {
 		rawStream.Close()
-		err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
 		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 		attempt.cancel()
 
@@ -163,7 +167,7 @@ func (p *pipeline) streamWithOptions(
 	llmStream, err := p.Outbound.TransformStream(streamCtx, request, outboundStream)
 	if err != nil {
 		outboundStream.Close()
-		err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
 		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 
 		slog.ErrorContext(streamCtx, "Failed to transform streaming request", slog.Any("error", err))
@@ -178,7 +182,7 @@ func (p *pipeline) streamWithOptions(
 	llmStream, err = p.applyLlmStreamMiddlewares(streamCtx, llmStream)
 	if err != nil {
 		rawLlmStream.Close()
-		err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
 		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 		attempt.cancel()
 
@@ -199,7 +203,7 @@ func (p *pipeline) streamWithOptions(
 		llmStream, err = p.checkEmptyResponse(streamCtx, llmStream)
 		if err != nil {
 			rawLlmStream.Close()
-			err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+			err = p.normalizeStreamError(ctx, attempt, opts, err)
 			p.applyRawErrorResponseMiddlewares(streamCtx, err)
 			attempt.cancel()
 
@@ -210,7 +214,7 @@ func (p *pipeline) streamWithOptions(
 	inboundStream, err := p.Inbound.TransformStream(streamCtx, llmStream)
 	if err != nil {
 		llmStream.Close()
-		err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
 		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 
 		slog.ErrorContext(streamCtx, "Failed to transform streaming request", slog.Any("error", err))
@@ -224,7 +228,7 @@ func (p *pipeline) streamWithOptions(
 	inboundStream, err = p.applyInboundRawStreamMiddlewares(streamCtx, inboundStream)
 	if err != nil {
 		rawInboundStream.Close()
-		err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
 		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 		attempt.cancel()
 
@@ -234,7 +238,7 @@ func (p *pipeline) streamWithOptions(
 	if opts.waitFirstEvent {
 		inboundStream, err = p.waitFirstStreamEvent(streamCtx, inboundStream)
 		if err != nil {
-			err = p.normalizeStreamFirstByteError(ctx, attempt, err)
+			err = p.normalizeStreamError(ctx, attempt, opts, err)
 			p.applyRawErrorResponseMiddlewares(streamCtx, err)
 			attempt.cancel()
 
@@ -242,7 +246,6 @@ func (p *pipeline) streamWithOptions(
 		}
 
 		attempt.stop()
-		inboundStream = &cancelOnCloseStream{Stream: inboundStream, cancel: attempt.cancel}
 	}
 
 	if slog.Default().Enabled(streamCtx, slog.LevelDebug) {
@@ -253,6 +256,10 @@ func (p *pipeline) streamWithOptions(
 				return event
 			},
 		)
+	}
+
+	if opts.waitFirstEvent {
+		inboundStream = &cancelOnCloseStream{Stream: inboundStream, cancel: attempt.cancel}
 	}
 
 	return inboundStream, nil
@@ -298,6 +305,20 @@ func (p *pipeline) normalizeStreamFirstByteError(parentCtx context.Context, atte
 	}
 
 	return err
+}
+
+func (p *pipeline) normalizeStreamError(
+	parentCtx context.Context,
+	attempt streamFirstByteAttempt,
+	opts streamOptions,
+	err error,
+) error {
+	err = p.normalizeStreamFirstByteError(parentCtx, attempt, err)
+	if err == nil || opts.normalizeError == nil {
+		return err
+	}
+
+	return opts.normalizeError(err)
 }
 
 func (p *pipeline) streamFirstByteTimeoutError() error {

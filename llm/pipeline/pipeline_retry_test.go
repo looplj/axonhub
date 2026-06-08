@@ -3,6 +3,8 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -524,6 +526,50 @@ func TestPipeline_Process_NonStreamTimeoutBeforeResponseHeadersReportsTimeoutToM
 	require.ErrorIs(t, rawErrors[0], ErrNonStreamResponseTimeout)
 }
 
+func TestPipeline_Process_AutoAggregationTimeoutReportsTimeoutToMiddlewareOnce(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+
+	inbound := &mockInbound{}
+
+	executor := &mockExecutor{
+		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		},
+	}
+
+	var rawErrors []error
+	mw := &mockMiddleware{
+		onRawError: func(_ context.Context, err error) {
+			rawErrors = append(rawErrors, err)
+		},
+	}
+
+	outbound := &mockOutbound{
+		transformRequest: func(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
+			req.Stream = lo.ToPtr(true)
+			return &httpclient.Request{}, nil
+		},
+	}
+
+	p := &pipeline{
+		Executor:                 executor,
+		Inbound:                  inbound,
+		Outbound:                 outbound,
+		middlewares:              []Middleware{mw},
+		nonStreamResponseTimeout: 20 * time.Millisecond,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+
+	require.Error(t, err)
+	require.Nil(t, res)
+	require.ErrorIs(t, err, ErrNonStreamResponseTimeout)
+	require.Len(t, rawErrors, 1)
+	require.ErrorIs(t, rawErrors[0], ErrNonStreamResponseTimeout)
+}
+
 func TestPipeline_Process_StreamFirstByteTimeoutStopsAfterFirstEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
@@ -569,6 +615,62 @@ func TestPipeline_Process_StreamFirstByteTimeoutStopsAfterFirstEvent(t *testing.
 	require.True(t, res.EventStream.Next(), "first event should be returned immediately")
 	require.True(t, res.EventStream.Next(), "second event should not be canceled by the first-byte timer")
 	require.NoError(t, res.EventStream.Err())
+}
+
+func TestPipeline_Process_StreamCancelOnCloseWrapsDebugStream(t *testing.T) {
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
+	t.Cleanup(func() {
+		slog.SetDefault(oldLogger)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: lo.ToPtr(true)}, nil
+		},
+	}
+
+	var streamCtx context.Context
+	executor := &mockExecutor{
+		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			streamCtx = ctx
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("chunk")}}), nil
+		},
+	}
+
+	outbound := &mockOutbound{
+		transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return streams.Map(stream, func(*httpclient.StreamEvent) *llm.Response {
+				return &llm.Response{}
+			}), nil
+		},
+	}
+
+	p := &pipeline{
+		Executor:               executor,
+		Inbound:                inbound,
+		Outbound:               outbound,
+		streamFirstByteTimeout: time.Second,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.NotNil(t, res.EventStream)
+	require.NotNil(t, streamCtx)
+	require.IsType(t, &cancelOnCloseStream{}, res.EventStream)
+
+	require.NoError(t, res.EventStream.Close())
+	select {
+	case <-streamCtx.Done():
+	default:
+		require.Fail(t, "expected closing the stream to cancel the attempt context")
+	}
 }
 
 type delayedSecondEventStream struct {
