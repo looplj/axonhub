@@ -123,13 +123,16 @@ func (p *pipeline) autoAggregateStream(
 	attemptCtx, cancel := p.nonStreamAttemptContext(ctx)
 	defer cancel()
 
-	inboundStream, err := p.streamForAutoAggregation(attemptCtx, executor, request)
+	inboundStream, err := p.streamForAutoAggregation(attemptCtx, executor, request, func(err error) error {
+		if p.isNonStreamAttemptTimeout(ctx, attemptCtx) {
+			return p.nonStreamTimeoutError()
+		}
+
+		return err
+	})
 	if err != nil {
 		if p.isNonStreamAttemptTimeout(ctx, attemptCtx) {
-			err := p.nonStreamTimeoutError()
-			p.applyRawErrorResponseMiddlewares(attemptCtx, err)
-
-			return nil, err
+			return nil, p.nonStreamTimeoutError()
 		}
 
 		return nil, err
