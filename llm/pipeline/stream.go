@@ -245,6 +245,14 @@ func (p *pipeline) streamWithOptions(
 			return nil, err
 		}
 
+		if err := p.streamFirstByteTimeoutAfterSuccessfulFirstEvent(ctx, attempt); err != nil {
+			_ = inboundStream.Close()
+			p.applyRawErrorResponseMiddlewares(streamCtx, err)
+			attempt.cancel()
+
+			return nil, err
+		}
+
 		attempt.stop()
 	}
 
@@ -300,11 +308,26 @@ func (p *pipeline) normalizeStreamFirstByteError(parentCtx context.Context, atte
 		return nil
 	}
 
-	if attempt.enabled && attempt.timedOut() && parentCtx.Err() == nil {
+	if p.streamFirstByteTimedOut(parentCtx, attempt) {
 		return p.streamFirstByteTimeoutError()
 	}
 
 	return err
+}
+
+func (p *pipeline) streamFirstByteTimedOut(parentCtx context.Context, attempt streamFirstByteAttempt) bool {
+	return attempt.enabled && attempt.timedOut() && parentCtx.Err() == nil
+}
+
+func (p *pipeline) streamFirstByteTimeoutAfterSuccessfulFirstEvent(
+	parentCtx context.Context,
+	attempt streamFirstByteAttempt,
+) error {
+	if p.streamFirstByteTimedOut(parentCtx, attempt) {
+		return p.streamFirstByteTimeoutError()
+	}
+
+	return nil
 }
 
 func (p *pipeline) normalizeStreamError(
