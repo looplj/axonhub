@@ -256,9 +256,15 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		return data, llm.ResponseMeta{}, err
 	}
 
-	choices := make([]llm.Choice, len(choicesAggs))
+	choiceIndexes := make([]int, 0, len(choicesAggs))
+	for choiceIndex := range choicesAggs {
+		choiceIndexes = append(choiceIndexes, choiceIndex)
+	}
+	sort.Ints(choiceIndexes)
 
-	for choiceIndex := range choices {
+	choices := make([]llm.Choice, len(choiceIndexes))
+
+	for i, choiceIndex := range choiceIndexes {
 		choiceAgg := choicesAggs[choiceIndex]
 
 		var finalToolCalls []llm.ToolCall
@@ -324,7 +330,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			}
 		}
 
-		choices[choiceIndex] = llm.Choice{
+		choices[i] = llm.Choice{
 			Index:        choiceIndex,
 			Message:      message,
 			FinishReason: finishReason,

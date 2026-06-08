@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -59,7 +60,58 @@ func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input 
 	return toOpenAPIAPIKey(apiKey), nil
 }
 
+// APIKeyQuotaUsages is the resolver for the apiKeyQuotaUsages field.
+func (r *queryResolver) APIKeyQuotaUsages(ctx context.Context, apiKeyID *objects.GUID, key *string) ([]*APIKeyProfileQuotaUsage, error) {
+	// Resolve the target key id from the GUID, rejecting GUIDs of the wrong type
+	// (UnmarshalGQL accepts any gid://axonhub/<type>/<id>). The two-choose-one
+	// validation lives in GetForRead.
+	var id *int
+	if apiKeyID != nil {
+		if apiKeyID.Type != ent.TypeAPIKey {
+			return nil, fmt.Errorf("invalid api key id: expected a %s GUID, got %s", ent.TypeAPIKey, apiKeyID.Type)
+		}
+
+		id = &apiKeyID.ID
+	}
+
+	// Load through the biz layer so the APIKey privacy policy applies: the caller
+	// must hold read_api_keys and can only reach keys in its own project; foreign
+	// or missing keys surface as NotFound.
+	apiKey, err := r.apiKeyService.GetForRead(ctx, id, key)
+	if err != nil {
+		return nil, err
+	}
+
+	usages, err := r.quotaService.ProfileQuotaUsages(ctx, apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*APIKeyProfileQuotaUsage, 0, len(usages))
+	for _, u := range usages {
+		out = append(out, &APIKeyProfileQuotaUsage{
+			ProfileName: u.ProfileName,
+			Quota:       u.Quota,
+			Window: &APIKeyQuotaWindow{
+				Start: u.Window.Start,
+				End:   u.Window.End,
+			},
+			Usage: &APIKeyQuotaUsage{
+				RequestCount: int(u.Usage.RequestCount),
+				TotalTokens:  int(u.Usage.TotalTokens),
+				TotalCost:    u.Usage.TotalCost,
+			},
+		})
+	}
+
+	return out, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
+// Query returns QueryResolver implementation.
+func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
+
 type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }

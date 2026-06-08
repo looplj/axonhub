@@ -89,7 +89,10 @@ func (t *OutboundTransformer) TransformRequest(
 		// continue
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationRequest(llmReq)
-	case llm.RequestTypeEmbedding:
+	case llm.RequestTypeEmbedding,
+		llm.RequestTypeSpeech,
+		llm.RequestTypeTranscription,
+		llm.RequestTypeTranslation:
 		return t.Outbound.TransformRequest(ctx, llmReq)
 	case llm.RequestTypeCompact:
 		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
@@ -276,6 +279,17 @@ func (t *OutboundTransformer) TransformResponse(
 		return t.transformImageGenerationResponse(httpResp)
 	}
 
+	// Audio (speech/transcription/translation) responses are handled by the underlying
+	// OpenAI transformer, which routes on APIFormat (binary audio for speech, JSON for STT).
+	if httpResp.Request != nil {
+		switch httpResp.Request.RequestType {
+		case llm.RequestTypeSpeech.String(),
+			llm.RequestTypeTranscription.String(),
+			llm.RequestTypeTranslation.String():
+			return t.Outbound.TransformResponse(ctx, httpResp)
+		}
+	}
+
 	// Check for HTTP error status codes
 	if httpResp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
@@ -393,11 +407,31 @@ func extractBase64FromDataURL(dataURL string) string {
 	return after
 }
 
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	// Audio streaming uses dedicated event schemas; delegate to the embedded OpenAI transformer.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech),
+			string(llm.APIFormatOpenAITranscription),
+			string(llm.APIFormatOpenAITranslation):
+			return t.Outbound.AggregateStreamChunks(ctx, req, chunks)
+		}
+	}
+
 	return AggregateStreamChunks(ctx, chunks)
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	// Audio streaming uses dedicated event schemas; delegate to the embedded OpenAI transformer.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech),
+			string(llm.APIFormatOpenAITranscription),
+			string(llm.APIFormatOpenAITranslation):
+			return t.Outbound.TransformStream(ctx, req, stream)
+		}
+	}
+
 	// Filter out upstream DONE events
 	filteredStream := streams.Filter(stream, func(event *httpclient.StreamEvent) bool {
 		return !bytes.HasPrefix(event.Data, []byte("[DONE]"))

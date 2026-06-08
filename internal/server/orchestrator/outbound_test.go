@@ -574,6 +574,14 @@ func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 		require.False(t, isCompletedAggregated(llm.ResponseMeta{ID: "resp_123"}))
 	})
 
+	t.Run("explicit completed flag is completed", func(t *testing.T) {
+		require.True(t, isCompletedAggregated(llm.ResponseMeta{ID: llm.SpeechStreamResponseID, Completed: true}))
+	})
+
+	t.Run("speech stream aggregate id alone is not completed", func(t *testing.T) {
+		require.False(t, isCompletedAggregated(llm.ResponseMeta{ID: llm.SpeechStreamResponseID}))
+	})
+
 	t.Run("missing usage and id is not completed", func(t *testing.T) {
 		require.False(t, isCompletedAggregated(llm.ResponseMeta{}))
 	})

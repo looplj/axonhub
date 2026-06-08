@@ -79,7 +79,9 @@ func (ts *OutboundPersistentStream) Next() bool {
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		ts.responseChunks = append(ts.responseChunks, event)
+		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
+		// summary to avoid buffering the full audio payload in memory.
+		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
 		// response.completed; for Anthropic Messages API this is message_stop.
@@ -303,7 +305,8 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 }
 
 func isCompletedAggregated(meta llm.ResponseMeta) bool {
-	return meta.Usage != nil && meta.Usage.CompletionTokens > 0
+	return meta.Completed ||
+		(meta.Usage != nil && meta.Usage.CompletionTokens > 0)
 }
 
 var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit breaker")

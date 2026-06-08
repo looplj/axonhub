@@ -246,6 +246,15 @@ type Request struct {
 	// Completion is the completion request, will be set if the request is completion request.
 	Completion *CompletionRequest `json:"completion,omitempty"`
 
+	// Speech is the text-to-speech (TTS) request, will be set if the request is a speech request.
+	Speech *SpeechRequest `json:"speech,omitempty"`
+
+	// Transcription is the speech-to-text (STT) transcription request, will be set if the request is a transcription request.
+	Transcription *TranscriptionRequest `json:"transcription,omitempty"`
+
+	// Translation is the speech-to-text (STT) translation request, will be set if the request is a translation request.
+	Translation *TranslationRequest `json:"translation,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -390,6 +399,40 @@ type Message struct {
 
 	// Copilot-only: X-Initiator quota tracking. Ignored by other providers.
 	Attribution string `json:"attribution,omitempty"`
+
+	// InlineToolResults carries assistant-inlined tool results (e.g. Anthropic
+	// *_tool_result blocks produced during a server-side tool turn). Downstream
+	// inbound transformers that can represent inline tool outputs (OpenAI
+	// Responses function_call_output, Anthropic *_tool_result content block)
+	// should emit them in place; others (OpenAI Chat Completions, plain text
+	// UIs) can safely drop the field.
+	InlineToolResults []InlineToolResult `json:"inline_tool_results,omitempty"`
+}
+
+// InlineToolResult represents a tool result that is emitted inline within the
+// assistant turn, rather than as a separate tool-role message. Used to carry
+// Anthropic server-side tool results (web_search_tool_result,
+// code_execution_tool_result, mcp_tool_result, ...) without losing the
+// information that is otherwise not representable in OpenAI Chat Completions
+// format. OpenAI Responses inbound transformers may render these as
+// `function_call_output` output items.
+type InlineToolResult struct {
+	// ToolCallID is the originating *_tool_use id this result corresponds to.
+	ToolCallID string `json:"tool_call_id,omitempty"`
+
+	// Output is a best-effort text serialization of the tool result content,
+	// suitable for OpenAI Responses `function_call_output.output`.
+	Output string `json:"output,omitempty"`
+
+	// IsError indicates that the tool result represents an error.
+	IsError bool `json:"is_error,omitempty"`
+
+	// TransformerMetadata carries provider-specific fields. Anthropic uses:
+	//   anthropic_type                 — original block type (e.g.
+	//                                    "web_search_tool_result")
+	//   anthropic_caller               — raw JSON caller object (optional)
+	//   anthropic_tool_result_content  — raw JSON of the original content
+	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 }
 
 // Annotation represents a citation or reference annotation in a message.
@@ -637,6 +680,22 @@ type Response struct {
 	// Completion is the completion response, will present if the request is completion request.
 	Completion *CompletionResponse `json:"completion,omitempty"`
 
+	// Speech is the text-to-speech (TTS) response, will present if the request is a speech request.
+	Speech *SpeechResponse `json:"speech,omitempty"`
+
+	// Transcription is the speech-to-text (STT) response, will present if the request is a transcription or translation request.
+	Transcription *TranscriptionResponse `json:"transcription,omitempty"`
+
+	// SpeechStreamEvent carries one SSE event of a streaming TTS response (stream_format="sse").
+	SpeechStreamEvent *SpeechStreamEvent `json:"speech_stream_event,omitempty"`
+
+	// SpeechAudioChunk carries one raw binary chunk of a streaming TTS response
+	// when the provider returns chunked audio instead of SSE.
+	SpeechAudioChunk *SpeechAudioChunk `json:"-"`
+
+	// TranscriptionStreamEvent carries one SSE event of a streaming STT response (stream=true).
+	TranscriptionStreamEvent *TranscriptionStreamEvent `json:"transcription_stream_event,omitempty"`
+
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.
 	// if it is embedding request, it will be embedding.
@@ -696,8 +755,9 @@ type TopLogprob struct {
 }
 
 type ResponseMeta struct {
-	ID    string `json:"id"`
-	Usage *Usage `json:"usage"`
+	ID        string `json:"id"`
+	Usage     *Usage `json:"usage"`
+	Completed bool   `json:"completed,omitempty"`
 }
 
 // Usage Represents the total token usage per request to OpenAI.

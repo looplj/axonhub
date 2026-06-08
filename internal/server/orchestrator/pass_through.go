@@ -84,6 +84,13 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		channel := outbound.GetCurrentChannel()
 		llmReq := outbound.state.LlmRequest
 
+		// Multipart audio bodies cannot be reused: the outbound transformer rebuilds the
+		// multipart payload with a new boundary in Content-Type, so replaying the inbound
+		// bytes would mismatch the header, and the model field cannot be patched via sjson.
+		if !passThroughBodySupported(llmReq.APIFormat) {
+			return request, nil
+		}
+
 		log.Debug(ctx, "applying pass-through body",
 			log.String("channel", channel.Name),
 			log.String("api_format", request.APIFormat),
@@ -125,6 +132,18 @@ func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model 
 	return nextBody, nil
 }
 
+// passThroughBodySupported reports whether the raw inbound body can safely replace the
+// outbound request body. Multipart formats (audio transcription/translation) are excluded.
+func passThroughBodySupported(apiFormat llm.APIFormat) bool {
+	//nolint:exhaustive // only multipart formats are excluded.
+	switch apiFormat {
+	case llm.APIFormatOpenAITranscription, llm.APIFormatOpenAITranslation:
+		return false
+	default:
+		return true
+	}
+}
+
 func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 	//nolint:exhaustive // ohter format do not need model field.
 	switch apiFormat {
@@ -134,7 +153,10 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 		llm.APIFormatOpenAIEmbedding,
 		llm.APIFormatJinaEmbedding,
 		llm.APIFormatJinaRerank,
-		llm.APIFormatAnthropicMessage:
+		llm.APIFormatAnthropicMessage,
+		// Speech (TTS) has a JSON body with a model field; transcription/translation
+		// use multipart bodies that cannot be patched via sjson, so they are excluded.
+		llm.APIFormatOpenAISpeech:
 		return true
 	default:
 		return false

@@ -31,8 +31,6 @@ func TestNeuralWatt_CheckQuota_HappyPath(t *testing.T) {
 				"subscription": {
 					"plan": "standard",
 					"status": "active",
-					"current_period_start": "2026-04-02T05:58:36Z",
-					"current_period_end": "2026-05-02T05:58:36Z",
 					"kwh_included": 20.0,
 					"kwh_used": 14.3126,
 					"kwh_remaining": 5.6874,
@@ -62,6 +60,8 @@ func TestNeuralWatt_CheckQuota_HappyPath(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
+
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// kwh_remaining = 3.0, kwh_included = 20.0 → 15% < 20% → warning
@@ -74,15 +74,13 @@ func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
 				"subscription": {
 					"plan": "standard",
 					"status": "active",
-					"current_period_start": "2026-04-02T05:58:36Z",
-					"current_period_end": "2026-05-02T05:58:36Z",
 					"kwh_included": 20.0,
 					"kwh_used": 17.0,
 					"kwh_remaining": 3.0,
-					"in_overage": false
+					"in_overage": false,
+					"kwh_reset_date": "2026-06-02T05:58:36Z"
 				}
 			}`
-
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     make(http.Header),
@@ -101,10 +99,12 @@ func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "warning", quota.Status)
 	require.True(t, quota.Ready)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, expectedResetAt, *quota.NextResetAt)
 }
 
 func TestNeuralWatt_CheckQuota_ExhaustedState(t *testing.T) {
-	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-05-02T05:58:36Z")
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -117,12 +117,11 @@ func TestNeuralWatt_CheckQuota_ExhaustedState(t *testing.T) {
 				"subscription": {
 					"plan": "standard",
 					"status": "active",
-					"current_period_start": "2026-04-02T05:58:36Z",
-					"current_period_end": "2026-05-02T05:58:36Z",
 					"kwh_included": 20.0,
 					"kwh_used": 22.5,
 					"kwh_remaining": 0.0,
-					"in_overage": true
+					"in_overage": true,
+					"kwh_reset_date": "2026-06-02T05:58:36Z"
 				}
 			}`
 
@@ -216,6 +215,8 @@ func TestNeuralWatt_CheckQuota_HTTPError(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
+
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
@@ -227,12 +228,11 @@ func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
 				"subscription": {
 					"plan": "standard",
 					"status": "active",
-					"current_period_start": "2026-04-02T05:58:36Z",
-					"current_period_end": "2026-05-02T05:58:36Z",
 					"kwh_included": 20.0,
 					"kwh_used": 20.0,
 					"kwh_remaining": 0.0,
-					"in_overage": false
+					"in_overage": false,
+					"kwh_reset_date": "2026-06-02T05:58:36Z"
 				}
 			}`
 
@@ -254,6 +254,8 @@ func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "exhausted", quota.Status)
 	require.False(t, quota.Ready)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, expectedResetAt, *quota.NextResetAt)
 }
 
 func TestNeuralWatt_CheckQuota_SubscriptionWithoutKeyFields(t *testing.T) {
@@ -304,8 +306,6 @@ func TestNeuralWatt_CheckQuota_CustomBaseURL(t *testing.T) {
 				"subscription": {
 					"plan": "standard",
 					"status": "active",
-					"current_period_start": "2026-04-02T05:58:36Z",
-					"current_period_end": "2026-05-02T05:58:36Z",
 					"kwh_included": 20.0,
 					"kwh_used": 10.0,
 					"kwh_remaining": 10.0,
@@ -332,6 +332,49 @@ func TestNeuralWatt_CheckQuota_CustomBaseURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
+}
+
+func TestNeuralWatt_CheckQuota_KwhResetDate(t *testing.T) {
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-26T19:25:50Z")
+
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"balance": {
+					"credits_remaining_usd": 120.01,
+					"total_credits_usd": 120.01,
+					"accounting_method": "energy"
+				},
+				"subscription": {
+					"plan": "pro",
+					"status": "active",
+					"kwh_included": 33.0,
+					"kwh_used": 8.7808,
+					"kwh_remaining": 24.2192,
+					"in_overage": false,
+					"kwh_reset_date": "2026-06-26T19:25:50Z"
+				}
+			}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewNeuralWattQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, expectedResetAt, *quota.NextResetAt)
 }
 
 func TestNeuralWatt_SupportsChannel(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
@@ -57,7 +58,13 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 		return
 	}
 
-	if len(genericReq.Body) == 0 {
+	handlers.ChatCompletionWithRequest(c, genericReq)
+}
+
+func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context, genericReq *httpclient.Request) {
+	ctx := c.Request.Context()
+
+	if genericReq == nil || len(genericReq.Body) == 0 {
 		JSONError(c, http.StatusBadRequest, errors.New("Request body is empty"))
 		return
 	}
@@ -163,6 +170,91 @@ func WriteSSEStreamWithErrorFormatter(c *gin.Context, stream streams.Stream[*htt
 			}
 		}
 	}
+}
+
+// WriteBinaryStream writes raw bytes from stream events directly to the response body.
+// The first chunk type is treated as the stream Content-Type when present.
+func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent]) {
+	ctx := c.Request.Context()
+	clientDisconnected := false
+	headersWritten := false
+	contentType := "application/octet-stream"
+
+	defer func() {
+		if clientDisconnected {
+			log.Warn(ctx, "Client disconnected")
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			clientDisconnected = true
+			log.Warn(ctx, "Context done, stopping binary stream")
+			return
+		default:
+			if !stream.Next() {
+				if stream.Err() != nil {
+					log.Error(ctx, "Error in binary stream", log.Cause(stream.Err()))
+					if !headersWritten {
+						c.JSON(streamErrorStatus(stream.Err()), FormatStreamError(ctx, stream.Err()))
+						return
+					}
+				}
+
+				c.Writer.Flush()
+				return
+			}
+
+			cur := stream.Current()
+			if cur != nil && cur.Type == httpclient.BinaryStreamDoneEventType {
+				continue
+			}
+
+			if cur == nil || len(cur.Data) == 0 {
+				continue
+			}
+
+			if !headersWritten {
+				if ct := strings.TrimSpace(cur.Type); ct != "" {
+					contentType = ct
+				}
+
+				c.Header("Content-Type", contentType)
+				c.Header("Cache-Control", "no-cache")
+				c.Header("Connection", "keep-alive")
+				c.Header("Access-Control-Allow-Origin", "*")
+				headersWritten = true
+			}
+
+			if _, err := c.Writer.Write(cur.Data); err != nil {
+				clientDisconnected = true
+				log.Warn(ctx, "Failed to write binary stream chunk", log.Cause(err))
+				return
+			}
+
+			c.Writer.Flush()
+		}
+	}
+}
+
+func streamErrorStatus(err error) int {
+	var quotaErr *orchestrator.QuotaExhaustedError
+	if errors.As(err, &quotaErr) {
+		return http.StatusServiceUnavailable
+	}
+
+	var respErr *llm.ResponseError
+	if errors.As(err, &respErr) && respErr.StatusCode != 0 {
+		return respErr.StatusCode
+	}
+
+	var httpErr *httpclient.Error
+	if errors.As(err, &httpErr) && httpErr.StatusCode != 0 {
+		return httpErr.StatusCode
+	}
+
+	return http.StatusInternalServerError
 }
 
 // FormatStreamError formats a stream error into an OpenAI-compatible JSON error object.

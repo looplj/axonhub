@@ -560,6 +560,38 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 	return &apiKey, nil
 }
 
+// GetForRead loads an API key by id or key for read-only access. Exactly one of
+// id or key must be non-nil.
+//
+// It deliberately goes through the context-bound ent client (entFromContext) so
+// the APIKey privacy policy runs: an API key principal must hold read_api_keys
+// and can only see keys inside its own project. Callers in another project — or
+// missing the scope — therefore get a NotFound / privacy error, never a foreign
+// key. This is the read-side counterpart to the implicit ent gating used by the
+// update mutations.
+func (s *APIKeyService) GetForRead(ctx context.Context, id *int, key *string) (*ent.APIKey, error) {
+	if (id == nil) == (key == nil) {
+		return nil, fmt.Errorf("exactly one of api key id or key must be provided")
+	}
+
+	client := s.entFromContext(ctx)
+	q := client.APIKey.Query()
+
+	switch {
+	case id != nil:
+		q = q.Where(apikey.IDEQ(*id))
+	case key != nil:
+		q = q.Where(apikey.KeyEQ(*key))
+	}
+
+	apiKey, err := q.Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiKey, nil
+}
+
 func (s *APIKeyService) invalidateAPIKeyCaches(ctx context.Context, keys ...string) {
 	if len(keys) == 0 {
 		return

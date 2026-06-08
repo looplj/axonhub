@@ -58,6 +58,7 @@ type Dependencies struct {
 	SystemService                  *biz.SystemService
 	ChannelService                 *biz.ChannelService
 	RequestService                 *biz.RequestService
+	QuotaService                   *biz.QuotaService
 	ProjectService                 *biz.ProjectService
 	DataStorageService             *biz.DataStorageService
 	RoleService                    *biz.RoleService
@@ -96,6 +97,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.SystemService,
 			deps.ChannelService,
 			deps.RequestService,
+			deps.QuotaService,
 			deps.ProjectService,
 			deps.DataStorageService,
 			deps.RoleService,

@@ -10,6 +10,13 @@ const (
 	RequestTypeVideo      RequestType = "video"
 	RequestTypeCompact    RequestType = "compact"
 	RequestTypeCompletion RequestType = "completion"
+
+	// RequestTypeSpeech is the text-to-speech (TTS) request type, maps to /v1/audio/speech.
+	RequestTypeSpeech RequestType = "speech"
+	// RequestTypeTranscription is the speech-to-text (STT) request type, maps to /v1/audio/transcriptions.
+	RequestTypeTranscription RequestType = "transcription"
+	// RequestTypeTranslation is the speech-to-text translation request type, maps to /v1/audio/translations.
+	RequestTypeTranslation RequestType = "translation"
 )
 
 func (r RequestType) String() string {
@@ -28,10 +35,14 @@ const (
 	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"
 	APIFormatOpenAIEmbedding       APIFormat = "openai/embeddings"
 	APIFormatOpenAIVideo           APIFormat = "openai/video"
-	APIFormatGeminiContents        APIFormat = "gemini/contents"
-	APIFormatAnthropicMessage      APIFormat = "anthropic/messages"
-	APIFormatAiSDKText             APIFormat = "aisdk/text"
-	APIFormatAiSDKDataStream       APIFormat = "aisdk/datastream"
+
+	APIFormatOpenAISpeech        APIFormat = "openai/audio_speech"
+	APIFormatOpenAITranscription APIFormat = "openai/audio_transcriptions"
+	APIFormatOpenAITranslation   APIFormat = "openai/audio_translations"
+	APIFormatGeminiContents      APIFormat = "gemini/contents"
+	APIFormatAnthropicMessage    APIFormat = "anthropic/messages"
+	APIFormatAiSDKText           APIFormat = "aisdk/text"
+	APIFormatAiSDKDataStream     APIFormat = "aisdk/datastream"
 
 	APIFormatGeminiEmbedding APIFormat = "gemini/embeddings"
 

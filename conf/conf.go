@@ -97,6 +97,10 @@ func Load() (Config, error) {
 	config.AllowNoAuth = config.APIServer.API.Auth.AllowNoAuth
 	config.APIKeyPrefix = config.APIServer.API.Auth.KeyPrefix
 
+	if config.Cache.Redis.Addr != "" {
+		log.Warn(context.Background(), "Config `cache.redis.addr` Deprecated: Use `cache.redis.addrs` instead.")
+	}
+
 	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
 
 	return config, nil
@@ -186,6 +190,7 @@ func setDefaults(v *viper.Viper) {
 	// Database defaults
 	v.SetDefault("db.dialect", "sqlite3")
 	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)")
+	v.SetDefault("db.disable_auto_migration", false)
 	v.SetDefault("db.disable_sqlite_auto_wal", false)
 	v.SetDefault("db.debug", false)
 	v.SetDefault("db.max_open_conns", 20)
@@ -233,9 +238,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cache.default_expiration", "5m")
 	v.SetDefault("cache.cleanup_interval", "10m")
 	v.SetDefault("cache.redis.addr", "")
+	v.SetDefault("cache.redis.addrs", []string{})
 	v.SetDefault("cache.redis.url", "")
 	v.SetDefault("cache.redis.username", "")
 	v.SetDefault("cache.redis.password", "")
+	v.SetDefault("cache.redis.master_name", "")
+	v.SetDefault("cache.redis.sentinel_username", "")
+	v.SetDefault("cache.redis.sentinel_password", "")
 	// Note: cache.redis.db has no default value to allow explicit override to 0
 	v.SetDefault("cache.redis.tls", false)
 	v.SetDefault("cache.redis.tls_insecure_skip_verify", false)

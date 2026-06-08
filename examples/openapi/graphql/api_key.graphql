@@ -54,3 +54,20 @@ mutation LoadApiKeyProfileTemplate($input: LoadApiKeyProfileTemplateInput!) {
     }
   }
 }
+
+# Provide exactly one of $apiKeyId or $key. Requires the read_api_keys scope and
+# only returns usage for keys inside the service account's own project.
+query APIKeyQuotaUsages($apiKeyId: ID, $key: String) {
+  apiKeyQuotaUsages(apiKeyId: $apiKeyId, key: $key) {
+    profileName
+    window {
+      start
+      end
+    }
+    usage {
+      requestCount
+      totalTokens
+      totalCost
+    }
+  }
+}

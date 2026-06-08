@@ -83,6 +83,40 @@ func (s *errorAfterStream) Err() error {
 
 func (s *errorAfterStream) Close() error { return nil }
 
+type trackingStream struct {
+	items   []*httpclient.StreamEvent
+	idx     int
+	current *httpclient.StreamEvent
+}
+
+func (s *trackingStream) Next() bool {
+	if s.idx >= len(s.items) {
+		return false
+	}
+
+	s.current = s.items[s.idx]
+	s.idx++
+
+	return true
+}
+
+func (s *trackingStream) Current() *httpclient.StreamEvent { return s.current }
+func (s *trackingStream) Err() error                       { return nil }
+func (s *trackingStream) Close() error                     { return nil }
+
+type failingResponseWriter struct {
+	gin.ResponseWriter
+
+	err    error
+	writes int
+}
+
+func (w *failingResponseWriter) Write(_ []byte) (int, error) {
+	w.writes++
+
+	return 0, w.err
+}
+
 func TestWriteSSEStream_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -253,6 +287,74 @@ func TestWriteSSEStream_NoError(t *testing.T) {
 
 	body := w.Body.String()
 	assert.NotContains(t, body, "event:error")
+}
+
+func TestWriteBinaryStream(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	stream := streams.SliceStream([]*httpclient.StreamEvent{
+		{Type: "audio/mpeg", Data: []byte{0x01, 0x02}},
+		{Type: "audio/mpeg", Data: []byte{0x03, 0x04, 0x05}},
+	})
+
+	WriteBinaryStream(c, stream)
+
+	require.Equal(t, "audio/mpeg", w.Header().Get("Content-Type"))
+	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04, 0x05}, w.Body.Bytes())
+}
+
+func TestWriteBinaryStream_ErrorBeforeFirstChunkReturnsJSON(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	stream := &errorAfterStream{
+		err: &httpclient.Error{
+			StatusCode: http.StatusTooManyRequests,
+			Body:       []byte(`{"error":{"message":"Rate limit exceeded","type":"rate_limit_error","code":"rate_limit"},"request_id":"req_1"}`),
+		},
+	}
+
+	WriteBinaryStream(c, stream)
+
+	require.Equal(t, http.StatusTooManyRequests, w.Code)
+	require.Equal(t, "application/json; charset=utf-8", w.Header().Get("Content-Type"))
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+
+	errorField, ok := body["error"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "rate_limit_error", errorField["type"])
+	require.Equal(t, "rate_limit", errorField["code"])
+	require.Equal(t, "req_1", body["request_id"])
+}
+
+func TestWriteBinaryStream_WriteErrorStopsConsuming(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	failingWriter := &failingResponseWriter{
+		ResponseWriter: c.Writer,
+		err:            errors.New("broken pipe"),
+	}
+	c.Writer = failingWriter
+
+	stream := &trackingStream{
+		items: []*httpclient.StreamEvent{
+			{Type: "audio/mpeg", Data: []byte{0x01}},
+			{Type: "audio/mpeg", Data: []byte{0x02}},
+		},
+	}
+
+	WriteBinaryStream(c, stream)
+
+	require.Equal(t, 1, failingWriter.writes)
+	require.Equal(t, 1, stream.idx)
+	require.Empty(t, w.Body.Bytes())
 }
 
 func TestFormatStreamError_PlainError(t *testing.T) {

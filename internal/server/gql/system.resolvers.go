@@ -206,6 +206,29 @@ func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, i
 	return true, nil
 }
 
+// UpdateSecuritySettings is the resolver for the updateSecuritySettings field.
+func (r *mutationResolver) UpdateSecuritySettings(ctx context.Context, input UpdateSecuritySettingsInput) (bool, error) {
+	current, err := r.systemService.SecuritySettings(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to read current security settings: %w", err)
+	}
+
+	newSettings := biz.SecuritySettings{
+		BlockedIPs: current.BlockedIPs,
+	}
+
+	if input.BlockedIPs != nil {
+		newSettings.BlockedIPs = input.BlockedIPs
+	}
+
+	err = r.systemService.SetSecuritySettings(ctx, newSettings)
+	if err != nil {
+		return false, fmt.Errorf("failed to update security settings: %w", err)
+	}
+
+	return true, nil
+}
+
 // CheckProviderQuotas is the resolver for the checkProviderQuotas field.
 func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error) {
 	if r.providerQuotaService == nil {
@@ -478,6 +501,11 @@ func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoSto
 // QuotaEnforcementSettings is the resolver for the quotaEnforcementSettings field.
 func (r *queryResolver) QuotaEnforcementSettings(ctx context.Context) (*biz.QuotaEnforcementSettings, error) {
 	return r.systemService.QuotaEnforcementSettings(ctx)
+}
+
+// SecuritySettings is the resolver for the securitySettings field.
+func (r *queryResolver) SecuritySettings(ctx context.Context) (*biz.SecuritySettings, error) {
+	return r.systemService.SecuritySettings(ctx)
 }
 
 // ProxyPresets is the resolver for the proxyPresets field.

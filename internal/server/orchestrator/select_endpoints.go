@@ -49,6 +49,21 @@ var videoCapableAPIFormats = map[string]struct{}{
 	"seedance/video": {},
 }
 
+// speechCapableAPIFormats lists API formats for text-to-speech (TTS) requests.
+var speechCapableAPIFormats = map[string]struct{}{
+	"openai/audio_speech": {},
+}
+
+// transcriptionCapableAPIFormats lists API formats for speech-to-text (STT) transcription requests.
+var transcriptionCapableAPIFormats = map[string]struct{}{
+	"openai/audio_transcriptions": {},
+}
+
+// translationCapableAPIFormats lists API formats for speech-to-text (STT) translation requests.
+var translationCapableAPIFormats = map[string]struct{}{
+	"openai/audio_translations": {},
+}
+
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
 // based on the request type and inbound API format. Prefers an endpoint whose API format
 // matches the inbound request format so that pass-through can be enabled when identical
@@ -79,6 +94,12 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 		allowed = rerankCapableAPIFormats
 	case llm.RequestTypeVideo:
 		allowed = videoCapableAPIFormats
+	case llm.RequestTypeSpeech:
+		allowed = speechCapableAPIFormats
+	case llm.RequestTypeTranscription:
+		allowed = transcriptionCapableAPIFormats
+	case llm.RequestTypeTranslation:
+		allowed = translationCapableAPIFormats
 	}
 
 	if allowed != nil {

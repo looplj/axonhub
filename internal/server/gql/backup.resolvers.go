@@ -95,6 +95,10 @@ func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input U
 		settings.IncludeUsageStats = *input.IncludeUsageStats
 	}
 
+	if input.IncludeRequestLogs != nil {
+		settings.IncludeRequestLogs = *input.IncludeRequestLogs
+	}
+
 	if input.RetentionDays != nil {
 		settings.RetentionDays = *input.RetentionDays
 	}

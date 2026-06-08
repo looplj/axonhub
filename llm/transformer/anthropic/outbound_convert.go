@@ -847,14 +847,22 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 }
 
 func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
-	blocks := make([]MessageContentBlock, 0, len(msg.Content.MultipleContent))
+	var ordered []orderedContentBlock
+
+	appendOrdered := func(meta map[string]any, b MessageContentBlock) {
+		ordered = append(ordered, orderedContentBlock{
+			idx:   getAnthropicBlockIndex(meta),
+			order: len(ordered),
+			block: b,
+		})
+	}
 
 	// Process content parts in order to preserve original sequence
 	for _, part := range msg.Content.MultipleContent {
 		switch part.Type {
 		case "text":
 			if part.Text != nil {
-				blocks = append(blocks, MessageContentBlock{
+				appendOrdered(part.TransformerMetadata, MessageContentBlock{
 					Type:         "text",
 					Text:         part.Text,
 					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
@@ -862,10 +870,9 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 			}
 		case "image_url":
 			if part.ImageURL != nil && part.ImageURL.URL != "" {
-				// Convert OpenAI image format to Anthropic format
 				url := part.ImageURL.URL
 				if parsed := xurl.ParseDataURL(url); parsed != nil {
-					block := MessageContentBlock{
+					appendOrdered(part.TransformerMetadata, MessageContentBlock{
 						Type: "image",
 						Source: &ImageSource{
 							Type:      "base64",
@@ -873,34 +880,36 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 							Data:      parsed.Data,
 						},
 						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
-					}
-
-					blocks = append(blocks, block)
+					})
 				} else {
-					block := MessageContentBlock{
+					appendOrdered(part.TransformerMetadata, MessageContentBlock{
 						Type: "image",
 						Source: &ImageSource{
 							Type: "url",
 							URL:  part.ImageURL.URL,
 						},
 						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
-					}
-
-					blocks = append(blocks, block)
+					})
 				}
 			}
 		}
 	}
 
 	for _, toolCall := range msg.ToolCalls {
-		// Use safe JSON repair/fallback for tool input
-		blocks = append(blocks, MessageContentBlock{
-			Type:         "tool_use",
-			ID:           toolCall.ID,
-			Name:         &toolCall.Function.Name,
-			Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
-			CacheControl: convertToAnthropicCacheControl(toolCall.CacheControl),
-		})
+		appendOrdered(toolCall.TransformerMetadata, toolUseBlockFromLLM(toolCall))
+	}
+
+	for _, ir := range msg.InlineToolResults {
+		if block, ok := toolResultBlockFromInline(ir); ok {
+			appendOrdered(ir.TransformerMetadata, block)
+		}
+	}
+
+	sorted := sortOrderedContentBlocks(ordered)
+
+	blocks := make([]MessageContentBlock, 0, len(sorted))
+	for _, ob := range sorted {
+		blocks = append(blocks, ob.block)
 	}
 
 	if len(blocks) == 0 {
@@ -966,18 +975,23 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		toolCalls            []llm.ToolCall
 		annotations          []llm.Annotation
 		textParts            []string
+		inlineToolResults    []llm.InlineToolResult
 	)
 
-	for _, block := range anthropicResp.Content {
+	for i := range anthropicResp.Content {
+		block := anthropicResp.Content[i]
+
 		switch block.Type {
 		case "text":
 			if block.Text != nil && *block.Text != "" {
 				textParts = append(textParts, *block.Text)
-				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
+				part := llm.MessageContentPart{
 					Type:     "text",
 					Text:     block.Text,
 					ImageURL: &llm.ImageURL{},
-				})
+				}
+				setAnthropicBlockIndex(&part.TransformerMetadata, i)
+				content.MultipleContent = append(content.MultipleContent, part)
 			}
 			if len(block.Citations) > 0 {
 				annotations = append(annotations, lo.FilterMap(block.Citations, func(citation TextCitation, _ int) (llm.Annotation, bool) {
@@ -995,23 +1009,10 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 			}
 		case "tool_use":
 			if block.ID != "" && block.Name != nil {
-				// Repair or safely fallback invalid JSON from provider
-				repaired := xjson.SafeJSONRawMessage(string(block.Input))
-				toolCall := llm.ToolCall{
-					ID:   block.ID,
-					Type: "function",
-					Function: llm.FunctionCall{
-						Name:      *block.Name,
-						Arguments: string(repaired),
-					},
-				}
-				toolCalls = append(toolCalls, toolCall)
+				tc := toolCallFromAnthropicBlock(block)
+				setAnthropicBlockIndex(&tc.TransformerMetadata, i)
+				toolCalls = append(toolCalls, tc)
 			}
-		case "server_tool_use", "web_search_tool_result":
-			if transformerMetadata == nil {
-				transformerMetadata = map[string]any{}
-			}
-			transformerMetadata[TransformerMetadataKeyAnthropicResponseContent] = cloneAnthropicResponseContentBlocks(anthropicResp.Content)
 		case "thinking":
 			if block.Thinking != nil {
 				thinkingText = block.Thinking
@@ -1022,20 +1023,76 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 			if block.Data != "" {
 				redactedThinkingData = &block.Data
 			}
+		default:
+			switch {
+			case isAnthropicSpecialToolUseBlock(block.Type):
+				if block.ID != "" && block.Name != nil {
+					tc := toolCallFromAnthropicBlock(block)
+					setAnthropicBlockIndex(&tc.TransformerMetadata, i)
+					toolCalls = append(toolCalls, tc)
+				}
+
+				if transformerMetadata == nil {
+					transformerMetadata = map[string]any{}
+				}
+				transformerMetadata[TransformerMetadataKeyAnthropicResponseContent] = cloneAnthropicResponseContentBlocks(anthropicResp.Content)
+			case isAnthropicSpecialToolResultBlock(block.Type):
+				ir := inlineToolResultFromBlock(&block)
+				setAnthropicBlockIndex(&ir.TransformerMetadata, i)
+				inlineToolResults = append(inlineToolResults, ir)
+
+				if transformerMetadata == nil {
+					transformerMetadata = map[string]any{}
+				}
+				transformerMetadata[TransformerMetadataKeyAnthropicResponseContent] = cloneAnthropicResponseContentBlocks(anthropicResp.Content)
+			}
 		}
 	}
 
-	// If we only have text content and no other types, set Content.Content
+	// Collapse text-only MultipleContent into Content.Content whenever doing
+	// so does not lose ordering information needed for Anthropic round-trip:
+	// it is safe iff every tool call and every inline tool result has a block
+	// index strictly greater than every text part's block index. When a
+	// server-side tool appears *between* text blocks, keep MultipleContent so
+	// per-part anthropic_block_index metadata survives.
 	if len(textParts) > 0 && len(content.MultipleContent) == len(textParts) {
-		// Join all text parts
-		var allText string
-		for _, text := range textParts {
-			allText += text
+		maxTextIdx := -1
+
+		for _, part := range content.MultipleContent {
+			if i := getAnthropicBlockIndex(part.TransformerMetadata); i > maxTextIdx {
+				maxTextIdx = i
+			}
 		}
 
-		content.Content = &allText
-		// Clear MultipleContent since we're using the simple string format
-		content.MultipleContent = nil
+		safeToCollapse := true
+
+		for _, tc := range toolCalls {
+			idx := getAnthropicBlockIndex(tc.TransformerMetadata)
+			if idx >= 0 && idx < maxTextIdx {
+				safeToCollapse = false
+				break
+			}
+		}
+
+		if safeToCollapse {
+			for _, ir := range inlineToolResults {
+				idx := getAnthropicBlockIndex(ir.TransformerMetadata)
+				if idx >= 0 && idx < maxTextIdx {
+					safeToCollapse = false
+					break
+				}
+			}
+		}
+
+		if safeToCollapse {
+			var allText string
+			for _, text := range textParts {
+				allText += text
+			}
+
+			content.Content = &allText
+			content.MultipleContent = nil
+		}
 	}
 
 	message := &llm.Message{
@@ -1046,6 +1103,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		ReasoningSignature:       shared.EncodeAnthropicSignature(thinkingSignature),
 		RedactedReasoningContent: redactedThinkingData,
 		Annotations:              annotations,
+		InlineToolResults:        inlineToolResults,
 	}
 
 	choice := llm.Choice{
@@ -1062,6 +1120,82 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 	}
 
 	return resp
+}
+
+// toolCallFromAnthropicBlock builds an llm.ToolCall from an Anthropic
+// tool_use-like block (tool_use or any special *_tool_use). For special
+// blocks, TransformerMetadata is populated with anthropic_type (+ optional
+// anthropic_caller) so the block can be round-tripped.
+func toolCallFromAnthropicBlock(block MessageContentBlock) llm.ToolCall {
+	repaired := xjson.SafeJSONRawMessage(string(block.Input))
+
+	tc := llm.ToolCall{
+		ID:   block.ID,
+		Type: "function",
+		Function: llm.FunctionCall{
+			Name:      *block.Name,
+			Arguments: string(repaired),
+		},
+		CacheControl: convertToLLMCacheControl(block.CacheControl),
+	}
+	setAnthropicSpecialMeta(&tc.TransformerMetadata, block.Type, block.Caller)
+
+	return tc
+}
+
+// toolUseBlockFromLLM converts an llm.ToolCall back to an Anthropic
+// MessageContentBlock. For tool calls tagged with anthropic_type, the original
+// block type (e.g. "server_tool_use") and caller are restored; otherwise the
+// block is emitted as a plain "tool_use".
+func toolUseBlockFromLLM(toolCall llm.ToolCall) MessageContentBlock {
+	blockType := "tool_use"
+	if at := getAnthropicType(toolCall.TransformerMetadata); at != "" {
+		blockType = at
+	}
+
+	return MessageContentBlock{
+		Type:         blockType,
+		ID:           toolCall.ID,
+		Name:         &toolCall.Function.Name,
+		Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
+		CacheControl: convertToAnthropicCacheControl(toolCall.CacheControl),
+		Caller:       getAnthropicCaller(toolCall.TransformerMetadata),
+	}
+}
+
+// toolResultBlockFromInline converts an assistant-inlined tool result back to
+// an Anthropic *_tool_result MessageContentBlock. Returns false when the
+// inline result lacks an anthropic_type metadata tag (i.e. it did not
+// originate from an Anthropic special tool result).
+func toolResultBlockFromInline(ir llm.InlineToolResult) (MessageContentBlock, bool) {
+	blockType := getAnthropicType(ir.TransformerMetadata)
+	if blockType == "" {
+		return MessageContentBlock{}, false
+	}
+
+	block := MessageContentBlock{
+		Type:   blockType,
+		Caller: getAnthropicCaller(ir.TransformerMetadata),
+	}
+	if ir.ToolCallID != "" {
+		block.ToolUseID = lo.ToPtr(ir.ToolCallID)
+	}
+
+	if ir.IsError {
+		block.IsError = lo.ToPtr(true)
+	}
+
+	rawContent := getAnthropicToolResultContent(ir.TransformerMetadata)
+	if len(rawContent) > 0 {
+		content := &MessageContent{}
+		content.SetRaw(rawContent)
+
+		block.Content = content
+	} else if ir.Output != "" {
+		block.Content = &MessageContent{Content: lo.ToPtr(ir.Output)}
+	}
+
+	return block, true
 }
 
 func convertToLlmFinishReason(stopReason *string) *string {

@@ -384,7 +384,10 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		llm.APIFormatOpenAIImageGeneration.String(),
 		llm.APIFormatOpenAIImageEdit.String(),
 		llm.APIFormatOpenAIImageVariation.String(),
-		llm.APIFormatOpenAIVideo.String():
+		llm.APIFormatOpenAIVideo.String(),
+		llm.APIFormatOpenAISpeech.String(),
+		llm.APIFormatOpenAITranscription.String(),
+		llm.APIFormatOpenAITranslation.String():
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType:   openai.PlatformOpenAI,
 			BaseURL:        baseURL,
@@ -828,6 +831,19 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 		return ch, nil
 	case channel.TypeBailianAnthropic, channel.TypeMoonshotCoding:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:           anthropic.PlatformDirect,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeOpencodeGoAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:           anthropic.PlatformDirect,
 			BaseURL:        c.BaseURL,

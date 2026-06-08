@@ -161,11 +161,12 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsExtendedConfiguredModel(t *testing.
 		SetIcon("openai").
 		SetRemark(remark).
 		SetModelCard(&objects.ModelCard{
-			Vision:    true,
-			ToolCall:  true,
-			Reasoning: objects.ModelCardReasoning{Supported: true},
-			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
-			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Vision:     true,
+			ToolCall:   true,
+			Reasoning:  objects.ModelCardReasoning{Supported: true},
+			Limit:      objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:       objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}, Output: []string{"text"}},
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
@@ -209,6 +210,73 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsExtendedConfiguredModel(t *testing.
 	require.Equal(t, 8.0, got.Pricing.Output)
 	require.Equal(t, 0.5, got.Pricing.CacheRead)
 	require.Equal(t, 1.0, got.Pricing.CacheWrite)
+	require.NotNil(t, got.Modalities)
+	require.Equal(t, []string{"text", "image"}, got.Modalities.Input)
+	require.Equal(t, []string{"text"}, got.Modalities.Output)
+}
+
+func TestOpenAIHandlers_RetrieveModel_ReturnsEmptyModalitiesWhenZeroValue(t *testing.T) {
+	client, channelSvc, _, router, ctx := setupOpenAIRetrieveTest(t)
+
+	channelCreatedAt := time.Unix(1712345698, 0)
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("OpenAI Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"gpt-4.1"}).
+		SetDefaultTestModel("gpt-4.1").
+		SetStatus(channel.StatusEnabled).
+		SetCreatedAt(channelCreatedAt).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelSvc.SetEnabledChannelsForTest([]*biz.Channel{{Channel: ch}})
+
+	modelCreatedAt := time.Unix(1712345708, 0)
+	_, err = client.Model.Create().
+		SetDeveloper("openai").
+		SetModelID("gpt-4.1").
+		SetName("GPT-4.1").
+		SetType(model.TypeChat).
+		SetGroup("gpt").
+		SetIcon("openai").
+		SetModelCard(&objects.ModelCard{
+			Vision:   true,
+			ToolCall: true,
+			Limit:    objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:     objects.ModelCardCost{Input: 2, Output: 8},
+		}).
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "channel_model",
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt-4.1",
+					},
+				},
+			},
+		}).
+		SetStatus(model.StatusEnabled).
+		SetCreatedAt(modelCreatedAt).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/models/gpt-4.1?include=all", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var got OpenAIModel
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	require.Equal(t, "gpt-4.1", got.ID)
+	require.NotNil(t, got.Modalities, "modalities should be non-nil even when ModelCard.Modalities is zero value")
+	require.NotNil(t, got.Modalities.Input, "modalities.input should be [] not null")
+	require.NotNil(t, got.Modalities.Output, "modalities.output should be [] not null")
+	require.Empty(t, got.Modalities.Input)
+	require.Empty(t, got.Modalities.Output)
 }
 
 func TestOpenAIHandlers_RetrieveModel_ReturnsNotFound(t *testing.T) {
@@ -256,11 +324,12 @@ func TestOpenAIHandlers_ListModels_UsesBasicFieldsByDefault(t *testing.T) {
 		SetIcon("openai").
 		SetRemark(remark).
 		SetModelCard(&objects.ModelCard{
-			Vision:    true,
-			ToolCall:  true,
-			Reasoning: objects.ModelCardReasoning{Supported: true},
-			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
-			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Vision:     true,
+			ToolCall:   true,
+			Reasoning:  objects.ModelCardReasoning{Supported: true},
+			Limit:      objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:       objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}, Output: []string{"text"}},
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
@@ -292,6 +361,7 @@ func TestOpenAIHandlers_ListModels_UsesBasicFieldsByDefault(t *testing.T) {
 	require.Empty(t, got.Data[0].Name)
 	require.Nil(t, got.Data[0].Capabilities)
 	require.Nil(t, got.Data[0].Pricing)
+	require.Nil(t, got.Data[0].Modalities)
 }
 
 func TestOpenAIHandlers_ListModels_UsesExtendedFieldsWhenConfiguredAsDefault(t *testing.T) {
@@ -329,11 +399,12 @@ func TestOpenAIHandlers_ListModels_UsesExtendedFieldsWhenConfiguredAsDefault(t *
 		SetIcon("openai").
 		SetRemark(remark).
 		SetModelCard(&objects.ModelCard{
-			Vision:    true,
-			ToolCall:  true,
-			Reasoning: objects.ModelCardReasoning{Supported: true},
-			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
-			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Vision:     true,
+			ToolCall:   true,
+			Reasoning:  objects.ModelCardReasoning{Supported: true},
+			Limit:      objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:       objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+			Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}, Output: []string{"text"}},
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{
@@ -366,6 +437,9 @@ func TestOpenAIHandlers_ListModels_UsesExtendedFieldsWhenConfiguredAsDefault(t *
 	require.Equal(t, remark, got.Data[0].Description)
 	require.NotNil(t, got.Data[0].Capabilities)
 	require.NotNil(t, got.Data[0].Pricing)
+	require.NotNil(t, got.Data[0].Modalities)
+	require.Equal(t, []string{"text", "image"}, got.Data[0].Modalities.Input)
+	require.Equal(t, []string{"text"}, got.Data[0].Modalities.Output)
 }
 
 func TestOpenAIHandlers_ListModels_ExtendedModeRespectsAPIKeyProfile(t *testing.T) {
@@ -480,7 +554,7 @@ func TestOpenAIHandlers_ListModels_ExtendedModeRespectsAPIKeyProfile(t *testing.
 	})
 
 	handlers := &OpenAIHandlers{
-		ModelService:  biz.NewModelService(biz.ModelServiceParams{
+		ModelService: biz.NewModelService(biz.ModelServiceParams{
 			ChannelService: channelSvc,
 			SystemService:  systemSvc,
 			Ent:            client,
@@ -548,7 +622,7 @@ func TestOpenAIHandlers_ListModels_ExtendedModeFallsBackToBasicForMissingDBModel
 		}).
 		SetSettings(&objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{{
-				Type: "channel_model",
+				Type:         "channel_model",
 				ChannelModel: &objects.ChannelModelAssociation{ChannelID: openaiCh.ID, ModelID: "gpt-4.1"},
 			}},
 		}).

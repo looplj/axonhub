@@ -8,6 +8,8 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -158,6 +160,50 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 	s.invalidateUserCache(ctx, id)
 
 	return user, nil
+}
+
+// UpdateOwnProfile updates fields users are allowed to change for their own account.
+func (s *UserService) UpdateOwnProfile(ctx context.Context, input ent.UpdateUserInput) (*ent.User, error) {
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	id := currentUser.ID
+
+	return authz.RunWithSystemBypass(ctx, "update-own-profile", func(ctx context.Context) (*ent.User, error) {
+		client := s.entFromContext(ctx)
+
+		mut := client.User.UpdateOneID(id).
+			SetNillableFirstName(input.FirstName).
+			SetNillableLastName(input.LastName).
+			SetNillablePreferLanguage(input.PreferLanguage)
+
+		if input.ClearAvatar {
+			mut.ClearAvatar()
+		} else {
+			mut.SetNillableAvatar(input.Avatar)
+		}
+
+		if input.Password != nil {
+			hashedPassword, err := HashPassword(*input.Password)
+			if err != nil {
+				return nil, err
+			}
+
+			mut.SetPassword(hashedPassword)
+		}
+
+		user, err := mut.Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update user profile: %w", err)
+		}
+
+		// Invalidate cache
+		s.invalidateUserCache(ctx, id)
+
+		return user, nil
+	})
 }
 
 // UpdateUserStatus updates the status of a user.

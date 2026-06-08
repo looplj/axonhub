@@ -8,6 +8,10 @@ export const apiFormatSchema = z.enum([
   'openai/image_edit',
   'openai/image_variation',
   'openai/embeddings',
+  'openai/video',
+  'openai/audio_speech',
+  'openai/audio_transcriptions',
+  'openai/audio_translations',
   'anthropic/messages',
   'gemini/contents',
   'gemini/embeddings',
@@ -27,6 +31,9 @@ export const configurableChannelEndpointApiFormats = [
   'openai/image_edit',
   'openai/image_variation',
   'openai/embeddings',
+  'openai/audio_speech',
+  'openai/audio_transcriptions',
+  'openai/audio_translations',
   'anthropic/messages',
   'gemini/contents',
   'gemini/embeddings',
@@ -101,6 +108,7 @@ export const channelTypeSchema = z.enum([
   'nanogpt_responses',
   'fireworks',
   'opencode_go',
+  'opencode_go_anthropic',
   'ollama',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;

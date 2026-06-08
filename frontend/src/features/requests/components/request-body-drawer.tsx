@@ -47,6 +47,8 @@ interface RequestBodyDrawerProps {
   onViewDetail?: (requestId: string) => void;
 }
 
+const OPEN_ANIMATION_DELAY_MS = 520;
+
 export function RequestBodyDrawer({
   open,
   onOpenChange,
@@ -74,6 +76,7 @@ export function RequestBodyDrawer({
 
   // Reset when the drawer is (re)opened for a different request.
   const prevOpenRef = useRef(false);
+  const isOpeningBeforeStateSync = open && !prevOpenRef.current;
   useEffect(() => {
     const justOpened = open && !prevOpenRef.current;
     prevOpenRef.current = open;
@@ -84,16 +87,45 @@ export function RequestBodyDrawer({
     }
   }, [open, initialRequests, initialPageInfo, initialIndex]);
 
-  const currentRequestId = allRequests[currentIndex]?.id ?? initialRequestId;
+  const visibleRequests = isOpeningBeforeStateSync ? initialRequests : allRequests;
+  const visibleCurrentIndex = isOpeningBeforeStateSync ? initialIndex : currentIndex;
+  const currentRequestId = visibleRequests[visibleCurrentIndex]?.id ?? initialRequestId;
 
   // ── toggle for expanding/collapsing all string values ────────────────────
   const [globalExpanded, setGlobalExpanded] = useState(false);
 
+  // Let the Radix sheet finish its enter animation before fetching and mounting
+  // large request bodies. Query parsing and JSON tree rendering can both block
+  // the main thread enough to make the slide-in animation stutter.
+  const [canRenderBody, setCanRenderBody] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setCanRenderBody(false);
+      setGlobalExpanded(false);
+      return;
+    }
+
+    setCanRenderBody(false);
+    const timeoutId = setTimeout(() => setCanRenderBody(true), OPEN_ANIMATION_DELAY_MS);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [open, initialRequestId]);
+
   // ── fetch detail for current request ──────────────────────────────────────
-  const { data: request, isLoading, isFetching } = useRequest(currentRequestId ?? '', { projectId: effectiveProjectId });
+  const { data: request, isLoading, isFetching } = useRequest(currentRequestId ?? '', {
+    projectId: effectiveProjectId,
+    enabled: open && canRenderBody && !!currentRequestId,
+  });
 
   // Keep previous request data visible while loading the next one.
   const displayedRequestRef = useRef<Request | null>(null);
+  useEffect(() => {
+    if (!open) {
+      displayedRequestRef.current = null;
+    }
+  }, [open]);
   if (request) displayedRequestRef.current = request;
   const displayedRequest = displayedRequestRef.current;
 
@@ -124,7 +156,7 @@ export function RequestBodyDrawer({
   }, [displayedRequest]);
 
   // List-level data (always available, no loading flash).
-  const listRequest = allRequests[currentIndex];
+  const listRequest = visibleRequests[visibleCurrentIndex];
 
   // ── navigation ─────────────────────────────────────────────────────────────
   // The list is DESC (newest first).
@@ -278,7 +310,7 @@ export function RequestBodyDrawer({
 
         {/* Body */}
         <div className='flex min-h-0 flex-1 flex-col'>
-          {displayedRequest ? (
+          {displayedRequest && canRenderBody ? (
             <div className='relative flex min-h-0 flex-1 flex-col'>
               {isFetching && (
                 <div className='absolute inset-x-0 top-0 z-10 h-0.5 animate-pulse bg-primary/40' />
@@ -370,7 +402,7 @@ export function RequestBodyDrawer({
                 </TabsContent>
               </Tabs>
             </div>
-          ) : isLoading ? (
+          ) : isLoading || !canRenderBody ? (
             <div className='space-y-4 p-6'>
               <Skeleton className='h-8 w-full' />
               <Skeleton className='h-64 w-full' />

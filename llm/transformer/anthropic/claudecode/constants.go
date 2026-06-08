@@ -22,10 +22,10 @@ const (
 	RedirectURI = "http://localhost:54545/callback"
 	Scopes      = "org:create_api_key user:profile user:inference"
 	// UserAgent keep consistent with Claude CLI.
-	UserAgent = "claude-cli/2.1.110 (external, cli)"
+	UserAgent = "claude-cli/2.1.158 (external, cli)"
 
 	// ClaudeCodeBetaHeader contains the beta feature identifiers for Claude Code API.
-	ClaudeCodeBetaHeader = "claude-code-20250219,interleaved-thinking-2025-05-14,redact-thinking-2026-02-12,context-management-2025-06-27,prompt-caching-scope-2026-01-05,effort-2025-11-24"
+	ClaudeCodeBetaHeader = "claude-code-20250219,context-1m-2025-08-07,interleaved-thinking-2025-05-14,redact-thinking-2026-02-12,context-management-2025-06-27,prompt-caching-scope-2026-01-05,mid-conversation-system-2026-04-07,effort-2025-11-24"
 
 	// ClaudeCodeVersionHeader specifies the API version for Claude Code.
 	ClaudeCodeVersionHeader = "2023-06-01"
@@ -34,5 +34,6 @@ const (
 	// ClaudeCodeAppHeader identifies the client application type.
 	ClaudeCodeAppHeader = "cli"
 	// ClaudeCodeQuotaCheckModel is the model used for quota checking requests.
-	ClaudeCodeQuotaCheckModel = "claude-haiku-4-5"
+	ClaudeCodeQuotaCheckModel  = "claude-haiku-4-5"
+	ClaudeCodeQuotaCheckHeader = "claude-code-20250219,interleaved-thinking-2025-05-14,redact-thinking-2026-02-12,context-management-2025-06-27,prompt-caching-scope-2026-01-05,mid-conversation-system-2026-04-07,effort-2025-11-24"
 )

@@ -3,6 +3,7 @@ package httpclient
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"maps"
 	"testing"
@@ -71,6 +72,27 @@ func newMockReadCloser(data []byte) *mockReadCloser {
 		Reader: bytes.NewReader(data),
 		closed: false,
 	}
+}
+
+type readChunkThenError struct {
+	data []byte
+	err  error
+	read bool
+}
+
+func (r *readChunkThenError) Read(p []byte) (int, error) {
+	if r.read {
+		return 0, io.EOF
+	}
+
+	r.read = true
+	n := copy(p, r.data)
+
+	return n, r.err
+}
+
+func (r *readChunkThenError) Close() error {
+	return nil
 }
 
 func TestRegisterDecoder(t *testing.T) {
@@ -178,6 +200,48 @@ func TestDefaultSSEDecoder_NextAfterClose(t *testing.T) {
 	hasNext := decoder.Next()
 	require.False(t, hasNext)
 	require.NoError(t, decoder.Err())
+}
+
+func TestBinaryChunkDecoder(t *testing.T) {
+	ctx := context.Background()
+	rc := newMockReadCloser([]byte("abcdefgh"))
+	decoder := NewBinaryChunkDecoder("audio/mpeg")(ctx, rc)
+
+	require.True(t, decoder.Next())
+	first := decoder.Current()
+	require.NotNil(t, first)
+	require.Equal(t, "audio/mpeg", first.Type)
+	require.Equal(t, []byte("abcdefgh"), first.Data)
+
+	require.True(t, decoder.Next())
+	done := decoder.Current()
+	require.NotNil(t, done)
+	require.Equal(t, BinaryStreamDoneEventType, done.Type)
+	require.Empty(t, done.Data)
+
+	require.False(t, decoder.Next())
+	require.NoError(t, decoder.Err())
+	require.NoError(t, decoder.Close())
+	require.True(t, rc.closed)
+}
+
+func TestBinaryChunkDecoder_PreservesReadErrorAfterChunk(t *testing.T) {
+	ctx := context.Background()
+	streamErr := errors.New("truncated audio stream")
+	decoder := NewBinaryChunkDecoder("audio/mpeg")(ctx, &readChunkThenError{
+		data: []byte("abc"),
+		err:  streamErr,
+	})
+
+	require.True(t, decoder.Next())
+	chunk := decoder.Current()
+	require.NotNil(t, chunk)
+	require.Equal(t, "audio/mpeg", chunk.Type)
+	require.Equal(t, []byte("abc"), chunk.Data)
+	require.NoError(t, decoder.Err())
+
+	require.False(t, decoder.Next())
+	require.ErrorIs(t, decoder.Err(), streamErr)
 }
 
 func TestStreamDecoderInterface(t *testing.T) {
