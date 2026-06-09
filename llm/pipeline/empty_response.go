@@ -10,6 +10,12 @@ import (
 // This error triggers channel retry when empty response detection is enabled.
 var ErrEmptyResponse = errors.New("empty response detected")
 
+// ErrStreamFirstEventTimeout indicates a streaming response did not produce the first event in time.
+var ErrStreamFirstEventTimeout = errors.New("stream first event timeout")
+
+// ErrNonStreamResponseTimeout indicates a non-streaming response did not complete in time.
+var ErrNonStreamResponseTimeout = errors.New("non-stream response timeout")
+
 // ErrEmptyStreamChunks indicates an auto-upgraded streaming request produced no inbound chunks.
 var ErrEmptyStreamChunks = errors.New("empty stream chunks")
 

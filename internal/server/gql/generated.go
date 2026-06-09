@@ -1418,14 +1418,16 @@ type ComplexityRoot struct {
 	}
 
 	RetryPolicy struct {
-		AutoDisableChannel      func(childComplexity int) int
-		EmptyResponseDetection  func(childComplexity int) int
-		Enabled                 func(childComplexity int) int
-		LoadBalancerStrategy    func(childComplexity int) int
-		MaxChannelRetries       func(childComplexity int) int
-		MaxSingleChannelRetries func(childComplexity int) int
-		RetryDelayMs            func(childComplexity int) int
-		UpstreamErrorPolicy     func(childComplexity int) int
+		AutoDisableChannel              func(childComplexity int) int
+		EmptyResponseDetection          func(childComplexity int) int
+		Enabled                         func(childComplexity int) int
+		LoadBalancerStrategy            func(childComplexity int) int
+		MaxChannelRetries               func(childComplexity int) int
+		MaxSingleChannelRetries         func(childComplexity int) int
+		NonStreamResponseTimeoutSeconds func(childComplexity int) int
+		RetryDelayMs                    func(childComplexity int) int
+		StreamFirstEventTimeoutSeconds  func(childComplexity int) int
+		UpstreamErrorPolicy             func(childComplexity int) int
 	}
 
 	Role struct {
@@ -8495,12 +8497,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RetryPolicy.MaxSingleChannelRetries(childComplexity), true
+	case "RetryPolicy.nonStreamResponseTimeoutSeconds":
+		if e.complexity.RetryPolicy.NonStreamResponseTimeoutSeconds == nil {
+			break
+		}
+
+		return e.complexity.RetryPolicy.NonStreamResponseTimeoutSeconds(childComplexity), true
 	case "RetryPolicy.retryDelayMs":
 		if e.complexity.RetryPolicy.RetryDelayMs == nil {
 			break
 		}
 
 		return e.complexity.RetryPolicy.RetryDelayMs(childComplexity), true
+	case "RetryPolicy.streamFirstEventTimeoutSeconds":
+		if e.complexity.RetryPolicy.StreamFirstEventTimeoutSeconds == nil {
+			break
+		}
+
+		return e.complexity.RetryPolicy.StreamFirstEventTimeoutSeconds(childComplexity), true
 	case "RetryPolicy.upstreamErrorPolicy":
 		if e.complexity.RetryPolicy.UpstreamErrorPolicy == nil {
 			break
@@ -41703,6 +41717,10 @@ func (ec *executionContext) fieldContext_Query_retryPolicy(_ context.Context, fi
 				return ec.fieldContext_RetryPolicy_maxSingleChannelRetries(ctx, field)
 			case "retryDelayMs":
 				return ec.fieldContext_RetryPolicy_retryDelayMs(ctx, field)
+			case "streamFirstEventTimeoutSeconds":
+				return ec.fieldContext_RetryPolicy_streamFirstEventTimeoutSeconds(ctx, field)
+			case "nonStreamResponseTimeoutSeconds":
+				return ec.fieldContext_RetryPolicy_nonStreamResponseTimeoutSeconds(ctx, field)
 			case "loadBalancerStrategy":
 				return ec.fieldContext_RetryPolicy_loadBalancerStrategy(ctx, field)
 			case "enabled":
@@ -45890,6 +45908,64 @@ func (ec *executionContext) _RetryPolicy_retryDelayMs(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_RetryPolicy_retryDelayMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RetryPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RetryPolicy_streamFirstEventTimeoutSeconds(ctx context.Context, field graphql.CollectedField, obj *biz.RetryPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RetryPolicy_streamFirstEventTimeoutSeconds,
+		func(ctx context.Context) (any, error) {
+			return obj.StreamFirstEventTimeoutSeconds, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RetryPolicy_streamFirstEventTimeoutSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RetryPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RetryPolicy_nonStreamResponseTimeoutSeconds(ctx context.Context, field graphql.CollectedField, obj *biz.RetryPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RetryPolicy_nonStreamResponseTimeoutSeconds,
+		func(ctx context.Context) (any, error) {
+			return obj.NonStreamResponseTimeoutSeconds, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RetryPolicy_nonStreamResponseTimeoutSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RetryPolicy",
 		Field:      field,
@@ -78854,7 +78930,7 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "loadBalancerStrategy", "enabled", "autoDisableChannel", "emptyResponseDetection", "upstreamErrorPolicy"}
+	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "streamFirstEventTimeoutSeconds", "nonStreamResponseTimeoutSeconds", "loadBalancerStrategy", "enabled", "autoDisableChannel", "emptyResponseDetection", "upstreamErrorPolicy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -78882,6 +78958,20 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 				return it, err
 			}
 			it.RetryDelayMs = data
+		case "streamFirstEventTimeoutSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamFirstEventTimeoutSeconds"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamFirstEventTimeoutSeconds = data
+		case "nonStreamResponseTimeoutSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nonStreamResponseTimeoutSeconds"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NonStreamResponseTimeoutSeconds = data
 		case "loadBalancerStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("loadBalancerStrategy"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -96489,6 +96579,16 @@ func (ec *executionContext) _RetryPolicy(ctx context.Context, sel ast.SelectionS
 			}
 		case "retryDelayMs":
 			out.Values[i] = ec._RetryPolicy_retryDelayMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "streamFirstEventTimeoutSeconds":
+			out.Values[i] = ec._RetryPolicy_streamFirstEventTimeoutSeconds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nonStreamResponseTimeoutSeconds":
+			out.Values[i] = ec._RetryPolicy_nonStreamResponseTimeoutSeconds(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

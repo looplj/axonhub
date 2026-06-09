@@ -5,11 +5,98 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+type firstEventTimeoutGuard struct {
+	timer     *time.Timer
+	cancel    context.CancelFunc
+	timeoutCh chan struct{}
+	stopOnce  sync.Once
+	timedOut  atomic.Bool
+}
+
+func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (context.Context, *firstEventTimeoutGuard) {
+	if timeout <= 0 {
+		return ctx, nil
+	}
+
+	streamCtx, cancel := context.WithCancel(ctx)
+	guard := &firstEventTimeoutGuard{
+		cancel:    cancel,
+		timeoutCh: make(chan struct{}),
+	}
+	guard.timer = time.AfterFunc(timeout, func() {
+		guard.timedOut.Store(true)
+		cancel()
+		close(guard.timeoutCh)
+	})
+
+	return streamCtx, guard
+}
+
+func (g *firstEventTimeoutGuard) stop() {
+	if g == nil {
+		return
+	}
+
+	g.stopOnce.Do(func() {
+		g.timer.Stop()
+	})
+}
+
+func (g *firstEventTimeoutGuard) cancelStream() {
+	if g == nil {
+		return
+	}
+
+	g.cancel()
+}
+
+func (g *firstEventTimeoutGuard) finishBeforeFirstEvent(err error) error {
+	if g == nil {
+		return err
+	}
+
+	g.stop()
+	g.cancelStream()
+	if g.timedOut.Load() {
+		return ErrStreamFirstEventTimeout
+	}
+
+	return err
+}
+
+type cancelOnCloseStream struct {
+	stream streams.Stream[*httpclient.StreamEvent]
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (s *cancelOnCloseStream) Next() bool {
+	return s.stream.Next()
+}
+
+func (s *cancelOnCloseStream) Current() *httpclient.StreamEvent {
+	return s.stream.Current()
+}
+
+func (s *cancelOnCloseStream) Err() error {
+	return s.stream.Err()
+}
+
+func (s *cancelOnCloseStream) Close() error {
+	err := s.stream.Close()
+	s.once.Do(s.cancel)
+
+	return err
+}
 
 // hasFinishReason checks if an llm.Response event contains a finish reason.
 func hasFinishReason(resp *llm.Response) bool {
@@ -32,18 +119,33 @@ func hasFinishReason(resp *llm.Response) bool {
 func (p *pipeline) checkEmptyResponse(
 	ctx context.Context,
 	llmStream streams.Stream[*llm.Response],
+	firstEventGuard *firstEventTimeoutGuard,
 ) (streams.Stream[*llm.Response], error) {
 	const maxPreReadEvents = 3
+	preReadLimit := maxPreReadEvents
+	if !p.emptyResponseDetection {
+		preReadLimit = 1
+	}
 
 	var buffered []*llm.Response
 
-	for range maxPreReadEvents {
-		if !llmStream.Next() {
+	for i := range preReadLimit {
+		hasNext, err := nextLlmStreamEvent(ctx, llmStream, i == 0, firstEventGuard)
+		if err != nil {
+			llmStream.Close()
+
+			return nil, err
+		}
+		if !hasNext {
 			break
 		}
 
 		event := llmStream.Current()
 		buffered = append(buffered, event)
+
+		if !p.emptyResponseDetection {
+			return streams.PrependStream(llmStream, buffered...), nil
+		}
 
 		if hasResponseContent(event) {
 			// Has content, not empty — prepend buffered events back
@@ -80,17 +182,76 @@ func (p *pipeline) checkEmptyResponse(
 	return llmStream, nil
 }
 
+func nextLlmStreamEvent(
+	ctx context.Context,
+	llmStream streams.Stream[*llm.Response],
+	firstEvent bool,
+	firstEventGuard *firstEventTimeoutGuard,
+) (bool, error) {
+	if !firstEvent || firstEventGuard == nil {
+		return llmStream.Next(), nil
+	}
+
+	done := make(chan bool, 1)
+
+	go func() {
+		done <- llmStream.Next()
+	}()
+
+	select {
+	case hasNext := <-done:
+		if firstEventGuard.timedOut.Load() {
+			llmStream.Close()
+
+			return false, ErrStreamFirstEventTimeout
+		}
+
+		firstEventGuard.stop()
+
+		return hasNext, nil
+	case <-firstEventGuard.timeoutCh:
+		llmStream.Close()
+
+		return false, ErrStreamFirstEventTimeout
+	case <-ctx.Done():
+		firstEventGuard.stop()
+		firstEventGuard.cancelStream()
+		llmStream.Close()
+
+		return false, ctx.Err()
+	}
+}
+
 // Process executes the streaming LLM pipeline
 // Steps: outbound transform -> HTTP stream -> outbound stream transform -> inbound stream transform.
 func (p *pipeline) stream(
 	ctx context.Context,
 	executor Executor,
 	request *httpclient.Request,
+	firstEventTimeout time.Duration,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	outboundStream, err := executor.DoStream(ctx, request)
+	streamCtx, firstEventGuard := newFirstEventTimeoutGuard(ctx, firstEventTimeout)
+
+	outboundStream, err := executor.DoStream(streamCtx, request)
+	if firstEventGuard != nil && firstEventGuard.timedOut.Load() {
+		if outboundStream != nil {
+			outboundStream.Close()
+		}
+
+		timeoutErr := firstEventGuard.finishBeforeFirstEvent(ErrStreamFirstEventTimeout)
+		p.applyRawErrorResponseMiddlewares(ctx, timeoutErr)
+
+		return nil, timeoutErr
+	}
 	if err != nil {
+		err = firstEventGuard.finishBeforeFirstEvent(err)
+
 		// Apply error response middlewares
 		p.applyRawErrorResponseMiddlewares(ctx, err)
+
+		if errors.Is(err, ErrStreamFirstEventTimeout) {
+			return nil, err
+		}
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
 			return nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
@@ -105,7 +266,12 @@ func (p *pipeline) stream(
 	outboundStream, err = p.applyRawStreamMiddlewares(ctx, outboundStream)
 	if err != nil {
 		rawStream.Close()
+		err = firstEventGuard.finishBeforeFirstEvent(err)
 		p.applyRawErrorResponseMiddlewares(ctx, err)
+
+		if errors.Is(err, ErrStreamFirstEventTimeout) {
+			return nil, err
+		}
 
 		return nil, fmt.Errorf("failed to apply raw stream middlewares: %w", err)
 	}
@@ -122,9 +288,14 @@ func (p *pipeline) stream(
 	llmStream, err := p.Outbound.TransformStream(ctx, request, outboundStream)
 	if err != nil {
 		outboundStream.Close()
+		err = firstEventGuard.finishBeforeFirstEvent(err)
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
+
+		if errors.Is(err, ErrStreamFirstEventTimeout) {
+			return nil, err
+		}
 
 		return nil, WrapUpstreamError(err)
 	}
@@ -135,7 +306,12 @@ func (p *pipeline) stream(
 	llmStream, err = p.applyLlmStreamMiddlewares(ctx, llmStream)
 	if err != nil {
 		rawLlmStream.Close()
+		err = firstEventGuard.finishBeforeFirstEvent(err)
 		p.applyRawErrorResponseMiddlewares(ctx, err)
+
+		if errors.Is(err, ErrStreamFirstEventTimeout) {
+			return nil, err
+		}
 
 		return nil, fmt.Errorf("failed to apply llm stream middlewares: %w", err)
 	}
@@ -147,22 +323,26 @@ func (p *pipeline) stream(
 		})
 	}
 
-	// Check for empty response if detection is enabled
-	if p.emptyResponseDetection {
+	// Check stream start for first-event timeout or empty response detection.
+	if p.emptyResponseDetection || firstEventTimeout > 0 {
 		rawLlmStream := llmStream
 
-		llmStream, err = p.checkEmptyResponse(ctx, llmStream)
+		llmStream, err = p.checkEmptyResponse(ctx, llmStream, firstEventGuard)
 		if err != nil {
 			rawLlmStream.Close()
+			err = firstEventGuard.finishBeforeFirstEvent(err)
 			p.applyRawErrorResponseMiddlewares(ctx, err)
 
 			return nil, err
 		}
+	} else if firstEventGuard != nil {
+		firstEventGuard.stop()
 	}
 
 	inboundStream, err := p.Inbound.TransformStream(ctx, llmStream)
 	if err != nil {
 		llmStream.Close()
+		firstEventGuard.cancelStream()
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
@@ -175,6 +355,7 @@ func (p *pipeline) stream(
 	inboundStream, err = p.applyInboundRawStreamMiddlewares(ctx, inboundStream)
 	if err != nil {
 		rawInboundStream.Close()
+		firstEventGuard.cancelStream()
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		return nil, fmt.Errorf("failed to apply inbound raw stream middlewares: %w", err)
@@ -188,6 +369,13 @@ func (p *pipeline) stream(
 				return event
 			},
 		)
+	}
+
+	if firstEventGuard != nil {
+		inboundStream = &cancelOnCloseStream{
+			stream: inboundStream,
+			cancel: firstEventGuard.cancelStream,
+		}
 	}
 
 	return inboundStream, nil
