@@ -421,6 +421,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 				Type: "function",
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
+					Namespace: nextItem.Namespace,
 					Arguments: nextItem.Arguments,
 				},
 			})
@@ -525,6 +526,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 					Type: "function",
 					Function: llm.FunctionCall{
 						Name:      item.Name,
+						Namespace: item.Namespace,
 						Arguments: item.Arguments,
 					},
 				},
@@ -931,6 +933,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						Type:      "function_call",
 						CallID:    toolCall.ID,
 						Name:      toolCall.Function.Name,
+						Namespace: toolCall.Function.Namespace,
 						Arguments: toolCall.Function.Arguments,
 						Status:    lo.ToPtr("completed"),
 					})
