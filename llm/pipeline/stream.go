@@ -15,11 +15,10 @@ import (
 )
 
 type firstEventTimeoutGuard struct {
-	timer     *time.Timer
-	cancel    context.CancelFunc
-	timeoutCh chan struct{}
-	stopOnce  sync.Once
-	timedOut  atomic.Bool
+	timer    *time.Timer
+	cancel   context.CancelFunc
+	stopOnce sync.Once
+	timedOut atomic.Bool
 }
 
 func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (context.Context, *firstEventTimeoutGuard) {
@@ -29,13 +28,11 @@ func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (cont
 
 	streamCtx, cancel := context.WithCancel(ctx)
 	guard := &firstEventTimeoutGuard{
-		cancel:    cancel,
-		timeoutCh: make(chan struct{}),
+		cancel: cancel,
 	}
 	guard.timer = time.AfterFunc(timeout, func() {
 		guard.timedOut.Store(true)
 		cancel()
-		close(guard.timeoutCh)
 	})
 
 	return streamCtx, guard
@@ -192,34 +189,22 @@ func nextLlmStreamEvent(
 		return llmStream.Next(), nil
 	}
 
-	done := make(chan bool, 1)
-
-	go func() {
-		done <- llmStream.Next()
-	}()
-
-	select {
-	case hasNext := <-done:
-		if firstEventGuard.timedOut.Load() {
-			llmStream.Close()
-
-			return false, ErrStreamFirstEventTimeout
-		}
-
-		firstEventGuard.stop()
-
-		return hasNext, nil
-	case <-firstEventGuard.timeoutCh:
+	hasNext := llmStream.Next()
+	if firstEventGuard.timedOut.Load() {
 		llmStream.Close()
 
 		return false, ErrStreamFirstEventTimeout
-	case <-ctx.Done():
-		firstEventGuard.stop()
+	}
+
+	firstEventGuard.stop()
+	if !hasNext && ctx.Err() != nil {
 		firstEventGuard.cancelStream()
 		llmStream.Close()
 
 		return false, ctx.Err()
 	}
+
+	return hasNext, nil
 }
 
 // Process executes the streaming LLM pipeline

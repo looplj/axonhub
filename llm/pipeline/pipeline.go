@@ -407,7 +407,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 		response, err := p.autoAggregateStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
-			if p.isNonStreamTimeout(timeoutCtx, err) {
+			if p.isNonStreamTimeout(timeoutCtx) {
 				return nil, ErrNonStreamResponseTimeout
 			}
 
@@ -424,7 +424,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 		response, err := p.notStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
-			if p.isNonStreamTimeout(timeoutCtx, err) {
+			if p.isNonStreamTimeout(timeoutCtx) {
 				return nil, ErrNonStreamResponseTimeout
 			}
 
@@ -454,6 +454,6 @@ func (p *pipeline) withNonStreamTimeout(ctx context.Context) (context.Context, c
 	return context.WithTimeoutCause(ctx, p.nonStreamTimeout, ErrNonStreamResponseTimeout)
 }
 
-func (p *pipeline) isNonStreamTimeout(ctx context.Context, _ error) bool {
+func (p *pipeline) isNonStreamTimeout(ctx context.Context) bool {
 	return p.nonStreamTimeout > 0 && errors.Is(context.Cause(ctx), ErrNonStreamResponseTimeout)
 }

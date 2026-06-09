@@ -278,6 +278,7 @@ export function RetrySettings() {
                       id='stream-first-event-timeout'
                       type='number'
                       min='0'
+                      max='600'
                       value={formData.streamFirstEventTimeoutSeconds}
                       onChange={(e) => handleInputChange('streamFirstEventTimeoutSeconds', parseInt(e.target.value) || 0)}
                       className='w-32'
@@ -294,6 +295,7 @@ export function RetrySettings() {
                       id='non-stream-response-timeout'
                       type='number'
                       min='0'
+                      max='600'
                       value={formData.nonStreamResponseTimeoutSeconds}
                       onChange={(e) => handleInputChange('nonStreamResponseTimeoutSeconds', parseInt(e.target.value) || 0)}
                       className='w-32'
