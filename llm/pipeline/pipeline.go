@@ -451,9 +451,9 @@ func (p *pipeline) withNonStreamTimeout(ctx context.Context) (context.Context, c
 		return ctx, func() {}
 	}
 
-	return context.WithTimeout(ctx, p.nonStreamTimeout)
+	return context.WithTimeoutCause(ctx, p.nonStreamTimeout, ErrNonStreamResponseTimeout)
 }
 
 func (p *pipeline) isNonStreamTimeout(ctx context.Context, _ error) bool {
-	return p.nonStreamTimeout > 0 && errors.Is(ctx.Err(), context.DeadlineExceeded)
+	return p.nonStreamTimeout > 0 && errors.Is(context.Cause(ctx), ErrNonStreamResponseTimeout)
 }
