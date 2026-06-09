@@ -76,16 +76,20 @@ func (g *firstEventTimeoutGuard) completeFirstEventPhase() {
 	g.stop()
 }
 
-func (g *firstEventTimeoutGuard) acceptFirstEvent() {
+func (g *firstEventTimeoutGuard) acceptFirstEvent() bool {
 	if g == nil {
-		return
+		return true
 	}
 
-	// A delivered first event wins over a timeout callback that is observed
-	// immediately afterwards. Otherwise a timer goroutine can discard a valid
-	// response after Next has already returned true.
-	g.state.Store(firstEventCompleted)
-	g.stop()
+	// If the timeout already canceled the stream, keep that state so callers
+	// can retry instead of returning a partially usable stream.
+	if g.state.CompareAndSwap(firstEventPending, firstEventCompleted) {
+		g.stop()
+
+		return true
+	}
+
+	return g.state.Load() == firstEventCompleted
 }
 
 func (g *firstEventTimeoutGuard) finishBeforeFirstEvent(err error) error {
@@ -224,7 +228,11 @@ func nextLlmStreamEvent(
 
 	hasNext := llmStream.Next()
 	if hasNext {
-		firstEventGuard.acceptFirstEvent()
+		if !firstEventGuard.acceptFirstEvent() {
+			llmStream.Close()
+
+			return false, ErrStreamFirstEventTimeout
+		}
 
 		return true, nil
 	}
