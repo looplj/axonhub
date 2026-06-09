@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
+	"time"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -87,44 +89,89 @@ func (p *pipeline) stream(
 	executor Executor,
 	request *httpclient.Request,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	outboundStream, err := executor.DoStream(ctx, request)
+	return p.streamWithOptions(ctx, executor, request, streamOptions{
+		waitFirstEvent: true,
+	})
+}
+
+func (p *pipeline) streamForAutoAggregation(
+	ctx context.Context,
+	executor Executor,
+	request *httpclient.Request,
+	normalizeError func(error) error,
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	return p.streamWithOptions(ctx, executor, request, streamOptions{
+		normalizeError: normalizeError,
+	})
+}
+
+type streamOptions struct {
+	waitFirstEvent bool
+	normalizeError func(error) error
+}
+
+type streamFirstByteAttempt struct {
+	ctx      context.Context
+	cancel   context.CancelFunc
+	stop     func()
+	timedOut func() bool
+	enabled  bool
+}
+
+func (p *pipeline) streamWithOptions(
+	ctx context.Context,
+	executor Executor,
+	request *httpclient.Request,
+	opts streamOptions,
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	attempt := p.streamFirstByteAttemptContext(ctx, opts.waitFirstEvent)
+	streamCtx := attempt.ctx
+
+	outboundStream, err := executor.DoStream(streamCtx, request)
 	if err != nil {
-		// Apply error response middlewares
-		p.applyRawErrorResponseMiddlewares(ctx, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
+		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
-			return nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
+			transformedErr := p.Outbound.TransformError(streamCtx, httpErr)
+			attempt.cancel()
+			return nil, WrapUpstreamError(transformedErr)
 		}
 
+		attempt.cancel()
 		return nil, WrapUpstreamError(err)
 	}
 
 	// Apply raw stream middlewares
 	rawStream := outboundStream
 
-	outboundStream, err = p.applyRawStreamMiddlewares(ctx, outboundStream)
+	outboundStream, err = p.applyRawStreamMiddlewares(streamCtx, outboundStream)
 	if err != nil {
 		rawStream.Close()
-		p.applyRawErrorResponseMiddlewares(ctx, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
+		p.applyRawErrorResponseMiddlewares(streamCtx, err)
+		attempt.cancel()
 
 		return nil, fmt.Errorf("failed to apply raw stream middlewares: %w", err)
 	}
 
-	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+	if slog.Default().Enabled(streamCtx, slog.LevelDebug) {
 		outboundStream = streams.Map(outboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-				slog.DebugContext(ctx, "Outbound stream event", slog.Any("event", event))
+				slog.DebugContext(streamCtx, "Outbound stream event", slog.Any("event", event))
 				return event
 			},
 		)
 	}
 
-	llmStream, err := p.Outbound.TransformStream(ctx, request, outboundStream)
+	llmStream, err := p.Outbound.TransformStream(streamCtx, request, outboundStream)
 	if err != nil {
 		outboundStream.Close()
-		p.applyRawErrorResponseMiddlewares(ctx, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
+		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 
-		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
+		slog.ErrorContext(streamCtx, "Failed to transform streaming request", slog.Any("error", err))
+		attempt.cancel()
 
 		return nil, WrapUpstreamError(err)
 	}
@@ -132,17 +179,19 @@ func (p *pipeline) stream(
 	rawLlmStream := llmStream
 
 	// Apply LLM stream middlewares
-	llmStream, err = p.applyLlmStreamMiddlewares(ctx, llmStream)
+	llmStream, err = p.applyLlmStreamMiddlewares(streamCtx, llmStream)
 	if err != nil {
 		rawLlmStream.Close()
-		p.applyRawErrorResponseMiddlewares(ctx, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
+		p.applyRawErrorResponseMiddlewares(streamCtx, err)
+		attempt.cancel()
 
 		return nil, fmt.Errorf("failed to apply llm stream middlewares: %w", err)
 	}
 
-	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+	if slog.Default().Enabled(streamCtx, slog.LevelDebug) {
 		llmStream = streams.Map(llmStream, func(event *llm.Response) *llm.Response {
-			slog.DebugContext(ctx, "LLM stream event", slog.Any("event", event))
+			slog.DebugContext(streamCtx, "LLM stream event", slog.Any("event", event))
 			return event
 		})
 	}
@@ -151,44 +200,218 @@ func (p *pipeline) stream(
 	if p.emptyResponseDetection {
 		rawLlmStream := llmStream
 
-		llmStream, err = p.checkEmptyResponse(ctx, llmStream)
+		llmStream, err = p.checkEmptyResponse(streamCtx, llmStream)
 		if err != nil {
 			rawLlmStream.Close()
-			p.applyRawErrorResponseMiddlewares(ctx, err)
+			err = p.normalizeStreamError(ctx, attempt, opts, err)
+			p.applyRawErrorResponseMiddlewares(streamCtx, err)
+			attempt.cancel()
 
 			return nil, err
 		}
 	}
 
-	inboundStream, err := p.Inbound.TransformStream(ctx, llmStream)
+	inboundStream, err := p.Inbound.TransformStream(streamCtx, llmStream)
 	if err != nil {
 		llmStream.Close()
-		p.applyRawErrorResponseMiddlewares(ctx, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
+		p.applyRawErrorResponseMiddlewares(streamCtx, err)
 
-		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
+		slog.ErrorContext(streamCtx, "Failed to transform streaming request", slog.Any("error", err))
+		attempt.cancel()
 
 		return nil, err
 	}
 
 	rawInboundStream := inboundStream
 
-	inboundStream, err = p.applyInboundRawStreamMiddlewares(ctx, inboundStream)
+	inboundStream, err = p.applyInboundRawStreamMiddlewares(streamCtx, inboundStream)
 	if err != nil {
 		rawInboundStream.Close()
-		p.applyRawErrorResponseMiddlewares(ctx, err)
+		err = p.normalizeStreamError(ctx, attempt, opts, err)
+		p.applyRawErrorResponseMiddlewares(streamCtx, err)
+		attempt.cancel()
 
 		return nil, fmt.Errorf("failed to apply inbound raw stream middlewares: %w", err)
 	}
 
-	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+	if opts.waitFirstEvent {
+		inboundStream, err = p.waitFirstStreamEvent(streamCtx, inboundStream)
+		if err != nil {
+			err = p.normalizeStreamError(ctx, attempt, opts, err)
+			p.applyRawErrorResponseMiddlewares(streamCtx, err)
+			attempt.cancel()
+
+			return nil, err
+		}
+
+		if err := p.streamFirstByteTimeoutAfterSuccessfulFirstEvent(ctx, attempt); err != nil {
+			_ = inboundStream.Close()
+			p.applyRawErrorResponseMiddlewares(streamCtx, err)
+			attempt.cancel()
+
+			return nil, err
+		}
+
+		attempt.stop()
+	}
+
+	if slog.Default().Enabled(streamCtx, slog.LevelDebug) {
 		inboundStream = streams.Map(
 			inboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-				slog.DebugContext(ctx, "Inbound stream event", slog.Any("event", event))
+				slog.DebugContext(streamCtx, "Inbound stream event", slog.Any("event", event))
 				return event
 			},
 		)
 	}
 
+	if opts.waitFirstEvent {
+		inboundStream = &cancelOnCloseStream{Stream: inboundStream, cancel: attempt.cancel}
+	}
+
 	return inboundStream, nil
+}
+
+func (p *pipeline) streamFirstByteAttemptContext(ctx context.Context, waitFirstEvent bool) streamFirstByteAttempt {
+	if !waitFirstEvent || p.streamFirstByteTimeout <= 0 {
+		return streamFirstByteAttempt{
+			ctx:      ctx,
+			cancel:   func() {},
+			stop:     func() {},
+			timedOut: func() bool { return false },
+		}
+	}
+
+	attemptCtx, cancel := context.WithCancel(ctx)
+
+	var timedOut atomic.Bool
+
+	timer := time.AfterFunc(p.streamFirstByteTimeout, func() {
+		timedOut.Store(true)
+		cancel()
+	})
+
+	return streamFirstByteAttempt{
+		ctx:     attemptCtx,
+		cancel:  cancel,
+		stop:    func() { timer.Stop() },
+		enabled: true,
+		timedOut: func() bool {
+			return timedOut.Load()
+		},
+	}
+}
+
+func (p *pipeline) normalizeStreamFirstByteError(parentCtx context.Context, attempt streamFirstByteAttempt, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if p.streamFirstByteTimedOut(parentCtx, attempt) {
+		return p.streamFirstByteTimeoutError()
+	}
+
+	return err
+}
+
+func (p *pipeline) streamFirstByteTimedOut(parentCtx context.Context, attempt streamFirstByteAttempt) bool {
+	return attempt.enabled && attempt.timedOut() && parentCtx.Err() == nil
+}
+
+func (p *pipeline) streamFirstByteTimeoutAfterSuccessfulFirstEvent(
+	parentCtx context.Context,
+	attempt streamFirstByteAttempt,
+) error {
+	if p.streamFirstByteTimedOut(parentCtx, attempt) {
+		return p.streamFirstByteTimeoutError()
+	}
+
+	return nil
+}
+
+func (p *pipeline) normalizeStreamError(
+	parentCtx context.Context,
+	attempt streamFirstByteAttempt,
+	opts streamOptions,
+	err error,
+) error {
+	err = p.normalizeStreamFirstByteError(parentCtx, attempt, err)
+	if err == nil || opts.normalizeError == nil {
+		return err
+	}
+
+	return opts.normalizeError(err)
+}
+
+func (p *pipeline) streamFirstByteTimeoutError() error {
+	return fmt.Errorf("%w after %s", ErrStreamFirstByteTimeout, p.streamFirstByteTimeout)
+}
+
+type cancelOnCloseStream struct {
+	streams.Stream[*httpclient.StreamEvent]
+	cancel context.CancelFunc
+}
+
+func (s *cancelOnCloseStream) Close() error {
+	err := s.Stream.Close()
+	s.cancel()
+
+	return err
+}
+
+type firstStreamEventResult struct {
+	ok    bool
+	event *httpclient.StreamEvent
+	err   error
+}
+
+func (p *pipeline) waitFirstStreamEvent(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	if p.streamFirstByteTimeout <= 0 {
+		return stream, nil
+	}
+
+	resultCh := make(chan firstStreamEventResult, 1)
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err := fmt.Errorf("panic while waiting for stream first event: %v", recovered)
+				slog.ErrorContext(ctx, "panic while waiting for stream first event", slog.Any("panic", recovered))
+
+				select {
+				case resultCh <- firstStreamEventResult{err: err}:
+				default:
+				}
+			}
+		}()
+
+		if stream.Next() {
+			resultCh <- firstStreamEventResult{ok: true, event: stream.Current()}
+			return
+		}
+
+		resultCh <- firstStreamEventResult{err: stream.Err()}
+	}()
+
+	select {
+	case result := <-resultCh:
+		if result.err != nil {
+			_ = stream.Close()
+
+			return nil, result.err
+		}
+
+		if !result.ok {
+			return stream, nil
+		}
+
+		return streams.PrependStream(stream, result.event), nil
+	case <-ctx.Done():
+		_ = stream.Close()
+
+		return nil, ctx.Err()
+	}
 }
