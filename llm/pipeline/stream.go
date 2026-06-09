@@ -18,8 +18,14 @@ type firstEventTimeoutGuard struct {
 	timer    *time.Timer
 	cancel   context.CancelFunc
 	stopOnce sync.Once
-	timedOut atomic.Bool
+	state    atomic.Uint32
 }
+
+const (
+	firstEventPending uint32 = iota
+	firstEventCompleted
+	firstEventTimedOut
+)
 
 func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (context.Context, *firstEventTimeoutGuard) {
 	if timeout <= 0 {
@@ -31,11 +37,16 @@ func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (cont
 		cancel: cancel,
 	}
 	guard.timer = time.AfterFunc(timeout, func() {
-		guard.timedOut.Store(true)
-		cancel()
+		if guard.state.CompareAndSwap(firstEventPending, firstEventTimedOut) {
+			cancel()
+		}
 	})
 
 	return streamCtx, guard
+}
+
+func (g *firstEventTimeoutGuard) timedOut() bool {
+	return g != nil && g.state.Load() == firstEventTimedOut
 }
 
 func (g *firstEventTimeoutGuard) stop() {
@@ -56,14 +67,35 @@ func (g *firstEventTimeoutGuard) cancelStream() {
 	g.cancel()
 }
 
+func (g *firstEventTimeoutGuard) completeFirstEventPhase() {
+	if g == nil {
+		return
+	}
+
+	g.state.CompareAndSwap(firstEventPending, firstEventCompleted)
+	g.stop()
+}
+
+func (g *firstEventTimeoutGuard) acceptFirstEvent() {
+	if g == nil {
+		return
+	}
+
+	// A delivered first event wins over a timeout callback that is observed
+	// immediately afterwards. Otherwise a timer goroutine can discard a valid
+	// response after Next has already returned true.
+	g.state.Store(firstEventCompleted)
+	g.stop()
+}
+
 func (g *firstEventTimeoutGuard) finishBeforeFirstEvent(err error) error {
 	if g == nil {
 		return err
 	}
 
-	g.stop()
+	g.completeFirstEventPhase()
 	g.cancelStream()
-	if g.timedOut.Load() {
+	if g.timedOut() {
 		return ErrStreamFirstEventTimeout
 	}
 
@@ -190,14 +222,20 @@ func nextLlmStreamEvent(
 	}
 
 	hasNext := llmStream.Next()
-	if firstEventGuard.timedOut.Load() {
+	if hasNext {
+		firstEventGuard.acceptFirstEvent()
+
+		return true, nil
+	}
+
+	if firstEventGuard.timedOut() {
 		llmStream.Close()
 
 		return false, ErrStreamFirstEventTimeout
 	}
 
-	firstEventGuard.stop()
-	if !hasNext && ctx.Err() != nil {
+	firstEventGuard.completeFirstEventPhase()
+	if ctx.Err() != nil {
 		firstEventGuard.cancelStream()
 		llmStream.Close()
 
@@ -218,7 +256,7 @@ func (p *pipeline) stream(
 	streamCtx, firstEventGuard := newFirstEventTimeoutGuard(ctx, firstEventTimeout)
 
 	outboundStream, err := executor.DoStream(streamCtx, request)
-	if firstEventGuard != nil && firstEventGuard.timedOut.Load() {
+	if firstEventGuard.timedOut() {
 		if outboundStream != nil {
 			outboundStream.Close()
 		}
