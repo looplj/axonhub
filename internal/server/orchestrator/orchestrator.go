@@ -220,6 +220,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		if retryPolicy.EmptyResponseDetection {
 			pipelineOpts = append(pipelineOpts, pipeline.WithEmptyResponseDetection())
 		}
+
+		pipelineOpts = append(pipelineOpts, pipeline.WithResponseTimeouts(
+			time.Duration(retryPolicy.StreamFirstEventTimeoutSeconds)*time.Second,
+			time.Duration(retryPolicy.NonStreamResponseTimeoutSeconds)*time.Second,
+		))
 	}
 
 	var middlewares []pipeline.Middleware

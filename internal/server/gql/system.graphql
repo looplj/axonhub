@@ -122,6 +122,8 @@ type RetryPolicy {
   maxChannelRetries: Int!
   maxSingleChannelRetries: Int!
   retryDelayMs: Int!
+  streamFirstEventTimeoutSeconds: Int!
+  nonStreamResponseTimeoutSeconds: Int!
   loadBalancerStrategy: String!
   enabled: Boolean!
   autoDisableChannel: AutoDisableChannel!
@@ -153,6 +155,8 @@ input UpdateRetryPolicyInput {
   maxChannelRetries: Int
   maxSingleChannelRetries: Int
   retryDelayMs: Int
+  streamFirstEventTimeoutSeconds: Int
+  nonStreamResponseTimeoutSeconds: Int
   loadBalancerStrategy: String
   enabled: Boolean
   autoDisableChannel: AutoDisableChannelInput

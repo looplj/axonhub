@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -32,18 +33,33 @@ func hasFinishReason(resp *llm.Response) bool {
 func (p *pipeline) checkEmptyResponse(
 	ctx context.Context,
 	llmStream streams.Stream[*llm.Response],
+	firstEventTimeout time.Duration,
 ) (streams.Stream[*llm.Response], error) {
 	const maxPreReadEvents = 3
+	preReadLimit := maxPreReadEvents
+	if !p.emptyResponseDetection {
+		preReadLimit = 1
+	}
 
 	var buffered []*llm.Response
 
-	for range maxPreReadEvents {
-		if !llmStream.Next() {
+	for i := range preReadLimit {
+		hasNext, err := nextLlmStreamEvent(ctx, llmStream, i == 0, firstEventTimeout)
+		if err != nil {
+			llmStream.Close()
+
+			return nil, err
+		}
+		if !hasNext {
 			break
 		}
 
 		event := llmStream.Current()
 		buffered = append(buffered, event)
+
+		if !p.emptyResponseDetection {
+			return streams.PrependStream(llmStream, buffered...), nil
+		}
 
 		if hasResponseContent(event) {
 			// Has content, not empty — prepend buffered events back
@@ -80,12 +96,46 @@ func (p *pipeline) checkEmptyResponse(
 	return llmStream, nil
 }
 
+func nextLlmStreamEvent(
+	ctx context.Context,
+	llmStream streams.Stream[*llm.Response],
+	withTimeout bool,
+	timeout time.Duration,
+) (bool, error) {
+	if !withTimeout || timeout <= 0 {
+		return llmStream.Next(), nil
+	}
+
+	done := make(chan bool, 1)
+
+	go func() {
+		done <- llmStream.Next()
+	}()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case hasNext := <-done:
+		return hasNext, nil
+	case <-timer.C:
+		llmStream.Close()
+
+		return false, ErrStreamFirstEventTimeout
+	case <-ctx.Done():
+		llmStream.Close()
+
+		return false, ctx.Err()
+	}
+}
+
 // Process executes the streaming LLM pipeline
 // Steps: outbound transform -> HTTP stream -> outbound stream transform -> inbound stream transform.
 func (p *pipeline) stream(
 	ctx context.Context,
 	executor Executor,
 	request *httpclient.Request,
+	firstEventTimeout time.Duration,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	outboundStream, err := executor.DoStream(ctx, request)
 	if err != nil {
@@ -147,11 +197,11 @@ func (p *pipeline) stream(
 		})
 	}
 
-	// Check for empty response if detection is enabled
-	if p.emptyResponseDetection {
+	// Check stream start for first-event timeout or empty response detection.
+	if p.emptyResponseDetection || firstEventTimeout > 0 {
 		rawLlmStream := llmStream
 
-		llmStream, err = p.checkEmptyResponse(ctx, llmStream)
+		llmStream, err = p.checkEmptyResponse(ctx, llmStream, firstEventTimeout)
 		if err != nil {
 			rawLlmStream.Close()
 			p.applyRawErrorResponseMiddlewares(ctx, err)
