@@ -229,13 +229,13 @@ func nextLlmStreamEvent(
 		return true, nil
 	}
 
+	firstEventGuard.completeFirstEventPhase()
 	if firstEventGuard.timedOut() {
 		llmStream.Close()
 
 		return false, ErrStreamFirstEventTimeout
 	}
 
-	firstEventGuard.completeFirstEventPhase()
 	if ctx.Err() != nil {
 		firstEventGuard.cancelStream()
 		llmStream.Close()
