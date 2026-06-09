@@ -142,10 +142,11 @@ func hasFinishReason(resp *llm.Response) bool {
 	return false
 }
 
-// checkEmptyResponse pre-reads up to 3 events from the LLM stream to detect empty responses.
+// preReadLlmStream reads the initial LLM stream events so the pipeline can
+// enforce first-event timeout and, when enabled, detect empty responses.
 // If the stream contains content, it returns a new stream with the pre-read events prepended.
 // If the stream is empty (finish reason reached without content), it returns ErrEmptyResponse.
-func (p *pipeline) checkEmptyResponse(
+func (p *pipeline) preReadLlmStream(
 	ctx context.Context,
 	llmStream streams.Stream[*llm.Response],
 	firstEventGuard *firstEventTimeoutGuard,
@@ -350,7 +351,7 @@ func (p *pipeline) stream(
 	if p.emptyResponseDetection || firstEventTimeout > 0 {
 		rawLlmStream := llmStream
 
-		llmStream, err = p.checkEmptyResponse(ctx, llmStream, firstEventGuard)
+		llmStream, err = p.preReadLlmStream(ctx, llmStream, firstEventGuard)
 		if err != nil {
 			rawLlmStream.Close()
 			err = firstEventGuard.finishBeforeFirstEvent(err)
