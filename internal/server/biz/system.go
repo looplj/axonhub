@@ -29,6 +29,10 @@ import (
 )
 
 const (
+	maxRetryResponseTimeoutSeconds = 600
+)
+
+const (
 	// SystemKeyInitialized is the key used to store the initialized flag in the system table.
 	SystemKeyInitialized = "system_initialized"
 
@@ -305,6 +309,12 @@ type RetryPolicy struct {
 	MaxSingleChannelRetries int `json:"max_single_channel_retries"`
 	// RetryDelayMs defines the delay between retries in milliseconds
 	RetryDelayMs int `json:"retry_delay_ms"`
+	// StreamFirstEventTimeoutSeconds defines the timeout for the first streaming response event in seconds.
+	// Set to 0 to disable. Values above 600 seconds are clamped.
+	StreamFirstEventTimeoutSeconds int `json:"stream_first_event_timeout_seconds"`
+	// NonStreamResponseTimeoutSeconds defines the timeout for non-streaming responses in seconds.
+	// Set to 0 to disable. Values above 600 seconds are clamped.
+	NonStreamResponseTimeoutSeconds int `json:"non_stream_response_timeout_seconds"`
 	// LoadBalancerStrategy defines which channel load balancer strategy to use.
 	// Supported values: "adaptive", "failover", "circuit-breaker".
 	LoadBalancerStrategy string `json:"load_balancer_strategy"`
@@ -1019,6 +1029,20 @@ func normalizeRetryPolicy(policy *RetryPolicy) {
 	// The weighted load balancer strategy is deprecated. Use the failover strategy instead.
 	if policy.LoadBalancerStrategy == "weighted" {
 		policy.LoadBalancerStrategy = LoadBalancerStrategyFailover
+	}
+
+	if policy.StreamFirstEventTimeoutSeconds < 0 {
+		policy.StreamFirstEventTimeoutSeconds = 0
+	}
+	if policy.StreamFirstEventTimeoutSeconds > maxRetryResponseTimeoutSeconds {
+		policy.StreamFirstEventTimeoutSeconds = maxRetryResponseTimeoutSeconds
+	}
+
+	if policy.NonStreamResponseTimeoutSeconds < 0 {
+		policy.NonStreamResponseTimeoutSeconds = 0
+	}
+	if policy.NonStreamResponseTimeoutSeconds > maxRetryResponseTimeoutSeconds {
+		policy.NonStreamResponseTimeoutSeconds = maxRetryResponseTimeoutSeconds
 	}
 
 	if policy.AutoDisableChannel.Statuses == nil {
