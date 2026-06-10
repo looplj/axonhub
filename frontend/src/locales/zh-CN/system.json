@@ -394,5 +394,10 @@
   "system.quota.mode.options.exhaustedOnly": "屏蔽耗尽",
   "system.quota.mode.options.dePrioritize": "降优先级",
   "system.quota.mode.documentation.EXHAUSTED_ONLY": "配额完全耗尽的渠道将被临时禁用。请求只会路由到仍有剩余配额的渠道。这是最严格的模式，确保不会将请求发送到已耗尽的渠道。",
-  "system.quota.mode.documentation.DE_PRIORITIZE": "配额耗尽的渠道将在负载均衡中降低优先级，但不会被完全禁用。如果所有渠道都已耗尽，请求仍会被路由。这提供了一种更温和的方式来保持可用性。"
+  "system.quota.mode.documentation.DE_PRIORITIZE": "配额耗尽的渠道将在负载均衡中降低优先级，但不会被完全禁用。如果所有渠道都已耗尽，请求仍会被路由。这提供了一种更温和的方式来保持可用性。",
+  "quota.label.payg_fallback": "PAYG 按量付费",
+  "quota.label.token_usage": "令牌用量",
+  "quota.label.account_balance": "账户余额",
+  "quota.label.monthly_limit": "月度限额",
+  "quota.provider.apertis": "Apertis"
 }

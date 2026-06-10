@@ -284,6 +284,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerWaferSupport()
 	svc.registerSyntheticSupport()
 	svc.registerNeuralWattSupport()
+	svc.registerApertisSupport()
 
 	go svc.loadQuotaCache(context.Background())
 
@@ -326,6 +327,10 @@ func (svc *ProviderQuotaService) registerSyntheticSupport() {
 
 func (svc *ProviderQuotaService) registerNeuralWattSupport() {
 	svc.checkers["neuralwatt"] = provider_quota.NewNeuralWattQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerApertisSupport() {
+	svc.checkers["apertis"] = provider_quota.NewApertisQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) string {

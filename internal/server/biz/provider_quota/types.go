@@ -18,9 +18,13 @@ type QuotaChecker interface {
 type QuotaLimitType string
 
 const (
-	QuotaLimitTypeImage QuotaLimitType = "image"
-	QuotaLimitTypeToken QuotaLimitType = "token"
+	QuotaLimitTypeImage             QuotaLimitType = "image"
+	QuotaLimitTypeToken             QuotaLimitType = "token"
+	QuotaLimitTypeSubscriptionCycle QuotaLimitType = "subscription_cycle"
 )
+
+// ApertisDefaultBaseURL is the default base URL for the Apertis API.
+const ApertisDefaultBaseURL = "https://api.apertis.ai"
 
 type QuotaLimitStatus struct {
 	Type        QuotaLimitType `json:"type"`
