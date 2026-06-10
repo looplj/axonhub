@@ -110,6 +110,7 @@ type ChannelSettings {
   passThroughUserAgent: Boolean
   passThroughBody: Boolean
   rateLimit: ChannelRateLimit
+  retryableStatusCodes: [Int!]
 }
 
 enum CapabilityPolicy {
@@ -145,6 +146,7 @@ input ChannelSettingsInput {
   passThroughUserAgent: Boolean
   passThroughBody: Boolean
   rateLimit: ChannelRateLimitInput
+  retryableStatusCodes: [Int!]
 }
 
 input ChannelRateLimitInput {

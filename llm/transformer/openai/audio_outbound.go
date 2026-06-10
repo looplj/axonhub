@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -110,9 +111,7 @@ func (t *OutboundTransformer) buildTranscriptionRequest(ctx context.Context, llm
 	}
 
 	// Forward unmodeled fields (e.g. timestamp_granularities[], include[]) as-is.
-	for name, values := range tr.Extra {
-		fields[name] = values
-	}
+	maps.Copy(fields, tr.Extra)
 
 	stream := llmReq.Stream != nil && *llmReq.Stream
 	if stream {
@@ -147,9 +146,7 @@ func (t *OutboundTransformer) buildTranslationRequest(ctx context.Context, llmRe
 	}
 
 	// Forward unmodeled fields as-is.
-	for name, values := range tr.Extra {
-		fields[name] = values
-	}
+	maps.Copy(fields, tr.Extra)
 
 	stream := llmReq.Stream != nil && *llmReq.Stream
 	if stream {

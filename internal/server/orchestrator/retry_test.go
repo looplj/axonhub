@@ -225,3 +225,66 @@ func TestIsRetryableError(t *testing.T) {
 		})
 	}
 }
+
+func TestIsRetryableErrorForChannel(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			Settings: &objects.ChannelSettings{
+				RetryableStatusCodes: []int{400, 403},
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		channel  *biz.Channel
+		expected bool
+	}{
+		{
+			name:     "error is nil",
+			err:      nil,
+			channel:  channel,
+			expected: false,
+		},
+		{
+			name: "default retryable status remains retryable",
+			err: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+			},
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name: "configured 400 status is retryable",
+			err: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+			},
+			channel:  channel,
+			expected: true,
+		},
+		{
+			name: "unconfigured 401 status is not retryable",
+			err: &httpclient.Error{
+				StatusCode: http.StatusUnauthorized,
+			},
+			channel:  channel,
+			expected: false,
+		},
+		{
+			name: "configured status is not retryable without channel settings",
+			err: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+			},
+			channel:  &biz.Channel{Channel: &ent.Channel{}},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isRetryableErrorForChannel(tt.err, tt.channel)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

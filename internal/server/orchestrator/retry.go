@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -15,6 +16,23 @@ func isRetryableError(err error) bool {
 	}
 
 	return httpclient.IsHTTPStatusCodeRetryable(ExtractStatusCodeFromError(err))
+}
+
+func isRetryableErrorForChannel(err error, ch *biz.Channel) bool {
+	if err == nil {
+		return false
+	}
+
+	statusCode := ExtractStatusCodeFromError(err)
+	if httpclient.IsHTTPStatusCodeRetryable(statusCode) {
+		return true
+	}
+
+	if ch == nil || ch.Channel == nil || ch.Settings == nil {
+		return false
+	}
+
+	return slices.Contains(ch.Settings.RetryableStatusCodes, statusCode)
 }
 
 // ExtractStatusCodeFromError attempts to extract HTTP status code from various error types.
