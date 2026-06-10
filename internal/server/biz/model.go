@@ -190,14 +190,19 @@ func validateFilterLeaf(condition objects.Condition) error {
 	}
 
 	switch condition.Field {
-	case "prompt_tokens":
+	case objects.ModelAssociationConditionFieldPromptTokens:
 		return validatePromptTokensLeaf(condition)
-	case "stream":
-		return validateStreamLeaf(condition)
-	case "request_format":
-		return validateStringEqualityLeaf(condition, "request_format")
-	case "daily_time":
+	case objects.ModelAssociationConditionFieldStream:
+		return validateBoolEqualityLeaf(condition, objects.ModelAssociationConditionFieldStream)
+	case objects.ModelAssociationConditionFieldRequestFormat:
+		return validateStringEqualityLeaf(condition, objects.ModelAssociationConditionFieldRequestFormat)
+	case objects.ModelAssociationConditionFieldDailyTime:
 		return validateDailyTimeLeaf(condition)
+	case objects.ModelAssociationConditionFieldHasImage,
+		objects.ModelAssociationConditionFieldHasVideo,
+		objects.ModelAssociationConditionFieldHasDocument,
+		objects.ModelAssociationConditionFieldHasAudio:
+		return validateBoolEqualityLeaf(condition, condition.Field)
 	default:
 		return fmt.Errorf("unsupported condition field %q", condition.Field)
 	}
@@ -226,18 +231,18 @@ func validatePromptTokensLeaf(condition objects.Condition) error {
 	return nil
 }
 
-func validateStreamLeaf(condition objects.Condition) error {
+func validateBoolEqualityLeaf(condition objects.Condition, field string) error {
 	switch condition.Operator {
 	case "eq", "ne", "=", "==", "!=":
 	default:
-		return fmt.Errorf("unsupported condition operator %q for stream", condition.Operator)
+		return fmt.Errorf("unsupported condition operator %q for %s", condition.Operator, field)
 	}
 
 	switch condition.Value.(type) {
 	case bool:
 		return nil
 	default:
-		return fmt.Errorf("condition value for stream must be a boolean, got %T", condition.Value)
+		return fmt.Errorf("condition value for %s must be a boolean, got %T", field, condition.Value)
 	}
 }
 
