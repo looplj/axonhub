@@ -176,6 +176,11 @@ type ChannelSettings struct {
 	// RateLimit configures the upstream rate limit for the channel.
 	// When configured, the load balancer will skip channels that have exceeded their rate limits.
 	RateLimit *ChannelRateLimit `json:"rateLimit,omitempty"`
+
+	// RetryableStatusCodes configures additional HTTP status codes that should
+	// trigger retry for this channel. Default retryable codes (429 and 5xx) are
+	// always handled by the retry policy even when this list is empty.
+	RetryableStatusCodes []int `json:"retryableStatusCodes,omitempty"`
 }
 
 type ChannelRateLimit struct {

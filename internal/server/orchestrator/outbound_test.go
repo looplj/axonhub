@@ -1058,6 +1058,34 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithoutRetryAfter(t *testing
 	})
 }
 
+func TestPersistentOutboundTransformer_CanRetry_ChannelRetryableStatusCodes(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+			Settings: &objects.ChannelSettings{
+				RetryableStatusCodes: []int{http.StatusBadRequest, http.StatusForbidden},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{
+				Channel: channel,
+				Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+			},
+			CurrentModelIndex: 0,
+		},
+	}
+
+	require.True(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusBadRequest}))
+	require.True(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusForbidden}))
+	require.False(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusUnauthorized}))
+}
+
 func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testing.T) {
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
