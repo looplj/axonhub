@@ -157,6 +157,11 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateCh
 	return r.channelService.CreateChannel(ctx, input)
 }
 
+// DuplicateChannel is the resolver for the duplicateChannel field.
+func (r *mutationResolver) DuplicateChannel(ctx context.Context, sourceID objects.GUID, input ent.CreateChannelInput) (*ent.Channel, error) {
+	return r.channelService.DuplicateChannel(ctx, sourceID.ID, input)
+}
+
 // BulkCreateChannels is the resolver for the bulkCreateChannels field.
 func (r *mutationResolver) BulkCreateChannels(ctx context.Context, input biz.BulkCreateChannelsInput) ([]*ent.Channel, error) {
 	return r.channelService.BulkCreateChannels(ctx, input)
