@@ -32,6 +32,7 @@ import {
   OpenCode,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
+import { EvolinkIcon } from '../components/evolink-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
@@ -258,6 +259,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Ollama,
     color: 'bg-slate-100 text-slate-800 border-slate-200',
     channelTypes: ['ollama'],
+  },
+  evolink: {
+    provider: 'evolink',
+    icon: EvolinkIcon,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    channelTypes: ['evolink', 'evolink_anthropic'],
   },
 };
 

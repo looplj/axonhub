@@ -32,6 +32,7 @@ import {
   OpenCode,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
+import { EvolinkIcon } from '../components/evolink-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -631,6 +632,37 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-slate-100 text-slate-800 border-slate-200',
     icon: Ollama,
   },
+  evolink: {
+    channelType: 'evolink',
+    baseURL: 'https://direct.evolink.ai/v1',
+    defaultModels: [
+      'gpt-5.2',
+      'gpt-5.4',
+      'gpt-5.5',
+      'deepseek-v4-pro',
+      'deepseek-v4-flash',
+      'gemini-3.0-pro',
+      'gemini-3.0-flash',
+      'minimax-m3',
+      'doubao-seed-2.0',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: EvolinkIcon,
+  },
+  evolink_anthropic: {
+    channelType: 'evolink_anthropic',
+    baseURL: 'https://direct.evolink.ai',
+    defaultModels: [
+      'claude-opus-4-8',
+      'claude-opus-4-7',
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5-20251001',
+    ],
+    apiFormat: ANTHROPIC_MESSAGES,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: EvolinkIcon,
+  },
 };
 
 /**
@@ -685,7 +717,8 @@ export type Provider =
   | 'nanogpt'
   | 'fireworks'
   | 'opencode_go'
-  | 'ollama';
+  | 'ollama'
+  | 'evolink';
 
 /**
  * Map channel type to provider
@@ -747,6 +780,8 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   opencode_go: 'opencode_go',
   opencode_go_anthropic: 'opencode_go',
   ollama: 'ollama',
+  evolink: 'evolink',
+  evolink_anthropic: 'evolink',
 };
 
 /**

@@ -92,6 +92,8 @@ func (Channel) Fields() []ent.Field {
 				"opencode_go",
 				"opencode_go_anthropic",
 				"ollama",
+				"evolink",
+				"evolink_anthropic",
 			).
 			Annotations(
 				entgql.OrderField("TYPE"),
