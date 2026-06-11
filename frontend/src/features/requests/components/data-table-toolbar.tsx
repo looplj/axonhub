@@ -148,6 +148,10 @@ export function DataTableToolbar<TData>({
       value: 'failed' as RequestStatus,
       label: t('requests.status.failed'),
     },
+    {
+      value: 'canceled' as RequestStatus,
+      label: t('requests.status.canceled'),
+    },
   ];
 
   const requestSources = [
