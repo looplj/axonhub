@@ -4,12 +4,16 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -492,6 +496,101 @@ func TestFetchModelsGeminiPagination(t *testing.T) {
 		if _, ok := ids[want]; !ok {
 			t.Fatalf("missing model id %q in result: %#v", want, result.Models)
 		}
+	}
+}
+
+func TestFetchModelsWithChannelIDUsesStoredCredentialsOnlyForStoredEndpoint(t *testing.T) {
+	var gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"stored-model"}]}`))
+	}))
+	defer server.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_stored_endpoint?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("stored-endpoint").
+		SetType(channel.TypeOpenai).
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "stored-secret"}).
+		SetSupportedModels([]string{"stored-model"}).
+		SetDefaultTestModel("stored-model").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed to create channel: %v", err)
+	}
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithClient(server.Client()),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     server.URL + "/",
+		ChannelID:   &ch.ID,
+	})
+	if err != nil {
+		t.Fatalf("FetchModels() unexpected error: %v", err)
+	}
+	if result.Error != nil {
+		t.Fatalf("FetchModels() expected nil result.Error, got: %v", *result.Error)
+	}
+	if gotAuth != "Bearer stored-secret" {
+		t.Fatalf("Authorization header = %q, want stored credential", gotAuth)
+	}
+	if len(result.Models) != 1 || result.Models[0].ID != "stored-model" {
+		t.Fatalf("unexpected models: %#v", result.Models)
+	}
+}
+
+func TestFetchModelsWithChannelIDRejectsStoredCredentialForChangedEndpoint(t *testing.T) {
+	var attackerCalls atomic.Int32
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attackerCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"exfiltrated"}]}`))
+	}))
+	defer attacker.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_changed_endpoint?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("stored-endpoint").
+		SetType(channel.TypeOpenai).
+		SetBaseURL("https://api.openai.example").
+		SetCredentials(objects.ChannelCredentials{APIKey: "stored-secret"}).
+		SetSupportedModels([]string{"stored-model"}).
+		SetDefaultTestModel("stored-model").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed to create channel: %v", err)
+	}
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithClient(attacker.Client()),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     attacker.URL,
+		ChannelID:   &ch.ID,
+	})
+	if err != nil {
+		t.Fatalf("FetchModels() unexpected error: %v", err)
+	}
+	if result.Error == nil || !strings.Contains(*result.Error, "API key is required") {
+		t.Fatalf("FetchModels() expected API key required error, got: %#v", result.Error)
+	}
+	if got := attackerCalls.Load(); got != 0 {
+		t.Fatalf("attacker endpoint was called %d times", got)
 	}
 }
 
