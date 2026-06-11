@@ -105,9 +105,7 @@ function formatRetryableStatusCodes(codes: number[] | null | undefined): string 
 }
 
 function parseRetryableStatusCodesInput(value: string): number[] | null {
-  const tokens = value
-    .split(/[,\s]+/)
-    .filter(Boolean);
+  const tokens = value.split(/[,\s]+/).filter(Boolean);
 
   if (tokens.length === 0) {
     return [];
@@ -263,16 +261,6 @@ function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string } }):
   }
 }
 
-function isCodexAuthJSONChannel(channel: { credentials?: { apiKey?: string } }): boolean {
-  try {
-    const apiKey = channel.credentials?.apiKey || '';
-    const json = JSON.parse(apiKey);
-    return !!(json.tokens?.access_token && json.tokens?.refresh_token);
-  } catch {
-    return false;
-  }
-}
-
 function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string }; baseURL: string }): boolean {
   const apiKey = channel.credentials?.apiKey || '';
   const defaultURL = getDefaultBaseURL('claudecode');
@@ -329,16 +317,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
   const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
   const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
-  const [showGcpJsonData, setShowGcpJsonData] = useState(false);
   const [authMode, setAuthMode] = useState<'official' | 'auth-json' | 'third-party'>('official');
   const [codexAuthJSONText, setCodexAuthJSONText] = useState('');
   const [patternError, setPatternError] = useState<string | null>(null);
-  const dialogContentRef = useRef<HTMLDivElement>(null);
 
   // Debounced search values for better performance
   const debouncedFetchedModelsSearch = useDebounce(fetchedModelsSearch, 300);
   const debouncedSupportedModelsSearch = useDebounce(supportedModelsSearch, 300);
-  const debouncedApiKeysSearch = useDebounce(apiKeysSearch, 300);
 
   // Refs for virtual scrolling
   const fetchedModelsParentRef = useRef<HTMLDivElement>(null);
@@ -985,7 +970,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       antigravity: 'antigravity',
     };
 
-    let channelTypeForURL: ChannelType | undefined = providerToChannelType[selectedProvider];
+    const channelTypeForURL: ChannelType | undefined = providerToChannelType[selectedProvider];
 
     if (channelTypeForURL) {
       const baseURL =
@@ -1296,15 +1281,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const baseURL = form.getValues('baseURL');
     const apiKeys = form.getValues('credentials.apiKeys');
     const oauthApiKey = form.getValues('credentials.apiKey');
+    const gcpCredentials = form.getValues('credentials.gcp');
 
     if (!channelType || !baseURL) {
       return;
     }
 
     try {
-      // For OAuth-based providers (like Copilot), prefer oauthApiKey first
       let firstApiKey = '';
-      if (oauthApiKey) {
+      if (channelType === 'gemini_vertex' && gcpCredentials?.jsonData?.trim()) {
+        firstApiKey = JSON.stringify({
+          region: gcpCredentials.region || '',
+          projectID: gcpCredentials.projectID || '',
+          jsonData: gcpCredentials.jsonData,
+        });
+      }
+
+      // For OAuth-based providers (like Copilot), prefer oauthApiKey first
+      if (!firstApiKey && oauthApiKey) {
         // If it's OAuth JSON, send full JSON so backend detects isOAuthJSON
         if (oauthApiKey.trimStart().startsWith('{')) {
           firstApiKey = oauthApiKey;
@@ -1371,7 +1365,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const canFetchModels = () => {
     const baseURL = form.watch('baseURL');
     const apiKeys = form.watch('credentials.apiKeys');
+    const gcpCredentials = form.watch('credentials.gcp');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
+    const hasGcpCredentials = !!gcpCredentials?.jsonData?.trim();
 
     if (isCodexType || isAntigravityType) {
       return !!baseURL;
@@ -1381,6 +1377,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const oauthApiKey = form.watch('credentials.apiKey');
       const hasOAuthToken = !!parseOauthToken(oauthApiKey || '');
       return !!baseURL && hasOAuthToken;
+    }
+
+    if (selectedType === 'gemini_vertex') {
+      return !!baseURL && (hasGcpCredentials || isEdit);
     }
 
     if (isEdit) {
@@ -2079,9 +2079,81 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
+                      {(selectedType === 'anthropic_gcp' || selectedType === 'gemini_vertex') && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name='credentials.gcp.region'
+                            render={({ field, fieldState }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.gcp.region.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <Input
+                                    placeholder={t('channels.dialogs.fields.gcp.region.placeholder')}
+                                    autoComplete='off'
+                                    aria-invalid={!!fieldState.error}
+                                    {...field}
+                                  />
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name='credentials.gcp.projectID'
+                            render={({ field, fieldState }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.gcp.projectID.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <Input
+                                    placeholder={t('channels.dialogs.fields.gcp.projectID.placeholder')}
+                                    autoComplete='off'
+                                    aria-invalid={!!fieldState.error}
+                                    {...field}
+                                  />
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name='credentials.gcp.jsonData'
+                            render={({ field, fieldState }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.gcp.jsonData.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <Textarea
+                                    placeholder={t('channels.dialogs.fields.gcp.jsonData.placeholder')}
+                                    className='min-h-[120px] resize-y font-mono text-sm'
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    spellCheck={false}
+                                    aria-invalid={!!fieldState.error}
+                                    {...field}
+                                  />
+                                  <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.gcp.jsonData.description')}</p>
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+
                       {(!(isCodexType || isClaudeCodeType || isCopilotType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&
-                        selectedType !== 'anthropic_gcp' && (
+                        selectedType !== 'anthropic_gcp' &&
+                        selectedType !== 'gemini_vertex' && (
                           <FormField
                             control={form.control}
                             name='credentials.apiKeys'

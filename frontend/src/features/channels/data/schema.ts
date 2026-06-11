@@ -481,7 +481,7 @@ export const createChannelInputSchema = z
     }
 
     // Validate that at least one credential type is provided
-    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp') {
+    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp' && data.type !== 'gemini_vertex') {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'At least one API Key is required',
@@ -494,7 +494,7 @@ export const createChannelInputSchema = z
       validateOAuthCredentials(data.type, data.credentials.apiKey, ctx);
     }
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
-    if (data.type === 'anthropic_gcp') {
+    if (data.type === 'anthropic_gcp' || data.type === 'gemini_vertex') {
       const gcp = data.credentials?.gcp;
       if (!gcp?.region) {
         ctx.addIssue({
@@ -601,7 +601,7 @@ export const updateChannelInputSchema = z
     }
 
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
-    if (data.type === 'anthropic_gcp' && data.credentials) {
+    if ((data.type === 'anthropic_gcp' || data.type === 'gemini_vertex') && data.credentials) {
       const gcp = data.credentials.gcp;
       if (!gcp?.region) {
         ctx.addIssue({
