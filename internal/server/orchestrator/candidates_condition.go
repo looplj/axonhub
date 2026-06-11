@@ -37,6 +37,7 @@ func filterResolvedCandidatesForRequest(
 	promptTokens := estimatePromptTokens(req)
 	stream := reqStream(req)
 	requestFormat := reqAPIFormat(req)
+	contentFeatures := detectRequestContentFeatures(req)
 	now := time.Now()
 	filtered := make([]*resolvedAssociationCandidate, 0, len(resolvedCandidates))
 
@@ -45,7 +46,7 @@ func filterResolvedCandidatesForRequest(
 			continue
 		}
 
-		if !matchesAssociationWhen(promptTokens, stream, requestFormat, now, candidate.when) {
+		if !matchesAssociationWhen(promptTokens, stream, requestFormat, contentFeatures, now, candidate.when) {
 			continue
 		}
 
@@ -97,7 +98,21 @@ func reqAPIFormat(req *llm.Request) string {
 	return string(req.APIFormat)
 }
 
-func matchesAssociationWhen(promptTokens int64, stream bool, requestFormat string, now time.Time, when *objects.ModelAssociationWhen) bool {
+type requestContentFeatures struct {
+	hasImage    bool
+	hasVideo    bool
+	hasDocument bool
+	hasAudio    bool
+}
+
+func matchesAssociationWhen(
+	promptTokens int64,
+	stream bool,
+	requestFormat string,
+	contentFeatures requestContentFeatures,
+	now time.Time,
+	when *objects.ModelAssociationWhen,
+) bool {
 	if when == nil {
 		return true
 	}
@@ -107,15 +122,51 @@ func matchesAssociationWhen(promptTokens int64, stream bool, requestFormat strin
 	}
 
 	if when.Condition != nil && !objects.Evaluate(*when.Condition, map[string]any{
-		"prompt_tokens":  promptTokens,
-		"stream":         stream,
-		"request_format": requestFormat,
-		"now":            now,
+		objects.ModelAssociationConditionFieldPromptTokens:  promptTokens,
+		objects.ModelAssociationConditionFieldStream:        stream,
+		objects.ModelAssociationConditionFieldRequestFormat: requestFormat,
+		objects.ModelAssociationConditionFieldHasImage:      contentFeatures.hasImage,
+		objects.ModelAssociationConditionFieldHasVideo:      contentFeatures.hasVideo,
+		objects.ModelAssociationConditionFieldHasDocument:   contentFeatures.hasDocument,
+		objects.ModelAssociationConditionFieldHasAudio:      contentFeatures.hasAudio,
+		"now": now,
 	}) {
 		return false
 	}
 
 	return true
+}
+
+func detectRequestContentFeatures(req *llm.Request) requestContentFeatures {
+	var features requestContentFeatures
+	if req == nil {
+		return features
+	}
+
+	for _, message := range req.Messages {
+		for _, part := range message.Content.MultipleContent {
+			switch {
+			case part.ImageURL != nil:
+				features.hasImage = true
+			case part.VideoURL != nil:
+				features.hasVideo = true
+			case part.Document != nil:
+				features.hasDocument = true
+			case part.InputAudio != nil:
+				features.hasAudio = true
+			}
+
+			if features.hasAll() {
+				return features
+			}
+		}
+	}
+
+	return features
+}
+
+func (features requestContentFeatures) hasAll() bool {
+	return features.hasImage && features.hasVideo && features.hasDocument && features.hasAudio
 }
 
 func estimatePromptTokens(req *llm.Request) int64 {
