@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"golang.org/x/oauth2/google"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
@@ -24,7 +26,11 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 )
 
-const providerConfCacheDuration = 1 * time.Hour
+const (
+	providerConfCacheDuration = 1 * time.Hour
+	vertexOAuthScope          = "https://www.googleapis.com/auth/cloud-platform"
+	vertexPublisherID         = "google"
+)
 
 // ModelFetcher handles fetching models from provider APIs.
 type ModelFetcher struct {
@@ -161,6 +167,50 @@ type FetchModelsInput struct {
 	ChannelID *int
 }
 
+func gcpCredentialsFromFetchAPIKey(apiKey string) *objects.GCPCredential {
+	apiKey = strings.TrimSpace(apiKey)
+	if apiKey == "" || !strings.HasPrefix(apiKey, "{") {
+		return nil
+	}
+
+	var wrapped objects.GCPCredential
+	if err := json.Unmarshal([]byte(apiKey), &wrapped); err == nil && wrapped.JSONData != "" {
+		return &wrapped
+	}
+
+	var serviceAccount struct {
+		Type      string `json:"type"`
+		ProjectID string `json:"project_id"`
+	}
+	if err := json.Unmarshal([]byte(apiKey), &serviceAccount); err == nil && serviceAccount.Type == "service_account" {
+		return &objects.GCPCredential{
+			ProjectID: serviceAccount.ProjectID,
+			JSONData:  apiKey,
+		}
+	}
+
+	return nil
+}
+
+func gcpRegionFromVertexBaseURL(baseURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil {
+		return ""
+	}
+
+	host := parsed.Hostname()
+	if host == "aiplatform.googleapis.com" {
+		return "global"
+	}
+
+	const suffix = "-aiplatform.googleapis.com"
+	region, ok := strings.CutSuffix(host, suffix)
+	if !ok {
+		return ""
+	}
+	return region
+}
+
 // FetchModelsResult represents the result of fetching models.
 type FetchModelsResult struct {
 	Models []ModelIdentify
@@ -228,17 +278,24 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
-	if result, ok := f.tryReturnDefaultModels(ctx, input.ChannelType); ok {
-		return result, nil
+	if input.ChannelType != channel.TypeGeminiVertex.String() {
+		if result, ok := f.tryReturnDefaultModels(ctx, input.ChannelType); ok {
+			return result, nil
+		}
 	}
 
 	var (
 		apiKey      string
+		gcpCreds    *objects.GCPCredential
 		proxyConfig *httpclient.ProxyConfig
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {
 		apiKey = *input.APIKey
+		gcpCreds = gcpCredentialsFromFetchAPIKey(apiKey)
+		if gcpCreds != nil && gcpCreds.Region == "" {
+			gcpCreds.Region = gcpRegionFromVertexBaseURL(input.BaseURL)
+		}
 	}
 
 	if input.ChannelID != nil {
@@ -256,6 +313,13 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}
 		}
 
+		if ch.Credentials.GCP != nil {
+			gcpCreds = ch.Credentials.GCP
+			if gcpCreds.Region == "" {
+				gcpCreds.Region = gcpRegionFromVertexBaseURL(input.BaseURL)
+			}
+		}
+
 		if apiKey == "" {
 			apiKey = ch.Credentials.APIKey
 			if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
@@ -269,6 +333,25 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	channelType := channel.Type(input.ChannelType)
+
+	if channelType == channel.TypeGeminiVertex {
+		if gcpCreds == nil || gcpCreds.JSONData == "" {
+			return &FetchModelsResult{Models: f.fetchGeminiVertexModels(ctx)}, nil
+		}
+
+		models, err := f.fetchGeminiVertexPublisherModels(ctx, input.BaseURL, gcpCreds, proxyConfig)
+		if err != nil {
+			return &FetchModelsResult{
+				Models: []ModelIdentify{},
+				Error:  lo.ToPtr(fmt.Sprintf("failed to fetch Vertex AI models: %v", err)),
+			}, nil
+		}
+
+		return &FetchModelsResult{
+			Models: lo.Uniq(models),
+			Error:  nil,
+		}, nil
+	}
 
 	if apiKey == "" {
 		if channelType == channel.TypeQiniu {
@@ -410,6 +493,141 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		Models: lo.Uniq(models),
 		Error:  nil,
 	}, nil
+}
+
+type geminiVertexPublisherModelsResponse struct {
+	PublisherModels []GeminiModelResponse `json:"publisherModels"`
+	Models          []GeminiModelResponse `json:"models"`
+	NextPageToken   string                `json:"nextPageToken"`
+}
+
+func (f *ModelFetcher) fetchGeminiVertexPublisherModels(ctx context.Context, baseURL string, gcpCreds *objects.GCPCredential, proxyConfig *httpclient.ProxyConfig) ([]ModelIdentify, error) {
+	if gcpCreds == nil {
+		return nil, fmt.Errorf("GCP credentials are required")
+	}
+	if gcpCreds.Region == "" {
+		return nil, fmt.Errorf("GCP region is required")
+	}
+	if gcpCreds.JSONData == "" {
+		return nil, fmt.Errorf("GCP service account JSON is required")
+	}
+
+	creds, err := google.CredentialsFromJSON(ctx, []byte(gcpCreds.JSONData), vertexOAuthScope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse GCP credentials: %w", err)
+	}
+
+	token, err := creds.TokenSource.Token()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GCP access token: %w", err)
+	}
+
+	httpClient := f.httpClient
+	if proxyConfig != nil {
+		httpClient = f.httpClient.WithProxy(proxyConfig)
+	}
+
+	return f.fetchGeminiVertexPublisherModelsWithToken(ctx, httpClient, baseURL, gcpCreds.Region, token.AccessToken)
+}
+
+func (f *ModelFetcher) fetchGeminiVertexPublisherModelsWithToken(ctx context.Context, httpClient *httpclient.HttpClient, baseURL, region, accessToken string) ([]ModelIdentify, error) {
+	if accessToken == "" {
+		return nil, fmt.Errorf("GCP access token is required")
+	}
+
+	const maxPages = 50
+	const pageSize = 1000
+
+	allModels := make([]ModelIdentify, 0, 128)
+	pageToken := ""
+	seenTokens := make(map[string]struct{}, 8)
+	modelsURL := buildGeminiVertexPublisherModelsURL(baseURL, region)
+
+	for i := 0; i < maxPages; i++ {
+		pageURL, err := withGeminiModelsPagination(modelsURL, pageSize, pageToken)
+		if err != nil {
+			return nil, err
+		}
+
+		req := &httpclient.Request{
+			Method: http.MethodGet,
+			URL:    pageURL,
+			Headers: http.Header{
+				"Accept":        []string{"application/json"},
+				"Authorization": []string{"Bearer " + accessToken},
+			},
+		}
+
+		resp, err := httpClient.Do(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected status: %s", resp.RawResponse.Status)
+		}
+
+		var page geminiVertexPublisherModelsResponse
+		if err := json.Unmarshal(resp.Body, &page); err != nil {
+			return nil, fmt.Errorf("failed to parse Vertex AI models response: %w", err)
+		}
+
+		for _, model := range append(page.PublisherModels, page.Models...) {
+			id := extractVertexPublisherModelID(model.Name)
+			if id == "" {
+				id = model.BaseModelID
+			}
+			if id != "" {
+				allModels = append(allModels, ModelIdentify{ID: id})
+			}
+		}
+
+		if page.NextPageToken == "" {
+			return allModels, nil
+		}
+		if _, ok := seenTokens[page.NextPageToken]; ok {
+			return allModels, nil
+		}
+
+		seenTokens[page.NextPageToken] = struct{}{}
+		pageToken = page.NextPageToken
+	}
+
+	return allModels, nil
+}
+
+func buildGeminiVertexPublisherModelsURL(baseURL, region string) string {
+	baseURL = strings.TrimSpace(strings.TrimSuffix(baseURL, "/"))
+	isAiplatformEndpoint := baseURL == "" || strings.Contains(baseURL, "aiplatform.googleapis.com")
+
+	if !isAiplatformEndpoint && (strings.HasSuffix(baseURL, "/v1beta1") || strings.HasSuffix(baseURL, "/v1")) {
+		return fmt.Sprintf("%s/publishers/%s/models", baseURL, vertexPublisherID)
+	}
+
+	if isAiplatformEndpoint {
+		baseURL = strings.TrimSuffix(baseURL, "/v1beta1")
+		baseURL = strings.TrimSuffix(baseURL, "/v1")
+
+		if region != "" && region != "global" {
+			baseURL = fmt.Sprintf("https://%s-aiplatform.googleapis.com", region)
+		} else if baseURL == "" {
+			baseURL = "https://aiplatform.googleapis.com"
+		}
+	}
+
+	return fmt.Sprintf("%s/v1beta1/publishers/%s/models", baseURL, vertexPublisherID)
+}
+
+func extractVertexPublisherModelID(name string) string {
+	if name == "" {
+		return ""
+	}
+	if after, ok := strings.CutSuffix(name, ":predict"); ok {
+		name = after
+	}
+	if before, after, ok := strings.Cut(name, "/models/"); ok && before != "" {
+		return after
+	}
+	return strings.TrimPrefix(name, "models/")
 }
 
 type geminiListModelsResponse struct {

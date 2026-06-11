@@ -647,3 +647,98 @@ func TestFetchCopilotModels(t *testing.T) {
 		t.Errorf("expected 1 server call (cached), got %d", callCount.Load())
 	}
 }
+
+func TestBuildGeminiVertexPublisherModelsURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		region  string
+		want    string
+	}{
+		{
+			name:    "global base URL stays global",
+			baseURL: "https://aiplatform.googleapis.com/v1",
+			region:  "global",
+			want:    "https://aiplatform.googleapis.com/v1beta1/publishers/google/models",
+		},
+		{
+			name:    "regional Vertex base URL follows GCP region",
+			baseURL: "https://aiplatform.googleapis.com",
+			region:  "us-central1",
+			want:    "https://us-central1-aiplatform.googleapis.com/v1beta1/publishers/google/models",
+		},
+		{
+			name:    "custom gateway base URL is preserved",
+			baseURL: "https://gateway.example.com/google/v1beta1",
+			region:  "us-central1",
+			want:    "https://gateway.example.com/google/v1beta1/publishers/google/models",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := buildGeminiVertexPublisherModelsURL(tt.baseURL, tt.region); got != tt.want {
+				t.Fatalf("buildGeminiVertexPublisherModelsURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFetchGeminiVertexPublisherModelsWithToken(t *testing.T) {
+	var callCount atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if r.URL.Path != "/v1beta1/publishers/google/models" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if got := r.URL.Query().Get("pageSize"); got != "1000" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"missing pageSize"}`))
+			return
+		}
+
+		switch r.URL.Query().Get("pageToken") {
+		case "":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"publisherModels":[{"name":"publishers/google/models/gemini-3-pro-image"},{"name":"projects/p/locations/us-central1/publishers/google/models/gemini-3.1-flash-image"}],"nextPageToken":"next"}`))
+		case "next":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"publisherModels":[{"baseModelId":"gemini-3-pro-preview"}]}`))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"unexpected pageToken"}`))
+		}
+	}))
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	models, err := fetcher.fetchGeminiVertexPublisherModelsWithToken(context.Background(), httpclient.NewHttpClientWithClient(server.Client()), server.URL, "global", "test-token")
+	if err != nil {
+		t.Fatalf("fetchGeminiVertexPublisherModelsWithToken() unexpected error: %v", err)
+	}
+
+	if got := int(callCount.Load()); got != 2 {
+		t.Fatalf("expected 2 requests, got %d", got)
+	}
+
+	ids := make(map[string]struct{}, len(models))
+	for _, m := range models {
+		ids[m.ID] = struct{}{}
+	}
+	for _, want := range []string{"gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-3-pro-preview"} {
+		if _, ok := ids[want]; !ok {
+			t.Fatalf("missing model id %q in result: %#v", want, models)
+		}
+	}
+}
