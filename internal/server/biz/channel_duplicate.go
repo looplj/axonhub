@@ -43,7 +43,6 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 		prices, err := db.ChannelModelPrice.Query().
 			Where(
 				channelmodelprice.ChannelID(sourceID),
-				channelmodelprice.DeletedAtEQ(0),
 			).
 			All(ctx)
 		if err != nil {
