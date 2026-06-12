@@ -28,6 +28,7 @@ import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/syst
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
   useCreateChannel,
+  useDuplicateChannel,
   useUpdateChannel,
   useFetchModels,
   useAllChannelNames,
@@ -296,6 +297,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isDuplicate = !!duplicateFromRow && !isEdit;
   const initialRow: Channel | undefined = currentRow || duplicateFromRow;
   const createChannel = useCreateChannel();
+  const duplicateChannel = useDuplicateChannel();
   const updateChannel = useUpdateChannel();
   const fetchModels = useFetchModels();
   const syncChannelModels = useSyncChannelModels();
@@ -676,6 +678,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const apiKeys = form.watch('credentials.apiKeys');
   const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
+  const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannel.isPending;
 
   const { data: disabledKeys = [] } = useChannelDisabledAPIKeys(currentRow?.id || '', {
     enabled: isEdit && !!currentRow?.id && showApiKeysPanel,
@@ -1179,10 +1182,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           retryableStatusCodes,
         });
 
-        await createChannel.mutateAsync({
+        const createInput = {
           ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
           settings: nextSettings,
-        } as z.infer<typeof createChannelInputSchema>);
+        } as z.infer<typeof createChannelInputSchema>;
+
+        if (isDuplicate && duplicateFromRow) {
+          await duplicateChannel.mutateAsync({
+            sourceID: duplicateFromRow.id,
+            input: createInput,
+          });
+        } else {
+          await createChannel.mutateAsync(createInput);
+        }
 
         // Auto-save proxy preset (preserve existing name if available)
         if (proxyType === ProxyType.URL && proxyUrl) {
@@ -3010,10 +3022,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             <Button
               type='submit'
               form='channel-form'
-              disabled={createChannel.isPending || updateChannel.isPending || supportedModels.length === 0}
+              disabled={isSubmitting || supportedModels.length === 0}
               data-testid='channel-submit-button'
             >
-              {createChannel.isPending || updateChannel.isPending
+              {isSubmitting
                 ? isEdit
                   ? t('common.buttons.editing')
                   : t('common.buttons.creating')

@@ -758,6 +758,7 @@ type DeleteDisabledAPIKeysPayload {
 
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
+  duplicateChannel(sourceID: ID!, input: CreateChannelInput!): Channel!
   bulkCreateChannels(input: BulkCreateChannelsInput!): [Channel!]!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
   saveChannelEndpoints(input: SaveChannelEndpointsInput!): Channel!

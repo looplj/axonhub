@@ -917,6 +917,7 @@ type ComplexityRoot struct {
 		DeleteRole                           func(childComplexity int, id objects.GUID) int
 		DeleteUser                           func(childComplexity int, id objects.GUID) int
 		DisableChannelAPIKey                 func(childComplexity int, channelID objects.GUID, key string) int
+		DuplicateChannel                     func(childComplexity int, sourceID objects.GUID, input ent.CreateChannelInput) int
 		EnableAllChannelAPIKeys              func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
 		EnableSelectedChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
@@ -2014,6 +2015,7 @@ type ModelResolver interface {
 }
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error)
+	DuplicateChannel(ctx context.Context, sourceID objects.GUID, input ent.CreateChannelInput) (*ent.Channel, error)
 	BulkCreateChannels(ctx context.Context, input biz.BulkCreateChannelsInput) ([]*ent.Channel, error)
 	UpdateChannel(ctx context.Context, id objects.GUID, input ent.UpdateChannelInput) (*ent.Channel, error)
 	SaveChannelEndpoints(ctx context.Context, input biz.SaveChannelEndpointsInput) (*ent.Channel, error)
@@ -5732,6 +5734,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DisableChannelAPIKey(childComplexity, args["channelID"].(objects.GUID), args["key"].(string)), true
+	case "Mutation.duplicateChannel":
+		if e.complexity.Mutation.DuplicateChannel == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_duplicateChannel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DuplicateChannel(childComplexity, args["sourceID"].(objects.GUID), args["input"].(ent.CreateChannelInput)), true
 	case "Mutation.enableAllChannelAPIKeys":
 		if e.complexity.Mutation.EnableAllChannelAPIKeys == nil {
 			break
@@ -11667,6 +11680,22 @@ func (ec *executionContext) field_Mutation_disableChannelAPIKey_args(ctx context
 		return nil, err
 	}
 	args["key"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_duplicateChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sourceID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["sourceID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateChannelInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -28899,6 +28928,109 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_duplicateChannel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_duplicateChannel,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DuplicateChannel(ctx, fc.Args["sourceID"].(objects.GUID), fc.Args["input"].(ent.CreateChannelInput))
+		},
+		nil,
+		ec.marshalNChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannel,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_duplicateChannel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
+			case "autoSyncSupportedModels":
+				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
+			case "tags":
+				return ec.fieldContext_Channel_tags(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "policies":
+				return ec.fieldContext_Channel_policies(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
+			case "remark":
+				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			case "usageLogs":
+				return ec.fieldContext_Channel_usageLogs(ctx, field)
+			case "channelProbes":
+				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
+			case "providerQuotaStatus":
+				return ec.fieldContext_Channel_providerQuotaStatus(ctx, field)
+			case "defaultEndpoints":
+				return ec.fieldContext_Channel_defaultEndpoints(ctx, field)
+			case "allModelEntries":
+				return ec.fieldContext_Channel_allModelEntries(ctx, field)
+			case "credentials":
+				return ec.fieldContext_Channel_credentials(ctx, field)
+			case "disabledAPIKeys":
+				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "liveLimiterStats":
+				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_duplicateChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -90313,6 +90445,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createChannel":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createChannel(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "duplicateChannel":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_duplicateChannel(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
