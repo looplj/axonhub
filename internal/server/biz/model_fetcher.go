@@ -15,6 +15,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
@@ -221,6 +222,15 @@ func (f *ModelFetcher) tryReturnDefaultModels(ctx context.Context, channelType s
 	return nil, false
 }
 
+func fetchModelsInputMatchesChannel(input FetchModelsInput, ch *ent.Channel) bool {
+	if ch == nil {
+		return false
+	}
+
+	return input.ChannelType == ch.Type.String() &&
+		strings.TrimRight(input.BaseURL, "/") == strings.TrimRight(ch.BaseURL, "/")
+}
+
 func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsResult, error) {
 	if input.ChannelType == channel.TypeVolcengine.String() {
 		return &FetchModelsResult{
@@ -257,10 +267,19 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		if apiKey == "" {
+			if !fetchModelsInputMatchesChannel(input, ch) {
+				return &FetchModelsResult{
+					Models: []ModelIdentify{},
+					Error:  lo.ToPtr("API key is required when channel type or base URL is changed"),
+				}, nil
+			}
+
 			apiKey = ch.Credentials.APIKey
 			if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
 				apiKey = ch.Credentials.APIKeys[0]
 			}
+			input.ChannelType = ch.Type.String()
+			input.BaseURL = ch.BaseURL
 		}
 
 		if ch.Settings != nil {

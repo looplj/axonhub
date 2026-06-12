@@ -610,8 +610,8 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return true
 	}
 
-	// otherwise check if the error is retryable.
-	return isRetryableError(err)
+	// otherwise check if the error is retryable for the current channel.
+	return isRetryableErrorForChannel(err, p.state.CurrentCandidate.Channel)
 }
 
 // PrepareForRetry implements the pipeline.ChannelRetryable interface.

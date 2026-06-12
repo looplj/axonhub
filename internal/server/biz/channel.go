@@ -502,6 +502,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		if err := ValidateRateLimit(input.Settings.RateLimit); err != nil {
 			return nil, fmt.Errorf("invalid rate limit: %w", err)
 		}
+
+		if err := NormalizeRetryableStatusCodes(input.Settings); err != nil {
+			return nil, err
+		}
 	}
 
 	if input.Endpoints != nil {
@@ -567,6 +571,26 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	return channel, nil
 }
 
+// NormalizeRetryableStatusCodes validates, deduplicates, and sorts additional
+// retryable HTTP status codes configured on a channel.
+func NormalizeRetryableStatusCodes(settings *objects.ChannelSettings) error {
+	if settings == nil || len(settings.RetryableStatusCodes) == 0 {
+		return nil
+	}
+
+	codes := slices.Clone(settings.RetryableStatusCodes)
+	for _, code := range codes {
+		if code < 400 || code > 599 {
+			return fmt.Errorf("invalid retryable status code %d: must be between 400 and 599", code)
+		}
+	}
+
+	slices.Sort(codes)
+	settings.RetryableStatusCodes = slices.Compact(codes)
+
+	return nil
+}
+
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
@@ -624,6 +648,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		if err := ValidateRateLimit(input.Settings.RateLimit); err != nil {
 			return nil, fmt.Errorf("invalid rate limit: %w", err)
+		}
+
+		if err := NormalizeRetryableStatusCodes(input.Settings); err != nil {
+			return nil, err
 		}
 
 		mut.SetSettings(input.Settings)

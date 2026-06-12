@@ -400,6 +400,80 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 		require.Contains(t, err.Error(), `unsupported condition operator "gt" for stream`)
 	})
 
+	t.Run("valid content feature conditions", func(t *testing.T) {
+		fields := []string{
+			objects.ModelAssociationConditionFieldHasImage,
+			objects.ModelAssociationConditionFieldHasVideo,
+			objects.ModelAssociationConditionFieldHasDocument,
+			objects.ModelAssociationConditionFieldHasAudio,
+		}
+
+		for _, field := range fields {
+			t.Run(field, func(t *testing.T) {
+				settings := &objects.ModelSettings{
+					Associations: []*objects.ModelAssociation{
+						{
+							Type: "model",
+							When: &objects.ModelAssociationWhen{
+								Enabled: true,
+								Condition: &objects.Condition{
+									Type:  objects.ConditionTypeGroup,
+									Logic: "and",
+									Conditions: []objects.Condition{
+										{
+											Type:     objects.ConditionTypeCondition,
+											Field:    field,
+											Operator: "eq",
+											Value:    true,
+										},
+									},
+								},
+							},
+							ModelID: &objects.ModelIDAssociation{
+								ModelID: "test-model",
+							},
+						},
+					},
+				}
+
+				err := svc.validateModelSettings(settings)
+				require.NoError(t, err)
+			})
+		}
+	})
+
+	t.Run("invalid content feature condition with string value", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    objects.ModelAssociationConditionFieldHasImage,
+									Operator: "eq",
+									Value:    "true",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "condition value for has_image must be a boolean")
+	})
+
 	t.Run("valid combined prompt_tokens and stream condition", func(t *testing.T) {
 		settings := &objects.ModelSettings{
 			Associations: []*objects.ModelAssociation{

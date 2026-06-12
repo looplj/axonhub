@@ -54,6 +54,13 @@ const requestFormatConditionOptions = [
   'seedance/video',
 ] as const;
 
+const contentFeatureConditionFields = [
+  { value: 'has_image', label: 'Has image' },
+  { value: 'has_video', label: 'Has video' },
+  { value: 'has_document', label: 'Has document' },
+  { value: 'has_audio', label: 'Has audio' },
+] as const;
+
 const whenFilterFields: FilterBuilderField[] = [
   {
     value: 'prompt_tokens',
@@ -76,6 +83,15 @@ const whenFilterFields: FilterBuilderField[] = [
       { value: 'ne', label: '!= Not equal' },
     ],
   },
+  ...contentFeatureConditionFields.map((field) => ({
+    value: field.value,
+    label: field.label,
+    type: 'boolean' as const,
+    operators: [
+      { value: 'eq', label: '= Equals' },
+      { value: 'ne', label: '!= Not equal' },
+    ],
+  })),
   {
     value: 'request_format',
     label: 'Request format',
@@ -113,6 +129,10 @@ function isValidConditionOperator(field: string, operator: string): boolean {
   const fieldConfig = whenFilterFields.find((f) => f.value === field);
   if (!fieldConfig) return false;
   return Boolean(fieldConfig.operators?.some((op) => op.value === operator));
+}
+
+function isBooleanConditionField(field?: string): boolean {
+  return field === 'stream' || contentFeatureConditionFields.some((item) => item.value === field);
 }
 
 const DEFAULT_WHEN_CONDITION: FilterBuilderGroupListValue = {
@@ -216,7 +236,7 @@ function validateWhenConditionNode(
       path: [...path, 'value'],
     });
   }
-  if (condition.field === 'stream' && typeof condition.value !== 'boolean') {
+  if (isBooleanConditionField(condition.field) && typeof condition.value !== 'boolean') {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Value must be a boolean',

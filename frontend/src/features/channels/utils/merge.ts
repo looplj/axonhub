@@ -110,6 +110,7 @@ export function mergeChannelSettingsForUpdate(
     passThroughUserAgent: pick('passThroughUserAgent', existing?.passThroughUserAgent ?? null),
     passThroughBody: pick('passThroughBody', existing?.passThroughBody ?? null),
     rateLimit: pick('rateLimit', existing?.rateLimit ?? null),
+    retryableStatusCodes: pick('retryableStatusCodes', existing?.retryableStatusCodes ?? []),
   };
 }
 
