@@ -474,3 +474,17 @@ func TestPolicy_EvalMutation_UsesContextDecision(t *testing.T) {
 	err := (Policy{}).EvalMutation(ctx, nil)
 	require.NoError(t, err)
 }
+
+func TestPolicy_EvalQuery_PropagatesDenyContextDecision(t *testing.T) {
+	ctx := privacy.DecisionContext(context.Background(), privacy.Deny)
+
+	err := (Policy{}).EvalQuery(ctx, nil)
+	require.ErrorIs(t, err, privacy.Deny)
+}
+
+func TestPolicy_EvalMutation_PropagatesDenyContextDecision(t *testing.T) {
+	ctx := privacy.DecisionContext(context.Background(), privacy.Deny)
+
+	err := (Policy{}).EvalMutation(ctx, nil)
+	require.ErrorIs(t, err, privacy.Deny)
+}
