@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { useParams, useNavigate } from '@tanstack/react-router';
+import { useParams, useNavigate, useRouterState } from '@tanstack/react-router';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
@@ -14,13 +14,16 @@ export default function RequestDetailGlobalPage() {
   const { t } = useTranslation();
   const { requestId } = useParams({ from: '/_authenticated/requests/$requestId' });
   const navigate = useNavigate();
+  const currentSearch = useRouterState({
+    select: (state) => (state.location.search ?? {}) as Record<string, unknown>,
+  });
   const { data: request } = useRequest(requestId, { projectId: null });
 
   return (
     <div className='flex h-screen flex-col'>
       <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
         <div className='flex items-center space-x-4'>
-          <Button variant='ghost' size='sm' onClick={() => navigate({ to: '/channels' })} className='hover:bg-accent'>
+          <Button variant='ghost' size='sm' onClick={() => navigate({ to: '/requests', search: currentSearch })} className='hover:bg-accent'>
             <ArrowLeft className='mr-2 h-4 w-4' />
             {t('common.back')}
           </Button>

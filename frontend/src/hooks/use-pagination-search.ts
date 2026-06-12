@@ -303,13 +303,15 @@ export function usePaginationSearch(options: UsePaginationSearchOptions = {}): U
 
   const navigateWithSearch = useCallback(
     (options: { to: string; params?: Record<string, any> }) => {
+      // Merge current URL search params (including filters) with pagination params
+      // to preserve all state when navigating to detail pages and back
       navigate({
         to: options.to as any,
         params: options.params,
-        search: getSearchParams(),
+        search: { ...search, ...getSearchParams() } as Record<string, unknown>,
       } as any);
     },
-    [navigate, getSearchParams]
+    [navigate, search, getSearchParams]
   );
 
   return {
