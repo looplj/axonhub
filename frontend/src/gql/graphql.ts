@@ -37,6 +37,16 @@ export function extractOperationName(query: string): string | undefined {
 
 export const GRAPHQL_ENDPOINT = '/admin/graphql';
 
+function isForbiddenGraphQLError(error: any): boolean {
+  return error?.extensions?.code === 'FORBIDDEN' || error?.message?.toLowerCase().includes('permission denied');
+}
+
+function isUnauthorizedGraphQLError(error: any): boolean {
+  const message = error?.message?.toLowerCase() ?? '';
+
+  return error?.extensions?.code === 'UNAUTHENTICATED' || message.includes('unauthorized') || message.includes('unauthenticated');
+}
+
 // GraphQL client function with token support
 export async function graphqlRequest<T>(
   query: string,
@@ -115,12 +125,7 @@ export async function graphqlRequest<T>(
     const firstError = result.errors[0];
 
     // Check for authentication errors
-    const authError = result.errors.find(
-      (error: any) =>
-        error.message?.includes('unauthorized') ||
-        error.message?.includes('unauthenticated') ||
-        error.extensions?.code === 'UNAUTHENTICATED'
-    );
+    const authError = result.errors.find(isUnauthorizedGraphQLError);
 
     if (authError) {
       // Clear token and redirect to login
@@ -131,6 +136,7 @@ export async function graphqlRequest<T>(
     }
 
     throw new GraphQLRequestError(firstError?.message || 'GraphQL Error', {
+      status: isForbiddenGraphQLError(firstError) ? 403 : undefined,
       extensions: firstError?.extensions,
     });
   }
