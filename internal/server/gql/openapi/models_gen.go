@@ -36,8 +36,14 @@ type APIKeyQuotaWindow struct {
 }
 
 type LoadAPIKeyProfileTemplateInput struct {
-	TemplateID objects.GUID `json:"templateID"`
-	APIKeyID   objects.GUID `json:"apiKeyID"`
+	// Template to load. Provide exactly one of templateID or templateName;
+	// templateName resolves within the caller's own project.
+	TemplateID   *objects.GUID `json:"templateID,omitempty"`
+	TemplateName *string       `json:"templateName,omitempty"`
+	// Target API key. Provide exactly one of apiKeyID or apiKeyName;
+	// apiKeyName resolves within the caller's own project.
+	APIKeyID   *objects.GUID `json:"apiKeyID,omitempty"`
+	APIKeyName *string       `json:"apiKeyName,omitempty"`
 }
 
 type Mutation struct {

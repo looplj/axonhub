@@ -13,6 +13,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -186,27 +187,63 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 		return nil, ErrAPIKeyNameRequired
 	}
 
-	client := s.entFromContext(ctx)
-
 	generatedKey, err := GenerateAPIKey(s.keyPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate api key: %w", err)
 	}
 
-	create := client.APIKey.Create().
-		SetName(name).
-		SetKey(generatedKey).
-		SetUserID(owner.UserID).
-		SetProjectID(owner.ProjectID).
-		SetType(apikey.TypeUser).
-		SetScopes([]string{
-			string(scopes.ScopeReadChannels),
-			string(scopes.ScopeWriteRequests),
-		})
+	var apiKey *ent.APIKey
 
-	apiKey, err := create.Save(ctx)
+	err = s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+
+		created, err := client.APIKey.Create().
+			SetName(name).
+			SetKey(generatedKey).
+			SetUserID(owner.UserID).
+			SetProjectID(owner.ProjectID).
+			SetType(apikey.TypeUser).
+			SetScopes([]string{
+				string(scopes.ScopeReadChannels),
+				string(scopes.ScopeWriteRequests),
+			}).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create api key: %w", err)
+		}
+
+		// Names identify keys on the OpenAPI surface (GetForRead resolves a
+		// name within the owner's project), so enforce the same per-project
+		// uniqueness as the admin-path CreateAPIKey. The check runs after the
+		// insert, inside the transaction, so the privacy mutation policy has
+		// already vetted the caller — an unauthorized caller is denied by the
+		// Save above and cannot use duplicate-name errors to probe which names
+		// exist. The count runs under a system bypass pinned to the owner's
+		// own project to keep this mutation's scope requirement at
+		// write_api_keys only; the privacy-gated query path would additionally
+		// demand read_api_keys.
+		count, err := authz.RunWithSystemBypass(ctx, "openapi-llm-key-name-check", func(ctx context.Context) (int, error) {
+			return client.APIKey.Query().
+				Where(
+					apikey.NameEQ(name),
+					apikey.ProjectIDEQ(owner.ProjectID),
+				).
+				Count(ctx)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to check API key name uniqueness: %w", err)
+		}
+
+		if count > 1 {
+			return xerrors.DuplicateNameError("API Key", name)
+		}
+
+		apiKey = created
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create api key: %w", err)
+		return nil, err
 	}
 
 	return apiKey, nil
@@ -560,8 +597,8 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 	return &apiKey, nil
 }
 
-// GetForRead loads an API key by id or key for read-only access. Exactly one of
-// id or key must be non-nil.
+// GetForRead loads an API key by id, key, or name for read-only access. Exactly
+// one of id, key, or name must be non-nil.
 //
 // It deliberately goes through the context-bound ent client (entFromContext) so
 // the APIKey privacy policy runs: an API key principal must hold read_api_keys
@@ -569,9 +606,13 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 // missing the scope — therefore get a NotFound / privacy error, never a foreign
 // key. This is the read-side counterpart to the implicit ent gating used by the
 // update mutations.
-func (s *APIKeyService) GetForRead(ctx context.Context, id *int, key *string) (*ent.APIKey, error) {
-	if (id == nil) == (key == nil) {
-		return nil, fmt.Errorf("exactly one of api key id or key must be provided")
+//
+// Name lookups rely on the same project boundary: names are unique within a
+// project (enforced on create/update), so once the privacy filter narrows the
+// query to the caller's project, a name identifies at most one key.
+func (s *APIKeyService) GetForRead(ctx context.Context, id *int, key *string, name *string) (*ent.APIKey, error) {
+	if lo.Count([]bool{id != nil, key != nil, name != nil}, true) != 1 {
+		return nil, fmt.Errorf("exactly one of api key id, key, or name must be provided")
 	}
 
 	client := s.entFromContext(ctx)
@@ -582,6 +623,8 @@ func (s *APIKeyService) GetForRead(ctx context.Context, id *int, key *string) (*
 		q = q.Where(apikey.IDEQ(*id))
 	case key != nil:
 		q = q.Where(apikey.KeyEQ(*key))
+	case name != nil:
+		q = q.Where(apikey.NameEQ(*name))
 	}
 
 	apiKey, err := q.Only(ctx)

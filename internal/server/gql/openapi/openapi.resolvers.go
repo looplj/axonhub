@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/contexts"
-	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -30,7 +29,7 @@ func (r *mutationResolver) CreateLLMAPIKey(ctx context.Context, name string) (*A
 }
 
 // UpdateAPIKeyProfiles is the resolver for the updateAPIKeyProfiles field.
-func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.GUID, input objects.APIKeyProfiles) (*APIKey, error) {
+func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id *objects.GUID, name *string, input objects.APIKeyProfiles) (*APIKey, error) {
 	// Coerce nil ModelMappings to [] before saving. The admin UI's Zod schema
 	// rejects null/undefined for this specific field (other arrays are .nullable),
 	// so OpenAPI clients omitting modelMappings would otherwise produce rows
@@ -42,7 +41,16 @@ func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.
 		}
 	}
 
-	apiKey, err := r.apiKeyService.UpdateAPIKeyProfiles(ctx, id.ID, input)
+	// Resolve the target through the privacy-gated read path so a name (unique
+	// within the caller's project) identifies a key as reliably as an id. This
+	// adds no new scope requirement: the update path already queries the key,
+	// so read_api_keys was needed before this resolution step existed.
+	target, err := r.resolveAPIKey(ctx, id, nil, name)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey, err := r.apiKeyService.UpdateAPIKeyProfiles(ctx, target.ID, input)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +60,30 @@ func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.
 
 // LoadAPIKeyProfileTemplate is the resolver for the loadApiKeyProfileTemplate field.
 func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*APIKey, error) {
-	apiKey, err := r.apiKeyProfileTemplateService.LoadTemplate(ctx, input.TemplateID.ID, input.APIKeyID.ID)
+	// Resolve both the template and the target key through the privacy-gated
+	// read paths, which scope name lookups to the caller's own project (where
+	// both names are unique) and enforce each pair's exactly-one-of rule.
+	template, err := r.resolveTemplate(ctx, input.TemplateID, input.TemplateName)
+	if err != nil {
+		return nil, err
+	}
+
+	targetKey, err := r.resolveAPIKey(ctx, input.APIKeyID, nil, input.APIKeyName)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey, err := r.apiKeyProfileTemplateService.LoadTemplate(ctx, template.ID, targetKey.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return toOpenAPIAPIKey(apiKey), nil
+}
+
+// APIKey is the resolver for the apiKey field.
+func (r *queryResolver) APIKey(ctx context.Context, id *objects.GUID, key *string, name *string) (*APIKey, error) {
+	apiKey, err := r.resolveAPIKey(ctx, id, key, name)
 	if err != nil {
 		return nil, err
 	}
@@ -61,23 +92,8 @@ func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input 
 }
 
 // APIKeyQuotaUsages is the resolver for the apiKeyQuotaUsages field.
-func (r *queryResolver) APIKeyQuotaUsages(ctx context.Context, apiKeyID *objects.GUID, key *string) ([]*APIKeyProfileQuotaUsage, error) {
-	// Resolve the target key id from the GUID, rejecting GUIDs of the wrong type
-	// (UnmarshalGQL accepts any gid://axonhub/<type>/<id>). The two-choose-one
-	// validation lives in GetForRead.
-	var id *int
-	if apiKeyID != nil {
-		if apiKeyID.Type != ent.TypeAPIKey {
-			return nil, fmt.Errorf("invalid api key id: expected a %s GUID, got %s", ent.TypeAPIKey, apiKeyID.Type)
-		}
-
-		id = &apiKeyID.ID
-	}
-
-	// Load through the biz layer so the APIKey privacy policy applies: the caller
-	// must hold read_api_keys and can only reach keys in its own project; foreign
-	// or missing keys surface as NotFound.
-	apiKey, err := r.apiKeyService.GetForRead(ctx, id, key)
+func (r *queryResolver) APIKeyQuotaUsages(ctx context.Context, apiKeyID *objects.GUID, key *string, name *string) ([]*APIKeyProfileQuotaUsage, error) {
+	apiKey, err := r.resolveAPIKey(ctx, apiKeyID, key, name)
 	if err != nil {
 		return nil, err
 	}
