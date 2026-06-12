@@ -24,11 +24,19 @@ type Policy struct {
 
 // EvalQuery evaluates a query against the policy's query rules.
 func (p Policy) EvalQuery(ctx context.Context, q ent.Query) error {
+	if decision, ok := privacy.DecisionFromContext(ctx); ok {
+		return decision
+	}
+
 	return p.Query.EvalQuery(ctx, q)
 }
 
 // EvalMutation evaluates a mutation against the policy's mutation rules.
 func (p Policy) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if decision, ok := privacy.DecisionFromContext(ctx); ok {
+		return decision
+	}
+
 	return p.Mutation.EvalMutation(ctx, m)
 }
 

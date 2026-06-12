@@ -460,3 +460,17 @@ func TestPolicy_Complete(t *testing.T) {
 	mutationErr := policy.EvalMutation(ctx, nil)
 	require.ErrorIs(t, mutationErr, privacy.Allow)
 }
+
+func TestPolicy_EvalQuery_UsesContextDecision(t *testing.T) {
+	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+
+	err := (Policy{}).EvalQuery(ctx, nil)
+	require.NoError(t, err)
+}
+
+func TestPolicy_EvalMutation_UsesContextDecision(t *testing.T) {
+	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+
+	err := (Policy{}).EvalMutation(ctx, nil)
+	require.NoError(t, err)
+}

@@ -1473,3 +1473,39 @@ func TestUpdateProjectUser_UpdateIsOwner_PermissionDenied(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, userProject.IsOwner)
 }
+
+func TestUpdateOwnProfile_AllowsLanguageChangeWithoutUserScopes(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	setupCtx := context.Background()
+	setupCtx = ent.NewContext(setupCtx, client)
+	setupCtx = authz.WithTestBypass(setupCtx)
+
+	regularUser, err := client.User.Create().
+		SetEmail("language-user@example.com").
+		SetPassword("password").
+		SetFirstName("Language").
+		SetLastName("User").
+		SetPreferLanguage("en").
+		SetStatus(user.StatusActivated).
+		SetScopes([]string{}).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	requestCtx := context.Background()
+	requestCtx = ent.NewContext(requestCtx, client)
+	requestCtx = authz.NewUserContext(requestCtx, regularUser.ID)
+	requestCtx = contexts.WithUser(requestCtx, regularUser)
+
+	language := "zh"
+	updatedUser, err := userService.UpdateOwnProfile(requestCtx, ent.UpdateUserInput{
+		PreferLanguage: &language,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "zh", updatedUser.PreferLanguage)
+
+	storedUser, err := client.User.Get(setupCtx, regularUser.ID)
+	require.NoError(t, err)
+	require.Equal(t, "zh", storedUser.PreferLanguage)
+}
