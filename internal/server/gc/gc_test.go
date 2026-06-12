@@ -14,6 +14,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
@@ -259,4 +260,56 @@ func TestWorker_cleanupWithZeroDays(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cleanupUsageLogs with negative days failed: %v", err)
 	}
+}
+
+func TestWorker_cleanupChannelProbesDeletesInBatches(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	t.Cleanup(func() {
+		client.Close()
+	})
+
+	ctx := authz.WithTestBypass(context.Background())
+	ctx = ent.NewContext(ctx, client)
+
+	originalBatchSize := defaultBatchSize
+	defaultBatchSize = 2
+	t.Cleanup(func() {
+		defaultBatchSize = originalBatchSize
+	})
+
+	worker := &Worker{Ent: client, Config: Config{CRON: "0 0 * * *"}}
+	oldTimestamp := time.Now().AddDate(0, 0, -5).Unix()
+	recentTimestamp := time.Now().Unix()
+
+	for range 5 {
+		_, err := client.ChannelProbe.Create().
+			SetChannelID(1).
+			SetTotalRequestCount(1).
+			SetSuccessRequestCount(1).
+			SetTimestamp(oldTimestamp).
+			Save(ctx)
+		require.NoError(t, err)
+	}
+
+	for range 2 {
+		_, err := client.ChannelProbe.Create().
+			SetChannelID(1).
+			SetTotalRequestCount(1).
+			SetSuccessRequestCount(1).
+			SetTimestamp(recentTimestamp).
+			Save(ctx)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, worker.cleanupChannelProbes(ctx, 3, false))
+
+	oldCount, err := client.ChannelProbe.Query().
+		Where(channelprobe.TimestampLT(time.Now().AddDate(0, 0, -3).Unix())).
+		Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, oldCount)
+
+	totalCount, err := client.ChannelProbe.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, totalCount)
 }
