@@ -47,7 +47,9 @@ type anthropicInboundStream struct {
 	err                       error
 	stopReason                *string
 	// Tool call tracking
-	toolCalls map[int]*llm.ToolCall // Track tool calls by index
+	toolCalls            map[int]*llm.ToolCall // Track tool calls by index
+	currentToolCallIndex int
+	hasCurrentToolCall   bool
 
 	lastEventType string
 
@@ -112,6 +114,72 @@ func (s *anthropicInboundStream) flushPendingTextCitations() error {
 	return nil
 }
 
+func (s *anthropicInboundStream) emitBufferedReadToolArguments(toolCallIndex int) error {
+	toolCall := s.toolCalls[toolCallIndex]
+	if toolCall == nil || !isReadToolName(toolCall.Function.Name) {
+		return nil
+	}
+
+	arguments := toolCall.Function.Arguments
+	if arguments == "" {
+		return nil
+	}
+
+	sanitized, complete := normalizeReadToolArguments(arguments)
+	if !complete {
+		sanitized = arguments
+	}
+
+	streamEvent := StreamEvent{
+		Type:  "content_block_delta",
+		Index: &s.contentIndex,
+		Delta: &StreamDelta{
+			Type:        lo.ToPtr("input_json_delta"),
+			PartialJSON: &sanitized,
+		},
+	}
+	if err := s.enqueEvent(&streamEvent); err != nil {
+		return fmt.Errorf("failed to enqueue buffered Read input_json_delta event: %w", err)
+	}
+
+	toolCall.Function.Arguments = ""
+
+	return nil
+}
+
+func (s *anthropicInboundStream) emitCurrentReadToolArguments() error {
+	if !s.hasCurrentToolCall {
+		return nil
+	}
+
+	return s.emitBufferedReadToolArguments(s.currentToolCallIndex)
+}
+
+func (s *anthropicInboundStream) closeToolBlock() error {
+	if !s.hasToolContentStarted {
+		return nil
+	}
+
+	if err := s.emitCurrentReadToolArguments(); err != nil {
+		return err
+	}
+
+	s.hasToolContentStarted = false
+	s.hasCurrentToolCall = false
+
+	streamEvent := StreamEvent{
+		Type:  "content_block_stop",
+		Index: &s.contentIndex,
+	}
+	if err := s.enqueEvent(&streamEvent); err != nil {
+		return fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+	}
+
+	s.contentIndex += 1
+
+	return nil
+}
+
 // closeThinkingBlock ensures any open or implied thinking block is properly
 // closed. It handles three scenarios:
 //  1. pendingSignature exists but no thinking block was started — creates a
@@ -146,16 +214,9 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 		}
 
 		if s.hasToolContentStarted {
-			s.hasToolContentStarted = false
-
-			if err := s.enqueEvent(&StreamEvent{
-				Type:  "content_block_stop",
-				Index: &s.contentIndex,
-			}); err != nil {
-				return fmt.Errorf("failed to enqueue content_block_stop for tool before pending signature: %w", err)
+			if err := s.closeToolBlock(); err != nil {
+				return fmt.Errorf("failed to close tool before pending signature: %w", err)
 			}
-
-			s.contentIndex += 1
 		}
 
 		if err := s.enqueEvent(&StreamEvent{
@@ -350,20 +411,10 @@ func (s *anthropicInboundStream) Next() bool {
 
 			// If the tool content has started before the thinking content, we need to stop it
 			if s.hasToolContentStarted {
-				s.hasToolContentStarted = false
-
-				streamEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-
-				err := s.enqueEvent(&streamEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+				if err := s.closeToolBlock(); err != nil {
+					s.err = fmt.Errorf("failed to close tool block before thinking: %w", err)
 					return false
 				}
-
-				s.contentIndex += 1
 			}
 
 			// Generate content_block_start if this is the first thinking content
@@ -426,20 +477,10 @@ func (s *anthropicInboundStream) Next() bool {
 
 			// If the tool content has started before the redacted thinking content, we need to stop it
 			if s.hasToolContentStarted {
-				s.hasToolContentStarted = false
-
-				streamEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-
-				err := s.enqueEvent(&streamEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+				if err := s.closeToolBlock(); err != nil {
+					s.err = fmt.Errorf("failed to close tool block before redacted thinking: %w", err)
 					return false
 				}
-
-				s.contentIndex += 1
 			}
 
 			// If the text content has started before the redacted thinking content, we need to stop it
@@ -502,20 +543,10 @@ func (s *anthropicInboundStream) Next() bool {
 
 			// If the tool content has started before the content block, we need to stop it
 			if s.hasToolContentStarted {
-				s.hasToolContentStarted = false
-
-				streamEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-
-				err := s.enqueEvent(&streamEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+				if err := s.closeToolBlock(); err != nil {
+					s.err = fmt.Errorf("failed to close tool block before text: %w", err)
 					return false
 				}
-
-				s.contentIndex += 1
 			}
 
 			// Generate content_block_start if this is the first content
@@ -593,24 +624,16 @@ func (s *anthropicInboundStream) Next() bool {
 					// Start a new tool use block, we should stop the previous tool use block
 					if toolCallIndex > 0 {
 						if s.hasToolContentStarted {
-							s.hasToolContentStarted = false
-
-							streamEvent := StreamEvent{
-								Type:  "content_block_stop",
-								Index: &s.contentIndex,
-							}
-
-							err := s.enqueEvent(&streamEvent)
-							if err != nil {
-								s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+							if err := s.closeToolBlock(); err != nil {
+								s.err = fmt.Errorf("failed to close previous tool block: %w", err)
 								return false
 							}
-
-							s.contentIndex += 1
 						}
 					}
 
 					s.hasToolContentStarted = true
+					s.currentToolCallIndex = toolCallIndex
+					s.hasCurrentToolCall = true
 					s.toolCalls[toolCallIndex] = &llm.ToolCall{
 						Index: toolCallIndex,
 						ID:    deltaToolCall.ID,
@@ -651,6 +674,9 @@ func (s *anthropicInboundStream) Next() bool {
 					// If the tool call has arguments, we need to generate a content_block_delta.
 					if deltaToolCall.Function.Arguments != "" {
 						s.toolCalls[toolCallIndex].Function.Arguments += deltaToolCall.Function.Arguments
+						if isReadToolName(deltaToolCall.Function.Name) {
+							continue
+						}
 
 						streamEvent := StreamEvent{
 							Type:  "content_block_delta",
@@ -669,6 +695,9 @@ func (s *anthropicInboundStream) Next() bool {
 					}
 				} else {
 					s.toolCalls[toolCallIndex].Function.Arguments += deltaToolCall.Function.Arguments
+					if isReadToolName(s.toolCalls[toolCallIndex].Function.Name) {
+						continue
+					}
 
 					// Generate content_block_delta for input_json_delta
 					// contentBlockIndex := int64(toolCallIndex)
@@ -706,18 +735,10 @@ func (s *anthropicInboundStream) Next() bool {
 
 			// Close any open tool_use block before starting a tool_result.
 			if s.hasToolContentStarted {
-				s.hasToolContentStarted = false
-
-				stopEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-				if err := s.enqueEvent(&stopEvent); err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+				if err := s.closeToolBlock(); err != nil {
+					s.err = fmt.Errorf("failed to close tool block before tool_result: %w", err)
 					return false
 				}
-
-				s.contentIndex += 1
 			}
 
 			// Close any open text block before starting a tool_result.
@@ -803,20 +824,10 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 
 			if s.hasToolContentStarted {
-				s.hasToolContentStarted = false
-
-				streamEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-
-				err := s.enqueEvent(&streamEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+				if err := s.closeToolBlock(); err != nil {
+					s.err = fmt.Errorf("failed to close tool block at finish: %w", err)
 					return false
 				}
-
-				s.contentIndex += 1
 				contentClosed = true
 			}
 

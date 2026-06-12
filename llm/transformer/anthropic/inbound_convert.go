@@ -642,6 +642,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 				} else {
 					input = json.RawMessage("{}")
 				}
+				input = sanitizeReadToolInput(toolCall.Function.Name, input)
 
 				blockType := "tool_use"
 				if at := getAnthropicType(toolCall.TransformerMetadata); at != "" {

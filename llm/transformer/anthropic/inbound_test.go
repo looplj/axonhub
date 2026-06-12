@@ -481,6 +481,41 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_TransformResponse_RemovesEmptyReadPages(t *testing.T) {
+	transformer := NewInboundTransformer()
+	finishReason := "tool_calls"
+
+	resp, err := transformer.TransformResponse(t.Context(), &llm.Response{
+		ID:      "msg_read_pages",
+		Object:  "chat.completion",
+		Model:   "claude-sonnet-4-6",
+		Created: 1234567890,
+		Choices: []llm.Choice{{
+			Index: 0,
+			Message: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					ID:   "call_read",
+					Type: "function",
+					Function: llm.FunctionCall{
+						Name:      "Read",
+						Arguments: `{"file_path":"/tmp/a.go","pages":""}`,
+					},
+				}},
+			},
+			FinishReason: &finishReason,
+		}},
+	})
+	require.NoError(t, err)
+
+	var msg Message
+	require.NoError(t, json.Unmarshal(resp.Body, &msg))
+	require.Len(t, msg.Content, 1)
+	require.Equal(t, "tool_use", msg.Content[0].Type)
+	require.Equal(t, "Read", *msg.Content[0].Name)
+	require.JSONEq(t, `{"file_path":"/tmp/a.go"}`, string(msg.Content[0].Input))
+}
+
 func TestInboundTransformer_TransformRequest_ThinkingValidation(t *testing.T) {
 	transformer := NewInboundTransformer()
 
