@@ -2576,32 +2576,58 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                          {t('channels.dialogs.retryableStatusCodes.label')}
-                        </FormLabel>
-                        <div className='space-y-1 md:col-span-6'>
+                        <div className='flex items-center gap-1.5 pt-2 md:relative md:col-span-2 md:block md:text-right'>
+                          <FormLabel className='font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type='button'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center md:absolute md:top-2 md:left-full md:ml-1.5'
+                                aria-label={t('channels.dialogs.retryableStatusCodes.tooltip')}
+                              >
+                                <Info className='h-3.5 w-3.5' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-sm'>
+                              <p>{t('channels.dialogs.retryableStatusCodes.tooltip')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className='md:col-span-6'>
                           <Input
                             value={retryableStatusCodesText}
                             onChange={(event) => setRetryableStatusCodesText(event.target.value)}
                             placeholder={t('channels.dialogs.retryableStatusCodes.placeholder')}
                             className='font-mono text-sm'
                           />
-                          <p className='text-muted-foreground text-xs'>{t('channels.dialogs.retryableStatusCodes.description')}</p>
                         </div>
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                          {t('channels.dialogs.retryableErrorPatterns.label')}
-                        </FormLabel>
-                        <div className='space-y-1 md:col-span-6'>
+                        <div className='flex items-center gap-1.5 pt-2 md:relative md:col-span-2 md:block md:text-right'>
+                          <FormLabel className='font-medium'>{t('channels.dialogs.retryableErrorPatterns.label')}</FormLabel>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type='button'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center md:absolute md:top-2 md:left-full md:ml-1.5'
+                                aria-label={t('channels.dialogs.retryableErrorPatterns.description')}
+                              >
+                                <Info className='h-3.5 w-3.5' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-sm'>
+                              <p>{t('channels.dialogs.retryableErrorPatterns.description')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className='md:col-span-6'>
                           <Textarea
                             value={retryableErrorPatternsText}
                             onChange={(event) => setRetryableErrorPatternsText(event.target.value)}
                             placeholder={t('channels.dialogs.retryableErrorPatterns.placeholder')}
                             className='min-h-[88px] resize-y font-mono text-sm'
                           />
-                          <p className='text-muted-foreground text-xs'>{t('channels.dialogs.retryableErrorPatterns.description')}</p>
                         </div>
                       </FormItem>
 
