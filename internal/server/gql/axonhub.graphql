@@ -96,6 +96,16 @@ input ProxyConfigInput {
   password: String
 }
 
+type RetryableErrorPattern {
+  pattern: String!
+  regex: Boolean!
+}
+
+input RetryableErrorPatternInput {
+  pattern: String!
+  regex: Boolean
+}
+
 type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
@@ -111,6 +121,7 @@ type ChannelSettings {
   passThroughBody: Boolean
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
+  retryableErrorPatterns: [RetryableErrorPattern!]
 }
 
 enum CapabilityPolicy {
@@ -147,6 +158,7 @@ input ChannelSettingsInput {
   passThroughBody: Boolean
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
+  retryableErrorPatterns: [RetryableErrorPatternInput!]
 }
 
 input ChannelRateLimitInput {

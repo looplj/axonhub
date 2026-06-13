@@ -181,6 +181,16 @@ type ChannelSettings struct {
 	// trigger retry for this channel. Default retryable codes (429 and 5xx) are
 	// always handled by the retry policy even when this list is empty.
 	RetryableStatusCodes []int `json:"retryableStatusCodes,omitempty"`
+
+	// RetryableErrorPatterns configures additional error text patterns that should
+	// trigger retry for this channel. When Regex is false, Pattern is matched as a
+	// case-sensitive substring of the error text.
+	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
+}
+
+type RetryableErrorPattern struct {
+	Pattern string `json:"pattern"`
+	Regex   bool   `json:"regex,omitempty"`
 }
 
 type ChannelRateLimit struct {

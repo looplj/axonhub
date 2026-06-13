@@ -132,6 +132,12 @@ models:
   ChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
+  RetryableErrorPattern:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RetryableErrorPattern
+  RetryableErrorPatternInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RetryableErrorPattern
   ChannelRateLimit:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRateLimit

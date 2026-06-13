@@ -231,6 +231,10 @@ func TestIsRetryableErrorForChannel(t *testing.T) {
 		Channel: &ent.Channel{
 			Settings: &objects.ChannelSettings{
 				RetryableStatusCodes: []int{400, 403},
+				RetryableErrorPatterns: []objects.RetryableErrorPattern{
+					{Pattern: "Console API returned 403"},
+					{Pattern: `Console API returned \d+`, Regex: true},
+				},
 			},
 		},
 	}
@@ -268,6 +272,24 @@ func TestIsRetryableErrorForChannel(t *testing.T) {
 			err: &httpclient.Error{
 				StatusCode: http.StatusUnauthorized,
 			},
+			channel:  channel,
+			expected: false,
+		},
+		{
+			name:     "configured error text is retryable",
+			err:      errors.New("failed to stream request: error: Console API returned 403, code: upstream_error, type: upstream_error"),
+			channel:  channel,
+			expected: true,
+		},
+		{
+			name:     "configured error regex is retryable",
+			err:      errors.New("failed to stream request: error: Console API returned 502, code: upstream_error, type: upstream_error"),
+			channel:  channel,
+			expected: true,
+		},
+		{
+			name:     "unmatched error text is not retryable",
+			err:      errors.New("failed to stream request: error: credentials rejected"),
 			channel:  channel,
 			expected: false,
 		},
