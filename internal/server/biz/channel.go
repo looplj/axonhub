@@ -3,7 +3,9 @@ package biz
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -506,6 +508,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		if err := NormalizeRetryableStatusCodes(input.Settings); err != nil {
 			return nil, err
 		}
+
+		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
+			return nil, err
+		}
 	}
 
 	if input.Endpoints != nil {
@@ -591,6 +597,42 @@ func NormalizeRetryableStatusCodes(settings *objects.ChannelSettings) error {
 	return nil
 }
 
+// NormalizeRetryableErrorPatterns validates, deduplicates, and trims additional
+// retryable error text matchers configured on a channel.
+func NormalizeRetryableErrorPatterns(settings *objects.ChannelSettings) error {
+	if settings == nil || len(settings.RetryableErrorPatterns) == 0 {
+		return nil
+	}
+
+	patterns := make([]objects.RetryableErrorPattern, 0, len(settings.RetryableErrorPatterns))
+	seen := make(map[string]struct{}, len(settings.RetryableErrorPatterns))
+
+	for _, pattern := range settings.RetryableErrorPatterns {
+		pattern.Pattern = strings.TrimSpace(pattern.Pattern)
+		if pattern.Pattern == "" {
+			continue
+		}
+
+		if pattern.Regex {
+			if _, err := regexp.Compile(pattern.Pattern); err != nil {
+				return fmt.Errorf("invalid retryable error regex %q: %w", pattern.Pattern, err)
+			}
+		}
+
+		key := fmt.Sprintf("%t\x00%s", pattern.Regex, pattern.Pattern)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+
+		seen[key] = struct{}{}
+		patterns = append(patterns, pattern)
+	}
+
+	settings.RetryableErrorPatterns = patterns
+
+	return nil
+}
+
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
@@ -651,6 +693,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 
 		if err := NormalizeRetryableStatusCodes(input.Settings); err != nil {
+			return nil, err
+		}
+
+		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
 		}
 

@@ -111,6 +111,7 @@ export function mergeChannelSettingsForUpdate(
     passThroughBody: pick('passThroughBody', existing?.passThroughBody ?? null),
     rateLimit: pick('rateLimit', existing?.rateLimit ?? null),
     retryableStatusCodes: pick('retryableStatusCodes', existing?.retryableStatusCodes ?? []),
+    retryableErrorPatterns: pick('retryableErrorPatterns', existing?.retryableErrorPatterns ?? []),
   };
 }
 
@@ -129,7 +130,7 @@ export function mergeOverrideParameters(existing: string, template: string): str
 
     // Use compact format to match backend
     return JSON.stringify(merged);
-  } catch (error) {
+  } catch {
     // If parsing fails, return template
     return template;
   }
