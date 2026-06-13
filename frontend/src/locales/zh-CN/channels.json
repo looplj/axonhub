@@ -672,7 +672,7 @@
   "channels.dialogs.retryableErrorPatterns.label": "重试错误信息",
   "channels.dialogs.retryableErrorPatterns.placeholder": "Console API returned 403\nregex:Console API returned \\d+",
   "channels.dialogs.retryableErrorPatterns.description": "每行一条错误信息匹配规则；普通文本为包含匹配，使用 regex: 开头可按正则匹配。命中后会按自定义重试条件触发同渠道重试。",
-  "channels.dialogs.retryableErrorPatterns.validation": "重试错误信息规则不能为空，且 regex: 开头的规则必须是有效正则表达式。",
+  "channels.dialogs.retryableErrorPatterns.validation": "重试错误信息规则不能为空；正则语法会在保存时由服务端校验。",
   "channels.endpoints.title": "端点配置",
   "channels.endpoints.apiFormat": "API 格式",
   "channels.endpoints.path": "路径",

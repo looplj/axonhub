@@ -152,14 +152,6 @@ function parseRetryableErrorPatternsInput(value: string): RetryableErrorPattern[
       return null;
     }
 
-    if (regex) {
-      try {
-        new RegExp(line);
-      } catch {
-        return null;
-      }
-    }
-
     const key = `${regex}\0${line}`;
     if (!seen.has(key)) {
       seen.add(key);
