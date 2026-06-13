@@ -117,7 +117,7 @@ func NewSchema(
 			defaultSelector:                defaultSelector,
 			candidateSelectorDiagnostics:   candidateSelectorDiagnostics,
 			channelLimiterManager:          channelLimiterManager,
-			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
+			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient, modelService),
 			gcWorker:                       gcWorker,
 			videoWorker:                    videoWorker,
 		},

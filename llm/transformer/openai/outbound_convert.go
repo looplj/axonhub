@@ -37,6 +37,14 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		Verbosity:           r.Verbosity,
 	}
 
+	// Convert Audio
+	if r.Audio != nil {
+		req.Audio = &ChatCompletionAudioParam{
+			Format: r.Audio.Format,
+			Voice:  r.Audio.Voice,
+		}
+	}
+
 	// Convert messages
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
 		return MessageFromLLMWithConfig(m, reasoningField)
