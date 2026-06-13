@@ -16,13 +16,13 @@ func DefaultModels() []string {
 const (
 	AuthorizeURL = "https://claude.ai/oauth/authorize"
 	//nolint:gosec // false alert.
-	TokenURL = "https://console.anthropic.com/v1/oauth/token"
+	TokenURL = "https://api.anthropic.com/v1/oauth/token"
 	ClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
 	RedirectURI = "http://localhost:54545/callback"
 	Scopes      = "org:create_api_key user:profile user:inference"
 	// UserAgent keep consistent with Claude CLI.
-	UserAgent = "claude-cli/2.1.158 (external, cli)"
+	UserAgent = "claude-cli/2.1.170 (external, cli)"
 
 	// ClaudeCodeBetaHeader contains the beta feature identifiers for Claude Code API.
 	ClaudeCodeBetaHeader = "claude-code-20250219,context-1m-2025-08-07,interleaved-thinking-2025-05-14,redact-thinking-2026-02-12,context-management-2025-06-27,prompt-caching-scope-2026-01-05,mid-conversation-system-2026-04-07,effort-2025-11-24"
