@@ -508,6 +508,7 @@ type ComplexityRoot struct {
 		PassThroughUserAgent     func(childComplexity int) int
 		Proxy                    func(childComplexity int) int
 		RateLimit                func(childComplexity int) int
+		RetryableErrorPatterns   func(childComplexity int) int
 		RetryableStatusCodes     func(childComplexity int) int
 		TransformOptions         func(childComplexity int) int
 	}
@@ -1430,6 +1431,11 @@ type ComplexityRoot struct {
 		RetryDelayMs                    func(childComplexity int) int
 		StreamFirstEventTimeoutSeconds  func(childComplexity int) int
 		UpstreamErrorPolicy             func(childComplexity int) int
+	}
+
+	RetryableErrorPattern struct {
+		Pattern func(childComplexity int) int
+		Regex   func(childComplexity int) int
 	}
 
 	Role struct {
@@ -3901,6 +3907,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.RateLimit(childComplexity), true
+	case "ChannelSettings.retryableErrorPatterns":
+		if e.complexity.ChannelSettings.RetryableErrorPatterns == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.RetryableErrorPatterns(childComplexity), true
 	case "ChannelSettings.retryableStatusCodes":
 		if e.complexity.ChannelSettings.RetryableStatusCodes == nil {
 			break
@@ -8542,6 +8554,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RetryPolicy.UpstreamErrorPolicy(childComplexity), true
 
+	case "RetryableErrorPattern.pattern":
+		if e.complexity.RetryableErrorPattern.Pattern == nil {
+			break
+		}
+
+		return e.complexity.RetryableErrorPattern.Pattern(childComplexity), true
+	case "RetryableErrorPattern.regex":
+		if e.complexity.RetryableErrorPattern.Regex == nil {
+			break
+		}
+
+		return e.complexity.RetryableErrorPattern.Regex(childComplexity), true
+
 	case "Role.createdAt":
 		if e.complexity.Role.CreatedAt == nil {
 			break
@@ -10660,6 +10685,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRequestOrder,
 		ec.unmarshalInputRequestWhereInput,
 		ec.unmarshalInputRestoreOptionsInput,
+		ec.unmarshalInputRetryableErrorPatternInput,
 		ec.unmarshalInputRoleOrder,
 		ec.unmarshalInputRoleWhereInput,
 		ec.unmarshalInputS3Input,
@@ -18159,6 +18185,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_rateLimit(ctx, field)
 			case "retryableStatusCodes":
 				return ec.fieldContext_ChannelSettings_retryableStatusCodes(ctx, field)
+			case "retryableErrorPatterns":
+				return ec.fieldContext_ChannelSettings_retryableErrorPatterns(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -22671,6 +22699,41 @@ func (ec *executionContext) fieldContext_ChannelSettings_retryableStatusCodes(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_retryableErrorPatterns(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_retryableErrorPatterns,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryableErrorPatterns, nil
+		},
+		nil,
+		ec.marshalORetryableErrorPattern2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_retryableErrorPatterns(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "pattern":
+				return ec.fieldContext_RetryableErrorPattern_pattern(ctx, field)
+			case "regex":
+				return ec.fieldContext_RetryableErrorPattern_regex(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RetryableErrorPattern", field.Name)
 		},
 	}
 	return fc, nil
@@ -46305,6 +46368,64 @@ func (ec *executionContext) fieldContext_RetryPolicy_upstreamErrorPolicy(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _RetryableErrorPattern_pattern(ctx context.Context, field graphql.CollectedField, obj *objects.RetryableErrorPattern) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RetryableErrorPattern_pattern,
+		func(ctx context.Context) (any, error) {
+			return obj.Pattern, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RetryableErrorPattern_pattern(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RetryableErrorPattern",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RetryableErrorPattern_regex(ctx context.Context, field graphql.CollectedField, obj *objects.RetryableErrorPattern) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RetryableErrorPattern_regex,
+		func(ctx context.Context) (any, error) {
+			return obj.Regex, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RetryableErrorPattern_regex(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RetryableErrorPattern",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Role_id(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -62759,7 +62880,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -62864,6 +62985,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.RetryableStatusCodes = data
+		case "retryableErrorPatterns":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryableErrorPatterns"))
+			data, err := ec.unmarshalORetryableErrorPatternInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryableErrorPatterns = data
 		}
 	}
 
@@ -75212,6 +75340,40 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 				return it, err
 			}
 			it.APIKeyConflictStrategy = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRetryableErrorPatternInput(ctx context.Context, obj any) (objects.RetryableErrorPattern, error) {
+	var it objects.RetryableErrorPattern
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"pattern", "regex"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "pattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pattern"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Pattern = data
+		case "regex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("regex"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Regex = data
 		}
 	}
 
@@ -87635,6 +87797,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_rateLimit(ctx, field, obj)
 		case "retryableStatusCodes":
 			out.Values[i] = ec._ChannelSettings_retryableStatusCodes(ctx, field, obj)
+		case "retryableErrorPatterns":
+			out.Values[i] = ec._ChannelSettings_retryableErrorPatterns(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -96800,6 +96964,50 @@ func (ec *executionContext) _RetryPolicy(ctx context.Context, sel ast.SelectionS
 			}
 		case "upstreamErrorPolicy":
 			out.Values[i] = ec._RetryPolicy_upstreamErrorPolicy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var retryableErrorPatternImplementors = []string{"RetryableErrorPattern"}
+
+func (ec *executionContext) _RetryableErrorPattern(ctx context.Context, sel ast.SelectionSet, obj *objects.RetryableErrorPattern) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, retryableErrorPatternImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RetryableErrorPattern")
+		case "pattern":
+			out.Values[i] = ec._RetryableErrorPattern_pattern(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "regex":
+			out.Values[i] = ec._RetryableErrorPattern_regex(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -106768,6 +106976,15 @@ func (ec *executionContext) marshalNRetryPolicy2ᚖgithubᚗcomᚋloopljᚋaxonh
 	return ec._RetryPolicy(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNRetryableErrorPattern2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPattern(ctx context.Context, sel ast.SelectionSet, v objects.RetryableErrorPattern) graphql.Marshaler {
+	return ec._RetryableErrorPattern(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNRetryableErrorPatternInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPattern(ctx context.Context, v any) (objects.RetryableErrorPattern, error) {
+	res, err := ec.unmarshalInputRetryableErrorPatternInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNRole2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRole(ctx context.Context, sel ast.SelectionSet, v ent.Role) graphql.Marshaler {
 	return ec._Role(ctx, sel, &v)
 }
@@ -113198,6 +113415,71 @@ func (ec *executionContext) unmarshalORequestWhereInput2ᚖgithubᚗcomᚋlooplj
 	}
 	res, err := ec.unmarshalInputRequestWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORetryableErrorPattern2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.RetryableErrorPattern) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRetryableErrorPattern2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPattern(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalORetryableErrorPatternInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ(ctx context.Context, v any) ([]objects.RetryableErrorPattern, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.RetryableErrorPattern, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNRetryableErrorPatternInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPattern(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalORole2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRole(ctx context.Context, sel ast.SelectionSet, v *ent.Role) graphql.Marshaler {

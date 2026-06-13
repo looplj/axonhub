@@ -105,6 +105,10 @@ const CREATE_CHANNEL_MUTATION = `
         passThroughUserAgent
         passThroughBody
         retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
       }
       orderingWeight
       remark
@@ -167,6 +171,10 @@ const DUPLICATE_CHANNEL_MUTATION = `
         passThroughUserAgent
         passThroughBody
         retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
       }
       orderingWeight
       remark
@@ -229,6 +237,10 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         passThroughUserAgent
         passThroughBody
         retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
       }
       orderingWeight
       remark
@@ -291,6 +303,10 @@ const UPDATE_CHANNEL_MUTATION = `
         passThroughUserAgent
         passThroughBody
         retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
       }
       orderingWeight
       errorMessage
@@ -458,6 +474,10 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           passThroughUserAgent
           passThroughBody
           retryableStatusCodes
+          retryableErrorPatterns {
+            pattern
+            regex
+          }
         }
       }
     }
@@ -645,6 +665,10 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           passThroughUserAgent
           passThroughBody
           retryableStatusCodes
+          retryableErrorPatterns {
+            pattern
+            regex
+          }
         }
       }
     }
@@ -783,6 +807,10 @@ const QUERY_CHANNELS_QUERY = `
               queueTimeoutMs
             }
             retryableStatusCodes
+            retryableErrorPatterns {
+              pattern
+              regex
+            }
           }
           orderingWeight
           errorMessage
