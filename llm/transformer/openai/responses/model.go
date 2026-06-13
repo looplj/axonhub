@@ -41,9 +41,13 @@ type Tool struct {
 	UserLocation *WebSearchUserLocation `json:"user_location,omitempty"`
 
 	// This field is for ImageGeneration
+	Action string `json:"action,omitempty"`
+	// This field is for ImageGeneration
 	Background string `json:"background,omitempty"`
 	// This field is for ImageGeneration
 	InputFidelity string `json:"input_fidelity,omitempty"`
+	// This field is for ImageGeneration
+	InputImageMask map[string]any `json:"input_image_mask,omitempty"`
 	// This field is for ImageGeneration
 	Model string `json:"model,omitempty"`
 	// This field is for ImageGeneration

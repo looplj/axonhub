@@ -197,6 +197,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	switch llmReq.RequestType {
 	case llm.RequestTypeCompact:
 		return t.transformCompactRequest(ctx, llmReq)
+	case llm.RequestTypeImage:
+		imageReq, err := buildImageToolRequest(llmReq)
+		if err != nil {
+			return nil, err
+		}
+
+		llmReq = imageReq
 	case llm.RequestTypeChat, "":
 		// continue
 	default:
@@ -216,6 +223,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		switch item.Type {
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
+			if action := xmap.GetStringPtr(llmReq.TransformerMetadata, "image_generation_action"); action != nil {
+				tool.Action = *action
+			}
 			tools = append(tools, tool)
 			// Store image output format in TransformerMetadata
 			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
@@ -348,7 +358,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 	}
 
 	if httpResp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
+		return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, strings.TrimSpace(string(httpResp.Body)))
 	}
 
 	if len(httpResp.Body) == 0 {

@@ -2,7 +2,9 @@ package codex
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -126,6 +128,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
+	originalRequestType := reqCopy.RequestType
+	originalAPIFormat := reqCopy.APIFormat
+	isImageRequest := originalRequestType == llm.RequestTypeImage
 
 	// Codex expects Responses API payload with some strict rules.
 	// Always enable stream except for compact requests and disable store.
@@ -142,18 +147,20 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Codex recommends parallel tool calls.
 	reqCopy.ParallelToolCalls = lo.ToPtr(true)
 
-	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
 	if reqCopy.TransformerMetadata == nil {
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
 
-	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
-		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
-	}
+	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
+	if !isImageRequest {
+		if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
+			reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
+		}
 
-	if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
-		// Enable reasoning summary for Codex CLI requests.
-		reqCopy.ReasoningSummary = lo.ToPtr("auto")
+		if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
+			// Enable reasoning summary for Codex CLI requests.
+			reqCopy.ReasoningSummary = lo.ToPtr("auto")
+		}
 	}
 
 	// Codex Responses rejects token limit fields, so strip them out.
@@ -167,6 +174,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
+	}
+
+	if isImageRequest {
+		hreq.RequestType = originalRequestType.String()
+		hreq.APIFormat = originalAPIFormat.String()
 	}
 
 	// Overwrite auth.
@@ -216,7 +228,24 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
-	// Codex upstream returns Responses API response.
+	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
+		if httpResp.StatusCode >= 400 {
+			return nil, fmt.Errorf("codex image HTTP error %d: %s", httpResp.StatusCode, httpResp.Body)
+		}
+
+		var upstream responses.Response
+		if err := json.Unmarshal(httpResp.Body, &upstream); err != nil {
+			return nil, err
+		}
+
+		metadata := map[string]any{}
+		if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+			metadata = httpResp.Request.TransformerMetadata
+		}
+
+		return responses.BuildImageResponse(&upstream, metadata)
+	}
+
 	return t.responsesOutbound.TransformResponse(ctx, httpResp)
 }
 
