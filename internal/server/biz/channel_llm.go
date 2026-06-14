@@ -388,6 +388,14 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		llm.APIFormatOpenAISpeech.String(),
 		llm.APIFormatOpenAITranscription.String(),
 		llm.APIFormatOpenAITranslation.String():
+		if c.Type == channel.TypeCodex &&
+			(ep.APIFormat == llm.APIFormatOpenAIImageGeneration.String() ||
+				ep.APIFormat == llm.APIFormatOpenAIImageEdit.String()) {
+			transport := endpointTransport(ep)
+
+			return svc.buildCodexOutbound(c, ch, baseURL, transport, ch.HTTPClient)
+		}
+
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType:   openai.PlatformOpenAI,
 			BaseURL:        baseURL,
