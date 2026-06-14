@@ -2570,13 +2570,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:relative md:col-span-2 md:block md:text-right'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
                                 type='button'
-                                className='text-muted-foreground hover:text-foreground inline-flex items-center md:absolute md:top-2 md:left-full md:ml-1.5'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
                                 aria-label={t('channels.dialogs.retryableStatusCodes.tooltip')}
                               >
                                 <Info className='h-3.5 w-3.5' />
@@ -2598,13 +2598,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:relative md:col-span-2 md:block md:text-right'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableErrorPatterns.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
                                 type='button'
-                                className='text-muted-foreground hover:text-foreground inline-flex items-center md:absolute md:top-2 md:left-full md:ml-1.5'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
                                 aria-label={t('channels.dialogs.retryableErrorPatterns.description')}
                               >
                                 <Info className='h-3.5 w-3.5' />
@@ -2677,7 +2677,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
             {/* Expandable Side Panel */}
             <div
-              className='border-border flex min-h-0 flex-col overflow-hidden border-l pl-4 transition-all duration-300 ease-out'
+              className='border-border flex min-h-0 flex-col overflow-hidden border-l pt-1.5 pl-4 transition-all duration-300 ease-out'
               style={{
                 width: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? '400px' : '0px',
                 opacity: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 1 : 0,
@@ -2690,7 +2690,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
-                  <Button type='button' variant='ghost' size='sm' onClick={closeFetchedModelsPanel}>
+                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeFetchedModelsPanel}>
                     <ChevronLeft className='h-4 w-4' />
                   </Button>
                 </div>
@@ -2807,7 +2807,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.apiKey.panelTitle', { count: apiKeysCount })}</h3>
-                  <Button type='button' variant='ghost' size='sm' onClick={closeApiKeysPanel}>
+                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeApiKeysPanel}>
                     <ChevronLeft className='h-4 w-4' />
                   </Button>
                 </div>
@@ -2991,7 +2991,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   </div>
                   <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
                     <PopoverTrigger asChild>
-                      <Button type='button' variant='ghost' size='sm' disabled={supportedModels.length === 0}>
+                      <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' disabled={supportedModels.length === 0}>
                         <X className='h-4 w-4' />
                       </Button>
                     </PopoverTrigger>
