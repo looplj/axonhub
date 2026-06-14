@@ -288,8 +288,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 
 			if ev.Part != nil {
 				contentPart.Type = ev.Part.Type
-				if ev.Part.Text != nil {
-					contentPart.Text.WriteString(*ev.Part.Text)
+				if ev.Part.Text != "" {
+					contentPart.Text.WriteString(ev.Part.Text)
 				}
 				contentPart.Annotations = append([]Annotation(nil), ev.Part.Annotations...)
 			}
@@ -383,8 +383,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 				part.Type = ev.Part.Type
 			}
 
-			if ev.Part.Text != nil {
-				part.Text.WriteString(*ev.Part.Text)
+			if ev.Part.Text != "" {
+				part.Text.WriteString(ev.Part.Text)
 			}
 		}
 
@@ -411,8 +411,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 				part.Type = ev.Part.Type
 			}
 
-			if ev.Part.Text != nil {
-				applyDoneText(part.Text, *ev.Part.Text)
+			if ev.Part.Text != "" {
+				applyDoneText(part.Text, ev.Part.Text)
 			}
 		}
 
