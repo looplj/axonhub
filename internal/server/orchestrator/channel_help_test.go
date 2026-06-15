@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -183,11 +184,13 @@ type mockExecutor struct {
 	streamEvents  []*httpclient.StreamEvent
 	err           error
 	requestCalled bool
+	requestCalls  atomic.Int64
 	lastRequest   *httpclient.Request
 }
 
 func (m *mockExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
 	m.requestCalled = true
+	m.requestCalls.Add(1)
 
 	m.lastRequest = request
 	if m.err != nil {
@@ -199,6 +202,7 @@ func (m *mockExecutor) Do(ctx context.Context, request *httpclient.Request) (*ht
 
 func (m *mockExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	m.requestCalled = true
+	m.requestCalls.Add(1)
 
 	m.lastRequest = request
 	if m.err != nil {
@@ -359,16 +363,16 @@ func newTestOrchestrator(
 	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
 
 	orchestrator := &ChatCompletionOrchestrator{
-		channelSelector:   channelSelector,
-		Inbound:           openai.NewInboundTransformer(),
-		RequestService:    requestService,
-		ChannelService:    channelService,
-		PromptProvider:    &stubPromptProvider{},
-		SystemService:     systemService,
-		UsageLogService:   usageLogService,
-		PipelineFactory:   pipeline.NewFactory(executor),
-		ModelMapper:       NewModelMapper(),
-		channelLimiterManager:      NewChannelLimiterManager(),
+		channelSelector:       channelSelector,
+		Inbound:               openai.NewInboundTransformer(),
+		RequestService:        requestService,
+		ChannelService:        channelService,
+		PromptProvider:        &stubPromptProvider{},
+		SystemService:         systemService,
+		UsageLogService:       usageLogService,
+		PipelineFactory:       pipeline.NewFactory(executor),
+		ModelMapper:           NewModelMapper(),
+		channelLimiterManager: NewChannelLimiterManager(),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},

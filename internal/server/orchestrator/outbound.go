@@ -567,9 +567,9 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
-	// Local queue rejection: same channel is full or timed out — bounce immediately
-	// to the next channel rather than retrying.
-	if isChannelQueueError(err) {
+	// Local admission rejection: the same channel cannot make progress until the
+	// local queue/RPM state changes, so bounce immediately to the next channel.
+	if isChannelQueueError(err) || isLocalRPMExhaustedError(err) {
 		return false
 	}
 

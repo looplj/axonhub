@@ -64,7 +64,7 @@ func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
 	}
 
 	for range rpm {
-		tracker.IncrementRequest(channel.ID)
+		tracker.TryAcquireRequest(channel.ID, rpm)
 	}
 
 	ctx := context.Background()
@@ -108,7 +108,7 @@ func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
 	}
 
 	tracker.SetCooldown(channel.ID, time.Now().Add(30*time.Second))
-	tracker.IncrementRequest(channel.ID)
+	tracker.TryAcquireRequest(channel.ID, rpm)
 
 	ctx := context.Background()
 	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
@@ -130,8 +130,8 @@ func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
 		},
 	}
 
-	tracker.IncrementRequest(channel.ID)
-	tracker.IncrementRequest(channel.ID)
+	tracker.TryAcquireRequest(channel.ID, rpm)
+	tracker.TryAcquireRequest(channel.ID, rpm)
 	tracker.AddTokens(channel.ID, 500)
 
 	// maxRatio = max(2/100, 500/1000) = 0.5 -> score 50
@@ -337,7 +337,7 @@ func TestRateLimitAwareStrategy_Score_MinOfRPMAndConcurrency(t *testing.T) {
 
 	// 30% RPM (score 70) and 80% inFlight (score 20) -> min = 20.
 	for range 30 {
-		tracker.IncrementRequest(channel.ID)
+		tracker.TryAcquireRequest(channel.ID, rpm)
 	}
 
 	lim := mgr.GetOrCreate(channel)
@@ -391,7 +391,7 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_RPMExhausted(t *testing.T) {
 	}
 
 	for range rpm {
-		tracker.IncrementRequest(channel.ID)
+		tracker.TryAcquireRequest(channel.ID, rpm)
 	}
 
 	ctx := context.Background()
