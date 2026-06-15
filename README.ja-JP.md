@@ -30,6 +30,32 @@ Atlas Cloud の[新しいコーディングプラン特典](https://lj.s.gy/jknt
 
 </div>
 
+<br />
+
+<table border="1" cellspacing="0" cellpadding="16">
+  <thead>
+    <tr>
+      <th align="center" width="220">Sponsor</th>
+      <th align="left">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://bloome.im/" target="_blank">
+         <strong>Bloome</strong>
+          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90" />
+        </a>
+      </td>
+      <td valign="middle">
+        AxonHub をローカルセットアップなしで試すなら、Bloome で：
+        <a href="https://bloome.im/agent/join/WchosTFN?ref=MjgMzmCY" target="_blank">Quick start</a>,
+        ブラウザやスマートフォンからワンクリックで起動でき、チームにも簡単に共有できます。
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ---
 
 ## 📖 プロジェクト紹介

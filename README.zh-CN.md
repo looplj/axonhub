@@ -30,6 +30,32 @@
 
 </div>
 
+<br />
+
+<table border="1" cellspacing="0" cellpadding="16">
+  <thead>
+    <tr>
+      <th align="center" width="220">赞助商</th>
+      <th align="left">详情</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://bloome.im/" target="_blank">
+         <strong>Bloome</strong>
+          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90" />
+        </a>
+      </td>
+      <td valign="middle">
+        想试用 AxonHub，但不想在本地配置环境？可以在 Bloome 上运行：
+        <a href="https://bloome.im/agent/join/WchosTFN?ref=MjgMzmCY" target="_blank">快速使用</a>，
+        通过浏览器或手机一键启动，也可以轻松分享给你的团队。
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ---
 
 ## 📖 项目介绍
