@@ -13,7 +13,6 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -197,6 +196,12 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 	err = s.RunInTransaction(ctx, func(ctx context.Context) error {
 		client := s.entFromContext(ctx)
 
+		// Names identify keys on the OpenAPI surface (GetForRead resolves a name
+		// within the owner's project), so per-project name uniqueness is enforced
+		// by the (project_id, name, deleted_at) unique index. The privacy mutation
+		// policy vets the caller before the constraint is reached, so an
+		// unauthorized caller is denied here and cannot use duplicate-name errors
+		// to probe which names exist.
 		created, err := client.APIKey.Create().
 			SetName(name).
 			SetKey(generatedKey).
@@ -209,33 +214,11 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 			}).
 			Save(ctx)
 		if err != nil {
+			if ent.IsConstraintError(err) {
+				return xerrors.DuplicateNameError("API Key", name)
+			}
+
 			return fmt.Errorf("failed to create api key: %w", err)
-		}
-
-		// Names identify keys on the OpenAPI surface (GetForRead resolves a
-		// name within the owner's project), so enforce the same per-project
-		// uniqueness as the admin-path CreateAPIKey. The check runs after the
-		// insert, inside the transaction, so the privacy mutation policy has
-		// already vetted the caller — an unauthorized caller is denied by the
-		// Save above and cannot use duplicate-name errors to probe which names
-		// exist. The count runs under a system bypass pinned to the owner's
-		// own project to keep this mutation's scope requirement at
-		// write_api_keys only; the privacy-gated query path would additionally
-		// demand read_api_keys.
-		count, err := authz.RunWithSystemBypass(ctx, "openapi-llm-key-name-check", func(ctx context.Context) (int, error) {
-			return client.APIKey.Query().
-				Where(
-					apikey.NameEQ(name),
-					apikey.ProjectIDEQ(owner.ProjectID),
-				).
-				Count(ctx)
-		})
-		if err != nil {
-			return fmt.Errorf("failed to check API key name uniqueness: %w", err)
-		}
-
-		if count > 1 {
-			return xerrors.DuplicateNameError("API Key", name)
 		}
 
 		apiKey = created
@@ -310,6 +293,13 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 
 	apiKey, err := create.Save(ctx)
 	if err != nil {
+		// The pre-insert Exist check above is a fast path for the common case;
+		// the (project_id, name, deleted_at) unique index is the source of truth
+		// that closes the concurrent check-then-insert race.
+		if ent.IsConstraintError(err) {
+			return nil, xerrors.DuplicateNameError("API Key", input.Name)
+		}
+
 		return nil, fmt.Errorf("failed to create API key: %w", err)
 	}
 
@@ -371,6 +361,13 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 
 	apiKey, err = update.Save(ctx)
 	if err != nil {
+		// The pre-update Exist check above is a fast path; the unique index is the
+		// source of truth that closes the concurrent check-then-update race.
+		// apiKey is nil on error, so report the attempted new name from input.
+		if ent.IsConstraintError(err) {
+			return nil, xerrors.DuplicateNameError("API Key", lo.FromPtr(input.Name))
+		}
+
 		return nil, fmt.Errorf("failed to update API key: %w", err)
 	}
 

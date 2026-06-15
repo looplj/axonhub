@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 type APIKeyProfileTemplateServiceParams struct {
@@ -42,6 +44,12 @@ func (s *APIKeyProfileTemplateService) CreateTemplate(ctx context.Context, input
 
 	template, err := create.Save(ctx)
 	if err != nil {
+		// Name uniqueness is enforced by the (project_id, name, deleted_at) unique
+		// index; surface a friendly error instead of a raw constraint violation.
+		if ent.IsConstraintError(err) {
+			return nil, xerrors.DuplicateNameError("Template", input.Name)
+		}
+
 		return nil, fmt.Errorf("failed to create template: %w", err)
 	}
 
@@ -127,6 +135,12 @@ func (s *APIKeyProfileTemplateService) UpdateTemplate(ctx context.Context, id in
 		var saveErr error
 		template, saveErr = update.Save(ctx)
 		if saveErr != nil {
+			// The unique index on (project_id, name, deleted_at) is the source of
+			// truth for name uniqueness; map it to a friendly error.
+			if ent.IsConstraintError(saveErr) {
+				return xerrors.DuplicateNameError("Template", lo.FromPtr(input.Name))
+			}
+
 			return fmt.Errorf("failed to update template: %w", saveErr)
 		}
 
