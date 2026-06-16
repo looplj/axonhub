@@ -7,7 +7,7 @@ This guide will help you get started with AxonHub quickly. In just a few minutes
 ## Prerequisites
 
 - Docker and Docker Compose (recommended)
-- Or Go 1.24+ and Node.js 18+ for development setup
+- Or Go 1.26+ and Node.js 18+ for development setup
 - A valid API key from an AI provider (OpenAI, Anthropic, etc.)
 
 ## Quick Setup Methods

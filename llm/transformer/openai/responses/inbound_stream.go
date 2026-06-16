@@ -439,7 +439,7 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 			ContentIndex: &s.contentIndex,
 			Part: &StreamEventContentPart{
 				Type:        "output_text",
-				Text:        lo.ToPtr(""),
+				Text:        "",
 				Annotations: textPartItems[0].Annotations,
 			},
 		})
@@ -672,7 +672,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 			SummaryIndex: lo.ToPtr(0),
 			Part: &StreamEventContentPart{
 				Type: "summary_text",
-				Text: &fullReasoning,
+				Text: fullReasoning,
 			},
 		})
 		if err != nil {
@@ -803,7 +803,7 @@ func (s *responsesInboundStream) closeCurrentContentPart() error {
 		ContentIndex: &s.contentIndex,
 		Part: &StreamEventContentPart{
 			Type:        "output_text",
-			Text:        lo.ToPtr(fullText),
+			Text:        fullText,
 			Annotations: contentPartItems[0].Annotations,
 		},
 	})

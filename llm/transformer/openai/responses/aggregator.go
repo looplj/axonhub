@@ -50,6 +50,9 @@ type aggregatedItem struct {
 	// For custom_tool_call type
 	Input *string
 
+	// For image_generation_call type
+	Result *string
+
 	// For message type
 	Content []*aggregatedContentPart
 
@@ -285,8 +288,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 
 			if ev.Part != nil {
 				contentPart.Type = ev.Part.Type
-				if ev.Part.Text != nil {
-					contentPart.Text.WriteString(*ev.Part.Text)
+				if ev.Part.Text != "" {
+					contentPart.Text.WriteString(ev.Part.Text)
 				}
 				contentPart.Annotations = append([]Annotation(nil), ev.Part.Annotations...)
 			}
@@ -380,8 +383,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 				part.Type = ev.Part.Type
 			}
 
-			if ev.Part.Text != nil {
-				part.Text.WriteString(*ev.Part.Text)
+			if ev.Part.Text != "" {
+				part.Text.WriteString(ev.Part.Text)
 			}
 		}
 
@@ -408,8 +411,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 				part.Type = ev.Part.Type
 			}
 
-			if ev.Part.Text != nil {
-				applyDoneText(part.Text, *ev.Part.Text)
+			if ev.Part.Text != "" {
+				applyDoneText(part.Text, ev.Part.Text)
 			}
 		}
 
@@ -506,6 +509,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 
 				if ev.Item.EncryptedContent != nil {
 					item.EncryptedContent = ev.Item.EncryptedContent
+				}
+
+				if ev.Item.Result != nil {
+					item.Result = ev.Item.Result
 				}
 			}
 		}
@@ -636,44 +643,56 @@ func (a *streamAggregator) buildResponse() *Response {
 				})
 
 			case "reasoning":
-				var summary []ReasoningSummary
+				// ...existing reasoning handling...
+				{
+					var summary []ReasoningSummary
 
-				if len(item.SummaryParts) > 0 {
-					maxSummaryIndex := -1
-					for idx := range item.SummaryParts {
-						if idx > maxSummaryIndex {
-							maxSummaryIndex = idx
+					if len(item.SummaryParts) > 0 {
+						maxSummaryIndex := -1
+						for idx := range item.SummaryParts {
+							if idx > maxSummaryIndex {
+								maxSummaryIndex = idx
+							}
+						}
+
+						summary = make([]ReasoningSummary, 0, maxSummaryIndex+1)
+						for idx := 0; idx <= maxSummaryIndex; idx++ {
+							sp, ok := item.SummaryParts[idx]
+							if !ok || sp == nil {
+								summary = append(summary, ReasoningSummary{Type: "summary_text", Text: ""})
+								continue
+							}
+
+							summaryType := sp.Type
+							if summaryType == "" {
+								summaryType = "summary_text"
+							}
+
+							var text string
+							if sp.Text != nil {
+								text = sp.Text.String()
+							}
+
+							summary = append(summary, ReasoningSummary{Type: summaryType, Text: text})
 						}
 					}
 
-					summary = make([]ReasoningSummary, 0, maxSummaryIndex+1)
-					for idx := 0; idx <= maxSummaryIndex; idx++ {
-						sp, ok := item.SummaryParts[idx]
-						if !ok || sp == nil {
-							summary = append(summary, ReasoningSummary{Type: "summary_text", Text: ""})
-							continue
-						}
-
-						summaryType := sp.Type
-						if summaryType == "" {
-							summaryType = "summary_text"
-						}
-
-						var text string
-						if sp.Text != nil {
-							text = sp.Text.String()
-						}
-
-						summary = append(summary, ReasoningSummary{Type: summaryType, Text: text})
-					}
+					output = append(output, Item{
+						ID:               item.ID,
+						Type:             item.Type,
+						Status:           lo.ToPtr(item.Status),
+						Summary:          summary,
+						EncryptedContent: item.EncryptedContent,
+					})
 				}
 
+			case "image_generation_call":
 				output = append(output, Item{
-					ID:               item.ID,
-					Type:             item.Type,
-					Status:           lo.ToPtr(item.Status),
-					Summary:          summary,
-					EncryptedContent: item.EncryptedContent,
+					ID:     item.ID,
+					Type:   item.Type,
+					Status: lo.ToPtr(item.Status),
+					CallID: item.CallID,
+					Result: item.Result,
 				})
 
 			default:

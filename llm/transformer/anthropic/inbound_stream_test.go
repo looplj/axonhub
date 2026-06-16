@@ -80,6 +80,84 @@ func TestInboundStream_EmitsCitationsDeltaBeforeContentBlockStop(t *testing.T) {
 	})
 }
 
+func TestInboundStream_RemovesEmptyReadPages(t *testing.T) {
+	transformer := NewInboundTransformer()
+	finishReason := "tool_calls"
+
+	input := []*llm.Response{
+		{
+			ID:     "msg_read_pages_stream",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+				},
+			}},
+		},
+		{
+			ID:     "msg_read_pages_stream",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					ToolCalls: []llm.ToolCall{{
+						Index: 0,
+						ID:    "call_read",
+						Type:  "function",
+						Function: llm.FunctionCall{
+							Name:      "Read",
+							Arguments: `{"file_path":`,
+						},
+					}},
+				},
+			}},
+		},
+		{
+			ID:     "msg_read_pages_stream",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					ToolCalls: []llm.ToolCall{{
+						Index: 0,
+						Function: llm.FunctionCall{
+							Arguments: `"/tmp/a.go","pages":""}`,
+						},
+					}},
+				},
+			}},
+		},
+		{
+			ID:     "msg_read_pages_stream",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &finishReason,
+			}},
+			Usage: &llm.Usage{},
+		},
+	}
+
+	events := collectInboundStreamEvents(t, transformer, input)
+
+	var argumentDeltas []string
+	for _, event := range events {
+		if event.Type == "content_block_delta" && event.Delta != nil &&
+			event.Delta.Type != nil && *event.Delta.Type == "input_json_delta" &&
+			event.Delta.PartialJSON != nil {
+			argumentDeltas = append(argumentDeltas, *event.Delta.PartialJSON)
+		}
+	}
+
+	require.Len(t, argumentDeltas, 1)
+	require.JSONEq(t, `{"file_path":"/tmp/a.go"}`, argumentDeltas[0])
+}
+
 func TestInboundStream_EmitsCitationsDeltaWhenAnnotationsArriveBeforeText(t *testing.T) {
 	transformer := NewInboundTransformer()
 

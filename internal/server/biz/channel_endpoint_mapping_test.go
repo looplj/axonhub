@@ -84,6 +84,15 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
+			name: "codex exposes responses plus image generation and edit",
+			typ:  channel.TypeCodex,
+			expected: []string{
+				llm.APIFormatOpenAIResponse.String(),
+				llm.APIFormatOpenAIImageGeneration.String(),
+				llm.APIFormatOpenAIImageEdit.String(),
+			},
+		},
+		{
 			name:     "jina exposes rerank and embedding",
 			typ:      channel.TypeJina,
 			expected: []string{llm.APIFormatJinaRerank.String(), llm.APIFormatJinaEmbedding.String()},
