@@ -477,7 +477,7 @@ func (s *OIDCService) IsUserRestrictedToOIDC(ctx context.Context, u *ent.User) b
 	// eager-loaded (it returns a NotLoadedError in that case), instead of relying on
 	// len()==0 which cannot tell "not loaded" from "loaded but the user has none".
 	identities, err := u.Edges.OidcIdentitiesOrErr()
-	if err != nil {
+	if ent.IsNotLoaded(err) {
 		// The edge was not loaded. This runs during pre-auth sign-in, where there is
 		// no viewer in the context yet, so the privacy policy on OIDCIdentity would
 		// deny a normal query ("no user in context"). Read the user's own OIDC links
