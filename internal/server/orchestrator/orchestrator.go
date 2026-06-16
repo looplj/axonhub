@@ -261,14 +261,17 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
 
-		// Unified performance tracking middleware.
-		withPerformanceRecording(outbound),
+		// The request execution middleware must be the first outbound middleware
+		// to ensure that the request execution is created with the correct request body
+		// before performance tracking starts, so that DB/storage persistence time
+		// is not included in TTFT measurement.
+		persistRequestExecution(outbound),
 
 		withModelCircuitBreaker(outbound, processor.modelCircuitBreaker, strategy),
 
-		// The request execution middleware must be the final middleware
-		// to ensure that the request execution is created with the correct request bodys.
-		persistRequestExecution(outbound),
+		// Unified performance tracking middleware. Set StartTime after request execution
+		// persistence so TTFT only measures upstream provider latency.
+		withPerformanceRecording(outbound),
 
 		// Forward the events to the live streaming.
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
