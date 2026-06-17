@@ -925,6 +925,7 @@ type ComplexityRoot struct {
 		LoadAPIKeyProfileTemplate            func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
 		PreviewPromptProtectionRule          func(childComplexity int, input PromptProtectionRulePreviewInput) int
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
+		ResetChannelQuotaNow                 func(childComplexity int, channelID objects.GUID) int
 		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		RotateAPIKey                         func(childComplexity int, id objects.GUID) int
 		SaveChannelEndpoints                 func(childComplexity int, input biz.SaveChannelEndpointsInput) int
@@ -2102,6 +2103,7 @@ type MutationResolver interface {
 	UpdateQuotaEnforcementSettings(ctx context.Context, input UpdateQuotaEnforcementSettingsInput) (bool, error)
 	UpdateSecuritySettings(ctx context.Context, input UpdateSecuritySettingsInput) (bool, error)
 	CheckProviderQuotas(ctx context.Context) (bool, error)
+	ResetChannelQuotaNow(ctx context.Context, channelID objects.GUID) (bool, error)
 	TriggerGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) (bool, error)
 	SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error)
 	DeleteProxyPreset(ctx context.Context, url string) (bool, error)
@@ -5830,6 +5832,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveUserFromProject(childComplexity, args["input"].(RemoveUserFromProjectInput)), true
+	case "Mutation.resetChannelQuotaNow":
+		if e.complexity.Mutation.ResetChannelQuotaNow == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resetChannelQuotaNow_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ResetChannelQuotaNow(childComplexity, args["channelID"].(objects.GUID)), true
 	case "Mutation.restore":
 		if e.complexity.Mutation.Restore == nil {
 			break
@@ -11831,6 +11844,17 @@ func (ec *executionContext) field_Mutation_removeUserFromProject_args(ctx contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_resetChannelQuotaNow_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "channelID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["channelID"] = arg0
 	return args, nil
 }
 
@@ -33146,6 +33170,47 @@ func (ec *executionContext) fieldContext_Mutation_checkProviderQuotas(_ context.
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetChannelQuotaNow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_resetChannelQuotaNow,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ResetChannelQuotaNow(ctx, fc.Args["channelID"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetChannelQuotaNow(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resetChannelQuotaNow_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -91340,6 +91405,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "checkProviderQuotas":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_checkProviderQuotas(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetChannelQuotaNow":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetChannelQuotaNow(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

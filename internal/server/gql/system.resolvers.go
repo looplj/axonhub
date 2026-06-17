@@ -244,6 +244,23 @@ func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error
 	return true, nil
 }
 
+// ResetChannelQuotaNow is the resolver for the resetChannelQuotaNow field.
+func (r *mutationResolver) ResetChannelQuotaNow(ctx context.Context, channelID objects.GUID) (bool, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteChannels) {
+		return false, fmt.Errorf("permission denied: requires write:channels scope")
+	}
+
+	if r.providerQuotaService == nil {
+		return false, fmt.Errorf("provider quota service is not available")
+	}
+
+	if err := r.providerQuotaService.ResetChannelQuotaNow(ctx, channelID.ID); err != nil {
+		return false, fmt.Errorf("failed to reset channel quota: %w", err)
+	}
+
+	return true, nil
+}
+
 // TriggerGcCleanup is the resolver for the triggerGcCleanup field.
 func (r *mutationResolver) TriggerGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) (bool, error) {
 	if !scopes.UserHasScope(ctx, scopes.ScopeWriteSettings) {

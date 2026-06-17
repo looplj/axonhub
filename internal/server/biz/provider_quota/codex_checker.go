@@ -7,10 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
 // CodexUsageResponse matches ChatGPT backend API response.
@@ -34,6 +37,26 @@ type CodeUsageWindow struct {
 	LimitWindowSeconds *int     `json:"limit_window_seconds,omitempty"`
 }
 
+type CodexResetCredit struct {
+	ID        string `json:"id"`
+	Status    string `json:"status"`
+	ResetType string `json:"reset_type,omitempty"`
+	GrantedAt string `json:"granted_at,omitempty"`
+	ExpiresAt string `json:"expires_at,omitempty"`
+	Title     string `json:"title,omitempty"`
+}
+
+type CodexResetCreditsResponse struct {
+	Credits        []CodexResetCredit `json:"credits"`
+	AvailableCount int                `json:"available_count"`
+}
+
+type CodexResetConsumeResponse struct {
+	Code         string           `json:"code"`
+	WindowsReset int              `json:"windows_reset"`
+	Credit       CodexResetCredit `json:"credit"`
+}
+
 type CodexQuotaChecker struct {
 	httpClient *httpclient.HttpClient
 }
@@ -44,27 +67,141 @@ func NewCodexQuotaChecker(httpClient *httpclient.HttpClient) *CodexQuotaChecker 
 	}
 }
 
-func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
-	// Extract OAuth credentials
-	if ch.Credentials.OAuth == nil && strings.TrimSpace(ch.Credentials.APIKey) == "" {
-		return QuotaData{}, fmt.Errorf("channel has no credentials")
+func (c *CodexQuotaChecker) CanResetNow(ctx context.Context, ch *ent.Channel) (bool, error) {
+	resp, err := c.listResetCredits(ctx, ch)
+	if err != nil {
+		return false, err
 	}
 
-	// Parse OAuth credentials from apiKey JSON
+	for _, credit := range resp.Credits {
+		if credit.Status == "available" {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (c *CodexQuotaChecker) ResetNow(ctx context.Context, ch *ent.Channel) (*CodexResetConsumeResponse, error) {
+	credits, err := c.listResetCredits(ctx, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	var target *CodexResetCredit
+	for i := range credits.Credits {
+		if credits.Credits[i].Status == "available" {
+			target = &credits.Credits[i]
+			break
+		}
+	}
+	if target == nil {
+		return nil, fmt.Errorf("no available codex reset credit")
+	}
+
+	return c.consumeResetCredit(ctx, ch, target.ID)
+}
+
+func (c *CodexQuotaChecker) listResetCredits(ctx context.Context, ch *ent.Channel) (*CodexResetCreditsResponse, error) {
+	accessToken, accountID, err := c.extractCodexCredentials(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	httpRequest := httpclient.NewRequestBuilder().
+		WithMethod("GET").
+		WithURL("https://chatgpt.com/backend-api/wham/rate-limit-reset-credits").
+		WithBearerToken(accessToken).
+		WithHeader("ChatGPT-Account-Id", accountID).
+		WithHeader("Content-Type", "application/json").
+		Build()
+
+	hc := c.httpClient
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
+	}
+
+	resp, err := hc.Do(ctx, httpRequest)
+	if err != nil {
+		return nil, fmt.Errorf("list codex reset credits failed: %w", err)
+	}
+
+	var result CodexResetCreditsResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse codex reset credits response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (c *CodexQuotaChecker) consumeResetCredit(ctx context.Context, ch *ent.Channel, creditID string) (*CodexResetConsumeResponse, error) {
+	accessToken, accountID, err := c.extractCodexCredentials(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	httpRequest := httpclient.NewRequestBuilder().
+		WithMethod("POST").
+		WithURL("https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume").
+		WithBearerToken(accessToken).
+		WithHeader("ChatGPT-Account-Id", accountID).
+		WithHeader("Content-Type", "application/json").
+		WithBody(map[string]string{
+			"credit_id":         creditID,
+			"redeem_request_id": uuid.NewString(),
+		}).
+		Build()
+
+	hc := c.httpClient
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
+	}
+
+	resp, err := hc.Do(ctx, httpRequest)
+	if err != nil {
+		return nil, fmt.Errorf("consume codex reset credit failed: %w", err)
+	}
+
+	var result CodexResetConsumeResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse codex reset consume response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (c *CodexQuotaChecker) extractCodexCredentials(ch *ent.Channel) (string, string, error) {
+	if ch.Credentials.OAuth == nil && strings.TrimSpace(ch.Credentials.APIKey) == "" {
+		return "", "", fmt.Errorf("channel has no credentials")
+	}
+
 	var accessToken string
 	if ch.Credentials.OAuth != nil {
 		accessToken = ch.Credentials.OAuth.AccessToken
 	} else if strings.TrimSpace(ch.Credentials.APIKey) != "" {
 		creds, err := oauth.ParseCredentialsJSON(ch.Credentials.APIKey)
 		if err != nil {
-			return QuotaData{}, fmt.Errorf("failed to parse OAuth credentials: %w", err)
+			return "", "", fmt.Errorf("failed to parse OAuth credentials: %w", err)
 		}
-
 		accessToken = creds.AccessToken
 	}
 
 	if accessToken == "" {
-		return QuotaData{}, fmt.Errorf("OAuth missing access_token")
+		return "", "", fmt.Errorf("OAuth missing access_token")
+	}
+
+	accountID := codex.ExtractChatGPTAccountIDFromJWT(accessToken)
+	if accountID == "" {
+		return "", "", fmt.Errorf("failed to extract ChatGPT account id from access token")
+	}
+
+	return accessToken, accountID, nil
+}
+
+func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
+	accessToken, _, err := c.extractCodexCredentials(ch)
+	if err != nil {
+		return QuotaData{}, err
 	}
 
 	httpRequest := httpclient.NewRequestBuilder().
