@@ -30,7 +30,7 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
   const userScopes = user?.scopes || [];
   const isOwner = user?.isOwner || false;
 
-  const canViewUsers = isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_apikeys'));
+  const canViewUsers = isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_api_keys'));
 
   const { data: usersData } = useUsers(
     {
