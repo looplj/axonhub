@@ -41,7 +41,7 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   );
 }
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true, canViewUsers: boolean = false): ColumnDef<ApiKey>[] => [
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true, canViewCreators: boolean = false): ColumnDef<ApiKey>[] => [
   ...(canWrite
     ? [
         {
@@ -94,7 +94,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       className: 'max-w-48',
     },
   },
-  ...(canViewUsers
+  ...(canViewCreators
     ? ([
         {
           accessorKey: 'creator',

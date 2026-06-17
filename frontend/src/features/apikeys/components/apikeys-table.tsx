@@ -50,6 +50,7 @@ interface DataTableProps {
   onDateRangeChange: (value: DateTimeRangeValue | undefined) => void;
   onResetFilters?: () => void;
   canWrite?: boolean;
+  canViewCreators?: boolean;
 }
 
 export function ApiKeysTable({
@@ -72,6 +73,7 @@ export function ApiKeysTable({
   onDateRangeChange,
   onResetFilters,
   canWrite = true,
+  canViewCreators = false,
 }: DataTableProps) {
   const { t } = useTranslation();
   const { setResetRowSelection, setSelectedApiKeys, openDialog } = useApiKeysContext();
@@ -180,7 +182,13 @@ export function ApiKeysTable({
 
   return (
     <div className='flex flex-1 flex-col'>
-      <DataTableToolbar table={table} dateRange={dateRange} onDateRangeChange={onDateRangeChange} onResetFilters={onResetFilters} />
+      <DataTableToolbar
+        table={table}
+        dateRange={dateRange}
+        onDateRangeChange={onDateRangeChange}
+        onResetFilters={onResetFilters}
+        canViewCreators={canViewCreators}
+      />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
         <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>

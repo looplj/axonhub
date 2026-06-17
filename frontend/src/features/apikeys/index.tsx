@@ -159,6 +159,7 @@ function ApiKeysContent() {
           onDateRangeChange={setDateRange}
           onResetFilters={handleResetFilters}
           canWrite={apiKeyPermissions.canWrite}
+          canViewCreators={canViewCreators}
         />
       </div>
     </div>
