@@ -39,7 +39,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
   const canManageSecuritySettings = hasScope('write_settings');
 
   const blockedIPs = securitySettings?.blockedIPs ?? [];
-  const showIPBanIcon = securitySettings?.showRequestLogIPBanIcon ?? true;
+  const showIPBanIcon = securitySettings?.showRequestLogIPBanIcon === true;
 
   const normalizeBlockedIPs = (ips: string[]) =>
     Array.from(
