@@ -7,6 +7,12 @@ const CHECK_PROVIDER_QUOTAS_QUERY = `
   }
 `;
 
+const RESET_CHANNEL_QUOTA_NOW_MUTATION = `
+  mutation ResetChannelQuotaNow($channelID: ID!) {
+    resetChannelQuotaNow(channelID: $channelID)
+  }
+`;
+
 const PROVIDER_QUOTA_STATUSES_QUERY = `
   query ProviderQuotaStatuses($input: QueryChannelInput!) {
     queryChannels(input: $input) {
@@ -30,6 +36,10 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
 
 export async function checkProviderQuotas() {
   return graphqlRequest(CHECK_PROVIDER_QUOTAS_QUERY);
+}
+
+export async function resetChannelQuotaNow(channelID: string) {
+  return graphqlRequest(RESET_CHANNEL_QUOTA_NOW_MUTATION, { channelID });
 }
 
 type ProviderQuotaDataCommon = {
@@ -378,7 +388,16 @@ export function useProviderQuotaStatuses() {
 
   const channels = data?.queryChannels?.edges?.map((e) => e.node) || [];
 
-  const oauthChannels = channels.filter((c) => c.providerQuotaStatus != null);
+  const oauthChannels = channels.filter((c) => {
+    if (c.providerQuotaStatus == null) {
+      return false;
+    }
+    // Skip channels that have no credentials configured, since they cannot be
+    // checked and only add noise to the quota popover. Other errors are still
+    // shown so admins can spot credential/permission issues.
+    const quotaData = c.providerQuotaStatus.quotaData as { error?: string } | undefined;
+    return quotaData?.error !== 'channel has no credentials';
+  });
 
   return oauthChannels.map(parseChannelNode);
 }
