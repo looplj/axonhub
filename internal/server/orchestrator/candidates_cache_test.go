@@ -115,16 +115,24 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 	})
 
 	t.Run("cache invalidated when channel updated", func(t *testing.T) {
+		selector.cacheMu.RLock()
+		initialEntry := selector.associationCache[modelID]
+		selector.cacheMu.RUnlock()
+
 		// Update a channel's timestamp
-		_, err := client.Channel.UpdateOneID(channels[0].ID).
+		updatedChannel, err := client.Channel.UpdateOneID(channels[0].ID).
 			SetUpdatedAt(now.Add(1 * time.Hour)).
 			Save(ctx)
 		require.NoError(t, err)
 
-		// Clear cache to force refresh
-		selector.cacheMu.Lock()
-		selector.associationCache = make(map[string]*associationCacheEntry)
-		selector.cacheMu.Unlock()
+		enabledChannels := append([]*biz.Channel(nil), channelService.GetEnabledChannels()...)
+		for i, ch := range enabledChannels {
+			if ch.ID == updatedChannel.ID {
+				enabledChannels[i] = &biz.Channel{Channel: updatedChannel}
+				break
+			}
+		}
+		channelService.SetEnabledChannelsForTest(enabledChannels)
 
 		req := &llm.Request{Model: modelID}
 		candidates, err := selector.selectModelCandidates(ctx, req)
@@ -137,6 +145,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		selector.cacheMu.RUnlock()
 
 		require.NotNil(t, entry)
+		require.NotSame(t, initialEntry, entry, "cache entry should be refreshed when channel is updated")
 		require.True(t, entry.latestChannelUpdateTime.After(now), "cache should reflect new update time")
 	})
 
