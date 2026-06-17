@@ -422,7 +422,7 @@
   "channels.dialogs.settings.overrides.title": "Override Settings",
   "channels.dialogs.settings.overrides.addButton": "Add Operation",
   "channels.dialogs.settings.overrides.body.title": "Override Body",
-  "channels.dialogs.settings.overrides.body.description": "Override request body send to the channel, you can change the body content, add, delete, rename fields, or remove matching array items.",
+  "channels.dialogs.settings.overrides.body.description": "Override the request body sent to the channel, including changing body content, adding, deleting, renaming fields, or removing matching array items.",
   "channels.dialogs.settings.overrides.body.op": "Operation",
   "channels.dialogs.settings.overrides.body.opSet": "Set",
   "channels.dialogs.settings.overrides.body.opDelete": "Delete",

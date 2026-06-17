@@ -143,8 +143,8 @@ export type HeaderEntry = z.infer<typeof headerEntrySchema>;
 
 // Override Operation
 export const overrideMatchSchema = z.object({
-  path: z.string(),
-  eq: z.string(),
+  path: z.string().trim().min(1),
+  eq: z.string().trim().min(1),
 });
 export type OverrideMatch = z.infer<typeof overrideMatchSchema>;
 

@@ -2195,4 +2195,12 @@ func TestOverrideOperationsArrayOps(t *testing.T) {
 		// Empty match.eq is rejected defensively at runtime so a malformed stored op cannot remove items accidentally.
 		require.Equal(t, int64(2), gjson.Get(got, "tools.#").Int())
 	})
+
+	t.Run("array_remove trims match eq before comparing", func(t *testing.T) {
+		ops := `[{"op":"array_remove","path":"tools","match":{"path":"function.name","eq":" web_search "}}]`
+		got := runMiddleware(t, ops, `{"tools":[{"function":{"name":"web_search"}},{"function":{"name":"calculate"}}]}`)
+
+		require.Equal(t, int64(1), gjson.Get(got, "tools.#").Int())
+		require.Equal(t, "calculate", gjson.Get(got, "tools.0.function.name").String())
+	})
 }

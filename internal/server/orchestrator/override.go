@@ -376,24 +376,16 @@ func applyBodyArrayRemove(body []byte, op objects.OverrideOperation) ([]byte, er
 		return body, fmt.Errorf("path %q is not an array", op.Path)
 	}
 
-	var current []any
-	if err := json.Unmarshal([]byte(existing.Raw), &current); err != nil {
-		return body, fmt.Errorf("decode array at %q: %w", op.Path, err)
-	}
-
-	kept := make([]any, 0, len(current))
-	for _, item := range current {
-		itemBytes, err := json.Marshal(item)
-		if err != nil {
-			return body, fmt.Errorf("encode array item at %q: %w", op.Path, err)
-		}
-
-		result := gjson.GetBytes(itemBytes, op.Match.Path)
-		if result.Exists() && result.String() == op.Match.Eq {
+	matchEq := strings.TrimSpace(op.Match.Eq)
+	items := existing.Array()
+	kept := make([]json.RawMessage, 0, len(items))
+	for _, item := range items {
+		result := gjson.GetBytes([]byte(item.Raw), op.Match.Path)
+		if result.Exists() && result.String() == matchEq {
 			continue
 		}
 
-		kept = append(kept, item)
+		kept = append(kept, json.RawMessage([]byte(item.Raw)))
 	}
 
 	return sjson.SetBytes(body, op.Path, kept)
