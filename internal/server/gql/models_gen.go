@@ -548,7 +548,8 @@ type UpdateQuotaEnforcementSettingsInput struct {
 }
 
 type UpdateSecuritySettingsInput struct {
-	BlockedIPs []string `json:"blockedIPs,omitempty"`
+	BlockedIPs              []string `json:"blockedIPs,omitempty"`
+	ShowRequestLogIPBanIcon *bool    `json:"showRequestLogIPBanIcon,omitempty"`
 }
 
 type UpdateUserAgentPassThroughSettingsInput struct {

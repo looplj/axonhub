@@ -212,6 +212,13 @@ type QuotaEnforcementSettings struct {
 type SecuritySettings struct {
 	// BlockedIPs contains IP addresses or CIDR ranges that cannot use external APIs.
 	BlockedIPs []string `json:"blocked_ips"`
+	// ShowRequestLogIPBanIcon controls whether the request log IP column shows the quick ban action.
+	ShowRequestLogIPBanIcon bool `json:"show_request_log_ip_ban_icon"`
+}
+
+type securitySettingsJSON struct {
+	BlockedIPs              []string `json:"blocked_ips"`
+	ShowRequestLogIPBanIcon *bool    `json:"show_request_log_ip_ban_icon"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -1588,9 +1595,15 @@ func (s *SystemService) SecuritySettings(ctx context.Context) (*SecuritySettings
 		return nil, fmt.Errorf("failed to get security settings: %w", err)
 	}
 
-	var settings SecuritySettings
-	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+	var storedSettings securitySettingsJSON
+	if err := json.Unmarshal([]byte(value), &storedSettings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal security settings: %w", err)
+	}
+
+	settings := defaultSecuritySettings
+	settings.BlockedIPs = storedSettings.BlockedIPs
+	if storedSettings.ShowRequestLogIPBanIcon != nil {
+		settings.ShowRequestLogIPBanIcon = *storedSettings.ShowRequestLogIPBanIcon
 	}
 
 	normalizeSecuritySettings(&settings)
