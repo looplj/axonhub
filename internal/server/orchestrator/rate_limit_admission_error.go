@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -27,10 +26,7 @@ type LocalRPMExhaustedError struct {
 
 func newLocalRPMExhaustedError(ch *biz.Channel, limit int64) *LocalRPMExhaustedError {
 	message := fmt.Sprintf("channel %s exhausted local RPM limit %d; please retry shortly", ch.Name, limit)
-	body := []byte(fmt.Sprintf(
-		`{"error":{"code":"channel_rpm_exhausted","message":%s,"type":"rate_limit_error"}}`,
-		strconv.Quote(message),
-	))
+	body := fmt.Appendf(nil, `{"error":{"code":"channel_rpm_exhausted","message":%q,"type":"rate_limit_error"}}`, message)
 
 	return &LocalRPMExhaustedError{
 		ChannelID:   ch.ID,
