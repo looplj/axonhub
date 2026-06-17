@@ -557,6 +557,10 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		baseURL = strings.TrimSuffix(baseURL, "/claude")
 
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
 		return baseURL + "/v1/models", headers
 	case channelType.IsGemini():
 		if strings.Contains(baseURL, "/v1") {
