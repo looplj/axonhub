@@ -10,8 +10,9 @@ type VideoRequest struct {
 	// Content is the input list (text prompt and image inputs).
 	Content []VideoContent `json:"content"`
 
-	// Duration is the video duration in seconds.
-	Duration *int64 `json:"duration,omitempty"`
+	// Duration is the video duration in seconds, represented as a string to
+	// preserve fractional values (e.g. "3.4") returned by some providers.
+	Duration *string `json:"duration,omitempty"`
 
 	// Ratio is the aspect ratio, e.g. "16:9", "9:16".
 	Ratio string `json:"ratio,omitempty"`
@@ -82,10 +83,12 @@ type VideoResponse struct {
 	// Prompt is a human-readable prompt for convenience.
 	Prompt string `json:"prompt,omitempty"`
 
-	Duration   *int64 `json:"duration,omitempty"`
-	Size       string `json:"size,omitempty"`
-	Ratio      string `json:"ratio,omitempty"`
-	Resolution string `json:"resolution,omitempty"`
+	// Duration is the video duration in seconds, represented as a string to
+	// preserve fractional values (e.g. "3.4") returned by some providers.
+	Duration   *string `json:"duration,omitempty"`
+	Size       string  `json:"size,omitempty"`
+	Ratio      string  `json:"ratio,omitempty"`
+	Resolution string  `json:"resolution,omitempty"`
 
 	FPS  *int64 `json:"fps,omitempty"`
 	Seed *int64 `json:"seed,omitempty"`

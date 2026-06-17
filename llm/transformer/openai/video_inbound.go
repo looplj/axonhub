@@ -11,7 +11,6 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -31,11 +30,11 @@ const (
 )
 
 type VideoCreateRequest struct {
-	Model          string `json:"model"`
-	Prompt         string `json:"prompt"`
-	InputReference string `json:"input_reference,omitempty"`
-	Seconds        *int64 `json:"seconds,omitempty"`
-	Size           string `json:"size,omitempty"`
+	Model          string  `json:"model"`
+	Prompt         string  `json:"prompt"`
+	InputReference string  `json:"input_reference,omitempty"`
+	Seconds        *string `json:"seconds,omitempty"`
+	Size           string  `json:"size,omitempty"`
 }
 
 type VideoInboundTransformer struct{}
@@ -213,14 +212,10 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 	prompt := strings.TrimSpace(fields["prompt"])
 	size := strings.TrimSpace(fields["size"])
 
-	var seconds *int64
+	var seconds *string
 
 	if s := strings.TrimSpace(fields["seconds"]); s != "" {
-		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
-			seconds = &v
-		} else {
-			return nil, fmt.Errorf("%w: invalid seconds", transformer.ErrInvalidRequest)
-		}
+		seconds = &s
 	}
 
 	inputReference := strings.TrimSpace(fields[videoReferenceFieldName])
@@ -257,7 +252,7 @@ type OpenAIVideoObject struct {
 	Status      string            `json:"status"`
 	Model       string            `json:"model,omitempty"`
 	Prompt      string            `json:"prompt,omitempty"`
-	Seconds     *int64            `json:"seconds,omitempty"`
+	Seconds     *string           `json:"seconds,omitempty"`
 	Size        string            `json:"size,omitempty"`
 	Progress    *float64          `json:"progress,omitempty"`
 	VideoURL    string            `json:"video_url,omitempty"`
