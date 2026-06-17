@@ -103,7 +103,7 @@ func TestCircuitBreakerStrategy_Simulation(t *testing.T) {
 	// 2. Simulate failures for channel-1 until it hits Half-Open
 	// HalfOpenThreshold is 3 by default. HalfOpenWeight is 0.3.
 	for range 3 {
-		cb.RecordError(ctx, 1, modelID)
+		cb.RecordError(ctx, 1, modelID, false)
 	}
 
 	stats1 := cb.GetModelCircuitBreakerStats(ctx, 1, modelID)
@@ -127,7 +127,7 @@ func TestCircuitBreakerStrategy_Simulation(t *testing.T) {
 
 	// 3. Simulate failures for Ch2 until it also hits Half-Open
 	for range 3 {
-		cb.RecordError(ctx, 2, modelID)
+		cb.RecordError(ctx, 2, modelID, false)
 	}
 
 	// Ch1 score: 160 (half-open)
@@ -166,7 +166,7 @@ func TestCircuitBreakerStrategy_Simulation(t *testing.T) {
 	// 5. Simulate all channels Open
 	for _, ch := range channels {
 		for range 5 {
-			cb.RecordError(ctx, ch.ID, modelID)
+			cb.RecordError(ctx, ch.ID, modelID, false)
 		}
 	}
 

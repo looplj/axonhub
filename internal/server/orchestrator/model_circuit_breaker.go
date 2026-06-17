@@ -87,6 +87,9 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err
 		return
 	}
 
+	// Capture whether this attempt was an active probe BEFORE releasing the lease,
+	// so RecordError can decide whether to apply exponential backoff.
+	wasProbe := m.probeActive
 	m.releaseProbeLease()
 
 	if errors.Is(err, context.Canceled) {
@@ -100,7 +103,7 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err
 
 	channel := m.outbound.GetCurrentChannel()
 	modelID := m.outbound.GetRequestedModel()
-	m.modelCircuitBreaker.RecordError(ctx, channel.ID, modelID)
+	m.modelCircuitBreaker.RecordError(ctx, channel.ID, modelID, wasProbe)
 }
 
 func (m *modelCircuitBreakerTracker) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
@@ -162,7 +165,7 @@ func (s *probeReleasingStream) Current() *llm.Response {
 	}
 
 	if s.modelCircuitBreaker == nil {
-		return nil
+		return event
 	}
 
 	if !s.recorded {
