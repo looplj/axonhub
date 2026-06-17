@@ -25,8 +25,14 @@ type OverrideOperation {
   to: String
   value: String
   condition: String
+  match: OverrideMatch
   index: Int
   splat: Boolean
+}
+
+type OverrideMatch {
+  path: String!
+  eq: String!
 }
 
 input OverrideOperationInput {
@@ -36,8 +42,14 @@ input OverrideOperationInput {
   to: String
   value: String
   condition: String
+  match: OverrideMatchInput
   index: Int
   splat: Boolean
+}
+
+input OverrideMatchInput {
+  path: String!
+  eq: String!
 }
 
 type TransformOptions {

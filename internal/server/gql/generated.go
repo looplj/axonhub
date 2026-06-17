@@ -1023,10 +1023,16 @@ type ComplexityRoot struct {
 		SystemModelSetting func(childComplexity int) int
 	}
 
+	OverrideMatch struct {
+		Eq   func(childComplexity int) int
+		Path func(childComplexity int) int
+	}
+
 	OverrideOperation struct {
 		Condition func(childComplexity int) int
 		From      func(childComplexity int) int
 		Index     func(childComplexity int) int
+		Match     func(childComplexity int) int
 		Op        func(childComplexity int) int
 		Path      func(childComplexity int) int
 		Splat     func(childComplexity int) int
@@ -6534,6 +6540,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.OnboardingInfo.SystemModelSetting(childComplexity), true
 
+	case "OverrideMatch.eq":
+		if e.complexity.OverrideMatch.Eq == nil {
+			break
+		}
+
+		return e.complexity.OverrideMatch.Eq(childComplexity), true
+	case "OverrideMatch.path":
+		if e.complexity.OverrideMatch.Path == nil {
+			break
+		}
+
+		return e.complexity.OverrideMatch.Path(childComplexity), true
+
 	case "OverrideOperation.condition":
 		if e.complexity.OverrideOperation.Condition == nil {
 			break
@@ -6552,6 +6571,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OverrideOperation.Index(childComplexity), true
+	case "OverrideOperation.match":
+		if e.complexity.OverrideOperation.Match == nil {
+			break
+		}
+
+		return e.complexity.OverrideOperation.Match(childComplexity), true
 	case "OverrideOperation.op":
 		if e.complexity.OverrideOperation.Op == nil {
 			break
@@ -10663,6 +10688,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputOAuthCredentialsInput,
 		ec.unmarshalInputOIDCIdentityOrder,
 		ec.unmarshalInputOIDCIdentityWhereInput,
+		ec.unmarshalInputOverrideMatchInput,
 		ec.unmarshalInputOverrideOperationInput,
 		ec.unmarshalInputPriceTierInput,
 		ec.unmarshalInputPricingInput,
@@ -20950,6 +20976,8 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_headerOverrideO
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "match":
+				return ec.fieldContext_OverrideOperation_match(ctx, field)
 			case "index":
 				return ec.fieldContext_OverrideOperation_index(ctx, field)
 			case "splat":
@@ -20997,6 +21025,8 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_bodyOverrideOpe
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "match":
+				return ec.fieldContext_OverrideOperation_match(ctx, field)
 			case "index":
 				return ec.fieldContext_OverrideOperation_index(ctx, field)
 			case "splat":
@@ -22525,6 +22555,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_headerOverrideOperation
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "match":
+				return ec.fieldContext_OverrideOperation_match(ctx, field)
 			case "index":
 				return ec.fieldContext_OverrideOperation_index(ctx, field)
 			case "splat":
@@ -22572,6 +22604,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_bodyOverrideOperations(
 				return ec.fieldContext_OverrideOperation_value(ctx, field)
 			case "condition":
 				return ec.fieldContext_OverrideOperation_condition(ctx, field)
+			case "match":
+				return ec.fieldContext_OverrideOperation_match(ctx, field)
 			case "index":
 				return ec.fieldContext_OverrideOperation_index(ctx, field)
 			case "splat":
@@ -35729,6 +35763,64 @@ func (ec *executionContext) fieldContext_OnboardingInfo_autoDisableChannel(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _OverrideMatch_path(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideMatch_path,
+		func(ctx context.Context) (any, error) {
+			return obj.Path, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideMatch_path(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideMatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideMatch_eq(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideMatch_eq,
+		func(ctx context.Context) (any, error) {
+			return obj.Eq, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideMatch_eq(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideMatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OverrideOperation_op(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -35898,6 +35990,41 @@ func (ec *executionContext) fieldContext_OverrideOperation_condition(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideOperation_match(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideOperation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideOperation_match,
+		func(ctx context.Context) (any, error) {
+			return obj.Match, nil
+		},
+		nil,
+		ec.marshalOOverrideMatch2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideMatch,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideOperation_match(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideOperation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "path":
+				return ec.fieldContext_OverrideMatch_path(ctx, field)
+			case "eq":
+				return ec.fieldContext_OverrideMatch_eq(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OverrideMatch", field.Name)
 		},
 	}
 	return fc, nil
@@ -69121,6 +69248,40 @@ func (ec *executionContext) unmarshalInputOIDCIdentityWhereInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputOverrideMatchInput(ctx context.Context, obj any) (objects.OverrideMatch, error) {
+	var it objects.OverrideMatch
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"path", "eq"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "path":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Path = data
+		case "eq":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eq"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Eq = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputOverrideOperationInput(ctx context.Context, obj any) (objects.OverrideOperation, error) {
 	var it objects.OverrideOperation
 	asMap := map[string]any{}
@@ -69128,7 +69289,7 @@ func (ec *executionContext) unmarshalInputOverrideOperationInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"op", "path", "from", "to", "value", "condition", "index", "splat"}
+	fieldsInOrder := [...]string{"op", "path", "from", "to", "value", "condition", "match", "index", "splat"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69177,6 +69338,13 @@ func (ec *executionContext) unmarshalInputOverrideOperationInput(ctx context.Con
 				return it, err
 			}
 			it.Condition = data
+		case "match":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("match"))
+			data, err := ec.unmarshalOOverrideMatchInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideMatch(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Match = data
 		case "index":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("index"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -91849,6 +92017,50 @@ func (ec *executionContext) _OnboardingInfo(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var overrideMatchImplementors = []string{"OverrideMatch"}
+
+func (ec *executionContext) _OverrideMatch(ctx context.Context, sel ast.SelectionSet, obj *objects.OverrideMatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, overrideMatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OverrideMatch")
+		case "path":
+			out.Values[i] = ec._OverrideMatch_path(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "eq":
+			out.Values[i] = ec._OverrideMatch_eq(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var overrideOperationImplementors = []string{"OverrideOperation"}
 
 func (ec *executionContext) _OverrideOperation(ctx context.Context, sel ast.SelectionSet, obj *objects.OverrideOperation) graphql.Marshaler {
@@ -91875,6 +92087,8 @@ func (ec *executionContext) _OverrideOperation(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._OverrideOperation_value(ctx, field, obj)
 		case "condition":
 			out.Values[i] = ec._OverrideOperation_condition(ctx, field, obj)
+		case "match":
+			out.Values[i] = ec._OverrideOperation_match(ctx, field, obj)
 		case "index":
 			out.Values[i] = ec._OverrideOperation_index(ctx, field, obj)
 		case "splat":
@@ -111873,6 +112087,21 @@ func (ec *executionContext) marshalOOverrideApplyMode2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOOverrideMatch2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideMatch(ctx context.Context, sel ast.SelectionSet, v *objects.OverrideMatch) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OverrideMatch(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOverrideMatchInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideMatch(ctx context.Context, v any) (*objects.OverrideMatch, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputOverrideMatchInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOOverrideOperation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.OverrideOperation) graphql.Marshaler {

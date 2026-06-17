@@ -133,16 +133,22 @@ const OP_LABELS: Record<OpType, string> = {
   array_append: 'channels.dialogs.settings.overrides.body.opArrayAppend',
   array_prepend: 'channels.dialogs.settings.overrides.body.opArrayPrepend',
   array_insert: 'channels.dialogs.settings.overrides.body.opArrayInsert',
+  array_remove: 'channels.dialogs.settings.overrides.body.opArrayRemove',
 };
 
 // Body operations support array manipulation; headers only support scalar set/delete/rename/copy.
-const BODY_OP_TYPES: OpType[] = ['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert'];
+const BODY_OP_TYPES: OpType[] = ['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert', 'array_remove'];
 const HEADER_OP_TYPES: OpType[] = ['set', 'delete', 'rename', 'copy'];
 
-const ARRAY_OPS: OpType[] = ['array_append', 'array_prepend', 'array_insert'];
+const ARRAY_OPS: OpType[] = ['array_append', 'array_prepend', 'array_insert', 'array_remove'];
+const ARRAY_INSERT_OPS: OpType[] = ['array_append', 'array_prepend', 'array_insert'];
 
 function isArrayOp(op: OpType | undefined): boolean {
   return !!op && ARRAY_OPS.includes(op);
+}
+
+function isArrayInsertOp(op: OpType | undefined): boolean {
+  return !!op && ARRAY_INSERT_OPS.includes(op);
 }
 
 function isValidBodyOp(b: OverrideOperation): boolean {
@@ -150,6 +156,7 @@ function isValidBodyOp(b: OverrideOperation): boolean {
   if (b.op === 'rename' || b.op === 'copy') return !!b.from?.trim() && !!b.to?.trim();
   if (b.op === 'array_append' || b.op === 'array_prepend') return !!b.path?.trim();
   if (b.op === 'array_insert') return !!b.path?.trim() && typeof b.index === 'number';
+  if (b.op === 'array_remove') return !!b.path?.trim() && !!b.match?.path?.trim() && !!b.match?.eq?.trim();
   return false;
 }
 
@@ -169,10 +176,12 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
   if (!field) return null;
 
   const arrayOp = isArrayOp(field.op);
+  const arrayInsertOp = isArrayInsertOp(field.op);
   const needsPathOnly = field.op === 'set' || field.op === 'delete' || arrayOp;
   const needsFromTo = field.op === 'rename' || field.op === 'copy';
-  const needsValue = field.op === 'set' || arrayOp;
+  const needsValue = field.op === 'set' || arrayInsertOp;
   const needsIndex = field.op === 'array_insert';
+  const needsMatch = field.op === 'array_remove';
 
   return (
     <div className='space-y-3 rounded-lg border p-3'>
@@ -280,13 +289,13 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
           <Input
             data-testid={`op-value-${index}`}
             className='mt-1 font-mono'
-            placeholder={t(arrayOp
+            placeholder={t(arrayInsertOp
               ? 'channels.dialogs.settings.overrides.body.arrayValuePlaceholder'
               : 'channels.dialogs.settings.overrides.body.valuePlaceholder')}
             value={parseValueForDisplay(field.value)}
             onChange={(e) => onUpdate(index, { value: e.target.value })}
           />
-          {arrayOp && (
+          {arrayInsertOp && (
             <label className='text-muted-foreground mt-2 flex items-center gap-2 text-xs'>
               <input
                 type='checkbox'
@@ -297,6 +306,31 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
               <span>{t('channels.dialogs.settings.overrides.body.arraySplatLabel')}</span>
             </label>
           )}
+        </div>
+      )}
+
+      {needsMatch && (
+        <div className='grid gap-3 sm:grid-cols-2'>
+          <div>
+            <Label className='text-sm font-medium'>{t('channels.dialogs.settings.overrides.body.matchPath')}</Label>
+            <Input
+              data-testid={`op-match-path-${index}`}
+              className='mt-1 font-mono'
+              placeholder={t('channels.dialogs.settings.overrides.body.matchPathPlaceholder')}
+              value={field.match?.path || ''}
+              onChange={(e) => onUpdate(index, { match: { path: e.target.value, eq: field.match?.eq || '' } })}
+            />
+          </div>
+          <div>
+            <Label className='text-sm font-medium'>{t('channels.dialogs.settings.overrides.body.matchEq')}</Label>
+            <Input
+              data-testid={`op-match-eq-${index}`}
+              className='mt-1 font-mono'
+              placeholder={t('channels.dialogs.settings.overrides.body.matchEqPlaceholder')}
+              value={field.match?.eq || ''}
+              onChange={(e) => onUpdate(index, { match: { path: field.match?.path || '', eq: e.target.value } })}
+            />
+          </div>
         </div>
       )}
 
@@ -588,6 +622,12 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
       if (op.op === 'array_insert' && typeof op.index !== 'number') {
         toast.error(t('channels.dialogs.settings.overrides.validation.missingIndex', { index: i + 1 }));
         return;
+      }
+      if (op.op === 'array_remove') {
+        if (!op.match?.path?.trim() || !op.match?.eq?.trim()) {
+          toast.error(t('channels.dialogs.settings.overrides.validation.missingMatch', { index: i + 1 }));
+          return;
+        }
       }
     }
 

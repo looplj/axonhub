@@ -280,6 +280,56 @@ func TestValidateOverrideParameters(t *testing.T) {
 	}
 }
 
+func TestValidateBodyOverrideOperations(t *testing.T) {
+	tests := []struct {
+		name        string
+		ops         []objects.OverrideOperation
+		expectError bool
+	}{
+		{
+			name:        "valid array remove op",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpArrayRemove, Path: "tools", Match: &objects.OverrideMatch{Path: "function.name", Eq: "web_search"}}},
+			expectError: false,
+		},
+		{
+			name:        "array remove requires path",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpArrayRemove, Match: &objects.OverrideMatch{Path: "function.name", Eq: "web_search"}}},
+			expectError: true,
+		},
+		{
+			name:        "array remove requires match",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpArrayRemove, Path: "tools"}},
+			expectError: true,
+		},
+		{
+			name:        "array remove requires match path",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpArrayRemove, Path: "tools", Match: &objects.OverrideMatch{Path: "", Eq: "web_search"}}},
+			expectError: true,
+		},
+		{
+			name:        "array remove requires match eq",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpArrayRemove, Path: "tools", Match: &objects.OverrideMatch{Path: "function.name", Eq: ""}}},
+			expectError: true,
+		},
+		{
+			name:        "array remove cannot target stream",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpArrayRemove, Path: "stream", Match: &objects.OverrideMatch{Path: "function.name", Eq: "web_search"}}},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateBodyOverrideOperations(tt.ops)
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestValidateOverrideHeaders(t *testing.T) {
 	tests := []struct {
 		name        string
