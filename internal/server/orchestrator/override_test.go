@@ -2179,4 +2179,20 @@ func TestOverrideOperationsArrayOps(t *testing.T) {
 		// On error the middleware logs a warning but continues with the unchanged body.
 		require.Equal(t, "not-an-array", gjson.Get(got, "tools").String())
 	})
+
+	t.Run("array_remove on missing path is a no-op", func(t *testing.T) {
+		ops := `[{"op":"array_remove","path":"tools","match":{"path":"function.name","eq":"web_search"}}]`
+		got := runMiddleware(t, ops, `{"messages":[{"role":"user","content":"hello"}]}`)
+
+		require.False(t, gjson.Get(got, "tools").Exists())
+		require.Equal(t, "hello", gjson.Get(got, "messages.0.content").String())
+	})
+
+	t.Run("array_remove with empty match eq is a no-op with warning", func(t *testing.T) {
+		ops := `[{"op":"array_remove","path":"tools","match":{"path":"function.name","eq":""}}]`
+		got := runMiddleware(t, ops, `{"tools":[{"function":{"name":"web_search"}},{"function":{"name":""}}]}`)
+
+		// Empty match.eq is rejected defensively at runtime so a malformed stored op cannot remove items accidentally.
+		require.Equal(t, int64(2), gjson.Get(got, "tools.#").Int())
+	})
 }

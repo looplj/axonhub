@@ -363,6 +363,10 @@ func applyBodyArrayRemove(body []byte, op objects.OverrideOperation) ([]byte, er
 		return body, fmt.Errorf("array_remove requires a match path")
 	}
 
+	if strings.TrimSpace(op.Match.Eq) == "" {
+		return body, fmt.Errorf("array_remove requires a match eq value")
+	}
+
 	existing := gjson.GetBytes(body, op.Path)
 	if !existing.Exists() {
 		return body, nil
