@@ -23,7 +23,7 @@ func TestVideoInboundTransformer_TransformRequest_JSON(t *testing.T) {
 		"model":"sora-2",
 		"prompt":"a cat walking",
 		"input_reference":"https://example.com/a.png",
-		"seconds":8,
+		"seconds":"8",
 		"size":"1280x720"
 	}`)
 
@@ -42,7 +42,7 @@ func TestVideoInboundTransformer_TransformRequest_JSON(t *testing.T) {
 	assert.Equal(t, "sora-2", llmReq.Model)
 	require.NotNil(t, llmReq.Video)
 	assert.Equal(t, "sora-2", llmReq.Video.Model)
-	assert.Equal(t, loPtrInt64(8), llmReq.Video.Duration)
+	assert.Equal(t, loPtrString("8"), llmReq.Video.Duration)
 	assert.Equal(t, "1280x720", llmReq.Video.Size)
 	assert.Equal(t, "a cat walking", firstVideoText(llmReq.Video.Content))
 	assert.Equal(t, "https://example.com/a.png", firstVideoImageURL(llmReq.Video.Content))
@@ -92,7 +92,7 @@ func TestVideoInboundTransformer_TransformResponse_JSON(t *testing.T) {
 			Status:    "running",
 			Model:     "sora-2",
 			Prompt:    "a cat",
-			Duration:  loPtrInt64(8),
+			Duration:  loPtrString("8"),
 			Size:      "1280x720",
 			Progress:  loPtrFloat64(50),
 			CreatedAt: 1700000000,
@@ -109,7 +109,7 @@ func TestVideoInboundTransformer_TransformResponse_JSON(t *testing.T) {
 	assert.Equal(t, "in_progress", oaiResp.Status)
 	assert.Equal(t, "sora-2", oaiResp.Model)
 	assert.Equal(t, "a cat", oaiResp.Prompt)
-	assert.Equal(t, loPtrInt64(8), oaiResp.Seconds)
+	assert.Equal(t, loPtrString("8"), oaiResp.Seconds)
 	assert.Equal(t, "1280x720", oaiResp.Size)
 }
 
@@ -129,3 +129,4 @@ func addFilePartVideo(t *testing.T, writer *multipart.Writer, fieldName, filenam
 
 func loPtrInt64(v int64) *int64       { return &v }
 func loPtrFloat64(v float64) *float64 { return &v }
+func loPtrString(v string) *string    { return &v }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,7 +53,9 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 	}
 
 	if video.Duration != nil {
-		reqBody["duration"] = *video.Duration
+		if d, err := strconv.ParseFloat(strings.TrimSpace(*video.Duration), 64); err == nil {
+			reqBody["duration"] = int64(math.Round(d))
+		}
 	}
 
 	if ratio != "" {
@@ -261,9 +264,13 @@ func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, htt
 		CompletedAt: completedAt,
 		Ratio:       resp.Ratio,
 		Resolution:  resp.Resolution,
-		Duration:    resp.Duration,
 		FPS:         resp.FramesPerSecond,
 		Seed:        resp.Seed,
+	}
+
+	if resp.Duration != nil {
+		d := strconv.FormatInt(*resp.Duration, 10)
+		v.Duration = &d
 	}
 
 	if resp.Content != nil {

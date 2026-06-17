@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -81,7 +83,6 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 	videoReq := &llm.VideoRequest{
 		Model:                 req.Model,
 		Content:               req.Content,
-		Duration:              req.Duration,
 		Ratio:                 req.Ratio,
 		Resolution:            req.Resolution,
 		Frames:                req.Frames,
@@ -92,6 +93,11 @@ func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 		Draft:                 req.Draft,
 		ServiceTier:           req.ServiceTier,
 		ExecutionExpiresAfter: req.ExecutionExpiresAfter,
+	}
+
+	if req.Duration != nil {
+		d := strconv.FormatInt(*req.Duration, 10)
+		videoReq.Duration = &d
 	}
 
 	return &llm.Request{
@@ -167,8 +173,14 @@ func (t *VideoInboundTransformer) TransformResponse(ctx context.Context, llmResp
 		Seed:        v.Seed,
 		Resolution:  v.Resolution,
 		Ratio:       v.Ratio,
-		Duration:    v.Duration,
 		ServiceTier: "",
+	}
+
+	if v.Duration != nil {
+		if d, err := strconv.ParseFloat(strings.TrimSpace(*v.Duration), 64); err == nil {
+			duration := int64(math.Round(d))
+			resp.Duration = &duration
+		}
 	}
 
 	if v.VideoURL != "" {
