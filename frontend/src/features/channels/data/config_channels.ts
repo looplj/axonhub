@@ -227,7 +227,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   zai: {
     channelType: 'zai',
     baseURL: 'https://api.z.ai/api/paas/v4',
-    defaultModels: ['glm-4.7', 'glm-4.6', 'glm-4.5-air'],
+    defaultModels: ['glm-5.2', 'glm-5.1', 'glm-5', 'glm-5-turbo', 'glm-4.7', 'glm-4.5-air'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     icon: ZAI,
@@ -243,7 +243,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   zai_anthropic: {
     channelType: 'zai_anthropic',
     baseURL: 'https://api.z.ai/api/anthropic',
-    defaultModels: ['glm-4.7', 'glm-4.6', 'glm-4.5-air'],
+    defaultModels: ['glm-5.2', 'glm-5.1', 'glm-5', 'glm-5-turbo', 'glm-4.7', 'glm-4.5-air'],
     apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     icon: ZAI,
