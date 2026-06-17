@@ -297,6 +297,24 @@ func (r *mutationResolver) TestChannelAPIKeys(ctx context.Context, channelID obj
 	}, nil
 }
 
+// TestChannelAPIKey is the resolver for the testChannelAPIKey field.
+func (r *mutationResolver) TestChannelAPIKey(ctx context.Context, channelID objects.GUID, key string, modelID *string) (*TestAPIKeyResult, error) {
+	ctx = contexts.WithSource(ctx, request.SourceTest)
+
+	result, err := r.TestChannelOrchestrator.TestSingleAPIKey(ctx, channelID, key, modelID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to test channel API key: %w", err)
+	}
+
+	return &TestAPIKeyResult{
+		KeyPrefix: result.KeyPrefix,
+		Success:   result.Success,
+		Latency:   result.Latency,
+		Error:     result.Error,
+		Disabled:  result.Disabled,
+	}, nil
+}
+
 // BulkImportChannels is the resolver for the bulkImportChannels field.
 func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*biz.BulkImportChannelsResult, error) {
 	result, err := r.channelService.BulkImportChannels(ctx, input.Channels)

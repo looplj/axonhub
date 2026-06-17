@@ -76,6 +76,10 @@ type Channel struct {
 
 	// cachedDisabledKeySet caches disabled key lookup set for O(1) check
 	cachedDisabledKeySet map[string]struct{}
+
+	// apiKeyOverride, if non-empty, forces all outbound transformers to use this key
+	// instead of the channel's normal key selection. Used by the channel key test flow.
+	apiKeyOverride string
 }
 
 type ChannelServiceParams struct {
@@ -378,6 +382,19 @@ func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Chan
 	}
 
 	return svc.buildChannelWithOutbounds(entity)
+}
+
+// GetChannelWithKey returns a channel with the outbound transformer's API key
+// forced to the given key. This is used by the channel key test flow to test
+// a specific key. Each call creates a fresh channel instance, so the override
+// does not affect other requests.
+func (svc *ChannelService) GetChannelWithKey(ctx context.Context, channelID int, apiKey string) (*Channel, error) {
+	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("channel not found: %w", err)
+	}
+
+	return svc.buildChannelWithOutbounds(entity, apiKey)
 }
 
 // ListModelsInput represents the input for listing models with filters.

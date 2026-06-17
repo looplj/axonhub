@@ -152,6 +152,10 @@ func buildChannel(c *ent.Channel, httpClient *httpclient.HttpClient) *Channel {
 // NOTE: This function panics when there is no enabled API key. This is intended as an assertion:
 // buildChannelWithTransformer should validate channel credentials before constructing transformers.
 func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
+	if ch.apiKeyOverride != "" {
+		return auth.NewStaticKeyProvider(ch.apiKeyOverride)
+	}
+
 	enabled := ch.cachedEnabledAPIKeys
 	if len(enabled) > 1 {
 		return NewTraceStickyKeyProvider(ch)
@@ -186,8 +190,8 @@ func BuildOutboundByAPIFormat(ch *Channel, apiFormat string) (transformer.Outbou
 // the resolved default endpoint list and backs Channel.Outbound for backward
 // compatibility. Additional default endpoints are peer capability surfaces for
 // the same channel type, each bound to exactly one API format.
-func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel) (*Channel, error) {
-	ch, err := svc.buildChannelWithTransformer(c)
+func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverride ...string) (*Channel, error) {
+	ch, err := svc.buildChannelWithTransformer(c, apiKeyOverride...)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +439,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 }
 
 //nolint:maintidx // Checked.
-func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel, error) {
+func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOverride ...string) (*Channel, error) {
 	// Validate credentials early so we can fail fast without constructing HTTP clients/transformers.
 	//
 	// NOTE: "enabled" keys excludes keys that were explicitly disabled for this channel.
@@ -469,6 +473,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 	httpClient := svc.getHttpClient(c.Settings)
 	ch := buildChannel(c, httpClient)
+	if len(apiKeyOverride) > 0 {
+		ch.apiKeyOverride = apiKeyOverride[0]
+	}
 
 	switch c.Type {
 	case channel.TypeDoubao, channel.TypeVolcengine:
