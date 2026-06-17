@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
@@ -471,13 +472,22 @@ func (s *OIDCService) IsUserRestrictedToOIDC(ctx context.Context, u *ent.User) b
 	}
 
 	// 2. Check if any of the user's linked OIDC providers have OIDCLoginOnly enabled
-	identities := u.Edges.OidcIdentities
-	if len(identities) == 0 {
-		// Try to fetch them if not loaded
-		var err error
-		identities, err = s.entFromContext(ctx).OIDCIdentity.Query().
-			Where(oidcidentity.UserID(u.ID)).
-			All(ctx)
+	//
+	// Use OidcIdentitiesOrErr so we only re-query when the edge was genuinely not
+	// eager-loaded (it returns a NotLoadedError in that case), instead of relying on
+	// len()==0 which cannot tell "not loaded" from "loaded but the user has none".
+	identities, err := u.Edges.OidcIdentitiesOrErr()
+	if ent.IsNotLoaded(err) {
+		// The edge was not loaded. This runs during pre-auth sign-in, where there is
+		// no viewer in the context yet, so the privacy policy on OIDCIdentity would
+		// deny a normal query ("no user in context"). Read the user's own OIDC links
+		// under a system bypass, mirroring the user lookup in AuthService.AuthenticateUser.
+		identities, err = authz.RunWithSystemBypass(ctx, "oidc-restriction-check",
+			func(bypassCtx context.Context) ([]*ent.OIDCIdentity, error) {
+				return s.entFromContext(bypassCtx).OIDCIdentity.Query().
+					Where(oidcidentity.UserID(u.ID)).
+					All(bypassCtx)
+			})
 		if err != nil {
 			log.Error(ctx, "failed to query user OIDC identities", zap.Error(err), log.Int("user_id", u.ID))
 			return false
