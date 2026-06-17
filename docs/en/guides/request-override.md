@@ -33,6 +33,7 @@ AxonHub supports the following override operations:
 | `array_append` | Append value(s) to the end of the array at `path` | Inject items after existing array content |
 | `array_prepend` | Prepend value(s) to the start of the array at `path` | Inject items before existing array content |
 | `array_insert` | Insert value(s) at a specific position in the array at `path` | Insert items at an arbitrary position |
+| `array_remove` | Remove matching items from the array at `path` | Filter tools or messages by a field inside each array item |
 
 > Array operations only apply to the body. Headers only support `set`, `delete`, `rename`, and `copy`.
 
@@ -42,12 +43,13 @@ Override parameters are defined as an array of operations, each containing the f
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `op` | string | Yes | Operation type: `set`, `delete`, `rename`, `copy`, `array_append`, `array_prepend`, `array_insert` |
+| `op` | string | Yes | Operation type: `set`, `delete`, `rename`, `copy`, `array_append`, `array_prepend`, `array_insert`, `array_remove` |
 | `path` | string | Conditional | Target field path (required for `set`, `delete`, and all array ops) |
 | `from` | string | Conditional | Source field path (required for `rename` and `copy`) |
 | `to` | string | Conditional | Target field path (required for `rename` and `copy`) |
-| `value` | string | Conditional | Field value (required for `set` and all array ops), supports templates |
+| `value` | string | Conditional | Field value (required for `set`, `array_append`, `array_prepend`, and `array_insert`), supports templates |
 | `condition` | string | No | Condition expression, executes when result is `"true"` |
+| `match` | object | Conditional | Match rule (required for `array_remove`), formatted as `{"path":"function.name","eq":"web_search"}` |
 | `index` | number | Conditional | Insertion position (required for `array_insert`); negative values count from the end, out-of-range values are clamped to `[0, len]` |
 | `splat` | bool | No | When the rendered value is a JSON array, controls whether elements are spread into the target array. Defaults to `true`. Set to `false` to insert the array itself as a single nested element. Only meaningful for array ops. |
 
@@ -147,13 +149,14 @@ Use the `condition` field to implement conditional logic:
 
 ### Array Operations
 
-Array operations let you inject items into an existing array (e.g. `system`, `messages`, `tools`) without replacing it. Use them when you need to keep the user's original content and add proxy-side content around it.
+Array operations let you inject or remove items in an existing array (e.g. `system`, `messages`, `tools`) without replacing it. Use them when you need to keep the user's original content and add proxy-side content around it, or when you need to filter specific array items.
 
 **Behavior:**
-- If `path` does not exist, a new array is created with the value(s).
+- For `array_append`, `array_prepend`, and `array_insert`, if `path` does not exist, a new array is created with the value(s).
 - If `path` exists but is not an array, the operation is skipped and a warning is logged.
-- If the rendered `value` is a JSON array and `splat` is `true` (default), its elements are spread into the target array. Set `splat: false` to insert the array as a single nested element.
+- For inserting array operations, if the rendered `value` is a JSON array and `splat` is `true` (default), its elements are spread into the target array. Set `splat: false` to insert the array as a single nested element.
 - For `array_insert`, `index` may be negative (counted from the end). `index = -1` inserts before the last element. Out-of-range values are clamped to `[0, len]`.
+- For `array_remove`, `match.path` is resolved relative to each array item. When that path's string value equals `match.eq`, the item is removed. If the target array does not exist, the operation leaves the body unchanged; if the target path is not an array, the operation is skipped and a warning is logged.
 
 **Append a single object:**
 
@@ -218,6 +221,23 @@ Result (assuming the request originally has `system: [{"type":"text","text":"<us
 ```
 
 Result on `{"tags": ["x"]}`: `{"tags": [["a","b"], "x"]}`.
+
+**Remove a tool by name:**
+
+```json
+[
+  {
+    "op": "array_remove",
+    "path": "tools",
+    "match": {
+      "path": "function.name",
+      "eq": "web_search"
+    }
+  }
+]
+```
+
+For `{"tools":[{"function":{"name":"get_weather"}},{"function":{"name":"web_search"}}]}`, the `web_search` tool is removed from the `tools` array.
 
 ### Dynamic JSON Objects
 

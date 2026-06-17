@@ -174,6 +174,7 @@ func ValidateOverrideParameters(params string) error {
 // - set/delete/array_*: require non-empty Path
 // - rename/copy: require non-empty From and To
 // - array_insert: requires Index
+// - array_remove: requires Match.Path and Match.Eq
 // - set/array_*: cannot target the "stream" field.
 func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 	for i, op := range ops {
@@ -194,7 +195,7 @@ func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 			if strings.TrimSpace(op.From) == "" || strings.TrimSpace(op.To) == "" {
 				return fmt.Errorf("body operation at index %d (%s) requires non-empty from and to", i, op.Op)
 			}
-		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
+		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert, objects.OverrideOpArrayRemove:
 			if strings.TrimSpace(op.Path) == "" {
 				return fmt.Errorf("body operation at index %d (%s) has an empty path", i, op.Op)
 			}
@@ -205,6 +206,20 @@ func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 
 			if op.Op == objects.OverrideOpArrayInsert && op.Index == nil {
 				return fmt.Errorf("body operation at index %d (array_insert) requires an index", i)
+			}
+
+			if op.Op == objects.OverrideOpArrayRemove {
+				if op.Match == nil {
+					return fmt.Errorf("body operation at index %d (array_remove) requires a match", i)
+				}
+
+				if strings.TrimSpace(op.Match.Path) == "" {
+					return fmt.Errorf("body operation at index %d (array_remove) requires a match path", i)
+				}
+
+				if strings.TrimSpace(op.Match.Eq) == "" {
+					return fmt.Errorf("body operation at index %d (array_remove) requires a match eq value", i)
+				}
 			}
 		default:
 			return fmt.Errorf("body operation at index %d has unknown op %q", i, op.Op)
@@ -232,7 +247,7 @@ func ValidateOverrideHeaders(ops []objects.OverrideOperation) error {
 			if strings.TrimSpace(op.From) == "" || strings.TrimSpace(op.To) == "" {
 				return fmt.Errorf("header operation at index %d (%s) requires non-empty from and to", i, op.Op)
 			}
-		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
+		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert, objects.OverrideOpArrayRemove:
 			return fmt.Errorf("header operation at index %d (%s) is not supported on headers; array ops only apply to the body", i, op.Op)
 		default:
 			return fmt.Errorf("header operation at index %d has unknown op %q", i, op.Op)

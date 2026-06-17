@@ -52,7 +52,7 @@ export function mergeOverrideHeaders(existing: OverrideOperation[], template: Ov
 /**
  * Merges override body operations with template body operations.
  * - For `set` and `delete` ops: match by `path`, template overrides existing
- * - For `rename` and `copy` ops: always appended from template
+ * - For `rename`, `copy`, and array ops: always appended from template
  * - Existing ops not matched by template are preserved
  */
 export function mergeOverrideOperations(existing: OverrideOperation[], template: OverrideOperation[]): OverrideOperation[] {

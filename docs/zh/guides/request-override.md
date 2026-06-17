@@ -33,6 +33,7 @@ AxonHub 支持以下重写操作：
 | `array_append` | 把值追加到 `path` 数组的末尾 | 在原有数组内容之后注入 |
 | `array_prepend` | 把值追加到 `path` 数组的开头 | 在原有数组内容之前注入 |
 | `array_insert` | 把值插入到 `path` 数组的指定位置 | 在任意位置插入元素 |
+| `array_remove` | 从 `path` 数组中移除匹配项 | 按数组项内的字段值过滤工具或消息 |
 
 > 数组操作仅适用于请求体。请求头只支持 `set`、`delete`、`rename`、`copy`。
 
@@ -42,12 +43,13 @@ AxonHub 支持以下重写操作：
 
 | 字段 | 类型 | 必需 | 描述 |
 | :--- | :--- | :--- | :--- |
-| `op` | string | 是 | 操作类型：`set`、`delete`、`rename`、`copy`、`array_append`、`array_prepend`、`array_insert` |
+| `op` | string | 是 | 操作类型：`set`、`delete`、`rename`、`copy`、`array_append`、`array_prepend`、`array_insert`、`array_remove` |
 | `path` | string | 条件 | 目标字段路径（`set`、`delete` 以及所有数组操作必需） |
 | `from` | string | 条件 | 源字段路径（`rename` 和 `copy` 必需） |
 | `to` | string | 条件 | 目标字段路径（`rename` 和 `copy` 必需） |
-| `value` | string | 条件 | 字段值（`set` 和所有数组操作必需），支持模板 |
+| `value` | string | 条件 | 字段值（`set`、`array_append`、`array_prepend`、`array_insert` 必需），支持模板 |
 | `condition` | string | 否 | 条件表达式，结果为 `"true"` 时执行 |
+| `match` | object | 条件 | 匹配规则（`array_remove` 必需），格式为 `{"path":"function.name","eq":"web_search"}` |
 | `index` | number | 条件 | 插入位置（`array_insert` 必需），支持负数表示从末尾倒数；越界会被夹紧到 `[0, len]` |
 | `splat` | bool | 否 | 当渲染后的值是 JSON 数组时，是否将其元素展开插入到目标数组。默认 `true`。设为 `false` 则把整个数组作为单个嵌套元素插入。仅对数组操作生效。 |
 
@@ -147,13 +149,14 @@ AxonHub 支持以下重写操作：
 
 ### 数组操作
 
-数组操作允许你向已有数组（如 `system`、`messages`、`tools`）注入元素，**不会替换整个数组**。当你想保留客户端原有的内容、同时在前后插入网关侧的内容时，使用这些操作。
+数组操作允许你向已有数组（如 `system`、`messages`、`tools`）注入或移除元素，**不会替换整个数组**。当你想保留客户端原有的内容、同时在前后插入网关侧的内容，或过滤某些数组项时，使用这些操作。
 
 **行为说明：**
-- 如果 `path` 不存在，会以提供的值创建一个新数组。
+- 对 `array_append`、`array_prepend`、`array_insert`，如果 `path` 不存在，会以提供的值创建一个新数组。
 - 如果 `path` 存在但不是数组，操作会被跳过并记录警告日志。
-- 如果渲染后的 `value` 是一个 JSON 数组，并且 `splat` 为 `true`（默认值），其中的元素会被展开插入到目标数组；将 `splat` 设为 `false` 可把整个数组作为单个嵌套元素插入。
+- 对插入类数组操作，如果渲染后的 `value` 是一个 JSON 数组，并且 `splat` 为 `true`（默认值），其中的元素会被展开插入到目标数组；将 `splat` 设为 `false` 可把整个数组作为单个嵌套元素插入。
 - 对 `array_insert`，`index` 支持负数（从末尾倒数）。`index = -1` 表示插入到最后一个元素之前。越界值会被夹紧到 `[0, len]`。
+- 对 `array_remove`，`match.path` 相对于数组中的每个元素解析；当该路径的字符串值等于 `match.eq` 时，该元素会被移除。如果目标数组不存在，操作不会修改请求体；如果目标路径不是数组，操作会被跳过并记录警告日志。
 
 **追加单个对象到末尾：**
 
@@ -218,6 +221,23 @@ AxonHub 支持以下重写操作：
 ```
 
 对 `{"tags": ["x"]}` 执行后结果为：`{"tags": [["a","b"], "x"]}`。
+
+**按工具名称移除某个 tool：**
+
+```json
+[
+  {
+    "op": "array_remove",
+    "path": "tools",
+    "match": {
+      "path": "function.name",
+      "eq": "web_search"
+    }
+  }
+]
+```
+
+对 `{"tools":[{"function":{"name":"get_weather"}},{"function":{"name":"web_search"}}]}` 执行后，`web_search` 这个工具会从 `tools` 数组中移除。
 
 ### 动态 JSON 对象
 

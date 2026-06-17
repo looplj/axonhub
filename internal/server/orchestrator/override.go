@@ -204,6 +204,8 @@ func applyBodyOperation(
 		return applyBodyArrayInsert(ctx, body, op, renderCtx, arrayInsertAtStart)
 	case objects.OverrideOpArrayInsert:
 		return applyBodyArrayInsert(ctx, body, op, renderCtx, arrayInsertAtIndex)
+	case objects.OverrideOpArrayRemove:
+		return applyBodyArrayRemove(body, op)
 	default:
 		log.Warn(ctx, "unknown override operation",
 			log.String("op", op.Op),
@@ -345,6 +347,52 @@ func applyBodyArrayInsert(
 	merged = append(merged, current[pos:]...)
 
 	return sjson.SetBytes(body, op.Path, merged)
+}
+
+// applyBodyArrayRemove removes array items whose relative match path equals the configured value.
+func applyBodyArrayRemove(body []byte, op objects.OverrideOperation) ([]byte, error) {
+	if op.Path == "" {
+		return body, fmt.Errorf("array_remove requires a path")
+	}
+
+	if op.Match == nil {
+		return body, fmt.Errorf("array_remove requires a match")
+	}
+
+	if strings.TrimSpace(op.Match.Path) == "" {
+		return body, fmt.Errorf("array_remove requires a match path")
+	}
+
+	existing := gjson.GetBytes(body, op.Path)
+	if !existing.Exists() {
+		return body, nil
+	}
+
+	if !existing.IsArray() {
+		return body, fmt.Errorf("path %q is not an array", op.Path)
+	}
+
+	var current []any
+	if err := json.Unmarshal([]byte(existing.Raw), &current); err != nil {
+		return body, fmt.Errorf("decode array at %q: %w", op.Path, err)
+	}
+
+	kept := make([]any, 0, len(current))
+	for _, item := range current {
+		itemBytes, err := json.Marshal(item)
+		if err != nil {
+			return body, fmt.Errorf("encode array item at %q: %w", op.Path, err)
+		}
+
+		result := gjson.GetBytes(itemBytes, op.Match.Path)
+		if result.Exists() && result.String() == op.Match.Eq {
+			continue
+		}
+
+		kept = append(kept, item)
+	}
+
+	return sjson.SetBytes(body, op.Path, kept)
 }
 
 func applyOverrideOperationToHeaders(

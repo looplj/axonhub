@@ -773,6 +773,10 @@ const QUERY_CHANNELS_QUERY = `
               to
               value
               condition
+              match {
+                path
+                eq
+              }
               index
               splat
             }
@@ -783,6 +787,10 @@ const QUERY_CHANNELS_QUERY = `
               to
               value
               condition
+              match {
+                path
+                eq
+              }
               index
               splat
             }
