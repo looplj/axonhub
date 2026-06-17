@@ -91,6 +91,8 @@
   "system.security.blockedIPs.label": "禁用 IP",
   "system.security.blockedIPs.placeholder": "输入 IP 或 CIDR 后按回车",
   "system.security.blockedIPs.description": "来自这些 IP 地址或 CIDR 段的请求会在进入 API 处理前被拒绝。",
+  "system.security.showRequestLogIPBanIcon.label": "在请求页面 IP 后显示封禁图标",
+  "system.security.showRequestLogIPBanIcon.description": "开启后，请求日志会在每个客户端 IP 旁显示快速封禁操作。",
   "system.videoStorage.title": "视频存储",
   "system.videoStorage.description": "将生成的视频持久化到非数据库存储（文件系统 / S3 / GCS / WebDAV）。",
   "system.videoStorage.enabled.label": "保存生成视频",

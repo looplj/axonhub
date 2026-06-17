@@ -214,11 +214,15 @@ func (r *mutationResolver) UpdateSecuritySettings(ctx context.Context, input Upd
 	}
 
 	newSettings := biz.SecuritySettings{
-		BlockedIPs: current.BlockedIPs,
+		BlockedIPs:              current.BlockedIPs,
+		ShowRequestLogIPBanIcon: current.ShowRequestLogIPBanIcon,
 	}
 
 	if input.BlockedIPs != nil {
 		newSettings.BlockedIPs = input.BlockedIPs
+	}
+	if input.ShowRequestLogIPBanIcon != nil {
+		newSettings.ShowRequestLogIPBanIcon = *input.ShowRequestLogIPBanIcon
 	}
 
 	err = r.systemService.SetSecuritySettings(ctx, newSettings)

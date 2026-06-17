@@ -181,10 +181,12 @@ input UpdateQuotaEnforcementSettingsInput {
 
 type SecuritySettings {
   blockedIPs: [String!]!
+  showRequestLogIPBanIcon: Boolean!
 }
 
 input UpdateSecuritySettingsInput {
   blockedIPs: [String!]
+  showRequestLogIPBanIcon: Boolean
 }
 
 type SystemModelSettings {

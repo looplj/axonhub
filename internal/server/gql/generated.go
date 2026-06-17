@@ -1480,7 +1480,8 @@ type ComplexityRoot struct {
 	}
 
 	SecuritySettings struct {
-		BlockedIPs func(childComplexity int) int
+		BlockedIPs              func(childComplexity int) int
+		ShowRequestLogIPBanIcon func(childComplexity int) int
 	}
 
 	Segment struct {
@@ -8722,6 +8723,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SecuritySettings.BlockedIPs(childComplexity), true
+	case "SecuritySettings.showRequestLogIPBanIcon":
+		if e.complexity.SecuritySettings.ShowRequestLogIPBanIcon == nil {
+			break
+		}
+
+		return e.complexity.SecuritySettings.ShowRequestLogIPBanIcon(childComplexity), true
 
 	case "Segment.children":
 		if e.complexity.Segment.Children == nil {
@@ -42369,6 +42376,8 @@ func (ec *executionContext) fieldContext_Query_securitySettings(_ context.Contex
 			switch field.Name {
 			case "blockedIPs":
 				return ec.fieldContext_SecuritySettings_blockedIPs(ctx, field)
+			case "showRequestLogIPBanIcon":
+				return ec.fieldContext_SecuritySettings_showRequestLogIPBanIcon(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SecuritySettings", field.Name)
 		},
@@ -47227,6 +47236,35 @@ func (ec *executionContext) fieldContext_SecuritySettings_blockedIPs(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SecuritySettings_showRequestLogIPBanIcon(ctx context.Context, field graphql.CollectedField, obj *biz.SecuritySettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SecuritySettings_showRequestLogIPBanIcon,
+		func(ctx context.Context) (any, error) {
+			return obj.ShowRequestLogIPBanIcon, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SecuritySettings_showRequestLogIPBanIcon(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SecuritySettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -79454,7 +79492,7 @@ func (ec *executionContext) unmarshalInputUpdateSecuritySettingsInput(ctx contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"blockedIPs"}
+	fieldsInOrder := [...]string{"blockedIPs", "showRequestLogIPBanIcon"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -79468,6 +79506,13 @@ func (ec *executionContext) unmarshalInputUpdateSecuritySettingsInput(ctx contex
 				return it, err
 			}
 			it.BlockedIPs = data
+		case "showRequestLogIPBanIcon":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("showRequestLogIPBanIcon"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ShowRequestLogIPBanIcon = data
 		}
 	}
 
@@ -97503,6 +97548,11 @@ func (ec *executionContext) _SecuritySettings(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("SecuritySettings")
 		case "blockedIPs":
 			out.Values[i] = ec._SecuritySettings_blockedIPs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "showRequestLogIPBanIcon":
+			out.Values[i] = ec._SecuritySettings_showRequestLogIPBanIcon(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

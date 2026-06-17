@@ -91,6 +91,8 @@
   "system.security.blockedIPs.label": "Blocked IPs",
   "system.security.blockedIPs.placeholder": "Enter an IP or CIDR and press Enter",
   "system.security.blockedIPs.description": "Requests from these IP addresses or CIDR ranges will be rejected before API processing begins.",
+  "system.security.showRequestLogIPBanIcon.label": "Show ban icon after IP addresses on the Requests page",
+  "system.security.showRequestLogIPBanIcon.description": "When enabled, request logs show a quick ban action next to each client IP.",
   "system.videoStorage.title": "Video Storage",
   "system.videoStorage.description": "Persist generated videos to a non-database data storage (FS/S3/GCS/WebDAV).",
   "system.videoStorage.enabled.label": "Save generated videos",
