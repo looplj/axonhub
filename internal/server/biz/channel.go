@@ -105,8 +105,6 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
-	svc.initChannelPerformances(context.Background())
-
 	watcherMode := params.CacheConfig.Mode
 	if watcherMode == "" {
 		watcherMode = xcache.ModeMemory
