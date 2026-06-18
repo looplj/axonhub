@@ -19,7 +19,7 @@ type ApiKeyTabKey = ApiKeyType | 'all';
 
 function ApiKeysContent() {
   const { t } = useTranslation();
-  const { apiKeyPermissions } = usePermissions();
+  const { apiKeyPermissions, hasSystemScope } = usePermissions();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'apikeys-table-page-size',
@@ -116,7 +116,12 @@ function ApiKeysContent() {
     resetCursor();
   };
 
-  const columns = React.useMemo(() => createColumns(t, apiKeyPermissions.canWrite), [t, apiKeyPermissions.canWrite]);
+  const canViewCreators = hasSystemScope('read_users');
+
+  const columns = React.useMemo(
+    () => createColumns(t, apiKeyPermissions.canWrite, canViewCreators),
+    [t, apiKeyPermissions.canWrite, canViewCreators]
+  );
 
   return (
     <div className='flex flex-1 flex-col'>
@@ -154,6 +159,7 @@ function ApiKeysContent() {
           onDateRangeChange={setDateRange}
           onResetFilters={handleResetFilters}
           canWrite={apiKeyPermissions.canWrite}
+          canViewCreators={canViewCreators}
         />
       </div>
     </div>
