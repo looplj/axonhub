@@ -745,6 +745,9 @@ func matchChannelTagsFilter(allowedTags []string, matchMode objects.ChannelTagsM
 type SpecifiedChannelSelector struct {
 	ChannelService *biz.ChannelService
 	ChannelID      objects.GUID
+	// SelectedAPIKey, if non-empty, forces the outbound to use this specific API key.
+	// Used by the channel key test flow to test a single key.
+	SelectedAPIKey string
 }
 
 func NewSpecifiedChannelSelector(channelService *biz.ChannelService, channelID objects.GUID) *SpecifiedChannelSelector {
@@ -755,7 +758,13 @@ func NewSpecifiedChannelSelector(channelService *biz.ChannelService, channelID o
 }
 
 func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
-	channel, err := s.ChannelService.GetChannel(ctx, s.ChannelID.ID)
+	var channel *biz.Channel
+	var err error
+	if s.SelectedAPIKey != "" {
+		channel, err = s.ChannelService.GetChannelWithKey(ctx, s.ChannelID.ID, s.SelectedAPIKey)
+	} else {
+		channel, err = s.ChannelService.GetChannel(ctx, s.ChannelID.ID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel for test: %w", err)
 	}

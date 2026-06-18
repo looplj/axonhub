@@ -60,7 +60,7 @@ func NewTestChannelOrchestrator(
 		modelCircuitBreaker:         biz.NewModelCircuitBreaker(),
 		modelMapper:                 NewModelMapper(),
 		loadBalancer:                NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
-		channelLimiterManager:      NewChannelLimiterManager(),
+		channelLimiterManager:       NewChannelLimiterManager(),
 	}
 }
 
@@ -406,7 +406,51 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 	}, nil
 }
 
-// testSingleKey tests a single API key by forcing the use of a specific key via an override middleware.
+// TestSingleAPIKey tests a single API key for a channel.
+// It verifies that the provided key belongs to the channel before testing.
+func (processor *TestChannelOrchestrator) TestSingleAPIKey(
+	ctx context.Context,
+	channelID objects.GUID,
+	key string,
+	modelID *string,
+	proxy *httpclient.ProxyConfig,
+) (*TestAPIKeyResult, error) {
+	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify the provided key is actually configured for this channel.
+	channelKeys := ch.Credentials.GetAllAPIKeys()
+	if len(channelKeys) == 0 {
+		return nil, fmt.Errorf("no API keys configured for channel")
+	}
+
+	keyBelongsToChannel := lo.Contains(channelKeys, key)
+	if !keyBelongsToChannel {
+		return nil, fmt.Errorf("the provided API key is not configured for this channel")
+	}
+
+	testModel := lo.FromPtr(modelID)
+	if testModel == "" {
+		testModel = ch.DefaultTestModel
+	}
+
+	useStream := ch.Policies.Stream == objects.CapabilityPolicyRequire
+
+	disabledSet := make(map[string]struct{}, len(ch.DisabledAPIKeys))
+	for _, dk := range ch.DisabledAPIKeys {
+		disabledSet[dk.Key] = struct{}{}
+	}
+
+	result := processor.testSingleKey(ctx, channelID, key, testModel, useStream, proxy)
+	_, isDisabled := disabledSet[key]
+	result.Disabled = isDisabled
+
+	return result, nil
+}
+
+// testSingleKey tests a single API key by forcing the use of a specific key via SetAPIKey.
 func (processor *TestChannelOrchestrator) testSingleKey(
 	ctx context.Context,
 	channelID objects.GUID,
@@ -420,7 +464,11 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	inbound := openai.NewInboundTransformer()
 
 	chatProcessor := &ChatCompletionOrchestrator{
-		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
+		channelSelector: &SpecifiedChannelSelector{
+			ChannelService: processor.channelService,
+			ChannelID:      channelID,
+			SelectedAPIKey: key,
+		},
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
 		PromptProvider:  &stubPromptProvider{},
