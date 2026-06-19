@@ -168,7 +168,7 @@ func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMeta
 					ID:     "ws_456",
 					Type:   "web_search_call",
 					Status: lo.ToPtr("completed"),
-					Action: &WebSearchAction{
+					Action: NewWebSearchAction(&WebSearchAction{
 						Type:  "search",
 						Query: "latest ai news",
 						Sources: []WebSearchSource{{
@@ -176,7 +176,7 @@ func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMeta
 							URL:   "https://example.com/source",
 							Title: "Example Source",
 						}},
-					},
+					}),
 				}},
 			},
 			Choices: []llm.Choice{{
@@ -212,7 +212,8 @@ func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMeta
 	require.Equal(t, "web_search_call", lastEvent.Response.Output[0].Type)
 	require.Equal(t, "ws_456", lastEvent.Response.Output[0].ID)
 	require.NotNil(t, lastEvent.Response.Output[0].Action)
-	require.Equal(t, "latest ai news", lastEvent.Response.Output[0].Action.Query)
+	require.NotNil(t, lastEvent.Response.Output[0].Action.WebSearch)
+	require.Equal(t, "latest ai news", lastEvent.Response.Output[0].Action.WebSearch.Query)
 	require.Equal(t, "message", lastEvent.Response.Output[1].Type)
 	require.NotNil(t, lastEvent.Response.Output[1].Content)
 	require.Len(t, lastEvent.Response.Output[1].Content.Items, 1)
