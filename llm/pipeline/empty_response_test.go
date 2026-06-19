@@ -238,8 +238,8 @@ func TestPipeline_Process_StreamEmptyResponseDetection(t *testing.T) {
 				if streamCalls == 1 {
 					return streams.SliceStream([]*llm.Response{
 						{
-							RequestType: llm.RequestTypeSpeech,
-							APIFormat:   llm.APIFormatOpenAISpeech,
+							RequestType:       llm.RequestTypeSpeech,
+							APIFormat:         llm.APIFormatOpenAISpeech,
 							SpeechStreamEvent: &llm.SpeechStreamEvent{Type: "speech.audio.done"},
 						},
 						llm.DoneResponse,

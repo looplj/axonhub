@@ -1,6 +1,8 @@
 package anthropic
 
 import (
+	"encoding/json"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -225,10 +227,14 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	for _, tool := range tools {
 		switch tool.Type {
 		case llm.ToolTypeFunction:
+			inputSchema := tool.Function.Parameters
+			if len(inputSchema) == 0 {
+				inputSchema = json.RawMessage(`{"type":"object","properties":{}}`)
+			}
 			anthropicTools = append(anthropicTools, Tool{
 				Name:         tool.Function.Name,
 				Description:  tool.Function.Description,
-				InputSchema:  tool.Function.Parameters,
+				InputSchema:  inputSchema,
 				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
 			})
 		case llm.ToolTypeWebSearch:

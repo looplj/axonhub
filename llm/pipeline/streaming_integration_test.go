@@ -669,7 +669,6 @@ func TestPipeline_NonStreaming_AutoAggregateUpgradedStream_EmptyAggregatedBody(t
 	require.ErrorContains(t, err, "empty aggregated body")
 }
 
-
 func TestPipeline_NonStreaming_AutoAggregateUpgradedStream_EmptyJSONObjectAggregatedBodyAllowed(t *testing.T) {
 	ctx := context.Background()
 
