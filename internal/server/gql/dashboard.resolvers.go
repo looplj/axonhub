@@ -444,8 +444,28 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 		apiKeyIDs = append(apiKeyIDs, guid.ID)
 	}
 
+	// Query API keys through the privacy-enforced client to validate read_api_keys
+	// scope (both system-level and project-level) and filter to only API keys
+	// the caller can access in their project. Cross-project key IDs are dropped.
+	accessibleIDs, err := r.client.APIKey.Query().
+		Where(apikey.IDIn(apiKeyIDs...)).
+		IDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate API key access: %w", err)
+	}
+
+	if len(accessibleIDs) == 0 {
+		return []*APIKeyTokenUsageStats{}, nil
+	}
+
+	// Use a scope-gated decision context for the UsageLog aggregation query.
+	// Access has already been validated through the APIKey privacy policy
+	// (read_api_keys + project filter), so we bypass UsageLog's read_requests
+	// privacy rule for this internal stats query.
+	statsCtx := authz.WithScopeDecision(ctx, scopes.ScopeReadAPIKeys)
+
 	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDIn(apiKeyIDs...))
+		Where(usagelog.APIKeyIDIn(accessibleIDs...))
 
 	if input.CreatedAtGTE != nil {
 		query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
@@ -464,7 +484,7 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 
 	var results []usageStats
 
-	err := query.Modify(func(s *sql.Selector) {
+	err = query.Modify(func(s *sql.Selector) {
 		s.Select(
 			s.C(usagelog.FieldAPIKeyID),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
@@ -472,13 +492,13 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 		).GroupBy(s.C(usagelog.FieldAPIKeyID))
-	}).Scan(ctx, &results)
+	}).Scan(statsCtx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key token usage stats: %w", err)
 	}
 
 	// Get top 3 models for all API keys in a single query
-	topModelsMap := r.getTopModelsForAPIKeys(ctx, apiKeyIDs, input)
+	topModelsMap := r.getTopModelsForAPIKeys(statsCtx, accessibleIDs, input)
 
 	return lo.Map(results, func(item usageStats, _ int) *APIKeyTokenUsageStats {
 		return &APIKeyTokenUsageStats{
