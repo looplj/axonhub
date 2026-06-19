@@ -10,15 +10,15 @@ func EncodeOpenAIEncryptedContent(content *string) *string {
 }
 
 // DecodeOpenAIEncryptedContent checks whether a blob is safe to use as OpenAI encrypted content.
-// Returns the raw value if the blob is likely OpenAI or its provider is unknown.
-// Returns nil if the blob is clearly from a different provider (Anthropic/Gemini).
+// Returns the raw value only if the blob is recognized as OpenAI.
+// Returns nil for signatures from other providers (Anthropic/Gemini) or unknown formats.
 func DecodeOpenAIEncryptedContent(content *string) *string {
 	if content == nil {
 		return nil
 	}
 
 	result := GuessSignatureProvider(*content)
-	if result.Provider == ProviderAnthropic || result.Provider == ProviderGemini {
+	if result.Provider != ProviderOpenAI {
 		return nil
 	}
 

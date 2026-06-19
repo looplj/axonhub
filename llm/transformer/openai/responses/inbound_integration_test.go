@@ -141,7 +141,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.NotNil(t, result.Messages[2].ReasoningContent)
 				require.Contains(t, *result.Messages[2].ReasoningContent, "我需要检查暂存区的内容")
 				require.NotNil(t, result.Messages[2].ReasoningSignature)
-				require.Contains(t, *result.Messages[2].ReasoningSignature, "encrypted_content")
+				require.Contains(t, *result.Messages[2].ReasoningSignature, "gAAAA")
 				require.Len(t, result.Messages[2].ToolCalls, 1)
 				require.Equal(t, "call_00_bVbIarCdMYjXCUsTd9MEJVia", result.Messages[2].ToolCalls[0].ID)
 				require.Equal(t, "shell_command", result.Messages[2].ToolCalls[0].Function.Name)

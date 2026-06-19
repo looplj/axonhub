@@ -18,9 +18,9 @@ func TestDecodeOpenAIEncryptedContent(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name:     "empty string",
+			name:     "empty string - rejected",
 			content:  new(""),
-			expected: new(""),
+			expected: nil,
 		},
 		{
 			name:     "openai-like encrypted content (gAAAA prefix)",
@@ -35,6 +35,11 @@ func TestDecodeOpenAIEncryptedContent(t *testing.T) {
 		{
 			name:     "gemini-like protobuf base64 - rejected",
 			content:  new("CgNmb28="),
+			expected: nil,
+		},
+		{
+			name:     "unknown standard base64 - rejected",
+			content:  new("SGVsbG8="),
 			expected: nil,
 		},
 	}
