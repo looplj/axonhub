@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -89,6 +91,140 @@ func TestHasScope_UserPrincipal_NoUser(t *testing.T) {
 
 	if HasScope(ctx, scopes.ScopeReadChannels) {
 		t.Error("user principal without user entity should not have scope")
+	}
+}
+
+func TestHasScope_UserPrincipal_ProjectMembershipScope(t *testing.T) {
+	ctx := NewUserContext(context.Background(), 1)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID:     1,
+		Scopes: []string{},
+		Edges: ent.UserEdges{
+			ProjectUsers: []*ent.UserProject{
+				{
+					ProjectID: 100,
+					Scopes:    []string{"read_api_keys"},
+				},
+			},
+		},
+	})
+	ctx = contexts.WithProjectID(ctx, 100)
+
+	if !HasScope(ctx, scopes.ScopeReadAPIKeys) {
+		t.Error("user with project membership scope should have it")
+	}
+
+	if HasScope(ctx, scopes.ScopeWriteAPIKeys) {
+		t.Error("user without write scope should not have it")
+	}
+}
+
+func TestHasScope_UserPrincipal_ProjectRoleScope(t *testing.T) {
+	ctx := NewUserContext(context.Background(), 1)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID:     1,
+		Scopes: []string{},
+		Edges: ent.UserEdges{
+			ProjectUsers: []*ent.UserProject{
+				{
+					ProjectID: 100,
+				},
+			},
+			Roles: []*ent.Role{
+				{
+					ProjectID: lo.ToPtr(100),
+					Scopes:    []string{"read_api_keys"},
+				},
+			},
+		},
+	})
+	ctx = contexts.WithProjectID(ctx, 100)
+
+	if !HasScope(ctx, scopes.ScopeReadAPIKeys) {
+		t.Error("user with project role scope should have it")
+	}
+}
+
+func TestHasScope_UserPrincipal_ProjectRoleScopeRequiresMembership(t *testing.T) {
+	ctx := NewUserContext(context.Background(), 1)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID:     1,
+		Scopes: []string{},
+		Edges: ent.UserEdges{
+			Roles: []*ent.Role{
+				{
+					ProjectID: lo.ToPtr(100),
+					Scopes:    []string{"read_api_keys"},
+				},
+			},
+		},
+	})
+	ctx = contexts.WithProjectID(ctx, 100)
+
+	if HasScope(ctx, scopes.ScopeReadAPIKeys) {
+		t.Error("user with project role but no project membership should not have it")
+	}
+}
+
+func TestHasScope_UserPrincipal_ProjectScope_WrongProject(t *testing.T) {
+	ctx := NewUserContext(context.Background(), 1)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID:     1,
+		Scopes: []string{},
+		Edges: ent.UserEdges{
+			ProjectUsers: []*ent.UserProject{
+				{
+					ProjectID: 200,
+					Scopes:    []string{"read_api_keys"},
+				},
+			},
+		},
+	})
+	ctx = contexts.WithProjectID(ctx, 100)
+
+	if HasScope(ctx, scopes.ScopeReadAPIKeys) {
+		t.Error("user with scope in different project should not have it")
+	}
+}
+
+func TestHasScope_UserPrincipal_ProjectScope_NoProjectInContext(t *testing.T) {
+	ctx := NewUserContext(context.Background(), 1)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID:     1,
+		Scopes: []string{},
+		Edges: ent.UserEdges{
+			ProjectUsers: []*ent.UserProject{
+				{
+					ProjectID: 100,
+					Scopes:    []string{"read_api_keys"},
+				},
+			},
+		},
+	})
+
+	if HasScope(ctx, scopes.ScopeReadAPIKeys) {
+		t.Error("user with project scope but no project in context should not have it")
+	}
+}
+
+func TestHasScope_UserPrincipal_ProjectMembershipOwner(t *testing.T) {
+	ctx := NewUserContext(context.Background(), 1)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID:     1,
+		Scopes: []string{},
+		Edges: ent.UserEdges{
+			ProjectUsers: []*ent.UserProject{
+				{
+					ProjectID: 100,
+					IsOwner:   true,
+				},
+			},
+		},
+	})
+	ctx = contexts.WithProjectID(ctx, 100)
+
+	if !HasScope(ctx, scopes.ScopeReadAPIKeys) {
+		t.Error("project owner should have all scopes in their project")
 	}
 }
 
