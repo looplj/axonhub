@@ -16,6 +16,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
+const ImageGenerationToolModelMetadataKey = "image_generation_tool_model"
+
 func buildImageToolRequest(src *llm.Request) (*llm.Request, error) {
 	if src == nil || src.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
@@ -59,8 +61,39 @@ func buildImageToolRequest(src *llm.Request) (*llm.Request, error) {
 		})
 	}
 
+	// Always include a default system instruction and preserve any system
+	// messages from the source request so they are emitted as top-level
+	// instructions in the Responses API payload.
+	messages := []llm.Message{
+		{
+			Role: "system",
+			Content: llm.MessageContent{
+				Content: lo.ToPtr("You are a helpful assistant that can generate images based on user requests. Must use the image generation tool."),
+			},
+		},
+	}
+	for _, msg := range src.Messages {
+		if msg.Role == "system" {
+			messages = append(messages, msg)
+		}
+	}
+	messages = append(messages, llm.Message{
+		Role: "user",
+		Content: llm.MessageContent{
+			MultipleContent: content,
+		},
+	})
+
+	metadata := map[string]any{}
+	maps.Copy(metadata, src.TransformerMetadata)
+
+	toolModel := src.Model
+	if model, ok := metadata[ImageGenerationToolModelMetadataKey].(string); ok && strings.TrimSpace(model) != "" {
+		toolModel = strings.TrimSpace(model)
+	}
+
 	imageTool := &llm.ImageGeneration{
-		Model:             src.Model,
+		Model:             toolModel,
 		Background:        src.Image.Background,
 		InputFidelity:     src.Image.InputFidelity,
 		Moderation:        src.Image.Moderation,
@@ -77,8 +110,6 @@ func buildImageToolRequest(src *llm.Request) (*llm.Request, error) {
 		}
 	}
 
-	metadata := map[string]any{}
-	maps.Copy(metadata, src.TransformerMetadata)
 	metadata["image_generation_action"] = action
 
 	// Persist the requested image options so BuildImageResponse can echo them
@@ -95,21 +126,14 @@ func buildImageToolRequest(src *llm.Request) (*llm.Request, error) {
 	if src.Image.Background != "" {
 		metadata["codex_image_background"] = src.Image.Background
 	}
-	if src.Model != "" {
-		metadata["codex_image_model"] = src.Model
+	if toolModel != "" {
+		metadata["codex_image_model"] = toolModel
 	}
 
 	return &llm.Request{
-		Model: src.Model,
-		Messages: []llm.Message{
-			{
-				Role: "user",
-				Content: llm.MessageContent{
-					MultipleContent: content,
-				},
-			},
-		},
-		User: lo.Ternary(src.Image.User != "", lo.ToPtr(src.Image.User), src.User),
+		Model:    src.Model,
+		Messages: messages,
+		User:     lo.Ternary(src.Image.User != "", lo.ToPtr(src.Image.User), src.User),
 		Tools: []llm.Tool{
 			{
 				Type:            llm.ToolTypeImageGeneration,

@@ -158,7 +158,7 @@ func TestCodexOutbound_ImageGenerationRequestUsesResponsesImageTool(t *testing.T
 
 	var payload responses.Request
 	require.NoError(t, json.Unmarshal(req.Body, &payload))
-	require.Equal(t, "gpt-image-2", payload.Model)
+	require.Equal(t, defaultImageMainModel, payload.Model)
 	require.NotNil(t, payload.Stream)
 	require.True(t, *payload.Stream)
 	require.Len(t, payload.Tools, 1)
@@ -175,6 +175,7 @@ func TestCodexOutbound_ImageGenerationRequestUsesResponsesImageTool(t *testing.T
 	require.Len(t, payload.Input.Items[0].Content.Items, 1)
 	require.Equal(t, "input_text", payload.Input.Items[0].Content.Items[0].Type)
 	require.Equal(t, "draw a circuit board city", *payload.Input.Items[0].Content.Items[0].Text)
+	require.Equal(t, "You are a helpful assistant that can generate images based on user requests. Must use the image generation tool.", payload.Instructions)
 }
 
 func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
@@ -218,7 +219,9 @@ func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
 
 	var payload responses.Request
 	require.NoError(t, json.Unmarshal(req.Body, &payload))
+	require.Equal(t, defaultImageMainModel, payload.Model)
 	require.Len(t, payload.Tools, 1)
+	require.Equal(t, "gpt-image-2", payload.Tools[0].Model)
 	require.Equal(t, "edit", payload.Tools[0].Action)
 	require.Equal(t, "high", payload.Tools[0].InputFidelity)
 	require.Equal(t, "data:image/png;base64,bWFzay1kYXRh", payload.Tools[0].InputImageMask["image_url"])
@@ -227,13 +230,14 @@ func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
 	require.Equal(t, "input_text", payload.Input.Items[0].Content.Items[0].Type)
 	require.Equal(t, "input_image", payload.Input.Items[0].Content.Items[1].Type)
 	require.Equal(t, "data:image/jpeg;base64,anBlZy1kYXRh", *payload.Input.Items[0].Content.Items[1].ImageURL)
+	require.Equal(t, "You are a helpful assistant that can generate images based on user requests. Must use the image generation tool.", payload.Instructions)
 }
 
 func TestCodexOutbound_TransformImageResponse(t *testing.T) {
 	upstream := &responses.Response{
 		ID:        "resp_image",
 		CreatedAt: 1760000000,
-		Model:     "gpt-image-2",
+		Model:     defaultImageMainModel,
 		Output: []responses.Item{
 			{
 				Type:   "image_generation_call",
@@ -246,6 +250,7 @@ func TestCodexOutbound_TransformImageResponse(t *testing.T) {
 		"codex_image_output_format": "png",
 		"codex_image_quality":       "high",
 		"codex_image_size":          "1024x1024",
+		"codex_image_model":         "gpt-image-2",
 	})
 	require.NoError(t, err)
 

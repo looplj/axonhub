@@ -151,6 +151,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
 
+	if isImageRequest {
+		reqCopy.Model = defaultImageMainModel
+		reqCopy.TransformerMetadata[responses.ImageGenerationToolModelMetadataKey] = llmReq.Model
+	}
+
 	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
 	if !isImageRequest {
 		if _, ok := reqCopy.TransformerMetadata["include"]; !ok {

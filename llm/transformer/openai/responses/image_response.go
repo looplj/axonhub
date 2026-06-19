@@ -65,10 +65,8 @@ func BuildImageResponse(upstream *Response, metadata map[string]any) (*llm.Respo
 		result.Usage = upstream.Usage.ToUsage()
 	}
 
-	if result.Model == "" {
-		if model, ok := metadata["codex_image_model"].(string); ok {
-			result.Model = model
-		}
+	if model, ok := metadata["codex_image_model"].(string); ok && model != "" {
+		result.Model = model
 	}
 
 	return result, nil
