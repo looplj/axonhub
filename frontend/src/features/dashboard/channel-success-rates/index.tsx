@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, CoinsIcon, XCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
+import { Card, CardContent } from '@/components/ui/card';
 import ContentSection from '@/features/settings/components/content-section';
 
 type SortField = 'totalCount' | 'successCount' | 'failedCount' | 'successRate' | 'inputTokens' | 'outputTokens' | 'totalTokens';
@@ -154,16 +155,16 @@ export default function DashboardChannelSuccessRates() {
   const total = sortedChannels.length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-4 p-8 pt-6">
       <Header title={t('dashboard.channelSuccessRates.pageTitle')} description="查看所有渠道的请求成功率统计" />
       <div className="space-y-4">
         {/* Toolbar */}
-        <div className="flex items-center justify-between">
-          <Button onClick={handleBack} variant="outline">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <Button onClick={handleBack} variant="outline" className="self-start">
             {t('dashboard.channelSuccessRates.backToDashboard')}
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Time window */}
             <Select value={timeWindow} onValueChange={setTimeWindow}>
               <SelectTrigger className="w-[120px]">
@@ -192,7 +193,7 @@ export default function DashboardChannelSuccessRates() {
             </Select>
 
             {/* Show warnings only */}
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 whitespace-nowrap text-sm">
               <Checkbox checked={showWarningsOnly} onCheckedChange={(checked) => setShowWarningsOnly(checked === true)} />
               {t('dashboard.channelSuccessRates.showWarnings')}
             </label>
@@ -230,7 +231,28 @@ export default function DashboardChannelSuccessRates() {
         {isLoading && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-[180px]" />
+              <Card key={i}>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-5 w-5 rounded-md" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-4 w-[140px]" />
+                      <Skeleton className="h-3 w-[80px]" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between">
+                      <Skeleton className="h-8 w-[80px]" />
+                      <Skeleton className="h-3 w-[72px]" />
+                    </div>
+                    <Skeleton className="h-2 w-full rounded-full" />
+                  </div>
+                  <div className="flex gap-3">
+                    <Skeleton className="h-4 w-[64px]" />
+                    <Skeleton className="h-4 w-[64px]" />
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
@@ -248,56 +270,58 @@ export default function DashboardChannelSuccessRates() {
               const showTokens = tokens && tokens.totalTokens > 0;
 
               return (
-                <div key={channel.channelId} className="rounded-lg border p-4 shadow-sm">
-                  {/* Channel info */}
-                  <div className="mb-3 flex items-center gap-3">
-                    <ActivityIcon className="h-5 w-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium">{channel.channelName}</p>
-                      <span className="text-xs text-muted-foreground">{channel.channelType}</span>
+                <Card key={channel.channelId} className="hover-card min-w-0">
+                  <CardContent className="space-y-3">
+                    {/* Channel info */}
+                    <div className="flex items-center gap-3">
+                      <ActivityIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{channel.channelName}</p>
+                        <span className="text-xs text-muted-foreground">{channel.channelType}</span>
+                      </div>
+                      {channel.channelDisabled && <AlertTriangleIcon className="h-5 w-5 shrink-0 text-red-500" />}
                     </div>
-                    {channel.channelDisabled && <AlertTriangleIcon className="h-5 w-5 text-red-500" />}
-                  </div>
 
-                  {/* Success rate display */}
-                  <div className="mb-3">
-                    <div className="mb-1 flex items-baseline justify-between">
-                      <span className={`text-2xl font-bold ${getSuccessRateColor(channel.successRate)}`}>
-                        {channel.successRate.toFixed(1)}%
+                    {/* Success rate display */}
+                    <div>
+                      <div className="mb-1 flex items-baseline justify-between">
+                        <span className={`text-2xl font-bold ${getSuccessRateColor(channel.successRate)}`}>
+                          {channel.successRate.toFixed(1)}%
+                        </span>
+                        <span className="text-xs text-muted-foreground">{formatNumber(channel.totalCount)} total</span>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div className={`h-full ${getProgressBarColor(channel.successRate)}`} style={{ width: `${channel.successRate}%` }} />
+                      </div>
+                    </div>
+
+                    {/* Success/Failed counts */}
+                    <div className="flex gap-3 text-sm">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2Icon className="h-4 w-4 text-green-500" />
+                        {formatNumber(channel.successCount)}
                       </span>
-                      <span className="text-xs text-muted-foreground">{formatNumber(channel.totalCount)} total</span>
+                      <span className="flex items-center gap-1">
+                        <XCircleIcon className="h-4 w-4 text-red-500" />
+                        {formatNumber(channel.failedCount)}
+                      </span>
                     </div>
 
-                    {/* Progress bar */}
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div className={`h-full ${getProgressBarColor(channel.successRate)}`} style={{ width: `${channel.successRate}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Success/Failed counts */}
-                  <div className="flex gap-3 text-sm">
-                    <span className="flex items-center gap-1">
-                      <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-                      {formatNumber(channel.successCount)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <XCircleIcon className="h-4 w-4 text-red-500" />
-                      {formatNumber(channel.failedCount)}
-                    </span>
-                  </div>
-
-                  {/* Token consumption (from tokenStatsByChannel API) */}
-                  {showTokens && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <CoinsIcon className="h-3 w-3" />
-                      <span>{t('dashboard.channelSuccessRates.inputTokens')}: {formatNumber(tokens.inputTokens)}</span>
-                      <span className="text-border">|</span>
-                      <span>{t('dashboard.channelSuccessRates.outputTokens')}: {formatNumber(tokens.outputTokens)}</span>
-                      <span className="text-border">|</span>
-                      <span>{t('dashboard.channelSuccessRates.totalTokens')}: {formatNumber(tokens.totalTokens)}</span>
-                    </div>
-                  )}
-                </div>
+                    {/* Token consumption (from tokenStatsByChannel API) */}
+                    {showTokens && (
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <CoinsIcon className="h-3 w-3 shrink-0" />
+                        <span>{t('dashboard.channelSuccessRates.inputTokens')}: {formatNumber(tokens.inputTokens)}</span>
+                        <span className="text-border">|</span>
+                        <span>{t('dashboard.channelSuccessRates.outputTokens')}: {formatNumber(tokens.outputTokens)}</span>
+                        <span className="text-border">|</span>
+                        <span>{t('dashboard.channelSuccessRates.totalTokens')}: {formatNumber(tokens.totalTokens)}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
@@ -305,11 +329,11 @@ export default function DashboardChannelSuccessRates() {
 
         {/* Pagination */}
         {!isLoading && totalPages > 1 && (
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-muted-foreground">
               {t('dashboard.channelSuccessRates.showing', { start, end, total })}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button onClick={() => setCurrentPage((p) => p - 1)} disabled={currentPage === 1} variant="outline" size="sm">
                 {t('dashboard.channelSuccessRates.prev')}
               </Button>
