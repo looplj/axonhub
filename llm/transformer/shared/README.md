@@ -1,7 +1,7 @@
 # Shared Transformer Helpers
 
 This folder contains small, provider-agnostic helpers used by multiple transformers.
-The most important concept here is the **signature marking** scheme used to make
+The most important concept here is the **signature filtering** scheme used to make
 provider-specific private protocols survive **same-session channel/model switching**.
 
 ## Problem: same-session switching breaks provider private protocols
@@ -20,10 +20,10 @@ If these values are forwarded naively, they can be dropped, mis-parsed, or paire
 with incompatible fields when the session switches providers, and then switching
 back loses context and may degrade model behavior.
 
-## Design: carry provider signatures via a stable internal marker
-
-We store these provider-specific values in the unified message field
-`llm.Message.ReasoningSignature` as an **internal transport field**.
+Worse, forwarding an incompatible signature to a downstream model causes hard
+failures — e.g. `invalid_request_body` with "encrypted content could not be
+verified" — because the downstream model attempts to decrypt/verify a blob that
+was produced by a different provider.
 
 ## Terminology: inbound vs outbound transformers
 
@@ -38,52 +38,42 @@ In this repository, **inbound/outbound** are named from AxonHub's point of view:
 
 For streaming, apply the same naming convention to stream events/items in each direction.
 
-To preserve the original provider identity across conversions, we wrap the raw
-value with a stable internal marker prefix. The marker is designed to be:
+## Design: heuristic-based signature filtering
 
-- stable across sessions and deployments
-- unambiguous across providers
-- safe to pass through clients that do not understand provider-private protocols
+We store these provider-specific values in the unified message field
+`llm.Message.ReasoningSignature` as an **internal transport field**.
 
-When a footprint is present, we include it in the encoded form so the signature
-can be matched against the expected transport scope when needed.
+At each outbound provider boundary, `Decode...` helpers use
+`GuessSignatureProvider` — a heuristic that inspects the raw blob — to decide
+whether the signature is safe to forward to the target provider. Only signatures
+that are **positively identified** as belonging to the target provider are kept;
+everything else (including `unknown`) is dropped.
 
-The shared helpers use a single footprint-aware API:
+### Heuristics (`GuessSignatureProvider`)
 
-- `Decode...(..., footprint)`
-- `Encode...(..., footprint)`
-
-Passing `""` means "disable the internal marker mechanism and use the raw value".
+| Pattern | Provider |
+|---------|----------|
+| `gAAAA*` / `gAAA*` prefix | OpenAI |
+| `EqQ*` / `Eqo*` / `Eqr*` prefix | Anthropic |
+| standard base64 with protobuf-like decoded bytes | Gemini |
+| anything else | `unknown` (filtered by all `Decode...` helpers) |
 
 ### Behavioral contract (how it survives switching)
 
-This scheme matches the intended round-trip:
-
-1. A provider response that contains a signature-like field is encoded and stored
-   in `llm.Message.ReasoningSignature` with the internal marker only when a
-   footprint is available.
-2. Inbound conversions return the encoded value back to the client unchanged.
-3. On the next request, the client echoes the encoded value unchanged.
-4. When routing switches, outbound transformers only forward/decode the signature
-   if the marker matches their provider protocol; otherwise the signature must be
-   dropped (do not forward mixed/private protocol fields across providers).
+1. A provider response that contains a signature-like field is stored in
+   `llm.Message.ReasoningSignature` (Encode helpers are passthrough).
+2. Inbound conversions return the value back to the client unchanged.
+3. On the next request, the client echoes the value unchanged.
+4. When routing switches, outbound transformers call `Decode...` which only
+   forwards the signature if `GuessSignatureProvider` identifies it as belonging
+   to the target provider; otherwise the signature is **dropped** (do not
+   forward private protocol fields across providers).
 
 Practical invariants:
 
-- **Trusted transport**: only values in `ReasoningSignature` that carry an internal marker are treated as scoped transport across providers.
-- **No footprint, no marker**: when footprint/scope is absent, shared helpers do not add an internal marker and simply return the raw value.
-- **Unmarked input**: if a client sends a raw, unmarked signature, AxonHub treats it as a raw provider value rather than an internal transport marker.
-- **Marker lifecycle**: markers are added when converting *from an upstream provider response into unified structs* (outbound transformer, response direction). Inbound request conversions should not invent markers.
-- **At provider edges**: a transformer decodes **only when required by that provider API**, and only when the marker matches that provider (otherwise drop on mismatch).
+- **Strict filtering**: all three `Decode...` helpers (OpenAI, Anthropic, Gemini) only keep signatures positively identified as their own provider. `unknown` signatures are filtered to prevent `invalid_request_body` errors from downstream models.
+- **At provider edges**: a transformer decodes **only when required by that provider API**, and only when the heuristic matches that provider (otherwise drop on mismatch).
 - **Anthropic-specific exception**: decode is only required for Anthropic official platforms (`direct`, `claudecode`, `vertex`, `bedrock`). For other Anthropic-compatible outbound platforms, AxonHub forwards the value unchanged.
-
-### Important: behavior without footprint
-
-When no footprint/scope is available, this internal marker mechanism is disabled.
-Shared helpers return raw values unchanged, and `Decode...` will only succeed for
-values that actually carry a scoped internal marker.
-
-Clients should preserve and echo back the encoded `ReasoningSignature` value returned by AxonHub unchanged whenever AxonHub provides one, so the round-trip remains stable across same-session routing switches.
 
 ### Mermaid: end-to-end encode/decode flow
 
@@ -98,10 +88,10 @@ flowchart TD
     C -->|1. request| IT
     IT -->|2. convert to llm.Request<br/>ReasoningSignature is passed through as-is| LLM
     LLM -->|3. llm.Request| OT
-    OT -->|4. provider request| P
+    OT -->|4. provider request<br/>Decode... filters by heuristic| P
 
     P -->|5. provider response<br/>may contain private signature field| OT
-    OT -->|6. convert to llm.Response<br/>ENCODE signature into ReasoningSignature| LLM
+    OT -->|6. convert to llm.Response<br/>store signature into ReasoningSignature| LLM
     LLM -->|7. llm.Response| IT
     IT -->|8. client response<br/>pass ReasoningSignature through unchanged| C
     
@@ -114,27 +104,39 @@ flowchart TD
 ## OpenAI Responses API note (why inbound must not decode)
 
 OpenAI Responses has a `reasoning` output item with `encrypted_content`.
-If AxonHub decodes/removes the internal marker on inbound conversion, the client
-will send the next request without the marker, and AxonHub can no longer identify
-which provider protocol the signature belongs to when scoped transport is enabled.
+If AxonHub decodes/removes the value on inbound conversion, the client
+will send the next request without it, and AxonHub can no longer identify
+which provider protocol the signature belongs to.
 
 Therefore:
 
-- **Responses outbound (llm -> OpenAI Responses request)** decodes the internal marker
-  into the raw `encrypted_content` only when calling OpenAI.
-- **Responses inbound (OpenAI Responses response -> llm)** encodes/tags `encrypted_content`
-  and stores it in `ReasoningSignature` only when a footprint is available; otherwise it
-  stores the raw value.
-- **Responses inbound-stream (llm stream -> OpenAI Responses SSE)** passes through the
-  internal encoded signature as `encrypted_content` (do not decode).
+- **Responses outbound (llm -> OpenAI Responses request)** calls
+  `DecodeOpenAIEncryptedContent` which only forwards the blob if
+  `GuessSignatureProvider` identifies it as OpenAI.
+- **Responses inbound (OpenAI Responses response -> llm)** stores
+  `encrypted_content` in `ReasoningSignature` as-is (Encode is passthrough).
+- **Responses inbound-stream (llm stream -> OpenAI Responses SSE)** passes
+  through the signature as `encrypted_content` (do not decode).
 
 This keeps the session round-trip stable even if the client only "speaks" OpenAI
 Responses and AxonHub switches the actual upstream provider behind the scenes.
 
+## Evolution note
+
+An earlier version of this design used a **footprint-aware internal marker**
+scheme: Encode/Decode helpers accepted a `footprint` parameter and wrapped raw
+values with a stable marker prefix so the signature could be matched against the
+expected transport scope.
+
+The current version replaces that with the **heuristic-based** approach described
+above (`GuessSignatureProvider`). The Encode/Decode helpers no longer take a
+`footprint` parameter; instead, `Decode...` inspects the raw blob to decide
+whether it is safe to forward to the target provider.
+
 ## Practical guidance
 
 - When adding a new provider-specific signature-like field, prefer:
-  1) define a new internal marker,
+  1) add detection patterns to `GuessSignatureProvider`,
   2) add `Encode/Decode` helpers around it,
   3) store it in `llm.Message.ReasoningSignature`,
   4) forward/decode only at the target provider boundary (drop on mismatch).

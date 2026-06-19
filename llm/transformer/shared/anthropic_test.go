@@ -19,9 +19,9 @@ func TestDecodeAnthropicSignature(t *testing.T) {
 			expected:  nil,
 		},
 		{
-			name:      "empty string",
+			name:      "empty string - rejected",
 			signature: new(""),
-			expected:  new(""),
+			expected:  nil,
 		},
 		{
 			name:      "anthropic-like signature (Eq prefix)",
@@ -36,6 +36,11 @@ func TestDecodeAnthropicSignature(t *testing.T) {
 		{
 			name:      "gemini-like protobuf base64 - rejected",
 			signature: new(base64.StdEncoding.EncodeToString([]byte{0x0a, 0x04, 0x74, 0x65, 0x73, 0x74})),
+			expected:  nil,
+		},
+		{
+			name:      "unknown standard base64 - rejected",
+			signature: new("SGVsbG8="),
 			expected:  nil,
 		},
 	}
