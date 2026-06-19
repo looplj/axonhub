@@ -1173,9 +1173,16 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 					ActualModel:  mapping.To,
 					Source:       "mapping",
 				}
-				// When hideMappedModels is enabled, remove mapped models from the entries
+				// When hideMappedModels is enabled, remove all entries that resolve
+				// to the mapped target model (mapping.To), except for mapping entries
+				// themselves. This covers direct, prefixed, and auto-trimmed variants,
+				// since they are all alternative access paths to the same underlying model.
 				if ch.Settings.HideMappedModels {
-					delete(entries, mapping.To)
+					for key, entry := range entries {
+						if entry.ActualModel == mapping.To && entry.Source != "mapping" {
+							delete(entries, key)
+						}
+					}
 				}
 			}
 		}
