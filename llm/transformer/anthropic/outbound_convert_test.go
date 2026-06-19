@@ -1290,3 +1290,18 @@ func TestConvertToAnthropicRequest_ParallelToolCalls(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToolsAnthropic_NullParameters(t *testing.T) {
+	result := convertToolsAnthropic([]llm.Tool{{
+		Type: llm.ToolTypeFunction,
+		Function: llm.Function{
+			Name:       "null_params_func",
+			Parameters: json.RawMessage("null"),
+		},
+	}}, nil)
+
+	require.Len(t, result, 1)
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal(result[0].InputSchema, &schema))
+	require.Equal(t, "object", schema["type"])
+}
