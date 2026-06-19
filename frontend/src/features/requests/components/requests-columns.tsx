@@ -464,12 +464,15 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           return <div className='text-muted-foreground text-xs'>-</div>;
         }
 
+        const hitRate = promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0;
+        const isLowHitRate = hitRate < 80 && promptTokens >= 40000;
+
         return (
           <div className='text-xs'>
             <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
-            <div className='text-muted-foreground'>
+            <div className={isLowHitRate ? 'text-red-600 font-medium dark:text-red-400' : 'text-muted-foreground'}>
               {t('requests.columns.cacheHitRate', {
-                rate: promptTokens > 0 ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0',
+                rate: hitRate.toFixed(1),
               })}
             </div>
           </div>
