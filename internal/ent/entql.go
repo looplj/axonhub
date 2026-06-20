@@ -429,6 +429,8 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: requestexecution.FieldMetricsFirstTokenLatencyMs},
 			requestexecution.FieldMetricsReasoningDurationMs: {Type: field.TypeInt64, Column: requestexecution.FieldMetricsReasoningDurationMs},
 			requestexecution.FieldRequestHeaders:             {Type: field.TypeJSON, Column: requestexecution.FieldRequestHeaders},
+			requestexecution.FieldRequestURL:                 {Type: field.TypeString, Column: requestexecution.FieldRequestURL},
+			requestexecution.FieldPassThroughApplied:         {Type: field.TypeBool, Column: requestexecution.FieldPassThroughApplied},
 		},
 	}
 	graph.Nodes[16] = &sqlgraph.Node{
@@ -3436,6 +3438,16 @@ func (f *RequestExecutionFilter) WhereMetricsReasoningDurationMs(p entql.Int64P)
 // WhereRequestHeaders applies the entql json.RawMessage predicate on the request_headers field.
 func (f *RequestExecutionFilter) WhereRequestHeaders(p entql.BytesP) {
 	f.Where(p.Field(requestexecution.FieldRequestHeaders))
+}
+
+// WhereRequestURL applies the entql string predicate on the request_url field.
+func (f *RequestExecutionFilter) WhereRequestURL(p entql.StringP) {
+	f.Where(p.Field(requestexecution.FieldRequestURL))
+}
+
+// WherePassThroughApplied applies the entql bool predicate on the pass_through_applied field.
+func (f *RequestExecutionFilter) WherePassThroughApplied(p entql.BoolP) {
+	f.Where(p.Field(requestexecution.FieldPassThroughApplied))
 }
 
 // WhereHasRequest applies a predicate to check if query has an edge request.

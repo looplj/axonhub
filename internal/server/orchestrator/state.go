@@ -78,4 +78,7 @@ type PersistenceState struct {
 	// captureRawProviderStream. Must be called in PrepareForRetry and NextChannel so the
 	// abandoned goroutine exits promptly and releases its upstream HTTP connection.
 	RawStreamCancel context.CancelFunc
+
+	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
+	PassThroughApplied bool
 }

@@ -17668,6 +17668,8 @@ type RequestExecutionMutation struct {
 	addmetrics_reasoning_duration_ms  *int64
 	request_headers                   *objects.JSONRawMessage
 	appendrequest_headers             objects.JSONRawMessage
+	request_url                       *string
+	pass_through_applied              *bool
 	clearedFields                     map[string]struct{}
 	request                           *int
 	clearedrequest                    bool
@@ -18808,6 +18810,91 @@ func (m *RequestExecutionMutation) ResetRequestHeaders() {
 	delete(m.clearedFields, requestexecution.FieldRequestHeaders)
 }
 
+// SetRequestURL sets the "request_url" field.
+func (m *RequestExecutionMutation) SetRequestURL(s string) {
+	m.request_url = &s
+}
+
+// RequestURL returns the value of the "request_url" field in the mutation.
+func (m *RequestExecutionMutation) RequestURL() (r string, exists bool) {
+	v := m.request_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestURL returns the old "request_url" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldRequestURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestURL: %w", err)
+	}
+	return oldValue.RequestURL, nil
+}
+
+// ClearRequestURL clears the value of the "request_url" field.
+func (m *RequestExecutionMutation) ClearRequestURL() {
+	m.request_url = nil
+	m.clearedFields[requestexecution.FieldRequestURL] = struct{}{}
+}
+
+// RequestURLCleared returns if the "request_url" field was cleared in this mutation.
+func (m *RequestExecutionMutation) RequestURLCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldRequestURL]
+	return ok
+}
+
+// ResetRequestURL resets all changes to the "request_url" field.
+func (m *RequestExecutionMutation) ResetRequestURL() {
+	m.request_url = nil
+	delete(m.clearedFields, requestexecution.FieldRequestURL)
+}
+
+// SetPassThroughApplied sets the "pass_through_applied" field.
+func (m *RequestExecutionMutation) SetPassThroughApplied(b bool) {
+	m.pass_through_applied = &b
+}
+
+// PassThroughApplied returns the value of the "pass_through_applied" field in the mutation.
+func (m *RequestExecutionMutation) PassThroughApplied() (r bool, exists bool) {
+	v := m.pass_through_applied
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPassThroughApplied returns the old "pass_through_applied" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldPassThroughApplied(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPassThroughApplied is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPassThroughApplied requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPassThroughApplied: %w", err)
+	}
+	return oldValue.PassThroughApplied, nil
+}
+
+// ResetPassThroughApplied resets all changes to the "pass_through_applied" field.
+func (m *RequestExecutionMutation) ResetPassThroughApplied() {
+	m.pass_through_applied = nil
+}
+
 // ClearRequest clears the "request" edge to the Request entity.
 func (m *RequestExecutionMutation) ClearRequest() {
 	m.clearedrequest = true
@@ -18923,7 +19010,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 22)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -18984,6 +19071,12 @@ func (m *RequestExecutionMutation) Fields() []string {
 	if m.request_headers != nil {
 		fields = append(fields, requestexecution.FieldRequestHeaders)
 	}
+	if m.request_url != nil {
+		fields = append(fields, requestexecution.FieldRequestURL)
+	}
+	if m.pass_through_applied != nil {
+		fields = append(fields, requestexecution.FieldPassThroughApplied)
+	}
 	return fields
 }
 
@@ -19032,6 +19125,10 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.MetricsReasoningDurationMs()
 	case requestexecution.FieldRequestHeaders:
 		return m.RequestHeaders()
+	case requestexecution.FieldRequestURL:
+		return m.RequestURL()
+	case requestexecution.FieldPassThroughApplied:
+		return m.PassThroughApplied()
 	}
 	return nil, false
 }
@@ -19081,6 +19178,10 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldMetricsReasoningDurationMs(ctx)
 	case requestexecution.FieldRequestHeaders:
 		return m.OldRequestHeaders(ctx)
+	case requestexecution.FieldRequestURL:
+		return m.OldRequestURL(ctx)
+	case requestexecution.FieldPassThroughApplied:
+		return m.OldPassThroughApplied(ctx)
 	}
 	return nil, fmt.Errorf("unknown RequestExecution field %s", name)
 }
@@ -19230,6 +19331,20 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetRequestHeaders(v)
 		return nil
+	case requestexecution.FieldRequestURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestURL(v)
+		return nil
+	case requestexecution.FieldPassThroughApplied:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPassThroughApplied(v)
+		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution field %s", name)
 }
@@ -19356,6 +19471,9 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	if m.FieldCleared(requestexecution.FieldRequestHeaders) {
 		fields = append(fields, requestexecution.FieldRequestHeaders)
 	}
+	if m.FieldCleared(requestexecution.FieldRequestURL) {
+		fields = append(fields, requestexecution.FieldRequestURL)
+	}
 	return fields
 }
 
@@ -19402,6 +19520,9 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 		return nil
 	case requestexecution.FieldRequestHeaders:
 		m.ClearRequestHeaders()
+		return nil
+	case requestexecution.FieldRequestURL:
+		m.ClearRequestURL()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution nullable field %s", name)
@@ -19470,6 +19591,12 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldRequestHeaders:
 		m.ResetRequestHeaders()
+		return nil
+	case requestexecution.FieldRequestURL:
+		m.ResetRequestURL()
+		return nil
+	case requestexecution.FieldPassThroughApplied:
+		m.ResetPassThroughApplied()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution field %s", name)

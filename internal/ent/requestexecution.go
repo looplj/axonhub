@@ -62,6 +62,10 @@ type RequestExecution struct {
 	MetricsReasoningDurationMs *int64 `json:"metrics_reasoning_duration_ms,omitempty"`
 	// Request headers
 	RequestHeaders objects.JSONRawMessage `json:"request_headers,omitempty"`
+	// Actual upstream request URL sent to the provider
+	RequestURL string `json:"request_url,omitempty"`
+	// Whether pass-through was active for this execution attempt
+	PassThroughApplied bool `json:"pass_through_applied,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestExecutionQuery when eager-loading is set.
 	Edges        RequestExecutionEdges `json:"edges"`
@@ -123,11 +127,11 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldRequestHeaders:
 			values[i] = new([]byte)
-		case requestexecution.FieldStream:
+		case requestexecution.FieldStream, requestexecution.FieldPassThroughApplied:
 			values[i] = new(sql.NullBool)
 		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs, requestexecution.FieldMetricsReasoningDurationMs:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
+		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldRequestURL:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -284,6 +288,18 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field request_headers: %w", err)
 				}
 			}
+		case requestexecution.FieldRequestURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field request_url", values[i])
+			} else if value.Valid {
+				_m.RequestURL = value.String
+			}
+		case requestexecution.FieldPassThroughApplied:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field pass_through_applied", values[i])
+			} else if value.Valid {
+				_m.PassThroughApplied = value.Bool
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -402,6 +418,12 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("request_headers=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestHeaders))
+	builder.WriteString(", ")
+	builder.WriteString("request_url=")
+	builder.WriteString(_m.RequestURL)
+	builder.WriteString(", ")
+	builder.WriteString("pass_through_applied=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PassThroughApplied))
 	builder.WriteByte(')')
 	return builder.String()
 }

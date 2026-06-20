@@ -150,6 +150,27 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         );
       },
     },
+
+    {
+      id: 'passThrough',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.passThrough')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const executions = row.original.executions?.edges?.map((edge) => edge.node).filter(Boolean) || [];
+        const appliedExecution = executions.find((execution) => execution?.passThroughApplied);
+
+        if (!appliedExecution) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        return (
+          <Badge className='border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'>
+            {t('requests.passThrough.applied')}
+          </Badge>
+        );
+      },
+    },
     {
       accessorKey: 'reasoningEffort',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.reasoningEffort')} />,

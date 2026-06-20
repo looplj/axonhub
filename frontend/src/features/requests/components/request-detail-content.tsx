@@ -287,8 +287,8 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     setShowCurlPreview(true);
   }, []);
 
-  const showExecutionCurlPreview = useCallback((headers: any, body: any, channel?: { baseURL?: string; type?: string }, apiFormat?: string) => {
-    const curl = generateExecutionCurl(headers, body, channel as any, apiFormat as any);
+  const showExecutionCurlPreview = useCallback((headers: any, body: any, channel?: { baseURL?: string; type?: string }, apiFormat?: string, requestURL?: string) => {
+    const curl = generateExecutionCurl(headers, body, channel as any, apiFormat as any, requestURL);
     setCurlCommand(curl);
     setShowCurlPreview(true);
   }, []);
@@ -739,6 +739,11 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                             <Badge className={getStatusColor(execution.status)} variant='secondary'>
                               {t(`requests.status.${execution.status}`)}
                             </Badge>
+                            {execution.passThroughApplied && (
+                              <Badge className='border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'>
+                                {t('requests.passThrough.applied')}
+                              </Badge>
+                            )}
                           </div>
                         </CardHeader>
                         <CardContent className='space-y-6'>
@@ -809,7 +814,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
 
                           {(execution.requestHeaders || execution.requestBody) && (
                             <div className='flex justify-end'>
-                              <Button variant='outline' size='sm' onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel, execution.format)} className='hover:bg-primary hover:text-primary-foreground'>
+                              <Button variant='outline' size='sm' onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel, execution.format, execution.requestURL)} className='hover:bg-primary hover:text-primary-foreground'>
                                 <Terminal className='mr-2 h-4 w-4' />
                                 {t('requests.actions.copyCurl')}
                               </Button>

@@ -1181,6 +1181,7 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 
 	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
+	require.True(t, outbound.state.PassThroughApplied)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, 0.4, gjson.GetBytes(processed.Body, "temperature").Float())
 	require.Equal(t, "my-alias", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
@@ -1552,6 +1553,7 @@ func TestApplyPassThroughBodySkipsMultipartFormats(t *testing.T) {
 			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 			require.NoError(t, err)
 			require.Equal(t, outboundBody, processed.Body)
+			require.False(t, outbound.state.PassThroughApplied)
 		})
 	}
 }

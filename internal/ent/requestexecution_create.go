@@ -250,6 +250,34 @@ func (_c *RequestExecutionCreate) SetRequestHeaders(v objects.JSONRawMessage) *R
 	return _c
 }
 
+// SetRequestURL sets the "request_url" field.
+func (_c *RequestExecutionCreate) SetRequestURL(v string) *RequestExecutionCreate {
+	_c.mutation.SetRequestURL(v)
+	return _c
+}
+
+// SetNillableRequestURL sets the "request_url" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableRequestURL(v *string) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetRequestURL(*v)
+	}
+	return _c
+}
+
+// SetPassThroughApplied sets the "pass_through_applied" field.
+func (_c *RequestExecutionCreate) SetPassThroughApplied(v bool) *RequestExecutionCreate {
+	_c.mutation.SetPassThroughApplied(v)
+	return _c
+}
+
+// SetNillablePassThroughApplied sets the "pass_through_applied" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillablePassThroughApplied(v *bool) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetPassThroughApplied(*v)
+	}
+	return _c
+}
+
 // SetRequest sets the "request" edge to the Request entity.
 func (_c *RequestExecutionCreate) SetRequest(v *Request) *RequestExecutionCreate {
 	return _c.SetRequestID(v.ID)
@@ -320,6 +348,10 @@ func (_c *RequestExecutionCreate) defaults() {
 		v := requestexecution.DefaultStream
 		_c.mutation.SetStream(v)
 	}
+	if _, ok := _c.mutation.PassThroughApplied(); !ok {
+		v := requestexecution.DefaultPassThroughApplied
+		_c.mutation.SetPassThroughApplied(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -354,6 +386,9 @@ func (_c *RequestExecutionCreate) check() error {
 	}
 	if _, ok := _c.mutation.Stream(); !ok {
 		return &ValidationError{Name: "stream", err: errors.New(`ent: missing required field "RequestExecution.stream"`)}
+	}
+	if _, ok := _c.mutation.PassThroughApplied(); !ok {
+		return &ValidationError{Name: "pass_through_applied", err: errors.New(`ent: missing required field "RequestExecution.pass_through_applied"`)}
 	}
 	if len(_c.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "RequestExecution.request"`)}
@@ -452,6 +487,14 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 	if value, ok := _c.mutation.RequestHeaders(); ok {
 		_spec.SetField(requestexecution.FieldRequestHeaders, field.TypeJSON, value)
 		_node.RequestHeaders = value
+	}
+	if value, ok := _c.mutation.RequestURL(); ok {
+		_spec.SetField(requestexecution.FieldRequestURL, field.TypeString, value)
+		_node.RequestURL = value
+	}
+	if value, ok := _c.mutation.PassThroughApplied(); ok {
+		_spec.SetField(requestexecution.FieldPassThroughApplied, field.TypeBool, value)
+		_node.PassThroughApplied = value
 	}
 	if nodes := _c.mutation.RequestIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -766,6 +809,36 @@ func (u *RequestExecutionUpsert) ClearRequestHeaders() *RequestExecutionUpsert {
 	return u
 }
 
+// SetRequestURL sets the "request_url" field.
+func (u *RequestExecutionUpsert) SetRequestURL(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldRequestURL, v)
+	return u
+}
+
+// UpdateRequestURL sets the "request_url" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateRequestURL() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldRequestURL)
+	return u
+}
+
+// ClearRequestURL clears the value of the "request_url" field.
+func (u *RequestExecutionUpsert) ClearRequestURL() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldRequestURL)
+	return u
+}
+
+// SetPassThroughApplied sets the "pass_through_applied" field.
+func (u *RequestExecutionUpsert) SetPassThroughApplied(v bool) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldPassThroughApplied, v)
+	return u
+}
+
+// UpdatePassThroughApplied sets the "pass_through_applied" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdatePassThroughApplied() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldPassThroughApplied)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -1077,6 +1150,41 @@ func (u *RequestExecutionUpsertOne) UpdateRequestHeaders() *RequestExecutionUpse
 func (u *RequestExecutionUpsertOne) ClearRequestHeaders() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearRequestHeaders()
+	})
+}
+
+// SetRequestURL sets the "request_url" field.
+func (u *RequestExecutionUpsertOne) SetRequestURL(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetRequestURL(v)
+	})
+}
+
+// UpdateRequestURL sets the "request_url" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateRequestURL() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateRequestURL()
+	})
+}
+
+// ClearRequestURL clears the value of the "request_url" field.
+func (u *RequestExecutionUpsertOne) ClearRequestURL() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearRequestURL()
+	})
+}
+
+// SetPassThroughApplied sets the "pass_through_applied" field.
+func (u *RequestExecutionUpsertOne) SetPassThroughApplied(v bool) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetPassThroughApplied(v)
+	})
+}
+
+// UpdatePassThroughApplied sets the "pass_through_applied" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdatePassThroughApplied() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdatePassThroughApplied()
 	})
 }
 
@@ -1557,6 +1665,41 @@ func (u *RequestExecutionUpsertBulk) UpdateRequestHeaders() *RequestExecutionUps
 func (u *RequestExecutionUpsertBulk) ClearRequestHeaders() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearRequestHeaders()
+	})
+}
+
+// SetRequestURL sets the "request_url" field.
+func (u *RequestExecutionUpsertBulk) SetRequestURL(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetRequestURL(v)
+	})
+}
+
+// UpdateRequestURL sets the "request_url" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateRequestURL() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateRequestURL()
+	})
+}
+
+// ClearRequestURL clears the value of the "request_url" field.
+func (u *RequestExecutionUpsertBulk) ClearRequestURL() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearRequestURL()
+	})
+}
+
+// SetPassThroughApplied sets the "pass_through_applied" field.
+func (u *RequestExecutionUpsertBulk) SetPassThroughApplied(v bool) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetPassThroughApplied(v)
+	})
+}
+
+// UpdatePassThroughApplied sets the "pass_through_applied" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdatePassThroughApplied() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdatePassThroughApplied()
 	})
 }
 

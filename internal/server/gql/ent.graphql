@@ -4595,6 +4595,14 @@ type RequestExecution implements Node {
   Request headers
   """
   requestHeaders: JSONRawMessage
+  """
+  Actual upstream request URL sent to the provider
+  """
+  requestURL: String
+  """
+  Whether pass-through was active for this execution attempt
+  """
+  passThroughApplied: Boolean!
   request: Request!
   channel: Channel @goField(forceResolver: true)
   dataStorage: DataStorage
@@ -4868,6 +4876,29 @@ input RequestExecutionWhereInput {
   metricsReasoningDurationMsLTE: Int
   metricsReasoningDurationMsIsNil: Boolean
   metricsReasoningDurationMsNotNil: Boolean
+  """
+  request_url field predicates
+  """
+  requestURL: String
+  requestURLNEQ: String
+  requestURLIn: [String!]
+  requestURLNotIn: [String!]
+  requestURLGT: String
+  requestURLGTE: String
+  requestURLLT: String
+  requestURLLTE: String
+  requestURLContains: String
+  requestURLHasPrefix: String
+  requestURLHasSuffix: String
+  requestURLIsNil: Boolean
+  requestURLNotNil: Boolean
+  requestURLEqualFold: String
+  requestURLContainsFold: String
+  """
+  pass_through_applied field predicates
+  """
+  passThroughApplied: Boolean
+  passThroughAppliedNEQ: Boolean
   """
   request edge predicates
   """
