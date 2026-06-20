@@ -14,6 +14,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
@@ -218,9 +219,11 @@ func downloadImageToDataURL(ctx context.Context, imageURL string) (string, error
 		contentType = "image/png"
 	}
 
-	// Convert to base64 data URL
+	// Convert to base64 data URL.
+	// Use xurl.BuildDataURL (single exact-size concat) instead of fmt.Sprintf to
+	// avoid the printer's doubling-growth buffer churn on large base64 data.
 	base64Data := base64.StdEncoding.EncodeToString(imageData)
-	dataURL := fmt.Sprintf("data:%s;base64,%s", contentType, base64Data)
+	dataURL := xurl.BuildDataURL(contentType, base64Data, true)
 
 	return dataURL, nil
 }
