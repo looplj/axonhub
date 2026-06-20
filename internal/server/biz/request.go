@@ -261,6 +261,7 @@ func (s *RequestService) CreateRequestExecution(
 	request *ent.Request,
 	channelRequest httpclient.Request,
 	format llm.APIFormat,
+	passThroughApplied bool,
 ) (*ent.RequestExecution, error) {
 	// Decide whether to store the channel request body
 	storeRequestBody := true
@@ -328,7 +329,12 @@ func (s *RequestService) CreateRequestExecution(
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
 		SetStream(request.Stream).
-		SetRequestHeaders(requestHeadersBytes)
+		SetRequestHeaders(requestHeadersBytes).
+		SetPassThroughApplied(passThroughApplied)
+
+	if channelRequest.URL != "" {
+		mut = mut.SetRequestURL(channelRequest.URL)
+	}
 
 	// Use the same data storage as the request
 	if request.DataStorageID != 0 {
