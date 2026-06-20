@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -232,7 +233,9 @@ func encodeImageToBase64(data []byte) string {
 	format := detectImageFormat(data)
 	base64Data := base64.StdEncoding.EncodeToString(data)
 
-	return fmt.Sprintf("data:image/%s;base64,%s", format, base64Data)
+	// Use xurl.BuildDataURL (single exact-size concat) instead of fmt.Sprintf to
+	// avoid the printer's doubling-growth buffer churn on large base64 data.
+	return xurl.BuildDataURL("image/"+format, base64Data, true)
 }
 
 // detectImageFormat detects image format from magic bytes.
