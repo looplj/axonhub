@@ -147,13 +147,20 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
 	// Build args slice for parameterized query
-	args := make([]interface{}, 0, len(channelIDs)+2)
-	args = append(args, startTime.UTC(), endTime.UTC())
+	startUTC := startTime.UTC()
+	endUTC := endTime.UTC()
+	args := make([]any, 0, len(channelIDs)+3)
+	if useDollarPlaceholders {
+		args = append(args, startUTC, endUTC)
+	} else {
+		// For ? placeholders, the usage_logs start bound appears before the
+		// outer request_executions time window in the SQL text.
+		args = append(args, startUTC, startUTC, endUTC)
+	}
 
 	// Build channel ID filter with dialect-aware parameterized placeholders
-	// Note: Placeholders start at $3 because $1 and $2 are reserved for startTime and endTime timestamps.
-	// The args slice is constructed with timestamps first (lines 155-156), then channel IDs appended,
-	// so placeholder numbering must match this ordering to bind values correctly.
+	// Note: PostgreSQL placeholders start at $3 because $1 and $2 are reserved
+	// for startTime and endTime timestamps.
 	channelIDFilter := ""
 	if len(channelIDs) > 0 {
 		placeholders := make([]string, len(channelIDs))
