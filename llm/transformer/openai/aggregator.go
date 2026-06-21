@@ -269,9 +269,16 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 		var finalToolCalls []llm.ToolCall
 		if len(choiceAgg.toolCalls) > 0 {
-			finalToolCalls = make([]llm.ToolCall, len(choiceAgg.toolCalls))
-			for index := range finalToolCalls {
-				finalToolCalls[index] = *choiceAgg.toolCalls[index]
+			toolCallIndexes := make([]int, 0, len(choiceAgg.toolCalls))
+			for toolCallIndex := range choiceAgg.toolCalls {
+				toolCallIndexes = append(toolCallIndexes, toolCallIndex)
+			}
+			sort.Ints(toolCallIndexes)
+
+			finalToolCalls = make([]llm.ToolCall, 0, len(toolCallIndexes))
+			for _, toolCallIndex := range toolCallIndexes {
+				toolCall := choiceAgg.toolCalls[toolCallIndex]
+				finalToolCalls = append(finalToolCalls, *toolCall)
 			}
 		}
 
@@ -338,6 +345,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	}
 
 	// Build the final response using llm.Response struct
+	var responseUsage *llm.Usage
+	if usage != nil {
+		responseUsage = usage.ToLLMUsage()
+	}
+
 	response := &llm.Response{
 		ID:                lastChunkResponse.ID,
 		Model:             lastChunkResponse.Model,
@@ -345,7 +357,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		Created:           lastChunkResponse.Created,
 		SystemFingerprint: systemFingerprint,
 		Choices:           choices,
-		Usage:             usage.ToLLMUsage(),
+		Usage:             responseUsage,
 	}
 
 	// Add citations to response if any were collected
@@ -371,6 +383,6 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 	return data, llm.ResponseMeta{
 		ID:    response.ID,
-		Usage: usage.ToLLMUsage(),
+		Usage: responseUsage,
 	}, nil
 }
