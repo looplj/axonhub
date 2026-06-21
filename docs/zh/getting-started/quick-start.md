@@ -28,7 +28,7 @@
 
 3. **启动服务**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. **访问应用程序**
@@ -374,7 +374,7 @@ log:
 ### 常见问题
 
 **无法连接到 AxonHub**
-- 检查服务是否正在运行：`docker-compose ps`
+- 检查服务是否正在运行：`docker compose ps`
 - 验证端口 8090 是否可用
 - 检查防火墙设置
 
