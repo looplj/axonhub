@@ -233,6 +233,8 @@ func CalculateConfidenceLevel(requestCount int, median float64) string {
 //   - total_count: total number of completed/failed execution attempts
 //   - effective_latency_ms: sum of completed execution effective latency (excluding first token for streaming)
 //   - total_first_token_latency: sum of completed execution first token latency
+//   - token usage from usage_logs bounded by the same start timestamp to avoid
+//     materializing all historical usage rows before joining to executions
 //
 // Unlike BuildThroughputQuery, this does not join with channels table and returns
 // raw metrics needed for probe calculations rather than throughput rankings.
@@ -281,6 +283,7 @@ LEFT JOIN (
         channel_id,
         SUM(COALESCE(completion_tokens, 0) + COALESCE(completion_reasoning_tokens, 0) + COALESCE(completion_audio_tokens, 0)) as total_completion_tokens
     FROM usage_logs
+    WHERE created_at >= %s
     GROUP BY request_id, channel_id
 ) ul ON se.status = 'completed'
     AND se.request_id = ul.request_id
@@ -290,5 +293,5 @@ WHERE se.created_at >= %s
     AND se.status IN ('completed', 'failed')
     %s
 GROUP BY se.channel_id
-ORDER BY se.channel_id`, placeholder1, placeholder2, channelIDFilter)
+ORDER BY se.channel_id`, placeholder1, placeholder1, placeholder2, channelIDFilter)
 }
