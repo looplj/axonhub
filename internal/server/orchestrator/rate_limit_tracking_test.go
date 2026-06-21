@@ -175,7 +175,7 @@ func TestRateLimitTracking_OnOutboundLlmStream(t *testing.T) {
 	assert.Equal(t, int64(250), tracker.GetTokenCount(channel.ID))
 }
 
-func TestRateLimitTracking_OnOutboundRawRequest(t *testing.T) {
+func TestRateLimitTracking_OnOutboundRawRequest_DoesNotIncrementRequests(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 
 	entChannel := &ent.Channel{ID: 1, Name: "test-channel"}
@@ -193,16 +193,15 @@ func TestRateLimitTracking_OnOutboundRawRequest(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Increment request count multiple times
 	for range 5 {
 		_, err := middleware.OnOutboundRawRequest(ctx, nil)
 		assert.NoError(t, err)
 	}
 
-	assert.Equal(t, int64(5), tracker.GetRequestCount(channel.ID))
+	assert.Equal(t, int64(0), tracker.GetRequestCount(channel.ID))
 }
 
-func TestRateLimitTracking_Combined(t *testing.T) {
+func TestRateLimitTracking_CombinedTokenOnly(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 
 	entChannel := &ent.Channel{ID: 1, Name: "test-channel"}
@@ -220,26 +219,22 @@ func TestRateLimitTracking_Combined(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Simulate a request flow
-	// 1. Request starts
+	// Simulate a request flow. RPM admission is handled before this middleware;
+	// tracking only records TPM and upstream cooldown signals.
 	_, _ = middleware.OnOutboundRawRequest(ctx, nil)
 	_, _ = middleware.OnOutboundRawRequest(ctx, nil)
 
-	// 2. Response with tokens
 	_, _ = middleware.OnOutboundLlmResponse(ctx, &llm.Response{
 		Usage: &llm.Usage{TotalTokens: 100},
 	})
 
-	// 3. Another request
 	_, _ = middleware.OnOutboundRawRequest(ctx, nil)
 
-	// 4. Another response with tokens
 	_, _ = middleware.OnOutboundLlmResponse(ctx, &llm.Response{
 		Usage: &llm.Usage{TotalTokens: 50},
 	})
 
-	// Verify both RPM and TPM are tracked
-	assert.Equal(t, int64(3), tracker.GetRequestCount(channel.ID))
+	assert.Equal(t, int64(0), tracker.GetRequestCount(channel.ID))
 	assert.Equal(t, int64(150), tracker.GetTokenCount(channel.ID))
 }
 

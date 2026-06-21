@@ -611,7 +611,13 @@ func buildMessageContent(msg llm.Message, config *Config) (MessageContent, bool)
 	var blocks []MessageContentBlock
 
 	if hasThinkingContent(msg) {
-		if block := buildThinkingBlock(msg.ReasoningContent, msg.ReasoningSignature); block != nil {
+		reasoningContent, reasoningSignature := prepareAnthropicReasoning(
+			msg.ReasoningContent,
+			msg.ReasoningSignature,
+			config,
+		)
+
+		if block := buildThinkingBlock(reasoningContent, reasoningSignature); block != nil {
 			blocks = append(blocks, *block)
 		}
 

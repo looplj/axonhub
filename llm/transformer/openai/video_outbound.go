@@ -229,7 +229,7 @@ type openAIVideoGetResponse struct {
 	Status      string   `json:"status,omitempty"`
 	Model       string   `json:"model,omitempty"`
 	Prompt      string   `json:"prompt,omitempty"`
-	Seconds     *int64   `json:"seconds,omitempty"`
+	Seconds     string   `json:"seconds,omitempty"`
 	Size        string   `json:"size,omitempty"`
 	Progress    *float64 `json:"progress,omitempty"`
 	VideoURL    string   `json:"video_url,omitempty"`
@@ -279,11 +279,16 @@ func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, htt
 		Progress:    resp.Progress,
 		Model:       resp.Model,
 		Prompt:      resp.Prompt,
-		Duration:    resp.Seconds,
+		Duration:    nil,
 		Size:        resp.Size,
 		CreatedAt:   resp.CreatedAt,
 		CompletedAt: completedAt,
 		ExpiresAt:   expiresAt,
+	}
+
+	if strings.TrimSpace(resp.Seconds) != "" {
+		seconds := strings.TrimSpace(resp.Seconds)
+		v.Duration = &seconds
 	}
 
 	if resp.Error != nil && strings.TrimSpace(resp.Error.Message) != "" {

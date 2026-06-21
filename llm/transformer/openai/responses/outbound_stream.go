@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -570,7 +571,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		StreamEventTypeImageGenerationCompleted:
 		// Handle image generation events
 		if streamEvent.PartialImageB64 != "" {
-			imageURL := "data:image/png;base64," + streamEvent.PartialImageB64
+			imageURL := xurl.BuildDataURL("image/png", streamEvent.PartialImageB64, true)
 			resp.Choices = []llm.Choice{
 				{
 					Index: 0,

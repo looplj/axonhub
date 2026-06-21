@@ -1181,6 +1181,7 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 
 	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
+	require.True(t, outbound.state.PassThroughApplied)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, 0.4, gjson.GetBytes(processed.Body, "temperature").Float())
 	require.Equal(t, "my-alias", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
@@ -1499,47 +1500,62 @@ func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
 	require.NotNil(t, processedRequest)
 }
 
-func TestApplyPassThroughBodySkipsMultipartAudio(t *testing.T) {
+func TestApplyPassThroughBodySkipsMultipartFormats(t *testing.T) {
 	ctx := context.Background()
 
-	channel := &biz.Channel{
-		Channel: &ent.Channel{
-			ID:   1,
-			Name: "pass-through-multipart-audio",
-			Settings: &objects.ChannelSettings{
-				PassThroughBody: lo.ToPtr(true),
-			},
-		},
+	tests := []struct {
+		name      string
+		apiFormat llm.APIFormat
+	}{
+		{name: "audio transcription", apiFormat: llm.APIFormatOpenAITranscription},
+		{name: "audio translation", apiFormat: llm.APIFormatOpenAITranslation},
+		{name: "image edit", apiFormat: llm.APIFormatOpenAIImageEdit},
+		{name: "image variation", apiFormat: llm.APIFormatOpenAIImageVariation},
 	}
 
-	// The inbound multipart body uses the client boundary; the outbound transformer
-	// rebuilds the multipart body with a new boundary, so the inbound bytes must not
-	// replace the outbound body.
-	inboundBody := []byte("--client-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nwhisper-1\r\n--client-boundary--\r\n")
-	outboundBody := []byte("--new-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nmapped-whisper\r\n--new-boundary--\r\n")
-
-	outbound := &PersistentOutboundTransformer{
-		state: &PersistenceState{
-			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-			LlmRequest: &llm.Request{
-				Model:     "mapped-whisper",
-				APIFormat: llm.APIFormatOpenAITranscription,
-				RawRequest: &httpclient.Request{
-					APIFormat: string(llm.APIFormatOpenAITranscription),
-					Body:      inboundBody,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: "pass-through-multipart",
+					Settings: &objects.ChannelSettings{
+						PassThroughBody: lo.ToPtr(true),
+					},
 				},
-			},
-		},
-	}
+			}
 
-	request := &httpclient.Request{
-		APIFormat: string(llm.APIFormatOpenAITranscription),
-		Body:      outboundBody,
-	}
+			// The inbound multipart body uses the client boundary; the outbound transformer
+			// rebuilds the multipart body with a new boundary, so the inbound bytes must not
+			// replace the outbound body.
+			inboundBody := []byte("--client-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\noriginal-model\r\n--client-boundary--\r\n")
+			outboundBody := []byte("--new-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nmapped-model\r\n--new-boundary--\r\n")
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
-	require.NoError(t, err)
-	require.Equal(t, outboundBody, processed.Body)
+			outbound := &PersistentOutboundTransformer{
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest: &llm.Request{
+						Model:     "mapped-model",
+						APIFormat: tt.apiFormat,
+						RawRequest: &httpclient.Request{
+							APIFormat: string(tt.apiFormat),
+							Body:      inboundBody,
+						},
+					},
+				},
+			}
+
+			request := &httpclient.Request{
+				APIFormat: string(tt.apiFormat),
+				Body:      outboundBody,
+			}
+
+			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+			require.NoError(t, err)
+			require.Equal(t, outboundBody, processed.Body)
+			require.False(t, outbound.state.PassThroughApplied)
+		})
+	}
 }
 
 func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
@@ -61,6 +62,14 @@ var Module = fx.Module("biz",
 	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							log.Error(context.Background(), "initChannelPerformances panicked", log.Any("panic", r))
+						}
+					}()
+					svc.initChannelPerformances(context.Background())
+				}()
 				return svc.RegisterScheduledTasks(ctx, s)
 			},
 			OnStop: func(ctx context.Context) error {

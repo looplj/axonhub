@@ -7679,6 +7679,27 @@ type RequestExecutionWhereInput struct {
 	MetricsReasoningDurationMsIsNil  bool    `json:"metricsReasoningDurationMsIsNil,omitempty"`
 	MetricsReasoningDurationMsNotNil bool    `json:"metricsReasoningDurationMsNotNil,omitempty"`
 
+	// "request_url" field predicates.
+	RequestURL             *string  `json:"requestURL,omitempty"`
+	RequestURLNEQ          *string  `json:"requestURLNEQ,omitempty"`
+	RequestURLIn           []string `json:"requestURLIn,omitempty"`
+	RequestURLNotIn        []string `json:"requestURLNotIn,omitempty"`
+	RequestURLGT           *string  `json:"requestURLGT,omitempty"`
+	RequestURLGTE          *string  `json:"requestURLGTE,omitempty"`
+	RequestURLLT           *string  `json:"requestURLLT,omitempty"`
+	RequestURLLTE          *string  `json:"requestURLLTE,omitempty"`
+	RequestURLContains     *string  `json:"requestURLContains,omitempty"`
+	RequestURLHasPrefix    *string  `json:"requestURLHasPrefix,omitempty"`
+	RequestURLHasSuffix    *string  `json:"requestURLHasSuffix,omitempty"`
+	RequestURLIsNil        bool     `json:"requestURLIsNil,omitempty"`
+	RequestURLNotNil       bool     `json:"requestURLNotNil,omitempty"`
+	RequestURLEqualFold    *string  `json:"requestURLEqualFold,omitempty"`
+	RequestURLContainsFold *string  `json:"requestURLContainsFold,omitempty"`
+
+	// "pass_through_applied" field predicates.
+	PassThroughApplied    *bool `json:"passThroughApplied,omitempty"`
+	PassThroughAppliedNEQ *bool `json:"passThroughAppliedNEQ,omitempty"`
+
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
 	HasRequestWith []*RequestWhereInput `json:"hasRequestWith,omitempty"`
@@ -8212,6 +8233,57 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.MetricsReasoningDurationMsNotNil {
 		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsNotNil())
+	}
+	if i.RequestURL != nil {
+		predicates = append(predicates, requestexecution.RequestURLEQ(*i.RequestURL))
+	}
+	if i.RequestURLNEQ != nil {
+		predicates = append(predicates, requestexecution.RequestURLNEQ(*i.RequestURLNEQ))
+	}
+	if len(i.RequestURLIn) > 0 {
+		predicates = append(predicates, requestexecution.RequestURLIn(i.RequestURLIn...))
+	}
+	if len(i.RequestURLNotIn) > 0 {
+		predicates = append(predicates, requestexecution.RequestURLNotIn(i.RequestURLNotIn...))
+	}
+	if i.RequestURLGT != nil {
+		predicates = append(predicates, requestexecution.RequestURLGT(*i.RequestURLGT))
+	}
+	if i.RequestURLGTE != nil {
+		predicates = append(predicates, requestexecution.RequestURLGTE(*i.RequestURLGTE))
+	}
+	if i.RequestURLLT != nil {
+		predicates = append(predicates, requestexecution.RequestURLLT(*i.RequestURLLT))
+	}
+	if i.RequestURLLTE != nil {
+		predicates = append(predicates, requestexecution.RequestURLLTE(*i.RequestURLLTE))
+	}
+	if i.RequestURLContains != nil {
+		predicates = append(predicates, requestexecution.RequestURLContains(*i.RequestURLContains))
+	}
+	if i.RequestURLHasPrefix != nil {
+		predicates = append(predicates, requestexecution.RequestURLHasPrefix(*i.RequestURLHasPrefix))
+	}
+	if i.RequestURLHasSuffix != nil {
+		predicates = append(predicates, requestexecution.RequestURLHasSuffix(*i.RequestURLHasSuffix))
+	}
+	if i.RequestURLIsNil {
+		predicates = append(predicates, requestexecution.RequestURLIsNil())
+	}
+	if i.RequestURLNotNil {
+		predicates = append(predicates, requestexecution.RequestURLNotNil())
+	}
+	if i.RequestURLEqualFold != nil {
+		predicates = append(predicates, requestexecution.RequestURLEqualFold(*i.RequestURLEqualFold))
+	}
+	if i.RequestURLContainsFold != nil {
+		predicates = append(predicates, requestexecution.RequestURLContainsFold(*i.RequestURLContainsFold))
+	}
+	if i.PassThroughApplied != nil {
+		predicates = append(predicates, requestexecution.PassThroughAppliedEQ(*i.PassThroughApplied))
+	}
+	if i.PassThroughAppliedNEQ != nil {
+		predicates = append(predicates, requestexecution.PassThroughAppliedNEQ(*i.PassThroughAppliedNEQ))
 	}
 
 	if i.HasRequest != nil {

@@ -209,3 +209,31 @@ func TestBuildImageResponse_SkipsEmptyResult(t *testing.T) {
 	require.Len(t, resp.Image.Data, 1)
 	require.Equal(t, "valid", resp.Image.Data[0].B64JSON)
 }
+
+func TestBuildImageToolRequest_PreservesSystemMessages(t *testing.T) {
+	src := &llm.Request{
+		Model:       "gpt-image-1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
+		Messages: []llm.Message{
+			{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("system instruction"),
+				},
+			},
+		},
+		Image: &llm.ImageRequest{
+			Prompt: "a cat",
+		},
+	}
+
+	toolReq, err := buildImageToolRequest(src)
+	require.NoError(t, err)
+	require.Len(t, toolReq.Messages, 3)
+	require.Equal(t, "system", toolReq.Messages[0].Role)
+	require.Equal(t, "You are a helpful assistant that can generate images based on user requests. Must use the image generation tool.", *toolReq.Messages[0].Content.Content)
+	require.Equal(t, "system", toolReq.Messages[1].Role)
+	require.Equal(t, "system instruction", *toolReq.Messages[1].Content.Content)
+	require.Equal(t, "user", toolReq.Messages[2].Role)
+}

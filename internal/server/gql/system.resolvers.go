@@ -214,11 +214,15 @@ func (r *mutationResolver) UpdateSecuritySettings(ctx context.Context, input Upd
 	}
 
 	newSettings := biz.SecuritySettings{
-		BlockedIPs: current.BlockedIPs,
+		BlockedIPs:              current.BlockedIPs,
+		ShowRequestLogIPBanIcon: current.ShowRequestLogIPBanIcon,
 	}
 
 	if input.BlockedIPs != nil {
 		newSettings.BlockedIPs = input.BlockedIPs
+	}
+	if input.ShowRequestLogIPBanIcon != nil {
+		newSettings.ShowRequestLogIPBanIcon = *input.ShowRequestLogIPBanIcon
 	}
 
 	err = r.systemService.SetSecuritySettings(ctx, newSettings)
@@ -236,6 +240,23 @@ func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error
 	}
 
 	r.providerQuotaService.ManualCheck(ctx)
+
+	return true, nil
+}
+
+// ResetChannelQuotaNow is the resolver for the resetChannelQuotaNow field.
+func (r *mutationResolver) ResetChannelQuotaNow(ctx context.Context, channelID objects.GUID) (bool, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteChannels) {
+		return false, fmt.Errorf("permission denied: requires write:channels scope")
+	}
+
+	if r.providerQuotaService == nil {
+		return false, fmt.Errorf("provider quota service is not available")
+	}
+
+	if err := r.providerQuotaService.ResetChannelQuotaNow(ctx, channelID.ID); err != nil {
+		return false, fmt.Errorf("failed to reset channel quota: %w", err)
+	}
 
 	return true, nil
 }

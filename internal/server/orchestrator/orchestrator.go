@@ -273,11 +273,13 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Forward the events to the live streaming.
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
 
-		// Per-channel admission control. Must run before rate-limit tracking so a
-		// locally rejected (queue full / queue timeout) request does not consume
-		// RPM budget for a request that never reached upstream.
+		// Per-channel concurrency admission runs before RPM admission so a locally
+		// rejected queue attempt does not consume RPM for a request that never
+		// reached upstream.
 		withChannelLimiter(outbound, processor.channelLimiterManager, processor.channelLimiterMetrics),
-		// Rate limit tracking middleware for load balancing.
+		// Strict single-instance RPM admission for every outbound attempt.
+		withRateLimitAdmission(outbound, processor.rateLimitTracker),
+		// Rate limit tracking middleware for TPM and provider cooldown signals.
 		withRateLimitTracking(outbound, processor.rateLimitTracker),
 
 		// Response pass-through capture middlewares must be last in the outbound list

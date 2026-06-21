@@ -240,6 +240,64 @@ func TestQuotaService_PastDurationMinute_RequestCountExceeded(t *testing.T) {
 	require.Contains(t, res.Message, "requests quota exceeded")
 }
 
+func TestQuotaService_PastDurationMinute_IncludesUsageAtWindowEnd(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	p, err := client.Project.Create().
+		SetName("p").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	windowEnd := time.Now().UTC()
+	apiKeyID := 11
+
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetAPIKeyID(apiKeyID).
+		SetModelID("m").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetCreatedAt(windowEnd).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("m").
+		SetTotalTokens(10).
+		SetTotalCost(1.0).
+		SetCreatedAt(windowEnd).
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	svc := NewQuotaService(client, systemService)
+	window := QuotaWindow{
+		Start:        lo.ToPtr(windowEnd.Add(-1 * time.Minute)),
+		End:          lo.ToPtr(windowEnd),
+		EndInclusive: true,
+	}
+
+	count, err := svc.requestCount(ctx, apiKeyID, window)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), count)
+
+	usage, err := svc.usageAgg(ctx, apiKeyID, window, true, true)
+	require.NoError(t, err)
+	require.Equal(t, int64(10), usage.TotalTokens)
+	require.True(t, usage.TotalCost.Equal(decimal.NewFromFloat(1.0)))
+}
+
 func TestQuotaWindow_PastDurationMinute(t *testing.T) {
 	now := time.Date(2026, 1, 20, 1, 2, 3, 0, time.UTC)
 	window, err := quotaWindow(now, objects.APIKeyQuotaPeriod{
@@ -254,6 +312,7 @@ func TestQuotaWindow_PastDurationMinute(t *testing.T) {
 	require.NotNil(t, window.End)
 	require.Equal(t, now.Add(-5*time.Minute), *window.Start)
 	require.Equal(t, now, *window.End)
+	require.True(t, window.EndInclusive)
 }
 
 func TestQuotaWindow_AllTime(t *testing.T) {
@@ -265,6 +324,7 @@ func TestQuotaWindow_AllTime(t *testing.T) {
 	require.Nil(t, window.Start)
 	require.NotNil(t, window.End)
 	require.Equal(t, now, *window.End)
+	require.True(t, window.EndInclusive)
 }
 
 func TestQuotaWindow_CalendarDay_Timezone(t *testing.T) {
@@ -284,6 +344,7 @@ func TestQuotaWindow_CalendarDay_Timezone(t *testing.T) {
 
 	require.Equal(t, time.Date(2026, 1, 19, 16, 0, 0, 0, time.UTC), *window.Start)
 	require.Equal(t, time.Date(2026, 1, 20, 16, 0, 0, 0, time.UTC), *window.End)
+	require.False(t, window.EndInclusive)
 }
 
 func TestQuotaWindow_CalendarMonth_Timezone(t *testing.T) {
@@ -303,6 +364,64 @@ func TestQuotaWindow_CalendarMonth_Timezone(t *testing.T) {
 
 	require.Equal(t, time.Date(2025, 12, 31, 16, 0, 0, 0, time.UTC), *window.Start)
 	require.Equal(t, time.Date(2026, 1, 31, 16, 0, 0, 0, time.UTC), *window.End)
+	require.False(t, window.EndInclusive)
+}
+
+func TestQuotaService_CalendarDuration_ExcludesUsageAtWindowEnd(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	p, err := client.Project.Create().
+		SetName("p").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	windowEnd := time.Date(2026, 1, 21, 0, 0, 0, 0, time.UTC)
+	apiKeyID := 12
+
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetAPIKeyID(apiKeyID).
+		SetModelID("m").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetCreatedAt(windowEnd).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("m").
+		SetTotalTokens(10).
+		SetTotalCost(1.0).
+		SetCreatedAt(windowEnd).
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	svc := NewQuotaService(client, systemService)
+	window := QuotaWindow{
+		Start: lo.ToPtr(windowEnd.Add(-24 * time.Hour)),
+		End:   lo.ToPtr(windowEnd),
+	}
+
+	count, err := svc.requestCount(ctx, apiKeyID, window)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), count)
+
+	usage, err := svc.usageAgg(ctx, apiKeyID, window, true, true)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), usage.TotalTokens)
+	require.True(t, usage.TotalCost.Equal(decimal.Zero))
 }
 
 func TestQuotaService_CalendarDay_CostExceeded(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 )
 
 // ChannelRequestTracker tracks per-channel request and token counts
-// within a fixed 1-minute sliding window for rate limiting.
+// within fixed natural-minute buckets for rate limiting.
 // It also manages cooldown periods for channels that received 429 errors.
 type ChannelRequestTracker struct {
 	mu        sync.RWMutex
@@ -42,13 +42,25 @@ func (t *ChannelRequestTracker) getOrResetWindow(channelID int) *rateLimitWindow
 	return w
 }
 
-// IncrementRequest increments the request count for a channel.
-func (t *ChannelRequestTracker) IncrementRequest(channelID int) {
+// TryAcquireRequest atomically checks and consumes one request slot for a
+// channel in the current fixed minute bucket. A non-positive limit means the
+// caller has no RPM limit configured, so no slot is consumed.
+func (t *ChannelRequestTracker) TryAcquireRequest(channelID int, limit int64) bool {
+	if limit <= 0 {
+		return true
+	}
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	w := t.getOrResetWindow(channelID)
+	if w.requests >= limit {
+		return false
+	}
+
 	w.requests++
+
+	return true
 }
 
 // AddTokens adds token count for a channel.

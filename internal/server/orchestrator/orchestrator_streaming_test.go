@@ -832,6 +832,87 @@ func TestChatCompletionOrchestrator_Process_QueueRejectionDoesNotConsumeRPM(t *t
 		"queue rejection must not consume RPM budget — middleware order regression")
 }
 
+func TestChatCompletionOrchestrator_Process_RPMAdmissionBlocksBeforeUpstream(t *testing.T) {
+	ctx := context.Background()
+	ctx = authz.WithTestBypass(ctx)
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+
+	mockResp := buildMockOpenAIResponse("chatcmpl-rpm", "gpt-4", "rpm test", 5, 10)
+	executor := &mockExecutor{
+		response: &httpclient.Response{
+			StatusCode: 200,
+			Body:       mockResp,
+			Headers:    http.Header{"Content-Type": []string{"application/json"}},
+		},
+	}
+
+	outbound, err := openai.NewOutboundTransformer(ch.BaseURL, ch.Credentials.APIKey)
+	require.NoError(t, err)
+
+	rpm := int64(1)
+	bizChannel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:               ch.ID,
+			Name:             ch.Name,
+			BaseURL:          ch.BaseURL,
+			Credentials:      ch.Credentials,
+			SupportedModels:  ch.SupportedModels,
+			DefaultTestModel: ch.DefaultTestModel,
+			Status:           ch.Status,
+			Settings: &objects.ChannelSettings{
+				RateLimit: &objects.ChannelRateLimit{RPM: &rpm},
+			},
+		},
+		Outbound: outbound,
+	}
+
+	channelSelector := &staticChannelSelector{candidates: channelsToTestCandidates([]*biz.Channel{bizChannel}, "gpt-4")}
+	rateLimitTracker := NewChannelRequestTracker()
+
+	orchestrator := &ChatCompletionOrchestrator{
+		channelSelector:       channelSelector,
+		Inbound:               openai.NewInboundTransformer(),
+		RequestService:        requestService,
+		ChannelService:        channelService,
+		PromptProvider:        &stubPromptProvider{},
+		SystemService:         systemService,
+		UsageLogService:       usageLogService,
+		PipelineFactory:       pipeline.NewFactory(executor),
+		ModelMapper:           NewModelMapper(),
+		channelLimiterManager: NewChannelLimiterManager(),
+		rateLimitTracker:      rateLimitTracker,
+		Middlewares: []pipeline.Middleware{
+			stream.EnsureUsage(),
+		},
+	}
+
+	ctx = contexts.WithProjectID(ctx, project.ID)
+
+	firstRequest := buildTestRequest("gpt-4", "rpm test", false)
+	result, err := orchestrator.Process(ctx, firstRequest)
+	require.NoError(t, err)
+	require.NotNil(t, result.ChatCompletion)
+
+	secondRequest := buildTestRequest("gpt-4", "rpm test", false)
+	_, err = orchestrator.Process(ctx, secondRequest)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrLocalRPMExhausted)
+
+	var rpmErr *LocalRPMExhaustedError
+	require.ErrorAs(t, err, &rpmErr)
+	assert.Equal(t, ch.ID, rpmErr.ChannelID)
+	assert.Equal(t, int64(1), rateLimitTracker.GetRequestCount(ch.ID))
+	assert.Equal(t, int64(1), executor.requestCalls.Load(), "RPM rejection must not reach upstream")
+}
+
 // TestChatCompletionOrchestrator_Process_ChannelLimiter exercises the channel admission
 // middleware end-to-end: configure a channel with MaxConcurrent + QueueSize, run a
 // request through the orchestrator, and confirm the limiter slot is released after

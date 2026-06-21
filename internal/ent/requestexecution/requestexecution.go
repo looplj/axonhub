@@ -57,6 +57,10 @@ const (
 	FieldMetricsReasoningDurationMs = "metrics_reasoning_duration_ms"
 	// FieldRequestHeaders holds the string denoting the request_headers field in the database.
 	FieldRequestHeaders = "request_headers"
+	// FieldRequestURL holds the string denoting the request_url field in the database.
+	FieldRequestURL = "request_url"
+	// FieldPassThroughApplied holds the string denoting the pass_through_applied field in the database.
+	FieldPassThroughApplied = "pass_through_applied"
 	// EdgeRequest holds the string denoting the request edge name in mutations.
 	EdgeRequest = "request"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
@@ -111,6 +115,8 @@ var Columns = []string{
 	FieldMetricsFirstTokenLatencyMs,
 	FieldMetricsReasoningDurationMs,
 	FieldRequestHeaders,
+	FieldRequestURL,
+	FieldPassThroughApplied,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -138,6 +144,8 @@ var (
 	DefaultFormat string
 	// DefaultStream holds the default value on creation for the "stream" field.
 	DefaultStream bool
+	// DefaultPassThroughApplied holds the default value on creation for the "pass_through_applied" field.
+	DefaultPassThroughApplied bool
 )
 
 // Status defines the type for the "status" enum field.
@@ -252,6 +260,16 @@ func ByMetricsFirstTokenLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 // ByMetricsReasoningDurationMs orders the results by the metrics_reasoning_duration_ms field.
 func ByMetricsReasoningDurationMs(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMetricsReasoningDurationMs, opts...).ToFunc()
+}
+
+// ByRequestURL orders the results by the request_url field.
+func ByRequestURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestURL, opts...).ToFunc()
+}
+
+// ByPassThroughApplied orders the results by the pass_through_applied field.
+func ByPassThroughApplied(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPassThroughApplied, opts...).ToFunc()
 }
 
 // ByRequestField orders the results by request field.

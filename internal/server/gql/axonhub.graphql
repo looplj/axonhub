@@ -25,8 +25,14 @@ type OverrideOperation {
   to: String
   value: String
   condition: String
+  match: OverrideMatch
   index: Int
   splat: Boolean
+}
+
+type OverrideMatch {
+  path: String!
+  eq: String!
 }
 
 input OverrideOperationInput {
@@ -36,8 +42,14 @@ input OverrideOperationInput {
   to: String
   value: String
   condition: String
+  match: OverrideMatchInput
   index: Int
   splat: Boolean
+}
+
+input OverrideMatchInput {
+  path: String!
+  eq: String!
 }
 
 type TransformOptions {
@@ -783,6 +795,7 @@ type Mutation {
   bulkDeleteChannels(ids: [ID!]!): Boolean!
   testChannel(input: TestChannelInput!): TestChannelPayload!
   testChannelAPIKeys(channelID: ID!, modelID: String): TestChannelAPIKeysPayload!
+  testChannelAPIKey(channelID: ID!, key: String!, modelID: String): TestAPIKeyResult!
   bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!
   bulkUpdateChannelOrdering(
     input: BulkUpdateChannelOrderingInput!

@@ -253,10 +253,12 @@ export interface UpdateVideoStorageSettingsInput {
 
 export interface SecuritySettings {
   blockedIPs: string[];
+  showRequestLogIPBanIcon: boolean;
 }
 
 export interface UpdateSecuritySettingsInput {
   blockedIPs?: string[];
+  showRequestLogIPBanIcon?: boolean;
 }
 
 export interface StoragePolicy {
@@ -933,6 +935,7 @@ const SECURITY_SETTINGS_QUERY = `
   query SecuritySettings {
     securitySettings {
       blockedIPs
+      showRequestLogIPBanIcon
     }
   }
 `;

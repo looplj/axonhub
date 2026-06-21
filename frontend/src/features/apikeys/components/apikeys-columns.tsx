@@ -41,7 +41,7 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   );
 }
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true): ColumnDef<ApiKey>[] => [
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true, canViewCreators: boolean = false): ColumnDef<ApiKey>[] => [
   ...(canWrite
     ? [
         {
@@ -94,21 +94,25 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       className: 'max-w-48',
     },
   },
-  {
-    accessorKey: 'creator',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.creator')} />,
-    cell: ({ row }) => {
-      const creator = row.original.user;
-      const displayName = creator ? `${creator.firstName} ${creator.lastName}` : t('apikeys.user.deleted');
-      return <LongText className='text-muted-foreground max-w-24'>{displayName}</LongText>;
-    },
-    filterFn: (row, _id, value) => {
-      const creator = row.original.user;
-      if (!creator) return false;
-      return value.includes(creator.id);
-    },
-    enableSorting: false,
-  },
+  ...(canViewCreators
+    ? ([
+        {
+          accessorKey: 'creator',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.creator')} />,
+          cell: ({ row }) => {
+            const creator = row.original.user;
+            const displayName = creator ? `${creator.firstName} ${creator.lastName}` : t('apikeys.user.deleted');
+            return <LongText className='text-muted-foreground max-w-24'>{displayName}</LongText>;
+          },
+          filterFn: (row, _id, value) => {
+            const creator = row.original.user;
+            if (!creator) return false;
+            return value.includes(creator.id);
+          },
+          enableSorting: false,
+        },
+      ] as ColumnDef<ApiKey>[])
+    : []),
   {
     accessorKey: 'type',
     header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.type')} />,

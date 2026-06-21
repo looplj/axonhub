@@ -84,9 +84,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		channel := outbound.GetCurrentChannel()
 		llmReq := outbound.state.LlmRequest
 
-		// Multipart audio bodies cannot be reused: the outbound transformer rebuilds the
+		// Multipart bodies cannot be reused: the outbound transformer rebuilds the
 		// multipart payload with a new boundary in Content-Type, so replaying the inbound
-		// bytes would mismatch the header, and the model field cannot be patched via sjson.
+		// bytes would mismatch the header, and form fields cannot be patched via sjson.
 		if !passThroughBodySupported(llmReq.APIFormat) {
 			return request, nil
 		}
@@ -108,6 +108,7 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		}
 
 		request.Body = body
+		outbound.state.PassThroughApplied = true
 
 		return request, nil
 	})
@@ -133,11 +134,14 @@ func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model 
 }
 
 // passThroughBodySupported reports whether the raw inbound body can safely replace the
-// outbound request body. Multipart formats (audio transcription/translation) are excluded.
+// outbound request body. Multipart formats are excluded.
 func passThroughBodySupported(apiFormat llm.APIFormat) bool {
 	//nolint:exhaustive // only multipart formats are excluded.
 	switch apiFormat {
-	case llm.APIFormatOpenAITranscription, llm.APIFormatOpenAITranslation:
+	case llm.APIFormatOpenAITranscription,
+		llm.APIFormatOpenAITranslation,
+		llm.APIFormatOpenAIImageEdit,
+		llm.APIFormatOpenAIImageVariation:
 		return false
 	default:
 		return true

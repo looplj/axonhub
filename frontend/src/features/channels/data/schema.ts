@@ -142,13 +142,20 @@ export const headerEntrySchema = z.object({
 export type HeaderEntry = z.infer<typeof headerEntrySchema>;
 
 // Override Operation
+export const overrideMatchSchema = z.object({
+  path: z.string().trim().min(1),
+  eq: z.string().trim().min(1),
+});
+export type OverrideMatch = z.infer<typeof overrideMatchSchema>;
+
 export const overrideOperationSchema = z.object({
-  op: z.enum(['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert']),
+  op: z.enum(['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert', 'array_remove']),
   path: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   value: z.any().optional(),
   condition: z.string().optional(),
+  match: overrideMatchSchema.nullish(),
   index: z.number().int().nullish(),
   splat: z.boolean().nullish(),
 });

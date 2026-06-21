@@ -1,7 +1,11 @@
 import { format } from 'date-fns';
-import { Loader2, RefreshCw, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
+import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   useProviderQuotaStatuses,
@@ -12,6 +16,8 @@ import {
   ProviderSyntheticQuotaData,
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
+  resetChannelQuotaNow,
+  checkProviderQuotas,
 } from '@/features/system/data/quotas';
 import { useQuotaEnforcementSettings, type QuotaEnforcementMode } from '@/features/system/data/system';
 
@@ -207,6 +213,27 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
   const percentage = getChannelPercentage(channel);
   const batteryLevel = getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
+  const queryClient = useQueryClient();
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetCodexQuota = async () => {
+    if (channel.type !== 'codex') return;
+
+    setIsResetting(true);
+    try {
+      await resetChannelQuotaNow(channel.id);
+      toast.success(t('quota.codex.resetSuccess'));
+      // Trigger a backend quota refresh, then refetch the cached statuses.
+      await checkProviderQuotas();
+      await queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
+    } catch (err) {
+      toast.error(t('quota.codex.resetError'), {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const formatWindowDuration = (seconds?: number) => {
     if (!seconds) return '';
@@ -620,6 +647,25 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                         {formatDate(qd.rate_limit.secondary_window.reset_at)})
                       </div>
                     )}
+                  </div>
+                )}
+
+                {(status === 'exhausted' || status === 'warning') && (
+                  <div className='border-border/60 flex items-center justify-end gap-2 border-t border-dashed pt-3'>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      className='h-7 text-xs'
+                      disabled={isResetting}
+                      onClick={handleResetCodexQuota}
+                    >
+                      {isResetting ? (
+                        <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' />
+                      ) : (
+                        <Zap className='mr-1.5 h-3.5 w-3.5' />
+                      )}
+                      {t('quota.codex.resetNow')}
+                    </Button>
                   </div>
                 )}
               </>

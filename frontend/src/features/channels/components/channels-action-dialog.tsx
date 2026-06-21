@@ -913,12 +913,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       setResponsesTransport(transport);
 
       const channelType = selectedProvider === 'codex' ? 'codex' : selectedType || derivedChannelType;
+      // Third-party Codex channels use custom endpoints — don't overwrite them on transport switch
+      if (isCodexType && authMode === 'third-party') return;
       const baseURL = transport === 'websocket' ? getResponsesWebSocketBaseURL(channelType) : getDefaultBaseURL(channelType);
       if (baseURL) {
         form.setValue('baseURL', baseURL, { shouldDirty: true });
       }
     },
-    [derivedChannelType, form, isOAuthChannel, selectedProvider, selectedType]
+    [authMode, derivedChannelType, form, isCodexType, isOAuthChannel, selectedProvider, selectedType]
   );
 
   const handleGeminiVertexChange = useCallback(
@@ -2105,7 +2107,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 aria-invalid={!!fieldState.error}
                                 data-testid='channel-base-url-input'
                                 disabled={
-                                  isCodexType || (isClaudeCodeType && authMode === 'official') || selectedProvider === 'antigravity'
+                                  (isCodexType && authMode !== 'third-party') || (isClaudeCodeType && authMode === 'official') || selectedProvider === 'antigravity'
                                 }
                                 {...field}
                               />
