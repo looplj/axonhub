@@ -149,7 +149,7 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 	// Build args slice for parameterized query
 	startUTC := startTime.UTC()
 	endUTC := endTime.UTC()
-	args := make([]interface{}, 0, len(channelIDs)+3)
+	args := make([]any, 0, len(channelIDs)+3)
 	if useDollarPlaceholders {
 		args = append(args, startUTC, endUTC)
 	} else {
