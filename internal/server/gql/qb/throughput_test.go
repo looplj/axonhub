@@ -511,6 +511,37 @@ func TestBuildProbeStatsQuery_SQLStructure(t *testing.T) {
 	}
 }
 
+func TestBuildProbeStatsQuery_BoundsUsageLogsAggregationByTime(t *testing.T) {
+	tests := []struct {
+		name                  string
+		useDollarPlaceholders bool
+		wantUsageLogWindow    string
+	}{
+		{
+			name:                  "postgres reuses start and end placeholders",
+			useDollarPlaceholders: true,
+			wantUsageLogWindow: "FROM usage_logs\n" +
+				"    WHERE created_at >= $1\n" +
+				"    GROUP BY request_id, channel_id",
+		},
+		{
+			name:                  "question mark dialects bind usage log time window",
+			useDollarPlaceholders: false,
+			wantUsageLogWindow: "FROM usage_logs\n" +
+				"    WHERE created_at >= ?\n" +
+				"    GROUP BY request_id, channel_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildProbeStatsQuery(tt.useDollarPlaceholders, "AND se.channel_id IN (?, ?)", ThroughputModeRowNumber)
+
+			assert.Contains(t, got, tt.wantUsageLogWindow, "usage_logs aggregation should be time-bounded before grouping")
+		})
+	}
+}
+
 // TestBuildProbeStatsQuery_PlaceholderCount tests that placeholders are correctly placed.
 func TestBuildProbeStatsQuery_PlaceholderCount(t *testing.T) {
 	tests := []struct {
@@ -526,7 +557,7 @@ func TestBuildProbeStatsQuery_PlaceholderCount(t *testing.T) {
 			useDollarPlaceholders: true,
 			channelIDFilter:       "AND se.channel_id IN ($3, $4)",
 			mode:                  ThroughputModeRowNumber,
-			expectedDollarCount:   4,
+			expectedDollarCount:   5,
 			expectedQuestionCount: 0,
 		},
 		{
@@ -535,7 +566,7 @@ func TestBuildProbeStatsQuery_PlaceholderCount(t *testing.T) {
 			channelIDFilter:       "AND se.channel_id IN (?, ?)",
 			mode:                  ThroughputModeRowNumber,
 			expectedDollarCount:   0,
-			expectedQuestionCount: 4,
+			expectedQuestionCount: 5,
 		},
 	}
 
