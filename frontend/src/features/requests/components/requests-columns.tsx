@@ -153,6 +153,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
 
     {
       id: 'passThrough',
+      accessorFn: (row) => row.executions?.edges?.some((edge) => edge.node?.passThroughApplied) ?? false,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.passThrough')} />,
       enableSorting: false,
       enableHiding: true,
