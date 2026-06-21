@@ -30,7 +30,7 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		LogitBias:           r.LogitBias,
 		Metadata:            r.Metadata,
 		Modalities:          r.Modalities,
-		ReasoningEffort:     r.ReasoningEffort,
+		ReasoningEffort:     normalizeReasoningEffort(r.ReasoningEffort),
 		ServiceTier:         r.ServiceTier,
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,
@@ -365,4 +365,14 @@ func (c Choice) ToLLMChoice() llm.Choice {
 	}
 
 	return choice
+}
+
+// normalizeReasoningEffort converts internal "xhigh" back to "max" for OpenAI-compatible APIs.
+// Axonhub internally uses "xhigh" to represent Anthropic's "max" effort level, but most
+// OpenAI-compatible providers (ollama, opencode, etc.) expect the standard "max" value.
+func normalizeReasoningEffort(effort string) string {
+	if effort == "xhigh" {
+		return "max"
+	}
+	return effort
 }
