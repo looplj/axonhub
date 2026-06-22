@@ -47,11 +47,12 @@ Thread (完整用户对话会话)
 ### 配置
 ```yaml
 # config.yml
-trace:
-  thread_header: "AH-Thread-Id"
-  trace_header: "AH-Trace-Id"
-  extra_trace_headers:
-    - "Sentry-Trace"
+server:
+  trace:
+    thread_header: "AH-Thread-Id"
+    trace_header: "AH-Trace-Id"
+    extra_trace_headers:
+      - "Sentry-Trace"
 ```
 
 - 通过 `extra_trace_headers` 复用已有的埋点请求头。
