@@ -1105,6 +1105,104 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 	})
 }
 
+// TestAPIKeyService_NameUniqueness verifies application-level name uniqueness
+// (Path A', no DB unique index): names are unique per project, reusable after
+// soft-delete, and still occupied by archived (not deleted) keys. It drives
+// CreateLLMAPIKey, whose post-insert live-count check enforces the invariant.
+func TestAPIKeyService_NameUniqueness(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
+	defer client.Close()
+
+	setupCtx := ent.NewContext(context.Background(), client)
+	setupCtx = authz.WithTestBypass(setupCtx)
+
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	ownerUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	projectName := uuid.NewString()
+	ownerProject, err := client.Project.Create().
+		SetName(projectName).
+		SetDescription(projectName).
+		SetStatus(project.StatusActive).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	serviceKey, err := GenerateAPIKey("ah")
+	require.NoError(t, err)
+
+	ownerAPIKey, err := client.APIKey.Create().
+		SetName("Service Account").
+		SetKey(serviceKey).
+		SetUserID(ownerUser.ID).
+		SetProjectID(ownerProject.ID).
+		SetType(apikey.TypeServiceAccount).
+		SetScopes([]string{string(scopes.ScopeWriteAPIKeys)}).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	ctx := ent.NewContext(context.Background(), client)
+	ctx = contexts.WithAPIKey(ctx, ownerAPIKey)
+
+	t.Run("rejects duplicate name in same project", func(t *testing.T) {
+		_, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "dup-name")
+		require.NoError(t, err)
+
+		_, err = apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "dup-name")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "already exists")
+
+		// Regression: CreateLLMAPIKey inserts the row, then checks the live count
+		// post-insert and returns DuplicateNameError on a collision. Because there
+		// is no DB unique constraint, correctness depends on the enclosing top-level
+		// transaction rolling that insert back. Assert exactly one live key keeps the
+		// name, i.e. the rejected attempt left no extra live row behind.
+		live, err := client.APIKey.Query().
+			Where(apikey.NameEQ("dup-name"), apikey.ProjectIDEQ(ownerProject.ID)).
+			Count(setupCtx)
+		require.NoError(t, err)
+		require.Equal(t, 1, live, "rejected duplicate create must leave no extra live row")
+	})
+
+	t.Run("name reusable after soft-delete", func(t *testing.T) {
+		created, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "reusable")
+		require.NoError(t, err)
+
+		// The SoftDeleteMixin hook turns Delete into setting deleted_at != 0, so the
+		// composite index slot (..., deleted_at = 0) frees up.
+		err = client.APIKey.DeleteOneID(created.ID).Exec(setupCtx)
+		require.NoError(t, err)
+
+		recreated, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "reusable")
+		require.NoError(t, err)
+		require.NotEqual(t, created.ID, recreated.ID)
+	})
+
+	t.Run("archived key still occupies the name", func(t *testing.T) {
+		created, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "archived-name")
+		require.NoError(t, err)
+
+		// Archiving only changes status; deleted_at stays 0, so the name is still taken.
+		_, err = client.APIKey.UpdateOneID(created.ID).
+			SetStatus(apikey.StatusArchived).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		_, err = apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "archived-name")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "already exists")
+	})
+}
+
 func TestAPIKeyService_RotateAPIKey(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
 	defer apiKeyService.Stop()
