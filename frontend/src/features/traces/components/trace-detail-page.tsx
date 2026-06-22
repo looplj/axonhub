@@ -146,7 +146,7 @@ export default function TraceDetailPage() {
             <div className='flex items-center gap-1 sm:gap-2 shrink-0'>
               <div className='hidden sm:flex items-center gap-2'>
                 <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} id='auto-refresh-switch' />
-                <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm'>
+                <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm whitespace-nowrap'>
                   {t('common.autoRefresh')}
                 </label>
               </div>
