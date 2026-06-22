@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { useAllChannelTags } from '../data/channels';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { DataTableViewOptions } from './data-table-view-options';
@@ -28,6 +29,7 @@ export function DataTableToolbar<TData>({
   onExitErrorOnlyMode,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
   const tableState = table.getState();
   const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0;
 
@@ -92,7 +94,7 @@ export function DataTableToolbar<TData>({
   );
 
   return (
-    <div className='flex items-center gap-4 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0'>
+    <div ref={scrollRef} className='flex items-center gap-4 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0'>
       <div className='relative min-w-48 flex-1'>
         <i className='ph ph-magnifying-glass text-muted-foreground absolute top-2.5 left-3'></i>
         <Input

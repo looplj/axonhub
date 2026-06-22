@@ -5,6 +5,7 @@ import { RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import type { DateTimeRangeValue } from '@/utils/date-range';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -40,6 +41,7 @@ export function DataTableToolbar<TData>({
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
   const [showArchivedApiKeys, setShowArchivedApiKeys] = useState(false);
   const [showArchivedChannels, setShowArchivedChannels] = useState(false);
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
@@ -170,7 +172,7 @@ export function DataTableToolbar<TData>({
   ];
 
   return (
-    <div className='flex items-center justify-between gap-2 overflow-x-auto'>
+    <div ref={scrollRef} className='flex items-center justify-between gap-2 overflow-x-auto'>
       <div className='flex flex-1 items-center space-x-2 shrink-0'>
         <Input
           placeholder={t('requests.filters.filterModelId')}

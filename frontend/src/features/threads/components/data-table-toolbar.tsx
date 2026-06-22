@@ -2,6 +2,7 @@ import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
 import { RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -32,11 +33,12 @@ export function ThreadsTableToolbar<TData>({
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange || !!threadIdFilter.trim();
 
   return (
-    <div className='flex items-center justify-between gap-2 overflow-x-auto'>
+    <div ref={scrollRef} className='flex items-center justify-between gap-2 overflow-x-auto'>
       <div className='flex flex-1 items-center space-x-2 shrink-0'>
         <Input
           placeholder={t('threads.filters.filterThreadId')}

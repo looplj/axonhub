@@ -1,6 +1,7 @@
 import { useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import type { ChannelTypeCount } from '../data/channels';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
 
@@ -53,6 +54,7 @@ function groupTypesByPrefix(typeCounts: ChannelTypeCount[]): GroupedTypeCount[] 
 
 export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, selectedTab, onTabChange }: ChannelsTypeTabsProps) {
   const { t } = useTranslation();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
 
   // Group types by prefix and get top 8
   const groupedTypes = useMemo(() => {
@@ -78,8 +80,8 @@ export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, sel
   return (
     <div className='mb-6 w-full overflow-hidden'>
       <div
+        ref={scrollRef}
         className='hide-scroll flex flex-nowrap items-center gap-2 overflow-x-auto scroll-smooth'
-        onWheel={(e) => { e.currentTarget.scrollLeft += e.deltaY; }}
       >
         {/* All tab */}
         <button

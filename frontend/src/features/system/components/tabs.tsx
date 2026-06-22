@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { AboutSettings } from './about-settings';
 import { BrandSettings } from './brand-settings';
 import { DiagnosticsSettings } from './diagnostics-settings';
@@ -26,6 +27,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
   const { t } = useTranslation();
   const { isOwner } = usePermissions();
   const [activeTab, setActiveTab] = useState<SystemTabKey>('general');
+  const tabListRef = useHorizontalScroll<HTMLDivElement>();
 
   useEffect(() => {
     if (!initialTab) {
@@ -53,7 +55,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
       }}
       className='w-full'
     >
-      <TabsList className='shadow-soft border-border bg-background flex w-full rounded-2xl border overflow-x-auto scrollbar-hide'>
+      <TabsList ref={tabListRef} className='shadow-soft border-border bg-background flex w-full rounded-2xl border overflow-x-auto scrollbar-hide'>
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}
         </TabsTrigger>
