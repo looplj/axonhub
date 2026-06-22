@@ -1105,10 +1105,10 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 	})
 }
 
-// TestAPIKeyService_NameUniqueness verifies the (project_id, name, deleted_at)
-// unique index: names are unique per project, reusable after soft-delete, and
-// still occupied by archived (not deleted) keys. It drives CreateLLMAPIKey,
-// which relies purely on the DB constraint (no pre-insert existence check).
+// TestAPIKeyService_NameUniqueness verifies application-level name uniqueness
+// (Path A', no DB unique index): names are unique per project, reusable after
+// soft-delete, and still occupied by archived (not deleted) keys. It drives
+// CreateLLMAPIKey, whose post-insert live-count check enforces the invariant.
 func TestAPIKeyService_NameUniqueness(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
 	defer apiKeyService.Stop()
@@ -1160,6 +1160,17 @@ func TestAPIKeyService_NameUniqueness(t *testing.T) {
 		_, err = apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "dup-name")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "already exists")
+
+		// Regression: CreateLLMAPIKey inserts the row, then checks the live count
+		// post-insert and returns DuplicateNameError on a collision. Because there
+		// is no DB unique constraint, correctness depends on the enclosing top-level
+		// transaction rolling that insert back. Assert exactly one live key keeps the
+		// name, i.e. the rejected attempt left no extra live row behind.
+		live, err := client.APIKey.Query().
+			Where(apikey.NameEQ("dup-name"), apikey.ProjectIDEQ(ownerProject.ID)).
+			Count(setupCtx)
+		require.NoError(t, err)
+		require.Equal(t, 1, live, "rejected duplicate create must leave no extra live row")
 	})
 
 	t.Run("name reusable after soft-delete", func(t *testing.T) {

@@ -33,15 +33,6 @@ func (APIKey) Indexes() []ent.Index {
 		index.Fields("key").
 			StorageKey("api_keys_by_key").
 			Unique(),
-		// Names identify keys on the OpenAPI surface (GetForRead resolves a name
-		// within a project), so enforce per-project name uniqueness at the DB
-		// level. deleted_at is part of the index — mirroring APIKeyProfileTemplate
-		// — so a name can be reused after a key is soft-deleted, and it stays a
-		// plain composite unique index (no partial WHERE clause) for SQLite/
-		// PostgreSQL/MySQL portability.
-		index.Fields("project_id", "name", "deleted_at").
-			StorageKey("api_keys_by_project_name").
-			Unique(),
 	}
 }
 

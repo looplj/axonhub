@@ -58,11 +58,6 @@ var (
 				Unique:  true,
 				Columns: []*schema.Column{APIKeysColumns[4]},
 			},
-			{
-				Name:    "api_keys_by_project_name",
-				Unique:  true,
-				Columns: []*schema.Column{APIKeysColumns[10], APIKeysColumns[5], APIKeysColumns[3]},
-			},
 		},
 	}
 	// APIKeyProfileTemplatesColumns holds the columns for the "api_key_profile_templates" table.
