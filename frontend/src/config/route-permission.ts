@@ -62,6 +62,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/api-keys',
+        requiredScopes: ['read_api_keys'],
+        mode: 'hidden',
+      },
+      {
         path: '/system',
         requiredScopes: ['read_system'],
         mode: 'hidden',
