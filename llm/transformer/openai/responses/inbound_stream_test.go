@@ -142,6 +142,100 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_TransformStream_KeepsResponsesReasoningItemsSeparate(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_reasoning_multi",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant"},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_reasoning_multi",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			TransformerMetadata: map[string]any{
+				responsesReasoningItemTransformerMetadataKey: responsesReasoningItemMetadata{ID: "rs_1", Done: true},
+			},
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{ID: "rs_1", ReasoningSignature: lo.ToPtr("gAAAA_done_1")},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_reasoning_multi",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			TransformerMetadata: map[string]any{
+				responsesReasoningItemTransformerMetadataKey: map[string]any{"id": "rs_2", "done": true},
+			},
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{ID: "rs_2", ReasoningSignature: lo.ToPtr("gAAAA_done_2")},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_reasoning_multi",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index:        0,
+				Delta:        &llm.Message{},
+				FinishReason: lo.ToPtr("stop"),
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_reasoning_multi",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+		},
+	}))
+	require.NoError(t, err)
+
+	var actualEvents []StreamEvent
+	for stream.Next() {
+		event := stream.Current()
+		var ev StreamEvent
+		err := json.Unmarshal(event.Data, &ev)
+		require.NoError(t, err)
+		actualEvents = append(actualEvents, ev)
+	}
+	require.NoError(t, stream.Err())
+
+	var doneItems []Item
+	for _, event := range actualEvents {
+		if event.Type == StreamEventTypeOutputItemDone && event.Item != nil && event.Item.Type == "reasoning" {
+			doneItems = append(doneItems, *event.Item)
+		}
+	}
+
+	require.Len(t, doneItems, 2)
+	require.Equal(t, "rs_1", doneItems[0].ID)
+	require.Equal(t, "gAAAA_done_1", lo.FromPtr(doneItems[0].EncryptedContent))
+	require.Equal(t, "rs_2", doneItems[1].ID)
+	require.Equal(t, "gAAAA_done_2", lo.FromPtr(doneItems[1].EncryptedContent))
+
+	lastEvent := actualEvents[len(actualEvents)-1]
+	require.Equal(t, StreamEventTypeResponseCompleted, lastEvent.Type)
+	require.NotNil(t, lastEvent.Response)
+	require.Len(t, lastEvent.Response.Output, 2)
+	require.Equal(t, "rs_1", lastEvent.Response.Output[0].ID)
+	require.Equal(t, "gAAAA_done_1", lo.FromPtr(lastEvent.Response.Output[0].EncryptedContent))
+	require.Equal(t, "rs_2", lastEvent.Response.Output[1].ID)
+	require.Equal(t, "gAAAA_done_2", lo.FromPtr(lastEvent.Response.Output[1].EncryptedContent))
+}
+
 func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMetadata(t *testing.T) {
 	trans := NewInboundTransformer()
 

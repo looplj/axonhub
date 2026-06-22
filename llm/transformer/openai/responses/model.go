@@ -421,6 +421,12 @@ type URLCitation struct {
 }
 
 const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
+const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
+
+type responsesReasoningItemMetadata struct {
+	ID   string `json:"id,omitempty"`
+	Done bool   `json:"done,omitempty"`
+}
 
 type WebSearchSource struct {
 	Type  string `json:"type,omitempty"`
