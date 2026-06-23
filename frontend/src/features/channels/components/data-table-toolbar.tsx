@@ -1,5 +1,6 @@
 import { useMemo, useEffect } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
+import { IconChevronsDown, IconChevronsUp } from '@tabler/icons-react';
 import { Table } from '@tanstack/react-table';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { useAllChannelTags } from '../data/channels';
+import { useChannels } from '../context/channels-context';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { DataTableViewOptions } from './data-table-view-options';
 
@@ -30,6 +32,7 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
   const scrollRef = useHorizontalScroll<HTMLDivElement>();
+  const { showTypeTabs, setShowTypeTabs } = useChannels();
   const tableState = table.getState();
   const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0;
 
@@ -104,6 +107,14 @@ export function DataTableToolbar<TData>({
           className='bg-card border-border focus:border-ring placeholder-muted-foreground text-foreground w-full rounded-xl border py-2 pr-4 pl-10 text-sm shadow-sm transition-all focus:outline-none'
         />
       </div>
+      <Button variant='outline' size='sm' className='h-8' onClick={() => setShowTypeTabs(!showTypeTabs)}>
+        {showTypeTabs ? (
+          <IconChevronsDown className='mr-1 h-4 w-4' />
+        ) : (
+          <IconChevronsUp className='mr-1 h-4 w-4' />
+        )}
+        {t('channels.filters.providerToggle')}
+      </Button>
       {table.getColumn('status') && (
         <DataTableFacetedFilter column={table.getColumn('status')} title={t('channels.filters.status')} options={channelStatuses} />
       )}

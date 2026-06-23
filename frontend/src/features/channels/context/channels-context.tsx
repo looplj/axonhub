@@ -43,6 +43,8 @@ interface ChannelsContextType {
   setSelectedChannels: React.Dispatch<React.SetStateAction<Channel[]>>;
   resetRowSelection: () => void;
   setResetRowSelection: (fn: () => void) => void;
+  showTypeTabs: boolean;
+  setShowTypeTabs: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const ChannelsContext = React.createContext<ChannelsContextType | null>(null);
@@ -55,6 +57,7 @@ export default function ChannelsProvider({ children }: Props) {
   const [open, setOpen] = useDialogState<ChannelsDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Channel | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<Channel[]>([]);
+  const [showTypeTabs, setShowTypeTabs] = useState<boolean>(true);
   const resetRowSelectionRef = useRef<() => void>(() => {});
 
   return (
@@ -70,6 +73,8 @@ export default function ChannelsProvider({ children }: Props) {
         setResetRowSelection: (fn: () => void) => {
           resetRowSelectionRef.current = fn;
         },
+        showTypeTabs,
+        setShowTypeTabs,
       }}
     >
       {children}
