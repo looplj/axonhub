@@ -116,7 +116,7 @@ export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocomplete
         ref={containerRef}
         data-tags-input-container
         className={cn(
-          'border-input bg-background ring-offset-background focus-within:ring-ring flex min-h-10 w-full flex-wrap gap-1 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-offset-2',
+          'border-input bg-background focus-within:border-ring flex min-h-10 w-full flex-wrap gap-1 rounded-md border px-3 py-2 text-sm',
           className
         )}
         onClick={handleContainerClick}

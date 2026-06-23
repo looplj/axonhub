@@ -101,7 +101,7 @@ export function DataTableToolbar<TData>({
           placeholder={t('channels.filters.filterByName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className='bg-card border-border focus:ring-primary/20 placeholder-muted-foreground text-foreground w-full rounded-xl border py-2 pr-4 pl-10 text-sm shadow-sm transition-all focus:ring-2 focus:outline-none'
+          className='bg-card border-border focus:border-ring placeholder-muted-foreground text-foreground w-full rounded-xl border py-2 pr-4 pl-10 text-sm shadow-sm transition-all focus:outline-none'
         />
       </div>
       {table.getColumn('status') && (
