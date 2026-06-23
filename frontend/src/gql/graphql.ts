@@ -41,10 +41,8 @@ function isForbiddenGraphQLError(error: any): boolean {
   return error?.extensions?.code === 'FORBIDDEN' || error?.message?.toLowerCase().includes('permission denied');
 }
 
-function isUnauthorizedGraphQLError(error: any): boolean {
-  const message = error?.message?.toLowerCase() ?? '';
-
-  return error?.extensions?.code === 'UNAUTHENTICATED' || message.includes('unauthorized') || message.includes('unauthenticated');
+export function isUnauthorizedGraphQLError(error: any): boolean {
+  return error?.extensions?.code === 'UNAUTHENTICATED';
 }
 
 // GraphQL client function with token support

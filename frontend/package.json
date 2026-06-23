@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "prepare": "husky",
     "knip": "knip",
+    "test:unit": "node --test src/**/*.test.mjs",
     "test:e2e": "../scripts/e2e/e2e-test.sh",
     "test:e2e:headed": "../scripts/e2e/e2e-test.sh --headed",
     "test:e2e:ui": "../scripts/e2e/e2e-test.sh --ui",
