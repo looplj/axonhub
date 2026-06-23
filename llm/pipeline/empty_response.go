@@ -47,6 +47,10 @@ func hasMessageContent(msg *llm.Message) bool {
 		return true
 	}
 
+	if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
+		return true
+	}
+
 	if msg.Refusal != "" {
 		return true
 	}
