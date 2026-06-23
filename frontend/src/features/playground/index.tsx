@@ -322,7 +322,7 @@ export default function Playground() {
       <div className='bg-background flex h-screen w-full flex-col md:flex-row'>
         {/* Settings Sidebar */}
 
-        <div className='bg-card shadow-soft border-border m-4 flex max-h-[40vh] w-auto flex-col rounded-2xl border border-r md:max-h-none md:w-[340px] md:min-w-[280px] md:max-w-[400px]'>
+        <div className='bg-card shadow-soft border-border m-4 flex max-h-[60vh] w-auto flex-col rounded-2xl border border-r md:max-h-none md:w-[340px] md:min-w-[280px] md:max-w-[400px]'>
           <div className='border-b p-4'>
             <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
