@@ -4,7 +4,7 @@ import Dashboard from '@/features/dashboard';
 
 function ProtectedDashboard() {
   return (
-    <RouteGuard requiredScopes={['read_dashboard']}>
+    <RouteGuard requiredScopes={['read_dashboard']} scopeLevel="system">
       <Dashboard />
     </RouteGuard>
   );

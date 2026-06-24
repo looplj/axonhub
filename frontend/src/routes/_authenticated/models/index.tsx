@@ -4,7 +4,7 @@ import ModelsManagement from '@/features/models';
 
 function ProtectedModels() {
   return (
-    <RouteGuard requiredScopes={['read_channels']}>
+    <RouteGuard requiredScopes={['read_channels']} scopeLevel="system">
       <ModelsManagement />
     </RouteGuard>
   );

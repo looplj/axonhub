@@ -6,7 +6,7 @@ import ProjectUsers from '@/features/proejct-users';
 function ProtectedProjectUsers() {
   return (
     <ProjectGuard>
-      <RouteGuard requiredScopes={['read_users']}>
+      <RouteGuard requiredScopes={['read_users']} scopeLevel="any">
         <ProjectUsers />
       </RouteGuard>
     </ProjectGuard>

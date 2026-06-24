@@ -4,7 +4,7 @@ import PromptProtectionRulesManagement from '@/features/prompt-protection-rules'
 
 function ProtectedPromptProtectionRules() {
   return (
-    <RouteGuard requiredScopes={['read_channels']}>
+    <RouteGuard requiredScopes={['read_channels']} scopeLevel="system">
       <PromptProtectionRulesManagement />
     </RouteGuard>
   );

@@ -4,7 +4,7 @@ import DashboardChannelSuccessRates from '@/features/dashboard/channel-success-r
 
 function ProtectedDashboardChannelSuccessRates() {
   return (
-    <RouteGuard requiredScopes={['read_dashboard']}>
+    <RouteGuard requiredScopes={['read_dashboard']} scopeLevel="system">
       <DashboardChannelSuccessRates />
     </RouteGuard>
   );

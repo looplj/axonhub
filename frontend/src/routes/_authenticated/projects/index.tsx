@@ -4,7 +4,7 @@ import Projects from '@/features/projects';
 
 function ProtectedProjects() {
   return (
-    <RouteGuard requiredScopes={['read_projects']}>
+    <RouteGuard requiredScopes={['read_projects']} scopeLevel="system">
       <Projects />
     </RouteGuard>
   );

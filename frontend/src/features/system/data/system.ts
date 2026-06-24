@@ -1074,18 +1074,11 @@ export function useUpdateChannelSetting() {
 }
 
 export function useGeneralSettings() {
-  const { handleError } = useErrorHandler();
-
   return useQuery({
     queryKey: ['generalSettings'],
     queryFn: async () => {
-      try {
-        const data = await graphqlRequest<{ systemGeneralSettings: SystemGeneralSettings }>(SYSTEM_GENERAL_SETTINGS_QUERY);
-        return data.systemGeneralSettings;
-      } catch (error) {
-        handleError(error, i18n.t('common.errors.internalServerError'));
-        throw error;
-      }
+      const data = await graphqlRequest<{ systemGeneralSettings: SystemGeneralSettings }>(SYSTEM_GENERAL_SETTINGS_QUERY);
+      return data.systemGeneralSettings;
     },
     placeholderData: (previousData) => previousData,
   });

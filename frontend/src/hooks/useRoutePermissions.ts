@@ -143,6 +143,8 @@ export function useRoutePermissions() {
 
   return {
     userScopes: [...systemScopes, ...projectScopes],
+    systemScopes,
+    projectScopes,
     isOwner,
     checkRouteAccess,
     checkGroupAccess,
