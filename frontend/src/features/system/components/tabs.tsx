@@ -55,7 +55,10 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
       }}
       className='w-full'
     >
-      <TabsList ref={tabListRef} className='shadow-soft border-border bg-background flex w-full rounded-2xl border overflow-x-auto scrollbar-hide'>
+      <TabsList
+        ref={tabListRef}
+        className='shadow-soft border-border bg-background flex w-full justify-start overflow-x-auto rounded-2xl border scrollbar-hide [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0'
+      >
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}
         </TabsTrigger>
