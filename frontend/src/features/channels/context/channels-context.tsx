@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import useDialogState from '@/hooks/use-dialog-state';
 import { Channel } from '../data/schema';
 
@@ -57,7 +57,26 @@ export default function ChannelsProvider({ children }: Props) {
   const [open, setOpen] = useDialogState<ChannelsDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Channel | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<Channel[]>([]);
-  const [showTypeTabs, setShowTypeTabs] = useState<boolean>(true);
+  const [showTypeTabs, setShowTypeTabs] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('channels-show-type-tabs');
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        return typeof parsed === 'boolean' ? parsed : true;
+      }
+    } catch {
+      return true;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('channels-show-type-tabs', JSON.stringify(showTypeTabs));
+    } catch {
+      // Ignore storage failures; the in-memory preference still works.
+    }
+  }, [showTypeTabs]);
   const resetRowSelectionRef = useRef<() => void>(() => {});
 
   return (
