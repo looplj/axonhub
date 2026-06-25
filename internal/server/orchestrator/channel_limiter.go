@@ -38,7 +38,7 @@ type ChannelLimiter struct {
 
 	mu       sync.Mutex
 	inFlight int
-	waiters  *list.List // FIFO of *slotReq; only used in hard mode.
+	waiters  *list.List // FIFO of *slotReq; populated whenever inFlight >= capacity (bounded and unbounded queues alike).
 }
 
 // slotReq is a single waiter in the FIFO queue. Release closes ch to transfer

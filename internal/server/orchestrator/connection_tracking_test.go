@@ -256,32 +256,32 @@ func (s *hardModeStreamRecorder) Close() error {
 var _ streams.Stream[*llm.Response] = (*hardModeStreamRecorder)(nil)
 
 // TestChannelLimiterMiddleware_StreamCloseDoesNotAdmitWaiterBeforeUpstreamClosed
-// pins the per-channel concurrency cap to the PHYSICAL upstream connection in
-// hard mode (queueSize > 0).
+// guards the per-channel concurrency cap at the PHYSICAL upstream connection when a
+// bounded queue is configured (queueSize > 0).
 //
-// channelLimiterStream.Close currently runs s.release() BEFORE s.Stream.Close()
-// (see connection_tracking.go). So when request A finishes, a queued waiter B is
-// granted A's slot — and is free to dial a brand-new upstream connection — while
-// A's own upstream stream/connection has NOT yet been closed. For that window the
-// channel momentarily holds capacity+1 live upstream connections even though the
-// inFlight counter stays <= capacity. On a client abort (Close before EOF) the old
-// connection is still actively open, so the overlap is real, not just bookkeeping.
+// It guards against a release-before-close ordering bug: if channelLimiterStream.Close
+// released the limiter slot BEFORE closing s.Stream, a queued waiter B would be granted
+// A's slot — and be free to dial a brand-new upstream connection — while A's own
+// upstream stream/connection had NOT yet been closed. For that window the channel would
+// momentarily hold capacity+1 live upstream connections even though the inFlight counter
+// stays <= capacity. On a client abort (Close before EOF) the old connection is still
+// actively open, so the overlap is real, not just bookkeeping.
 //
-// Repro is deterministic: capacity=1, queue=1. Request A holds the only slot and
-// waiter B is parked in the queue. When A's wrapped stream is closed, the recorder
-// captures the limiter state at the instant the upstream Close runs. The correct
-// (post-fix) behavior is that B is STILL queued (waiting == 1) when A's upstream is
-// closed — the slot must only be handed over AFTER the upstream is torn down.
+// Repro is deterministic: capacity=1, queue=1. Request A holds the only slot and waiter
+// B is parked in the queue. When A's wrapped stream is closed, the recorder captures the
+// limiter state at the instant the upstream Close runs. Correct behavior is that B is
+// STILL queued (waiting == 1) when A's upstream is closed — the slot must only be handed
+// over AFTER the upstream is torn down.
 //
-//   - RED  (current code): waiting == 0 — B was admitted before A's upstream closed.
-//   - GREEN (after fix):   waiting == 1 — A's upstream closed first, then B admitted.
+//   - waiting == 1: PASS — A's upstream closed first, then B was admitted (correct).
+//   - waiting == 0: FAIL — B was admitted before A's upstream closed (the bug).
 //
-// The fix is to reorder channelLimiterStream.Close to close the upstream first,
-// then release (ideally `defer s.release(); return s.Stream.Close()`).
+// The guarantee comes from channelLimiterStream.Close tearing down the upstream first
+// and releasing the slot afterwards (`defer s.release(); return s.Stream.Close()`).
 func TestChannelLimiterMiddleware_StreamCloseDoesNotAdmitWaiterBeforeUpstreamClosed(t *testing.T) {
 	t.Parallel()
 
-	ch := channelWithLimit(11, "stream-handoff", 1, 1) // hard mode: capacity 1, queue 1
+	ch := channelWithLimit(11, "stream-handoff", 1, 1) // bounded queue: capacity 1, queue 1
 	mgr := NewChannelLimiterManager()
 	out := newTestOutbound(ch)
 	m := withChannelLimiter(out, mgr, nil).(*channelLimiterMiddleware)
