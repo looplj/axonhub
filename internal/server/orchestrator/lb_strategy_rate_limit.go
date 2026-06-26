@@ -189,11 +189,13 @@ func (s *RateLimitAwareStrategy) scoreRPMTPM(channel *biz.Channel, details map[s
 //
 // Behaviour:
 //   - No limiter (channel has no MaxConcurrent): full score, never exhausted.
-//   - Soft mode (queueSize == 0): full marks until inFlight >= capacity, then
-//     exhausted (LB ranks last but middleware still admits the request).
-//   - Hard mode (queueSize > 0): full score below capacity; once spilled into
-//     the queue, score is capped at queueingScoreCeiling × maxScore and decays
-//     with queue depth; exhausted only when the queue is also full.
+//   - Below capacity: score in [queueingScoreCeiling × maxScore, maxScore] by the
+//     in-flight ratio.
+//   - At/over capacity with a bounded queue (queueSize > 0): score capped at
+//     queueingScoreCeiling × maxScore and decays with queue depth; exhausted only
+//     when the queue is also full.
+//   - At/over capacity with an unbounded queue (queueSize == 0): never exhausted
+//     (excess requests block and wait); score decays toward zero with queue depth.
 func (s *RateLimitAwareStrategy) scoreConcurrency(channel *biz.Channel, details map[string]any) (float64, bool) {
 	if s.limiterManager == nil {
 		if details != nil {
@@ -238,7 +240,26 @@ func (s *RateLimitAwareStrategy) scoreConcurrency(channel *biz.Channel, details 
 		details["concurrent_waiting"] = waiting
 	}
 
+	// The score spans two ranges that must stay monotonic so the LB never prefers
+	// a saturated channel over one with free capacity:
+	//   - below capacity:  [queueingScoreCeiling*maxScore, maxScore]
+	//   - queueing:         (0, queueingScoreCeiling*maxScore]
+	queueCeiling := s.maxScore * queueingScoreCeiling
+
+	if inFlight < capacity {
+		ratio := float64(inFlight) / float64(capacity)
+
+		if details != nil {
+			details["concurrency_mode"] = "below_capacity"
+			details["concurrency_inflight_ratio"] = ratio
+		}
+
+		return queueCeiling + scaleScore(s.maxScore-queueCeiling, 1-ratio), false
+	}
+
+	// At/over capacity: the request must queue.
 	if queueSize > 0 {
+		// Bounded queue: exhausted once capacity + queue are both full.
 		if inFlight+waiting >= capacity+queueSize {
 			if details != nil {
 				details["concurrent_exhausted"] = "queue_full"
@@ -247,49 +268,23 @@ func (s *RateLimitAwareStrategy) scoreConcurrency(channel *biz.Channel, details 
 			return 0, true
 		}
 
-		// Hard mode is split into two ranges that must stay monotonic so the
-		// LB never prefers a saturated channel over one with free capacity:
-		//   - queueing:        [0, queueingScoreCeiling*maxScore]
-		//   - below capacity:  [queueingScoreCeiling*maxScore, maxScore]
-		queueCeiling := s.maxScore * queueingScoreCeiling
-
-		if inFlight >= capacity {
-			waitingRatio := float64(waiting) / float64(queueSize)
-
-			if details != nil {
-				details["concurrency_mode"] = "hard_queueing"
-				details["concurrency_waiting_ratio"] = waitingRatio
-			}
-
-			return scaleScore(queueCeiling, 1-waitingRatio), false
-		}
-
-		ratio := float64(inFlight) / float64(capacity)
+		waitingRatio := float64(waiting) / float64(queueSize)
 
 		if details != nil {
-			details["concurrency_mode"] = "hard_below_capacity"
-			details["concurrency_inflight_ratio"] = ratio
+			details["concurrency_mode"] = "hard_queueing"
+			details["concurrency_waiting_ratio"] = waitingRatio
 		}
 
-		return queueCeiling + scaleScore(s.maxScore-queueCeiling, 1-ratio), false
+		return scaleScore(queueCeiling, 1-waitingRatio), false
 	}
 
-	if inFlight >= capacity {
-		if details != nil {
-			details["concurrent_exhausted"] = "soft_capacity"
-		}
-
-		return 0, true
-	}
-
-	ratio := float64(inFlight) / float64(capacity)
-
+	// Unbounded queue: never exhausted (excess requests block and wait), but
+	// down-ranked steeply with queue depth so idle peers are strongly preferred.
 	if details != nil {
-		details["concurrency_mode"] = "soft"
-		details["concurrency_inflight_ratio"] = ratio
+		details["concurrency_mode"] = "unbounded_queueing"
 	}
 
-	return scaleScore(s.maxScore, 1-ratio), false
+	return scaleScore(queueCeiling, 1/(1+float64(waiting))), false
 }
 
 // scaleScore clamps base * factor to [0, +inf). factor < 0 yields 0.

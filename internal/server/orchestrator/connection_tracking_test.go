@@ -86,10 +86,9 @@ func TestChannelLimiterMiddleware_NoLimitChannelBypasses(t *testing.T) {
 func TestChannelLimiterMiddleware_QueueFullReturnsTypedError(t *testing.T) {
 	t.Parallel()
 
-	ch := channelWithLimit(2, "kimi", 1, 0) // soft mode treats acquisitions as instant; switch to hard mode below
-	// Use hard mode with queue=0 to force ErrChannelQueueFull on the second acquire? No —
-	// queueSize must be > 0 for hard mode. Use queue=1 with capacity already saturated.
-	ch = channelWithLimit(2, "kimi", 1, 1)
+	// capacity 1 + bounded queue 1: once both are taken, the next acquire must
+	// return ErrChannelQueueFull immediately.
+	ch := channelWithLimit(2, "kimi", 1, 1)
 
 	mgr := NewChannelLimiterManager()
 
@@ -231,3 +230,109 @@ func (e *emptyResponseStream) Close() error           { return nil }
 func (e *emptyResponseStream) Err() error             { return nil }
 
 var _ streams.Stream[*llm.Response] = (*emptyResponseStream)(nil)
+
+// hardModeStreamRecorder is a Stream[*llm.Response] whose Close captures the
+// limiter's live state at the exact moment THIS request's upstream stream is
+// being torn down. It lets the test observe whether a queued waiter has already
+// been admitted (slot handed over) BEFORE the upstream connection was closed.
+type hardModeStreamRecorder struct {
+	lim             *ChannelLimiter
+	closeCalled     bool
+	inFlightAtClose int
+	waitingAtClose  int
+}
+
+func (s *hardModeStreamRecorder) Current() *llm.Response { return nil }
+func (s *hardModeStreamRecorder) Next() bool             { return false }
+func (s *hardModeStreamRecorder) Err() error             { return nil }
+
+func (s *hardModeStreamRecorder) Close() error {
+	s.closeCalled = true
+	s.inFlightAtClose, s.waitingAtClose = s.lim.Stats()
+
+	return nil
+}
+
+var _ streams.Stream[*llm.Response] = (*hardModeStreamRecorder)(nil)
+
+// TestChannelLimiterMiddleware_StreamCloseDoesNotAdmitWaiterBeforeUpstreamClosed
+// guards the per-channel concurrency cap at the PHYSICAL upstream connection when a
+// bounded queue is configured (queueSize > 0).
+//
+// It guards against a release-before-close ordering bug: if channelLimiterStream.Close
+// released the limiter slot BEFORE closing s.Stream, a queued waiter B would be granted
+// A's slot — and be free to dial a brand-new upstream connection — while A's own
+// upstream stream/connection had NOT yet been closed. For that window the channel would
+// momentarily hold capacity+1 live upstream connections even though the inFlight counter
+// stays <= capacity. On a client abort (Close before EOF) the old connection is still
+// actively open, so the overlap is real, not just bookkeeping.
+//
+// Repro is deterministic: capacity=1, queue=1. Request A holds the only slot and waiter
+// B is parked in the queue. When A's wrapped stream is closed, the recorder captures the
+// limiter state at the instant the upstream Close runs. Correct behavior is that B is
+// STILL queued (waiting == 1) when A's upstream is closed — the slot must only be handed
+// over AFTER the upstream is torn down.
+//
+//   - waiting == 1: PASS — A's upstream closed first, then B was admitted (correct).
+//   - waiting == 0: FAIL — B was admitted before A's upstream closed (the bug).
+//
+// The guarantee comes from channelLimiterStream.Close tearing down the upstream first
+// and releasing the slot afterwards (`defer s.release(); return s.Stream.Close()`).
+func TestChannelLimiterMiddleware_StreamCloseDoesNotAdmitWaiterBeforeUpstreamClosed(t *testing.T) {
+	t.Parallel()
+
+	ch := channelWithLimit(11, "stream-handoff", 1, 1) // bounded queue: capacity 1, queue 1
+	mgr := NewChannelLimiterManager()
+	out := newTestOutbound(ch)
+	m := withChannelLimiter(out, mgr, nil).(*channelLimiterMiddleware)
+	lim := mgr.GetOrCreate(ch)
+
+	// Request A takes the only slot and establishes its (recorded) stream via the
+	// real middleware path, so the channelLimiterStream under test is the production one.
+	_, err := m.OnOutboundRawRequest(t.Context(), &httpclient.Request{})
+	require.NoError(t, err)
+
+	recorder := &hardModeStreamRecorder{lim: lim}
+
+	wrapped, err := m.OnOutboundLlmStream(t.Context(), recorder)
+	require.NoError(t, err)
+
+	inFlight, _ := lim.Stats()
+	require.Equal(t, 1, inFlight, "request A must hold the only slot")
+
+	// Waiter B parks in the queue behind A.
+	bCtx, cancelB := context.WithCancel(t.Context())
+	defer cancelB()
+
+	bAcquired := make(chan error, 1)
+	go func() { bAcquired <- lim.Acquire(bCtx) }()
+
+	require.Eventually(t, func() bool {
+		_, waiting := lim.Stats()
+		return waiting == 1
+	}, time.Second, 5*time.Millisecond, "waiter B must enqueue before A closes")
+
+	// Close A's stream. This is the handoff: the slot must not be transferred to B
+	// until A's upstream stream has actually been closed.
+	require.NoError(t, wrapped.Close())
+
+	require.True(t, recorder.closeCalled, "upstream stream Close must run")
+	assert.Equal(t, 1, recorder.waitingAtClose,
+		"queued waiter must still be parked when A's upstream is closed; waiting==0 means "+
+			"the slot was handed to B (which then dials a new upstream connection) BEFORE A's "+
+			"connection was torn down — the release-before-close over-admission window")
+
+	// Sanity/cleanup: B is admitted once A's slot is released, then drains cleanly.
+	select {
+	case err := <-bAcquired:
+		require.NoError(t, err, "waiter B must be admitted after A's slot is released")
+	case <-time.After(time.Second):
+		t.Fatal("waiter B was never admitted after A closed")
+	}
+
+	lim.Release() // release B's transferred slot
+
+	inFlight, waiting := lim.Stats()
+	assert.Equal(t, 0, inFlight, "no slot leak after handoff")
+	assert.Equal(t, 0, waiting, "no waiter leak after handoff")
+}

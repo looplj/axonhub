@@ -50,7 +50,7 @@ func TestExtractLimiterConfig_Disabled(t *testing.T) {
 	}
 }
 
-func TestExtractLimiterConfig_SoftMode(t *testing.T) {
+func TestExtractLimiterConfig_NoQueue(t *testing.T) {
 	t.Parallel()
 
 	ch := makeChannel(1, &objects.ChannelRateLimit{
@@ -59,7 +59,7 @@ func TestExtractLimiterConfig_SoftMode(t *testing.T) {
 	cfg := extractLimiterConfig(ch)
 
 	assert.Equal(t, 5, cfg.capacity)
-	assert.Equal(t, 0, cfg.queueSize, "soft mode")
+	assert.Equal(t, 0, cfg.queueSize, "0 == unbounded blocking queue")
 	assert.Equal(t, int64(0), cfg.timeoutMs)
 }
 

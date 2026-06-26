@@ -17,14 +17,18 @@ var (
 	ErrChannelQueueTimeout = errors.New("channel concurrency queue wait timeout")
 )
 
-// ChannelLimiter provides per-channel admission control with two modes:
+// ChannelLimiter provides per-channel admission control as a hard blocking
+// semaphore: at most `capacity` requests are in flight at once, and excess
+// requests wait in a FIFO queue. The in-flight counter never exceeds capacity,
+// so the cap is strict regardless of queue mode.
 //
-//   - Soft mode (queueSize == 0): Acquire only counts in-flight requests; it never
-//     blocks or rejects. The load balancer uses Stats() to down-rank busy channels.
-//   - Hard mode (queueSize > 0): Acquire enforces a strict capacity. Excess requests
-//     wait in a FIFO queue of queueSize entries; further arrivals get
-//     ErrChannelQueueFull. Each waiter additionally honours an optional timeout
-//     (ErrChannelQueueTimeout) and the caller's context.
+//   - Bounded queue (queueSize > 0): up to queueSize requests wait; further
+//     arrivals get ErrChannelQueueFull immediately.
+//   - Unbounded queue (queueSize <= 0): excess requests always wait and are never
+//     rejected. This is the default when no QueueSize is configured.
+//
+// Every waiter additionally honors an optional per-channel timeout
+// (ErrChannelQueueTimeout) and the caller's context.
 //
 // Caller must ensure capacity > 0.
 type ChannelLimiter struct {
@@ -34,7 +38,7 @@ type ChannelLimiter struct {
 
 	mu       sync.Mutex
 	inFlight int
-	waiters  *list.List // FIFO of *slotReq; only used in hard mode.
+	waiters  *list.List // FIFO of *slotReq; populated whenever inFlight >= capacity (bounded and unbounded queues alike).
 }
 
 // slotReq is a single waiter in the FIFO queue. Release closes ch to transfer
@@ -59,21 +63,13 @@ func NewChannelLimiter(capacity, queueSize int, timeoutMs int64) *ChannelLimiter
 // was acquired and Release must NOT be called.
 //
 // Possible non-nil errors:
-//   - ErrChannelQueueFull when the queue has no remaining capacity at entry time
+//   - ErrChannelQueueFull when a bounded queue has no remaining capacity at entry time
 //   - ErrChannelQueueTimeout when the per-channel timeout elapses while waiting
 //   - ctx.Err() when the caller's context is cancelled (overrides the timeout)
 func (l *ChannelLimiter) Acquire(ctx context.Context) error {
 	l.mu.Lock()
 
-	// Soft mode: no blocking, just bookkeeping.
-	if l.queueSize == 0 {
-		l.inFlight++
-		l.mu.Unlock()
-
-		return nil
-	}
-
-	// Hard mode: try to take a slot directly.
+	// Fast path: a slot is free.
 	if l.inFlight < l.capacity {
 		l.inFlight++
 		l.mu.Unlock()
@@ -81,8 +77,9 @@ func (l *ChannelLimiter) Acquire(ctx context.Context) error {
 		return nil
 	}
 
-	// Capacity exhausted; check whether the queue has room.
-	if l.waiters.Len() >= l.queueSize {
+	// Capacity exhausted. A bounded queue (queueSize > 0) rejects once full; an
+	// unbounded queue (queueSize <= 0) always waits.
+	if l.queueSize > 0 && l.waiters.Len() >= l.queueSize {
 		l.mu.Unlock()
 
 		return ErrChannelQueueFull
@@ -129,22 +126,22 @@ func (l *ChannelLimiter) Acquire(ctx context.Context) error {
 	}
 }
 
-// Release returns one slot. In hard mode it transfers the slot directly to the
-// head waiter (FIFO fairness); when no waiter is queued it decrements inFlight.
-// Guards against decrementing below zero so an unmatched Release is a no-op
-// rather than a panic.
+// Release returns one slot. It transfers the slot directly to the head waiter
+// (FIFO fairness) when one is queued; otherwise it decrements inFlight. Guards
+// against decrementing below zero so an unmatched Release is a no-op rather than
+// a panic.
 func (l *ChannelLimiter) Release() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.queueSize > 0 {
-		if e := l.waiters.Front(); e != nil {
-			l.waiters.Remove(e)
-			//nolint:forcetypeassert // PushBack only ever stores *slotReq.
-			close(e.Value.(*slotReq).ch)
+	// Hand the slot directly to the head waiter when one is queued. Waiters can
+	// exist in both bounded and unbounded queue modes, so this is unconditional.
+	if e := l.waiters.Front(); e != nil {
+		l.waiters.Remove(e)
+		//nolint:forcetypeassert // PushBack only ever stores *slotReq.
+		close(e.Value.(*slotReq).ch)
 
-			return
-		}
+		return
 	}
 
 	if l.inFlight > 0 {
@@ -153,7 +150,7 @@ func (l *ChannelLimiter) Release() {
 }
 
 // Stats returns the current in-flight and waiting counts. Used by the load
-// balancer scoring layer; in soft mode waiting is always zero.
+// balancer scoring layer.
 func (l *ChannelLimiter) Stats() (inFlight, waiting int) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

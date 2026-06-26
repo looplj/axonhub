@@ -33,7 +33,7 @@ func NewChannelLimiterManager() *ChannelLimiterManager {
 // changes directly without a separate hash.
 type limiterConfig struct {
 	capacity  int   // == MaxConcurrent; > 0 means limiter enabled
-	queueSize int   // == QueueSize; 0 = soft mode
+	queueSize int   // == QueueSize; 0 = unbounded queue (block, never reject)
 	timeoutMs int64 // == QueueTimeoutMs; 0 = no per-channel timeout
 }
 
