@@ -37,6 +37,21 @@ var (
 	opencodeGoDataSlotLabelRe = regexp.MustCompile(`data-slot="usage-label"[^>]*>([\s\S]*?)</span>`)
 	opencodeGoDataSlotValueRe = regexp.MustCompile(`data-slot="usage-value"[^>]*>[\s\S]*?` + opencodeGoNumberPattern)
 	opencodeGoDataSlotResetRe = regexp.MustCompile(`data-slot="(reset-time|reset-now)"[^>]*>`)
+
+	opencodeGoResetPrefixRe = regexp.MustCompile(`(?i)resets?\s*in\s*`)
+	opencodeGoHTMLTagRe     = regexp.MustCompile(`<[^>]+>`)
+
+	// opencodeGoDurationUnits maps human-readable duration units to seconds, scanned
+	// largest-first so a value like "1 hour 30 minutes" accumulates correctly.
+	opencodeGoDurationUnits = []struct {
+		re      *regexp.Regexp
+		seconds float64
+	}{
+		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:days?|d)`), 86400},
+		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:hours?|h)`), 3600},
+		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|m)`), 60},
+		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)`), 1},
+	}
 )
 
 type OpenCodeGoUsageWindow struct {
@@ -302,14 +317,14 @@ func openCodeGoWindowKeyFromLabel(label string) string {
 
 func cleanOpenCodeGoResetText(text string) string {
 	text = cleanOpenCodeGoHTMLText(text)
-	text = regexp.MustCompile(`(?i)resets?\s*in\s*`).ReplaceAllString(text, "")
+	text = opencodeGoResetPrefixRe.ReplaceAllString(text, "")
 	return strings.Join(strings.Fields(text), " ")
 }
 
 func cleanOpenCodeGoHTMLText(text string) string {
 	text = strings.ReplaceAll(text, "<!--$-->", "")
 	text = strings.ReplaceAll(text, "<!--/-->", "")
-	text = regexp.MustCompile(`<[^>]+>`).ReplaceAllString(text, "")
+	text = opencodeGoHTMLTagRe.ReplaceAllString(text, "")
 	text = html.UnescapeString(text)
 	return strings.Join(strings.Fields(text), " ")
 }
@@ -325,15 +340,7 @@ func parseOpenCodeGoHumanDuration(text string) (float64, bool) {
 
 	var total float64
 	matched := false
-	for _, unit := range []struct {
-		re      *regexp.Regexp
-		seconds float64
-	}{
-		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:days?|d)`), 86400},
-		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:hours?|h)`), 3600},
-		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|m)`), 60},
-		{regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)`), 1},
-	} {
+	for _, unit := range opencodeGoDurationUnits {
 		if matches := unit.re.FindStringSubmatch(normalized); len(matches) == 2 {
 			value, ok := parseOpenCodeGoFloat(matches[1])
 			if !ok {
