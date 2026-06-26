@@ -4,7 +4,7 @@ import Roles from '@/features/roles';
 
 function ProtectedRoles() {
   return (
-    <RouteGuard requiredScopes={['read_roles']}>
+    <RouteGuard requiredScopes={['read_roles']} scopeLevel="system">
       <Roles />
     </RouteGuard>
   );

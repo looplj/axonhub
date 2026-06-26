@@ -6,7 +6,7 @@ import RequestsManagement from '@/features/requests';
 function ProtectedProjectRequests() {
   return (
     <ProjectGuard>
-      <RouteGuard requiredScopes={['read_requests']}>
+      <RouteGuard requiredScopes={['read_requests']} scopeLevel="any">
         <RequestsManagement />
       </RouteGuard>
     </ProjectGuard>
