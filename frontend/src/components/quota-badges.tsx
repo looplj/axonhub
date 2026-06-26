@@ -73,6 +73,14 @@ function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropi
   return t === 'opencode_go' || t === 'opencode_go_anthropic';
 }
 
+// Dedup key for OpenCode Go channels: the quota is per workspace, so channels
+// sharing a workspace id collapse to one row, while a channel with no workspace
+// id configured falls back to its unique channel id (never merged with others).
+function openCodeGoWorkspaceKey(channel: ProviderQuotaChannel): string {
+  const workspaceId = (channel as { workspaceId?: string | null }).workspaceId;
+  return workspaceId && workspaceId.trim() !== '' ? `ws:${workspaceId}` : `id:${channel.id}`;
+}
+
 function getChannelPercentage(channel: ProviderQuotaChannel): number {
   let percentage = 0;
   if (!channel.quotaStatus) return 0;
@@ -1252,7 +1260,12 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
         acc.push(channel);
       }
     } else if (isOpenCodeGoType(channel.type)) {
-      const existing = acc.find((c) => isOpenCodeGoType(c.type));
+      // Collapse only channels that share a workspace (e.g. the openai + anthropic
+      // variants of one workspace); distinct workspaces each get their own row.
+      // Channels with no workspace id configured fall back to their unique id so
+      // they are never silently merged.
+      const key = openCodeGoWorkspaceKey(channel);
+      const existing = acc.find((c) => isOpenCodeGoType(c.type) && openCodeGoWorkspaceKey(c) === key);
       if (!existing) {
         acc.push(channel);
       }
