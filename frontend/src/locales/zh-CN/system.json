@@ -314,6 +314,8 @@
   "quota.label.error": "错误",
   "quota.window.5h": "5小时窗口",
   "quota.window.7d": "7天窗口",
+  "quota.window.weekly": "每周窗口",
+  "quota.window.monthly": "每月窗口",
   "quota.status.available": "可用",
   "quota.status.warning": "警告",
   "quota.status.exhausted": "已耗尽",

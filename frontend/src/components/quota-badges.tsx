@@ -16,6 +16,7 @@ import {
   ProviderSyntheticQuotaData,
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
+  ProviderOpenCodeGoQuotaData,
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
@@ -66,6 +67,10 @@ function isOpenaiType(t: string): t is 'openai' | 'openai_responses' {
   return t === 'openai' || t === 'openai_responses';
 }
 
+function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropic' {
+  return t === 'opencode_go' || t === 'opencode_go_anthropic';
+}
+
 function getChannelPercentage(channel: ProviderQuotaChannel): number {
   let percentage = 0;
   if (!channel.quotaStatus) return 0;
@@ -112,6 +117,13 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
+  } else if (isOpenCodeGoType(channel.type)) {
+    const qd = channel.quotaStatus?.quotaData as ProviderOpenCodeGoQuotaData | undefined;
+    percentage = Math.max(
+      qd?.windows?.rolling?.usage_percent ?? 0,
+      qd?.windows?.weekly?.usage_percent ?? 0,
+      qd?.windows?.monthly?.usage_percent ?? 0
+    );
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
@@ -737,6 +749,46 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
+      {isOpenCodeGoType(channel.type) && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderOpenCodeGoQuotaData | undefined;
+            if (!qd) return null;
+
+            const entries: Array<['rolling' | 'weekly' | 'monthly', string]> = [
+              ['rolling', 'quota.window.5h'],
+              ['weekly', 'quota.window.weekly'],
+              ['monthly', 'quota.window.monthly'],
+            ];
+
+            return entries
+              .map(([key, labelKey], index) => {
+                const window = qd.windows?.[key];
+                if (!window) return null;
+
+                const usedPct = window.usage_percent ?? 0;
+                return (
+                  <div key={key} className={index > 0 ? 'border-border/60 space-y-2.5 border-t border-dashed pt-3' : 'space-y-2.5'}>
+                    <div className='space-y-1'>
+                      <div className='flex items-center justify-between text-xs'>
+                        <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
+                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
+                      </div>
+                      <ProgressBar percentage={usedPct} />
+                    </div>
+                    {(window.reset_time || window.reset_in_seconds != null) && (
+                      <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
+                        {formatTimeToReset(window.reset_time ?? window.reset_in_seconds, usedPct)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+              .filter(Boolean);
+          })()}
+        </div>
+      )}
+
       {isOpenaiType(channel.type) && channel.providerType === 'wafer' && (
         <div className='mt-3 space-y-3'>
           {(() => {
@@ -1124,6 +1176,11 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
   const groupedChannels = channels.reduce((acc: ProviderQuotaChannel[], channel: ProviderQuotaChannel) => {
     if (channel.type === 'nanogpt_responses') {
       const existing = acc.find((c) => c.type === 'nanogpt');
+      if (!existing) {
+        acc.push(channel);
+      }
+    } else if (isOpenCodeGoType(channel.type)) {
+      const existing = acc.find((c) => isOpenCodeGoType(c.type));
       if (!existing) {
         acc.push(channel);
       }

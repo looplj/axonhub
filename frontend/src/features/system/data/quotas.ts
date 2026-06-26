@@ -178,6 +178,22 @@ export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
   };
 }
 
+export type OpenCodeGoQuotaWindow = {
+  usage_percent?: number;
+  reset_in_seconds?: number;
+  reset_time?: string;
+  status?: string;
+  percent_remaining?: number;
+}
+
+export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
+  windows?: {
+    rolling?: OpenCodeGoQuotaWindow;
+    weekly?: OpenCodeGoQuotaWindow;
+    monthly?: OpenCodeGoQuotaWindow;
+  };
+}
+
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
@@ -215,6 +231,12 @@ export type ProviderQuotaChannel = {
       type: 'nanogpt_responses'
       quotaStatus?: {
         quotaData: ProviderNanoGPTQuotaData
+      }
+    }
+    | {
+      type: 'opencode_go' | 'opencode_go_anthropic'
+      quotaStatus?: {
+        quotaData: ProviderOpenCodeGoQuotaData
       }
     }
     | {
@@ -320,6 +342,13 @@ function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][
       ...base,
       type: 'nanogpt_responses' as const,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData },
+    };
+  }
+  if (node.type === 'opencode_go' || node.type === 'opencode_go_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'opencode_go' | 'opencode_go_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderOpenCodeGoQuotaData },
     };
   }
   if (node.type === 'openai' || node.type === 'openai_responses') {

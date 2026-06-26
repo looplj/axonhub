@@ -197,11 +197,24 @@ type ChannelSettings struct {
 	// trigger retry for this channel. When Regex is false, Pattern is matched as a
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
+
+	// ProviderQuota stores provider-specific credentials used only for quota
+	// polling. Keep upstream request credentials in ChannelCredentials.
+	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
 }
 
 type RetryableErrorPattern struct {
 	Pattern string `json:"pattern"`
 	Regex   bool   `json:"regex,omitempty"`
+}
+
+type ChannelProviderQuotaSettings struct {
+	OpencodeGo *OpenCodeGoQuotaSettings `json:"opencodeGo,omitempty"`
+}
+
+type OpenCodeGoQuotaSettings struct {
+	WorkspaceID string `json:"workspaceId,omitempty"`
+	AuthCookie  string `json:"authCookie,omitempty"`
 }
 
 type ChannelRateLimit struct {
