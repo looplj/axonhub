@@ -74,9 +74,9 @@ type ChatResponse struct {
 
 	TotalDuration      int64 `json:"total_duration,omitempty"`
 	LoadDuration       int64 `json:"load_duration,omitempty"`
-	PromptEvalCount    int   `json:"prompt_eval_count,omitempty"`
+	PromptEvalCount    int64 `json:"prompt_eval_count,omitempty"`
 	PromptEvalDuration int64 `json:"prompt_eval_duration,omitempty"`
-	EvalCount          int   `json:"eval_count,omitempty"`
+	EvalCount          int64 `json:"eval_count,omitempty"`
 	EvalDuration       int64 `json:"eval_duration,omitempty"`
 }
 
@@ -299,9 +299,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 			},
 		},
 		Usage: &llm.Usage{
-			PromptTokens:     int64(ollamaResp.PromptEvalCount),
-			CompletionTokens: int64(ollamaResp.EvalCount),
-			TotalTokens:      int64(ollamaResp.PromptEvalCount + ollamaResp.EvalCount),
+			PromptTokens:     ollamaResp.PromptEvalCount,
+			CompletionTokens: ollamaResp.EvalCount,
+			TotalTokens:      ollamaResp.PromptEvalCount + ollamaResp.EvalCount,
 		},
 	}, nil
 }
@@ -335,7 +335,7 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 	}
 
 	// For streaming, we use Delta instead of Message
-	return &llm.Response{
+	resp := &llm.Response{
 		ID:     fmt.Sprintf("ollama-%s", ollamaResp.Model),
 		Object: "chat.completion.chunk",
 		Model:  ollamaResp.Model,
@@ -363,7 +363,17 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 				}(),
 			},
 		},
-	}, nil
+	}
+
+	if ollamaResp.Done && (ollamaResp.PromptEvalCount > 0 || ollamaResp.EvalCount > 0) {
+		resp.Usage = &llm.Usage{
+			PromptTokens:     ollamaResp.PromptEvalCount,
+			CompletionTokens: ollamaResp.EvalCount,
+			TotalTokens:      ollamaResp.PromptEvalCount + ollamaResp.EvalCount,
+		}
+	}
+
+	return resp, nil
 }
 
 func (t *OutboundTransformer) TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError {
@@ -385,13 +395,11 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 		return nil, llm.ResponseMeta{}, fmt.Errorf("no chunks to aggregate")
 	}
 
-	var (
-		fullContent                strings.Builder
-		fullThinking               strings.Builder
-		model                      string
-		promptEvalCount, evalCount int
-		finishReason               string
-	)
+	var fullContent strings.Builder
+	var fullThinking strings.Builder
+	var model string
+	var promptEvalCount, evalCount int64
+	var finishReason string
 
 	for _, chunk := range chunks {
 		var ollamaResp ChatResponse
@@ -451,9 +459,9 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 			},
 		},
 		Usage: &llm.Usage{
-			PromptTokens:     int64(promptEvalCount),
-			CompletionTokens: int64(evalCount),
-			TotalTokens:      int64(promptEvalCount + evalCount),
+			PromptTokens:     promptEvalCount,
+			CompletionTokens: evalCount,
+			TotalTokens:      promptEvalCount + evalCount,
 		},
 	}
 
@@ -465,9 +473,9 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 	return body, llm.ResponseMeta{
 		ID: fmt.Sprintf("ollama-%s", model),
 		Usage: &llm.Usage{
-			PromptTokens:     int64(promptEvalCount),
-			CompletionTokens: int64(evalCount),
-			TotalTokens:      int64(promptEvalCount + evalCount),
+			PromptTokens:     promptEvalCount,
+			CompletionTokens: evalCount,
+			TotalTokens:      promptEvalCount + evalCount,
 		},
 	}, nil
 }
