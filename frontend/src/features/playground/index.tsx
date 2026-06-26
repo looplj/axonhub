@@ -495,7 +495,7 @@ export default function Playground() {
                               }
                               if (part.type === 'reasoning') {
                                 return (
-                                  <Reasoning key={index} isStreaming={status === 'streaming'}>
+                                  <Reasoning key={index} isStreaming={isLastAssistant && status === 'streaming'}>
                                     <ReasoningTrigger />
                                     <ReasoningContent>{part.text}</ReasoningContent>
                                   </Reasoning>

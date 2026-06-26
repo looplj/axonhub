@@ -292,6 +292,7 @@
   "channels.dialogs.fields.apiFormat.formats.openai/responses_websocket": "OpenAI (Responses WebSocket)",
   "channels.dialogs.fields.apiFormat.formats.anthropic/messages": "Anthropic (Messages)",
   "channels.dialogs.fields.apiFormat.formats.gemini/contents": "Gemini (Contents)",
+  "channels.dialogs.fields.apiFormat.formats.ollama/chat": "Ollama (Chat)",
   "channels.dialogs.fields.provider.label": "服务商",
   "channels.dialogs.fields.baseURL.label": "Base URL",
   "channels.dialogs.fields.baseURL.placeholder": "https://api.openai.com/v1",
