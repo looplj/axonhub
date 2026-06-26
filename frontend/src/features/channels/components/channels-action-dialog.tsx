@@ -511,6 +511,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       setConfirmRemoveSelectedOpen(false);
       setConfirmRemoveKey(null);
       setPatternError(null);
+      setFetchedModels([]);
+      setUseFetchedModels(false);
+      setShowFetchedModelsPanel(false);
+      setShowSupportedModelsPanel(false);
+      setSelectedDefaultModels([]);
+      setFetchedModelsSearch('');
+      setSupportedModelsSearch('');
+      setSelectedFetchedModels([]);
+      setShowNotAddedModelsOnly(false);
+      setApplyPatternFilter(false);
+      setSupportedModelsExpanded(false);
     }
   }, [open]);
 
