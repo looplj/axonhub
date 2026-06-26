@@ -351,6 +351,7 @@
   "quota.label.overage_window": "Overage window",
   "quota.label.5h_duration": "5h duration",
   "quota.label.7d_duration": "7d duration",
+  "quota.label.time_elapsed": "Time elapsed",
   "quota.label.unlimited": "Unlimited",
   "quota.label.percent_used": "{{percent}}% used",
   "quota.window.weekly_input_tokens": "Weekly Input Tokens",

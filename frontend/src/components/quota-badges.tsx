@@ -1,12 +1,13 @@
 import { format } from 'date-fns';
 import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   useProviderQuotaStatuses,
   ProviderQuotaChannel,
@@ -17,6 +18,7 @@ import {
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
   ProviderOpenCodeGoQuotaData,
+  OpenCodeGoQuotaWindow,
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
@@ -201,6 +203,38 @@ function ProgressBar({
   );
 }
 
+// UsageTimeBar shows usage on a single progress bar with a small triangle below
+// it marking how far the reset window has elapsed (time progress). Hovering
+// reveals the detailed figures via tooltip, keeping the row compact.
+function UsageTimeBar({
+  usagePercent,
+  durationPercent,
+  tooltip,
+}: {
+  usagePercent: number;
+  durationPercent?: number;
+  tooltip: ReactNode;
+}) {
+  const markerLeft = durationPercent === undefined ? undefined : Math.min(Math.max(durationPercent, 0), 100);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className='relative cursor-default pb-1.5'>
+          <ProgressBar percentage={usagePercent} durationPercentage={durationPercent} />
+          {markerLeft !== undefined && (
+            <div className='absolute top-2 -translate-x-1/2' style={{ left: `${markerLeft}%` }} aria-hidden>
+              {/* upward triangle pointing at the bar, marking elapsed time */}
+              <div className='border-b-muted-foreground h-0 w-0 border-x-[3px] border-b-[4px] border-x-transparent' />
+            </div>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side='top'>{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function formatTokenCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
@@ -271,6 +305,29 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
 
     const now = Date.now() / 1000;
     const resetAfter = resetTs - now;
+    return calcDurationPercent(limit, resetAfter);
+  };
+
+  // Fraction of the reset window that has elapsed, rendered as a second
+  // "time elapsed" bar so usage progress can be read against time progress.
+  const getOpenCodeGoDurationPercent = (key: 'rolling' | 'weekly' | 'monthly', window: OpenCodeGoQuotaWindow): number | undefined => {
+    const limits: Record<string, number> = {
+      rolling: 5 * 3600,
+      weekly: 7 * 24 * 3600,
+      monthly: 30 * 24 * 3600,
+    };
+    const limit = limits[key];
+
+    // Prefer the absolute reset_time so the marker keeps advancing as the user
+    // looks; fall back to the snapshot reset_in_seconds from the last poll.
+    let resetAfter: number | undefined;
+    if (window.reset_time) {
+      resetAfter = (new Date(window.reset_time).getTime() - Date.now()) / 1000;
+    } else if (window.reset_in_seconds != null) {
+      resetAfter = window.reset_in_seconds;
+    }
+    if (resetAfter === undefined) return undefined;
+
     return calcDurationPercent(limit, resetAfter);
   };
 
@@ -767,20 +824,35 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                 if (!window) return null;
 
                 const usedPct = window.usage_percent ?? 0;
+                const durationPct = getOpenCodeGoDurationPercent(key, window);
+                // Always show the reset countdown — the elapsed-time marker already
+                // conveys progress, so the "no usage yet" special case is unwanted here.
+                const resetText =
+                  window.reset_time || window.reset_in_seconds != null
+                    ? formatTimeToReset(window.reset_time ?? window.reset_in_seconds)
+                    : '';
                 return (
-                  <div key={key} className={index > 0 ? 'border-border/60 space-y-2.5 border-t border-dashed pt-3' : 'space-y-2.5'}>
-                    <div className='space-y-1'>
-                      <div className='flex items-center justify-between text-xs'>
-                        <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
-                      </div>
-                      <ProgressBar percentage={usedPct} />
+                  <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
+                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
                     </div>
-                    {(window.reset_time || window.reset_in_seconds != null) && (
-                      <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
-                        {formatTimeToReset(window.reset_time ?? window.reset_in_seconds, usedPct)}
-                      </div>
-                    )}
+                    <UsageTimeBar
+                      usagePercent={usedPct}
+                      durationPercent={durationPct}
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{t(labelKey)}</div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                          {durationPct !== undefined && (
+                            <div>
+                              {t('quota.label.time_elapsed')}: {Math.round(durationPct)}%
+                            </div>
+                          )}
+                          {resetText && <div>{resetText}</div>}
+                        </div>
+                      }
+                    />
                   </div>
                 );
               })
