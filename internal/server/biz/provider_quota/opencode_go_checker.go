@@ -119,10 +119,10 @@ func normalizeOpenCodeGoAuthCookie(raw string) string {
 	raw = strings.TrimPrefix(raw, "Cookie:")
 	raw = strings.TrimSpace(raw)
 
-	for _, part := range strings.Split(raw, ";") {
+	for part := range strings.SplitSeq(raw, ";") {
 		part = strings.TrimSpace(part)
-		if strings.HasPrefix(part, "auth=") {
-			return strings.TrimSpace(strings.TrimPrefix(part, "auth="))
+		if after, ok := strings.CutPrefix(part, "auth="); ok {
+			return strings.TrimSpace(after)
 		}
 	}
 
