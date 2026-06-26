@@ -18,19 +18,31 @@
 
 </div>
 
+---
+
 ## ❤️ 赞助商
 
 <div align="center">
 
-<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
-
-**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
-
-查看 Atlas Cloud 的[全新 Coding plan 促销](https://lj.s.gy/jknt2V)，获取更经济实惠的 API 访问方案。
+<a href="https://lj.s.gy/oZl7Vd" target="_blank">
+  <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="32"/>
+</a>
+&nbsp;&nbsp;&nbsp;
+<a href="https://lj.s.gy/oZl7Vd" target="_blank">
+  <strong>Atlas Cloud</strong>
+</a>
 
 </div>
 
-<br />
+<div align="center">
+
+<a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
+
+查看 Atlas Cloud 的 <a href="https://lj.s.gy/jknt2V" target="_blank">全新 Coding plan 促销</a>，获取更经济实惠的 API 访问方案。
+
+</div>
+
+<br/>
 
 <table border="1" cellspacing="0" cellpadding="16">
   <thead>
@@ -43,8 +55,9 @@
     <tr>
       <td align="center" valign="middle">
         <a href="https://bloome.im/" target="_blank">
-         <strong>Bloome</strong>
-          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90" />
+          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
+          <br/>
+          <strong>Bloome</strong>
         </a>
       </td>
       <td valign="middle">
@@ -55,6 +68,16 @@
     </tr>
   </tbody>
 </table>
+
+---
+
+## 💖 支持我
+
+| 供应商 | 方案 | 描述 | 链接 |
+|--------|------|------|------|
+| 智谱 AI | GLM 编程计划 | 您已被邀请加入 GLM 编程计划！全面支持 Claude Code、Cline 等 10+ 主流编程工具——低至 $3/月起。立即订阅，抢先享受限时优惠！ | [English](https://z.ai/subscribe?ic=OKAF5UFZOM) / [中文](https://www.bigmodel.cn/glm-coding?ic=WIDLV0OOTJ) |
+| 火山引擎 | 编程计划 | 火山引擎编程计划支持豆包、GLM、DeepSeek、Kimi 等模型，兼容所有工具。立即订阅额外享 9 折优惠——低至 $1.2/月，订阅越多越优惠！ | [链接](https://volcengine.com/L/1Q-HZr5Uvk8/) / 邀请码：LXKDZK3W |
+| Cursor | PRO 计划 | 首月订阅 Cursor Pro、Pro+ 或 Ultra 享 5 折优惠。 | [邀请链接](https://cursor.com/referral?code=GV0YKBQ692X1) |
 
 ---
 

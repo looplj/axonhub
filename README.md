@@ -18,19 +18,31 @@
 
 </div>
 
+---
+
 ## ❤️ Sponsor
 
 <div align="center">
 
-<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
-
-**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
-
-Check out Atlas Cloud's [new coding plan promotion](https://lj.s.gy/jknt2V) for more budget-friendly API access.
+<a href="https://lj.s.gy/oZl7Vd" target="_blank">
+  <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="32"/>
+</a>
+&nbsp;&nbsp;&nbsp;
+<a href="https://lj.s.gy/oZl7Vd" target="_blank">
+  <strong>Atlas Cloud</strong>
+</a>
 
 </div>
 
-<br />
+<div align="center">
+
+<a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+
+Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
+
+</div>
+
+<br/>
 
 <table border="1" cellspacing="0" cellpadding="16">
   <thead>
@@ -43,18 +55,29 @@ Check out Atlas Cloud's [new coding plan promotion](https://lj.s.gy/jknt2V) for 
     <tr>
       <td align="center" valign="middle">
         <a href="https://bloome.im/" target="_blank">
-         <strong>Bloome</strong>
-          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90" />
+          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
+          <br/>
+          <strong>Bloome</strong>
         </a>
       </td>
       <td valign="middle">
-        Try AxonHub with zero local setup on Bloome：
+        Try AxonHub with zero local setup on Bloome:
         <a href="https://bloome.im/agent/join/WchosTFN?ref=MjgMzmCY" target="_blank">Quick start</a>,
         one click from your browser or phone, easy to share with your team.
       </td>
     </tr>
   </tbody>
 </table>
+
+---
+
+## 💖 Support Me
+
+| Provider | Plan | Description | Links |
+|----------|------|-------------|-------|
+| Zhipu AI | GLM CODING PLAN | You've been invited to join the GLM Coding Plan! Enjoy full support for Claude Code, Cline, and 10+ top coding tools — starting at just $3/month. Subscribe now and grab the limited-time deal! | [English](https://z.ai/subscribe?ic=OKAF5UFZOM) / [中文](https://www.bigmodel.cn/glm-coding?ic=WIDLV0OOTJ) |
+| Volcengine | CODING PLAN | Ark Coding Plan supports Doubao, GLM, DeepSeek, Kimi and other models. Compatible with unlimited tools. Subscribe now for an extra 10% off — as low as $1.2/month. The more you subscribe, the more you save! | [Link](https://volcengine.com/L/1Q-HZr5Uvk8/) / Code: LXKDZK3W |
+| Cursor | PRO PLAN | Get 50% off your first month of Cursor Pro, Pro+, or Ultra. | [Referral Link](https://cursor.com/referral?code=GV0YKBQ692X1) |
 
 ---
 
