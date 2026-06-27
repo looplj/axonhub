@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,16 +11,15 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
+	entprivacy "github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
-	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type ModelServiceParams struct {
@@ -596,8 +596,6 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		profile  *objects.APIKeyProfile
 	)
 
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadChannels)
-
 	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
 		// Project-level profile filtering (upper boundary)
 		if projectProfile := apiKey.Edges.Project.GetActiveProfile(); projectProfile != nil {
@@ -635,9 +633,14 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		allowedModelIDs = profile.ModelIDs
 	}
 
-	// Query configured Model entities (used in both modes)
+	// Query configured Model entities (used in both modes).
+	// Privacy denial is handled gracefully: if the principal lacks
+	// read_channels scope, the query returns no configured models
+	// and the response may still include channel-derived models.
 	configuredModels, err := svc.queryConfiguredModelFacades(ctx, allowedModelIDs, channels)
-	if err != nil {
+	if errors.Is(err, entprivacy.Deny) {
+		configuredModels = nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -709,6 +712,10 @@ func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowe
 
 	enabledModels, err := query.All(ctx)
 	if err != nil {
+		if errors.Is(err, entprivacy.Deny) {
+			return nil, fmt.Errorf("insufficient permissions to list models (scope %s required): %w",
+				"read_channels", err)
+		}
 		return nil, fmt.Errorf("failed to list configured models: %w", err)
 	}
 

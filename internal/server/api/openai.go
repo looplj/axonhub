@@ -639,6 +639,8 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 }
 
 func (handlers *OpenAIHandlers) writeOpenAIInternalError(c *gin.Context, requestID string, err error) {
+	contexts.AddError(c.Request.Context(), err)
+
 	c.JSON(http.StatusInternalServerError, openai.OpenAIError{
 		StatusCode: http.StatusInternalServerError,
 		Detail: llm.ErrorDetail{
