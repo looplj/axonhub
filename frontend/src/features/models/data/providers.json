@@ -3636,7 +3636,6 @@
           "reasoning": {
             "supported": false
           },
-          "reasoning_options": [],
           "tool_call": false,
           "temperature": false,
           "release_date": "2026-04-21",
@@ -4495,7 +4494,6 @@
           "reasoning": {
             "supported": false
           },
-          "reasoning_options": [],
           "tool_call": false,
           "temperature": false,
           "release_date": "2025-11-25",
@@ -5373,7 +5371,6 @@
           "reasoning": {
             "supported": false
           },
-          "reasoning_options": [],
           "tool_call": false,
           "temperature": false,
           "release_date": "2025-04-24",
@@ -6441,6 +6438,65 @@
       "doc": "https://docs.z.ai/guides/overview/pricing",
       "display_name": "Z.AI",
       "models": [
+        {
+          "id": "glm-5.2",
+          "name": "GLM-5.2",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-06-13",
+          "last_updated": "2026-06-13",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "cost": {
+            "input": 1.4,
+            "output": 4.4,
+            "cache_read": 0.26,
+            "cache_write": 0
+          },
+          "display_name": "GLM-5.2",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          }
+        },
         {
           "id": "glm-5.1",
           "name": "GLM-5.1",
@@ -8836,6 +8892,7 @@
             "context": 262144,
             "output": 131072
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.4,
             "output": 2,
@@ -8890,6 +8947,7 @@
             "context": 1048576,
             "output": 131072
           },
+          "status": "deprecated",
           "cost": {
             "input": 1,
             "output": 3,
@@ -8991,6 +9049,7 @@
             "context": 262144,
             "output": 65536
           },
+          "status": "deprecated",
           "cost": {
             "input": 0.1,
             "output": 0.3,
@@ -10340,44 +10399,6 @@
           }
         },
         {
-          "id": "claude-3-5-haiku-20241022",
-          "name": "Claude Haiku 3.5",
-          "family": "claude-haiku",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-07-31",
-          "release_date": "2024-10-22",
-          "last_updated": "2024-10-22",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 200000,
-            "output": 8192
-          },
-          "status": "deprecated",
-          "cost": {
-            "input": 0.8,
-            "output": 4,
-            "cache_read": 0.08,
-            "cache_write": 1
-          },
-          "display_name": "Claude Haiku 3.5",
-          "type": "chat"
-        },
-        {
           "id": "claude-3-5-sonnet-20241022",
           "name": "Claude Sonnet 3.5 v2",
           "family": "claude-sonnet",
@@ -10413,43 +10434,6 @@
             "cache_write": 3.75
           },
           "display_name": "Claude Sonnet 3.5 v2",
-          "type": "chat"
-        },
-        {
-          "id": "claude-3-5-haiku-latest",
-          "name": "Claude Haiku 3.5 (latest)",
-          "family": "claude-haiku",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-07-31",
-          "release_date": "2024-10-22",
-          "last_updated": "2024-10-22",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 200000,
-            "output": 8192
-          },
-          "cost": {
-            "input": 0.8,
-            "output": 4,
-            "cache_read": 0.08,
-            "cache_write": 1
-          },
-          "display_name": "Claude Haiku 3.5 (latest)",
           "type": "chat"
         },
         {
@@ -10614,6 +10598,52 @@
       "display_name": "StepFun",
       "models": [
         {
+          "id": "step-3.7-flash",
+          "name": "Step 3.7 Flash",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2026-01-01",
+          "release_date": "2026-05-29",
+          "last_updated": "2026-05-29",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 256000,
+            "input": 256000,
+            "output": 256000
+          },
+          "cost": {
+            "input": 0.19,
+            "output": 1.13,
+            "cache_read": 0.04
+          },
+          "display_name": "Step 3.7 Flash",
+          "type": "chat"
+        },
+        {
           "id": "step-3.5-flash-2603",
           "name": "Step 3.5 Flash 2603",
           "attachment": false,
@@ -10665,6 +10695,7 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-01",
@@ -10700,6 +10731,7 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-06",
@@ -10735,6 +10767,7 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-06",
@@ -10780,6 +10813,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -10841,6 +10882,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "release_date": "2026-05-21",
@@ -10881,6 +10930,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -10929,6 +10986,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -10977,6 +11042,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -11024,6 +11097,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -11072,6 +11153,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -11139,6 +11228,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -11187,6 +11284,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -11235,6 +11340,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -11283,6 +11396,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -11331,6 +11452,14 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "structured_output": true,
           "temperature": true,
@@ -11428,6 +11557,14 @@
               "default": 81920
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": false,
           "temperature": true,
           "knowledge": "2025-04",
@@ -11514,6 +11651,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-04",
@@ -11675,6 +11817,11 @@
               "default": 81920
             }
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": false,
           "temperature": true,
           "knowledge": "2025-04",
@@ -11725,6 +11872,14 @@
               "default": 81920
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-04",
@@ -11918,6 +12073,14 @@
               "default": 38912
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -11969,6 +12132,14 @@
               "default": 38912
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -12015,6 +12186,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -12062,6 +12238,11 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -12114,6 +12295,14 @@
               "default": 81920
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -12198,6 +12387,14 @@
               "default": 38912
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2025-04",
@@ -12244,6 +12441,7 @@
             "supported": true,
             "default": true
           },
+          "reasoning_options": [],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-04",
@@ -12284,6 +12482,7 @@
               "default": 32768
             }
           },
+          "reasoning_options": [],
           "tool_call": false,
           "temperature": true,
           "knowledge": "2024-04",
@@ -12483,6 +12682,14 @@
               "default": 38912
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-04",
@@ -12847,6 +13054,14 @@
               "default": 81920
             }
           },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens"
+            }
+          ],
           "tool_call": true,
           "temperature": true,
           "knowledge": "2024-04",
@@ -14326,7 +14541,7 @@
           "tool_call": true,
           "temperature": true,
           "release_date": "2026-06-01",
-          "last_updated": "2026-06-01",
+          "last_updated": "2026-06-25",
           "modalities": {
             "input": [
               "text",
@@ -14339,13 +14554,29 @@
           },
           "open_weights": true,
           "limit": {
-            "context": 512000,
+            "context": 1000000,
             "output": 128000
           },
           "cost": {
-            "input": 0.6,
-            "output": 2.4,
-            "cache_read": 0.12
+            "input": 0.3,
+            "output": 1.2,
+            "cache_read": 0.06,
+            "tiers": [
+              {
+                "input": 0.6,
+                "output": 2.4,
+                "cache_read": 0.12,
+                "tier": {
+                  "type": "context",
+                  "size": 512000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 0.6,
+              "output": 2.4,
+              "cache_read": 0.12
+            }
           },
           "display_name": "MiniMax-M3",
           "type": "chat",
@@ -14759,7 +14990,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-06-12T03:41:23Z",
+      "updated_at": "2026-06-27T07:10:57Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -14775,7 +15006,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14822,7 +15053,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14869,7 +15100,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -14915,7 +15146,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14958,7 +15189,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -14999,7 +15230,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15042,7 +15273,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15101,7 +15332,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15160,7 +15391,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15218,7 +15449,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15276,7 +15507,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15336,7 +15567,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15349,7 +15580,7 @@
           },
           "limit": {
             "context": 256000,
-            "output": 64000,
+            "output": 32000,
             "requests_per_minute": 30000
           },
           "metadata": {
@@ -15376,7 +15607,6 @@
             ],
             "raw_limits": [
               "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k): 32k 最大思维链: 32k",
-              "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k): 64k 最大思维链: 32k",
               "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
@@ -15395,7 +15625,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15452,7 +15682,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15510,7 +15740,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15566,7 +15796,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15624,7 +15854,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15679,7 +15909,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15725,6 +15955,116 @@
           }
         },
         {
+          "id": "doubao-seed-2-1-pro-260628",
+          "name": "doubao-seed-2-1-pro-260628",
+          "display_name": "doubao-seed-2-1-pro-260628",
+          "type": "chat",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "last_updated": "2026-06-27T07:10:57Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "image",
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 256000,
+            "output": 256000,
+            "requests_per_minute": 500
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "max_thinking_tokens": 256000,
+            "max_input_tokens": 256000,
+            "canonical_id": "doubao-seed-2-1-pro",
+            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-1-pro",
+            "section_titles": [
+              "上下文缓存能力",
+              "工具调用能力",
+              "文本生成能力",
+              "深度思考能力",
+              "视觉理解能力"
+            ],
+            "capabilities": [
+              "多模态理解",
+              "工具调用",
+              "文本生成",
+              "深度思考"
+            ],
+            "raw_limits": [
+              "上下文窗口: 256k 最大输入: 256k 最大回答(默认 4k): 256k 最大思维链: 256k",
+              "最大 RPM: 500 最大 TPM: 1000000"
+            ],
+            "features": [
+              "context-cache"
+            ]
+          }
+        },
+        {
+          "id": "doubao-seed-2-1-turbo-260628",
+          "name": "doubao-seed-2-1-turbo-260628",
+          "display_name": "doubao-seed-2-1-turbo-260628",
+          "type": "chat",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "last_updated": "2026-06-27T07:10:57Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "image",
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 256000,
+            "output": 256000,
+            "requests_per_minute": 500
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "max_thinking_tokens": 256000,
+            "max_input_tokens": 256000,
+            "canonical_id": "doubao-seed-2-1-turbo",
+            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-1-turbo",
+            "section_titles": [
+              "上下文缓存能力",
+              "工具调用能力",
+              "文本生成能力",
+              "深度思考能力",
+              "视觉理解能力"
+            ],
+            "capabilities": [
+              "多模态理解",
+              "工具调用",
+              "文本生成",
+              "深度思考"
+            ],
+            "raw_limits": [
+              "上下文窗口: 256k 最大输入: 256k 最大回答(默认 4k): 256k 最大思维链: 256k",
+              "最大 RPM: 500 最大 TPM: 1000000"
+            ],
+            "features": [
+              "context-cache"
+            ]
+          }
+        },
+        {
           "id": "doubao-seed-character-251128",
           "name": "doubao-seed-character-251128",
           "display_name": "doubao-seed-character-251128",
@@ -15734,7 +16074,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15773,6 +16113,61 @@
           }
         },
         {
+          "id": "doubao-seed-character-260628",
+          "name": "doubao-seed-character-260628",
+          "display_name": "doubao-seed-character-260628",
+          "type": "chat",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "last_updated": "2026-06-27T07:10:57Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "image",
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 128000,
+            "output": 32000,
+            "requests_per_minute": 30000
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "max_thinking_tokens": 128000,
+            "max_input_tokens": 96000,
+            "canonical_id": "doubao-seed-character",
+            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-character&_vtm_=a106466.b106468.0_0.0_0.0.1961_7630866813484467762&projectName=default",
+            "section_titles": [
+              "上下文缓存能力",
+              "工具调用能力",
+              "文本生成能力",
+              "深度思考能力",
+              "视觉理解能力"
+            ],
+            "capabilities": [
+              "多模态理解",
+              "工具调用",
+              "文本生成",
+              "深度思考"
+            ],
+            "raw_limits": [
+              "上下文窗口: 128k 最大输入: 96k 最大回答(默认 4k): 32k 最大思维链: 128k",
+              "最大 RPM: 30000 最大 TPM: 5000000"
+            ],
+            "features": [
+              "context-cache"
+            ]
+          }
+        },
+        {
           "id": "doubao-seed-code-preview-251028",
           "name": "doubao-seed-code-preview-251028",
           "display_name": "doubao-seed-code-preview-251028",
@@ -15783,7 +16178,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15829,6 +16224,61 @@
           }
         },
         {
+          "id": "doubao-seed-evolving",
+          "name": "doubao-seed-evolving",
+          "display_name": "doubao-seed-evolving",
+          "type": "chat",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "last_updated": "2026-06-27T07:10:57Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "image",
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 256000,
+            "output": 256000,
+            "requests_per_minute": 500
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "max_thinking_tokens": 256000,
+            "max_input_tokens": 256000,
+            "canonical_id": "doubao-seed-evolving",
+            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-evolving",
+            "section_titles": [
+              "上下文缓存能力",
+              "工具调用能力",
+              "文本生成能力",
+              "深度思考能力",
+              "视觉理解能力"
+            ],
+            "capabilities": [
+              "多模态理解",
+              "工具调用",
+              "文本生成",
+              "深度思考"
+            ],
+            "raw_limits": [
+              "上下文窗口: 256k 最大输入: 256k 最大回答(默认 4k): 256k 最大思维链: 256k",
+              "最大 RPM: 500 最大 TPM: 1000000"
+            ],
+            "features": [
+              "context-cache"
+            ]
+          }
+        },
+        {
           "id": "doubao-seed-translation-250915",
           "name": "doubao-seed-translation-250915",
           "display_name": "doubao-seed-translation-250915",
@@ -15838,7 +16288,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15880,7 +16330,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15907,7 +16357,8 @@
               "文生视频"
             ],
             "raw_limits": [
-              "default: 最大 RPM: 600 最大并发: 10 flex: 最大 TPD: 5000亿"
+              "最大 RPM: 600 最大并发: 10",
+              "最大 TPD: 5000亿"
             ]
           }
         },
@@ -15921,7 +16372,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15948,7 +16399,8 @@
               "文生视频"
             ],
             "raw_limits": [
-              "default: 最大 RPM: 600 最大并发: 10 flex: 最大 TPD: 5000亿"
+              "最大 RPM: 600 最大并发: 10",
+              "最大 TPD: 5000亿"
             ]
           }
         },
@@ -15962,7 +16414,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15991,7 +16443,8 @@
               "音画同生"
             ],
             "raw_limits": [
-              "default: 最大 RPM: 600 最大并发: 10 flex: 最大 TPD: 5000亿"
+              "最大 RPM: 600 最大并发: 10",
+              "最大 TPD: 5000亿"
             ]
           }
         },
@@ -16005,7 +16458,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16032,7 +16485,7 @@
               "音画同生"
             ],
             "raw_limits": [
-              "default: 最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3 flex: 暂不支持"
+              "非 4k 分辨率： 最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3 4k 分辨率： 最大 RPM 企业用户：15 个人用户：15 最大并发 企业用户：1 个人用户：1"
             ]
           }
         },
@@ -16046,7 +16499,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16073,7 +16526,48 @@
               "音画同生"
             ],
             "raw_limits": [
-              "default: 最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3 flex: 暂不支持"
+              "最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3"
+            ]
+          }
+        },
+        {
+          "id": "doubao-seedance-2-0-mini-260615",
+          "name": "doubao-seedance-2-0-mini-260615",
+          "display_name": "doubao-seedance-2-0-mini-260615",
+          "type": "video",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "last_updated": "2026-06-27T07:10:57Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "audio",
+              "image",
+              "text",
+              "video"
+            ],
+            "output": [
+              "video"
+            ]
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "canonical_id": "doubao-seedance-2-0-mini",
+            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedance-2-0-mini",
+            "section_titles": [
+              "视频生成能力"
+            ],
+            "capabilities": [
+              "图生视频",
+              "文生视频",
+              "编辑视频",
+              "音画同生"
+            ],
+            "raw_limits": [
+              "最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3"
             ]
           }
         },
@@ -16087,7 +16581,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -16116,7 +16610,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -16145,7 +16639,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-12T03:41:23Z",
+          "last_updated": "2026-06-27T07:10:57Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16340,6 +16834,42 @@
           "family": "kat-coder"
         },
         {
+          "id": "kat-coder-pro-v1",
+          "name": "KAT-Coder-Pro V1",
+          "family": "kat-coder",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [],
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-11-09",
+          "last_updated": "2025-10-24",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 256000,
+            "output": 32000
+          },
+          "cost": {
+            "input": 0.3,
+            "output": 1.2,
+            "cache_read": 0.06
+          },
+          "display_name": "KAT-Coder-Pro V1",
+          "type": "chat"
+        },
+        {
           "id": "kat-coder-air-v1",
           "name": "KAT Coder Air V1",
           "attachment": false,
@@ -16406,93 +16936,6 @@
           "family": "kat-coder"
         },
         {
-          "id": "kat-coder-pro-v1",
-          "name": "KAT-Coder-Pro V1",
-          "family": "kat-coder",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [],
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-10-24",
-          "last_updated": "2025-10-24",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 256000,
-            "output": 32000
-          },
-          "cost": {
-            "input": 0.3,
-            "output": 1.2,
-            "cache_read": 0.06
-          },
-          "display_name": "KAT-Coder-Pro V1",
-          "type": "chat"
-        },
-        {
-          "id": "kat-dev",
-          "name": "Kwaipilot/KAT-Dev",
-          "family": "kat-coder",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "release_date": "2025-09-27",
-          "last_updated": "2026-01-16",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 128000,
-            "output": 128000
-          },
-          "cost": {
-            "input": 0.2,
-            "output": 0.6
-          },
-          "display_name": "Kwaipilot/KAT-Dev",
-          "type": "chat",
-          "metadata": {
-            "description": "KAT-Dev (32B) is an open-source 32B parameter model specifically designed for software engineering tasks. It achieved a 62.4% resolution rate on the SWE-Bench Verified benchmark, ranking fifth among all open-source models of various scales. The model is optimized through multiple stages, including intermediate training, supervised fine-tuning (SFT) and reinforcement fine-tuning (RFT), as well as large-scale agent reinforcement learning (RL). Based on Qwen3-32B, its training process lays the foundation for subsequent fine-tuning and reinforcement learning stages by enhancing fundamental abilities such as tool usage, multi-turn interaction, and instruction following. During the fine-tuning phase, the model not only learns eight carefully curated task types and programming scenarios but also innovatively introduces a reinforcement fine-tuning (RFT) stage guided by human engineer-annotated “teacher trajectories.” The final agent reinforcement learning phase addresses scalability challenges through multi-level prefix caching, entropy-based trajectory pruning, and efficient architecture.",
-            "typeHints": [
-              "llm"
-            ],
-            "features": [
-              "tools"
-            ],
-            "inputModalities": [
-              "text"
-            ],
-            "pricing": {
-              "input": 0.137,
-              "output": 0.548
-            },
-            "source": "public-provider-conf"
-          },
-          "vision": false
-        },
-        {
           "id": "kat-coder",
           "name": "KAT Coder Pro V1",
           "display_name": "KAT Coder Pro V1",
@@ -16525,6 +16968,48 @@
             "output": 65536
           },
           "metadata": {
+            "source": "public-provider-conf"
+          },
+          "vision": false,
+          "family": "kat-coder"
+        },
+        {
+          "id": "kat-dev",
+          "name": "kat-dev",
+          "display_name": "kat-dev",
+          "type": "chat",
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ]
+          },
+          "cost": {
+            "input": 0.137,
+            "output": 0.548
+          },
+          "limit": {
+            "context": 128000,
+            "output": 128000
+          },
+          "metadata": {
+            "description": "KAT-Dev (32B) is an open-source 32B parameter model specifically designed for software engineering tasks. It achieved a 62.4% resolution rate on the SWE-Bench Verified benchmark, ranking fifth among all open-source models of various scales. The model is optimized through multiple stages, including intermediate training, supervised fine-tuning (SFT) and reinforcement fine-tuning (RFT), as well as large-scale agent reinforcement learning (RL). Based on Qwen3-32B, its training process lays the foundation for subsequent fine-tuning and reinforcement learning stages by enhancing fundamental abilities such as tool usage, multi-turn interaction, and instruction following. During the fine-tuning phase, the model not only learns eight carefully curated task types and programming scenarios but also innovatively introduces a reinforcement fine-tuning (RFT) stage guided by human engineer-annotated “teacher trajectories.” The final agent reinforcement learning phase addresses scalability challenges through multi-level prefix caching, entropy-based trajectory pruning, and efficient architecture.",
+            "typeHints": [
+              "llm"
+            ],
+            "features": [
+              "tools"
+            ],
+            "inputModalities": [
+              "text"
+            ],
+            "pricing": {
+              "input": 0.137,
+              "output": 0.548
+            },
             "source": "public-provider-conf"
           },
           "vision": false,
