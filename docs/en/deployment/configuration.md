@@ -191,7 +191,7 @@ log:
 metrics:
   enabled: false                 # Enable metrics collection
   exporter:
-    type: "oltphttp"            # prometheus, console
+    type: "otlphttp"            # stdout, otlpgrpc, otlphttp
     endpoint: "localhost:8080"  # Metrics exporter endpoint
     insecure: true              # Enable insecure connection
 ```
@@ -411,7 +411,7 @@ username:password@tcp(host:3306)/database?parseTime=True&multiStatements=true&ch
    metrics:
      enabled: true
      exporter:
-       type: "prometheus"
+       type: "otlphttp"
    ```
 
 ### Troubleshooting

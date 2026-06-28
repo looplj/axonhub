@@ -191,7 +191,7 @@ log:
 metrics:
   enabled: false                 # 启用指标收集
   exporter:
-    type: "oltphttp"            # prometheus, console
+    type: "otlphttp"            # stdout, otlpgrpc, otlphttp
     endpoint: "localhost:8080"  # 指标导出器端点
     insecure: true              # 启用不安全连接
 ```
@@ -377,7 +377,7 @@ username.root:password@tcp(host:4000)/database?tls=true&parseTime=true&multiStat
    metrics:
      enabled: true
      exporter:
-       type: "prometheus"
+       type: "otlphttp"
    ```
 
 ### 故障排除
