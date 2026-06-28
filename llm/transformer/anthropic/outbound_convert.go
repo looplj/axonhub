@@ -120,6 +120,11 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		MaxTokens:   resolveMaxTokens(chatReq),
 	}
 
+	// Restore service_tier so it survives non-pass-through format conversion.
+	if chatReq.ServiceTier != nil {
+		req.ServiceTier = *chatReq.ServiceTier
+	}
+
 	if chatReq.Metadata != nil && chatReq.Metadata["user_id"] != "" {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
@@ -181,6 +186,14 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	if chatReq.TransformerMetadata != nil {
 		if cc, ok := chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl); ok && cc != nil {
 			req.CacheControl = cc
+		}
+	}
+
+	// Restore top_k carried through TransformerMetadata (canonical llm.Request
+	// has no TopK field). Mirrors the cache_control restoration above.
+	if chatReq.TransformerMetadata != nil {
+		if topK, ok := chatReq.TransformerMetadata[TransformerMetadataKeyTopK].(*int64); ok && topK != nil {
+			req.TopK = topK
 		}
 	}
 
@@ -1112,15 +1125,33 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		InlineToolResults:        inlineToolResults,
 	}
 
+	finishReason := convertToLlmFinishReason(anthropicResp.StopReason)
+
 	choice := llm.Choice{
 		Index:        0,
 		Message:      message,
-		FinishReason: convertToLlmFinishReason(anthropicResp.StopReason),
+		FinishReason: finishReason,
+	}
+
+	// Carry the original Anthropic stop_reason when it would otherwise be
+	// lost in the canonical finish_reason mapping. Only stop_sequence
+	// collapses ambiguously to "stop" (same as end_turn), so persist it to
+	// let an Anthropic->canonical->Anthropic round-trip restore it.
+	if anthropicResp.StopReason != nil && *anthropicResp.StopReason == "stop_sequence" {
+		choice.TransformerMetadata = map[string]any{
+			TransformerMetadataKeyAnthropicStopReason: *anthropicResp.StopReason,
+		}
 	}
 
 	resp.Choices = []llm.Choice{choice}
 
 	resp.Usage = convertToLlmUsage(anthropicResp.Usage, platformType)
+
+	// Backfill service_tier from usage so it survives non-streaming conversion,
+	// mirroring the streaming path.
+	if anthropicResp.Usage != nil {
+		resp.ServiceTier = anthropicResp.Usage.ServiceTier
+	}
 	if transformerMetadata != nil {
 		resp.TransformerMetadata = transformerMetadata
 	}
@@ -1132,6 +1163,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 // tool_use-like block (tool_use or any special *_tool_use). For special
 // blocks, TransformerMetadata is populated with anthropic_type (+ optional
 // anthropic_caller) so the block can be round-tripped.
+
 func toolCallFromAnthropicBlock(block MessageContentBlock) llm.ToolCall {
 	repaired := xjson.SafeJSONRawMessage(string(block.Input))
 

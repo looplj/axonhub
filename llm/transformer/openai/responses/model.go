@@ -62,6 +62,9 @@ type Tool struct {
 	Quality string `json:"quality,omitempty"`
 	// This field is for ImageGeneration
 	Size string `json:"size,omitempty"`
+
+	// Tools holds sub-tools for namespace type.
+	Tools []Tool `json:"tools,omitempty"`
 }
 
 type WebSearchFilters struct {
@@ -95,6 +98,11 @@ type Request struct {
 	Instructions string `json:"instructions"`
 
 	Temperature *float64 `json:"temperature,omitempty"`
+
+	// FrequencyPenalty penalizes frequent tokens (sampling parameter).
+	FrequencyPenalty *float64 `json:"frequency_penalty,omitempty"`
+	// PresencePenalty penalizes already-present tokens (sampling parameter).
+	PresencePenalty *float64 `json:"presence_penalty,omitempty"`
 
 	// Input can be a string prompt or an array of input items.
 	Input Input `json:"input"`
@@ -153,6 +161,9 @@ type Request struct {
 
 	// Nucleus sampling parameter.
 	TopP *float64 `json:"top_p,omitempty"`
+
+	// Modalities specifies output types (e.g. text, audio).
+	Modalities []string `json:"modalities,omitempty"`
 }
 
 // Prompt represents a reference to a prompt template.
@@ -537,6 +548,9 @@ type Item struct {
 
 	// The detail of the image. high, low, or auto, for input_image type.
 	Detail *string `json:"detail,omitempty"`
+
+	// InputAudio is the audio data, for input_audio type.
+	InputAudio *llm.InputAudio `json:"input_audio,omitempty"`
 
 	// Text for output_text/input_text type.
 	Text *string `json:"text,omitempty"`

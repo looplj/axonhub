@@ -64,6 +64,11 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		TransformerMetadata: map[string]any{},
 		TransformOptions:    llm.TransformOptions{},
 	}
+
+	// Preserve service_tier so it survives non-pass-through format conversion.
+	if anthropicReq.ServiceTier != "" {
+		chatReq.ServiceTier = lo.ToPtr(anthropicReq.ServiceTier)
+	}
 	if anthropicReq.Metadata != nil {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID
 	}
@@ -73,6 +78,14 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	// it on the upstream request and bypass its own breakpoint optimization.
 	if anthropicReq.CacheControl != nil {
 		chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl] = anthropicReq.CacheControl
+	}
+
+	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
+	// TopK field, so without this the Anthropic sampling parameter is dropped on
+	// non-pass-through format conversion.
+	if anthropicReq.TopK != nil {
+		topK := *anthropicReq.TopK
+		chatReq.TransformerMetadata[TransformerMetadataKeyTopK] = &topK
 	}
 
 	// Convert messages
@@ -678,18 +691,31 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 
 		// Convert finish reason
 		if choice.FinishReason != nil {
-			switch *choice.FinishReason {
-			case "stop":
-				stopReason := "end_turn"
-				resp.StopReason = &stopReason
-			case "length":
-				stopReason := "max_tokens"
-				resp.StopReason = &stopReason
-			case "tool_calls":
-				stopReason := "tool_use"
-				resp.StopReason = &stopReason
-			default:
-				resp.StopReason = choice.FinishReason
+			restored := false
+			// Prefer the original Anthropic stop_reason when available so a
+			// round-trip restores stop_sequence instead of collapsing to end_turn.
+			if choice.TransformerMetadata != nil {
+				if raw, ok := choice.TransformerMetadata[TransformerMetadataKeyAnthropicStopReason].(string); ok && raw != "" {
+					stopReason := raw
+					resp.StopReason = &stopReason
+					restored = true
+				}
+			}
+
+			if !restored {
+				switch *choice.FinishReason {
+				case "stop":
+					stopReason := "end_turn"
+					resp.StopReason = &stopReason
+				case "length":
+					stopReason := "max_tokens"
+					resp.StopReason = &stopReason
+				case "tool_calls":
+					stopReason := "tool_use"
+					resp.StopReason = &stopReason
+				default:
+					resp.StopReason = choice.FinishReason
+				}
 			}
 		}
 	}

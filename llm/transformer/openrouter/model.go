@@ -1,8 +1,10 @@
 package openrouter
 
 import (
+	"encoding/json"
 	"strings"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -99,6 +101,31 @@ func (m *Message) ToOpenAIMessage() openai.Message {
 		if len(m.ToolCalls) == 0 {
 			m.ToolCalls = nil
 		}
+	}
+
+	// Carry structured reasoning_details and images onto the embedded openai.Message
+	// so they survive into canonical (instead of only being collapsed into
+	// reasoning text / content parts above).
+	if len(m.ReasoningDetails) > 0 {
+		details := make([]json.RawMessage, 0, len(m.ReasoningDetails))
+		for _, d := range m.ReasoningDetails {
+			b, err := json.Marshal(d)
+			if err != nil {
+				return m.Message
+			}
+			details = append(details, b)
+		}
+		m.Message.ReasoningDetails = details
+	}
+
+	if len(m.Images) > 0 {
+		images := make([]llm.ChatImage, 0, len(m.Images))
+		for _, img := range m.Images {
+			if img.ImageURL != nil {
+				images = append(images, llm.ChatImage{ImageURL: llm.ChatImageURL{URL: img.ImageURL.URL}})
+			}
+		}
+		m.Message.Images = images
 	}
 
 	return m.Message

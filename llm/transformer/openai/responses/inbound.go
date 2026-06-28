@@ -170,6 +170,8 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	chatReq := &llm.Request{
 		Model:               req.Model,
 		Temperature:         req.Temperature,
+		FrequencyPenalty:    req.FrequencyPenalty,
+		PresencePenalty:     req.PresencePenalty,
 		Stream:              req.Stream,
 		Metadata:            maps.Clone(req.Metadata),
 		RequestType:         llm.RequestTypeChat,
@@ -179,6 +181,7 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		Store:               req.Store,
 		TopLogprobs:         req.TopLogprobs,
 		TopP:                req.TopP,
+		Modalities:          req.Modalities,
 		SafetyIdentifier:    req.SafetyIdentifier,
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
@@ -203,6 +206,12 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 
 	if req.Truncation != nil {
 		chatReq.TransformerMetadata["truncation"] = req.Truncation
+	}
+
+	// Preserve the top-level background flag (background mode) so it survives
+	// non-pass-through format conversion.
+	if req.Background != nil {
+		chatReq.TransformerMetadata["background"] = *req.Background
 	}
 
 	// Convert reasoning
@@ -698,6 +707,17 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 
 		return nil, nil
 
+	case "input_audio":
+		if item.InputAudio != nil {
+			return &llm.MessageContentPart{
+				ID:         item.ID,
+				Type:       "input_audio",
+				InputAudio: item.InputAudio,
+			}, nil
+		}
+
+		return nil, nil
+
 	case "compaction", "compaction_summary":
 		return compactionContentPartFromItem(item, item.Type), nil
 
@@ -783,6 +803,26 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				Type:               llm.ToolTypeResponsesCustomTool,
 				ResponseCustomTool: customTool,
 			})
+
+		case "namespace":
+			for _, subTool := range tool.Tools {
+				if subTool.Type != "function" {
+					continue
+				}
+				params, err := json.Marshal(subTool.Parameters)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal namespace tool parameters: %w", err)
+				}
+				result = append(result, llm.Tool{
+					Type: "function",
+					Function: llm.Function{
+						Name:        tool.Name + "__" + subTool.Name,
+						Description: subTool.Description,
+						Parameters:  params,
+						Strict:      subTool.Strict,
+					},
+				})
+			}
 
 		default:
 			// Skip unsupported tool types
@@ -891,6 +931,19 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		PreviousResponseID: chatResp.PreviousResponseID,
 	}
 
+	// Backfill service_tier and error so they survive conversion back to
+	// the Responses API format (canonical carries both).
+	if chatResp.ServiceTier != "" {
+		resp.ServiceTier = lo.ToPtr(chatResp.ServiceTier)
+	}
+	if chatResp.Error != nil {
+		resp.Error = &Error{
+			Type:    chatResp.Error.Detail.Type,
+			Code:    chatResp.Error.Detail.Code,
+			Message: chatResp.Error.Detail.Message,
+		}
+	}
+
 	// Convert usage
 	resp.Usage = ConvertLLMUsageToResponsesUsage(chatResp.Usage)
 
@@ -921,23 +974,40 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		if len(message.ToolCalls) > 0 {
 			for _, toolCall := range message.ToolCalls {
 				if toolCall.ResponseCustomToolCall != nil {
+					ctcItemID := toolCall.ResponseItemID
+					if ctcItemID == "" {
+						ctcItemID = toolCall.ID
+					}
+					ctcStatus := toolCall.Status
+					if ctcStatus == "" {
+						ctcStatus = "completed"
+					}
 					resp.Output = append(resp.Output, Item{
-						ID:     toolCall.ID,
-						Type:   "custom_tool_call",
-						CallID: toolCall.ResponseCustomToolCall.CallID,
-						Name:   toolCall.ResponseCustomToolCall.Name,
-						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
-						Status: lo.ToPtr("completed"),
+						ID:        ctcItemID,
+						Type:      "custom_tool_call",
+						CallID:    toolCall.ResponseCustomToolCall.CallID,
+						Name:      toolCall.ResponseCustomToolCall.Name,
+						Namespace: toolCall.ResponseCustomToolCall.Namespace,
+						Input:     lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
+						Status:    lo.ToPtr(ctcStatus),
 					})
 				} else {
+					fcItemID := toolCall.ResponseItemID
+					if fcItemID == "" {
+						fcItemID = toolCall.ID
+					}
+					fcStatus := toolCall.Status
+					if fcStatus == "" {
+						fcStatus = "completed"
+					}
 					resp.Output = append(resp.Output, Item{
-						ID:        toolCall.ID,
+						ID:        fcItemID,
 						Type:      "function_call",
 						CallID:    toolCall.ID,
 						Name:      toolCall.Function.Name,
 						Namespace: toolCall.Function.Namespace,
 						Arguments: toolCall.Function.Arguments,
-						Status:    lo.ToPtr("completed"),
+						Status:    lo.ToPtr(fcStatus),
 					})
 				}
 			}

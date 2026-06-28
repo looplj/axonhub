@@ -748,14 +748,14 @@ func TestConvertReasoning(t *testing.T) {
 			},
 		},
 		{
-			name: "both effort and budget specified - effort takes priority",
+			name: "both effort and budget specified - effort wins per requirement",
 			req: &llm.Request{
 				ReasoningEffort: "medium",
 				ReasoningBudget: lo.ToPtr(int64(3000)),
 			},
 			expected: &Reasoning{
 				Effort:    "medium",
-				MaxTokens: nil, // Should be nil when effort is specified
+				MaxTokens: nil, // effort takes priority; max_tokens omitted to avoid mutually-exclusive fields
 			},
 		},
 		{
@@ -767,7 +767,7 @@ func TestConvertReasoning(t *testing.T) {
 			},
 			expected: &Reasoning{
 				Effort:    "high",
-				MaxTokens: nil, // effort takes priority
+				MaxTokens: nil, // effort present, so budget omitted per mutual-exclusion rule
 				Summary:   "detailed",
 			},
 		},
@@ -1407,4 +1407,173 @@ func TestConvertAssistantMessage_WithCompactContent(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+// TestConvertToLLMRequest_SamplingPenalties covers #13: Responses inbound
+// must read frequency_penalty/presence_penalty from the request body.
+func TestConvertToLLMRequest_SamplingPenalties(t *testing.T) {
+	req := &Request{
+		Model:            "gpt-4o",
+		FrequencyPenalty: lo.ToPtr(0.5),
+		PresencePenalty:  lo.ToPtr(0.3),
+	}
+
+	result, err := convertToLLMRequest(req)
+	require.NoError(t, err)
+	require.NotNil(t, result.FrequencyPenalty)
+	require.Equal(t, 0.5, *result.FrequencyPenalty)
+	require.NotNil(t, result.PresencePenalty)
+	require.Equal(t, 0.3, *result.PresencePenalty)
+}
+
+// TestConvertToLLMRequest_Background covers #15: Responses inbound must
+// preserve the top-level background flag (background mode) via TransformerMetadata.
+func TestConvertToLLMRequest_Background(t *testing.T) {
+	t.Run("background true preserved", func(t *testing.T) {
+		req := &Request{
+			Model:      "gpt-4o",
+			Background: lo.ToPtr(true),
+		}
+
+		result, err := convertToLLMRequest(req)
+		require.NoError(t, err)
+		v, ok := result.TransformerMetadata["background"]
+		require.True(t, ok)
+		require.Equal(t, true, v)
+	})
+
+	t.Run("background absent stays absent", func(t *testing.T) {
+		req := &Request{
+			Model: "gpt-4o",
+		}
+
+		result, err := convertToLLMRequest(req)
+		require.NoError(t, err)
+		_, ok := result.TransformerMetadata["background"]
+		require.False(t, ok)
+	})
+}
+
+// TestConvertToLLMRequest_Modalities covers #14: Responses inbound must
+// read modalities from the request body into canonical.
+func TestConvertToLLMRequest_Modalities(t *testing.T) {
+	req := &Request{
+		Model:      "gpt-4o",
+		Modalities: []string{"text", "audio"},
+	}
+
+	result, err := convertToLLMRequest(req)
+	require.NoError(t, err)
+	require.Equal(t, []string{"text", "audio"}, result.Modalities)
+}
+
+// TestCustomToolCall_NamespaceRoundTrip covers #10: custom_tool_call must
+// carry namespace through canonical ResponseCustomToolCall on both the
+// inbound (outputItem -> ToolCall) and outbound (ToolCall -> Item) paths.
+func TestCustomToolCall_NamespaceRoundTrip(t *testing.T) {
+	t.Run("inbound preserves namespace", func(t *testing.T) {
+		outputItem := Item{
+			ID:        "ctc_ns",
+			Type:      "custom_tool_call",
+			CallID:    "call_ns_1",
+			Name:      "apply_patch",
+			Namespace: "mcp__myserver",
+			Input:     lo.ToPtr("*** Begin Patch\n*** End Patch"),
+			Status:    lo.ToPtr("completed"),
+		}
+
+		msg := convertOutputToMessage([]Item{outputItem}, nil)
+		require.Len(t, msg.ToolCalls, 1)
+		tc := msg.ToolCalls[0]
+		require.NotNil(t, tc.ResponseCustomToolCall)
+		require.Equal(t, "mcp__myserver", tc.ResponseCustomToolCall.Namespace)
+		require.Equal(t, "apply_patch", tc.ResponseCustomToolCall.Name)
+	})
+
+	t.Run("outbound preserves namespace", func(t *testing.T) {
+		chatResp := &llm.Response{
+			ID:    "resp_ns",
+			Model: "gpt-4o",
+			Choices: []llm.Choice{{
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{{
+						ID:   "call_ns_2",
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID:    "call_ns_2",
+							Name:      "apply_patch",
+							Namespace: "mcp__myserver",
+							Input:     "*** Begin Patch\n*** End Patch",
+						},
+					}},
+				},
+				FinishReason: lo.ToPtr("tool_calls"),
+			}},
+		}
+
+		resp := convertToResponsesAPIResponse(chatResp)
+		require.Len(t, resp.Output, 1)
+		item := resp.Output[0]
+		require.Equal(t, "custom_tool_call", item.Type)
+		require.Equal(t, "mcp__myserver", item.Namespace)
+		require.Equal(t, "apply_patch", item.Name)
+	})
+}
+
+// TestFunctionCallItem_IDAndStatusRoundTrip covers #19: function_call items
+// must preserve their item ID (distinct from call_id) and status across the
+// Responses inbound (outputItem -> ToolCall) and outbound (ToolCall -> Item)
+// conversion, instead of overwriting ID with call_id and hardcoding status.
+func TestFunctionCallItem_IDAndStatusRoundTrip(t *testing.T) {
+	t.Run("inbound preserves item id and status", func(t *testing.T) {
+		outputItem := Item{
+			ID:        "fc_item_1",
+			Type:      "function_call",
+			CallID:    "call_fc_1",
+			Name:      "get_weather",
+			Namespace: "",
+			Arguments: `{"city":"sf"}`,
+			Status:    lo.ToPtr("incomplete"),
+		}
+
+		msg := convertOutputToMessage([]Item{outputItem}, nil)
+		require.Len(t, msg.ToolCalls, 1)
+		tc := msg.ToolCalls[0]
+		require.Equal(t, "call_fc_1", tc.ID)
+		require.Equal(t, "fc_item_1", tc.ResponseItemID)
+		require.Equal(t, "incomplete", tc.Status)
+	})
+
+	t.Run("outbound restores item id and status", func(t *testing.T) {
+		chatResp := &llm.Response{
+			ID:    "resp_fc",
+			Model: "gpt-4o",
+			Choices: []llm.Choice{{
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{{
+						ID:             "call_fc_2",
+						Type:           "function",
+						ResponseItemID: "fc_item_2",
+						Status:         "incomplete",
+						Function: llm.FunctionCall{
+							Name:      "get_weather",
+							Arguments: `{"city":"sf"}`,
+						},
+					}},
+				},
+				FinishReason: lo.ToPtr("tool_calls"),
+			}},
+		}
+
+		resp := convertToResponsesAPIResponse(chatResp)
+		require.Len(t, resp.Output, 1)
+		item := resp.Output[0]
+		require.Equal(t, "function_call", item.Type)
+		require.Equal(t, "fc_item_2", item.ID)
+		require.Equal(t, "call_fc_2", item.CallID)
+		require.NotNil(t, item.Status)
+		require.Equal(t, "incomplete", *item.Status)
+	})
 }

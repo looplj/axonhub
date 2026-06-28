@@ -397,6 +397,15 @@ type Message struct {
 	// Audio contains model-generated audio metadata for assistant messages.
 	Audio *OutputAudio `json:"audio,omitempty"`
 
+	// ReasoningDetails carries structured reasoning detail items (e.g. OpenRouter
+	// reasoning_details: summary/encrypted/text). Carried as raw JSON so
+	// provider-native shapes round-trip without canonical having to model every
+	// variant.
+	ReasoningDetails []json.RawMessage `json:"reasoning_details,omitempty"`
+
+	// Images carries generated images returned by image generation models.
+	Images []ChatImage `json:"images,omitempty"`
+
 	// Copilot-only: X-Initiator quota tracking. Ignored by other providers.
 	Attribution string `json:"attribution,omitempty"`
 
@@ -571,6 +580,16 @@ type InputAudio struct {
 
 	// Base64 encoded audio data.
 	Data string `json:"data"`
+}
+
+// ChatImage represents a generated image returned by an image generation model.
+type ChatImage struct {
+	ImageURL ChatImageURL `json:"image_url"`
+}
+
+// ChatImageURL carries the URL (or base64 data URL) of a generated image.
+type ChatImageURL struct {
+	URL string `json:"url"`
 }
 
 // CompactContent represents compact content from OpenAI Responses API compaction.

@@ -31,6 +31,8 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		Metadata:            r.Metadata,
 		Modalities:          r.Modalities,
 		ReasoningEffort:     r.ReasoningEffort,
+		ReasoningBudget:     r.ReasoningBudget,
+		ReasoningSummary:    r.ReasoningSummary,
 		ServiceTier:         r.ServiceTier,
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,
@@ -148,6 +150,8 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: reasoningContent,
 		Reasoning:        reasoning,
+		ReasoningDetails: m.ReasoningDetails,
+		Images:           m.Images,
 	}
 
 	if m.Audio != nil {

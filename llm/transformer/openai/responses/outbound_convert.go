@@ -517,14 +517,13 @@ func convertReasoning(req *llm.Request) *Reasoning {
 		MaxTokens: req.ReasoningBudget,
 	}
 
-	// Handle summary field (generate_summary is already merged at inbound)
-	if req.ReasoningSummary != nil {
-		reasoning.Summary = *req.ReasoningSummary
-	}
-
 	// If both effort and budget are specified, prioritize effort as per requirement
 	if req.ReasoningEffort != "" && req.ReasoningBudget != nil {
 		reasoning.MaxTokens = nil // Ignore max_tokens when effort is specified
+	}
+	// Handle summary field (generate_summary is already merged at inbound)
+	if req.ReasoningSummary != nil {
+		reasoning.Summary = *req.ReasoningSummary
 	}
 
 	return reasoning
@@ -647,8 +646,10 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			annotations = appendOutputText(&textContent, &visibleTextRuneCount, annotations, outputItem)
 		case "function_call":
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: "function",
+				ID:             outputItem.CallID,
+				ResponseItemID: outputItem.ID,
+				Status:         lo.FromPtr(outputItem.Status),
+				Type:           "function",
 				Function: llm.FunctionCall{
 					Name:      outputItem.Name,
 					Namespace: outputItem.Namespace,
@@ -662,12 +663,15 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			}
 
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:             outputItem.CallID,
+				ResponseItemID: outputItem.ID,
+				Status:         lo.FromPtr(outputItem.Status),
+				Type:           llm.ToolTypeResponsesCustomTool,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: outputItem.CallID,
-					Name:   outputItem.Name,
-					Input:  inputStr,
+					CallID:    outputItem.CallID,
+					Name:      outputItem.Name,
+					Namespace: outputItem.Namespace,
+					Input:     inputStr,
 				},
 			})
 		case "reasoning":
