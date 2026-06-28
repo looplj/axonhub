@@ -169,6 +169,12 @@ type Message struct {
 	// Reasoning is used by some providers (e.g., Synthetic) instead of reasoning_content.
 	Reasoning *string `json:"reasoning,omitempty"`
 
+	// ReasoningDetails carries structured reasoning detail items (OpenRouter).
+	ReasoningDetails []json.RawMessage `json:"reasoning_details,omitempty"`
+
+	// Images carries generated images from image generation models.
+	Images []llm.ChatImage `json:"images,omitempty"`
+
 	// Annotations contains citation information for the message.
 	// This is used by providers like Perplexity to provide source URLs.
 	Annotations []Annotation `json:"annotations,omitempty"`

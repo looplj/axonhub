@@ -621,7 +621,10 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		},
 	}
 
-	itemID := tc.ID
+	itemID := tc.ResponseItemID
+	if itemID == "" {
+		itemID = tc.ID
+	}
 	if itemID == "" {
 		itemID = generateItemID()
 	}
@@ -629,12 +632,13 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 	switch {
 	case tc.ResponseCustomToolCall != nil:
 		item := &Item{
-			ID:     itemID,
-			Type:   "custom_tool_call",
-			Status: lo.ToPtr("in_progress"),
-			CallID: tc.ResponseCustomToolCall.CallID,
-			Name:   tc.ResponseCustomToolCall.Name,
-			Input:  lo.ToPtr(""),
+			ID:        itemID,
+			Type:      "custom_tool_call",
+			Status:    lo.ToPtr("in_progress"),
+			CallID:    tc.ResponseCustomToolCall.CallID,
+			Name:      tc.ResponseCustomToolCall.Name,
+			Namespace: tc.ResponseCustomToolCall.Namespace,
+			Input:     lo.ToPtr(""),
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -918,7 +922,10 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			continue
 		}
 
-		itemID := tc.ID
+		itemID := tc.ResponseItemID
+		if itemID == "" {
+			itemID = tc.ID
+		}
 		if itemID == "" {
 			itemID = s.currentItemID
 		}
@@ -938,13 +945,18 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				return fmt.Errorf("failed to enqueue custom_tool_call_input.done event: %w", err)
 			}
 
+			ctcDoneStatus := tc.Status
+			if ctcDoneStatus == "" {
+				ctcDoneStatus = "completed"
+			}
 			item := Item{
-				ID:     itemID,
-				Type:   "custom_tool_call",
-				Status: lo.ToPtr("completed"),
-				CallID: tc.ResponseCustomToolCall.CallID,
-				Name:   tc.ResponseCustomToolCall.Name,
-				Input:  lo.ToPtr(fullInput),
+				ID:        itemID,
+				Type:      "custom_tool_call",
+				Status:    lo.ToPtr(ctcDoneStatus),
+				CallID:    tc.ResponseCustomToolCall.CallID,
+				Name:      tc.ResponseCustomToolCall.Name,
+				Namespace: tc.ResponseCustomToolCall.Namespace,
+				Input:     lo.ToPtr(fullInput),
 			}
 
 			err = s.enqueueEvent(&StreamEvent{
@@ -968,10 +980,14 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				return fmt.Errorf("failed to enqueue function_call_arguments.done event: %w", err)
 			}
 
+			fcDoneStatus := tc.Status
+			if fcDoneStatus == "" {
+				fcDoneStatus = "completed"
+			}
 			item := Item{
 				ID:        itemID,
 				Type:      "function_call",
-				Status:    lo.ToPtr("completed"),
+				Status:    lo.ToPtr(fcDoneStatus),
 				CallID:    tc.ID,
 				Name:      tc.Function.Name,
 				Namespace: tc.Function.Namespace,

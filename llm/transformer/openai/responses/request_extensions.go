@@ -69,6 +69,20 @@ func buildRepresentedToolSignatures(tools []Tool) []string {
 
 	signatures := make([]string, 0, len(tools))
 	for _, tool := range tools {
+		// A namespace container is expanded into one canonical function per
+		// sub-tool by convertToolsToLLM (name = "<namespace>__<sub>"). Mirror
+		// that expansion here so the signature count matches the canonical
+		// tools produced on the outbound side; otherwise the raw-only merge
+		// signature check fails and co-resident raw-only tools are starved.
+		if tool.Type == "namespace" {
+			for _, subTool := range tool.Tools {
+				if subTool.Type != "function" {
+					continue
+				}
+				signatures = append(signatures, "function:"+tool.Name+"__"+subTool.Name)
+			}
+			continue
+		}
 		if !isStructurallyRepresentedToolType(tool.Type) {
 			continue
 		}
@@ -85,6 +99,13 @@ func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.O
 
 	fragments := make([]llm.OpenAIResponsesRawFragment, 0, len(tools))
 	for i := range tools {
+		// namespace is structurally expanded into canonical functions, so it
+		// must not also be carried as a raw fragment (that would duplicate the
+		// tools and break the signature-count check). Other non-represented
+		// types (file_search, mcp, ...) stay raw.
+		if tools[i].Type == "namespace" {
+			continue
+		}
 		if i >= len(rawTools) || len(rawTools[i]) == 0 || isStructurallyRepresentedToolType(tools[i].Type) {
 			continue
 		}
@@ -224,6 +245,19 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		}
 	}
 
+	// PrependCount is the number of messages the prompt pipeline prepended
+	// (head) to the canonical request between inbound and outbound. Prepended
+	// messages become outbound structured items at the head, so every original
+	// input position shifts right by that many slots. Offset raw-only items by
+	// PrependCount so they keep their position relative to the user's
+	// structured items instead of landing ahead of the injected prepend.
+	// Append-only injection grows the tail and does not shift original
+	// positions, so it is intentionally not counted here.
+	prependCount := requestExt.PrependCount
+	if prependCount < 0 {
+		prependCount = 0
+	}
+
 	total := len(structuredItems) + len(requestExt.RawInputItems)
 	items := make([]json.RawMessage, 0, total)
 	structuredIndex := 0
@@ -232,7 +266,7 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
 			return nil, false
 		}
-		rawByIndex[fragment.OriginalIndex] = cloneRaw(fragment.Raw)
+		rawByIndex[fragment.OriginalIndex+prependCount] = cloneRaw(fragment.Raw)
 	}
 
 	for i := 0; i < total; i++ {

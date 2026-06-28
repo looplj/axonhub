@@ -1926,3 +1926,68 @@ func TestInboundTransformer_TransformResponse_WithReasoningContent(t *testing.T)
 		})
 	}
 }
+
+// TestConvertToResponsesAPIResponse_ServiceTierAndError covers #21:
+// convertToResponsesAPIResponse must backfill service_tier and error from
+// the canonical Response.
+func TestConvertToResponsesAPIResponse_ServiceTierAndError(t *testing.T) {
+	t.Run("service_tier backfilled", func(t *testing.T) {
+		resp := convertToResponsesAPIResponse(&llm.Response{
+			ID:          "resp_st",
+			Model:       "gpt-4o",
+			ServiceTier: "priority",
+		})
+		require.NotNil(t, resp.ServiceTier)
+		require.Equal(t, "priority", *resp.ServiceTier)
+	})
+
+	t.Run("error backfilled", func(t *testing.T) {
+		resp := convertToResponsesAPIResponse(&llm.Response{
+			ID:    "resp_err",
+			Model: "gpt-4o",
+			Error: &llm.ResponseError{
+				StatusCode: 400,
+				Detail: llm.ErrorDetail{
+					Type:    "invalid_request_error",
+					Code:    "bad_value",
+					Message: "model not found",
+				},
+			},
+		})
+		require.NotNil(t, resp.Error)
+		require.Equal(t, "invalid_request_error", resp.Error.Type)
+		require.Equal(t, "bad_value", resp.Error.Code)
+		require.Equal(t, "model not found", resp.Error.Message)
+	})
+
+	t.Run("nil service_tier and error stay absent", func(t *testing.T) {
+		resp := convertToResponsesAPIResponse(&llm.Response{
+			ID:    "resp_plain",
+			Model: "gpt-4o",
+		})
+		require.Nil(t, resp.ServiceTier)
+		require.Nil(t, resp.Error)
+	})
+}
+
+// TestConvertContentItemToPart_InputAudio covers #5: Responses inbound must
+// convert input_audio content items into canonical MessageContentPart.
+func TestConvertContentItemToPart_InputAudio(t *testing.T) {
+	item := &Item{
+		ID:   "audio_part_1",
+		Type: "input_audio",
+		InputAudio: &llm.InputAudio{
+			Format: "mp3",
+			Data:   "SGVsbG8gV29ybGQ=",
+		},
+	}
+
+	result, err := convertContentItemToPart(item)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, "input_audio", result.Type)
+	require.Equal(t, "audio_part_1", result.ID)
+	require.NotNil(t, result.InputAudio)
+	require.Equal(t, "mp3", result.InputAudio.Format)
+	require.Equal(t, "SGVsbG8gV29ybGQ=", result.InputAudio.Data)
+}

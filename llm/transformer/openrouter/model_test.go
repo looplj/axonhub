@@ -1,6 +1,7 @@
 package openrouter_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 )
 
@@ -35,6 +37,9 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 							},
 							ReasoningContent: lo.ToPtr("We"),
 							Reasoning:        lo.ToPtr("We"),
+							ReasoningDetails: []json.RawMessage{
+								[]byte(`{"type":"reasoning.text","text":"We","format":"unknown","index":0}`),
+							},
 						},
 					},
 				},
@@ -63,6 +68,9 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 										},
 									},
 								},
+							},
+							Images: []llm.ChatImage{
+								{ImageURL: llm.ChatImageURL{URL: "data:image/png;base64,iVBORw0KGgo"}},
 							},
 						},
 					},
@@ -161,4 +169,27 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+// TestMessage_ToOpenAIMessage_ReasoningDetailsAndImages covers #20: OpenRouter
+// inbound must carry structured reasoning_details and images onto the embedded
+// openai.Message so they survive into canonical, instead of only collapsing
+// them into reasoning text / content parts.
+func TestMessage_ToOpenAIMessage_ReasoningDetailsAndImages(t *testing.T) {
+	msg := &openrouter.Message{}
+	msg.ReasoningDetails = []openrouter.ReasoningDetail{
+		{Type: "reasoning.summary", Text: "step 1", Index: 0},
+	}
+	imgURL := "data:image/png;base64,abc"
+	msg.Images = []openrouter.Image{{
+		Type:     "image_url",
+		ImageURL: &openai.ImageURL{URL: imgURL},
+	}}
+
+	om := msg.ToOpenAIMessage()
+
+	require.Len(t, om.ReasoningDetails, 1)
+	require.JSONEq(t, `{"type":"reasoning.summary","text":"step 1","format":"","index":0}`, string(om.ReasoningDetails[0]))
+	require.Len(t, om.Images, 1)
+	require.Equal(t, imgURL, om.Images[0].ImageURL.URL)
 }

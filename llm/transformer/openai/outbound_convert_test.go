@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -43,6 +44,48 @@ func TestRequestFromLLM(t *testing.T) {
 				require.Len(t, req.Messages, 1)
 				require.Equal(t, "assistant", req.Messages[0].Role)
 				require.True(t, *req.Stream)
+			},
+		},
+		{
+			name: "request with reasoning effort and budget",
+			llmReq: &llm.Request{
+				Model:           "o3",
+				ReasoningEffort: "high",
+				ReasoningBudget: lo.ToPtr(int64(5000)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hi"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, req *Request) {
+				require.NotNil(t, req)
+				require.Equal(t, "high", req.ReasoningEffort)
+				require.NotNil(t, req.ReasoningBudget)
+				require.Equal(t, int64(5000), *req.ReasoningBudget)
+			},
+		},
+		{
+			name: "request with reasoning summary",
+			llmReq: &llm.Request{
+				Model:            "o3",
+				ReasoningSummary: lo.ToPtr("detailed"),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hi"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, req *Request) {
+				require.NotNil(t, req)
+				require.NotNil(t, req.ReasoningSummary)
+				require.Equal(t, "detailed", *req.ReasoningSummary)
 			},
 		},
 		{
@@ -587,4 +630,38 @@ func TestMessageFromLLM_GeminiReasoningSignatureDoesNotInjectThoughtSignature(t 
 
 	require.Len(t, msg.ToolCalls, 1)
 	require.Nil(t, msg.ToolCalls[0].ExtraContent)
+}
+
+// TestMessage_ReasoningDetailsAndImagesRoundTrip covers #20: Chat response
+// must carry reasoning_details and images through canonical Message on both
+// inbound (Message -> llm.Message) and outbound (llm.Message -> Message).
+func TestMessage_ReasoningDetailsAndImagesRoundTrip(t *testing.T) {
+	details := []json.RawMessage{json.RawMessage(`{"type":"reasoning.summary","summary":"step 1"}`)}
+	images := []llm.ChatImage{{ImageURL: llm.ChatImageURL{URL: "data:image/png;base64,abc"}}}
+
+	t.Run("inbound preserves reasoning_details and images", func(t *testing.T) {
+		m := Message{
+			Role:             "assistant",
+			ReasoningDetails: details,
+			Images:           images,
+		}
+		llmMsg := m.ToLLMMessage()
+		require.Len(t, llmMsg.ReasoningDetails, 1)
+		require.JSONEq(t, `{"type":"reasoning.summary","summary":"step 1"}`, string(llmMsg.ReasoningDetails[0]))
+		require.Len(t, llmMsg.Images, 1)
+		require.Equal(t, "data:image/png;base64,abc", llmMsg.Images[0].ImageURL.URL)
+	})
+
+	t.Run("outbound preserves reasoning_details and images", func(t *testing.T) {
+		llmMsg := llm.Message{
+			Role:             "assistant",
+			ReasoningDetails: details,
+			Images:           images,
+		}
+		m := MessageFromLLM(llmMsg)
+		require.Len(t, m.ReasoningDetails, 1)
+		require.JSONEq(t, `{"type":"reasoning.summary","summary":"step 1"}`, string(m.ReasoningDetails[0]))
+		require.Len(t, m.Images, 1)
+		require.Equal(t, "data:image/png;base64,abc", m.Images[0].ImageURL.URL)
+	})
 }

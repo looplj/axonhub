@@ -258,8 +258,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		User:                 llmReq.User,
 		Metadata:             llmReq.Metadata,
 		MaxOutputTokens:      llmReq.MaxCompletionTokens,
+		Temperature:          llmReq.Temperature,
+		FrequencyPenalty:     llmReq.FrequencyPenalty,
+		PresencePenalty:      llmReq.PresencePenalty,
 		TopLogprobs:          llmReq.TopLogprobs,
 		TopP:                 llmReq.TopP,
+		Modalities:           llmReq.Modalities,
 		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
 		Reasoning:            convertReasoning(llmReq),
@@ -269,6 +273,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
+		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, "background"),
 	}
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {
@@ -383,6 +388,19 @@ func (t *OutboundTransformer) transformStandardResponse(
 		PreviousResponseID:  resp.PreviousResponseID,
 		Choices:             make([]llm.Choice, 0),
 		TransformerMetadata: map[string]any{},
+	}
+
+	if resp.ServiceTier != nil {
+		llmResp.ServiceTier = *resp.ServiceTier
+	}
+	if resp.Error != nil {
+		llmResp.Error = &llm.ResponseError{
+			Detail: llm.ErrorDetail{
+				Type:    resp.Error.Type,
+				Code:    resp.Error.Code,
+				Message: resp.Error.Message,
+			},
+		}
 	}
 
 	// Convert usage if present

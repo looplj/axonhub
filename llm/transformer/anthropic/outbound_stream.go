@@ -228,6 +228,24 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				},
 			}
 			resp.Choices = []llm.Choice{choice}
+		case cb.Type == "redacted_thinking":
+			// redacted_thinking blocks arrive complete in content_block_start
+			// (no subsequent deltas). Surface the encrypted Data on the delta
+			// so it is not lost on the streaming path, mirroring the
+			// non-streaming conversionToLLMResponse behaviour.
+			if cb.Data == "" {
+				//nolint:nilnil // Nothing to emit without data.
+				return nil, nil
+			}
+
+			choice := llm.Choice{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:                     "assistant",
+					RedactedReasoningContent: lo.ToPtr(cb.Data),
+				},
+			}
+			resp.Choices = []llm.Choice{choice}
 		default:
 			//nolint:nilnil // Ignore other content block starts (text, thinking, etc.).
 			return nil, nil
@@ -332,7 +350,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			case "max_tokens":
 				reason := "length"
 				finishReason = &reason
-			case "stop_sequence":
+			case "stop_sequence", "pause_turn":
 				reason := "stop"
 				finishReason = &reason
 			case "tool_use":
@@ -358,13 +376,21 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			// expects the delta field to always be present.  Specifically, this breaks charm's 'crush' tool.
 			//
 			// See: https://github.com/openai/openai-go/blob/main/packages/ssestream/ssestream.go
-			resp.Choices = []llm.Choice{
-				{
-					Index:        0,
-					Delta:        &llm.Message{}, // OpenAI format requires delta even when empty
-					FinishReason: finishReason,
-				},
+			streamChoice := llm.Choice{
+				Index:        0,
+				Delta:        &llm.Message{}, // OpenAI format requires delta even when empty
+				FinishReason: finishReason,
 			}
+
+			// Persist stop_sequence so a streaming round-trip restores it
+			// instead of collapsing to end_turn (matches non-streaming path).
+			if *streamEvent.Delta.StopReason == "stop_sequence" {
+				streamChoice.TransformerMetadata = map[string]any{
+					TransformerMetadataKeyAnthropicStopReason: *streamEvent.Delta.StopReason,
+				}
+			}
+
+			resp.Choices = []llm.Choice{streamChoice}
 		}
 
 	case "message_stop":

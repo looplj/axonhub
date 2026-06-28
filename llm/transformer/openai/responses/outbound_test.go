@@ -3,6 +3,7 @@ package responses
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -715,7 +716,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "request with reasoning effort and budget - effort takes priority",
+			name: "request with reasoning effort and budget - budget preserved for round-trip",
 			chatReq: &llm.Request{
 				Model:           "o3",
 				ReasoningEffort: "high",
@@ -737,7 +738,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, req.Reasoning)
 				require.Equal(t, "high", req.Reasoning.Effort)
-				// MaxTokens should be nil when effort is specified (priority rule)
+				// effort present alongside budget: effort wins, max_tokens omitted
 				require.Nil(t, req.Reasoning.MaxTokens)
 			},
 		},
@@ -844,6 +845,106 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, 0.9, *req.TopP)
 				require.NotNil(t, req.TopLogprobs)
 				require.Equal(t, int64(5), *req.TopLogprobs)
+			},
+		},
+		{
+			name: "request with temperature",
+			chatReq: &llm.Request{
+				Model:       "gpt-4o",
+				Temperature: lo.ToPtr(0.7),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.Temperature)
+				require.Equal(t, 0.7, *req.Temperature)
+			},
+		},
+		{
+			name: "request with modalities",
+			chatReq: &llm.Request{
+				Model:      "gpt-4o",
+				Modalities: []string{"text", "audio"},
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Equal(t, []string{"text", "audio"}, req.Modalities)
+			},
+		},
+		{
+			name: "request with background mode",
+			chatReq: &llm.Request{
+				Model: "gpt-4o",
+				TransformerMetadata: map[string]any{
+					"background": true,
+				},
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.Background)
+				require.True(t, *req.Background)
+			},
+		},
+		{
+			name: "request with frequency_penalty and presence_penalty",
+			chatReq: &llm.Request{
+				Model:            "gpt-4o",
+				FrequencyPenalty: lo.ToPtr(0.5),
+				PresencePenalty:  lo.ToPtr(0.3),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.FrequencyPenalty)
+				require.Equal(t, 0.5, *req.FrequencyPenalty)
+				require.NotNil(t, req.PresencePenalty)
+				require.Equal(t, 0.3, *req.PresencePenalty)
 			},
 		},
 		{
@@ -1251,6 +1352,35 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformResponse_ServiceTierAndError(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id": "resp_meta_123",
+			"object": "response",
+			"created_at": 1759161016,
+			"status": "failed",
+			"model": "gpt-5.4",
+			"service_tier": "priority",
+			"error": {
+				"type": "server_error",
+				"code": "upstream_failed",
+				"message": "upstream provider error"
+			},
+			"output": []
+		}`),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "priority", result.ServiceTier)
+	require.NotNil(t, result.Error)
+	require.Equal(t, "server_error", result.Error.Detail.Type)
+	require.Equal(t, "upstream_failed", result.Error.Detail.Code)
+	require.Equal(t, "upstream provider error", result.Error.Detail.Message)
+}
+
 func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -1377,4 +1507,209 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+// TestOutboundTransformer_TransformRequest_NamespaceDoesNotStarveRawTools covers #3:
+// a namespace container tool expands into N canonical functions, but the old
+// buildRepresentedToolSignatures skipped namespace and buildRawOnlyToolFragments
+// kept it as raw. That made structuredToolSignaturesMatch see len(canonical) >
+// len(signatures) -> false, so co-resident raw-only tools (file_search/mcp) were
+// dropped on Responses->Responses pass-through.
+func TestOutboundTransformer_TransformRequest_NamespaceDoesNotStarveRawTools(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "use the docs search then file_search",
+			"tools": [
+				{
+					"type": "namespace",
+					"name": "docs",
+					"tools": [
+						{"type": "function", "name": "search", "parameters": {"type": "object", "properties": {}}}
+					]
+				},
+				{
+					"type": "file_search",
+					"name": "file_search",
+					"vector_store_ids": ["vs_123"]
+				}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Model = "mapped-model"
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	tools, ok := payload["tools"].([]any)
+	require.True(t, ok)
+
+	// Expect both the expanded namespace function AND the raw-only file_search
+	// to survive the Responses->Responses pass-through.
+	typesByName := map[string]string{}
+	for _, raw := range tools {
+		tm, ok := raw.(map[string]any)
+		require.True(t, ok)
+		typesByName[fmt.Sprintf("%v", tm["type"])] = fmt.Sprintf("%v", tm["name"])
+	}
+	// expanded namespace function present
+	require.Contains(t, typesByName, "function")
+	require.Equal(t, "docs__search", typesByName["function"])
+	// raw-only file_search must NOT be starved
+	require.Contains(t, typesByName, "file_search")
+}
+
+// TestOutboundTransformer_TransformRequest_RawInputItemsSurvivePromptPrepend covers #12:
+// when a non-system prompt is prepended to the canonical messages, the outbound
+// merge of RawInputItems must keep raw-only items (e.g. tool_search_call) in
+// their original position relative to the user's structured items, not shove
+// them ahead of the injected prepend message.
+func TestOutboundTransformer_TransformRequest_RawInputItemsSurvivePromptPrepend(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": [
+				{
+					"type": "tool_search_call",
+					"call_id": "call_search",
+					"status": "completed",
+					"arguments": {"query":"image generation","limit":10}
+				},
+				{
+					"type": "message",
+					"role": "user",
+					"content": [{"type":"input_text","text":"hello"}]
+				}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	// Simulate a prepended user prompt (injected by the prompt pipeline between
+	// inbound and outbound). It must not displace the raw-only input item.
+	// The prompt pipeline (injectPrompts) records the prepend count on the
+	// OpenAI Responses provider extensions so the outbound merge can offset
+	// raw-only items accordingly.
+	llmReq.Messages = append([]llm.Message{{
+		Role: "user",
+		Content: llm.MessageContent{
+			Content: lo.ToPtr("INJECTED"),
+		},
+	}}, llmReq.Messages...)
+	if ext := llm.EnsureOpenAIResponsesProviderExtensions(llmReq); ext != nil && ext.Request != nil {
+		ext.Request.PrependCount = 1
+	}
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	input, ok := payload["input"].([]any)
+	require.True(t, ok)
+	require.Len(t, input, 3)
+
+	// Expected order: [INJECTED message, tool_search_call, hello message].
+	// The bug produced [tool_search_call, INJECTED, hello].
+	first, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "message", first["type"])
+	// prepended user message content is "INJECTED"
+	content, ok := first["content"].([]any)
+	require.True(t, ok)
+	require.Len(t, content, 1)
+	ctext, ok := content[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "INJECTED", ctext["text"])
+
+	second, ok := input[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tool_search_call", second["type"])
+
+	third, ok := input[2].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "message", third["type"])
+}
+
+// TestOutboundTransformer_TransformRequest_RawInputItemsSurvivePromptAppend covers #12
+// append regression guard: an appended prompt must not displace raw-only input
+// items. Append grows the tail only, so raw items keep their original position.
+func TestOutboundTransformer_TransformRequest_RawInputItemsSurvivePromptAppend(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": [
+				{
+					"type": "tool_search_call",
+					"call_id": "call_search",
+					"status": "completed",
+					"arguments": {"query":"image generation","limit":10}
+				},
+				{
+					"type": "message",
+					"role": "user",
+					"content": [{"type":"input_text","text":"hello"}]
+				}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	// Simulate an appended prompt. It must sit at the tail; raw-only item keeps
+	// its original first position.
+	llmReq.Messages = append(llmReq.Messages, llm.Message{
+		Role: "user",
+		Content: llm.MessageContent{
+			Content: lo.ToPtr("APPENDED"),
+		},
+	})
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	input, ok := payload["input"].([]any)
+	require.True(t, ok)
+	require.Len(t, input, 3)
+
+	// Expected order: [tool_search_call, hello message, APPENDED message].
+	first, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tool_search_call", first["type"])
+
+	second, ok := input[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "message", second["type"])
+
+	third, ok := input[2].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "message", third["type"])
 }

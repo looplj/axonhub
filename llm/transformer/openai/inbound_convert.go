@@ -127,6 +127,8 @@ func (m Message) ToLLMMessage() llm.Message {
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: m.ReasoningContent,
 		Reasoning:        m.Reasoning,
+		ReasoningDetails: m.ReasoningDetails,
+		Images:           m.Images,
 	}
 
 	if m.Audio != nil {

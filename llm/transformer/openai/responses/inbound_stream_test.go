@@ -425,3 +425,99 @@ func (s *errorResponseStream) Err() error {
 func (s *errorResponseStream) Close() error {
 	return nil
 }
+
+// TestInboundTransformer_TransformStream_CustomToolCallNamespaceRoundTrip
+// covers #10 streaming gap: a custom_tool_call carrying a namespace must
+// preserve that namespace on the streamed output_item, mirroring the
+// function_call streaming path. Without the fix the emitted
+// custom_tool_call Item loses Namespace.
+func TestInboundTransformer_TransformStream_CustomToolCallNamespaceRoundTrip(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_ctc_ns",
+			Created: 1700000000,
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{{
+						ID:   "call_ctc_ns_1",
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID:    "call_ctc_ns_1",
+							Name:      "apply_patch",
+							Namespace: "mcp__myserver",
+						},
+					}},
+				},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_ctc_ns",
+			Created: 1700000000,
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					ToolCalls: []llm.ToolCall{{
+						ID:   "call_ctc_ns_1",
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID:    "call_ctc_ns_1",
+							Name:      "apply_patch",
+							Namespace: "mcp__myserver",
+							Input:     "*** Begin Patch\n*** End Patch",
+						},
+					}},
+				},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_ctc_ns",
+			Created: 1700000000,
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: lo.ToPtr("tool_calls"),
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_ctc_ns",
+			Created: 1700000000,
+			Model:   "gpt-4o",
+			Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+		},
+	}))
+	require.NoError(t, err)
+
+	var actualEvents []StreamEvent
+	for stream.Next() {
+		event := stream.Current()
+		var ev StreamEvent
+		err := json.Unmarshal(event.Data, &ev)
+		require.NoError(t, err)
+		actualEvents = append(actualEvents, ev)
+	}
+	require.NoError(t, stream.Err())
+	require.NotEmpty(t, actualEvents)
+
+	// Find the custom_tool_call output_item.done event.
+	var ctcItem *Item
+	for i := range actualEvents {
+		ev := actualEvents[i]
+		if ev.Type == StreamEventTypeOutputItemDone && ev.Item != nil && ev.Item.Type == "custom_tool_call" {
+			ctcItem = ev.Item
+			break
+		}
+	}
+	require.NotNil(t, ctcItem, "expected a custom_tool_call output item")
+	require.Equal(t, "apply_patch", ctcItem.Name)
+	require.Equal(t, "mcp__myserver", ctcItem.Namespace, "#10 streaming: custom_tool_call must preserve namespace")
+}

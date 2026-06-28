@@ -173,6 +173,16 @@ const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
 // server_tool_use and web_search_tool_result without expanding the unified llm schema.
 const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_content"
 
+// TransformerMetadataKeyAnthropicStopReason stores the original Anthropic
+// stop_reason (e.g. "stop_sequence") so an Anthropic->canonical->Anthropic
+// round-trip restores it instead of collapsing to "end_turn".
+const TransformerMetadataKeyAnthropicStopReason = "anthropic_stop_reason"
+
+// TransformerMetadataKeyTopK is the key for storing the Anthropic top_k
+// sampling parameter in TransformerMetadata. canonical llm.Request has no TopK
+// field, so top_k is carried here to survive non-pass-through Anthropic round-trips.
+const TransformerMetadataKeyTopK = "anthropic_top_k"
+
 type Thinking struct {
 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`

@@ -17,6 +17,14 @@ type OpenAIResponsesRequestExtensions struct {
 	ToolSignatures []string                     `json:"-"`
 	RawToolChoice  json.RawMessage              `json:"-"`
 	RawInputItems  []OpenAIResponsesRawFragment `json:"-"`
+
+	// PrependCount records how many messages were prepended to the canonical
+	// request by the prompt pipeline between inbound and outbound. The
+	// outbound Responses merge uses it to offset raw-only input items so they
+	// keep their original position relative to the user's structured items
+	// instead of landing ahead of the injected prepend (see
+	// mergeRawOnlyInputItems). Set by the prompt pipeline when it prepends.
+	PrependCount int `json:"-"`
 }
 
 type OpenAIResponsesRawFragment struct {
@@ -57,6 +65,7 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 				ToolSignatures: append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
 				RawToolChoice:  cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
 				RawInputItems:  cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
+				PrependCount:   src.OpenAIResponses.Request.PrependCount,
 			}
 		}
 	}

@@ -1115,3 +1115,147 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestToolCallFromAnthropicBlock_PreservesProviderToolName(t *testing.T) {
+	// K1/P1-a: Anthropic echoes tool_use.name verbatim. There is no way to tell a
+	// genuinely-namespaced tool ("ns__sub") apart from an ordinary tool whose legal
+	// name contains "__", so the Anthropic response path must NOT split on "__".
+	// Splitting corrupts plain "__" names and breaks multi-turn history (the
+	// re-emitted call name would no longer match the declared tool). Responses-side
+	// namespace separation flows through Function.Namespace on its own path instead.
+	tests := []struct {
+		name      string
+		inputName string
+	}{
+		{"mcp joined namespace tool", "mcp__codebase_memory_mcp__list_projects"},
+		{"namespace without double underscore in leaf", "myserver__do_thing"},
+		{"plain function name no namespace", "get_weather"},
+		{"plain name containing double underscore stays intact", "process__data"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			block := MessageContentBlock{
+				Type:  "tool_use",
+				ID:    "toolu_01",
+				Name:  lo.ToPtr(tt.inputName),
+				Input: json.RawMessage(`{}`),
+			}
+
+			tc := toolCallFromAnthropicBlock(block)
+			require.Equal(t, tt.inputName, tc.Function.Name, "provider tool name must be preserved verbatim")
+			require.Empty(t, tc.Function.Namespace, "Anthropic response path must not infer namespace by splitting")
+		})
+	}
+}
+
+func TestConvertToLlmResponse_PreservesJoinedToolName(t *testing.T) {
+	// K1 e2e: provider returns tool_use with a joined namespace__name; the canonical
+	// Response keeps the full provider name so it round-trips back to Anthropic
+	// unchanged (declared tools and historical tool_use stay aligned).
+	anthropicResp := &Message{
+		ID:   "msg_1",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{
+				Type:  "tool_use",
+				ID:    "toolu_01",
+				Name:  lo.ToPtr("mcp__codebase_memory_mcp__list_projects"),
+				Input: json.RawMessage(`{}`),
+			},
+		},
+		Model: "claude",
+	}
+
+	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+	require.Len(t, result.Choices, 1)
+	require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+	tc := result.Choices[0].Message.ToolCalls[0]
+	require.Equal(t, "mcp__codebase_memory_mcp__list_projects", tc.Function.Name)
+	require.Empty(t, tc.Function.Namespace)
+}
+
+// TestConvertToLlmResponse_ServiceTier covers #18: non-streaming Anthropic
+// response must backfill usage.service_tier onto the canonical Response.
+func TestConvertToLlmResponse_ServiceTier(t *testing.T) {
+	resp := &Message{
+		ID:   "msg_st",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "text", Text: lo.ToPtr("hi")},
+		},
+		Model: "claude-3-sonnet-20240229",
+		Usage: &Usage{
+			InputTokens:  10,
+			OutputTokens: 5,
+			ServiceTier:  "standard",
+		},
+	}
+
+	result := convertToLlmResponse(resp, PlatformDirect)
+	require.Equal(t, "standard", result.ServiceTier)
+
+	// Empty service_tier stays empty.
+	resp2 := &Message{
+		ID:   "msg_st2",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "text", Text: lo.ToPtr("hi")},
+		},
+		Model: "claude-3-sonnet-20240229",
+		Usage: &Usage{
+			InputTokens:  10,
+			OutputTokens: 5,
+		},
+	}
+	result2 := convertToLlmResponse(resp2, PlatformDirect)
+	require.Empty(t, result2.ServiceTier)
+
+	// nil Usage must not panic and leaves ServiceTier empty.
+	resp3 := &Message{
+		ID:   "msg_st3",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "text", Text: lo.ToPtr("hi")},
+		},
+		Model: "claude-3-sonnet-20240229",
+	}
+	result3 := convertToLlmResponse(resp3, PlatformDirect)
+	require.Empty(t, result3.ServiceTier)
+}
+
+// TestStopSequenceRoundTrip covers #16: Anthropic stop_sequence must
+// round-trip back to stop_sequence (not collapse to end_turn) when the
+// canonical response is converted back to Anthropic.
+func TestStopSequenceRoundTrip(t *testing.T) {
+	t.Run("non-streaming stop_sequence preserved", func(t *testing.T) {
+		stopSeq := "stop_sequence"
+		resp := &Message{
+			ID:         "msg_ss",
+			Type:       "message",
+			Role:       "assistant",
+			Content:    []MessageContentBlock{{Type: "text", Text: lo.ToPtr("hi")}},
+			Model:      "claude-3-sonnet-20240229",
+			StopReason: &stopSeq,
+			Usage:      &Usage{InputTokens: 1, OutputTokens: 1},
+		}
+
+		llmResp := convertToLlmResponse(resp, PlatformDirect)
+		// canonical finish reason is "stop" but original stop_reason is carried.
+		require.NotNil(t, llmResp.Choices[0].FinishReason)
+		require.Equal(t, "stop", *llmResp.Choices[0].FinishReason)
+
+		raw, ok := llmResp.Choices[0].TransformerMetadata["anthropic_stop_reason"]
+		require.True(t, ok)
+		require.Equal(t, "stop_sequence", raw)
+
+		// Round-trip back to Anthropic must restore stop_sequence, not end_turn.
+		anthropicAgain := convertToAnthropicResponse(llmResp)
+		require.NotNil(t, anthropicAgain.StopReason)
+		require.Equal(t, "stop_sequence", *anthropicAgain.StopReason)
+	})
+}
