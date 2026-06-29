@@ -9,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/afero"
+
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	s3fs "github.com/looplj/afero-s3"
-	"github.com/spf13/afero"
 
 	"github.com/looplj/axonhub/internal/objects"
 )

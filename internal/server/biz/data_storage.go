@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/samber/lo"
 	"github.com/spf13/afero"
 	"github.com/spf13/afero/gcsfs"
@@ -21,8 +23,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/oauth2/google"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	awscredentials "github.com/aws/aws-sdk-go-v2/credentials"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
