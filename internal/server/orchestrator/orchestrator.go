@@ -154,6 +154,33 @@ func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyCo
 	return &c
 }
 
+func buildPipelineOpts(retryPolicy *biz.RetryPolicy) []pipeline.Option {
+	var opts []pipeline.Option
+
+	if retryPolicy.Enabled {
+		opts = append(opts, pipeline.WithRetry(
+			retryPolicy.MaxChannelRetries,
+			retryPolicy.MaxSingleChannelRetries,
+			time.Duration(retryPolicy.RetryDelayMs)*time.Millisecond,
+		))
+
+		if retryPolicy.EmptyResponseDetection {
+			opts = append(opts, pipeline.WithEmptyResponseDetection())
+		}
+
+		opts = append(opts, pipeline.WithResponseTimeouts(
+			time.Duration(retryPolicy.StreamFirstEventTimeoutSeconds)*time.Second,
+			time.Duration(retryPolicy.NonStreamResponseTimeoutSeconds)*time.Second,
+		))
+
+		opts = append(opts, pipeline.WithStreamProbeDuration(
+			time.Duration(retryPolicy.StreamProbeDurationMs)*time.Millisecond,
+		))
+	}
+
+	return opts
+}
+
 type ChatCompletionResult struct {
 	ChatCompletion       *httpclient.Response
 	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
@@ -207,32 +234,15 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		CurrentCandidateIndex: 0,
 	}
 
-	var pipelineOpts []pipeline.Option
+	pipelineOpts := buildPipelineOpts(retryPolicy)
 
-	// Only apply retry if policy is enabled
-	if retryPolicy.Enabled {
-		pipelineOpts = append(pipelineOpts, pipeline.WithRetry(
-			retryPolicy.MaxChannelRetries,
-			retryPolicy.MaxSingleChannelRetries,
-			time.Duration(retryPolicy.RetryDelayMs)*time.Millisecond,
-		))
+	inbound, outbound := NewPersistentTransformers(state, processor.Inbound)
 
-		if retryPolicy.EmptyResponseDetection {
-			pipelineOpts = append(pipelineOpts, pipeline.WithEmptyResponseDetection())
-		}
-
-		pipelineOpts = append(pipelineOpts, pipeline.WithResponseTimeouts(
-			time.Duration(retryPolicy.StreamFirstEventTimeoutSeconds)*time.Second,
-			time.Duration(retryPolicy.NonStreamResponseTimeoutSeconds)*time.Second,
-		))
-	}
-
+	// Build middleware stack
 	var middlewares []pipeline.Middleware
 
 	// Add global middlewares
 	middlewares = append(middlewares, processor.Middlewares...)
-
-	inbound, outbound := NewPersistentTransformers(state, processor.Inbound)
 
 	// Add inbound middlewares (executed after inbound.TransformRequest)
 	middlewares = append(middlewares,

@@ -25,6 +25,7 @@ var defaultRetryPolicy = RetryPolicy{
 	RetryDelayMs:            1000,
 	LoadBalancerStrategy:    "adaptive",
 	Enabled:                 true,
+	StreamProbeDurationMs:   0, // disabled by default; set >0 to enable mid-stream probe
 	UpstreamErrorPolicy: UpstreamErrorPolicy{
 		Mode: UpstreamErrorModePassthrough,
 	},

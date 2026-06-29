@@ -81,6 +81,15 @@ func WithResponseTimeouts(streamFirstEventTimeout, nonStreamTimeout time.Duratio
 	}
 }
 
+// WithStreamProbeDuration configures how long a streaming response is held before
+// it is committed to the client. Errors observed during this window are returned
+// to Process so the normal retry budget and channel switching logic applies.
+func WithStreamProbeDuration(duration time.Duration) Option {
+	return func(p *pipeline) {
+		p.streamProbeDuration = duration
+	}
+}
+
 // Factory creates pipeline instances.
 type Factory struct {
 	Executor Executor
@@ -124,6 +133,7 @@ type pipeline struct {
 	retryDelay              time.Duration
 	emptyResponseDetection  bool
 	streamFirstEventTimeout time.Duration
+	streamProbeDuration     time.Duration
 	nonStreamTimeout        time.Duration
 }
 

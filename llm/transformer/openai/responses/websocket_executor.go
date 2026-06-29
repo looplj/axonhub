@@ -1048,7 +1048,7 @@ func (s *webSocketStream) Next() bool {
 
 	_, msg, err := s.lease.conn.ReadMessage()
 	if err != nil {
-		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
+		if isWebSocketClosedError(err) {
 			if ctxErr := s.ctx.Err(); ctxErr != nil {
 				s.setErr(ctxErr)
 			} else if !s.hasSeenEvent() {
@@ -1089,6 +1089,16 @@ func (s *webSocketStream) Next() bool {
 	}
 
 	return true
+}
+
+func isWebSocketClosedError(err error) bool {
+	if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+		return true
+	}
+
+	msg := err.Error()
+	return strings.Contains(msg, "use of closed network connection") ||
+		strings.Contains(msg, "An established connection was aborted")
 }
 
 func (s *webSocketStream) Current() *httpclient.StreamEvent {

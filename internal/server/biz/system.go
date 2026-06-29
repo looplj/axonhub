@@ -30,6 +30,7 @@ import (
 
 const (
 	maxRetryResponseTimeoutSeconds = 600
+	maxStreamProbeDurationMs       = 120000
 )
 
 const (
@@ -338,6 +339,13 @@ type RetryPolicy struct {
 
 	// UpstreamErrorPolicy controls how provider errors are exposed to API users.
 	UpstreamErrorPolicy UpstreamErrorPolicy `json:"upstream_error_policy"`
+
+	// StreamProbeDurationMs controls the mid-stream probe duration in milliseconds.
+	// After the pipeline successfully establishes a stream, the probe reads events for this duration
+	// before returning the stream to the client. If a retryable error occurs during the probe window
+	// (before any data is flushed to the client), the orchestrator transparently retries.
+	// Set to 0 to disable mid-stream probing.
+	StreamProbeDurationMs int `json:"stream_probe_duration_ms"`
 }
 
 type UpstreamErrorPolicy struct {
@@ -1065,6 +1073,14 @@ func normalizeRetryPolicy(policy *RetryPolicy) {
 	if policy.UpstreamErrorPolicy.Mode == UpstreamErrorModeCustom &&
 		strings.TrimSpace(policy.UpstreamErrorPolicy.CustomMessage) == "" {
 		policy.UpstreamErrorPolicy.Mode = UpstreamErrorModeHidden
+	}
+
+	// Clamp stream probe duration to a safe range (0 = disabled, max 120s)
+	if policy.StreamProbeDurationMs < 0 {
+		policy.StreamProbeDurationMs = 0
+	}
+	if policy.StreamProbeDurationMs > maxStreamProbeDurationMs {
+		policy.StreamProbeDurationMs = maxStreamProbeDurationMs
 	}
 }
 

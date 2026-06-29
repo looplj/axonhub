@@ -129,6 +129,7 @@ type RetryPolicy {
   autoDisableChannel: AutoDisableChannel!
   emptyResponseDetection: Boolean!
   upstreamErrorPolicy: UpstreamErrorPolicy!
+  streamProbeDurationMs: Int!
 }
 
 type UpstreamErrorPolicy {
@@ -162,6 +163,7 @@ input UpdateRetryPolicyInput {
   autoDisableChannel: AutoDisableChannelInput
   emptyResponseDetection: Boolean
   upstreamErrorPolicy: UpstreamErrorPolicyInput
+  streamProbeDurationMs: Int
 }
 
 enum QuotaEnforcementMode {

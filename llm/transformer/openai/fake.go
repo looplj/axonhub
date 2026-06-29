@@ -7,7 +7,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -48,7 +48,7 @@ type fakeExecutor struct{}
 // Do returns a fixed HTTP response from testdata/openai-stop.response.json.
 func (e *fakeExecutor) Do(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
 	// Read the fixed response from testdata
-	testDataPath := filepath.Join("testdata", "openai-stop.response.json")
+	testDataPath := path.Join("testdata", "openai-stop.response.json")
 
 	responseData, err := testdataFS.ReadFile(testDataPath)
 	if err != nil {
@@ -68,7 +68,7 @@ func (e *fakeExecutor) Do(ctx context.Context, req *httpclient.Request) (*httpcl
 // DoStream returns a fixed stream response from testdata/openai-stop.stream.jsonl.
 func (e *fakeExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Read the fixed stream response from testdata
-	testDataPath := filepath.Join("testdata", "openai-stop.stream.jsonl")
+	testDataPath := path.Join("testdata", "openai-stop.stream.jsonl")
 
 	streamData, err := testdataFS.ReadFile(testDataPath)
 	if err != nil {

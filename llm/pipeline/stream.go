@@ -410,5 +410,19 @@ func (p *pipeline) stream(
 		}
 	}
 
+	if p.streamProbeDuration > 0 {
+		inboundStream, err = probeStreamBeforeCommit(ctx, inboundStream, p.streamProbeDuration)
+		if err != nil {
+			firstEventGuard.cancelStream()
+			p.applyRawErrorResponseMiddlewares(ctx, err)
+
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
+
+			return nil, WrapUpstreamError(err)
+		}
+	}
+
 	return inboundStream, nil
 }

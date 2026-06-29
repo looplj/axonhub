@@ -27,6 +27,7 @@ export function RetrySettings() {
     nonStreamResponseTimeoutSeconds: 0,
     loadBalancerStrategy: 'adaptive',
     emptyResponseDetection: false,
+    streamProbeDurationMs: 0,
     upstreamErrorPolicy: {
       mode: 'passthrough',
       customMessage: '',
@@ -48,6 +49,7 @@ export function RetrySettings() {
         nonStreamResponseTimeoutSeconds: retryPolicy.nonStreamResponseTimeoutSeconds,
         loadBalancerStrategy: retryPolicy.loadBalancerStrategy,
         emptyResponseDetection: retryPolicy.emptyResponseDetection,
+        streamProbeDurationMs: retryPolicy.streamProbeDurationMs ?? 0,
         upstreamErrorPolicy: {
           mode: retryPolicy.upstreamErrorPolicy?.mode || 'passthrough',
           customMessage: retryPolicy.upstreamErrorPolicy?.customMessage || '',
@@ -318,6 +320,25 @@ export function RetrySettings() {
                   checked={formData.emptyResponseDetection || false}
                   onCheckedChange={(checked) => handleInputChange('emptyResponseDetection', checked)}
                 />
+              </div>
+
+              {/* Stream Probe Duration */}
+              <div className='space-y-2'>
+                <Label htmlFor='stream-probe-duration'>{t('system.retry.streamProbeDurationMs.label')}</Label>
+                <div className='text-muted-foreground mb-2 text-sm'>{t('system.retry.streamProbeDurationMs.description')}</div>
+                <div className='flex items-center space-x-2'>
+                  <Input
+                    id='stream-probe-duration'
+                    type='number'
+                    min='0'
+                    max='120000'
+                    step='500'
+                    value={formData.streamProbeDurationMs ?? 0}
+                    onChange={(e) => handleInputChange('streamProbeDurationMs', parseInt(e.target.value) || 0)}
+                    className='w-32'
+                  />
+                  <span className='text-muted-foreground text-sm'>ms</span>
+                </div>
               </div>
 
               <Separator />
