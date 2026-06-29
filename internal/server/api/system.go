@@ -169,6 +169,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 		PreferLanguage: req.PreferLanguage,
 	})
 	if err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, InitializeSystemResponse{
 			Success: false,
 			Message: fmt.Sprintf("Failed to initialize system: %v", err),
