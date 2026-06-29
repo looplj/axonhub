@@ -141,6 +141,7 @@ func (handlers *GeminiHandlers) ListModels(c *gin.Context) {
 
 	models, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gemini.GeminiError{
 			Error: gemini.ErrorDetail{
 				Message: err.Error(),

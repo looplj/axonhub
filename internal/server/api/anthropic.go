@@ -83,6 +83,7 @@ func (handlers *AnthropicHandlers) ListModels(c *gin.Context) {
 	models, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
 		requestID, _ := contexts.GetRequestID(ctx)
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, anthropic.AnthropicError{
 			StatusCode: http.StatusInternalServerError,
 			Type:       "internal_server_error",
