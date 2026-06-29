@@ -6,6 +6,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -160,6 +161,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		middleware.WithTimeout(server.Config.LLMRequestTimeout),
 		middleware.WithIPBlocklist(services.SystemService),
 		middleware.WithAPIKeyConfig(services.AuthService, nil),
+		middleware.RequireAPIKeyType(apikey.TypeUser),
 		middleware.WithSource(request.SourceAPI),
 		middleware.WithThread(server.Config.Trace, services.ThreadService),
 		middleware.WithTrace(server.Config.Trace, services.TraceService),
@@ -221,6 +223,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithIPBlocklist(services.SystemService),
 			middleware.WithGeminiKeyAuth(services.AuthService),
+			middleware.RequireAPIKeyType(apikey.TypeUser),
 			middleware.WithSource(request.SourceAPI),
 			middleware.WithThread(server.Config.Trace, services.ThreadService),
 			middleware.WithTrace(server.Config.Trace, services.TraceService),
@@ -233,6 +236,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithIPBlocklist(services.SystemService),
 			middleware.WithGeminiKeyAuth(services.AuthService),
+			middleware.RequireAPIKeyType(apikey.TypeUser),
 			middleware.WithSource(request.SourceAPI),
 			middleware.WithThread(server.Config.Trace, services.ThreadService),
 			middleware.WithTrace(server.Config.Trace, services.TraceService),

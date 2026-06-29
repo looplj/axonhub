@@ -216,6 +216,29 @@ func WithSource(source request.Source) gin.HandlerFunc {
 	}
 }
 
+// RequireAPIKeyType 中间件用于限制 API key 的类型。
+// 只有类型在 allowed 列表中的 API key 才能通过，否则返回 403。
+// 需要配合 WithAPIKeyConfig / WithGeminiKeyAuth 等认证中间件使用。
+func RequireAPIKeyType(allowed ...apikey.Type) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		apiKey, ok := contexts.GetAPIKey(c.Request.Context())
+		if !ok || apiKey == nil {
+			// 没有 API key 在上下文中（例如走了 noauth fallback），直接通过
+			c.Next()
+			return
+		}
+
+		for _, t := range allowed {
+			if apiKey.Type == t {
+				c.Next()
+				return
+			}
+		}
+
+		AbortWithError(c, http.StatusForbidden, errors.New("Forbidden"))
+	}
+}
+
 func withSessionScopeForAPIKey(ctx context.Context, key *ent.APIKey) context.Context {
 	scope := "api_key:" + strconv.Itoa(key.ID)
 	if key.Edges.Project != nil {
