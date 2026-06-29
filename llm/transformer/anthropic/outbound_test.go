@@ -1759,3 +1759,60 @@ func TestOutboundTransformer_WebSearchParameters(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboundTransformer_TransformRequest_ParallelToolCallsMapsToDisableParallelToolUse(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	cases := []struct {
+		name          string
+		parallelTool  *bool
+		expectDisable *bool
+	}{
+		{"explicit disable parallel", lo.ToPtr(false), lo.ToPtr(true)},
+		{"explicit allow parallel", lo.ToPtr(true), lo.ToPtr(false)},
+		{"unset parallel defaults allow", nil, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			chatReq := &llm.Request{
+				Model:             "claude-3-sonnet-20240229",
+				MaxTokens:         func() *int64 { v := int64(1024); return &v }(),
+				ParallelToolCalls: tc.parallelTool,
+				Tools:             []llm.Tool{{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "foo"}}},
+				Messages:          []llm.Message{{Role: "user", Content: llm.MessageContent{Content: func() *string { s := "hi"; return &s }()}}},
+			}
+			httpReq, err := transformer.TransformRequest(context.Background(), chatReq)
+			require.NoError(t, err)
+			var ar MessageRequest
+			require.NoError(t, json.Unmarshal(httpReq.Body, &ar))
+			var got *bool
+			if ar.ToolChoice != nil {
+				got = ar.ToolChoice.DisableParallelToolUse
+			}
+			if tc.expectDisable == nil {
+				require.Nil(t, got, "disable_parallel_tool_use should be absent")
+			} else {
+				require.NotNil(t, got)
+				require.Equal(t, *tc.expectDisable, *got)
+			}
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformRequest_ToolChoiceNoneSkipsDisableParallelToolUse(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	chatReq := &llm.Request{
+		Model:             "claude-3-sonnet-20240229",
+		MaxTokens:         func() *int64 { v := int64(1024); return &v }(),
+		ParallelToolCalls: lo.ToPtr(false),
+		ToolChoice:        &llm.ToolChoice{ToolChoice: lo.ToPtr("none")},
+		Tools:             []llm.Tool{{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "foo"}}},
+		Messages:          []llm.Message{{Role: "user", Content: llm.MessageContent{Content: func() *string { s := "hi"; return &s }()}}},
+	}
+	httpReq, err := transformer.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	var ar MessageRequest
+	require.NoError(t, json.Unmarshal(httpReq.Body, &ar))
+	require.NotNil(t, ar.ToolChoice, "tool_choice should be preserved as none")
+	require.Equal(t, "none", ar.ToolChoice.Type)
+	require.Nil(t, ar.ToolChoice.DisableParallelToolUse, "disable_parallel_tool_use must NOT be injected when tool_choice is none")
+}

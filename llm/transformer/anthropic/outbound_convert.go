@@ -19,6 +19,20 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	req := buildBaseRequest(chatReq, config)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
+
+	// Map parallel_tool_calls (true=allow) inversely to Anthropic's
+	// disable_parallel_tool_use (true=disable), which nests inside tool_choice.
+	// Synthesize {type:"auto"} when the client expressed a parallel preference
+	// without setting tool_choice; skip when there are no tools (Anthropic
+	// requires tools for disable_parallel_tool_use) or tool_choice is "none".
+	if len(chatReq.Tools) > 0 && chatReq.ParallelToolCalls != nil {
+		if req.ToolChoice == nil {
+			req.ToolChoice = &ToolChoice{Type: "auto"}
+		}
+		if req.ToolChoice.Type != "none" {
+			req.ToolChoice.DisableParallelToolUse = lo.ToPtr(!*chatReq.ParallelToolCalls)
+		}
+	}
 	req.Messages = convertMessages(chatReq, config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 

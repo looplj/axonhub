@@ -2471,3 +2471,29 @@ func TestInboundTransformer_TransformResponse_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestInboundTransformer_TransformRequest_DisableParallelToolUseMapsToParallelToolCalls(t *testing.T) {
+	transformer := NewInboundTransformer()
+	cases := []struct {
+		name           string
+		body           string
+		expectParallel *bool
+	}{
+		{"disable true maps to parallel false", `{"model":"claude","max_tokens":1024,"messages":[{"role":"user","content":"hi"}],"tool_choice":{"type":"auto","disable_parallel_tool_use":true}}`, lo.ToPtr(false)},
+		{"disable false maps to parallel true", `{"model":"claude","max_tokens":1024,"messages":[{"role":"user","content":"hi"}],"tool_choice":{"type":"auto","disable_parallel_tool_use":false}}`, lo.ToPtr(true)},
+		{"absent stays nil", `{"model":"claude","max_tokens":1024,"messages":[{"role":"user","content":"hi"}],"tool_choice":{"type":"auto"}}`, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			httpReq := &httpclient.Request{Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(tc.body)}
+			got, err := transformer.TransformRequest(context.Background(), httpReq)
+			require.NoError(t, err)
+			if tc.expectParallel == nil {
+				require.Nil(t, got.ParallelToolCalls)
+			} else {
+				require.NotNil(t, got.ParallelToolCalls)
+				require.Equal(t, *tc.expectParallel, *got.ParallelToolCalls)
+			}
+		})
+	}
+}
