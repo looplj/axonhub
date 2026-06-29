@@ -1,12 +1,13 @@
 import { format } from 'date-fns';
 import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   useProviderQuotaStatuses,
   ProviderQuotaChannel,
@@ -16,6 +17,8 @@ import {
   ProviderSyntheticQuotaData,
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
+  ProviderOpenCodeGoQuotaData,
+  OpenCodeGoQuotaWindow,
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
@@ -66,6 +69,18 @@ function isOpenaiType(t: string): t is 'openai' | 'openai_responses' {
   return t === 'openai' || t === 'openai_responses';
 }
 
+function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropic' {
+  return t === 'opencode_go' || t === 'opencode_go_anthropic';
+}
+
+// Dedup key for OpenCode Go channels: the quota is per workspace, so channels
+// sharing a workspace id collapse to one row, while a channel with no workspace
+// id configured falls back to its unique channel id (never merged with others).
+function openCodeGoWorkspaceKey(channel: ProviderQuotaChannel): string {
+  const workspaceId = (channel as { workspaceId?: string | null }).workspaceId;
+  return workspaceId && workspaceId.trim() !== '' ? `ws:${workspaceId}` : `id:${channel.id}`;
+}
+
 function getChannelPercentage(channel: ProviderQuotaChannel): number {
   let percentage = 0;
   if (!channel.quotaStatus) return 0;
@@ -112,6 +127,13 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
+  } else if (isOpenCodeGoType(channel.type)) {
+    const qd = channel.quotaStatus?.quotaData as ProviderOpenCodeGoQuotaData | undefined;
+    percentage = Math.max(
+      qd?.windows?.rolling?.usage_percent ?? 0,
+      qd?.windows?.weekly?.usage_percent ?? 0,
+      qd?.windows?.monthly?.usage_percent ?? 0
+    );
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
@@ -189,6 +211,38 @@ function ProgressBar({
   );
 }
 
+// UsageTimeBar shows usage on a single progress bar with a small triangle below
+// it marking how far the reset window has elapsed (time progress). Hovering
+// reveals the detailed figures via tooltip, keeping the row compact.
+function UsageTimeBar({
+  usagePercent,
+  durationPercent,
+  tooltip,
+}: {
+  usagePercent: number;
+  durationPercent?: number;
+  tooltip: ReactNode;
+}) {
+  const markerLeft = durationPercent === undefined ? undefined : Math.min(Math.max(durationPercent, 0), 100);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className='relative cursor-default pb-1.5'>
+          <ProgressBar percentage={usagePercent} durationPercentage={durationPercent} />
+          {markerLeft !== undefined && (
+            <div className='absolute top-2 -translate-x-1/2' style={{ left: `${markerLeft}%` }} aria-hidden>
+              {/* upward triangle pointing at the bar, marking elapsed time */}
+              <div className='border-b-muted-foreground h-0 w-0 border-x-[3px] border-b-[4px] border-x-transparent' />
+            </div>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side='top'>{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function formatTokenCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
@@ -259,6 +313,29 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
 
     const now = Date.now() / 1000;
     const resetAfter = resetTs - now;
+    return calcDurationPercent(limit, resetAfter);
+  };
+
+  // Fraction of the reset window that has elapsed, rendered as a second
+  // "time elapsed" bar so usage progress can be read against time progress.
+  const getOpenCodeGoDurationPercent = (key: 'rolling' | 'weekly' | 'monthly', window: OpenCodeGoQuotaWindow): number | undefined => {
+    const limits: Record<string, number> = {
+      rolling: 5 * 3600,
+      weekly: 7 * 24 * 3600,
+      monthly: 30 * 24 * 3600,
+    };
+    const limit = limits[key];
+
+    // Prefer the absolute reset_time so the marker keeps advancing as the user
+    // looks; fall back to the snapshot reset_in_seconds from the last poll.
+    let resetAfter: number | undefined;
+    if (window.reset_time) {
+      resetAfter = (new Date(window.reset_time).getTime() - Date.now()) / 1000;
+    } else if (window.reset_in_seconds != null) {
+      resetAfter = window.reset_in_seconds;
+    }
+    if (resetAfter === undefined) return undefined;
+
     return calcDurationPercent(limit, resetAfter);
   };
 
@@ -737,6 +814,61 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
+      {isOpenCodeGoType(channel.type) && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus?.quotaData as ProviderOpenCodeGoQuotaData | undefined;
+            if (!qd) return null;
+
+            const entries: Array<['rolling' | 'weekly' | 'monthly', string]> = [
+              ['rolling', 'quota.window.5h'],
+              ['weekly', 'quota.window.weekly'],
+              ['monthly', 'quota.window.monthly'],
+            ];
+
+            return entries
+              .map(([key, labelKey], index) => {
+                const window = qd.windows?.[key];
+                if (!window) return null;
+
+                const usedPct = window.usage_percent ?? 0;
+                const durationPct = getOpenCodeGoDurationPercent(key, window);
+                // Always show the reset countdown — the elapsed-time marker already
+                // conveys progress, so the "no usage yet" special case is unwanted here.
+                const resetText =
+                  window.reset_time || window.reset_in_seconds != null
+                    ? formatTimeToReset(window.reset_time ?? window.reset_in_seconds)
+                    : '';
+                return (
+                  <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
+                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
+                    </div>
+                    <UsageTimeBar
+                      usagePercent={usedPct}
+                      durationPercent={durationPct}
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{t(labelKey)}</div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                          {durationPct !== undefined && (
+                            <div>
+                              {t('quota.label.time_elapsed')}: {Math.round(durationPct)}%
+                            </div>
+                          )}
+                          {resetText && <div>{resetText}</div>}
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              })
+              .filter(Boolean);
+          })()}
+        </div>
+      )}
+
       {isOpenaiType(channel.type) && channel.providerType === 'wafer' && (
         <div className='mt-3 space-y-3'>
           {(() => {
@@ -1124,6 +1256,16 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
   const groupedChannels = channels.reduce((acc: ProviderQuotaChannel[], channel: ProviderQuotaChannel) => {
     if (channel.type === 'nanogpt_responses') {
       const existing = acc.find((c) => c.type === 'nanogpt');
+      if (!existing) {
+        acc.push(channel);
+      }
+    } else if (isOpenCodeGoType(channel.type)) {
+      // Collapse only channels that share a workspace (e.g. the openai + anthropic
+      // variants of one workspace); distinct workspaces each get their own row.
+      // Channels with no workspace id configured fall back to their unique id so
+      // they are never silently merged.
+      const key = openCodeGoWorkspaceKey(channel);
+      const existing = acc.find((c) => isOpenCodeGoType(c.type) && openCodeGoWorkspaceKey(c) === key);
       if (!existing) {
         acc.push(channel);
       }

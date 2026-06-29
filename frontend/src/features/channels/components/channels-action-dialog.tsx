@@ -174,6 +174,10 @@ function getResponsesWebSocketBaseURL(channelType: ChannelType): string | undefi
   return undefined;
 }
 
+function isOpenCodeGoChannelType(channelType: ChannelType | undefined): channelType is 'opencode_go' | 'opencode_go_anthropic' {
+  return channelType === 'opencode_go' || channelType === 'opencode_go_anthropic';
+}
+
 // Custom hook for debounced value
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -352,6 +356,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
   const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
   const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
+  const [showOpenCodeGoAuthCookie, setShowOpenCodeGoAuthCookie] = useState(false);
   const [authMode, setAuthMode] = useState<'official' | 'auth-json' | 'third-party'>('official');
   const [codexAuthJSONText, setCodexAuthJSONText] = useState('');
   const [patternError, setPatternError] = useState<string | null>(null);
@@ -510,6 +515,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       setSelectedKeysToRemove(new Set());
       setConfirmRemoveSelectedOpen(false);
       setConfirmRemoveKey(null);
+      setShowOpenCodeGoAuthCookie(false);
       setPatternError(null);
       setFetchedModels([]);
       setUseFetchedModels(false);
@@ -736,10 +742,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const watchedAutoSync = form.watch('autoSyncSupportedModels');
   const watchedAutoSyncPattern = form.watch('autoSyncModelPattern');
 
-  const isCodexType = (selectedType || derivedChannelType) === 'codex';
-  const isAntigravityType = (selectedType || derivedChannelType) === 'antigravity';
-  const isClaudeCodeType = (selectedType || derivedChannelType) === 'claudecode';
-  const isCopilotType = (selectedType || derivedChannelType) === 'github_copilot';
+  const activeChannelType = selectedType || derivedChannelType;
+  const isCodexType = activeChannelType === 'codex';
+  const isAntigravityType = activeChannelType === 'antigravity';
+  const isClaudeCodeType = activeChannelType === 'claudecode';
+  const isCopilotType = activeChannelType === 'github_copilot';
+  const isOpenCodeGoType = isOpenCodeGoChannelType(activeChannelType);
 
   // OAuth providers cannot have their provider/API format changed during edit.
   // Derived from currentRow credentials so it stays stable across re-renders
@@ -1165,6 +1173,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         manualModels,
         credentials: valuesForSubmit.credentials,
       };
+      const settingsForSubmit = isOpenCodeGoChannelType(dataWithModels.type as ChannelType | undefined)
+        ? values.settings
+        : {
+            ...(values.settings ?? {}),
+            providerQuota: null,
+          };
 
       const shouldUseProtocolDefaultBaseURL =
         (isCodexType && (!isEdit || authMode === 'official' || authMode === 'auth-json')) ||
@@ -1187,7 +1201,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
-        const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
+        const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
           passThroughUserAgent,
           passThroughBody,
           retryableStatusCodes,
@@ -1230,7 +1244,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           }),
         };
 
-        const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
+        const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
           proxy: proxyConfig,
           passThroughUserAgent,
           passThroughBody,
@@ -1651,6 +1665,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setConfirmRemoveSelectedOpen(false);
             setConfirmRemoveKey(null);
             setShowApiKey(false);
+            setShowOpenCodeGoAuthCookie(false);
             // Reset proxy state
             if (initialRow?.settings?.proxy?.type) {
               setProxyType(initialRow.settings.proxy.type as ProxyType);
@@ -2279,6 +2294,79 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             )}
                           />
                         )}
+
+                      {isOpenCodeGoType && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name='settings.providerQuota.opencodeGo.workspaceId'
+                            render={({ field }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.opencodeGoQuota.workspaceId.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <Input
+                                    placeholder={t('channels.dialogs.fields.opencodeGoQuota.workspaceId.placeholder')}
+                                    autoComplete='off'
+                                    spellCheck={false}
+                                    className='font-mono text-sm'
+                                    data-testid='channel-opencode-go-workspace-id-input'
+                                    {...field}
+                                    value={field.value ?? ''}
+                                  />
+                                  <p className='text-muted-foreground text-xs'>
+                                    {t('channels.dialogs.fields.opencodeGoQuota.workspaceId.description')}
+                                  </p>
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name='settings.providerQuota.opencodeGo.authCookie'
+                            render={({ field, fieldState }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.opencodeGoQuota.authCookie.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <div className='relative'>
+                                    <Input
+                                      type={showOpenCodeGoAuthCookie ? 'text' : 'password'}
+                                      placeholder={t('channels.dialogs.fields.opencodeGoQuota.authCookie.placeholder')}
+                                      autoComplete='new-password'
+                                      data-form-type='other'
+                                      spellCheck={false}
+                                      className='pr-10 font-mono text-sm'
+                                      aria-invalid={!!fieldState.error}
+                                      data-testid='channel-opencode-go-auth-cookie-input'
+                                      {...field}
+                                      value={field.value ?? ''}
+                                    />
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2 p-0'
+                                      aria-label={t('channels.dialogs.fields.opencodeGoQuota.authCookie.toggleVisibility')}
+                                      onClick={() => setShowOpenCodeGoAuthCookie((visible) => !visible)}
+                                    >
+                                      {showOpenCodeGoAuthCookie ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                    </Button>
+                                  </div>
+                                  <p className='text-muted-foreground text-xs'>
+                                    {t('channels.dialogs.fields.opencodeGoQuota.authCookie.description')}
+                                  </p>
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
 
                       <FormField
                         control={form.control}

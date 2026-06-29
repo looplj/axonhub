@@ -138,6 +138,18 @@ models:
   RetryableErrorPatternInput:
     model:
       - github.com/looplj/axonhub/internal/objects.RetryableErrorPattern
+  OpenCodeGoQuotaSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OpenCodeGoQuotaSettings
+  OpenCodeGoQuotaSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OpenCodeGoQuotaSettings
+  ChannelProviderQuotaSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelProviderQuotaSettings
+  ChannelProviderQuotaSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelProviderQuotaSettings
   ChannelRateLimit:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRateLimit

@@ -118,6 +118,24 @@ input RetryableErrorPatternInput {
   regex: Boolean
 }
 
+type OpenCodeGoQuotaSettings {
+  workspaceId: String
+  authCookie: String
+}
+
+input OpenCodeGoQuotaSettingsInput {
+  workspaceId: String
+  authCookie: String
+}
+
+type ChannelProviderQuotaSettings {
+  opencodeGo: OpenCodeGoQuotaSettings
+}
+
+input ChannelProviderQuotaSettingsInput {
+  opencodeGo: OpenCodeGoQuotaSettingsInput
+}
+
 type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
@@ -134,6 +152,7 @@ type ChannelSettings {
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
+  providerQuota: ChannelProviderQuotaSettings
 }
 
 enum CapabilityPolicy {
@@ -171,6 +190,7 @@ input ChannelSettingsInput {
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
+  providerQuota: ChannelProviderQuotaSettingsInput
 }
 
 input ChannelRateLimitInput {
