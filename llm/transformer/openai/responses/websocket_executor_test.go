@@ -1,9 +1,14 @@
 package responses
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -751,6 +756,21 @@ func TestWebSocketStreamReturnsErrorWhenReusedConnectionClosesBeforeEvent(t *tes
 	require.ErrorContains(t, stream.Err(), "websocket closed before response event")
 }
 
+func TestWebSocketStreamReportsAbortAfterNonTerminalEvent(t *testing.T) {
+	conn := newAbortingWebSocketClientConn(t, []byte(`{"type":"response.output_text.delta","delta":"partial"}`))
+	stream := &webSocketStream{
+		ctx:   webSocketTestContext(),
+		lease: &webSocketLease{conn: conn},
+		done:  make(chan struct{}),
+	}
+
+	require.True(t, stream.Next())
+	require.Equal(t, "response.output_text.delta", stream.Current().Type)
+
+	require.False(t, stream.Next())
+	require.ErrorContains(t, stream.Err(), "websocket closed before terminal response event")
+}
+
 func TestWebSocketExecutorSeparatesPoolByOrganizationHeaders(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32
@@ -1284,4 +1304,98 @@ func TestToWebSocketURL(t *testing.T) {
 	got, err = toWebSocketURL("http://localhost:8080/v1/responses")
 	require.NoError(t, err)
 	require.Equal(t, "ws://localhost:8080/v1/responses", got)
+}
+
+func newAbortingWebSocketClientConn(t *testing.T, event []byte) *websocket.Conn {
+	t.Helper()
+
+	rawConn := &scriptedAbortConn{
+		event:    event,
+		abortErr: errors.New("wsarecv: An established connection was aborted by the software in your host machine."),
+	}
+	conn, _, err := websocket.NewClient(rawConn, mustParseURL(t, "ws://example.test/v1/responses"), nil, 1024, 1024)
+	require.NoError(t, err)
+
+	return conn
+}
+
+type scriptedAbortConn struct {
+	readBuf  bytes.Buffer
+	event    []byte
+	abortErr error
+	closed   bool
+}
+
+func (c *scriptedAbortConn) Read(p []byte) (int, error) {
+	if c.readBuf.Len() > 0 {
+		return c.readBuf.Read(p)
+	}
+	if c.closed {
+		return 0, net.ErrClosed
+	}
+
+	return 0, c.abortErr
+}
+
+func (c *scriptedAbortConn) Write(p []byte) (int, error) {
+	if !strings.Contains(string(p), "Sec-WebSocket-Key:") {
+		return len(p), nil
+	}
+
+	key := secWebSocketKeyFromRequest(p)
+	c.readBuf.WriteString("HTTP/1.1 101 Switching Protocols\r\n")
+	c.readBuf.WriteString("Upgrade: websocket\r\n")
+	c.readBuf.WriteString("Connection: Upgrade\r\n")
+	c.readBuf.WriteString("Sec-WebSocket-Accept: " + secWebSocketAccept(key) + "\r\n\r\n")
+	c.readBuf.Write(webSocketTextFrame(c.event))
+
+	return len(p), nil
+}
+
+func (c *scriptedAbortConn) Close() error {
+	c.closed = true
+	return nil
+}
+
+func (c *scriptedAbortConn) LocalAddr() net.Addr              { return scriptedAddr("local") }
+func (c *scriptedAbortConn) RemoteAddr() net.Addr             { return scriptedAddr("remote") }
+func (c *scriptedAbortConn) SetDeadline(time.Time) error      { return nil }
+func (c *scriptedAbortConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *scriptedAbortConn) SetWriteDeadline(time.Time) error { return nil }
+func (c *scriptedAbortConn) NetConn() net.Conn                { return c }
+
+type scriptedAddr string
+
+func (a scriptedAddr) Network() string { return string(a) }
+func (a scriptedAddr) String() string  { return string(a) }
+
+func secWebSocketKeyFromRequest(req []byte) string {
+	for _, line := range strings.Split(string(req), "\r\n") {
+		header, value, ok := strings.Cut(line, ":")
+		if ok && strings.EqualFold(header, "Sec-WebSocket-Key") {
+			return strings.TrimSpace(value)
+		}
+	}
+
+	return ""
+}
+
+func secWebSocketAccept(key string) string {
+	sum := sha1.Sum([]byte(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+	return base64.StdEncoding.EncodeToString(sum[:])
+}
+
+func webSocketTextFrame(payload []byte) []byte {
+	frame := []byte{0x80 | byte(websocket.TextMessage)}
+	switch {
+	case len(payload) < 126:
+		frame = append(frame, byte(len(payload)))
+	case len(payload) <= 0xffff:
+		frame = append(frame, 126, byte(len(payload)>>8), byte(len(payload)))
+	default:
+		panic("test websocket frame payload is too large")
+	}
+	frame = append(frame, payload...)
+
+	return frame
 }

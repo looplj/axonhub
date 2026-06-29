@@ -1051,8 +1051,13 @@ func (s *webSocketStream) Next() bool {
 		if isWebSocketClosedError(err) {
 			if ctxErr := s.ctx.Err(); ctxErr != nil {
 				s.setErr(ctxErr)
+			} else if s.isTerminal() {
+				// A terminal event already committed the final response state; a
+				// following close from the provider is the normal end of the stream.
 			} else if !s.hasSeenEvent() {
 				s.setErr(fmt.Errorf("websocket closed before response event"))
+			} else {
+				s.setErr(fmt.Errorf("websocket closed before terminal response event: %w", err))
 			}
 			s.finish(true)
 			return false
@@ -1160,6 +1165,12 @@ func (s *webSocketStream) markTerminal() {
 	s.mu.Lock()
 	s.terminal = true
 	s.mu.Unlock()
+}
+
+func (s *webSocketStream) isTerminal() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.terminal
 }
 
 func (s *webSocketStream) setErr(err error) {

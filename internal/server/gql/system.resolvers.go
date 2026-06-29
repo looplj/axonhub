@@ -57,8 +57,68 @@ func (r *mutationResolver) UpdateStoragePolicy(ctx context.Context, input biz.St
 }
 
 // UpdateRetryPolicy is the resolver for the updateRetryPolicy field.
-func (r *mutationResolver) UpdateRetryPolicy(ctx context.Context, input biz.RetryPolicy) (bool, error) {
-	err := r.systemService.SetRetryPolicy(ctx, &input)
+func (r *mutationResolver) UpdateRetryPolicy(ctx context.Context, input UpdateRetryPolicyInput) (bool, error) {
+	current, err := r.systemService.RetryPolicy(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to read current retry policy: %w", err)
+	}
+
+	policy := *current
+	if input.MaxChannelRetries != nil {
+		policy.MaxChannelRetries = *input.MaxChannelRetries
+	}
+	if input.MaxSingleChannelRetries != nil {
+		policy.MaxSingleChannelRetries = *input.MaxSingleChannelRetries
+	}
+	if input.RetryDelayMs != nil {
+		policy.RetryDelayMs = *input.RetryDelayMs
+	}
+	if input.StreamFirstEventTimeoutSeconds != nil {
+		policy.StreamFirstEventTimeoutSeconds = *input.StreamFirstEventTimeoutSeconds
+	}
+	if input.NonStreamResponseTimeoutSeconds != nil {
+		policy.NonStreamResponseTimeoutSeconds = *input.NonStreamResponseTimeoutSeconds
+	}
+	if input.LoadBalancerStrategy != nil {
+		policy.LoadBalancerStrategy = *input.LoadBalancerStrategy
+	}
+	if input.Enabled != nil {
+		policy.Enabled = *input.Enabled
+	}
+	if input.AutoDisableChannel != nil {
+		if input.AutoDisableChannel.Enabled != nil {
+			policy.AutoDisableChannel.Enabled = *input.AutoDisableChannel.Enabled
+		}
+		if input.AutoDisableChannel.Statuses != nil {
+			statuses := make([]biz.AutoDisableChannelStatus, 0, len(input.AutoDisableChannel.Statuses))
+			for _, status := range input.AutoDisableChannel.Statuses {
+				if status == nil {
+					continue
+				}
+				statuses = append(statuses, biz.AutoDisableChannelStatus{
+					Status: status.Status,
+					Times:  status.Times,
+				})
+			}
+			policy.AutoDisableChannel.Statuses = statuses
+		}
+	}
+	if input.EmptyResponseDetection != nil {
+		policy.EmptyResponseDetection = *input.EmptyResponseDetection
+	}
+	if input.UpstreamErrorPolicy != nil {
+		if input.UpstreamErrorPolicy.Mode != nil {
+			policy.UpstreamErrorPolicy.Mode = *input.UpstreamErrorPolicy.Mode
+		}
+		if input.UpstreamErrorPolicy.CustomMessage != nil {
+			policy.UpstreamErrorPolicy.CustomMessage = *input.UpstreamErrorPolicy.CustomMessage
+		}
+	}
+	if input.StreamProbeDurationMs != nil {
+		policy.StreamProbeDurationMs = *input.StreamProbeDurationMs
+	}
+
+	err = r.systemService.SetRetryPolicy(ctx, &policy)
 	if err != nil {
 		return false, fmt.Errorf("failed to update retry policy: %w", err)
 	}

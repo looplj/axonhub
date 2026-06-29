@@ -11,6 +11,8 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+const maxStreamProbeBufferedEvents = 256
+
 type streamProbeEvent struct {
 	event *httpclient.StreamEvent
 	err   error
@@ -61,6 +63,9 @@ func probeStreamBeforeCommit(
 			}
 
 			probed.buffer = append(probed.buffer, event.event)
+			if len(probed.buffer) >= maxStreamProbeBufferedEvents {
+				return probed, nil
+			}
 
 		case <-timer.C:
 			return probed, nil

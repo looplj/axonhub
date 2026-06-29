@@ -80,9 +80,19 @@ type AutoDisableAPIKeyStatus struct {
 	Times  int `json:"times"`
 }
 
+type AutoDisableChannelInput struct {
+	Enabled  *bool                            `json:"enabled,omitempty"`
+	Statuses []*AutoDisableChannelStatusInput `json:"statuses,omitempty"`
+}
+
 type AutoDisableChannelOnboarding struct {
 	Onboarded   bool       `json:"onboarded"`
 	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}
+
+type AutoDisableChannelStatusInput struct {
+	Status int `json:"status"`
+	Times  int `json:"times"`
 }
 
 type BackupPayload struct {
@@ -547,6 +557,20 @@ type UpdateQuotaEnforcementSettingsInput struct {
 	Mode    *biz.QuotaEnforcementMode `json:"mode,omitempty"`
 }
 
+type UpdateRetryPolicyInput struct {
+	MaxChannelRetries               *int                      `json:"maxChannelRetries,omitempty"`
+	MaxSingleChannelRetries         *int                      `json:"maxSingleChannelRetries,omitempty"`
+	RetryDelayMs                    *int                      `json:"retryDelayMs,omitempty"`
+	StreamFirstEventTimeoutSeconds  *int                      `json:"streamFirstEventTimeoutSeconds,omitempty"`
+	NonStreamResponseTimeoutSeconds *int                      `json:"nonStreamResponseTimeoutSeconds,omitempty"`
+	LoadBalancerStrategy            *string                   `json:"loadBalancerStrategy,omitempty"`
+	Enabled                         *bool                     `json:"enabled,omitempty"`
+	AutoDisableChannel              *AutoDisableChannelInput  `json:"autoDisableChannel,omitempty"`
+	EmptyResponseDetection          *bool                     `json:"emptyResponseDetection,omitempty"`
+	UpstreamErrorPolicy             *UpstreamErrorPolicyInput `json:"upstreamErrorPolicy,omitempty"`
+	StreamProbeDurationMs           *int                      `json:"streamProbeDurationMs,omitempty"`
+}
+
 type UpdateSecuritySettingsInput struct {
 	BlockedIPs              []string `json:"blockedIPs,omitempty"`
 	ShowRequestLogIPBanIcon *bool    `json:"showRequestLogIPBanIcon,omitempty"`
@@ -554,6 +578,11 @@ type UpdateSecuritySettingsInput struct {
 
 type UpdateUserAgentPassThroughSettingsInput struct {
 	Enabled bool `json:"enabled"`
+}
+
+type UpstreamErrorPolicyInput struct {
+	Mode          *string `json:"mode,omitempty"`
+	CustomMessage *string `json:"customMessage,omitempty"`
 }
 
 type UserAgentPassThroughSettings struct {

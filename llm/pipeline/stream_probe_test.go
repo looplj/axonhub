@@ -178,6 +178,49 @@ func TestProbeStreamBeforeCommit_TimeoutKeepsSingleInnerReader(t *testing.T) {
 	require.NoError(t, result.stream.Close())
 }
 
+func TestProbeStreamBeforeCommit_StopsBufferingAtEventCap(t *testing.T) {
+	const expectedMaxBufferedEvents = 256
+
+	events := make([]*httpclient.StreamEvent, expectedMaxBufferedEvents+1)
+	for i := range events {
+		events[i] = &httpclient.StreamEvent{Data: []byte("event")}
+	}
+
+	stream := newBlockingAfterEventsStream(events)
+
+	resultCh := make(chan struct {
+		stream streams.Stream[*httpclient.StreamEvent]
+		err    error
+	}, 1)
+	go func() {
+		defer recoverTestGoroutine(t)
+
+		probed, err := probeStreamBeforeCommit(context.Background(), stream, time.Hour)
+		resultCh <- struct {
+			stream streams.Stream[*httpclient.StreamEvent]
+			err    error
+		}{stream: probed, err: err}
+	}()
+
+	var result struct {
+		stream streams.Stream[*httpclient.StreamEvent]
+		err    error
+	}
+	select {
+	case result = <-resultCh:
+	case <-time.After(time.Second):
+		t.Fatal("probe did not stop buffering after reaching the event cap")
+	}
+	require.NoError(t, result.err)
+	require.NotNil(t, result.stream)
+	defer result.stream.Close()
+
+	for i := 0; i < expectedMaxBufferedEvents+1; i++ {
+		require.True(t, result.stream.Next(), "event %d should be replayed or delivered live", i)
+		require.Equal(t, "event", string(result.stream.Current().Data))
+	}
+}
+
 func rawToLlmObjectStream(
 	ctx context.Context,
 	req *httpclient.Request,
@@ -225,6 +268,48 @@ func recoverTestGoroutine(t *testing.T) {
 	if r := recover(); r != nil {
 		t.Errorf("test goroutine panic: %v", r)
 	}
+}
+
+type blockingAfterEventsStream struct {
+	events []*httpclient.StreamEvent
+	index  int
+	closed chan struct{}
+	once   sync.Once
+}
+
+func newBlockingAfterEventsStream(events []*httpclient.StreamEvent) *blockingAfterEventsStream {
+	return &blockingAfterEventsStream{
+		events: events,
+		closed: make(chan struct{}),
+	}
+}
+
+func (s *blockingAfterEventsStream) Next() bool {
+	if s.index < len(s.events) {
+		return true
+	}
+
+	<-s.closed
+	return false
+}
+
+func (s *blockingAfterEventsStream) Current() *httpclient.StreamEvent {
+	event := s.events[s.index]
+	s.index++
+
+	return event
+}
+
+func (s *blockingAfterEventsStream) Err() error {
+	return nil
+}
+
+func (s *blockingAfterEventsStream) Close() error {
+	s.once.Do(func() {
+		close(s.closed)
+	})
+
+	return nil
 }
 
 type errorAfterEventsStream struct {

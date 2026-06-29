@@ -192,9 +192,6 @@ models:
   RetryPolicy:
     model:
       - github.com/looplj/axonhub/internal/server/biz.RetryPolicy
-  UpdateRetryPolicyInput:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.RetryPolicy
   WebhookNotifierConfig:
     model:
       - github.com/looplj/axonhub/internal/server/biz.WebhookNotifierConfig
@@ -219,16 +216,7 @@ models:
   AutoDisableChannelStatus:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
-  AutoDisableChannelInput:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
-  AutoDisableChannelStatusInput:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
   UpstreamErrorPolicy:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.UpstreamErrorPolicy
-  UpstreamErrorPolicyInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.UpstreamErrorPolicy
   UpdateAPIKeyProfilesInput:

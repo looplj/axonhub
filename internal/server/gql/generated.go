@@ -968,7 +968,7 @@ type ComplexityRoot struct {
 		UpdatePromptProtectionRuleStatus     func(childComplexity int, id objects.GUID, status promptprotectionrule.Status) int
 		UpdatePromptStatus                   func(childComplexity int, id objects.GUID, status prompt.Status) int
 		UpdateQuotaEnforcementSettings       func(childComplexity int, input UpdateQuotaEnforcementSettingsInput) int
-		UpdateRetryPolicy                    func(childComplexity int, input biz.RetryPolicy) int
+		UpdateRetryPolicy                    func(childComplexity int, input UpdateRetryPolicyInput) int
 		UpdateRole                           func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
 		UpdateSecuritySettings               func(childComplexity int, input UpdateSecuritySettingsInput) int
 		UpdateStoragePolicy                  func(childComplexity int, input biz.StoragePolicy) int
@@ -2105,7 +2105,7 @@ type MutationResolver interface {
 	UnlinkOIDCIdentity(ctx context.Context, id objects.GUID) (bool, error)
 	UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error)
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
-	UpdateRetryPolicy(ctx context.Context, input biz.RetryPolicy) (bool, error)
+	UpdateRetryPolicy(ctx context.Context, input UpdateRetryPolicyInput) (bool, error)
 	UpdateWebhookNotifierConfig(ctx context.Context, input biz.WebhookNotifierConfig) (bool, error)
 	UpdateSystemModelSettings(ctx context.Context, input biz.SystemModelSettings) (bool, error)
 	UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error)
@@ -6283,7 +6283,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateRetryPolicy(childComplexity, args["input"].(biz.RetryPolicy)), true
+		return e.complexity.Mutation.UpdateRetryPolicy(childComplexity, args["input"].(UpdateRetryPolicyInput)), true
 	case "Mutation.updateRole":
 		if e.complexity.Mutation.UpdateRole == nil {
 			break
@@ -12449,7 +12449,7 @@ func (ec *executionContext) field_Mutation_updateQuotaEnforcementSettings_args(c
 func (ec *executionContext) field_Mutation_updateRetryPolicy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateRetryPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRetryPolicy)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateRetryPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateRetryPolicyInput)
 	if err != nil {
 		return nil, err
 	}
@@ -32877,7 +32877,7 @@ func (ec *executionContext) _Mutation_updateRetryPolicy(ctx context.Context, fie
 		ec.fieldContext_Mutation_updateRetryPolicy,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateRetryPolicy(ctx, fc.Args["input"].(biz.RetryPolicy))
+			return ec.resolvers.Mutation().UpdateRetryPolicy(ctx, fc.Args["input"].(UpdateRetryPolicyInput))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -60393,8 +60393,8 @@ func (ec *executionContext) unmarshalInputApplyChannelOverrideTemplateInput(ctx 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputAutoDisableChannelInput(ctx context.Context, obj any) (biz.AutoDisableChannel, error) {
-	var it biz.AutoDisableChannel
+func (ec *executionContext) unmarshalInputAutoDisableChannelInput(ctx context.Context, obj any) (AutoDisableChannelInput, error) {
+	var it AutoDisableChannelInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -60409,14 +60409,14 @@ func (ec *executionContext) unmarshalInputAutoDisableChannelInput(ctx context.Co
 		switch k {
 		case "enabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Enabled = data
 		case "statuses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
-			data, err := ec.unmarshalOAutoDisableChannelStatusInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannelStatusᚄ(ctx, v)
+			data, err := ec.unmarshalOAutoDisableChannelStatusInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelStatusInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -60427,8 +60427,8 @@ func (ec *executionContext) unmarshalInputAutoDisableChannelInput(ctx context.Co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputAutoDisableChannelStatusInput(ctx context.Context, obj any) (biz.AutoDisableChannelStatus, error) {
-	var it biz.AutoDisableChannelStatus
+func (ec *executionContext) unmarshalInputAutoDisableChannelStatusInput(ctx context.Context, obj any) (AutoDisableChannelStatusInput, error) {
+	var it AutoDisableChannelStatusInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -80087,8 +80087,8 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Context, obj any) (biz.RetryPolicy, error) {
-	var it biz.RetryPolicy
+func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Context, obj any) (UpdateRetryPolicyInput, error) {
+	var it UpdateRetryPolicyInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -80103,77 +80103,77 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 		switch k {
 		case "maxChannelRetries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxChannelRetries"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxChannelRetries = data
 		case "maxSingleChannelRetries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxSingleChannelRetries"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxSingleChannelRetries = data
 		case "retryDelayMs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryDelayMs"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.RetryDelayMs = data
 		case "streamFirstEventTimeoutSeconds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamFirstEventTimeoutSeconds"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StreamFirstEventTimeoutSeconds = data
 		case "nonStreamResponseTimeoutSeconds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nonStreamResponseTimeoutSeconds"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.NonStreamResponseTimeoutSeconds = data
 		case "loadBalancerStrategy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("loadBalancerStrategy"))
-			data, err := ec.unmarshalOString2string(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.LoadBalancerStrategy = data
 		case "enabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Enabled = data
 		case "autoDisableChannel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoDisableChannel"))
-			data, err := ec.unmarshalOAutoDisableChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannel(ctx, v)
+			data, err := ec.unmarshalOAutoDisableChannelInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AutoDisableChannel = data
 		case "emptyResponseDetection":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emptyResponseDetection"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.EmptyResponseDetection = data
 		case "upstreamErrorPolicy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upstreamErrorPolicy"))
-			data, err := ec.unmarshalOUpstreamErrorPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy(ctx, v)
+			data, err := ec.unmarshalOUpstreamErrorPolicyInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpstreamErrorPolicyInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.UpstreamErrorPolicy = data
 		case "streamProbeDurationMs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamProbeDurationMs"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -81039,8 +81039,8 @@ func (ec *executionContext) unmarshalInputUpdateVideoStorageSettingsInput(ctx co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUpstreamErrorPolicyInput(ctx context.Context, obj any) (biz.UpstreamErrorPolicy, error) {
-	var it biz.UpstreamErrorPolicy
+func (ec *executionContext) unmarshalInputUpstreamErrorPolicyInput(ctx context.Context, obj any) (UpstreamErrorPolicyInput, error) {
+	var it UpstreamErrorPolicyInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -81055,14 +81055,14 @@ func (ec *executionContext) unmarshalInputUpstreamErrorPolicyInput(ctx context.C
 		switch k {
 		case "mode":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
-			data, err := ec.unmarshalOString2string(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Mode = data
 		case "customMessage":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("customMessage"))
-			data, err := ec.unmarshalOString2string(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -104033,9 +104033,9 @@ func (ec *executionContext) marshalNAutoDisableChannelStatus2ᚕgithubᚗcomᚋl
 	return ret
 }
 
-func (ec *executionContext) unmarshalNAutoDisableChannelStatusInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannelStatus(ctx context.Context, v any) (biz.AutoDisableChannelStatus, error) {
+func (ec *executionContext) unmarshalNAutoDisableChannelStatusInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelStatusInput(ctx context.Context, v any) (*AutoDisableChannelStatusInput, error) {
 	res, err := ec.unmarshalInputAutoDisableChannelStatusInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNAutoSyncFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoSyncFrequency(ctx context.Context, v any) (biz.AutoSyncFrequency, error) {
@@ -108959,7 +108959,7 @@ func (ec *executionContext) unmarshalNUpdateQuotaEnforcementSettingsInput2github
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNUpdateRetryPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRetryPolicy(ctx context.Context, v any) (biz.RetryPolicy, error) {
+func (ec *executionContext) unmarshalNUpdateRetryPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateRetryPolicyInput(ctx context.Context, v any) (UpdateRetryPolicyInput, error) {
 	res, err := ec.unmarshalInputUpdateRetryPolicyInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -110179,9 +110179,12 @@ func (ec *executionContext) marshalOAny2interface(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) unmarshalOAutoDisableChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannel(ctx context.Context, v any) (biz.AutoDisableChannel, error) {
+func (ec *executionContext) unmarshalOAutoDisableChannelInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelInput(ctx context.Context, v any) (*AutoDisableChannelInput, error) {
+	if v == nil {
+		return nil, nil
+	}
 	res, err := ec.unmarshalInputAutoDisableChannelInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOAutoDisableChannelOnboarding2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelOnboarding(ctx context.Context, sel ast.SelectionSet, v *AutoDisableChannelOnboarding) graphql.Marshaler {
@@ -110191,17 +110194,17 @@ func (ec *executionContext) marshalOAutoDisableChannelOnboarding2ᚖgithubᚗcom
 	return ec._AutoDisableChannelOnboarding(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOAutoDisableChannelStatusInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannelStatusᚄ(ctx context.Context, v any) ([]biz.AutoDisableChannelStatus, error) {
+func (ec *executionContext) unmarshalOAutoDisableChannelStatusInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelStatusInputᚄ(ctx context.Context, v any) ([]*AutoDisableChannelStatusInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]biz.AutoDisableChannelStatus, len(vSlice))
+	res := make([]*AutoDisableChannelStatusInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNAutoDisableChannelStatusInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannelStatus(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNAutoDisableChannelStatusInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAutoDisableChannelStatusInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -115377,9 +115380,12 @@ func (ec *executionContext) unmarshalOUpdateChannelProbeSettingInput2githubᚗco
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOUpstreamErrorPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy(ctx context.Context, v any) (biz.UpstreamErrorPolicy, error) {
+func (ec *executionContext) unmarshalOUpstreamErrorPolicyInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpstreamErrorPolicyInput(ctx context.Context, v any) (*UpstreamErrorPolicyInput, error) {
+	if v == nil {
+		return nil, nil
+	}
 	res, err := ec.unmarshalInputUpstreamErrorPolicyInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOUsageLog2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUsageLog(ctx context.Context, sel ast.SelectionSet, v *ent.UsageLog) graphql.Marshaler {
