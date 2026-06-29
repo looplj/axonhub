@@ -52,7 +52,7 @@ func NewProvider(config Config) (*sdk.MeterProvider, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create otlpgrpc exporter: %w", err)
 		}
-	case "otlphttp":
+	case "otlphttp", "oltphttp":
 		opts := []otlpmetrichttp.Option{
 			otlpmetrichttp.WithEndpoint(config.Exporter.Endpoint),
 		}

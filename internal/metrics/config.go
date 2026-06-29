@@ -10,7 +10,7 @@ type Config struct {
 }
 
 type ExporterConfig struct {
-	Type     string `conf:"type" validate:"oneof=stdout otlpgrpc otlphttp" yaml:"type" json:"type"`
+	Type     string `conf:"type" validate:"oneof=stdout otlpgrpc otlphttp oltphttp" yaml:"type" json:"type"`
 	Endpoint string `conf:"endpoint" yaml:"endpoint" json:"endpoint"`
 	Insecure bool   `conf:"insecure" yaml:"insecure" json:"insecure"`
 }
