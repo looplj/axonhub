@@ -226,10 +226,11 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	for _, tc := range msg.ToolCalls {
 		if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
-				Type:   "custom_tool_call",
-				CallID: tc.ResponseCustomToolCall.CallID,
-				Name:   tc.ResponseCustomToolCall.Name,
-				Input:  lo.ToPtr(tc.ResponseCustomToolCall.Input),
+				Type:      "custom_tool_call",
+				CallID:    tc.ResponseCustomToolCall.CallID,
+				Name:      tc.ResponseCustomToolCall.Name,
+				Namespace: tc.ResponseCustomToolCall.Namespace,
+				Input:     lo.ToPtr(tc.ResponseCustomToolCall.Input),
 			})
 		} else {
 			toolCallItems = append(toolCallItems, Item{

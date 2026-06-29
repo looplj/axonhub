@@ -447,9 +447,10 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 				ID:   nextItem.CallID,
 				Type: llm.ToolTypeResponsesCustomTool,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: nextItem.CallID,
-					Name:   nextItem.Name,
-					Input:  inputStr,
+					CallID:    nextItem.CallID,
+					Name:      nextItem.Name,
+					Namespace: nextItem.Namespace,
+					Input:     inputStr,
 				},
 			})
 			consumed++
@@ -556,9 +557,10 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 					ID:   item.CallID,
 					Type: llm.ToolTypeResponsesCustomTool,
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-						CallID: item.CallID,
-						Name:   item.Name,
-						Input:  inputStr,
+						CallID:    item.CallID,
+						Name:      item.Name,
+						Namespace: item.Namespace,
+						Input:     inputStr,
 					},
 				},
 			},

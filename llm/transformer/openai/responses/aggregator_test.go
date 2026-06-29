@@ -883,3 +883,30 @@ func TestAggregateStreamChunks_ImageGenerationCall(t *testing.T) {
 	require.NotNil(t, resp.Output[0].Result)
 	require.Equal(t, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", *resp.Output[0].Result)
 }
+
+func TestStreamAggregator_BuildResponse_CustomToolCallPreservesNamespace(t *testing.T) {
+	input := "patch"
+	a := &streamAggregator{
+		outputItems: map[int][]*aggregatedItem{
+			0: {{
+				ID:        "c_ns4",
+				Type:      "custom_tool_call",
+				Status:    "completed",
+				CallID:    "call_ns_4",
+				Name:      "apply_patch",
+				Namespace: "mcp__myserver",
+				Input:     &input,
+			}},
+		},
+	}
+	resp := a.buildResponse()
+	require.NotNil(t, resp)
+	var found bool
+	for _, it := range resp.Output {
+		if it.Type == "custom_tool_call" {
+			found = true
+			require.Equal(t, "mcp__myserver", it.Namespace, "D11(iv): buildResponse must preserve custom_tool_call namespace in completed snapshot")
+		}
+	}
+	require.True(t, found, "expected a custom_tool_call item in built response")
+}

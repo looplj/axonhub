@@ -1991,3 +1991,31 @@ func TestConvertContentItemToPart_InputAudio(t *testing.T) {
 	require.Equal(t, "mp3", result.InputAudio.Format)
 	require.Equal(t, "SGVsbG8gV29ybGQ=", result.InputAudio.Data)
 }
+
+func TestConvertReasoningWithFollowing_CustomToolCallPreservesNamespace(t *testing.T) {
+	items := []Item{
+		{ID: "r_ns", Type: "reasoning", Summary: []ReasoningSummary{{Type: "summary_text", Text: "think"}}},
+		{ID: "c_ns", Type: "custom_tool_call", CallID: "call_ns_1", Name: "apply_patch", Namespace: "mcp__myserver", Input: lo.ToPtr("patch")},
+	}
+	msg, _, err := convertReasoningWithFollowing(items, 0)
+	require.NoError(t, err)
+	require.NotNil(t, msg)
+	require.NotEmpty(t, msg.ToolCalls)
+	var got string
+	for _, tc := range msg.ToolCalls {
+		if tc.ResponseCustomToolCall != nil {
+			got = tc.ResponseCustomToolCall.Namespace
+		}
+	}
+	require.Equal(t, "mcp__myserver", got, "D11(i): look-ahead merge must preserve custom_tool_call namespace")
+}
+
+func TestConvertItemToMessage_CustomToolCallPreservesNamespace(t *testing.T) {
+	item := &Item{ID: "c_ns2", Type: "custom_tool_call", CallID: "call_ns_2", Name: "apply_patch", Namespace: "mcp__myserver", Input: lo.ToPtr("patch")}
+	msg, err := convertItemToMessage(item)
+	require.NoError(t, err)
+	require.NotNil(t, msg)
+	require.NotEmpty(t, msg.ToolCalls)
+	require.NotNil(t, msg.ToolCalls[0].ResponseCustomToolCall)
+	require.Equal(t, "mcp__myserver", msg.ToolCalls[0].ResponseCustomToolCall.Namespace, "D11(ii): convertItemToMessage must preserve custom_tool_call namespace")
+}

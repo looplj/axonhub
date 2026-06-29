@@ -12,7 +12,7 @@
 - **Problem**:非流式与 history 重建路径的 custom_tool_call 漏填 namespace(约4处,镜像 D12 但在 responses 非流侧),跨格式往返 namespace 丢失。
 - **Solution**:待 grill 用 MCP 定位具体站点后补 `.Namespace`(源值同 D12 模式)。
 - **Testing**:待定,镜像 D12 红绿但走非流 `TransformRequest` seam。
-- **状态**:⏳ 待开始。
+- **状态**:✅ 已完成·同模验收 Archimedes APPROVED(7 标准,含范围完整性扫描,11 构造点无残留),待 commit。
 
 ## β-3 · #1b — builtin 工具静默丢
 - **Problem**:file_search/mcp/computer_use/bash_/text_editor_ 等原生工具在 anthropic 出站被静默过滤(作者 outbound_convert.go:227-228 注释已表态仅留 web_search),无告警致客户端不知情功能缺失。

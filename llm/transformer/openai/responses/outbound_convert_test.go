@@ -1577,3 +1577,24 @@ func TestFunctionCallItem_IDAndStatusRoundTrip(t *testing.T) {
 		require.Equal(t, "incomplete", *item.Status)
 	})
 }
+
+func TestConvertAssistantMessage_CustomToolCallEmitsNamespace(t *testing.T) {
+	msg := llm.Message{
+		Role: "assistant",
+		ToolCalls: []llm.ToolCall{{
+			ID:   "call_ns_3",
+			Type: llm.ToolTypeResponsesCustomTool,
+			ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_ns_3", Name: "apply_patch", Namespace: "mcp__myserver", Input: "patch"},
+		}},
+	}
+	items := convertAssistantMessage(msg)
+	var found bool
+	for _, it := range items {
+		if it.Type == "custom_tool_call" {
+			found = true
+			require.Equal(t, "mcp__myserver", it.Namespace, "D11(iii): convertAssistantMessage must emit custom_tool_call item with namespace")
+			require.Equal(t, "call_ns_3", it.CallID)
+		}
+	}
+	require.True(t, found, "expected a custom_tool_call item in output")
+}

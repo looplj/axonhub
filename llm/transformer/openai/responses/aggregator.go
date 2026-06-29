@@ -634,12 +634,13 @@ func (a *streamAggregator) buildResponse() *Response {
 
 			case "custom_tool_call":
 				output = append(output, Item{
-					ID:     item.ID,
-					Type:   item.Type,
-					Status: lo.ToPtr(item.Status),
-					CallID: item.CallID,
-					Name:   item.Name,
-					Input:  item.Input,
+					ID:        item.ID,
+					Type:      item.Type,
+					Status:    lo.ToPtr(item.Status),
+					CallID:    item.CallID,
+					Name:      item.Name,
+					Namespace: item.Namespace,
+					Input:     item.Input,
 				})
 
 			case "reasoning":
