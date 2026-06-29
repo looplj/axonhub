@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
+	entprivacy "github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
@@ -652,6 +653,20 @@ func (handlers *OpenAIHandlers) writeOpenAIInternalError(c *gin.Context, request
 	})
 }
 
+func (handlers *OpenAIHandlers) writeOpenAIPermissionDeniedError(c *gin.Context, requestID string, err error) {
+	_ = c.Error(err)
+
+	c.JSON(http.StatusForbidden, openai.OpenAIError{
+		StatusCode: http.StatusForbidden,
+		Detail: llm.ErrorDetail{
+			Code:      "permission_denied",
+			Message:   "insufficient permissions to access this resource",
+			Type:      "authentication_error",
+			RequestID: requestID,
+		},
+	})
+}
+
 func (handlers *OpenAIHandlers) writeOpenAIModelNotFoundError(c *gin.Context, requestID, modelID string) {
 	message := "The model does not exist or you do not have access to it."
 	if modelID != "" {
@@ -686,7 +701,11 @@ func (handlers *OpenAIHandlers) RetrieveModel(c *gin.Context) {
 
 	models, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
-		handlers.writeOpenAIInternalError(c, requestID, err)
+		if errors.Is(err, entprivacy.Deny) {
+			handlers.writeOpenAIPermissionDeniedError(c, requestID, err)
+		} else {
+			handlers.writeOpenAIInternalError(c, requestID, err)
+		}
 		return
 	}
 
@@ -736,7 +755,11 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 
 	visibleModels, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
-		handlers.writeOpenAIInternalError(c, requestID, err)
+		if errors.Is(err, entprivacy.Deny) {
+			handlers.writeOpenAIPermissionDeniedError(c, requestID, err)
+		} else {
+			handlers.writeOpenAIInternalError(c, requestID, err)
+		}
 		return
 	}
 
