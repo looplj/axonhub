@@ -597,3 +597,45 @@ func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *test
 	require.Equal(t, "resp_prev_123", *actual[2].PreviousResponseID)
 	require.Equal(t, llm.DoneResponse, actual[3])
 }
+
+func TestOutboundTransformer_TransformStream_CustomToolCallPreservesNamespace(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	const wantNS = "mcp__myserver"
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_ctc_ns_out","object":"response","created_at":1700000000,"model":"gpt-4o","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"type":"custom_tool_call","status":"in_progress","call_id":"call_ctc_ns_out_1","name":"apply_patch","namespace":"mcp__myserver"}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","sequence_number":2,"item_id":"call_ctc_ns_out_1","output_index":0,"delta":"*** Begin Patch\n"}`)},
+		{Type: "response.custom_tool_call_input.done", Data: []byte(`{"type":"response.custom_tool_call_input.done","sequence_number":3,"item_id":"call_ctc_ns_out_1","output_index":0,"input":"*** Begin Patch\n*** End Patch"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":4,"output_index":0,"item":{"type":"custom_tool_call","status":"completed","call_id":"call_ctc_ns_out_1","name":"apply_patch","namespace":"mcp__myserver","input":""}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_ctc_ns_out","object":"response","created_at":1700000000,"model":"gpt-4o","status":"completed","output":[{"type":"custom_tool_call","status":"completed","call_id":"call_ctc_ns_out_1","name":"apply_patch","namespace":"mcp__myserver","input":""}]}}`)},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, actual)
+
+	var sawChunk bool
+	for _, resp := range actual {
+		if resp == llm.DoneResponse {
+			continue
+		}
+		for _, choice := range resp.Choices {
+			if choice.Delta == nil {
+				continue
+			}
+			for _, tc := range choice.Delta.ToolCalls {
+				if tc.Type != llm.ToolTypeResponsesCustomTool || tc.ResponseCustomToolCall == nil {
+					continue
+				}
+				sawChunk = true
+				require.Equal(t, wantNS, tc.ResponseCustomToolCall.Namespace,
+					"D12 streaming custom_tool_call lost namespace mid-stream (got %q)", tc.ResponseCustomToolCall.Namespace)
+			}
+		}
+	}
+	require.True(t, sawChunk, "expected at least one emitted streaming custom_tool_call chunk")
+}
