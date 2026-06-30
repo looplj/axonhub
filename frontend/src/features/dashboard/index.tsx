@@ -103,7 +103,7 @@ export default function DashboardPage() {
   const [modelTokensTimePeriod, setModelTokensTimePeriod] = useState<TimePeriod>('allTime');
   const [apiKeyTimePeriod, setApiKeyTimePeriod] = useState<TimePeriod>('allTime');
   const [apiKeyTokensTimePeriod, setApiKeyTokensTimePeriod] = useState<TimePeriod>('allTime');
-  const [userTokensTimePeriod, setUserTokensTimePeriod] = useState<TimePeriod>('allTime');
+  const [userTokensTimePeriod, setUserTokensTimePeriod] = useState<TimePeriod>('day');
 
   const modelPerformanceDescription = useMemo(() => {
     return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
