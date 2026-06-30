@@ -37,16 +37,6 @@ func UserProjectScopeReadRequestsRule(requiredScope ScopeSlug) privacy.QueryRule
 			return privacy.Skipf("User %d can not query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 		}
 
-		// If user has system-level scope, they can query all request logs globally without personal key filtering.
-		// However, we still apply project_id filter if they are querying within a project context (standard behavior).
-		if HasSystemScope(currentUser, requiredScope) {
-			if pf, ok := q.(ProjectOwnedFilter); ok {
-				pf.WhereProjectID(entql.IntEQ(projectID))
-				return privacy.Allowf("User %d has system scope %s, allowing query in project %d", currentUser.ID, requiredScope, projectID)
-			}
-			return privacy.Skipf("Not a project-owned query")
-		}
-
 		// Apply project_id filtering
 		if pf, ok := q.(ProjectOwnedFilter); ok {
 			pf.WhereProjectID(entql.IntEQ(projectID))
