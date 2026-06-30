@@ -47,6 +47,20 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		}
 	}
 
+	// Restore OpenRouter sampling knobs (repetition_penalty/min_p/top_a) carried
+	// through TransformerMetadata (mirrors top_k restoration).
+	if r.TransformerMetadata != nil {
+		if rp, ok := r.TransformerMetadata[TransformerMetadataKeyRepetitionPenalty].(*float64); ok && rp != nil {
+			req.RepetitionPenalty = rp
+		}
+		if minP, ok := r.TransformerMetadata[TransformerMetadataKeyMinP].(*float64); ok && minP != nil {
+			req.MinP = minP
+		}
+		if topA, ok := r.TransformerMetadata[TransformerMetadataKeyTopA].(*float64); ok && topA != nil {
+			req.TopA = topA
+		}
+	}
+
 	// Convert messages
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
 		return MessageFromLLMWithConfig(m, reasoningField)

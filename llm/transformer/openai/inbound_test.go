@@ -1214,3 +1214,27 @@ func TestInboundTransformer_TransformRequest_TopKRoundTripChat(t *testing.T) {
 	require.NotNil(t, outReq.TopK, "C3: chat top_k must survive chat→canonical→chat round-trip")
 	require.Equal(t, int64(40), *outReq.TopK)
 }
+
+// C7/C8/C9 (D24): OpenRouter sampling knobs must survive chat round-trip.
+func TestInboundTransformer_TransformRequest_OpenRouterSamplingRoundTrip(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hi"}],"repetition_penalty":1.15,"min_p":0.05,"top_a":0.8}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+
+	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+	require.NotNil(t, outReq.RepetitionPenalty, "C7: repetition_penalty must survive round-trip")
+	require.InDelta(t, 1.15, *outReq.RepetitionPenalty, 0.0001)
+	require.NotNil(t, outReq.MinP, "C8: min_p must survive round-trip")
+	require.InDelta(t, 0.05, *outReq.MinP, 0.0001)
+	require.NotNil(t, outReq.TopA, "C9: top_a must survive round-trip")
+	require.InDelta(t, 0.8, *outReq.TopA, 0.0001)
+}

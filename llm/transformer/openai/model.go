@@ -52,6 +52,15 @@ type Request struct {
 	// TopK for top-k sampling (OpenRouter extension).
 	TopK *int64 `json:"top_k,omitempty"`
 
+	// RepetitionPenalty penalizes repeated tokens (OpenRouter extension).
+	RepetitionPenalty *float64 `json:"repetition_penalty,omitempty"`
+
+	// MinP minimum probability threshold (OpenRouter extension).
+	MinP *float64 `json:"min_p,omitempty"`
+
+	// TopA top-a sampling threshold (OpenRouter extension).
+	TopA *float64 `json:"top_a,omitempty"`
+
 	// PromptCacheKey is used by OpenAI to cache responses.
 	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 

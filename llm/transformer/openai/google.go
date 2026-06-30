@@ -8,6 +8,15 @@ const TransformerMetadataKeyGoogleThoughtSignature = shared.TransformerMetadataK
 // TransformerMetadataKeyTopK re-exports the shared neutral key for the top_k sampling parameter.
 const TransformerMetadataKeyTopK = shared.TransformerMetadataKeyTopK
 
+// TransformerMetadataKeyRepetitionPenalty re-exports the shared key for repetition_penalty.
+const TransformerMetadataKeyRepetitionPenalty = shared.TransformerMetadataKeyRepetitionPenalty
+
+// TransformerMetadataKeyMinP re-exports the shared key for min_p.
+const TransformerMetadataKeyMinP = shared.TransformerMetadataKeyMinP
+
+// TransformerMetadataKeyTopA re-exports the shared key for top_a.
+const TransformerMetadataKeyTopA = shared.TransformerMetadataKeyTopA
+
 // ToolCallGoogleExtraContent represents Google-specific extension fields for tool calls.
 type ToolCallGoogleExtraContent struct {
 	ThoughtSignature string `json:"thought_signature,omitempty"`

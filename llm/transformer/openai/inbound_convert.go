@@ -126,6 +126,27 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		req.TransformerMetadata[TransformerMetadataKeyTopK] = &topK
 	}
 
+	// Preserve OpenRouter sampling knobs (repetition_penalty/min_p/top_a) through
+	// TransformerMetadata; canonical llm.Request has no fields for these (mirrors
+	// top_k handling, shared neutral keys).
+	if r.RepetitionPenalty != nil || r.MinP != nil || r.TopA != nil {
+		if req.TransformerMetadata == nil {
+			req.TransformerMetadata = map[string]any{}
+		}
+		if r.RepetitionPenalty != nil {
+			rp := *r.RepetitionPenalty
+			req.TransformerMetadata[TransformerMetadataKeyRepetitionPenalty] = &rp
+		}
+		if r.MinP != nil {
+			minP := *r.MinP
+			req.TransformerMetadata[TransformerMetadataKeyMinP] = &minP
+		}
+		if r.TopA != nil {
+			topA := *r.TopA
+			req.TransformerMetadata[TransformerMetadataKeyTopA] = &topA
+		}
+	}
+
 	return req
 }
 

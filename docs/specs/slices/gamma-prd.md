@@ -23,5 +23,14 @@
 - **diagnose 跳过理由**:根因坐实(master 表 C3 + 源码),红测可直接复现三路丢失。
 - **状态**:✅ 已完成·同模验收 Meitner APPROVED(7 标准,三入站写三出站读无漏接,canonical 红线未破),待 commit。
 
-## γ-3/4/5 · C7/C8/C9 — rep_penalty/min_p/top_a(P2,同模式,待 γ-2 完成后展开)
-- **状态**:⏳ 待开始。
+## γ-3 · C7/C8/C9 — repetition_penalty/min_p/top_a(P2,合并原子)
+- **Problem**:三个 OpenRouter 扩展采样旋钮(repetition_penalty/min_p/top_a)只 chat 有(msg/resp spec 无),chat 入站因 `openai.Request` 无字段被 JSON 解码静默剥离(全包零引用),客户端设了必丢,无路由救援。
+- **Solution**(D24,同 C3 模式但 chat-only——不涉及 anthropic/responses):
+  1. `transformer/shared/sampling.go`:加 3 中性常量 `TransformerMetadataKeyRepetitionPenalty="repetition_penalty"`/`MinP="min_p"`/`TopA="top_a"`。
+  2. `openai/model.go` Request 加 3 字段 `RepetitionPenalty/MinP/TopA *float64`(spec 为 number)。
+  3. `openai/google.go` re-export 3 常量(镜像 top_k)。
+  4. `openai/inbound_convert.go` ToLLMRequest 写 3 到 metadata;`outbound_convert.go` RequestFromLLM 读 3 还原。
+- **Testing**:红:chat 三参数往返各丢;绿:三参数往返保留。无 anthropic/responses 回归(它们不涉及)。
+- **Out of scope**:canonical 加字段(违红线);跨 anthropic/responses(spec 无此参数)。
+- **diagnose 跳过理由**:根因坐实(master 表 C7/C8/C9 + 源码),红测可直接复现。
+- **状态**:✅ 已完成·同模验收 Leibniz APPROVED(7 标准,三参数 chat 往返闭合无漏接,未越界,canonical 红线未破),待 commit。
