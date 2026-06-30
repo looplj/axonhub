@@ -14,9 +14,10 @@
 - **测试设计**:镜像 top_k 范式。(1)anthropic 入站发 metadata.user_id→断言 canonical.User 捕获 + Metadata['user_id'] 保留;(2)anthropic 出站仅 canonical.User(无 Metadata)→断言 AnthropicMetadata.UserID 还原;(3)chat→anthropic 跨格式:chat 入站 user→canonical.User→anthropic 出站还原 metadata.user_id;(4)缺省守卫:无 user 无 metadata→无 AnthropicMetadata。
 - **状态**:grill 完成·待实现(TDD)。
 
-## ε-2 · #10 — session_id body 变体(待 grill)
-- **Problem**:master 表待复核:responses body 内 session_id 透传变体。
-- **状态**:待 grill。
+## ε-2 · #10 — session_id 请求体变体(⏭ 设计性不修·文档化)
+- **Problem**:OpenRouter 规范三协议均有请求体 `session_id`(body 优先于 header,yaml:4967/9082/13178),AxonHub 三线模型未声明→body 值被 lenient 丢,只认 header。
+- **grill 结论(不修)**:body session_id 是 OpenRouter **平台级**字段(语义=让 OpenRouter 自身做粘性)。AxonHub 作网关:(1)当自己的粘性 key→需路由前中间件解析 body(body 只能读一次)+ 改核心路由语义 + body 优先改现有 header 客户端路由行为 + 与作者 traceID 体系(codex/session-affinity,管日志+tracing)对齐未定;(2)只透传→真正上游(OpenAI/Anthropic 直连)不认此字段,轻忽略重 400。维持只认 header(traceID→TraceStickyKeyProvider 选 key + GetSessionID 兜底)工作正常。
+- **状态**:⏭ 设计性不修·文档化(类 #1b/#5)。
 
 ## ε-3 · #11 — chat·responses 顶层 cache_control(待 grill)
 - **Problem**:master 表待复核:chat/responses 顶层 cache_control 与 anthropic cache_control 桥接。
@@ -28,5 +29,5 @@
 | 原子 | 状态 | 验收代理 |
 |---|---|---|
 | ε-1 #13 | ✅ 已完成·已验收 | Curie |
-| ε-2 #10 | 待 grill | — |
+| ε-2 #10 | ⏭ 设计性不修·文档化 | — |
 | ε-3 #11 | 待 grill | — |
