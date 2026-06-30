@@ -92,7 +92,7 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 // User messages become items with content array containing input_text items.
 // Assistant messages become items with type "message" and content array containing output_text items.
 // Tool calls become function_call items, tool results become function_call_output items.
-func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions) Input {
+func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions, metadata map[string]any) Input {
 	if len(msgs) == 0 {
 		return Input{}
 	}
@@ -114,7 +114,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 		case "user", "developer":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
-			assistantItems := convertAssistantMessage(msg)
+			assistantItems := convertAssistantMessage(msg, metadata)
 			items = append(items, assistantItems...)
 
 			// Record tool call types for later tool result encoding.
@@ -192,7 +192,7 @@ func convertUserMessage(msg llm.Message) Item {
 
 // convertAssistantMessage converts an assistant message to Responses API Item(s) format.
 // Returns multiple items if the message contains tool calls.
-func convertAssistantMessage(msg llm.Message) []Item {
+func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 	var (
 		items         []Item
 		toolCallItems []Item
@@ -233,11 +233,14 @@ func convertAssistantMessage(msg llm.Message) []Item {
 				Input:     lo.ToPtr(tc.ResponseCustomToolCall.Input),
 			})
 		} else {
+			// Restore namespace group identity via table lookup (never string
+			// splitting — group names may contain "__").
+			fcName, fcNamespace := resolveNamespaceFromMetadata(metadata, tc.Function.Name)
 			toolCallItems = append(toolCallItems, Item{
 				Type:      "function_call",
 				CallID:    tc.ID,
-				Name:      tc.Function.Name,
-				Namespace: tc.Function.Namespace,
+				Name:      fcName,
+				Namespace: fcNamespace,
 				Arguments: tc.Function.Arguments,
 			})
 		}

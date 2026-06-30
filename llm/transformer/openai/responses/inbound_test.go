@@ -2126,3 +2126,133 @@ func TestInboundTransformer_TransformRequest_ReasoningEnabledDefaultGuard(t *tes
 	require.NoError(t, json.Unmarshal(result.Body, &respReq))
 	require.Nil(t, respReq.Reasoning, "#4: no reasoning must yield nil Reasoning")
 }
+
+// TestConvertToLLMRequest_NamespaceToolMapRecorded covers #1a/D1: when a
+// namespace tool group (e.g. mcp__node_repl{run}) is declared, the inbound
+// converter must record a compositeName→{leaf,namespace} map in
+// TransformerMetadata so the outbound side can restore the group identity
+// without string splitting (group names may themselves contain "__").
+func TestConvertToLLMRequest_NamespaceToolMapRecorded(t *testing.T) {
+	req := &Request{
+		Model: "gpt-4o",
+		Input: Input{Text: lo.ToPtr("use the tool")},
+		Tools: []Tool{
+			{
+				Type: "namespace",
+				Name: "mcp__node_repl",
+				Tools: []Tool{
+					{Type: "function", Name: "run", Parameters: map[string]any{"type": "object"}},
+				},
+			},
+		},
+	}
+
+	result, err := convertToLLMRequest(req)
+	require.NoError(t, err)
+
+	raw, ok := result.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, ok, "namespace tool map must be recorded in TransformerMetadata")
+
+	m, ok := raw.(map[string]namespaceToolEntry)
+	require.True(t, ok, "namespace tool map must be map[string]namespaceToolEntry")
+
+	entry, ok := m["mcp__node_repl__run"]
+	require.True(t, ok, "composite name mcp__node_repl__run must be in the map")
+	require.Equal(t, "run", entry.Leaf)
+	require.Equal(t, "mcp__node_repl", entry.Namespace)
+
+	// The flattened function must also be in the tools list.
+	require.Len(t, result.Tools, 1)
+	require.Equal(t, "mcp__node_repl__run", result.Tools[0].Function.Name)
+}
+
+// TestConvertToResponsesAPIResponse_NamespaceFunctionCallRestored covers #1a/D1:
+// when the model returns a function_call with the flattened composite name
+// (e.g. mcp__node_repl__run), the non-streaming response converter must look up
+// the namespace tool map in TransformerMetadata and restore {name:run,
+// namespace:mcp__node_repl}. Group names containing "__" must never be split.
+func TestConvertToResponsesAPIResponse_NamespaceFunctionCallRestored(t *testing.T) {
+	nsMap := map[string]namespaceToolEntry{
+		"mcp__node_repl__run": {Leaf: "run", Namespace: "mcp__node_repl"},
+	}
+	chatResp := &llm.Response{
+		ID:    "resp_ns",
+		Model: "gpt-4o",
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_1",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "mcp__node_repl__run",
+								Arguments: `{"x":1}`,
+							},
+						},
+					},
+				},
+			},
+		},
+		TransformerMetadata: map[string]any{
+			responsesNamespaceToolMapTransformerMetadataKey: nsMap,
+		},
+	}
+
+	resp := convertToResponsesAPIResponse(chatResp)
+
+	var fcItem *Item
+	for i := range resp.Output {
+		if resp.Output[i].Type == "function_call" {
+			fcItem = &resp.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, fcItem, "function_call item must exist")
+	require.Equal(t, "run", fcItem.Name, "name must be restored to leaf")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "namespace must be restored to group")
+}
+
+// TestConvertToResponsesAPIResponse_FlatFunctionCallUnchanged ensures flat
+// (non-namespace) tools are not affected: no map entry → keep original name,
+// empty namespace. Regression guard.
+func TestConvertToResponsesAPIResponse_FlatFunctionCallUnchanged(t *testing.T) {
+	chatResp := &llm.Response{
+		ID:    "resp_flat",
+		Model: "gpt-4o",
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_1",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "get_weather",
+								Arguments: `{"city":"SF"}`,
+							},
+						},
+					},
+				},
+			},
+		},
+		TransformerMetadata: map[string]any{},
+	}
+
+	resp := convertToResponsesAPIResponse(chatResp)
+
+	var fcItem *Item
+	for i := range resp.Output {
+		if resp.Output[i].Type == "function_call" {
+			fcItem = &resp.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, fcItem)
+	require.Equal(t, "get_weather", fcItem.Name)
+	require.Equal(t, "", fcItem.Namespace)
+}

@@ -521,3 +521,86 @@ func TestInboundTransformer_TransformStream_CustomToolCallNamespaceRoundTrip(t *
 	require.Equal(t, "apply_patch", ctcItem.Name)
 	require.Equal(t, "mcp__myserver", ctcItem.Namespace, "#10 streaming: custom_tool_call must preserve namespace")
 }
+
+// TestInboundTransformer_TransformStream_NamespaceFunctionCallRestored covers
+// #1a/D1 streaming: when an llm.Response stream chunk carries a namespace tool
+// map in TransformerMetadata AND a function_call with the flattened composite
+// name, the inbound stream converter must restore {name:leaf, namespace:group}
+// on the emitted function_call item. mergeTransformerMetadata runs before
+// initToolCall on the same chunk, so the map is available for lookup.
+func TestInboundTransformer_TransformStream_NamespaceFunctionCallRestored(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_ns_fc",
+			Created: 1700000000,
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{{
+						ID:   "call_ns_fc_1",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "mcp__node_repl__run",
+							Arguments: `{"x":1}`,
+						},
+					}},
+				},
+			}},
+			TransformerMetadata: map[string]any{
+				responsesNamespaceToolMapTransformerMetadataKey: map[string]namespaceToolEntry{
+					"mcp__node_repl__run": {Leaf: "run", Namespace: "mcp__node_repl"},
+				},
+			},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_ns_fc",
+			Created: 1700000000,
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: lo.ToPtr("tool_calls"),
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_stream_ns_fc",
+			Created: 1700000000,
+			Model:   "gpt-4o",
+			Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+		},
+	}))
+	require.NoError(t, err)
+
+	var actualEvents []StreamEvent
+	for stream.Next() {
+		event := stream.Current()
+		var ev StreamEvent
+		err := json.Unmarshal(event.Data, &ev)
+		require.NoError(t, err)
+		actualEvents = append(actualEvents, ev)
+	}
+	require.NoError(t, stream.Err())
+	require.NotEmpty(t, actualEvents)
+
+	// Find the function_call output_item.added event (initToolCall emits it).
+	var fcItem *Item
+	for i := range actualEvents {
+		ev := actualEvents[i]
+		if (ev.Type == StreamEventTypeOutputItemAdded || ev.Type == StreamEventTypeOutputItemDone) &&
+			ev.Item != nil && ev.Item.Type == "function_call" {
+			fcItem = ev.Item
+			if ev.Type == StreamEventTypeOutputItemDone {
+				break
+			}
+		}
+	}
+	require.NotNil(t, fcItem, "expected a function_call output item")
+	require.Equal(t, "run", fcItem.Name, "name must be restored to leaf via table lookup")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "namespace must be restored to group")
+}

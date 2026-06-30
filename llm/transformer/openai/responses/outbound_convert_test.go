@@ -704,7 +704,7 @@ func TestConvertInputFromMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertInputFromMessages(tt.msgs, tt.transformOptions)
+			result := convertInputFromMessages(tt.msgs, tt.transformOptions, nil)
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -1403,7 +1403,7 @@ func TestConvertAssistantMessage_WithCompactContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertAssistantMessage(tt.msg)
+			result := convertAssistantMessage(tt.msg, nil)
 			tt.validate(t, result)
 		})
 	}
@@ -1587,7 +1587,7 @@ func TestConvertAssistantMessage_CustomToolCallEmitsNamespace(t *testing.T) {
 			ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_ns_3", Name: "apply_patch", Namespace: "mcp__myserver", Input: "patch"},
 		}},
 	}
-	items := convertAssistantMessage(msg)
+	items := convertAssistantMessage(msg, nil)
 	var found bool
 	for _, it := range items {
 		if it.Type == "custom_tool_call" {
@@ -1597,4 +1597,63 @@ func TestConvertAssistantMessage_CustomToolCallEmitsNamespace(t *testing.T) {
 		}
 	}
 	require.True(t, found, "expected a custom_tool_call item in output")
+}
+
+// TestConvertAssistantMessage_NamespaceFunctionCallRestored covers #1a/D1:
+// when building function_call Items from an assistant message whose tool call
+// carries a flattened composite name, convertAssistantMessage must look up the
+// namespace tool map in metadata and restore {name:leaf, namespace:group}.
+func TestConvertAssistantMessage_NamespaceFunctionCallRestored(t *testing.T) {
+	msg := llm.Message{
+		Role: "assistant",
+		ToolCalls: []llm.ToolCall{{
+			ID:   "call_ns_1",
+			Type: "function",
+			Function: llm.FunctionCall{
+				Name:      "mcp__node_repl__run",
+				Arguments: `{"x":1}`,
+			},
+		}},
+	}
+	metadata := map[string]any{
+		responsesNamespaceToolMapTransformerMetadataKey: map[string]namespaceToolEntry{
+			"mcp__node_repl__run": {Leaf: "run", Namespace: "mcp__node_repl"},
+		},
+	}
+	items := convertAssistantMessage(msg, metadata)
+	var found bool
+	for _, it := range items {
+		if it.Type == "function_call" {
+			found = true
+			require.Equal(t, "run", it.Name, "name must be restored to leaf")
+			require.Equal(t, "mcp__node_repl", it.Namespace, "namespace must be restored to group")
+		}
+	}
+	require.True(t, found, "expected a function_call item")
+}
+
+// TestConvertAssistantMessage_FlatFunctionCallUnchanged ensures flat tools
+// with no map entry keep their original name and empty namespace.
+func TestConvertAssistantMessage_FlatFunctionCallUnchanged(t *testing.T) {
+	msg := llm.Message{
+		Role: "assistant",
+		ToolCalls: []llm.ToolCall{{
+			ID:   "call_flat",
+			Type: "function",
+			Function: llm.FunctionCall{
+				Name:      "get_weather",
+				Arguments: `{}`,
+			},
+		}},
+	}
+	items := convertAssistantMessage(msg, nil)
+	var found bool
+	for _, it := range items {
+		if it.Type == "function_call" {
+			found = true
+			require.Equal(t, "get_weather", it.Name)
+			require.Equal(t, "", it.Namespace)
+		}
+	}
+	require.True(t, found)
 }

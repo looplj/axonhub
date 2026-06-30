@@ -639,3 +639,53 @@ func TestOutboundTransformer_TransformStream_CustomToolCallPreservesNamespace(t 
 	}
 	require.True(t, sawChunk, "expected at least one emitted streaming custom_tool_call chunk")
 }
+
+// TestOutboundTransformer_TransformStream_PropagatesNamespaceToolMap covers
+// #1a/D1 streaming outbound: when the request carries a namespace tool map in
+// TransformerMetadata, the outbound stream must propagate it on an early chunk
+// so the inbound stream can restore group identity on function calls.
+func TestOutboundTransformer_TransformStream_PropagatesNamespaceToolMap(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	nsMap := map[string]namespaceToolEntry{
+		"mcp__node_repl__run": {Leaf: "run", Namespace: "mcp__node_repl"},
+	}
+	req := &httpclient.Request{
+		TransformerMetadata: map[string]any{
+			responsesNamespaceToolMapTransformerMetadataKey: nsMap,
+		},
+	}
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_ns_out","object":"response","created_at":1700000000,"model":"gpt-4o","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"type":"function_call","status":"in_progress","call_id":"call_ns_out_1","name":"mcp__node_repl__run"}}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","sequence_number":2,"item_id":"call_ns_out_1","output_index":0,"arguments":"{\"x\":1}"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":3,"output_index":0,"item":{"type":"function_call","status":"completed","call_id":"call_ns_out_1","name":"mcp__node_repl__run","arguments":"{\"x\":1}"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_ns_out","object":"response","created_at":1700000000,"model":"gpt-4o","status":"completed","output":[{"type":"function_call","status":"completed","call_id":"call_ns_out_1","name":"mcp__node_repl__run","arguments":"{\"x\":1}"}]}}`)},
+	}
+
+	stream, err := trans.TransformStream(context.Background(), req, streams.SliceStream(events))
+	require.NoError(t, err)
+	actual, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, actual)
+
+	// At least one chunk must carry the namespace tool map.
+	var sawMap bool
+	for _, resp := range actual {
+		if resp == nil || resp == llm.DoneResponse {
+			continue
+		}
+		if raw, ok := resp.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]; ok && raw != nil {
+			sawMap = true
+			m, ok := raw.(map[string]namespaceToolEntry)
+			require.True(t, ok, "namespace tool map must be map[string]namespaceToolEntry")
+			entry, ok := m["mcp__node_repl__run"]
+			require.True(t, ok)
+			require.Equal(t, "run", entry.Leaf)
+			require.Equal(t, "mcp__node_repl", entry.Namespace)
+		}
+	}
+	require.True(t, sawMap, "namespace tool map must be propagated to at least one stream chunk")
+}

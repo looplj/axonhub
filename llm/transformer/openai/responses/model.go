@@ -445,6 +445,39 @@ type URLCitation struct {
 const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
 const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
 const responsesReasoningEnabledTransformerMetadataKey = "openai_responses_reasoning_enabled"
+const responsesNamespaceToolMapTransformerMetadataKey = "openai_responses_namespace_tool_map"
+
+// namespaceToolEntry records the leaf name and namespace group for a namespace
+// tool that was flattened into a composite "grp__leaf" function during inbound
+// conversion. It lets the outbound side restore {name, namespace} via table
+// lookup rather than string splitting (group names may themselves contain "__").
+type namespaceToolEntry struct {
+	Leaf      string `json:"leaf"`
+	Namespace string `json:"namespace"`
+}
+
+// resolveNamespaceFromMetadata looks up a composite function name in the
+// namespace tool map stored in TransformerMetadata. If found, it returns the
+// leaf name and namespace; otherwise it returns the original name with an empty
+// namespace (flat tools that were never part of a namespace group).
+func resolveNamespaceFromMetadata(metadata map[string]any, compositeName string) (name, namespace string) {
+	if len(metadata) == 0 || compositeName == "" {
+		return compositeName, ""
+	}
+	raw, ok := metadata[responsesNamespaceToolMapTransformerMetadataKey]
+	if !ok || raw == nil {
+		return compositeName, ""
+	}
+	m, ok := raw.(map[string]namespaceToolEntry)
+	if !ok {
+		return compositeName, ""
+	}
+	entry, ok := m[compositeName]
+	if !ok {
+		return compositeName, ""
+	}
+	return entry.Leaf, entry.Namespace
+}
 
 type responsesReasoningItemMetadata struct {
 	ID   string `json:"id,omitempty"`

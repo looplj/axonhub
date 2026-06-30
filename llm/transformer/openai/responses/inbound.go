@@ -303,7 +303,7 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	chatReq.Messages = messages
 
 	if len(req.Tools) > 0 {
-		tools, err := convertToolsToLLM(req.Tools)
+		tools, err := convertToolsToLLM(req.Tools, chatReq.TransformerMetadata)
 		if err != nil {
 			return nil, err
 		}
@@ -761,7 +761,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 }
 
 // convertToolsToLLM converts Responses API tools to llm.Tool slice.
-func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
+func convertToolsToLLM(tools []Tool, metadata map[string]any) ([]llm.Tool, error) {
 	result := make([]llm.Tool, 0, len(tools))
 
 	for _, tool := range tools {
@@ -839,6 +839,17 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 			})
 
 		case "namespace":
+			// Record the composite-name → {leaf, namespace} mapping so the
+			// outbound side can restore the group identity via table lookup
+			// (never string splitting — group names may themselves contain "__").
+			var nsMap map[string]namespaceToolEntry
+			if metadata != nil {
+				if existing, ok := metadata[responsesNamespaceToolMapTransformerMetadataKey].(map[string]namespaceToolEntry); ok {
+					nsMap = existing
+				} else {
+					nsMap = make(map[string]namespaceToolEntry)
+				}
+			}
 			for _, subTool := range tool.Tools {
 				if subTool.Type != "function" {
 					continue
@@ -847,15 +858,25 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal namespace tool parameters: %w", err)
 				}
+				compositeName := tool.Name + "__" + subTool.Name
+				if nsMap != nil {
+					nsMap[compositeName] = namespaceToolEntry{
+						Leaf:      subTool.Name,
+						Namespace: tool.Name,
+					}
+				}
 				result = append(result, llm.Tool{
 					Type: "function",
 					Function: llm.Function{
-						Name:        tool.Name + "__" + subTool.Name,
+						Name:        compositeName,
 						Description: subTool.Description,
 						Parameters:  params,
 						Strict:      subTool.Strict,
 					},
 				})
+			}
+			if metadata != nil && nsMap != nil {
+				metadata[responsesNamespaceToolMapTransformerMetadataKey] = nsMap
 			}
 
 		default:
@@ -1034,12 +1055,15 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 					if fcStatus == "" {
 						fcStatus = "completed"
 					}
+					// Restore namespace group identity via table lookup (never string
+					// splitting — group names may contain "__").
+					fcName, fcNamespace := resolveNamespaceFromMetadata(chatResp.TransformerMetadata, toolCall.Function.Name)
 					resp.Output = append(resp.Output, Item{
 						ID:        fcItemID,
 						Type:      "function_call",
 						CallID:    toolCall.ID,
-						Name:      toolCall.Function.Name,
-						Namespace: toolCall.Function.Namespace,
+						Name:      fcName,
+						Namespace: fcNamespace,
 						Arguments: toolCall.Function.Arguments,
 						Status:    lo.ToPtr(fcStatus),
 					})

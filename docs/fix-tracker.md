@@ -31,11 +31,13 @@
 
 | #5(thinking utils.go:34 复核) | δ | ⏭ 复核无 bug·不修 | `claudecode/utils.go:34` disableThinkingIfToolChoiceForcedStructured(仅清 ReasoningEffort/Budget,不碰 TransformerMetadata);claudecode/outbound.go:133 调用 | 无代码改动(复核项) | grill 复核:函数不触碰 thinking_type metadata,adaptive 经 outbound_convert.go:156 重建存活不被误伤;enabled 强制工具时禁用属 Claude Code 设计。类 #1b 不修。master 表"⚠️待复核"撤销 |
 
+| #1a/D1(namespace 工具组声明压扁+往返断裂) | η | ✅ 已修·验收通过 | `responses/model.go`(新增 `responsesNamespaceToolMapTransformerMetadataKey` 常量 + `namespaceToolEntry` struct + `resolveNamespaceFromMetadata` helper);`responses/inbound.go`(`convertToolsToLLM` 加 metadata 参数,case "namespace" 建表 compositeName→{leaf,namespace};`convertToResponsesAPIResponse` function_call 装配查表);`responses/outbound_convert.go`(`convertAssistantMessage`+`convertInputFromMessages` 加 metadata 参数查表);`responses/outbound.go`(TransformRequest 传 llmReq.TransformerMetadata);`responses/compact_outbound.go`(传 nil);`responses/inbound_stream.go`(`mergeTransformerMetadata` 透传 namespace map key;`initToolCall`+`closeCurrentOutputItem` 查表还原);`responses/outbound_stream.go`(TransformStream 从 req.TransformerMetadata 取 namespace map 存 state,response.created 时发到首个 chunk) | 先红(入站建表缺 + 响应查表缺 + 流式传播缺)→建表+查表helper+4发射点查表+流式metadata穿透→绿;7 新测试(入站建表/非流式响应还原/扁平回归/出站请求还原/流式inbound还原/流式outbound传播)全 ok,28 包无回归 | 代理 Lorentz(同模)7 标准 APPROVED(2026-06-30);范围完整性:全包 function_call 发射点 4 处全查表,唯一残留 s.toolCalls 内部存储(保留原始名用于追踪,正确);canonical 红线未破(llm.Function 无 Namespace);跨协议 metadata 传播(chat/anthropic outbound 不 clone 请求 metadata)是预存共性缺口,非本切片引入 |
+
 ## 待办切片
 - β Anthropic 工具链(切片完成):#1e dptu / #3 parallel_tool_calls(✅) / #1b builtin(⏭按作者设计·不修) / 非流侧#1c(D11)(✅)
 - γ C区采样(切片完成):top_k对称化(✅) / rep_penalty·min_p·top_a保留(✅) / logit_bias浮点容错(✅)
 - δ 推理簇(切片完成):#4 chat reasoning对象+resp.enabled(✅) / #5 thinking复核(✅无bug) / #6 output_config.format-task_budget(✅) / F19 prompt接线(✅) / F21 ctx_mgmt(✅)
 - ε 身份会话缓存(切片完成):#13 user桥接(✅) / #10 session_id body变体(⏭设计性不修) / #11 chat·responses顶层cache_control(✅)
 - ζ 流式杂项(切片完成):F2 stream_options + convertStreamOptions 早 return(⏭复核无 bug·不修)
-- η P0压轴:D1/#1a namespace容器经 TransformerMetadata 映射往返
-- 收官:cd llm 全量回归 + 总handoff + 终审commit
+- η P0压轴(切片完成):D1/#1a namespace容器经 TransformerMetadata 映射往返(✅ 非流式+流式全闭合)
+- 收官:cd llm 全量回归(✅ 28包全绿) + 总handoff + 终审commit(进行中)

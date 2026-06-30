@@ -24,7 +24,7 @@ func (t *OutboundTransformer) transformCompactRequest(
 
 	// Build the compact API request payload
 	// Compact request input is always an ordered message array and must not be collapsed to plain text.
-	input := convertInputFromMessages(llmReq.Compact.Input, llm.TransformOptions{ArrayInputs: lo.ToPtr(true)})
+	input := convertInputFromMessages(llmReq.Compact.Input, llm.TransformOptions{ArrayInputs: lo.ToPtr(true)}, nil)
 
 	payload := CompactAPIRequest{
 		Model:          llmReq.Model,

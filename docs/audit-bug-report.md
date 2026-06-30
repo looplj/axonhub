@@ -25,11 +25,11 @@
 | δ | #6 | anthropic output_config format/task_budget 丢 | ✅ 已修·已验收 | `0e8f0120` |
 | δ | #4 | chat reasoning 对象丢 + responses reasoning.enabled 丢(🔴) | ✅ 已修·已验收 | `6bf3b379` |
 | δ | #5 | thinking utils.go:34 覆盖范围 | ⏭ 复核无 bug·不修 | — |
-| ε | #13 | user 桥接(chat/responses user ↔ anthropic metadata.user_id) | ⏳ 待修 | — |
+| ε | #13 | user 桥接(chat/responses user ↔ anthropic metadata.user_id) | ✅ 已修·已验收 | `e12f1fc3` |
 | ε | #10 | session_id body 变体 | ⏭ 设计性不修·文档化 | — |
-| ε | #11 | chat/responses 顶层 cache_control | ✅ 已修·已验收 | (ε) |
+| ε | #11 | chat/responses 顶层 cache_control | ✅ 已修·已验收 | `72d07e00` |
 | ζ | F2 | stream_options 跨格式 + convertStreamOptions 早 return | ⏭ 复核无 bug·不修 | — |
-| η | D1/#1a | namespace 容器经 TransformerMetadata 往返(P0 最高危结构性缺口) | ⏳ 待修 | — |
+| η | D1/#1a | namespace 容器经 TransformerMetadata 往返(P0 最高危结构性缺口) | ✅ 已修·已验收 | (η) |
 
 ## 红线(全程守住)
 - canonical `llm.Request` / `llm.Function` 不加协议独有顶层槽(Namespace/TopK/采样旋钮/Prompt/ContextManagement/OutputConfig/Reasoning 对象/ReasoningEnabled 均只走 TransformerMetadata)。

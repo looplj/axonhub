@@ -337,6 +337,11 @@ func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]an
 		mergedCalls := append(existingCalls, calls...)
 		s.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = mergedCalls
 	}
+	// Pass through the namespace tool map (established once during
+	// inbound request, does not need merging).
+	if raw, ok := metadata[responsesNamespaceToolMapTransformerMetadataKey]; ok && raw != nil {
+		s.transformerMetadata[responsesNamespaceToolMapTransformerMetadataKey] = raw
+	}
 }
 
 func getResponsesReasoningItemMetadata(metadata map[string]any) (responsesReasoningItemMetadata, bool) {
@@ -651,13 +656,16 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		}
 
 	default:
+		// Restore namespace group identity via table lookup (never string
+		// splitting — group names may contain "__").
+		fcName, fcNamespace := resolveNamespaceFromMetadata(s.transformerMetadata, tc.Function.Name)
 		item := &Item{
 			ID:        itemID,
 			Type:      "function_call",
 			Status:    lo.ToPtr("in_progress"),
 			CallID:    tc.ID,
-			Name:      tc.Function.Name,
-			Namespace: tc.Function.Namespace,
+			Name:      fcName,
+			Namespace: fcNamespace,
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -984,13 +992,15 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			if fcDoneStatus == "" {
 				fcDoneStatus = "completed"
 			}
+			// Restore namespace group identity (consistent with initToolCall).
+			fcDoneName, fcDoneNamespace := resolveNamespaceFromMetadata(s.transformerMetadata, tc.Function.Name)
 			item := Item{
 				ID:        itemID,
 				Type:      "function_call",
 				Status:    lo.ToPtr(fcDoneStatus),
 				CallID:    tc.ID,
-				Name:      tc.Function.Name,
-				Namespace: tc.Function.Namespace,
+				Name:      fcDoneName,
+				Namespace: fcDoneNamespace,
 				Arguments: tc.Function.Arguments,
 			}
 
