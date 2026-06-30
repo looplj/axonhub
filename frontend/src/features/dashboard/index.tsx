@@ -26,6 +26,7 @@ import { FastestModelsCard } from './components/fastest-models-card';
 import { ModelPerformanceStats } from './components/model-performance-stats';
 import { ChannelPerformanceStats } from './components/channel-performance-stats';
 import { useDashboardStats } from './data/dashboard';
+import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 
 interface CollapsibleSectionProps {
   title: string;
@@ -92,6 +93,7 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { isLoading, error } = useDashboardStats();
+  const { isProjectOwner } = useRoutePermissions();
   const [modelTotalRequests, setModelTotalRequests] = useState(0);
   const [channelTotalRequests, setChannelTotalRequests] = useState(0);
 
@@ -285,26 +287,28 @@ export default function DashboardPage() {
       </CollapsibleSection>
 
       {/* 用户分析 - 可折叠 */}
-      <CollapsibleSection
-        title={t('dashboard.sections.users')}
-        icon={<Users className='h-4 w-4 text-primary' />}
-        storageKey='users'
-      >
-        <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
-          <Card className='hover-card col-span-1 lg:col-span-4'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.tokensByUser')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.tokensByUserDescription')}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={userTokensTimePeriod} onChange={setUserTokensTimePeriod} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <TokensByUserChart timePeriod={userTokensTimePeriod} />
-            </CardContent>
-          </Card>
-        </div>
-      </CollapsibleSection>
+      {isProjectOwner && (
+        <CollapsibleSection
+          title={t('dashboard.sections.users')}
+          icon={<Users className='h-4 w-4 text-primary' />}
+          storageKey='users'
+        >
+          <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
+            <Card className='hover-card col-span-1 lg:col-span-4'>
+              <CardHeader>
+                <CardTitle>{t('dashboard.charts.tokensByUser')}</CardTitle>
+                <CardDescription>{t('dashboard.charts.tokensByUserDescription')}</CardDescription>
+                <CardAction>
+                  <TimePeriodSelector value={userTokensTimePeriod} onChange={setUserTokensTimePeriod} />
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <TokensByUserChart timePeriod={userTokensTimePeriod} />
+              </CardContent>
+            </Card>
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* 性能分析 - 可折叠 */}
       <CollapsibleSection

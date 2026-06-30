@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
@@ -1761,16 +1762,35 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 
 // UsageStatsByUser is the resolver for the usageStatsByUser field.
 func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string) ([]*UsageStatsByUser, error) {
-	requiredScope := scopes.ScopeReadDashboard
-	if authz.HasScope(ctx, scopes.ScopeReadRequests) {
-		requiredScope = scopes.ScopeReadRequests
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return nil, fmt.Errorf("user not found in context")
 	}
-	ctx = authz.WithScopeDecision(ctx, requiredScope)
 
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project ID not found in context")
 	}
+
+	// Only allow project owners or system owners to view usage stats by user
+	isProjectOwner := false
+	if currentUser.IsOwner {
+		isProjectOwner = true
+	} else {
+		for _, up := range currentUser.Edges.ProjectUsers {
+			if up.ProjectID == projectID && up.IsOwner {
+				isProjectOwner = true
+				break
+			}
+		}
+	}
+
+	if !isProjectOwner {
+		return nil, fmt.Errorf("permission denied: only project owners can view usage statistics")
+	}
+
+	// For owners/system owners, we allow querying all logs within the project
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	var since time.Time
 	var until time.Time
