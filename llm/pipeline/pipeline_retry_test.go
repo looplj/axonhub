@@ -579,6 +579,71 @@ func TestPipeline_Process_StreamDoesNotRetryAfterContent(t *testing.T) {
 	require.ErrorIs(t, res.EventStream.Err(), upstreamErr)
 }
 
+func TestPipeline_Process_StreamStopsPreCommitProbeAfterBound(t *testing.T) {
+	ctx := context.Background()
+	streamFlag := true
+	const nonContentEventsBeforeContent = 64
+
+	inbound := &mockInbound{
+		transformRequest: func(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: &streamFlag}, nil
+		},
+		transformStream: transformLlmContentToEvents,
+	}
+
+	attempts := 0
+	executor := &mockExecutor{
+		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("raw")}}), nil
+		},
+	}
+
+	var sourceStream *llmErrorAfterStream
+	outbound := &mockOutbound{
+		canRetry: func(err error) bool {
+			return true
+		},
+		transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			items := make([]*llm.Response, 0, nonContentEventsBeforeContent+2)
+			for i := 0; i < nonContentEventsBeforeContent; i++ {
+				items = append(items, llmEmptyChunk())
+			}
+			items = append(items, llmContentChunk("ok"), llm.DoneResponse)
+
+			sourceStream = &llmErrorAfterStream{items: items}
+
+			return sourceStream, nil
+		},
+	}
+
+	p := NewFactory(executor).Pipeline(inbound, outbound, WithRetry(0, 1, 0))
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.True(t, res.Stream)
+	require.Equal(t, 1, attempts)
+	require.NotNil(t, sourceStream)
+	require.Equal(t, maxPreCommitRetryProbeEvents, sourceStream.index)
+
+	events, err := streams.All(res.EventStream)
+	require.NoError(t, err)
+	require.Len(t, events, nonContentEventsBeforeContent+2)
+	require.Equal(t, "metadata", string(events[0].Data))
+	require.Equal(t, "ok", string(events[nonContentEventsBeforeContent].Data))
+	require.Equal(t, "[DONE]", string(events[nonContentEventsBeforeContent+1].Data))
+}
+
+func llmEmptyChunk() *llm.Response {
+	return &llm.Response{
+		Object: "chat.completion.chunk",
+		Choices: []llm.Choice{{
+			Delta: &llm.Message{},
+		}},
+	}
+}
+
 func llmContentChunk(content string) *llm.Response {
 	return &llm.Response{
 		Object: "chat.completion.chunk",

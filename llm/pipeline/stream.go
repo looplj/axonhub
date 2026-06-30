@@ -27,6 +27,11 @@ const (
 	firstEventTimedOut
 )
 
+const (
+	maxPreReadEvents             = 3
+	maxPreCommitRetryProbeEvents = 16
+)
+
 func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (context.Context, *firstEventTimeoutGuard) {
 	if timeout <= 0 {
 		return ctx, nil
@@ -171,8 +176,11 @@ func (p *pipeline) preReadLlmStream(
 	llmStream streams.Stream[*llm.Response],
 	firstEventGuard *firstEventTimeoutGuard,
 ) (streams.Stream[*llm.Response], error) {
-	const maxPreReadEvents = 3
 	preReadUntilContent := p.hasStreamRetryBudget()
+	probeLimit := maxPreReadEvents
+	if preReadUntilContent {
+		probeLimit = maxPreCommitRetryProbeEvents
+	}
 
 	var buffered []*llm.Response
 
@@ -218,7 +226,7 @@ func (p *pipeline) preReadLlmStream(
 			return nil, ErrEmptyResponse
 		}
 
-		if !preReadUntilContent && len(buffered) >= maxPreReadEvents {
+		if len(buffered) >= probeLimit {
 			break
 		}
 	}
