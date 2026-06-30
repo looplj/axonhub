@@ -28,7 +28,7 @@
 | ε | #13 | user 桥接(chat/responses user ↔ anthropic metadata.user_id) | ⏳ 待修 | — |
 | ε | #10 | session_id body 变体 | ⏭ 设计性不修·文档化 | — |
 | ε | #11 | chat/responses 顶层 cache_control | ✅ 已修·已验收 | (ε) |
-| ζ | F2 | stream_options 双向 usage 闭合 + 早 return 守卫 | ⏳ 待修 | — |
+| ζ | F2 | stream_options 跨格式 + convertStreamOptions 早 return | ⏭ 复核无 bug·不修 | — |
 | η | D1/#1a | namespace 容器经 TransformerMetadata 往返(P0 最高危结构性缺口) | ⏳ 待修 | — |
 
 ## 红线(全程守住)
