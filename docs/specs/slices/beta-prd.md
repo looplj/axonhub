@@ -15,7 +15,9 @@
 - **状态**:✅ 已完成·同模验收 Archimedes APPROVED(7 标准,含范围完整性扫描,11 构造点无残留),待 commit。
 
 ## β-3 · #1b — builtin 工具静默丢
-- **Problem**:file_search/mcp/computer_use/bash_/text_editor_ 等原生工具在 anthropic 出站被静默过滤(作者 outbound_convert.go:227-228 注释已表态仅留 web_search),无告警致客户端不知情功能缺失。
-- **Solution**:倾向 warn(日志或响应 metadata 标记)而非强行映射;待 grill 确认作者过滤点与既有 warn 机制后定。
-- **Testing**:待定。
-- **状态**:⏳ 待开始。
+- **Problem**:Anthropic 转换器只建模 function+web_search,其余 Anthropic 原生工具(bash_20250124/text_editor_20250124/image_generation 等)双向静默丢、无告警:入站 `convertToolToLLM`(`inbound_convert.go:770`),`default:`→`return llm.Tool{},false`;出站 `convertToolsAnthropic`(`outbound_convert.go:265+`),`default:`→`continue`。作者有意(注释明示),但违 Anthropic spec(定义了这些工具)——规范可见性缺口,非偶发 bug。
+- **Solution**:两处 `default:` 加 slog 告警使丢工具可见;不动 canonical(守 D1 红线),不强行映射。warn 机制 TDD 定(包用 slog;函数现无 ctx,优先 slog.Warn 或调用方收集丢弃项告警,避免改签名)。
+- **Testing**:红:含 bash_/text_editor_ 的 anthropic 请求,断言丢工具有 warn;绿:补 warn 后通过。
+- **Out of scope**:强行映射到 canonical(违红线);Responses 侧 RawFragments 透传(另切片);web_search 在非 Anthropic 平台丢弃(作者有意、平台不支持)。
+- **diagnose**:不跳过——作者有意但违 spec 可见性,需补;TDD 复现"静默丢无 warn"。
+- **状态**:⏭ 不修(按作者设计)。用户确认:服务商原生工具(builtin)无需透传,沿用作者仅 function+web_search 的设计;非 bug,关闭。

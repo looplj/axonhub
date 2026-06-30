@@ -11,7 +11,7 @@
 | #1c-D11(非流式/history namespace) | β | ✅ 已修·验收通过 | `llm/transformer/openai/responses/inbound.go:449`(look-ahead merge)、`:558`(convertItemToMessage);`outbound_convert.go:229`(convertAssistantMessage);`aggregator.go:635`(buildResponse);配套 `inbound_test.go`(+TestConvertReasoningWithFollowing_CustomToolCallPreservesNamespace、+TestConvertItemToMessage_CustomToolCallPreservesNamespace)、`outbound_convert_test.go`(+TestConvertAssistantMessage_CustomToolCallEmitsNamespace)、`aggregator_test.go`(+TestStreamAggregator_BuildResponse_CustomToolCallPreservesNamespace) | 先红(4 处 expected mcp__myserver got "")→补 4 处 Namespace 字段→绿;`go test ./transformer/openai/responses/...` 全 ok | 代理 Archimedes(同模)VERDICT APPROVED,七项均 PASS(2026-06-30),含第 7 条范围完整性:全仓 11 个 custom_tool_call 构造点逐一核查无残留 |
 
 ## 待办切片
-- β Anthropic 工具链:#1e dptu / #3 parallel_tool_calls(✅) / #1b builtin告警 / 非流侧#1c(D11)(✅)
+- β Anthropic 工具链(切片完成):#1e dptu / #3 parallel_tool_calls(✅) / #1b builtin(⏭按作者设计·不修) / 非流侧#1c(D11)(✅)
 - γ C区采样:top_k对称化 / rep_penalty·min_p·top_a保留 / logit_bias浮点容错
 - δ 推理簇:#4 resp.reasoning.enabled / #5 thinking清空不全 / #6 output_config.format-task_budget / F19 prompt接线 / F21 ctx_mgmt
 - ε 身份会话缓存:#13 user桥接 / #10 session_id body变体 / #11 chat·responses顶层cache_control
