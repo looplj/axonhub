@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -504,6 +505,37 @@ func (s *DataStorageService) GetFileSystem(ctx context.Context, ds *ent.DataStor
 	return fs, nil
 }
 
+// atomicWriteFile writes data to a temporary file first, then renames it to the
+// target path. This prevents partial file artifacts on write failure.
+// On failure, the temporary file is cleaned up.
+func atomicWriteFile(fs afero.Fs, key string, data []byte, perm os.FileMode) error {
+	base := filepath.Base(key)
+	tmpDir := filepath.Join(filepath.Dir(key), ".tmp")
+	tmpName := fmt.Sprintf("%d-%s", rand.Int63(), base)
+	tmpPath := filepath.Join(tmpDir, tmpName)
+
+	// Ensure .tmp directory exists
+	if err := fs.MkdirAll(tmpDir, 0o777); err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	// Write to temporary file
+	if err := afero.WriteFile(fs, tmpPath, data, perm); err != nil {
+		// Clean up temp file on failure
+		_ = fs.Remove(tmpPath)
+		return fmt.Errorf("failed to write temp file: %w", err)
+	}
+
+	// Atomic rename to target path
+	if err := fs.Rename(tmpPath, key); err != nil {
+		// Clean up temp file on rename failure
+		_ = fs.Remove(tmpPath)
+		return fmt.Errorf("failed to rename temp file to target: %w", err)
+	}
+
+	return nil
+}
+
 // SaveData saves data to the specified data storage.
 func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, key string, data []byte) error {
 	switch ds.Type {
@@ -547,9 +579,9 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			_ = f.Close()
 		}
 
-		// Write data to file
-		if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
-			return fmt.Errorf("failed to write file: %w, key: %s", err, key)
+		// Write data to file atomically (temp + rename)
+		if err := atomicWriteFile(fs, key, data, 0o777); err != nil {
+			return err
 		}
 
 		return nil

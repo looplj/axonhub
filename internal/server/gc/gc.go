@@ -3,6 +3,7 @@ package gc
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -79,12 +80,41 @@ func (w *Worker) RegisterScheduledTasks(ctx context.Context, s *scheduler.Schedu
 	}, w.runAutomaticCleanup)
 }
 
+
+// retryWithBackoff retries an operation with exponential backoff and jitter.
+func retryWithBackoff(ctx context.Context, maxAttempts int, op func() error) error {
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		err := op()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if attempt < maxAttempts-1 {
+			base := time.Duration(1<<uint(attempt)) * time.Second
+			jitter := time.Duration(rand.Int63n(int64(base) / 2))
+			backoff := base + jitter
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+	}
+	return lastErr
+}
+
 // deleteInBatches deletes records in batches to avoid memory issues.
 func (w *Worker) deleteInBatches(ctx context.Context, deleteFunc func() (int, error)) (int, error) {
 	totalDeleted := 0
 
 	for {
-		deleted, err := deleteFunc()
+		var deleted int
+		err := retryWithBackoff(ctx, 3, func() error {
+			d, err := deleteFunc()
+			deleted = d
+			return err
+		})
 		if err != nil {
 			return totalDeleted, fmt.Errorf("failed to delete batch: %w", err)
 		}
