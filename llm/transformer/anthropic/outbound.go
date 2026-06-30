@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 	"github.com/looplj/axonhub/llm/vertex"
 )
 
@@ -240,7 +241,7 @@ func (t *OutboundTransformer) TransformRequest(
 		}
 	}
 
-	return &httpclient.Request{
+	httpReq := &httpclient.Request{
 		Method:    http.MethodPost,
 		URL:       url,
 		Headers:   headers,
@@ -248,7 +249,9 @@ func (t *OutboundTransformer) TransformRequest(
 		Auth:      authConfig,
 		APIFormat: string(llm.APIFormatAnthropicMessage),
 		Metadata:  nil,
-	}, nil
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
@@ -326,6 +329,7 @@ func (t *OutboundTransformer) TransformResponse(
 
 	// Convert to ChatCompletionResponse
 	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type)
+	shared.MergeResponseMetadata(chatResp, httpResp)
 
 	return chatResp, nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const (
@@ -170,7 +171,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Build URL
 	url := t.buildFullRequestURL(llmReq)
 
-	return &httpclient.Request{
+	httpReq := &httpclient.Request{
 		Method:                http.MethodPost,
 		URL:                   url,
 		Headers:               headers,
@@ -179,7 +180,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIFormat:             string(llm.APIFormatGeminiContents),
 		SkipInboundQueryMerge: true,
 		Metadata:              nil,
-	}, nil
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
 }
 
 // buildFullRequestURL constructs the appropriate URL for the Gemini API.
@@ -257,7 +260,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	}
 
 	// Convert to unified response (non-streaming)
-	return convertGeminiToLLMResponse(&geminiResp, false), nil
+	llmResp := convertGeminiToLLMResponse(&geminiResp, false)
+	shared.MergeResponseMetadata(llmResp, httpResp)
+	return llmResp, nil
 }
 
 // TransformError transforms HTTP error response to unified error response for Gemini.

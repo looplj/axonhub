@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // PlatformType represents the platform type for OpenAI API.
@@ -217,7 +218,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to build platform URL: %w", err)
 	}
 
-	return &httpclient.Request{
+	httpReq := &httpclient.Request{
 		Method:    http.MethodPost,
 		URL:       url,
 		Headers:   headers,
@@ -225,7 +226,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Auth:      authConfig,
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		Metadata:  nil,
-	}, nil
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
 }
 
 // TransformResponse transforms Response to ChatCompletionResponse.
@@ -276,7 +279,9 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to unified llm.Response
-	return oaiResp.ToLLMResponse(), nil
+	llmResp := oaiResp.ToLLMResponse()
+	shared.MergeResponseMetadata(llmResp, httpResp)
+	return llmResp, nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
