@@ -72,6 +72,12 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	}
 	if anthropicReq.Metadata != nil {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID
+		// Bridge identity to canonical.User so cross-format routing
+		// (anthropic -> chat/responses) preserves the user. The anthropic-native
+		// metadata.user_id above is retained for same-protocol round-trip (#13).
+		if anthropicReq.Metadata.UserID != "" {
+			chatReq.User = lo.ToPtr(anthropicReq.Metadata.UserID)
+		}
 	}
 
 	// Propagate the top-level cache_control (Anthropic automatic caching)

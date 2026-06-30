@@ -139,8 +139,18 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.ServiceTier = *chatReq.ServiceTier
 	}
 
-	if chatReq.Metadata != nil && chatReq.Metadata["user_id"] != "" {
-		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
+	// Identity: prefer anthropic-native metadata.user_id (authoritative for
+	// same-protocol round-trip); fall back to canonical.User so chat/responses
+	// -> anthropic routing preserves the user (#13 bridge).
+	userID := ""
+	if chatReq.Metadata != nil {
+		userID = chatReq.Metadata["user_id"]
+	}
+	if userID == "" && chatReq.User != nil {
+		userID = *chatReq.User
+	}
+	if userID != "" {
+		req.Metadata = &AnthropicMetadata{UserID: userID}
 	}
 
 	// DeepSeek Anthropic format supports output_config.effort. When reasoning_effort
