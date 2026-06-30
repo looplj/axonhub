@@ -37,8 +37,15 @@
 
 ## δ-4 · #4 — chat `reasoning` 对象整体丢失 + responses `reasoning.enabled` 未捕获(🔴最高危)
 - **Problem**:master 表 part-D 第4行:chat 线模型(openai/model.go)未声明 `reasoning` 对象字段→整个 reasoning 配置(effort+summary)入站丢失,客户端唯有改用平铺 `reasoning_effort`(及非规范 `reasoning_summary`)才能部分救活;responses 侧 `reasoning.enabled` bool 子项未捕获(`responses/model.go:177` Reasoning 结构体仅 Effort/GenerateSummary/Summary/MaxTokens)。判定 ❌ HIGH-RISK DROP(chat)+ ⚠️ responses.enabled 缺失。
-- **Solution**(守红线——不加 canonical 新顶层槽,继续借现有 ReasoningEffort/Budget/Summary 三槽):chat 给线模型加 `reasoning` 对象并展开进三槽;responses 补 `enabled` 进 TransformerMetadata。关联 D20。待 grill 核实源码行。
-- **状态**:待 grill(Problem 引自 master 表第4行已核实)。
+- **Solution**(守红线——不加 canonical 新顶层槽,继续借现有 ReasoningEffort/Budget/Summary 三槽):
+  - **chat 入站捕获对象**(出站不动,保持 OpenAI 平铺 wire 兼容):`openai/model.go` Request 加 `Reasoning *ChatReasoningConfig json:"reasoning,omitempty"` + 新类型 `ChatReasoningConfig{Effort string; Summary *string}`(对齐 yaml:4884 `reasoning` 对象 {effort,summary})。`inbound_convert.go` 读平铺字段后,`if r.Reasoning != nil { Effort!="" 覆盖 ReasoningEffort; Summary!=nil 覆盖 ReasoningSummary }`——**对象优先于平铺 shorthand**(spec:reasoning_effort 是 shorthand,"Cannot be used simultaneously with reasoning.effort if they differ",显式对象形式为准)。`outbound_convert.go` 不改(继续发平铺 reasoning_effort/reasoning_summary;对象→平铺归一化经 canonical 三槽存活,语义无损)。
+  - **responses enabled**:`responses/model.go` Reasoning 结构体加 `Enabled *bool json:"enabled,omitempty"`(对齐 yaml:12579 ReasoningConfig.enabled nullable bool)。`responses/inbound.go` stash `req.Reasoning.Enabled` 进 `TransformerMetadata[responsesReasoningEnabledTransformerMetadataKey]`(若非 nil)。`responses/outbound_convert.go` `convertReasoning` 用 `xmap.GetBoolPtr` 还原 Enabled。
+- **grill 证据(已坐实)**:
+  - chat:`openai/model.go:15-110` Request 仅有平铺 `ReasoningEffort string`(json:"reasoning_effort",:83)/`ReasoningSummary *string`(json:"reasoning_summary",:90),**无 `reasoning` 对象字段**。OpenRouter ChatRequest 顶层 `reasoning` 对象 `{effort,summary}`(yaml:4884;effort 枚举 max/xhigh/high/medium/low/minimal/none/null;summary=ChatReasoningSummaryVerbosityEnum auto/concise/detailed/null)。客户端发规范对象→lenient Unmarshal 整对象丢弃(effort+summary 全丢)。`inbound_convert.go:61-63` 只读平铺字段。注:yaml 同时有平铺 `reasoning_effort`(yaml:4908,shorthand),作者建模了平铺但漏了对象。
+  - responses:`responses/model.go:178-185` Reasoning 结构体仅 Effort/GenerateSummary/Summary/MaxTokens,**无 enabled**。OpenRouter ReasoningConfig(BaseReasoningConfig{effort,summary} + enabled bool nullable + max_tokens,yaml:12579)。`responses/inbound.go:232-250` 读 reasoning 但 enabled 丢弃;`outbound_convert.go:507` convertReasoning 无还原分支。
+- **测试设计**:镜像 top_k/OutputConfig 范式。chat 入站发 `reasoning:{effort,summary}` 对象→断言 canonical ReasoningEffort/ReasoningSummary 捕获(对象优先于平铺,平铺仅作 fallback);responses 入站发 `reasoning:{enabled:true}`→断言 TransformerMetadata[key]=*bool true;responses 往返出站还原 enabled;缺省守卫(不发对象时 canonical 槽不受污染)。
+- **范围决策(最小修复,不偷选)**:chat outbound 不改(保持 OpenAI 平铺兼容,不发 `reasoning` 对象)。若上游(OpenRouter-spec 严格方)要求对象往返,需另议 outbound wire 决策——两条路径后果不同,留作可选 follow-up,不在本原子范围。
+- **状态**:grill 完成·待实现(TDD)。
 
 ## δ-5 · #5 — thinking 往返 + utils.go:34 覆盖范围复核
 - **Problem**:master 表 part-D 第5行:anthropic `thinking` 自身往返无损(enabled/disabled/adaptive/display 全保)。⚠️ 待复核:claudecode `disableThinkingIfToolChoiceForcedStructured`(utils.go:34)是否误伤合法 adaptive 思考。
@@ -53,5 +60,5 @@
 | δ-1 F19 | ✅ 已完成·已验收 | Anscombe |
 | δ-2 F21 | ✅ 已完成·已验收 | Confucius |
 | δ-3 #6 | ✅ 已完成·已验收 | Lovelace |
-| δ-4 #4 | 待 grill | — |
+| δ-4 #4 | ✅ 已完成·已验收 | Kant |
 | δ-5 #5 | ✅ 复核无 bug·不修 | — |

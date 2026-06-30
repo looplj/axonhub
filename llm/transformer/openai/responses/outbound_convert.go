@@ -505,10 +505,15 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 // Only one of "reasoning.effort" and "reasoning.max_tokens" can be specified.
 // Priority is given to effort when both are present.
 func convertReasoning(req *llm.Request) *Reasoning {
+	// Restore reasoning.enabled from TransformerMetadata (OpenRouter
+	// ReasoningConfig.enabled has no canonical slot; mirrors top_k handling).
+	enabled := xmap.GetBoolPtr(req.TransformerMetadata, responsesReasoningEnabledTransformerMetadataKey)
+
 	// Check if any reasoning-related fields are present
 	hasReasoningFields := req.ReasoningEffort != "" ||
 		req.ReasoningBudget != nil ||
-		req.ReasoningSummary != nil
+		req.ReasoningSummary != nil ||
+		enabled != nil
 	if !hasReasoningFields {
 		return nil
 	}
@@ -516,6 +521,7 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	reasoning := &Reasoning{
 		Effort:    req.ReasoningEffort,
 		MaxTokens: req.ReasoningBudget,
+		Enabled:   enabled,
 	}
 
 	// If both effort and budget are specified, prioritize effort as per requirement

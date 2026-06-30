@@ -67,6 +67,20 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		Verbosity:           r.Verbosity,
 	}
 
+	// OpenRouter chat reasoning object {effort, summary} overrides the flat
+	// reasoning_effort/reasoning_summary shorthand. The object is the explicit
+	// form; the flat keys are shorthands (spec: cannot be used simultaneously
+	// with reasoning.effort if they differ). Override only the sub-fields that
+	// are actually set so a partial object does not clobber a valid flat value.
+	if r.Reasoning != nil {
+		if r.Reasoning.Effort != "" {
+			req.ReasoningEffort = r.Reasoning.Effort
+		}
+		if r.Reasoning.Summary != nil {
+			req.ReasoningSummary = r.Reasoning.Summary
+		}
+	}
+
 	// Convert messages
 	req.Messages = lo.Map(r.Messages, func(m Message, _ int) llm.Message {
 		return m.ToLLMMessage()

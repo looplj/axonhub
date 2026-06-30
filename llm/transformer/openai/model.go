@@ -89,6 +89,12 @@ type Request struct {
 	// Extension field, not part of official OpenAI Chat Completions API.
 	ReasoningSummary *string `json:"reasoning_summary,omitempty"`
 
+	// Reasoning is the OpenRouter chat reasoning configuration object {effort, summary}
+	// (yaml:4884). When present, effort/summary override the flat reasoning_effort/
+	// reasoning_summary shorthand (spec: reasoning_effort is a shorthand, "cannot be
+	// used simultaneously with reasoning.effort if they differ" — object form wins).
+	Reasoning *ChatReasoningConfig `json:"reasoning,omitempty"`
+
 	// ServiceTier specifies the processing type.
 	ServiceTier *string `json:"service_tier,omitempty"`
 
@@ -107,6 +113,14 @@ type Request struct {
 
 	// Verbosity constrains response verbosity.
 	Verbosity *string `json:"verbosity,omitempty"`
+}
+
+// ChatReasoningConfig mirrors the OpenRouter ChatRequest.reasoning object {effort, summary}.
+type ChatReasoningConfig struct {
+	// Effort constrains reasoning effort (max/xhigh/high/medium/low/minimal/none/null).
+	Effort string `json:"effort,omitempty"`
+	// Summary is the reasoning summary verbosity (auto/concise/detailed/null).
+	Summary *string `json:"summary,omitempty"`
 }
 
 // StreamOptions for streaming responses.

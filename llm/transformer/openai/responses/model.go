@@ -183,6 +183,8 @@ type Reasoning struct {
 	GenerateSummary string `json:"generate_summary,omitempty"`
 	// The summary type. Any of "auto", "concise", "detailed".
 	Summary string `json:"summary,omitempty"`
+	// Enabled toggles reasoning mode (OpenRouter ReasoningConfig.enabled, nullable bool).
+	Enabled *bool `json:"enabled,omitempty"`
 	// Maximum number of reasoning tokens.
 	MaxTokens *int64 `json:"max_tokens,omitempty"`
 }
@@ -435,6 +437,7 @@ type URLCitation struct {
 
 const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
 const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
+const responsesReasoningEnabledTransformerMetadataKey = "openai_responses_reasoning_enabled"
 
 type responsesReasoningItemMetadata struct {
 	ID   string `json:"id,omitempty"`

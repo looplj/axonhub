@@ -19,12 +19,14 @@
 
 | #6(output_config format/task_budget 丢) | δ | ✅ 已修·验收通过 | `anthropic/model.go`(OutputConfig 加 Format/TaskBudget json.RawMessage 字段 + TransformerMetadataKeyOutputConfig 常量)、`inbound_convert.go`(条件放宽 OutputConfig!=nil,stash 完整 *OutputConfig,effort 子映射保留)、`outbound_convert.go`(supportsOutputConfig 优先回切完整对象+effort-only 回退,非 supports 维持 thinking 降级)、`output_config_format_test.go:+TestOutputConfig_FormatTaskBudgetRoundTrip`(5 子测含 format-only+向后兼容) | 先红(inbound 全量/format-only stash 缺+outbound 全量/format-only restore 缺)→加字段+stash+restore 重构→绿;既有 OutputConfig 测试无回归,6 包全绿 | 代理 Lovelace(同模)7 标准 APPROVED(标准3 仅 AGENTS.md 卫生);范围完整性:流式复用 convertToLLMRequest、出站唯一 restore 点(DeepSeek 合成点被 full-stash 覆盖)、effort max→xhigh 未动、canonical 红线未破;空 output_config:{} 由 DROP 改为保真透传(lossless,可接受) |
 
+| #4(chat reasoning 对象整体丢 + responses reasoning.enabled 丢) | δ | ✅ 已修·验收通过 | `openai/model.go`(Request 加 `Reasoning *ChatReasoningConfig` 字段 + 新类型 `ChatReasoningConfig{Effort,Summary}`,对齐 yaml:4884)、`openai/inbound_convert.go`(读平铺后 `if r.Reasoning!=nil` 对象 effort/summary 覆盖平铺,对象优先于 shorthand)、`openai/responses/model.go`(Reasoning 加 `Enabled *bool` + 常量 `responsesReasoningEnabledTransformerMetadataKey`,对齐 yaml:12579)、`openai/responses/inbound.go`(stash enabled 进 TransformerMetadata)、`openai/responses/outbound_convert.go`(`convertReasoning` 用 `xmap.GetBoolPtr` 还原 enabled + 纳入 hasReasoningFields 早返回守卫);chat outbound_convert.go 未改(继续发平铺) | 先红(发 `reasoning:{effort,summary}` 对象→canonical 全丢;发 `reasoning:{enabled}`→metadata 缺)→加字段+对象捕获+stash/restore→绿;7 新测试(chat 对象捕获/对象优先/平铺fallback/往返 + responses enabled 捕获/往返/缺省守卫)全 ok,4 包无回归 | 代理 Kant(同模)7 标准 APPROVED(2026-06-30);范围完整性:chat 入站点仅 inbound_convert 已覆盖对象+平铺,codex/copilot 无独立 chat reasoning 入站,anthropic 走 thinking/output_config 不涉及;canonical 红线未破(enabled 只走 TransformerMetadata);透明提示 AGENTS.md +1 行为规则索引补全,非 #4 改动,留本地未提交 |
+
 | #5(thinking utils.go:34 复核) | δ | ⏭ 复核无 bug·不修 | `claudecode/utils.go:34` disableThinkingIfToolChoiceForcedStructured(仅清 ReasoningEffort/Budget,不碰 TransformerMetadata);claudecode/outbound.go:133 调用 | 无代码改动(复核项) | grill 复核:函数不触碰 thinking_type metadata,adaptive 经 outbound_convert.go:156 重建存活不被误伤;enabled 强制工具时禁用属 Claude Code 设计。类 #1b 不修。master 表"⚠️待复核"撤销 |
 
 ## 待办切片
 - β Anthropic 工具链(切片完成):#1e dptu / #3 parallel_tool_calls(✅) / #1b builtin(⏭按作者设计·不修) / 非流侧#1c(D11)(✅)
 - γ C区采样(切片完成):top_k对称化(✅) / rep_penalty·min_p·top_a保留(✅) / logit_bias浮点容错(✅)
-- δ 推理簇:#4 resp.reasoning.enabled / #5 thinking复核(✅无bug) / #6 output_config.format-task_budget(✅) / F19 prompt接线(✅) / F21 ctx_mgmt(✅)
+- δ 推理簇(切片完成):#4 chat reasoning对象+resp.enabled(✅) / #5 thinking复核(✅无bug) / #6 output_config.format-task_budget(✅) / F19 prompt接线(✅) / F21 ctx_mgmt(✅)
 - ε 身份会话缓存:#13 user桥接 / #10 session_id body变体 / #11 chat·responses顶层cache_control
 - ζ 流式杂项:F2 stream_options双向usage闭合 + convertStreamOptions早return守卫
 - η P0压轴:D1/#1a namespace容器经 TransformerMetadata 映射往返

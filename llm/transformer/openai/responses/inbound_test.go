@@ -2046,3 +2046,83 @@ func TestInboundTransformer_TransformRequest_TopKRoundTripResponses(t *testing.T
 	require.NotNil(t, respReq.TopK, "C3: responses top_k must survive responses round-trip")
 	require.Equal(t, int64(40), *respReq.TopK)
 }
+
+// #4/D20: responses reasoning.enabled must be captured into TransformerMetadata
+// (canonical has no Enabled slot). Without this the toggle is dropped on
+// cross-format conversion.
+func TestInboundTransformer_TransformRequest_ReasoningEnabledCaptured(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/responses",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","input":"hi","reasoning":{"effort":"high","enabled":true}}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, "high", llmReq.ReasoningEffort)
+	v, ok := llmReq.TransformerMetadata[responsesReasoningEnabledTransformerMetadataKey]
+	require.True(t, ok, "#4: reasoning.enabled must be stashed into metadata")
+	b, ok := v.(*bool)
+	require.True(t, ok, "#4: stashed value must be *bool")
+	require.True(t, *b, "#4: reasoning.enabled=true must survive")
+}
+
+// #4/D20: responses reasoning.enabled survives responses→canonical→responses
+// round-trip (outbound convertReasoning restores it).
+func TestInboundTransformer_TransformRequest_ReasoningEnabledRoundTrip(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/responses",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","input":"hi","reasoning":{"enabled":false}}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+
+	result, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var respReq Request
+	require.NoError(t, json.Unmarshal(result.Body, &respReq))
+	require.NotNil(t, respReq.Reasoning, "#4: reasoning object must be emitted even when only enabled is set")
+	require.NotNil(t, respReq.Reasoning.Enabled, "#4: reasoning.enabled must survive round-trip")
+	require.False(t, *respReq.Reasoning.Enabled, "#4: reasoning.enabled=false must survive round-trip")
+}
+
+// #4/D20: default guard — no reasoning means convertReasoning returns nil and no
+// metadata is stashed.
+func TestInboundTransformer_TransformRequest_ReasoningEnabledDefaultGuard(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/responses",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-4o","input":"hi"}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+	_, ok := llmReq.TransformerMetadata[responsesReasoningEnabledTransformerMetadataKey]
+	require.False(t, ok, "#4: no reasoning.enabled must not stash metadata")
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	result, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	var respReq Request
+	require.NoError(t, json.Unmarshal(result.Body, &respReq))
+	require.Nil(t, respReq.Reasoning, "#4: no reasoning must yield nil Reasoning")
+}

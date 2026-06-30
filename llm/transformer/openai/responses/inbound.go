@@ -245,6 +245,13 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		} else if req.Reasoning.GenerateSummary != "" {
 			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.GenerateSummary)
 		}
+
+		// Preserve reasoning.enabled through TransformerMetadata; canonical
+		// llm.Request has no Enabled slot, so without this the toggle is dropped
+		// on cross-format conversion (mirrors top_k/output_config handling).
+		if req.Reasoning.Enabled != nil {
+			chatReq.TransformerMetadata[responsesReasoningEnabledTransformerMetadataKey] = req.Reasoning.Enabled
+		}
 	}
 
 	// Convert tool choice

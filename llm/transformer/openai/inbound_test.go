@@ -1238,3 +1238,83 @@ func TestInboundTransformer_TransformRequest_OpenRouterSamplingRoundTrip(t *test
 	require.NotNil(t, outReq.TopA, "C9: top_a must survive round-trip")
 	require.InDelta(t, 0.8, *outReq.TopA, 0.0001)
 }
+
+// #4/D20: OpenRouter chat `reasoning` object {effort, summary} must be captured
+// into canonical slots. Without the object field the whole object is dropped by
+// lenient Unmarshal (only the flat reasoning_effort shorthand survived before).
+func TestInboundTransformer_TransformRequest_ReasoningObjectCaptured(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","messages":[{"role":"user","content":"hi"}],"reasoning":{"effort":"high","summary":"concise"}}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	require.Equal(t, "high", llmReq.ReasoningEffort, "#4: reasoning.effort object must be captured")
+	require.NotNil(t, llmReq.ReasoningSummary, "#4: reasoning.summary object must be captured")
+	require.Equal(t, "concise", *llmReq.ReasoningSummary)
+}
+
+// #4/D20: object form overrides flat shorthand when both present (spec: cannot be
+// used simultaneously if they differ; object is the explicit form).
+func TestInboundTransformer_TransformRequest_ReasoningObjectOverridesFlat(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"low","reasoning_summary":"detailed","reasoning":{"effort":"high","summary":"concise"}}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	require.Equal(t, "high", llmReq.ReasoningEffort, "#4: object effort must override flat shorthand")
+	require.NotNil(t, llmReq.ReasoningSummary)
+	require.Equal(t, "concise", *llmReq.ReasoningSummary, "#4: object summary must override flat shorthand")
+}
+
+// #4/D20: flat shorthand still works when no object is present (no regression).
+func TestInboundTransformer_TransformRequest_ReasoningFlatFallback(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"medium"}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	require.Equal(t, "medium", llmReq.ReasoningEffort, "#4: flat shorthand must still work")
+}
+
+// #4/D20: chat reasoning object survives chat→canonical→chat round-trip via the
+// canonical slots (outbound re-emits flat reasoning_effort/reasoning_summary).
+func TestInboundTransformer_TransformRequest_ReasoningObjectRoundTrip(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","messages":[{"role":"user","content":"hi"}],"reasoning":{"effort":"xhigh","summary":"detailed"}}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+
+	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+	require.Equal(t, "xhigh", outReq.ReasoningEffort, "#4: reasoning.effort must survive round-trip")
+	require.NotNil(t, outReq.ReasoningSummary)
+	require.Equal(t, "detailed", *outReq.ReasoningSummary, "#4: reasoning.summary must survive round-trip")
+}
