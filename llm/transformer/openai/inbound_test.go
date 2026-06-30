@@ -1194,3 +1194,23 @@ func TestCompletionInboundTransformer_TransformRequest_LogitBiasAcceptsFloat(t *
 	require.NotNil(t, got.Completion.LogitBias, "Completion.LogitBias must be populated")
 	require.InDelta(t, -100.5, got.Completion.LogitBias["5043"], 0.0001, "float logit_bias value must be preserved on completion path")
 }
+
+// C3/D23: chat top_k must survive chat→canonical→chat round-trip.
+func TestInboundTransformer_TransformRequest_TopKRoundTripChat(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hi"}],"top_k":40}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+
+	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+	require.NotNil(t, outReq.TopK, "C3: chat top_k must survive chat→canonical→chat round-trip")
+	require.Equal(t, int64(40), *outReq.TopK)
+}

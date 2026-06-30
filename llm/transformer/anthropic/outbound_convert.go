@@ -206,7 +206,9 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	// Restore top_k carried through TransformerMetadata (canonical llm.Request
 	// has no TopK field). Mirrors the cache_control restoration above.
 	if chatReq.TransformerMetadata != nil {
-		if topK, ok := chatReq.TransformerMetadata[TransformerMetadataKeyTopK].(*int64); ok && topK != nil {
+		if topK, ok := chatReq.TransformerMetadata[shared.TransformerMetadataKeyTopK].(*int64); ok && topK != nil {
+			req.TopK = topK
+		} else if topK, ok := chatReq.TransformerMetadata[transformerMetadataKeyTopKLegacy].(*int64); ok && topK != nil {
 			req.TopK = topK
 		}
 	}

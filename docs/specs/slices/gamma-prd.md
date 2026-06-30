@@ -10,8 +10,18 @@
 - **diagnose 跳过理由**:根因坐实(标准 json + int64 map + spec 允许 double),红测可直接复现。
 - **状态**:✅ 已完成·同模验收 Herschel APPROVED(7 标准,4 处 float64 全仓无 int64 残留),待 commit。
 
-## γ-2 · C3 — top_k 三方不对称(P1,待 γ-1 完成后展开)
-- **状态**:⏳ 待开始。
+## γ-2 · C3 — top_k 三方不对称(P1)
+- **Problem**:spec 三协议皆收 top_k,但作者仅让 Anthropic 来源活:常量 `TransformerMetadataKeyTopK="anthropic_top_k"`(anthropic/model.go:184),仅 anthropic 入站写(inbound_convert.go:86-88)、出站读(outbound_convert.go:209-211)。openai.Request 与 responses.Request **无 TopK 字段** → chat/responses 客户端显式设的 top_k 在 JSON 解码即丢,即便路由到 anthropic provider 也救不回(metadata 为空)。
+- **Solution**(D23 对称化,守红线——不动 canonical,仅 metadata 通道 + protocol Request 加字段):
+  1. `transformer/shared/`:新建中性常量 `TransformerMetadataKeyTopK = "top_k"`(shared 层现无,需新建,非复用)。
+  2. anthropic 迁移:inbound 改写 `shared.TransformerMetadataKeyTopK`;outbound 读 `shared` key,回退旧串 `"anthropic_top_k"`(兼容已持久化 metadata);model.go 旧常量降级为 unexported legacy。
+  3. `openai/model.go` Request 加 `TopK *int64 `json:"top_k,omitempty"``;`responses/model.go` Request 同。
+  4. openai `ToLLMRequest`:r.TopK 非空时写 `req.TransformerMetadata[shared key]=&topK`(*int64,匹配 anthropic);`RequestFromLLM`:读 `shared key` 的 `*int64` 还原 `req.TopK`。
+  5. responses `convertToLLMRequest`:同写;`outbound`:`TopK: xmap.GetInt64Ptr(metadata, shared key)`(xmap 兼容 *int64)。
+- **Testing**:红:chat top_k→canonical→chat outbound 丢;chat top_k→anthropic outbound 丢;responses top_k 往返丢。绿:三路全通;anthropic 既有 top_k 往返不回归(回归守卫)。
+- **Out of scope**:canonical 加 TopK 顶层槽(违红线);top_k 数值范围校验(pass-through 保真,不计)。
+- **diagnose 跳过理由**:根因坐实(master 表 C3 + 源码),红测可直接复现三路丢失。
+- **状态**:✅ 已完成·同模验收 Meitner APPROVED(7 标准,三入站写三出站读无漏接,canonical 红线未破),待 commit。
 
 ## γ-3/4/5 · C7/C8/C9 — rep_penalty/min_p/top_a(P2,同模式,待 γ-2 完成后展开)
 - **状态**:⏳ 待开始。

@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 var _ transformer.Inbound = (*InboundTransformer)(nil)
@@ -212,6 +213,14 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	// non-pass-through format conversion.
 	if req.Background != nil {
 		chatReq.TransformerMetadata["background"] = *req.Background
+	}
+
+	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
+	// TopK field, so without this the sampling parameter is dropped on cross-format
+	// conversion (mirrors Anthropic top_k handling, shared neutral key).
+	if req.TopK != nil {
+		topK := *req.TopK
+		chatReq.TransformerMetadata[shared.TransformerMetadataKeyTopK] = &topK
 	}
 
 	// Convert reasoning

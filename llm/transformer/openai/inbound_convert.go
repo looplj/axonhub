@@ -115,6 +115,17 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		}
 	}
 
+	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
+	// TopK field, so without this the sampling parameter is dropped on cross-format
+	// conversion (mirrors Anthropic top_k handling, shared neutral key).
+	if r.TopK != nil {
+		topK := *r.TopK
+		if req.TransformerMetadata == nil {
+			req.TransformerMetadata = map[string]any{}
+		}
+		req.TransformerMetadata[TransformerMetadataKeyTopK] = &topK
+	}
+
 	return req
 }
 

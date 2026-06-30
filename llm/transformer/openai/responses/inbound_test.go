@@ -2019,3 +2019,30 @@ func TestConvertItemToMessage_CustomToolCallPreservesNamespace(t *testing.T) {
 	require.NotNil(t, msg.ToolCalls[0].ResponseCustomToolCall)
 	require.Equal(t, "mcp__myserver", msg.ToolCalls[0].ResponseCustomToolCall.Namespace, "D11(ii): convertItemToMessage must preserve custom_tool_call namespace")
 }
+
+// C3/D23: responses top_k must survive responses→canonical→responses round-trip.
+func TestInboundTransformer_TransformRequest_TopKRoundTripResponses(t *testing.T) {
+	inbound := NewInboundTransformer()
+	req := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/responses",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-4o","input":"hi","top_k":40}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+
+	result, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var respReq Request
+	require.NoError(t, json.Unmarshal(result.Body, &respReq))
+	require.NotNil(t, respReq.TopK, "C3: responses top_k must survive responses round-trip")
+	require.Equal(t, int64(40), *respReq.TopK)
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func convertImageSourceToLLMImageURLPart(source *ImageSource, cacheControl *CacheControl) (llm.MessageContentPart, bool) {
@@ -85,7 +86,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	// non-pass-through format conversion.
 	if anthropicReq.TopK != nil {
 		topK := *anthropicReq.TopK
-		chatReq.TransformerMetadata[TransformerMetadataKeyTopK] = &topK
+		chatReq.TransformerMetadata[shared.TransformerMetadataKeyTopK] = &topK
 	}
 
 	// Convert messages

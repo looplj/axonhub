@@ -49,6 +49,9 @@ type Request struct {
 	// TopP for nucleus sampling.
 	TopP *float64 `json:"top_p,omitempty"`
 
+	// TopK for top-k sampling (OpenRouter extension).
+	TopK *int64 `json:"top_k,omitempty"`
+
 	// PromptCacheKey is used by OpenAI to cache responses.
 	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 

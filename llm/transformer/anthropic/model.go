@@ -178,10 +178,10 @@ const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_conte
 // round-trip restores it instead of collapsing to "end_turn".
 const TransformerMetadataKeyAnthropicStopReason = "anthropic_stop_reason"
 
-// TransformerMetadataKeyTopK is the key for storing the Anthropic top_k
-// sampling parameter in TransformerMetadata. canonical llm.Request has no TopK
-// field, so top_k is carried here to survive non-pass-through Anthropic round-trips.
-const TransformerMetadataKeyTopK = "anthropic_top_k"
+// transformerMetadataKeyTopKLegacy is the legacy Anthropic-specific key for top_k.
+// Kept for backward-compatible reading of persisted TransformerMetadata; new writes
+// use the shared neutral key shared.TransformerMetadataKeyTopK ("top_k").
+const transformerMetadataKeyTopKLegacy = "anthropic_top_k"
 
 type Thinking struct {
 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`

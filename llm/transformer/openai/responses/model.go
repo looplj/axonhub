@@ -162,6 +162,9 @@ type Request struct {
 	// Nucleus sampling parameter.
 	TopP *float64 `json:"top_p,omitempty"`
 
+	// TopK for top-k sampling (OpenRouter extension).
+	TopK *int64 `json:"top_k,omitempty"`
+
 	// Modalities specifies output types (e.g. text, audio).
 	Modalities []string `json:"modalities,omitempty"`
 }

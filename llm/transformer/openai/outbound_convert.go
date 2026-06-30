@@ -39,6 +39,14 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		Verbosity:           r.Verbosity,
 	}
 
+	// Restore top_k carried through TransformerMetadata (canonical llm.Request has
+	// no TopK field). Mirrors the Anthropic top_k restoration, shared neutral key.
+	if r.TransformerMetadata != nil {
+		if topK, ok := r.TransformerMetadata[TransformerMetadataKeyTopK].(*int64); ok && topK != nil {
+			req.TopK = topK
+		}
+	}
+
 	// Convert messages
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
 		return MessageFromLLMWithConfig(m, reasoningField)
