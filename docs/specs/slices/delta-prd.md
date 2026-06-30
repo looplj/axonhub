@@ -1,0 +1,48 @@
+# 切片 δ · PRD(推理控制与缓存会话)
+
+> 规范基准:`docs/specs/openrouter-chat-messages-responses.min.yaml`(下记 `(yaml:L)`);canonical `llm.Request`(`llm/model.go`)。守红线:不加 canonical 顶层槽(Thinking / OutputConfig / Prompt / ContextManagement 等),仅经 `TransformerMetadata` 通道或既有 canonical 槽展开。
+> 权威字段表:`docs/specs/master-conversion-table.md` 第4区(part-D 推理控制)+ 第5区(part-F F19/F21)。本切片每原子 grill 必须对照 master 表行 + 源码行三步交叉。
+> 原子顺序(由清晰到复杂):F19 → F21 → #6 → #4 → #5。
+
+## δ-1 · F19 — responses `prompt` 存储模板引用静默丢失(P2)
+- **Problem**:OpenRouter Responses 请求体 `prompt`($ref StoredPromptTemplate,id/version/variables,yaml:13152)在 AxonHub 入站被静默丢弃:`responses/model.go:134-136` 的 `Prompt *Prompt` 字段被 `// TODO` 注释(结构体 `type Prompt` 已存于 `model.go:170` 但字段未接线),`convertToLLMRequest`(inbound.go:170+)全文零 `req.Prompt` 引用,lenient Unmarshal 吞掉。同区兄弟字段 F15(background)/F16(include)/F17(truncation)/F18(max_tool_calls)均为 responses 独有且均经 TransformerMetadata PASSTHROUGH(✅),F19 是该家族唯一 DROP,根因纯为字段被注释。master 表 F19 行判定 ❌。
+- **Solution**(镜像 F15-F18,守红线——不加 canonical Prompt 槽):
+  1. `responses/model.go`:取消注释 `Prompt *Prompt json:"prompt,omitempty"`(恢复既存结构体接线)。
+  2. `responses/inbound.go`:背景 stash 块后加 `if req.Prompt != nil { chatReq.TransformerMetadata["prompt"] = req.Prompt }`。
+  3. `responses/outbound.go`:出站 Request 字面量加 `Prompt: xmap.GetPtr[Prompt](llmReq.TransformerMetadata, "prompt")`(复用既有泛型助手,存 *T 走 case *T)。
+- **Testing**:红:入站 `&Request{Prompt:&Prompt{...}}`→`convertToLLMRequest`→`TransformerMetadata["prompt"]` 缺失;出站 metadata 带 prompt→body 无 prompt。绿:双向保留;缺省不注入守卫。
+- **Out of scope**:跨格式至 chat/anthropic(二者 spec 无存储模板引用概念,master F19 标 C/M N/A,该腿正确 DROP);模板内容解析(由上游服务端解析,网关只透传引用);canonical 加 Prompt 槽(违红线)。
+- **diagnose 跳过理由**:根因本轮已坐实(master F19 + 源码 model.go:134-136 / inbound.go 零引用 实测),红测可直接复现静默丢。
+- **状态**:✅ 已完成·同模验收 Anscombe 代码 6/7 PASS(标准1/2/4/5/6/7);标准3 仅提交卫生(AGENTS.md 预存无关编辑未入 commit、PRD 已 add、状态已更新),已按规则只暂存 F19 文件提交。
+
+## δ-2 · F21 — anthropic `context_management` 上下文压缩策略丢失(P1)
+- **Problem**:master 表 F21 行:anthropic `context_management`(obj,edits clear_tool_uses/compact 等,yaml:8936)在 `MessageRequest` 无 `ContextManagement` 字段→DROP,上下文压缩策略丢失,可能致超长对话未被裁剪而触发限流/截断差异。判定 ⚠️ P1。
+- **Solution**:待 grill 核实源码行(确认 MessageRequest 零声明 + 入站零引用),方向:建模或经 TransformerMetadata 透传至支持上游,至少白名单告警而非静默吞。
+- **Out of scope**:待 grill 界定。
+- **状态**:待 grill(Problem 引自 master 表已核实行,Solution/源码行待本轮核实)。
+
+## δ-3 · #6 — output_config effort max→xhigh 有损 + format/task_budget 子项疑似 DROP(P1)
+- **Problem**:master 表 part-D 推理控制区:anthropic `output_config.effort=='max'`→canonical `xhigh` 有损映射(仅 supportsOutputConfig 时可逆);`output_config` 的 `format`/`task_budget` 子项疑似未被捕获→DROP。待核实源码行。
+- **Solution**:待 grill 核实。方向:不支持平台保留 max 标志位(经 metadata);补 format/task_budget 透传。
+- **状态**:待 grill。
+
+## δ-4 · #4 — chat `reasoning` 对象整体丢失 + responses `reasoning.enabled` 未捕获(🔴最高危)
+- **Problem**:master 表 part-D 第4行:chat 线模型(openai/model.go)未声明 `reasoning` 对象字段→整个 reasoning 配置(effort+summary)入站丢失,客户端唯有改用平铺 `reasoning_effort`(及非规范 `reasoning_summary`)才能部分救活;responses 侧 `reasoning.enabled` bool 子项未捕获(`responses/model.go:177` Reasoning 结构体仅 Effort/GenerateSummary/Summary/MaxTokens)。判定 ❌ HIGH-RISK DROP(chat)+ ⚠️ responses.enabled 缺失。
+- **Solution**(守红线——不加 canonical 新顶层槽,继续借现有 ReasoningEffort/Budget/Summary 三槽):chat 给线模型加 `reasoning` 对象并展开进三槽;responses 补 `enabled` 进 TransformerMetadata。关联 D20。待 grill 核实源码行。
+- **状态**:待 grill(Problem 引自 master 表第4行已核实)。
+
+## δ-5 · #5 — thinking 往返 + utils.go:34 覆盖范围复核
+- **Problem**:master 表 part-D 第5行:anthropic `thinking` 自身往返无损(enabled/disabled/adaptive/display 全保)。⚠️ 待复核:claudecode `disableThinkingIfToolChoiceForcedStructured`(utils.go:34)可能误伤合法 adaptive 思考。
+- **Solution**:待 grill 复核 utils.go:34 覆盖范围;主体维持。
+- **状态**:待 grill。
+
+---
+
+## 切片进度
+| 原子 | 状态 | 验收代理 |
+|---|---|---|
+| δ-1 F19 | ✅ 已完成·已验收 | Anscombe |
+| δ-2 F21 | 待 grill | — |
+| δ-3 #6 | 待 grill | — |
+| δ-4 #4 | 待 grill | — |
+| δ-5 #5 | 待 grill | — |

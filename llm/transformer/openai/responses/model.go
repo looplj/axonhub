@@ -132,8 +132,7 @@ type Request struct {
 	PreviousResponseID *string `json:"previous_response_id,omitempty"`
 
 	// Reference to a prompt template and its variables.
-	// TODO
-	// Prompt *Prompt `json:"prompt,omitempty"`
+	Prompt *Prompt `json:"prompt,omitempty"`
 
 	// Used by OpenAI to cache responses for similar requests.
 	PromptCacheKey *string `json:"prompt_cache_key,omitempty"`

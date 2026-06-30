@@ -215,6 +215,12 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		chatReq.TransformerMetadata["background"] = *req.Background
 	}
 
+	// Preserve the stored prompt template reference (F19); canonical has no
+	// Prompt slot, so it rides TransformerMetadata like background/include.
+	if req.Prompt != nil {
+		chatReq.TransformerMetadata["prompt"] = req.Prompt
+	}
+
 	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
 	// TopK field, so without this the sampling parameter is dropped on cross-format
 	// conversion (mirrors Anthropic top_k handling, shared neutral key).

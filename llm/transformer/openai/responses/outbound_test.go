@@ -1570,6 +1570,76 @@ func TestOutboundTransformer_TransformRequest_NamespaceDoesNotStarveRawTools(t *
 	require.Contains(t, typesByName, "file_search")
 }
 
+// TestConvertToLLMRequest_Prompt covers F19: the stored prompt template
+// reference (prompt{ id, version, variables }) must survive
+// Responses->canonical->Responses via TransformerMetadata, mirroring the
+// F15 background / F16-F18 passthrough family. Before the fix the Prompt
+// field was commented out (// TODO) and a client's prompt body was silently
+// dropped by lenient unmarshal.
+func TestConvertToLLMRequest_Prompt(t *testing.T) {
+	t.Run("inbound preserves prompt into metadata", func(t *testing.T) {
+		req := &Request{
+			Model: "gpt-4o",
+			Prompt: &Prompt{
+				ID:        "pmpt_abc",
+				Version:   lo.ToPtr("2"),
+				Variables: map[string]string{"topic": "cats"},
+			},
+		}
+
+		result, err := convertToLLMRequest(req)
+		require.NoError(t, err)
+		v, ok := result.TransformerMetadata["prompt"]
+		require.True(t, ok)
+		p, ok := v.(*Prompt)
+		require.True(t, ok)
+		require.Equal(t, "pmpt_abc", p.ID)
+		require.NotNil(t, p.Version)
+		require.Equal(t, "2", *p.Version)
+		require.Equal(t, "cats", p.Variables["topic"])
+	})
+
+	t.Run("outbound restores prompt from metadata", func(t *testing.T) {
+		llmReq := &llm.Request{
+			Model: "gpt-4o",
+			Messages: []llm.Message{{
+				Role:    "user",
+				Content: llm.MessageContent{Content: lo.ToPtr("hi")},
+			}},
+			TransformerMetadata: map[string]any{
+				"prompt": &Prompt{
+					ID:        "pmpt_xyz",
+					Version:   lo.ToPtr("3"),
+					Variables: map[string]string{"topic": "dogs"},
+				},
+			},
+		}
+
+		outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+		require.NoError(t, err)
+
+		httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+		require.NoError(t, err)
+
+		var got Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &got))
+		require.NotNil(t, got.Prompt)
+		require.Equal(t, "pmpt_xyz", got.Prompt.ID)
+		require.NotNil(t, got.Prompt.Version)
+		require.Equal(t, "3", *got.Prompt.Version)
+		require.Equal(t, "dogs", got.Prompt.Variables["topic"])
+	})
+
+	t.Run("prompt absent stays absent", func(t *testing.T) {
+		req := &Request{Model: "gpt-4o"}
+
+		result, err := convertToLLMRequest(req)
+		require.NoError(t, err)
+		_, ok := result.TransformerMetadata["prompt"]
+		require.False(t, ok)
+	})
+}
+
 // TestOutboundTransformer_TransformRequest_RawInputItemsSurvivePromptPrepend covers #12:
 // when a non-system prompt is prepended to the canonical messages, the outbound
 // merge of RawInputItems must keep raw-only items (e.g. tool_search_call) in

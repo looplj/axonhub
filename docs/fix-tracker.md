@@ -13,10 +13,12 @@
 | C3(top_k三方不对称) | γ | ✅ 已修·验收通过 | `transformer/shared/sampling.go`(新建中性 key `top_k`);`anthropic/model.go`(旧常量降级 legacy)+`inbound_convert.go`/`outbound_convert.go`(迁移 shared key+legacy 回退读);`openai/model.go`+`responses/model.go`(加 TopK 字段);`openai/inbound_convert.go`+`outbound_convert.go`、`responses/inbound.go`+`outbound.go`(接线);`openai/google.go`(re-export) | 先红(chat top_k 往返丢)→shared key+TopK 字段+三入站写三出站读→绿;4 测试(chat 往返/responses 往返/chat→anthropic/anthropic 回归)全 ok | 代理 Meitner(同模)VERDICT APPROVED,七项均 PASS(2026-06-30),含第 7 条范围完整性:全仓 top_k 写入全用 shared key 无残留旧 key 写,三入站三出站无漏接,canonical 红线未破 |
 | C7/C8/C9(rep_penalty/min_p/top_a) | γ | ✅ 已修·验收通过 | `shared/sampling.go`(3 中性常量);`openai/model.go`(3 字段 *float64);`openai/google.go`(3 re-export);`openai/inbound_convert.go`(写 3 metadata)+`outbound_convert.go`(读 3 还原) | 先红(三参数往返丢)→3 字段+metadata 往返→绿;`OpenRouterSamplingRoundTrip` 测试 ok | 代理 Leibniz(同模)VERDICT APPROVED,七项均 PASS(2026-06-30),含第 7 条范围完整性:三参数 chat 入站写+出站读无漏接,未越界 anthropic/responses,canonical 红线未破 |
 
+| F19(prompt 存储模板引用静默丢) | δ | ✅ 已修·验收通过 | `responses/model.go:135`(uncomment Prompt 字段)、`inbound.go`(背景 stash 块后加 `if req.Prompt != nil { TransformerMetadata["prompt"] = req.Prompt }`)、`outbound.go`(Request 字面量加 `Prompt: xmap.GetPtr[Prompt](meta,"prompt")`)、`outbound_test.go:+TestConvertToLLMRequest_Prompt`(入站 stash/出站 restore/缺省守卫三子测) | 先红(入站 metadata 缺 prompt + 出站 body 缺 prompt)→uncomment+stash+restore→绿;`go test ./transformer/openai/responses/...` 全 ok,6 包无回归 | 代理 Anscombe(同模)代码 6/7 PASS(标准1/2/4/5/6/7),标准3 仅提交卫生已纠正(只暂存 F19 文件);范围完整性:流式复用 convertToLLMRequest、出站唯一构造点、canonical 红线未破 |
+
 ## 待办切片
 - β Anthropic 工具链(切片完成):#1e dptu / #3 parallel_tool_calls(✅) / #1b builtin(⏭按作者设计·不修) / 非流侧#1c(D11)(✅)
 - γ C区采样(切片完成):top_k对称化(✅) / rep_penalty·min_p·top_a保留(✅) / logit_bias浮点容错(✅)
-- δ 推理簇:#4 resp.reasoning.enabled / #5 thinking清空不全 / #6 output_config.format-task_budget / F19 prompt接线 / F21 ctx_mgmt
+- δ 推理簇:#4 resp.reasoning.enabled / #5 thinking清空不全 / #6 output_config.format-task_budget / F19 prompt接线(✅) / F21 ctx_mgmt
 - ε 身份会话缓存:#13 user桥接 / #10 session_id body变体 / #11 chat·responses顶层cache_control
 - ζ 流式杂项:F2 stream_options双向usage闭合 + convertStreamOptions早return守卫
 - η P0压轴:D1/#1a namespace容器经 TransformerMetadata 映射往返

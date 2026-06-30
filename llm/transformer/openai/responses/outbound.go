@@ -275,6 +275,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, "background"),
+		Prompt:               xmap.GetPtr[Prompt](llmReq.TransformerMetadata, "prompt"),
 	}
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {
