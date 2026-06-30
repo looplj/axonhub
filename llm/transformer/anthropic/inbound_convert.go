@@ -81,6 +81,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl] = anthropicReq.CacheControl
 	}
 
+	// Propagate the top-level context_management (context-compression
+	// strategy) through TransformerMetadata so the Anthropic outbound can
+	// restore it. Kept as opaque json.RawMessage; canonical has no equivalent.
+	if len(anthropicReq.ContextManagement) > 0 {
+		chatReq.TransformerMetadata[TransformerMetadataKeyContextManagement] = anthropicReq.ContextManagement
+	}
+
 	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
 	// TopK field, so without this the Anthropic sampling parameter is dropped on
 	// non-pass-through format conversion.

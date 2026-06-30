@@ -203,6 +203,14 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		}
 	}
 
+	// Restore Anthropic's top-level context_management (context-compression
+	// strategy) carried through TransformerMetadata as opaque json.RawMessage.
+	if chatReq.TransformerMetadata != nil {
+		if cm := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyContextManagement]); len(cm) > 0 {
+			req.ContextManagement = cm
+		}
+	}
+
 	// Restore top_k carried through TransformerMetadata (canonical llm.Request
 	// has no TopK field). Mirrors the cache_control restoration above.
 	if chatReq.TransformerMetadata != nil {

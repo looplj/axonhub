@@ -16,10 +16,14 @@
 - **状态**:✅ 已完成·同模验收 Anscombe 代码 6/7 PASS(标准1/2/4/5/6/7);标准3 仅提交卫生(AGENTS.md 预存无关编辑未入 commit、PRD 已 add、状态已更新),已按规则只暂存 F19 文件提交。
 
 ## δ-2 · F21 — anthropic `context_management` 上下文压缩策略丢失(P1)
-- **Problem**:master 表 F21 行:anthropic `context_management`(obj,edits clear_tool_uses/compact 等,yaml:8936)在 `MessageRequest` 无 `ContextManagement` 字段→DROP,上下文压缩策略丢失,可能致超长对话未被裁剪而触发限流/截断差异。判定 ⚠️ P1。
-- **Solution**:待 grill 核实源码行(确认 MessageRequest 零声明 + 入站零引用),方向:建模或经 TransformerMetadata 透传至支持上游,至少白名单告警而非静默吞。
-- **Out of scope**:待 grill 界定。
-- **状态**:待 grill(Problem 引自 master 表已核实行,Solution/源码行待本轮核实)。
+- **Problem**:grill 已坐实:anthropic `context_management`(顶层请求字段,yaml:8920(edits 8936+),nullable,edits 数组:clear_tool_uses_20250919/clear_thinking_20251015 等判别式 oneOf)在 `MessageRequest`(model.go:11)无 `ContextManagement` 字段、inbound_convert.go 零 stash、outbound_convert.go 零 restore→lenient Unmarshal 静默吞,上下文压缩策略丢失。grep 确认 Go 代码零声明(仅 testdata 响应夹具命中 response 侧 applied_edits,属 D10 另计)。判定 ⚠️ P1。
+- **Solution**(镜像 cache_control 透传,守红线——json.RawMessage 不透明透传,不加 canonical 槽):
+  1. `anthropic/model.go`:MessageRequest 末加 `ContextManagement json.RawMessage json:"context_management,omitempty"`(edits 为版本化判别式 schema,网关不解释,按作者 Caller/tool_result json.RawMessage 透传先例 raw 往返);加常量 `TransformerMetadataKeyContextManagement="anthropic_context_management"`。
+  2. `anthropic/inbound_convert.go`:cache_control stash 块后加 `if len(anthropicReq.ContextManagement) > 0 { chatReq.TransformerMetadata[key] = anthropicReq.ContextManagement }`。
+  3. `anthropic/outbound_convert.go`:cache_control restore 块后加 `if cm := asJSONRawMessage(chatReq.TransformerMetadata[key]); len(cm) > 0 { req.ContextManagement = cm }`(复用 tool_blocks.go 既有 asJSONRawMessage 助手,多类型兼容,免新 import)。
+- **Testing**:红:入站 stash 缺 + 出站 restore 缺;绿:json.RawMessage 往返保真 + 缺省不注入。镜像 top_k_test.go 四子测。
+- **Out of scope**:跨格式至 chat/responses(二者 spec 无 context_management,该腿正确 DROP);建模 edits 子结构(网关只透传不解释,master 表允许"透传");response 侧 applied_edits 回显(属 D10,另计)。
+- **状态**:✅ 已完成·同模验收 Confucius 7 标准 APPROVED(json.RawMessage 贴合 Caller/tool_result 先例、asJSONRawMessage 复用、范围完整、canonical 红线未破)。
 
 ## δ-3 · #6 — output_config effort max→xhigh 有损 + format/task_budget 子项疑似 DROP(P1)
 - **Problem**:master 表 part-D 推理控制区:anthropic `output_config.effort=='max'`→canonical `xhigh` 有损映射(仅 supportsOutputConfig 时可逆);`output_config` 的 `format`/`task_budget` 子项疑似未被捕获→DROP。待核实源码行。
@@ -42,7 +46,7 @@
 | 原子 | 状态 | 验收代理 |
 |---|---|---|
 | δ-1 F19 | ✅ 已完成·已验收 | Anscombe |
-| δ-2 F21 | 待 grill | — |
+| δ-2 F21 | ✅ 已完成·已验收 | Confucius |
 | δ-3 #6 | 待 grill | — |
 | δ-4 #4 | 待 grill | — |
 | δ-5 #5 | 待 grill | — |

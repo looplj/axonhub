@@ -100,6 +100,14 @@ type MessageRequest struct {
 	// When this field is set, AxonHub preserves it as-is and skips its own
 	// per-block cache_control breakpoint optimization pipeline.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
+	// ContextManagement is an optional context-management configuration
+	// (edits: clear_tool_uses / clear_thinking, etc.). Kept as json.RawMessage
+	// so it round-trips to the upstream Anthropic API without the proxy
+	// modeling the versioned, discriminated edits schema (mirrors the Caller /
+	// tool_result json.RawMessage passthrough). canonical llm.Request has no
+	// equivalent, so it is carried through TransformerMetadata.
+	ContextManagement json.RawMessage `json:"context_management,omitempty"`
 }
 
 type AnthropicMetadata struct {
@@ -167,6 +175,13 @@ const TransformerMetadataKeyThinkingDisplay = "thinking_display"
 // untouched and skips its own breakpoint optimization pipeline so that
 // Anthropic's automatic caching behavior is preserved.
 const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
+
+// TransformerMetadataKeyContextManagement is the key for storing the top-level
+// context_management (Anthropic context-compression strategy, edits[]) carried
+// by an Anthropic-format inbound request. The value is json.RawMessage (opaque
+// passthrough). The Anthropic outbound transformer restores it onto the upstream
+// request untouched so the client's context-management strategy is preserved.
+const TransformerMetadataKeyContextManagement = "anthropic_context_management"
 
 // TransformerMetadataKeyAnthropicResponseContent stores provider-native Anthropic response content blocks
 // so outbound->unified->inbound round-trip can restore Anthropic-only blocks such as
