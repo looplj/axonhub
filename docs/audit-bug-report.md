@@ -30,7 +30,7 @@
 | ε | #11 | chat/responses 顶层 cache_control | ✅ 已修·已验收 | `72d07e00` |
 | ζ | F2 | stream_options 跨格式 + convertStreamOptions 早 return | ⏭ 复核无 bug·不修 | — |
 | η | D1/#1a | namespace 容器经 TransformerMetadata 往返(P0 最高危结构性缺口) | ✅ 已修·已验收 | (η) |
-| 补遗 | 跨协议 | chat/anthropic/gemini 出口不传播请求 TransformerMetadata(非流式+流式) | ✅ 已修·待验收 | `a1b10836`+`9e3905b2` |
+| 补遗 | 跨协议 | chat/anthropic/gemini 出口不传播请求 TransformerMetadata(非流式+流式) | ✅ 已修·已验收 | `a1b10836`+`9e3905b2` |
 
 ## 红线(全程守住)
 - canonical `llm.Request` / `llm.Function` 不加协议独有顶层槽(Namespace/TopK/采样旋钮/Prompt/ContextManagement/OutputConfig/Reasoning 对象/ReasoningEnabled 均只走 TransformerMetadata)。
