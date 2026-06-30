@@ -43,7 +43,7 @@
 4. **流式 metadata 传播**:outbound stream 从请求 metadata 取值存 state,发到首个 chunk;inbound `mergeTransformerMetadata` 透传;装配点查表(#1a 流式范式)。
 
 ## 已知限制(非本次引入,记录备查)
-- **跨协议 metadata 传播缺口**:responses outbound 在 `TransformResponse` 中 `maps.Clone(httpResp.Request.TransformerMetadata)` 闭环完整;但 chat/anthropic outbound **不克隆**请求 TransformerMetadata 到响应。故 TransformerMetadata 类字段(namespace map/cache_control/reasoning 等)在 responses 客户端 → chat/anthropic 上游 的跨协议往返中会丢失。这是既有传播基础设施局限,影响所有 TransformerMetadata 字段,非任一单切片引入。若实际部署含跨协议场景,需另起切片让各 outbound 通用克隆 request TransformerMetadata。
+- **跨协议 metadata 传播(已修复)**:responses outbound 原本已有 `maps.Clone(httpResp.Request.TransformerMetadata)` 闭环;chat/anthropic/gemini 出口原先不克隆。已通过 `shared/metadata.go` 三个 helper(PropagateRequestMetadata / MergeResponseMetadata / PropagateStreamMetadata)补齐:三个出口的 TransformRequest + TransformResponse + TransformStream 全部接入,非流式 + 流式跨协议 namespace 还原实测通过(commit `a1b10836` + `9e3905b2`)。chat 家族(deepseek/moonshot/xai 等)全委托 chat 出口自动受益。
 - **compact 路径**:namespace 工具声明只在标准 inbound,compact 无 tools 声明;`convertInputFromMessages` 传 nil 即可(扁平工具保持原名)。
 
 ## 权威文档

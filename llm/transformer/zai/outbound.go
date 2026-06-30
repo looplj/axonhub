@@ -183,14 +183,16 @@ func (t *OutboundTransformer) TransformRequest(
 
 	url := t.BaseURL + "/chat/completions"
 
-	return &httpclient.Request{
+	httpReq := &httpclient.Request{
 		Method:    http.MethodPost,
 		URL:       url,
 		Headers:   headers,
 		Body:      body,
 		Auth:      auth,
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-	}, nil
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
 }
 
 // TransformResponse transforms the HTTP response to llm.Response.

@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/deepseek"
 	chatoutbound "github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -236,4 +237,43 @@ func TestCrossProtocol_Stream_NamespaceMapSurvivesRoundTrip(t *testing.T) {
 	require.NotNil(t, fcItem, "expected a function_call output item in stream")
 	require.Equal(t, "run", fcItem.Name, "streaming cross-protocol: name must be restored to leaf")
 	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "streaming cross-protocol: namespace must be restored")
+}
+
+// TestCrossProtocol_DeepSeekIndependentOutboundPropagatesMetadata verifies that
+// deepseek — which builds its own httpclient.Request independently (not delegating
+// to the chat outbound's TransformRequest) — now calls
+// shared.PropagateRequestMetadata so the namespace map survives the round-trip.
+// Regression guard for the 5 independently-constructing chat-family outbounds
+// (deepseek/moonshot/zai/doubao/openrouter) identified by acceptance audit.
+func TestCrossProtocol_DeepSeekIndependentOutboundPropagatesMetadata(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model": "deepseek-chat",
+			"input": "use the tool",
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{
+						{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}},
+					},
+				},
+			},
+		}),
+	}
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	deepseekOut, err := deepseek.NewOutboundTransformer("https://api.deepseek.com", "test-key")
+	require.NoError(t, err)
+	llmReq.Model = "deepseek-chat"
+
+	httpReq, err := deepseekOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	require.NotNil(t, httpReq.TransformerMetadata,
+		"deepseek outbound must propagate TransformerMetadata on independently-constructed request")
+	_, exists := httpReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, exists, "deepseek outbound must carry the namespace tool map")
 }
