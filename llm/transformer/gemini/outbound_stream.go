@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // streamState tracks state across streaming events.
@@ -29,9 +30,13 @@ func (t *OutboundTransformer) TransformStream(
 	// Track tool call index across stream events
 	state := &streamState{}
 
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	s := streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.transformStreamChunkWithState(event, state)
-	}), nil
+	})
+	if req != nil && req.TransformerMetadata != nil {
+		s = shared.PropagateStreamMetadata(s, req.TransformerMetadata)
+	}
+	return s, nil
 }
 
 // TransformStreamChunk transforms a single Gemini streaming chunk to unified Response.

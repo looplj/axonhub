@@ -298,9 +298,13 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 		}
 	}
 
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	s := streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	})
+	if req != nil && req.TransformerMetadata != nil {
+		s = shared.PropagateStreamMetadata(s, req.TransformerMetadata)
+	}
+	return s, nil
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(

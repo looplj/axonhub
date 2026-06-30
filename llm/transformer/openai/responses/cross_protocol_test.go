@@ -8,7 +8,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	chatoutbound "github.com/looplj/axonhub/llm/transformer/openai"
 )
@@ -134,3 +136,104 @@ func mustMarshal(t *testing.T, v any) []byte {
 }
 
 var _ transformer.Outbound = (*chatoutbound.OutboundTransformer)(nil)
+
+// TestCrossProtocol_Stream_NamespaceMapSurvivesRoundTrip verifies the streaming
+// cross-protocol path: a responses client streaming through a chat upstream must
+// still get the namespace group identity restored on function_call items. The
+// chat outbound's TransformStream now wraps its output with
+// shared.PropagateStreamMetadata so the request's TransformerMetadata rides on
+// the first chunk, and the responses inbound's mergeTransformerMetadata picks it
+// up before initToolCall runs.
+func TestCrossProtocol_Stream_NamespaceMapSurvivesRoundTrip(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+
+	// Step 1: responses inbound (request) — namespace map recorded
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model":  "gpt-4o",
+			"input":  "use the tool",
+			"stream": true,
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{
+						{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}},
+					},
+				},
+			},
+		}),
+	}
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	// Step 2: chat outbound (request)
+	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmReq.Model = "gpt-4o"
+	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	// Step 3: mock chat SSE stream (function_call with flattened name)
+	chatSSEEvents := []*httpclient.StreamEvent{
+		{Type: "chat.completion.chunk", Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","model":"gpt-4o","created":1700000000,"choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"mcp__node_repl__run","arguments":"{\"x\":1}"}}]},"finish_reason":null}]}`)},
+		{Type: "chat.completion.chunk", Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","model":"gpt-4o","created":1700000000,"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`)},
+		{Type: "data", Data: []byte("[DONE]")},
+	}
+
+	// Step 4: chat outbound (stream) — should propagate namespace map on first chunk
+	llmStream, err := chatOut.TransformStream(context.Background(), httpReq, streams.SliceStream(chatSSEEvents))
+	require.NoError(t, err)
+
+	var llmChunks []*llm.Response
+	for llmStream.Next() {
+		ch := llmStream.Current()
+		if ch != nil {
+			llmChunks = append(llmChunks, ch)
+		}
+	}
+	require.NoError(t, llmStream.Err())
+	require.NotEmpty(t, llmChunks)
+
+	// Verify at least one chunk carries the namespace map
+	var sawMap bool
+	for _, ch := range llmChunks {
+		if ch.TransformerMetadata != nil {
+			if _, ok := ch.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]; ok {
+				sawMap = true
+				break
+			}
+		}
+	}
+	require.True(t, sawMap, "chat outbound stream must propagate namespace map on a chunk")
+
+	// Step 5: responses inbound (stream) — should restore namespace
+	respStream, err := responsesInbound.TransformStream(context.Background(), streams.SliceStream(llmChunks))
+	require.NoError(t, err)
+
+	var actualEvents []StreamEvent
+	for respStream.Next() {
+		ev := respStream.Current()
+		var se StreamEvent
+		if err := json.Unmarshal(ev.Data, &se); err == nil {
+			actualEvents = append(actualEvents, se)
+		}
+	}
+	require.NoError(t, respStream.Err())
+
+	// Find the function_call item
+	var fcItem *Item
+	for i := range actualEvents {
+		ev := actualEvents[i]
+		if (ev.Type == StreamEventTypeOutputItemAdded || ev.Type == StreamEventTypeOutputItemDone) &&
+			ev.Item != nil && ev.Item.Type == "function_call" {
+			fcItem = ev.Item
+			if ev.Type == StreamEventTypeOutputItemDone {
+				break
+			}
+		}
+	}
+	require.NotNil(t, fcItem, "expected a function_call output item in stream")
+	require.Equal(t, "run", fcItem.Name, "streaming cross-protocol: name must be restored to leaf")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "streaming cross-protocol: namespace must be restored")
+}

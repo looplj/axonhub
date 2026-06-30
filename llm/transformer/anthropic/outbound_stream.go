@@ -25,7 +25,11 @@ func (t *OutboundTransformer) TransformStream(
 	// Append the DONE event to the filtered stream
 	streamWithDone := streams.AppendStream(filteredStream, lo.ToPtr(llm.DoneStreamEvent))
 
-	return streams.NoNil(newOutboundStream(streamWithDone, t.config.Type)), nil
+	s := streams.NoNil(newOutboundStream(streamWithDone, t.config.Type))
+	if req != nil && req.TransformerMetadata != nil {
+		s = shared.PropagateStreamMetadata(s, req.TransformerMetadata)
+	}
+	return s, nil
 }
 
 // filterStreamEvent determines if a stream event should be processed
