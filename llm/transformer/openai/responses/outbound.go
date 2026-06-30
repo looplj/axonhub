@@ -264,6 +264,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		TopLogprobs:          llmReq.TopLogprobs,
 		TopP:                 llmReq.TopP,
 		TopK:                 xmap.GetInt64Ptr(llmReq.TransformerMetadata, shared.TransformerMetadataKeyTopK),
+		CacheControl:         restoreCacheControl(llmReq.TransformerMetadata),
 		Modalities:           llmReq.Modalities,
 		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),

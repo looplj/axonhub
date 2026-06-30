@@ -1,6 +1,8 @@
 package openai
 
 import (
+	"encoding/json"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -58,6 +60,17 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		}
 		if topA, ok := r.TransformerMetadata[TransformerMetadataKeyTopA].(*float64); ok && topA != nil {
 			req.TopA = topA
+		}
+	}
+
+	// Restore top-level cache_control carried through TransformerMetadata as
+	// opaque json.RawMessage (mirrors top_k restoration).
+	if r.TransformerMetadata != nil {
+		if raw, ok := r.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage); ok && len(raw) > 0 {
+			var cc CacheControl
+			if err := json.Unmarshal(raw, &cc); err == nil && cc.Type != "" {
+				req.CacheControl = &cc
+			}
 		}
 	}
 

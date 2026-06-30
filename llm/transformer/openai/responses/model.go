@@ -120,6 +120,7 @@ type Request struct {
 	SafetyIdentifier *string           `json:"safety_identifier,omitempty"`
 	User             *string           `json:"user,omitempty"`
 	Metadata         map[string]string `json:"metadata,omitempty"`
+	CacheControl     *CacheControl     `json:"cache_control,omitempty"`
 	MaxOutputTokens  *int64            `json:"max_output_tokens,omitempty"`
 	MaxToolCalls     *int64            `json:"max_tool_calls,omitempty"`
 	Text             *TextOptions      `json:"text,omitempty"`
@@ -187,6 +188,12 @@ type Reasoning struct {
 	Enabled *bool `json:"enabled,omitempty"`
 	// Maximum number of reasoning tokens.
 	MaxTokens *int64 `json:"max_tokens,omitempty"`
+}
+
+// CacheControl mirrors the OpenRouter/Anthropic top-level cache_control directive.
+type CacheControl struct {
+	Type string `json:"type"`
+	TTL  string `json:"ttl,omitempty"`
 }
 
 // StreamOptions represents options for streaming responses.

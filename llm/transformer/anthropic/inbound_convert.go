@@ -84,7 +84,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	// through the pipeline so the Anthropic outbound transformer can restore
 	// it on the upstream request and bypass its own breakpoint optimization.
 	if anthropicReq.CacheControl != nil {
-		chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl] = anthropicReq.CacheControl
+		chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl] = asJSONRawMessage(anthropicReq.CacheControl)
 	}
 
 	// Propagate the top-level context_management (context-compression

@@ -17,6 +17,10 @@ const TransformerMetadataKeyMinP = shared.TransformerMetadataKeyMinP
 // TransformerMetadataKeyTopA re-exports the shared key for top_a.
 const TransformerMetadataKeyTopA = shared.TransformerMetadataKeyTopA
 
+// TransformerMetadataKeyCacheControl re-exports the shared neutral key for the
+// top-level cache_control directive (OpenRouter/Anthropic prompt-caching marker).
+const TransformerMetadataKeyCacheControl = shared.TransformerMetadataKeyCacheControl
+
 // ToolCallGoogleExtraContent represents Google-specific extension fields for tool calls.
 type ToolCallGoogleExtraContent struct {
 	ThoughtSignature string `json:"thought_signature,omitempty"`

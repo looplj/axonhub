@@ -1,6 +1,8 @@
 package anthropic
 
 import (
+	"encoding/json"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -214,8 +216,11 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	// When present we keep it as-is on the upstream request and skip our own
 	// per-block breakpoint optimization (handled in TransformRequest).
 	if chatReq.TransformerMetadata != nil {
-		if cc, ok := chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl); ok && cc != nil {
-			req.CacheControl = cc
+		if raw := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl]); len(raw) > 0 {
+			var cc CacheControl
+			if err := json.Unmarshal(raw, &cc); err == nil && cc.Type != "" {
+				req.CacheControl = &cc
+			}
 		}
 	}
 

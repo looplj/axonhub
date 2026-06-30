@@ -76,6 +76,11 @@ type Request struct {
 	// Metadata is key-value pairs attached to the object.
 	Metadata map[string]string `json:"metadata,omitempty"`
 
+	// CacheControl is the OpenRouter top-level cache_control directive
+	// (Anthropic-style prompt-caching marker). Carried through TransformerMetadata
+	// cross-format; canonical llm.Request has no CacheControl field.
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
 	// Modalities specifies output types (text, audio, image).
 	Modalities []string `json:"modalities,omitempty"`
 
@@ -121,6 +126,12 @@ type ChatReasoningConfig struct {
 	Effort string `json:"effort,omitempty"`
 	// Summary is the reasoning summary verbosity (auto/concise/detailed/null).
 	Summary *string `json:"summary,omitempty"`
+}
+
+// CacheControl mirrors the OpenRouter/Anthropic top-level cache_control directive.
+type CacheControl struct {
+	Type string `json:"type"`
+	TTL  string `json:"ttl,omitempty"`
 }
 
 // StreamOptions for streaming responses.

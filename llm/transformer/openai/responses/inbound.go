@@ -254,6 +254,16 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		}
 	}
 
+	// Preserve top-level cache_control (OpenRouter/Anthropic prompt-caching
+	// marker) through TransformerMetadata as opaque json.RawMessage; canonical
+	// llm.Request has no CacheControl field, so without this it is dropped on
+	// cross-format conversion (mirrors top_k handling).
+	if req.CacheControl != nil {
+		if b, err := json.Marshal(req.CacheControl); err == nil {
+			chatReq.TransformerMetadata[shared.TransformerMetadataKeyCacheControl] = json.RawMessage(b)
+		}
+	}
+
 	// Convert tool choice
 	if req.ToolChoice != nil {
 		chatReq.ToolChoice = convertToolChoiceToLLM(req.ToolChoice)

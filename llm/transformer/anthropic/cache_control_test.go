@@ -592,8 +592,10 @@ func TestInboundTransformer_TopLevelCacheControl(t *testing.T) {
 		require.NotNil(t, got)
 		require.NotNil(t, got.TransformerMetadata)
 
-		cc, ok := got.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl)
-		require.True(t, ok, "cache_control should be stored as *CacheControl in TransformerMetadata")
+		raw, ok := got.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage)
+		require.True(t, ok, "cache_control should be stored as json.RawMessage in TransformerMetadata")
+		var cc CacheControl
+		require.NoError(t, json.Unmarshal(raw, &cc))
 		require.Equal(t, "ephemeral", cc.Type)
 		require.Empty(t, cc.TTL)
 	})
@@ -615,8 +617,10 @@ func TestInboundTransformer_TopLevelCacheControl(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, got)
 
-		cc, ok := got.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl)
+		raw, ok := got.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage)
 		require.True(t, ok)
+		var cc CacheControl
+		require.NoError(t, json.Unmarshal(raw, &cc))
 		require.Equal(t, "ephemeral", cc.Type)
 		require.Equal(t, "1h", cc.TTL)
 	})

@@ -19,9 +19,18 @@
 - **grill 结论(不修)**:body session_id 是 OpenRouter **平台级**字段(语义=让 OpenRouter 自身做粘性)。AxonHub 作网关:(1)当自己的粘性 key→需路由前中间件解析 body(body 只能读一次)+ 改核心路由语义 + body 优先改现有 header 客户端路由行为 + 与作者 traceID 体系(codex/session-affinity,管日志+tracing)对齐未定;(2)只透传→真正上游(OpenAI/Anthropic 直连)不认此字段,轻忽略重 400。维持只认 header(traceID→TraceStickyKeyProvider 选 key + GetSessionID 兜底)工作正常。
 - **状态**:⏭ 设计性不修·文档化(类 #1b/#5)。
 
-## ε-3 · #11 — chat·responses 顶层 cache_control(待 grill)
-- **Problem**:master 表待复核:chat/responses 顶层 cache_control 与 anthropic cache_control 桥接。
-- **状态**:待 grill。
+## ε-3 · #11 — chat·responses 顶层 cache_control 被丢(D20)
+- **Problem**:OpenRouter 规范三协议均有顶层 `cache_control`($ref AnthropicCacheControlDirective,yaml:4769/8930/13074)。anthropic 路径已闭合(inbound stash `*CacheControl`→outbound restore,跳过自身断点优化);但 chat/responses 线模型未声明该字段→lenient 丢。chat 客户端发 cache_control 路由到 Claude 上游时缓存控制丢失。
+- **grill 证据(已坐实)**:
+  - `anthropic/inbound_convert.go:87`:`TransformerMetadataKeyCacheControl = anthropicReq.CacheControl`(存 `*CacheControl` 指针);`outbound_convert.go:217` 断言 `.(*CacheControl)` 还原。
+  - chat/responses:Request 无 cache_control 字段,无 stash/restore。
+  - **跨包类型障碍**:cache_control 是结构体(非 int64 原生类型),openai/responses 不能引用 `anthropic.CacheControl`(依赖方向:anthropic 测试已 import openai,反向非测试 import 会耦合/循环)。故不能照搬 top_k(`*int64` 通用)。
+- **Solution**(照 F21 context_management 的 json.RawMessage 透传范式,三方统一):
+  - `shared` 加中性 key `TransformerMetadataKeyCacheControl = "anthropic_cache_control"`(值不变,持久化兼容);anthropic 常量改 alias shared(单一来源,零行为变化)。
+  - anthropic inbound stash 改 `asJSONRawMessage(anthropicReq.CacheControl)`;outbound restore 改 RawMessage 反序列化成 `*CacheControl`(anthropic→anthropic 往返同构闭合,断点优化看 req.CacheControl 非 nil 不受影响)。
+  - openai/responses 各加 `CacheControl` 类型(`{Type,TTL}` 同构)+ Request 字段;inbound stash asJSONRawMessage;outbound restore 反序列化。
+- **测试设计**:镜像 F21。(1)chat 入站 cache_control→metadata RawMessage;chat→anthropic 跨格式还原;(2)responses 同;(3)anthropic→anthropic 往返不破(回归守卫);(4)缺省守卫。
+- **状态**:grill 完成·待实现(TDD)。
 
 ---
 
@@ -30,4 +39,4 @@
 |---|---|---|
 | ε-1 #13 | ✅ 已完成·已验收 | Curie |
 | ε-2 #10 | ⏭ 设计性不修·文档化 | — |
-| ε-3 #11 | 待 grill | — |
+| ε-3 #11 | ✅ 已完成·已验收 | Lagrange |

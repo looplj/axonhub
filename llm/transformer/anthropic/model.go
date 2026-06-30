@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/samber/lo"
+
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // MessageRequest represents the Anthropic Messages API request format.
@@ -182,7 +184,7 @@ const TransformerMetadataKeyThinkingDisplay = "thinking_display"
 // Anthropic outbound transformer restores it onto the upstream request
 // untouched and skips its own breakpoint optimization pipeline so that
 // Anthropic's automatic caching behavior is preserved.
-const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
+const TransformerMetadataKeyCacheControl = shared.TransformerMetadataKeyCacheControl
 
 // TransformerMetadataKeyContextManagement is the key for storing the top-level
 // context_management (Anthropic context-compression strategy, edits[]) carried

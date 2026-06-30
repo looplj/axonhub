@@ -1,6 +1,8 @@
 package openai
 
 import (
+	"encoding/json"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -78,6 +80,19 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		}
 		if r.Reasoning.Summary != nil {
 			req.ReasoningSummary = r.Reasoning.Summary
+		}
+	}
+
+	// Preserve top-level cache_control (OpenRouter/Anthropic prompt-caching
+	// marker) through TransformerMetadata as opaque json.RawMessage; canonical
+	// llm.Request has no CacheControl field, so without this it is dropped on
+	// cross-format conversion (mirrors top_k handling).
+	if r.CacheControl != nil {
+		if b, err := json.Marshal(r.CacheControl); err == nil {
+			if req.TransformerMetadata == nil {
+				req.TransformerMetadata = map[string]any{}
+			}
+			req.TransformerMetadata[TransformerMetadataKeyCacheControl] = json.RawMessage(b)
 		}
 	}
 

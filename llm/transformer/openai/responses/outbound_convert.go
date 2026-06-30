@@ -536,6 +536,18 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	return reasoning
 }
 
+// restoreCacheControl rebuilds the top-level cache_control directive from the
+// opaque json.RawMessage carried in TransformerMetadata (mirrors top_k handling).
+func restoreCacheControl(meta map[string]any) *CacheControl {
+	if raw, ok := meta[shared.TransformerMetadataKeyCacheControl].(json.RawMessage); ok && len(raw) > 0 {
+		var cc CacheControl
+		if err := json.Unmarshal(raw, &cc); err == nil && cc.Type != "" {
+			return &cc
+		}
+	}
+	return nil
+}
+
 func annotationToLLM(a Annotation, textRuneOffset int64) llm.Annotation {
 	annotation := llm.Annotation{
 		Type: a.Type,
