@@ -41,9 +41,9 @@
 - **状态**:待 grill(Problem 引自 master 表第4行已核实)。
 
 ## δ-5 · #5 — thinking 往返 + utils.go:34 覆盖范围复核
-- **Problem**:master 表 part-D 第5行:anthropic `thinking` 自身往返无损(enabled/disabled/adaptive/display 全保)。⚠️ 待复核:claudecode `disableThinkingIfToolChoiceForcedStructured`(utils.go:34)可能误伤合法 adaptive 思考。
-- **Solution**:待 grill 复核 utils.go:34 覆盖范围;主体维持。
-- **状态**:待 grill。
+- **Problem**:master 表 part-D 第5行:anthropic `thinking` 自身往返无损(enabled/disabled/adaptive/display 全保)。⚠️ 待复核:claudecode `disableThinkingIfToolChoiceForcedStructured`(utils.go:34)是否误伤合法 adaptive 思考。
+- **复核结论**:✅ 无 bug,不修(类 #1b)。grill 证据:`disableThinkingIfToolChoiceForcedStructured`(claudecode/utils.go:34,claudecode/outbound.go:133 调用)仅在 ToolChoice 强制工具(any 或 named tool)时清空 `ReasoningEffort`+`ReasoningBudget`,**不触碰 `TransformerMetadata`**。adaptive 思考的 `thinking_type='adaptive'` metadata 存活→出站 `outbound_convert.go:156` 按 metadata 重建 `Thinking{Type:"adaptive"}`,故 adaptive **不被误伤**。仅 enabled(effort 驱动,无 thinking_type metadata)在强制工具时被禁用,属 Claude Code 设计性约定(强制工具时跳过显式 extended thinking 以免浪费)。master 表"⚠️待复核误伤 adaptive"顾虑不成立,撤销。
+- **状态**:✅ 复核完成·无 bug·不修(主体维持)。
 
 ---
 
@@ -54,4 +54,4 @@
 | δ-2 F21 | ✅ 已完成·已验收 | Confucius |
 | δ-3 #6 | ✅ 已完成·已验收 | Lovelace |
 | δ-4 #4 | 待 grill | — |
-| δ-5 #5 | 待 grill | — |
+| δ-5 #5 | ✅ 复核无 bug·不修 | — |
