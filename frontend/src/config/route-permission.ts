@@ -102,6 +102,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/project/usage-stats',
+        requiredScopes: ['read_requests'],
+        mode: 'hidden',
+      },
+      {
         path: '/project/traces',
         requiredScopes: ['read_requests'],
         mode: 'hidden',

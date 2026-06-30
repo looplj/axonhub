@@ -211,6 +211,17 @@ type CostStatsByAPIKey {
   cost: Float!
 }
 
+"""
+Usage statistics grouped by user
+"""
+type UsageStatsByUser {
+  userId: ID!
+  userName: String!
+  requestCount: Int!
+  totalTokens: Int!
+  totalCost: Float!
+}
+
 extend type Query {
   dashboardOverview: DashboardOverview!
   requestStats: RequestStats!
@@ -240,4 +251,5 @@ extend type Query {
   costStatsByChannel(timeWindow: String): [CostStatsByChannel!]!
   costStatsByModel(timeWindow: String): [CostStatsByModel!]!
   costStatsByAPIKey(timeWindow: String): [CostStatsByAPIKey!]!
+  usageStatsByUser(timeWindow: String): [UsageStatsByUser!]!
 }

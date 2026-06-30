@@ -4,6 +4,7 @@
   "dashboard.sections.apiKeys": "API Key Analytics",
   "dashboard.sections.models": "Model Analytics",
   "dashboard.sections.performance": "Performance Analytics",
+  "dashboard.sections.users": "User Analytics",
   "dashboard.cards.requestsByTime": "Requests by Time",
   "dashboard.cards.successRate": "Success Rate",
   "dashboard.cards.tokenStats": "Token Statistics",
@@ -91,5 +92,12 @@
   "dashboard.channelSuccessRates.inputTokens": "Input",
   "dashboard.channelSuccessRates.outputTokens": "Output",
   "dashboard.channelSuccessRates.totalTokens": "Total",
-  "dashboard.viewAll": "View All"
+  "dashboard.viewAll": "View All",
+  "dashboard.charts.tokensByUser": "Tokens by User",
+  "dashboard.charts.tokensByUserDescription": "Token usage distribution across users.",
+  "dashboard.charts.noUserData": "No user usage data available",
+  "dashboard.stats.user": "User",
+  "dashboard.stats.requestCount": "Requests",
+  "dashboard.stats.tokenCount": "Tokens",
+  "dashboard.stats.userCost": "Cost"
 }

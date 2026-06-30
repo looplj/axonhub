@@ -43,8 +43,8 @@ func hasSystemRoleScope(user *ent.User, requiredScope ScopeSlug) bool {
 	return false
 }
 
-// userHasSystemScope checks if a user has the required scope either directly or through roles.
-func userHasSystemScope(user *ent.User, requiredScope ScopeSlug) bool {
+// HasSystemScope checks if a user has the required scope either directly or through roles.
+func HasSystemScope(user *ent.User, requiredScope ScopeSlug) bool {
 	// Owner has all permissions
 	if user.IsOwner {
 		return true

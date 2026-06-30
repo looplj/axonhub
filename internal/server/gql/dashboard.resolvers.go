@@ -9,12 +9,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -1755,4 +1757,117 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 	}
 
 	return response, nil
+}
+
+// UsageStatsByUser is the resolver for the usageStatsByUser field.
+func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string) ([]*UsageStatsByUser, error) {
+	requiredScope := scopes.ScopeReadDashboard
+	if authz.HasScope(ctx, scopes.ScopeReadRequests) {
+		requiredScope = scopes.ScopeReadRequests
+	}
+	ctx = authz.WithScopeDecision(ctx, requiredScope)
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("project ID not found in context")
+	}
+
+	var since time.Time
+	var until time.Time
+	applyGTE := false
+	applyLTE := false
+
+	if timeWindow != nil && *timeWindow != "" {
+		if val, cut := strings.CutPrefix(*timeWindow, "custom:"); cut {
+			parts := strings.Split(val, ",")
+			if len(parts) == 2 {
+				if t1, err := time.Parse(time.RFC3339, parts[0]); err == nil {
+					since = t1
+					applyGTE = true
+				}
+				if t2, err := time.Parse(time.RFC3339, parts[1]); err == nil {
+					until = t2
+					applyLTE = true
+				}
+			}
+		} else {
+			var applyFilter bool
+			since, applyFilter = r.parseTimeWindow(ctx, timeWindow)
+			applyGTE = applyFilter
+		}
+	}
+
+	type userUsageStats struct {
+		UserID      int     `json:"user_id"`
+		FirstName   string  `json:"first_name"`
+		LastName    string  `json:"last_name"`
+		Email       string  `json:"email"`
+		Count       int     `json:"request_count"`
+		TotalTokens int64   `json:"total_tokens"`
+		TotalCost   float64 `json:"total_cost"`
+	}
+
+	var results []userUsageStats
+
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDNotNil()).
+		Where(usagelog.ProjectIDEQ(projectID))
+
+	if applyGTE {
+		query = query.Where(usagelog.CreatedAtGTE(since))
+	}
+	if applyLTE {
+		query = query.Where(usagelog.CreatedAtLTE(until))
+	}
+
+	err := query.Modify(func(s *sql.Selector) {
+		apiKeyTable := sql.Table(apikey.Table)
+		userTable := sql.Table("users")
+
+		s.Join(apiKeyTable).On(
+			s.C(usagelog.FieldAPIKeyID),
+			apiKeyTable.C(apikey.FieldID),
+		)
+		s.Join(userTable).On(
+			apiKeyTable.C(apikey.FieldUserID),
+			userTable.C("id"),
+		)
+
+		s.Where(sql.EQ(apiKeyTable.C(apikey.FieldDeletedAt), 0))
+
+		s.Select(
+			sql.As(userTable.C("id"), "user_id"),
+			sql.As(userTable.C("first_name"), "first_name"),
+			sql.As(userTable.C("last_name"), "last_name"),
+			sql.As(userTable.C("email"), "email"),
+			sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+		).
+			GroupBy(
+				userTable.C("id"),
+				userTable.C("first_name"),
+				userTable.C("last_name"),
+				userTable.C("email"),
+			).
+			OrderBy(sql.Desc("request_count"))
+	}).Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get usage stats by user: %w", err)
+	}
+
+	return lo.Map(results, func(item userUsageStats, _ int) *UsageStatsByUser {
+		userName := fmt.Sprintf("%s %s", item.FirstName, item.LastName)
+		userName = strings.TrimSpace(userName)
+		if userName == "" {
+			userName = item.Email
+		}
+		return &UsageStatsByUser{
+			UserID:       objects.GUID{Type: ent.TypeUser, ID: item.UserID},
+			UserName:     userName,
+			RequestCount: item.Count,
+			TotalTokens:  int(item.TotalTokens),
+			TotalCost:    item.TotalCost,
+		}
+	}), nil
 }
