@@ -122,6 +122,25 @@ func TestWorker_cleanupExecutionExternalStorageDeletesFsArtifacts(t *testing.T) 
 	}
 }
 
+func TestHasRealDirectories(t *testing.T) {
+	cases := []struct {
+		typ  datastorage.Type
+		want bool
+	}{
+		{datastorage.TypeFs, true},
+		{datastorage.TypeWebdav, true},
+		{datastorage.TypeS3, false},
+		{datastorage.TypeGcs, false},
+		{datastorage.TypeDatabase, false},
+	}
+
+	for _, c := range cases {
+		if got := hasRealDirectories(c.typ); got != c.want {
+			t.Errorf("hasRealDirectories(%s) = %v, want %v", c.typ, got, c.want)
+		}
+	}
+}
+
 func setupWorkerWithFSStorage(t *testing.T) (*Worker, context.Context, *ent.DataStorage, string) {
 	t.Helper()
 

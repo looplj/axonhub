@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
@@ -350,7 +351,13 @@ func (w *Worker) cleanupExecutionExternalStorage(ctx context.Context, exec *ent.
 		biz.GenerateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
 		biz.GenerateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
 		biz.GenerateExecutionResponseChunksKey(exec.ProjectID, exec.RequestID, exec.ID),
-		biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID),
+	}
+
+	// Directory-marker keys only exist as real directories on filesystem-like
+	// backends. On object stores (S3/GCS) they were never created, so deleting
+	// them only wastes a ListObjectsV2 (Class A); skip them there.
+	if hasRealDirectories(ds.Type) {
+		keys = append(keys, biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID))
 	}
 
 	for _, key := range keys {
@@ -387,8 +394,15 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 		biz.GenerateRequestBodyKey(req.ProjectID, req.ID),
 		biz.GenerateResponseBodyKey(req.ProjectID, req.ID),
 		biz.GenerateResponseChunksKey(req.ProjectID, req.ID),
-		biz.GenerateRequestExecutionsDirKey(req.ProjectID, req.ID),
-		biz.GenerateRequestDirKey(req.ProjectID, req.ID),
+	}
+
+	// See cleanupExecutionExternalStorage: object stores have no real
+	// directories, so only attempt directory-marker deletes on FS/WebDAV.
+	if hasRealDirectories(ds.Type) {
+		keys = append(keys,
+			biz.GenerateRequestExecutionsDirKey(req.ProjectID, req.ID),
+			biz.GenerateRequestDirKey(req.ProjectID, req.ID),
+		)
 	}
 
 	for _, key := range keys {
@@ -400,6 +414,16 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 			)
 		}
 	}
+}
+
+// hasRealDirectories reports whether the storage backend materializes
+// directories as real entries that must be explicitly removed during cleanup.
+// Object stores (S3/GCS) have no real directories — the "*DirKey" paths are
+// never created, so attempting to delete them only costs a wasted
+// ListObjectsV2 (Class A). Filesystem and WebDAV backends do create real
+// directories that should be removed.
+func hasRealDirectories(t datastorage.Type) bool {
+	return t == datastorage.TypeFs || t == datastorage.TypeWebdav
 }
 
 func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int]*ent.DataStorage) (*ent.DataStorage, error) {
