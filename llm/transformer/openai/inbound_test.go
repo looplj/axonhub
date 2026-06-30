@@ -1154,3 +1154,43 @@ func TestInboundTransformer_TransformResponse_WithGeminiPrefixedToolCallMetadata
 		oaiResp.Choices[0].Message.ToolCalls[0].ExtraContent.Google.ThoughtSignature,
 	)
 }
+
+// D25/C13: logit_bias must accept float values (OpenRouter spec allows double).
+func TestInboundTransformer_TransformRequest_LogitBiasAcceptsFloat(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	req := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hi"}],"logit_bias":{"5043":-100.5}}`),
+	}
+
+	got, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err, "float logit_bias should decode (OpenRouter spec allows double)")
+	require.NotNil(t, got.LogitBias, "LogitBias must be populated")
+	require.Contains(t, got.LogitBias, "5043", "LogitBias must carry token 5043")
+	require.InDelta(t, -100.5, got.LogitBias["5043"], 0.0001, "float logit_bias value must be preserved exactly")
+}
+
+// D25/C13: completion path (/v1/completions) must also accept float logit_bias.
+func TestCompletionInboundTransformer_TransformRequest_LogitBiasAcceptsFloat(t *testing.T) {
+	transformer := NewCompletionInboundTransformer()
+
+	req := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-3.5-turbo-instruct","prompt":"hi","logit_bias":{"5043":-100.5}}`),
+	}
+
+	got, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err, "float logit_bias should decode in /v1/completions")
+	require.NotNil(t, got.Completion, "Completion must be populated")
+	require.NotNil(t, got.Completion.LogitBias, "Completion.LogitBias must be populated")
+	require.InDelta(t, -100.5, got.Completion.LogitBias["5043"], 0.0001, "float logit_bias value must be preserved on completion path")
+}

@@ -59,7 +59,7 @@ type Request struct {
 	User *string `json:"user,omitempty"`
 
 	// LogitBias modifies likelihood of specified tokens.
-	LogitBias map[string]int64 `json:"logit_bias,omitempty"`
+	LogitBias map[string]float64 `json:"logit_bias,omitempty"`
 
 	// Metadata is key-value pairs attached to the object.
 	Metadata map[string]string `json:"metadata,omitempty"`

@@ -665,3 +665,13 @@ func TestMessage_ReasoningDetailsAndImagesRoundTrip(t *testing.T) {
 		require.Equal(t, "data:image/png;base64,abc", m.Images[0].ImageURL.URL)
 	})
 }
+
+// D25/C13: chat outbound must preserve float logit_bias through canonical round-trip.
+func TestRequestFromLLM_LogitBiasPreservesFloat(t *testing.T) {
+	req := RequestFromLLM(&llm.Request{
+		Model: "gpt-4",
+		LogitBias: map[string]float64{"5043": -100.5},
+	}, ReasoningFieldNone)
+	require.NotNil(t, req.LogitBias, "outbound Request.LogitBias must be populated")
+	require.InDelta(t, -100.5, req.LogitBias["5043"], 0.0001, "chat outbound must preserve float logit_bias")
+}

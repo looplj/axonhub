@@ -18,7 +18,7 @@ type CompletionRequest struct {
 	PresencePenalty  *float64           `json:"presence_penalty,omitempty"`
 	FrequencyPenalty *float64           `json:"frequency_penalty,omitempty"`
 	BestOf           *int64             `json:"best_of,omitempty"`
-	LogitBias        map[string]int64   `json:"logit_bias,omitempty"`
+	LogitBias        map[string]float64   `json:"logit_bias,omitempty"`
 	Seed             *int64             `json:"seed,omitempty"`
 	User             string             `json:"user,omitempty"`
 }
