@@ -17,10 +17,12 @@
 
 | F21(context_management 上下文压缩策略丢) | δ | ✅ 已修·验收通过 | `anthropic/model.go`(MessageRequest 加 `ContextManagement json.RawMessage` 字段 + `TransformerMetadataKeyContextManagement` 常量)、`inbound_convert.go`(cache_control stash 后加 context_management stash)、`outbound_convert.go`(cache_control restore 后加 `asJSONRawMessage` restore,复用 tool_blocks.go 既有助手)、`context_management_test.go:+TestContextManagementRoundTrip`(4 子测镜像 top_k) | 先红(入站 stash 缺 + 出站 restore 缺)→加字段+stash+restore→绿;anthropic 包全 ok,6 包无回归 | 代理 Confucius(同模)7 标准 APPROVED;范围完整性:流式复用 convertToLLMRequest、出站唯一构造点、json.RawMessage 贴合作者 Caller/tool_result 先例、canonical 红线未破 |
 
+| #6(output_config format/task_budget 丢) | δ | ✅ 已修·验收通过 | `anthropic/model.go`(OutputConfig 加 Format/TaskBudget json.RawMessage 字段 + TransformerMetadataKeyOutputConfig 常量)、`inbound_convert.go`(条件放宽 OutputConfig!=nil,stash 完整 *OutputConfig,effort 子映射保留)、`outbound_convert.go`(supportsOutputConfig 优先回切完整对象+effort-only 回退,非 supports 维持 thinking 降级)、`output_config_format_test.go:+TestOutputConfig_FormatTaskBudgetRoundTrip`(5 子测含 format-only+向后兼容) | 先红(inbound 全量/format-only stash 缺+outbound 全量/format-only restore 缺)→加字段+stash+restore 重构→绿;既有 OutputConfig 测试无回归,6 包全绿 | 代理 Lovelace(同模)7 标准 APPROVED(标准3 仅 AGENTS.md 卫生);范围完整性:流式复用 convertToLLMRequest、出站唯一 restore 点(DeepSeek 合成点被 full-stash 覆盖)、effort max→xhigh 未动、canonical 红线未破;空 output_config:{} 由 DROP 改为保真透传(lossless,可接受) |
+
 ## 待办切片
 - β Anthropic 工具链(切片完成):#1e dptu / #3 parallel_tool_calls(✅) / #1b builtin(⏭按作者设计·不修) / 非流侧#1c(D11)(✅)
 - γ C区采样(切片完成):top_k对称化(✅) / rep_penalty·min_p·top_a保留(✅) / logit_bias浮点容错(✅)
-- δ 推理簇:#4 resp.reasoning.enabled / #5 thinking清空不全 / #6 output_config.format-task_budget / F19 prompt接线(✅) / F21 ctx_mgmt(✅)
+- δ 推理簇:#4 resp.reasoning.enabled / #5 thinking清空不全 / #6 output_config.format-task_budget(✅) / F19 prompt接线(✅) / F21 ctx_mgmt(✅)
 - ε 身份会话缓存:#13 user桥接 / #10 session_id body变体 / #11 chat·responses顶层cache_control
 - ζ 流式杂项:F2 stream_options双向usage闭合 + convertStreamOptions早return守卫
 - η P0压轴:D1/#1a namespace容器经 TransformerMetadata 映射往返

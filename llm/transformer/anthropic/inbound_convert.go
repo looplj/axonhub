@@ -387,15 +387,20 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	}
 
 	// Convert output_config
-	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
-		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
-		// Map output_config effort to reasoning_effort so other outbound transformers can use it.
-		// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
-		// so downstream transformers can handle it explicitly.
-		if anthropicReq.OutputConfig.Effort == "max" {
-			chatReq.ReasoningEffort = "xhigh"
-		} else {
-			chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+	if anthropicReq.OutputConfig != nil {
+		// Stash the full OutputConfig so the Anthropic outbound can restore it
+		// verbatim (including format / task_budget) when the upstream supports it.
+		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfig] = anthropicReq.OutputConfig
+		if anthropicReq.OutputConfig.Effort != "" {
+			chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
+			// Map output_config effort to reasoning_effort so other outbound transformers can use it.
+			// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
+			// so downstream transformers can handle it explicitly.
+			if anthropicReq.OutputConfig.Effort == "max" {
+				chatReq.ReasoningEffort = "xhigh"
+			} else {
+				chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+			}
 		}
 	}
 

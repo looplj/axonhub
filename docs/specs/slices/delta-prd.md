@@ -25,10 +25,15 @@
 - **Out of scope**:跨格式至 chat/responses(二者 spec 无 context_management,该腿正确 DROP);建模 edits 子结构(网关只透传不解释,master 表允许"透传");response 侧 applied_edits 回显(属 D10,另计)。
 - **状态**:✅ 已完成·同模验收 Confucius 7 标准 APPROVED(json.RawMessage 贴合 Caller/tool_result 先例、asJSONRawMessage 复用、范围完整、canonical 红线未破)。
 
-## δ-3 · #6 — output_config effort max→xhigh 有损 + format/task_budget 子项疑似 DROP(P1)
-- **Problem**:master 表 part-D 推理控制区:anthropic `output_config.effort=='max'`→canonical `xhigh` 有损映射(仅 supportsOutputConfig 时可逆);`output_config` 的 `format`/`task_budget` 子项疑似未被捕获→DROP。待核实源码行。
-- **Solution**:待 grill 核实。方向:不支持平台保留 max 标志位(经 metadata);补 format/task_budget 透传。
-- **状态**:待 grill。
+## δ-3 · #6 — output_config format/task_budget 子项丢失(P1)
+- **Problem**:grill 已坐实:anthropic `output_config`(MessagesOutputConfig,yaml:8855/9048)有 effort/format(json_schema)/task_budget(tokens)三子项,但作者 `OutputConfig` 结构体(model.go:210)仅 `Effort` 字段,inbound_convert.go:389 仅 stash effort + max→xhigh 映射,outbound 仅 restore effort。`format`/`task_budget` 未建模→lenient Unmarshal 静默吞→DROP。注:`effort=='max'→xhigh` 实为设计性跨格式适配(stash 保留原始 max,supportsOutputConfig 出站回切 max),非 bug,不动。
+- **Solution**(补 format/task_budget 透传,守红线——不加 canonical 槽,json.RawMessage 不透明透传):
+  1. `anthropic/model.go`:OutputConfig 加 `Format json.RawMessage`+`TaskBudget json.RawMessage`(网关不解释,与 F21/Caller 同范式);加常量 `TransformerMetadataKeyOutputConfig="anthropic_output_config"`(存完整 *OutputConfig)。
+  2. `anthropic/inbound_convert.go`:条件放宽为 `OutputConfig != nil`,stash 完整 `*OutputConfig` 到新 key;effort 子项映射逻辑保留(effort 非空时仍写 effort key + ReasoningEffort)。
+  3. `anthropic/outbound_convert.go`:supportsOutputConfig 分支优先回切完整 stashed `*OutputConfig`(带 format/task_budget,含 format-only 无 effort 边界),回退 effort-only(向后兼容);非 supportsOutputConfig 维持 thinking 降级。
+- **Testing**:红:inbound 全量/format-only stash 缺 + outbound 全量/format-only restore 缺;绿:format/task_budget 往返保真 + format-only 边界 + effort-only 向后兼容。镜像 TestOutputConfig_Outbound/Inbound 范式。
+- **Out of scope**:effort max→xhigh 跨格式适配(设计性,不动);跨格式至 chat/responses(二者无 output_config,该腿正确 DROP);effort validate 缺 xhigh(旁支,不顺手改)。
+- **状态**:✅ 已完成·同模验收 Lovelace 7 标准 APPROVED(代码 6/7 PASS,标准3 仅 AGENTS.md 卫生;空 output_config:{} 由 DROP 改保真透传判定可接受;effort max→xhigh 未动)。
 
 ## δ-4 · #4 — chat `reasoning` 对象整体丢失 + responses `reasoning.enabled` 未捕获(🔴最高危)
 - **Problem**:master 表 part-D 第4行:chat 线模型(openai/model.go)未声明 `reasoning` 对象字段→整个 reasoning 配置(effort+summary)入站丢失,客户端唯有改用平铺 `reasoning_effort`(及非规范 `reasoning_summary`)才能部分救活;responses 侧 `reasoning.enabled` bool 子项未捕获(`responses/model.go:177` Reasoning 结构体仅 Effort/GenerateSummary/Summary/MaxTokens)。判定 ❌ HIGH-RISK DROP(chat)+ ⚠️ responses.enabled 缺失。
@@ -47,6 +52,6 @@
 |---|---|---|
 | δ-1 F19 | ✅ 已完成·已验收 | Anscombe |
 | δ-2 F21 | ✅ 已完成·已验收 | Confucius |
-| δ-3 #6 | 待 grill | — |
+| δ-3 #6 | ✅ 已完成·已验收 | Lovelace |
 | δ-4 #4 | 待 grill | — |
 | δ-5 #5 | 待 grill | — |

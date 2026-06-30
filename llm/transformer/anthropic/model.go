@@ -165,6 +165,14 @@ const TransformerMetadataKeyThinkingType = "thinking_type"
 // TransformerMetadataKeyOutputConfigEffort is the key for storing output config effort in TransformerMetadata.
 const TransformerMetadataKeyOutputConfigEffort = "output_config_effort"
 
+// TransformerMetadataKeyOutputConfig is the key for storing the full Anthropic
+// output_config (carrying effort + format + task_budget) so the Anthropic
+// outbound can restore it verbatim when the upstream supports output_config.
+// The value is *OutputConfig. Effort is ALSO mirrored under
+// TransformerMetadataKeyOutputConfigEffort for the cross-format reasoning_effort
+// mapping and the non-output_config thinking fallback.
+const TransformerMetadataKeyOutputConfig = "anthropic_output_config"
+
 // TransformerMetadataKeyThinkingDisplay is the key for storing thinking display in TransformerMetadata.
 const TransformerMetadataKeyThinkingDisplay = "thinking_display"
 
@@ -212,6 +220,17 @@ type OutputConfig struct {
 	// Any of "low", "medium", "high", "max".
 	// "max" is only supported by claude-opus-4-6.
 	Effort string `json:"effort,omitempty" validate:"omitempty,oneof=low medium high max"`
+
+	// Format specifies a structured-output schema (json_schema) for the response.
+	// Anthropic-only; carried through TransformerMetadata and restored verbatim
+	// when the upstream supports output_config. Kept as json.RawMessage (opaque)
+	// since the gateway does not interpret the schema.
+	Format json.RawMessage `json:"format,omitempty"`
+
+	// TaskBudget is an advisory agentic-turn token budget the model counts down.
+	// Anthropic-only; carried through TransformerMetadata and restored verbatim
+	// when the upstream supports output_config.
+	TaskBudget json.RawMessage `json:"task_budget,omitempty"`
 }
 
 type ToolChoice struct {
