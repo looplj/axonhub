@@ -3,7 +3,7 @@
 > 唯一规范基准:`docs/specs/openrouter-chat-messages-responses.min.yaml`(OpenRouter 官方 chat/messages/responses 三合一 OpenAPI spec)
 > 权威字段表:`docs/specs/master-conversion-table.md`　修复跟踪:`docs/fix-tracker.md`
 > 分支:`codex-transformer-field-fixes`　llm 为独立 Go 子模块(`cd llm && ...`)
-> 更新:2026-06-30
+> 更新:2026-07-01
 
 ## 核心架构(作者设计,本次修复不偏离)
 三协议(chat_completions / anthropic_messages / openai_responses)经 **canonical 中间层 `llm.Request`** 互转。协议独有字段不污染 canonical 顶层,只走 `TransformerMetadata` 透传往返。canonical 顶层仅保留三协议**最大公约数**槽(ReasoningEffort/Budget/Summary、采样族、Store/PromptCacheKey/SafetyIdentifier/User/ServiceTier 等)。
@@ -31,6 +31,9 @@
 | ζ | F2 | stream_options 跨格式 + convertStreamOptions 早 return | ⏭ 复核无 bug·不修 | — |
 | η | D1/#1a | namespace 容器经 TransformerMetadata 往返(P0 最高危结构性缺口) | ✅ 已修·已验收 | (η) |
 | 补遗 | 跨协议 | chat/anthropic/gemini 出口不传播请求 TransformerMetadata(非流式+流式) | ✅ 已修·已验收 | `a1b10836`+`9e3905b2` |
+| 补遗·续 | 跨协议 | openrouter/nanogpt/gemini-openai 自建出口不传播 TransformerMetadata | ✅ 已修·回归通过 | `aa3bcfed` |
+| 补遗·重构 | 跨协议 | responses 出站内联传播统一改 shared helper(消除孤例) | ✅ 已修·回归通过 | `3f377e1c` |
+| 补遗·续 | 跨协议 | copilot chat 自建出口请求+响应双缺口不传播 TransformerMetadata | ✅ 已修·回归通过 | `b762f877` |
 
 ## 红线(全程守住)
 - canonical `llm.Request` / `llm.Function` 不加协议独有顶层槽(Namespace/TopK/采样旋钮/Prompt/ContextManagement/OutputConfig/Reasoning 对象/ReasoningEnabled 均只走 TransformerMetadata)。
