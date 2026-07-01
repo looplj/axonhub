@@ -313,7 +313,9 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 
-	return chatResp.ToOpenAIResponse().ToLLMResponse(), nil
+	llmResp := chatResp.ToOpenAIResponse().ToLLMResponse()
+	shared.MergeResponseMetadata(llmResp, httpResp)
+	return llmResp, nil
 }
 
 // transformImageGenerationResponse transforms OpenRouter image generation response to llm.Response.
@@ -447,6 +449,13 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	transformedStream := streams.MapErr(filteredStream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
 	})
+
+	// Propagate request TransformerMetadata onto the first chunk so cross-protocol
+	// fields (e.g. the namespace tool map) survive the streaming round-trip —
+	// mirroring the openai base outbound (outbound.go:305).
+	if req != nil && req.TransformerMetadata != nil {
+		transformedStream = shared.PropagateStreamMetadata(transformedStream, req.TransformerMetadata)
+	}
 
 	// Always append our own DONE event at the end
 	return streams.AppendStream(transformedStream, llm.DoneResponse), nil

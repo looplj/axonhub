@@ -13,6 +13,9 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/deepseek"
+	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
+	"github.com/looplj/axonhub/llm/transformer/nanogpt"
+	"github.com/looplj/axonhub/llm/transformer/openrouter"
 	chatoutbound "github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -276,4 +279,473 @@ func TestCrossProtocol_DeepSeekIndependentOutboundPropagatesMetadata(t *testing.
 		"deepseek outbound must propagate TransformerMetadata on independently-constructed request")
 	_, exists := httpReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
 	require.True(t, exists, "deepseek outbound must carry the namespace tool map")
+}
+// TestCrossProtocol_OpenRouterResponseMetadataRoundTrip verifies that openrouter —
+// which builds its own TransformResponse/TransformStream for the chat path (NOT
+// delegating to the chat base, unlike deepseek/moonshot/zai/doubao) — propagates
+// TransformerMetadata back on the response so a responses client's namespace tool
+// map survives the cross-protocol round-trip.
+//
+// Regression guard: openrouter's self-built chat response previously skipped
+// shared.MergeResponseMetadata, so the namespace map was lost on the return trip
+// and tool-call names could not be restored.
+func TestCrossProtocol_OpenRouterResponseMetadataRoundTrip(t *testing.T) {
+	// Step 1: responses inbound (request) — namespace map recorded
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model": "openai/gpt-4o",
+			"input": "use the tool",
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{
+						{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}},
+					},
+				},
+			},
+		}),
+	}
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	_, ok := llmReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, ok, "namespace map must be recorded by responses inbound")
+
+	// Step 2: openrouter outbound (request) — TransformerMetadata propagated
+	orOut, err := openrouter.NewOutboundTransformer("https://openrouter.ai/api/v1", "test-key")
+	require.NoError(t, err)
+	llmReq.Model = "openai/gpt-4o"
+	httpReq, err := orOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.NotNil(t, httpReq.TransformerMetadata, "openrouter outbound must propagate TransformerMetadata on request")
+	_, exists := httpReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, exists, "openrouter outbound must carry the namespace tool map")
+
+	// Step 3: mock chat upstream response (function_call with flattened name)
+	chatRespBody := mustMarshal(t, map[string]any{
+		"id":      "chatcompl_1",
+		"object":  "chat.completion",
+		"model":   "openai/gpt-4o",
+		"created": 1700000000,
+		"choices": []map[string]any{
+			{
+				"index": 0,
+				"message": map[string]any{
+					"role": "assistant",
+					"tool_calls": []map[string]any{
+						{
+							"id":   "call_1",
+							"type": "function",
+							"function": map[string]any{
+								"name":      "mcp__node_repl__run",
+								"arguments": `{"x":1}`,
+							},
+						},
+					},
+				},
+				"finish_reason": "tool_calls",
+			},
+		},
+	})
+	httpResp := &httpclient.Response{
+		StatusCode: 200,
+		Body:       chatRespBody,
+		Headers:    http.Header{"Content-Type": []string{"application/json"}},
+		Request:    httpReq,
+	}
+
+	// Step 4: openrouter outbound (response) — TransformerMetadata must be cloned
+	llmResp, err := orOut.TransformResponse(context.Background(), httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, llmResp.TransformerMetadata, "openrouter outbound must clone request TransformerMetadata to response")
+	_, exists = llmResp.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, exists, "openrouter outbound response must carry the namespace tool map")
+
+	// Step 5: responses inbound (response) — namespace restored
+	clientResp, err := responsesInbound.TransformResponse(context.Background(), llmResp)
+	require.NoError(t, err)
+	var respPayload Response
+	require.NoError(t, json.Unmarshal(clientResp.Body, &respPayload))
+	var fcItem *Item
+	for i := range respPayload.Output {
+		if respPayload.Output[i].Type == "function_call" {
+			fcItem = &respPayload.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, fcItem, "function_call item must exist")
+	require.Equal(t, "run", fcItem.Name, "name must be restored to leaf")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "namespace must be restored to group")
+}
+
+// TestCrossProtocol_OpenRouterStreamMetadataRoundTrip verifies the streaming
+// cross-protocol path through openrouter's self-built TransformStream: the
+// namespace tool map must ride on a stream chunk so the responses inbound stream
+// can restore the namespace group identity.
+func TestCrossProtocol_OpenRouterStreamMetadataRoundTrip(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model":  "openai/gpt-4o",
+			"input":  "use the tool",
+			"stream": true,
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{
+						{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}},
+					},
+				},
+			},
+		}),
+	}
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	orOut, err := openrouter.NewOutboundTransformer("https://openrouter.ai/api/v1", "test-key")
+	require.NoError(t, err)
+	llmReq.Model = "openai/gpt-4o"
+	httpReq, err := orOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	// mock chat SSE stream (function_call with flattened name)
+	chatSSEEvents := []*httpclient.StreamEvent{
+		{Type: "chat.completion.chunk", Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","model":"openai/gpt-4o","created":1700000000,"choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"mcp__node_repl__run","arguments":"{\"x\":1}"}}]},"finish_reason":null}]}`)},
+		{Type: "chat.completion.chunk", Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","model":"openai/gpt-4o","created":1700000000,"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`)},
+		{Type: "data", Data: []byte("[DONE]")},
+	}
+
+	llmStream, err := orOut.TransformStream(context.Background(), httpReq, streams.SliceStream(chatSSEEvents))
+	require.NoError(t, err)
+
+	var llmChunks []*llm.Response
+	for llmStream.Next() {
+		ch := llmStream.Current()
+		if ch != nil {
+			llmChunks = append(llmChunks, ch)
+		}
+	}
+	require.NoError(t, llmStream.Err())
+	require.NotEmpty(t, llmChunks)
+
+	var sawMap bool
+	for _, ch := range llmChunks {
+		if ch.TransformerMetadata != nil {
+			if _, ok := ch.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]; ok {
+				sawMap = true
+				break
+			}
+		}
+	}
+	require.True(t, sawMap, "openrouter outbound stream must propagate namespace map on a chunk")
+
+	// responses inbound (stream) — restore namespace
+	respStream, err := responsesInbound.TransformStream(context.Background(), streams.SliceStream(llmChunks))
+	require.NoError(t, err)
+	var actualEvents []StreamEvent
+	for respStream.Next() {
+		ev := respStream.Current()
+		var se StreamEvent
+		if err := json.Unmarshal(ev.Data, &se); err == nil {
+			actualEvents = append(actualEvents, se)
+		}
+	}
+	require.NoError(t, respStream.Err())
+	var fcItem *Item
+	for i := range actualEvents {
+		ev := actualEvents[i]
+		if (ev.Type == StreamEventTypeOutputItemAdded || ev.Type == StreamEventTypeOutputItemDone) &&
+			ev.Item != nil && ev.Item.Type == "function_call" {
+			fcItem = ev.Item
+			if ev.Type == StreamEventTypeOutputItemDone {
+				break
+			}
+		}
+	}
+	require.NotNil(t, fcItem, "expected a function_call output item in stream")
+	require.Equal(t, "run", fcItem.Name, "streaming cross-protocol: name must be restored to leaf")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "streaming cross-protocol: namespace must be restored")
+}
+
+// TestCrossProtocol_NanoGPTResponseMetadataRoundTrip verifies that nanogpt — which
+// builds its own TransformResponse/TransformStream for the chat path (NOT delegating
+// to the chat base) — propagates TransformerMetadata back on the response so a
+// responses client's namespace tool map survives the cross-protocol round-trip.
+//
+// Regression guard: nanogpt's self-built chat response/stream previously skipped
+// shared.MergeResponseMetadata / shared.PropagateStreamMetadata (same class of gap
+// as the openrouter fix).
+func TestCrossProtocol_NanoGPTResponseMetadataRoundTrip(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model": "gpt-4o",
+			"input": "use the tool",
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{
+						{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}},
+					},
+				},
+			},
+		}),
+	}
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	_, ok := llmReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, ok, "namespace map must be recorded by responses inbound")
+
+	nanoOut, err := nanogpt.NewOutboundTransformer("https://api.nanogpt.com/v1", "test-key")
+	require.NoError(t, err)
+	llmReq.Model = "gpt-4o"
+	httpReq, err := nanoOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.NotNil(t, httpReq.TransformerMetadata, "nanogpt outbound must propagate TransformerMetadata on request")
+	_, exists := httpReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, exists, "nanogpt outbound must carry the namespace tool map")
+
+	chatRespBody := mustMarshal(t, map[string]any{
+		"id":      "chatcompl_1",
+		"object":  "chat.completion",
+		"model":   "gpt-4o",
+		"created": 1700000000,
+		"choices": []map[string]any{
+			{
+				"index": 0,
+				"message": map[string]any{
+					"role": "assistant",
+					"tool_calls": []map[string]any{
+						{
+							"id":   "call_1",
+							"type": "function",
+							"function": map[string]any{
+								"name":      "mcp__node_repl__run",
+								"arguments": `{"x":1}`,
+							},
+						},
+					},
+				},
+				"finish_reason": "tool_calls",
+			},
+		},
+	})
+	httpResp := &httpclient.Response{
+		StatusCode: 200,
+		Body:       chatRespBody,
+		Headers:    http.Header{"Content-Type": []string{"application/json"}},
+		Request:    httpReq,
+	}
+
+	llmResp, err := nanoOut.TransformResponse(context.Background(), httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, llmResp.TransformerMetadata, "nanogpt outbound must clone request TransformerMetadata to response")
+	_, exists = llmResp.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, exists, "nanogpt outbound response must carry the namespace tool map")
+
+	clientResp, err := responsesInbound.TransformResponse(context.Background(), llmResp)
+	require.NoError(t, err)
+	var respPayload Response
+	require.NoError(t, json.Unmarshal(clientResp.Body, &respPayload))
+	var fcItem *Item
+	for i := range respPayload.Output {
+		if respPayload.Output[i].Type == "function_call" {
+			fcItem = &respPayload.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, fcItem, "function_call item must exist")
+	require.Equal(t, "run", fcItem.Name, "name must be restored to leaf")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "namespace must be restored to group")
+}
+
+// TestCrossProtocol_NanoGPTStreamMetadataRoundTrip verifies the streaming
+// cross-protocol path through nanogpt's self-built TransformStream: the namespace
+// tool map must ride on a stream chunk so the responses inbound stream can restore
+// the namespace group identity.
+func TestCrossProtocol_NanoGPTStreamMetadataRoundTrip(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model":  "gpt-4o",
+			"input":  "use the tool",
+			"stream": true,
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{
+						{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}},
+					},
+				},
+			},
+		}),
+	}
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	nanoOut, err := nanogpt.NewOutboundTransformer("https://api.nanogpt.com/v1", "test-key")
+	require.NoError(t, err)
+	llmReq.Model = "gpt-4o"
+	httpReq, err := nanoOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	chatSSEEvents := []*httpclient.StreamEvent{
+		{Type: "chat.completion.chunk", Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","model":"gpt-4o","created":1700000000,"choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"mcp__node_repl__run","arguments":"{\"x\":1}"}}]},"finish_reason":null}]}`)},
+		{Type: "chat.completion.chunk", Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","model":"gpt-4o","created":1700000000,"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`)},
+		{Type: "data", Data: []byte("[DONE]")},
+	}
+
+	llmStream, err := nanoOut.TransformStream(context.Background(), httpReq, streams.SliceStream(chatSSEEvents))
+	require.NoError(t, err)
+
+	var llmChunks []*llm.Response
+	for llmStream.Next() {
+		ch := llmStream.Current()
+		if ch != nil {
+			llmChunks = append(llmChunks, ch)
+		}
+	}
+	require.NoError(t, llmStream.Err())
+	require.NotEmpty(t, llmChunks)
+
+	var sawMap bool
+	for _, ch := range llmChunks {
+		if ch.TransformerMetadata != nil {
+			if _, ok := ch.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]; ok {
+				sawMap = true
+				break
+			}
+		}
+	}
+	require.True(t, sawMap, "nanogpt outbound stream must propagate namespace map on a chunk")
+
+	respStream, err := responsesInbound.TransformStream(context.Background(), streams.SliceStream(llmChunks))
+	require.NoError(t, err)
+	var actualEvents []StreamEvent
+	for respStream.Next() {
+		ev := respStream.Current()
+		var se StreamEvent
+		if err := json.Unmarshal(ev.Data, &se); err == nil {
+			actualEvents = append(actualEvents, se)
+		}
+	}
+	require.NoError(t, respStream.Err())
+	var fcItem *Item
+	for i := range actualEvents {
+		ev := actualEvents[i]
+		if (ev.Type == StreamEventTypeOutputItemAdded || ev.Type == StreamEventTypeOutputItemDone) &&
+			ev.Item != nil && ev.Item.Type == "function_call" {
+			fcItem = ev.Item
+			if ev.Type == StreamEventTypeOutputItemDone {
+				break
+			}
+		}
+	}
+	require.NotNil(t, fcItem, "expected a function_call output item in stream")
+	require.Equal(t, "run", fcItem.Name, "streaming cross-protocol: name must be restored to leaf")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "streaming cross-protocol: namespace must be restored")
+}
+
+// TestCrossProtocol_GeminiOpenAIResponseMetadataRoundTrip verifies that
+// gemini_openai — which builds its own TransformRequest (not delegating to the
+// chat base) — propagates TransformerMetadata onto the request so a responses
+// client's namespace tool map survives the cross-protocol round-trip.
+//
+// Regression guard: gemini_openai's self-built TransformRequest previously did
+// not call shared.PropagateRequestMetadata, so the namespace map was lost before
+// reaching the upstream and the response-side restoration (handled by the
+// embedded openai base) had nothing to merge.
+func TestCrossProtocol_GeminiOpenAIResponseMetadataRoundTrip(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model": "gemini-2.5-flash",
+			"input": "use the tool",
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{
+						{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}},
+					},
+				},
+			},
+		}),
+	}
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	_, ok := llmReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+	require.True(t, ok, "namespace map must be recorded by responses inbound")
+
+	geminiOaiOut, err := geminioai.NewOutboundTransformer("https://generativelanguage.googleapis.com/v1beta/openai", "test-key")
+	require.NoError(t, err)
+	llmReq.Model = "gemini-2.5-flash"
+	httpReq, err := geminiOaiOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	t.Run("gemini_openai request carries TransformerMetadata", func(t *testing.T) {
+		require.NotNil(t, httpReq.TransformerMetadata, "gemini_openai outbound must propagate TransformerMetadata on request")
+		_, exists := httpReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+		require.True(t, exists, "gemini_openai outbound must carry the namespace tool map")
+	})
+
+	chatRespBody := mustMarshal(t, map[string]any{
+		"id":      "chatcompl_1",
+		"object":  "chat.completion",
+		"model":   "gemini-2.5-flash",
+		"created": 1700000000,
+		"choices": []map[string]any{
+			{
+				"index": 0,
+				"message": map[string]any{
+					"role": "assistant",
+					"tool_calls": []map[string]any{
+						{
+							"id":   "call_1",
+							"type": "function",
+							"function": map[string]any{
+								"name":      "mcp__node_repl__run",
+								"arguments": `{"x":1}`,
+							},
+						},
+					},
+				},
+				"finish_reason": "tool_calls",
+			},
+		},
+	})
+	httpResp := &httpclient.Response{
+		StatusCode: 200,
+		Body:       chatRespBody,
+		Headers:    http.Header{"Content-Type": []string{"application/json"}},
+		Request:    httpReq,
+	}
+
+	llmResp, err := geminiOaiOut.TransformResponse(context.Background(), httpResp)
+	require.NoError(t, err)
+
+	t.Run("gemini_openai response carries namespace map", func(t *testing.T) {
+		require.NotNil(t, llmResp.TransformerMetadata, "gemini_openai outbound must clone request TransformerMetadata to response")
+		_, exists := llmResp.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
+		require.True(t, exists, "gemini_openai outbound response must carry the namespace tool map")
+	})
+
+	clientResp, err := responsesInbound.TransformResponse(context.Background(), llmResp)
+	require.NoError(t, err)
+	var respPayload Response
+	require.NoError(t, json.Unmarshal(clientResp.Body, &respPayload))
+	var fcItem *Item
+	for i := range respPayload.Output {
+		if respPayload.Output[i].Type == "function_call" {
+			fcItem = &respPayload.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, fcItem, "function_call item must exist")
+	require.Equal(t, "run", fcItem.Name, "name must be restored to leaf")
+	require.Equal(t, "mcp__node_repl", fcItem.Namespace, "namespace must be restored to group")
 }

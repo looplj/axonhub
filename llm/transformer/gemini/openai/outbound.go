@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Config holds all configuration for the Gemini OpenAI outbound transformer.
@@ -361,7 +362,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	url := t.BaseURL + "/chat/completions"
 
-	return &httpclient.Request{
+	httpReq := &httpclient.Request{
 		Method:                http.MethodPost,
 		URL:                   url,
 		Headers:               headers,
@@ -370,7 +371,9 @@ func (t *OutboundTransformer) TransformRequest(
 		SkipInboundQueryMerge: true,
 		Metadata:              nil,
 		APIFormat:             string(llm.APIFormatOpenAIChatCompletion),
-	}, nil
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
 }
 
 func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *openai.Request) {
