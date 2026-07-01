@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -95,28 +94,5 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("failed to encode request: %w", err)
 	}
 
-	headers := make(http.Header)
-	headers.Set("Content-Type", "application/json")
-	headers.Set("Accept", "application/json")
-
-	// Get API key from provider
-	apiKey := t.APIKeyProvider.Get(ctx)
-
-	auth := &httpclient.AuthConfig{
-		Type:   "bearer",
-		APIKey: apiKey,
-	}
-
-	url := t.BaseURL + "/chat/completions"
-
-	httpReq := &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      auth,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-	}
-	shared.PropagateRequestMetadata(httpReq, llmReq)
-	return httpReq, nil
+	return shared.BuildChatCompletionHTTPRequest(ctx, t.APIKeyProvider, t.BaseURL, body, llmReq), nil
 }

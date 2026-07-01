@@ -111,32 +111,7 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: failed to transform request: %w", transformer.ErrInvalidRequest, err)
 	}
 
-	// Prepare headers
-	headers := make(http.Header)
-	headers.Set("Content-Type", "application/json")
-	headers.Set("Accept", "application/json")
-
-	// Get API key from provider
-	apiKey := t.APIKeyProvider.Get(ctx)
-
-	auth := &httpclient.AuthConfig{
-		Type:   httpclient.AuthTypeBearer,
-		APIKey: apiKey,
-	}
-
-	url := t.BaseURL + "/chat/completions"
-
-	httpReq := &httpclient.Request{
-		Method:      http.MethodPost,
-		URL:         url,
-		Headers:     headers,
-		Body:        body,
-		Auth:        auth,
-		ContentType: "application/json",
-		APIFormat:   string(llm.APIFormatOpenAIChatCompletion),
-	}
-	shared.PropagateRequestMetadata(httpReq, llmReq)
-	return httpReq, nil
+	return shared.BuildChatCompletionHTTPRequest(ctx, t.APIKeyProvider, t.BaseURL, body, llmReq), nil
 }
 
 // buildImageGenerationRequest builds the request for OpenRouter image generation.
