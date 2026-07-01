@@ -119,6 +119,21 @@ func TestDeriveLoadBalancerStrategy(t *testing.T) {
 			},
 			expected: "failover",
 		},
+		{
+			name: "load balance strategy is round-robin in active profile",
+			apiKey: &ent.APIKey{
+				Profiles: &objects.APIKeyProfiles{
+					ActiveProfile: "default",
+					Profiles: []objects.APIKeyProfile{
+						{
+							Name:                "default",
+							LoadBalanceStrategy: lo.ToPtr(biz.LoadBalancerStrategyRoundRobin),
+						},
+					},
+				},
+			},
+			expected: biz.LoadBalancerStrategyRoundRobin,
+		},
 	}
 
 	for _, tt := range tests {

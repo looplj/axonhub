@@ -12,6 +12,8 @@ import (
 const (
 	roundRobinScalingFactor          = 150.0
 	defaultRoundRobinInactivityDecay = 5 * time.Minute // Increased from 15s to 5min for better round-robin distribution
+	roundRobinFailureThreshold       = int64(3)
+	roundRobinHealthCooldown         = 5 * time.Minute
 )
 
 func latestActivityAt(metrics *biz.AggregatedMetrics) *time.Time {
@@ -217,6 +219,102 @@ func (s *RoundRobinStrategy) calculateScoreComponents(metrics *biz.AggregatedMet
 	}
 
 	return finalScore, cappedCount, effectiveCount, lastActivity, inactivitySeconds
+}
+
+// RoundRobinHealthStrategy pushes repeatedly failing channels behind healthy
+// round-robin candidates. It is intentionally only used by the round-robin
+// top-level strategy so adaptive balancing can keep its softer ErrorAware scoring.
+type RoundRobinHealthStrategy struct {
+	metricsProvider     ChannelMetricsProvider
+	failureThreshold    int64
+	failureCooldown     time.Duration
+	unhealthyPenalty    float64
+	metricsErrorPenalty float64
+}
+
+func NewRoundRobinHealthStrategy(metricsProvider ChannelMetricsProvider) *RoundRobinHealthStrategy {
+	return &RoundRobinHealthStrategy{
+		metricsProvider:     metricsProvider,
+		failureThreshold:    roundRobinFailureThreshold,
+		failureCooldown:     roundRobinHealthCooldown,
+		unhealthyPenalty:    rateLimitExhaustedScore,
+		metricsErrorPenalty: 0,
+	}
+}
+
+func (s *RoundRobinHealthStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		return s.metricsErrorPenalty
+	}
+
+	if s.isUnhealthy(metrics) {
+		return s.unhealthyPenalty
+	}
+
+	return 0
+}
+
+func (s *RoundRobinHealthStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		return s.metricsErrorPenalty, StrategyScore{
+			StrategyName: s.Name(),
+			Score:        s.metricsErrorPenalty,
+			Details: map[string]any{
+				"error": err.Error(),
+			},
+		}
+	}
+
+	score := 0.0
+	unhealthy := s.isUnhealthy(metrics)
+	if unhealthy {
+		score = s.unhealthyPenalty
+	}
+
+	details := map[string]any{
+		"consecutive_failures": metrics.ConsecutiveFailures,
+		"failure_threshold":    s.failureThreshold,
+		"failure_cooldown":     s.failureCooldown.String(),
+		"unhealthy":            unhealthy,
+	}
+
+	if metrics.LastFailureAt != nil {
+		details["last_failure_at"] = metrics.LastFailureAt
+		details["time_since_failure"] = time.Since(*metrics.LastFailureAt).String()
+	}
+
+	return score, StrategyScore{
+		StrategyName: s.Name(),
+		Score:        score,
+		Details:      details,
+	}
+}
+
+func (s *RoundRobinHealthStrategy) Name() string {
+	return "RoundRobinHealth"
+}
+
+func (s *RoundRobinHealthStrategy) IsUnhealthy(ctx context.Context, channel *biz.Channel) bool {
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		return false
+	}
+
+	return s.isUnhealthy(metrics)
+}
+
+func (s *RoundRobinHealthStrategy) isUnhealthy(metrics *biz.AggregatedMetrics) bool {
+	if metrics == nil || metrics.ConsecutiveFailures < s.failureThreshold {
+		return false
+	}
+
+	if metrics.LastFailureAt == nil {
+		return true
+	}
+
+	return time.Since(*metrics.LastFailureAt) < s.failureCooldown
 }
 
 // WeightRoundRobinStrategy implements weighted round-robin load balancing.
