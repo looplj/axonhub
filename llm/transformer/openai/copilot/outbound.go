@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 var modelVersionRegex = regexp.MustCompile(`^gpt-(\d+)`)
@@ -147,14 +148,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIKey: token,
 	}
 
-	return &httpclient.Request{
+	httpReq := &httpclient.Request{
 		Method:    http.MethodPost,
 		URL:       url,
 		Headers:   headers,
 		Body:      body,
 		Auth:      authConfig,
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-	}, nil
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
 }
 
 func SetCopilotHeaders(headers http.Header) {
@@ -318,7 +321,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	}
 
 	// Convert to unified llm.Response.
-	return oaiResp.ToLLMResponse(), nil
+	llmResp := oaiResp.ToLLMResponse()
+	shared.MergeResponseMetadata(llmResp, httpResp)
+	return llmResp, nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
