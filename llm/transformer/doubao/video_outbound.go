@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 type seedanceCreateResponse struct {
@@ -130,7 +131,7 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 		req.TransformerMetadata = map[string]any{}
 	}
 
-	req.TransformerMetadata["model"] = llmReq.Model
+	req.TransformerMetadata[shared.MetadataKeyModel] = llmReq.Model
 
 	return req, nil
 }
@@ -316,7 +317,7 @@ func (t *OutboundTransformer) BuildDeleteVideoTaskRequest(ctx context.Context, p
 
 func llmReqModelOrFallback(httpResp *httpclient.Response) string {
 	if httpResp != nil && httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
+		if m, ok := httpResp.Request.TransformerMetadata[shared.MetadataKeyModel].(string); ok && m != "" {
 			return m
 		}
 	}

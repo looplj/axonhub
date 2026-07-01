@@ -222,12 +222,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		switch item.Type {
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
-			if action := xmap.GetStringPtr(llmReq.TransformerMetadata, "image_generation_action"); action != nil {
+			if action := xmap.GetStringPtr(llmReq.TransformerMetadata, responsesImageGenActionTransformerMetadataKey); action != nil {
 				tool.Action = *action
 			}
 			tools = append(tools, tool)
 			// Store image output format in TransformerMetadata
-			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
+			llmReq.TransformerMetadata[responsesImageOutputFormatTransformerMetadataKey] = tool.OutputFormat
 		case llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch:
 			tool := convertWebSearchToTool(item)
 			tools = append(tools, tool)
@@ -270,12 +270,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Reasoning:            convertReasoning(llmReq),
 		PromptCacheKey:       llmReq.PromptCacheKey,
 		PreviousResponseID:   llmReq.PreviousResponseID,
-		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, "include"),
-		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
-		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
-		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
-		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, "background"),
-		Prompt:               xmap.GetPtr[Prompt](llmReq.TransformerMetadata, "prompt"),
+		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, shared.MetadataKeyInclude),
+		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, responsesMaxToolCallsTransformerMetadataKey),
+		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, responsesPromptCacheRetentionTransformerMetadataKey),
+		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, responsesTruncationTransformerMetadataKey),
+		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, responsesBackgroundTransformerMetadataKey),
+		Prompt:               xmap.GetPtr[Prompt](llmReq.TransformerMetadata, responsesPromptTransformerMetadataKey),
 	}
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {

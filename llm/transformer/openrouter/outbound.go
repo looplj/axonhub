@@ -225,7 +225,7 @@ func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (
 	}
 
 	// Save model to TransformerMetadata for response transformation
-	rawReq.TransformerMetadata = map[string]any{"model": llmReq.Model}
+	rawReq.TransformerMetadata = map[string]any{shared.MetadataKeyModel: llmReq.Model}
 
 	return rawReq, nil
 }
@@ -342,7 +342,7 @@ func (t *OutboundTransformer) transformImageGenerationResponse(httpResp *httpcli
 	model := "image-generation"
 
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
+		if m, ok := httpResp.Request.TransformerMetadata[shared.MetadataKeyModel].(string); ok && m != "" {
 			model = m
 		}
 	}

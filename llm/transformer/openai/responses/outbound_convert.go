@@ -494,7 +494,7 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 		return nil
 	}
 
-	includeObfuscation := xmap.GetBoolPtr(metadata, "include_obfuscation")
+	includeObfuscation := xmap.GetBoolPtr(metadata, responsesIncludeObfuscationTransformerMetadataKey)
 	if includeObfuscation == nil {
 		return nil
 	}
@@ -710,7 +710,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			imageOutputFormat := "png"
 
 			if transformerMetadata != nil {
-				if imgFmt, ok := transformerMetadata["image_output_format"].(string); ok && imgFmt != "" {
+				if imgFmt, ok := transformerMetadata[responsesImageOutputFormatTransformerMetadataKey].(string); ok && imgFmt != "" {
 					imageOutputFormat = imgFmt
 				}
 			}
@@ -722,10 +722,10 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 						URL: `data:image/` + imageOutputFormat + `;base64,` + *outputItem.Result,
 					},
 					TransformerMetadata: map[string]any{
-						"background":    outputItem.Background,
-						"output_format": outputItem.OutputFormat,
-						"quality":       outputItem.Quality,
-						"size":          outputItem.Size,
+						responsesBackgroundTransformerMetadataKey:           outputItem.Background,
+						responsesImageGenOutputFormatTransformerMetadataKey: outputItem.OutputFormat,
+						responsesImageGenQualityTransformerMetadataKey:      outputItem.Quality,
+						responsesImageGenSizeTransformerMetadataKey:         outputItem.Size,
 					},
 				})
 			}

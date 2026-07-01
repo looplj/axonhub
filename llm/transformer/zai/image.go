@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // buildImageGenerationAPIRequest builds the HTTP request to call the ZAI Image Generation API.
@@ -45,7 +46,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 		rawReq.TransformerMetadata = map[string]any{}
 	}
 
-	rawReq.TransformerMetadata["model"] = chatReq.Model
+	rawReq.TransformerMetadata[shared.MetadataKeyModel] = chatReq.Model
 
 	return rawReq, nil
 }

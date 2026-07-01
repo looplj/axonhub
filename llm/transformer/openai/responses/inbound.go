@@ -194,31 +194,31 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 
 	// Store help fields in TransformerMetadata
 	if len(req.Include) > 0 {
-		chatReq.TransformerMetadata["include"] = req.Include
+		chatReq.TransformerMetadata[shared.MetadataKeyInclude] = req.Include
 	}
 
 	if req.MaxToolCalls != nil {
-		chatReq.TransformerMetadata["max_tool_calls"] = req.MaxToolCalls
+		chatReq.TransformerMetadata[responsesMaxToolCallsTransformerMetadataKey] = req.MaxToolCalls
 	}
 
 	if req.PromptCacheRetention != nil {
-		chatReq.TransformerMetadata["prompt_cache_retention"] = req.PromptCacheRetention
+		chatReq.TransformerMetadata[responsesPromptCacheRetentionTransformerMetadataKey] = req.PromptCacheRetention
 	}
 
 	if req.Truncation != nil {
-		chatReq.TransformerMetadata["truncation"] = req.Truncation
+		chatReq.TransformerMetadata[responsesTruncationTransformerMetadataKey] = req.Truncation
 	}
 
 	// Preserve the top-level background flag (background mode) so it survives
 	// non-pass-through format conversion.
 	if req.Background != nil {
-		chatReq.TransformerMetadata["background"] = *req.Background
+		chatReq.TransformerMetadata[responsesBackgroundTransformerMetadataKey] = *req.Background
 	}
 
 	// Preserve the stored prompt template reference (F19); canonical has no
 	// Prompt slot, so it rides TransformerMetadata like background/include.
 	if req.Prompt != nil {
-		chatReq.TransformerMetadata["prompt"] = req.Prompt
+		chatReq.TransformerMetadata[responsesPromptTransformerMetadataKey] = req.Prompt
 	}
 
 	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
@@ -273,7 +273,7 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	if req.StreamOptions != nil {
 		chatReq.StreamOptions = &llm.StreamOptions{}
 		if req.StreamOptions.IncludeObfuscation != nil {
-			chatReq.TransformerMetadata["include_obfuscation"] = req.StreamOptions.IncludeObfuscation
+			chatReq.TransformerMetadata[responsesIncludeObfuscationTransformerMetadataKey] = req.StreamOptions.IncludeObfuscation
 		}
 	}
 
@@ -1111,10 +1111,10 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 							Role:         "assistant",
 							Result:       lo.ToPtr(xurl.ExtractBase64FromDataURL(part.ImageURL.URL)),
 							Status:       lo.ToPtr("completed"),
-							Background:   xmap.GetStringPtr(part.TransformerMetadata, "background"),
-							OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, "output_format"),
-							Quality:      xmap.GetStringPtr(part.TransformerMetadata, "quality"),
-							Size:         xmap.GetStringPtr(part.TransformerMetadata, "size"),
+							Background:   xmap.GetStringPtr(part.TransformerMetadata, responsesBackgroundTransformerMetadataKey),
+							OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, responsesImageGenOutputFormatTransformerMetadataKey),
+							Quality:      xmap.GetStringPtr(part.TransformerMetadata, responsesImageGenQualityTransformerMetadataKey),
+							Size:         xmap.GetStringPtr(part.TransformerMetadata, responsesImageGenSizeTransformerMetadataKey),
 						}
 						resp.Output = append(resp.Output, imageItem)
 					}

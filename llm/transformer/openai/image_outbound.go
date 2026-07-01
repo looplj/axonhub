@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // buildImageGenerationAPIRequest builds the HTTP request to call the OpenAI Image Generation API.
@@ -61,7 +62,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 		rawReq.TransformerMetadata = map[string]any{}
 	}
 
-	rawReq.TransformerMetadata["model"] = chatReq.Model
+	rawReq.TransformerMetadata[shared.MetadataKeyModel] = chatReq.Model
 
 	return rawReq, nil
 }
@@ -546,7 +547,7 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 	model := "image-generation"
 
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
+		if m, ok := httpResp.Request.TransformerMetadata[shared.MetadataKeyModel].(string); ok && m != "" {
 			model = m
 		}
 	}

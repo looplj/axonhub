@@ -158,8 +158,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
 	if !isImageRequest {
-		if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
-			reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
+		if _, ok := reqCopy.TransformerMetadata[shared.MetadataKeyInclude]; !ok {
+			reqCopy.TransformerMetadata[shared.MetadataKeyInclude] = []string{"reasoning.encrypted_content"}
 		}
 
 		if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {

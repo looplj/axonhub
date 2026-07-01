@@ -447,6 +447,19 @@ const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning
 const responsesReasoningEnabledTransformerMetadataKey = "openai_responses_reasoning_enabled"
 const responsesNamespaceToolMapTransformerMetadataKey = "openai_responses_namespace_tool_map"
 
+const responsesBackgroundTransformerMetadataKey = "background"
+const responsesTruncationTransformerMetadataKey = "truncation"
+const responsesPromptCacheRetentionTransformerMetadataKey = "prompt_cache_retention"
+const responsesMaxToolCallsTransformerMetadataKey = "max_tool_calls"
+const responsesPromptTransformerMetadataKey = "prompt"
+const responsesIncludeObfuscationTransformerMetadataKey = "include_obfuscation"
+const responsesImageOutputFormatTransformerMetadataKey = "image_output_format"
+
+const responsesImageGenOutputFormatTransformerMetadataKey = "output_format"
+const responsesImageGenQualityTransformerMetadataKey = "quality"
+const responsesImageGenSizeTransformerMetadataKey = "size"
+const responsesImageGenActionTransformerMetadataKey = "image_generation_action"
+
 // namespaceToolEntry records the leaf name and namespace group for a namespace
 // tool that was flattened into a composite "grp__leaf" function during inbound
 // conversion. It lets the outbound side restore {name, namespace} via table

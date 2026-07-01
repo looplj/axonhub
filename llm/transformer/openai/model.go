@@ -10,6 +10,10 @@ import (
 // TransformerMetadataKeyCitations is the key used to store citations in TransformerMetadata.
 const TransformerMetadataKeyCitations = "citations"
 
+// TransformerMetadataKeyVideoPrompt carries the original video generation prompt
+// so the outbound response builder can backfill it.
+const TransformerMetadataKeyVideoPrompt = "video_prompt"
+
 // Request represents an OpenAI chat completion request.
 // This is a clean OpenAI-specific model without helper fields.
 type Request struct {

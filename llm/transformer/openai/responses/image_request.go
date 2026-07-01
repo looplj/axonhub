@@ -110,7 +110,7 @@ func buildImageToolRequest(src *llm.Request) (*llm.Request, error) {
 		}
 	}
 
-	metadata["image_generation_action"] = action
+	metadata[responsesImageGenActionTransformerMetadataKey] = action
 
 	// Persist the requested image options so BuildImageResponse can echo them
 	// back on the client-facing response.

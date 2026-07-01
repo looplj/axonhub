@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 type openAIVideoCreateResponse struct {
@@ -43,7 +44,7 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 		llmReq.TransformerMetadata = map[string]any{}
 	}
 
-	llmReq.TransformerMetadata["video_prompt"] = prompt
+	llmReq.TransformerMetadata[TransformerMetadataKeyVideoPrompt] = prompt
 
 	bodyMap := map[string]any{
 		"model":  llmReq.Model,
@@ -94,8 +95,8 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 		req.TransformerMetadata = map[string]any{}
 	}
 
-	req.TransformerMetadata["model"] = llmReq.Model
-	req.TransformerMetadata["video_prompt"] = prompt
+	req.TransformerMetadata[shared.MetadataKeyModel] = llmReq.Model
+	req.TransformerMetadata[TransformerMetadataKeyVideoPrompt] = prompt
 
 	return req, nil
 }
@@ -150,11 +151,11 @@ func transformVideoResponse(httpResp *httpclient.Response) (*llm.Response, error
 	var prompt string
 
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
+		if m, ok := httpResp.Request.TransformerMetadata[shared.MetadataKeyModel].(string); ok && m != "" {
 			model = m
 		}
 
-		if p, ok := httpResp.Request.TransformerMetadata["video_prompt"].(string); ok && p != "" {
+		if p, ok := httpResp.Request.TransformerMetadata[TransformerMetadataKeyVideoPrompt].(string); ok && p != "" {
 			prompt = p
 		}
 	}

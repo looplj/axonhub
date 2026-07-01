@@ -469,7 +469,7 @@ func hasOpenAIResponsesWebSearchCallMetadata(metadata map[string]any) bool {
 		return false
 	}
 
-	raw, ok := metadata["openai_responses_web_search_calls"]
+	raw, ok := metadata[shared.MetadataKeyResponsesWebSearchCalls]
 	if !ok || raw == nil {
 		return false
 	}
