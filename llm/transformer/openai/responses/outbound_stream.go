@@ -32,14 +32,14 @@ func (t *OutboundTransformer) TransformStream(
 	streamWithDone := streams.AppendStream(stream, doneEvent)
 
 	s := newResponsesOutboundStream(streamWithDone)
-	// Propagate the namespace tool map from request metadata so the inbound
-	// stream can restore group identity on function calls (see #1a/D1).
-	if req != nil && req.TransformerMetadata != nil {
-		if nsMap, ok := req.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]; ok && nsMap != nil {
-			s.state.namespaceToolMap = nsMap
-		}
+	// Propagate request TransformerMetadata onto the first chunk so cross-protocol
+	// fields (e.g. the namespace tool map) survive the streaming round-trip,
+	// mirroring the other outbounds via shared.PropagateStreamMetadata.
+	var requestMetadata map[string]any
+	if req != nil {
+		requestMetadata = req.TransformerMetadata
 	}
-	return streams.NoNil(s), nil
+	return shared.PropagateStreamMetadata(streams.NoNil(s), requestMetadata), nil
 }
 
 // responsesOutboundStream wraps a stream and maintains state during processing.
@@ -80,9 +80,6 @@ type outboundStreamState struct {
 	transformerMetadata        map[string]any
 	transformerMetadataEmitted bool
 
-	// namespaceToolMap carries the namespace tool map from the request's
-	// TransformerMetadata so it can be propagated on an early stream chunk.
-	namespaceToolMap any
 }
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
@@ -191,14 +188,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			if streamEvent.Response.Usage != nil {
 				s.state.usage = streamEvent.Response.Usage.ToUsage()
 				resp.Usage = s.state.usage
-			}
-		}
-
-		// Propagate the namespace tool map on the first chunk so the inbound
-		// stream has it before any function_call events arrive.
-		if s.state.namespaceToolMap != nil {
-			resp.TransformerMetadata = map[string]any{
-				responsesNamespaceToolMapTransformerMetadataKey: s.state.namespaceToolMap,
 			}
 		}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"net/http"
 	"reflect"
 	"strings"
@@ -309,7 +308,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, err
 	}
 
-	return &httpclient.Request{
+	httpReq := &httpclient.Request{
 		Method:  http.MethodPost,
 		URL:     fullURL,
 		Headers: headers,
@@ -319,10 +318,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			APIKey: apiKey,
 		},
 		APIFormat:             string(llm.APIFormatOpenAIResponse),
-		TransformerMetadata:   llmReq.TransformerMetadata,
 		SkipInboundQueryMerge: true,
 		Metadata:              nil,
-	}, nil
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
@@ -411,9 +411,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 		llmResp.Usage = resp.Usage.ToUsage()
 	}
 
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		llmResp.TransformerMetadata = maps.Clone(httpResp.Request.TransformerMetadata)
-	}
+	shared.MergeResponseMetadata(llmResp, httpResp)
 
 	msg := convertOutputToMessage(resp.Output, llmResp.TransformerMetadata)
 
