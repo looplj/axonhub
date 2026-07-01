@@ -13,20 +13,26 @@ interface RouteGuardProps {
   scopeLevel?: ScopeLevel;
   fallbackPath?: string;
   showForbidden?: boolean;
+  requireProjectOwner?: boolean; // 是否需要项目所有者权限
 }
 
-export function RouteGuard({ children, requiredScopes = [], scopeLevel, fallbackPath = '/', showForbidden = true }: RouteGuardProps) {
+export function RouteGuard({ children, requiredScopes = [], scopeLevel, fallbackPath = '/', showForbidden = true, requireProjectOwner = false }: RouteGuardProps) {
   const router = useRouter();
-  const { userScopes, systemScopes, projectScopes, isOwner } = useRoutePermissions();
+  const { userScopes, systemScopes, projectScopes, isOwner, isProjectOwner } = useRoutePermissions();
 
-  // 根据 scopeLevel 决定检查哪些权限
-  const scopesToCheck = scopeLevel === 'system'
-    ? systemScopes
-    : scopeLevel === 'project'
-      ? projectScopes
-      : userScopes;
+  let hasAccess = true;
+  if (requireProjectOwner && !isProjectOwner) {
+    hasAccess = false;
+  } else {
+    // 根据 scopeLevel 决定检查哪些权限
+    const scopesToCheck = scopeLevel === 'system'
+      ? systemScopes
+      : scopeLevel === 'project'
+        ? projectScopes
+        : userScopes;
 
-  const hasAccess = isOwner || requiredScopes.length === 0 || requiredScopes.some((scope) => scopesToCheck.includes(scope));
+    hasAccess = isOwner || requiredScopes.length === 0 || requiredScopes.some((scope) => scopesToCheck.includes(scope));
+  }
 
   useEffect(() => {
     if (!hasAccess && !showForbidden) {

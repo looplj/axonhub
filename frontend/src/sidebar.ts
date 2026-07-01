@@ -12,6 +12,7 @@ import {
   IconBaselineDensityMedium,
   IconAi,
   IconNote,
+  IconChartBar,
 } from '@tabler/icons-react';
 import { Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -127,6 +128,11 @@ export function useSidebarData(): SidebarData {
           title: t('sidebar.items.requests'),
           url: '/project/requests',
           icon: IconActivity,
+        } as NavLink,
+        {
+          title: t('sidebar.items.usageStats'),
+          url: '/project/usage-stats',
+          icon: IconChartBar,
         } as NavLink,
         // {
         //   title: t('sidebar.items.usageLogs'),

@@ -126,12 +126,15 @@ function ApiKeysContent() {
   return (
     <div className='flex flex-1 flex-col'>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
-        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-3 rounded-2xl border'>
+        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-4 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>
             {t('apikeys.tabs.all')}
           </TabsTrigger>
           <TabsTrigger value='user' data-value='user'>
             {t('apikeys.type.user')}
+          </TabsTrigger>
+          <TabsTrigger value='personal' data-value='personal'>
+            {t('apikeys.type.personal')}
           </TabsTrigger>
           <TabsTrigger value='service_account' data-value='service_account'>
             {t('apikeys.type.service_account')}
