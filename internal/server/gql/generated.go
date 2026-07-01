@@ -482,6 +482,10 @@ type ComplexityRoot struct {
 		Frequency func(childComplexity int) int
 	}
 
+	ChannelProviderQuotaSettings struct {
+		OpencodeGo func(childComplexity int) int
+	}
+
 	ChannelRateLimit struct {
 		MaxConcurrent  func(childComplexity int) int
 		QueueSize      func(childComplexity int) int
@@ -506,6 +510,7 @@ type ComplexityRoot struct {
 		ModelMappings            func(childComplexity int) int
 		PassThroughBody          func(childComplexity int) int
 		PassThroughUserAgent     func(childComplexity int) int
+		ProviderQuota            func(childComplexity int) int
 		Proxy                    func(childComplexity int) int
 		RateLimit                func(childComplexity int) int
 		RetryableErrorPatterns   func(childComplexity int) int
@@ -1023,6 +1028,11 @@ type ComplexityRoot struct {
 		CompletedAt        func(childComplexity int) int
 		Onboarded          func(childComplexity int) int
 		SystemModelSetting func(childComplexity int) int
+	}
+
+	OpenCodeGoQuotaSettings struct {
+		AuthCookie  func(childComplexity int) int
+		WorkspaceID func(childComplexity int) int
 	}
 
 	OverrideMatch struct {
@@ -3804,6 +3814,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelProbeSetting.Frequency(childComplexity), true
 
+	case "ChannelProviderQuotaSettings.opencodeGo":
+		if e.complexity.ChannelProviderQuotaSettings.OpencodeGo == nil {
+			break
+		}
+
+		return e.complexity.ChannelProviderQuotaSettings.OpencodeGo(childComplexity), true
+
 	case "ChannelRateLimit.maxConcurrent":
 		if e.complexity.ChannelRateLimit.MaxConcurrent == nil {
 			break
@@ -3908,6 +3925,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.PassThroughUserAgent(childComplexity), true
+	case "ChannelSettings.providerQuota":
+		if e.complexity.ChannelSettings.ProviderQuota == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.ProviderQuota(childComplexity), true
 	case "ChannelSettings.proxy":
 		if e.complexity.ChannelSettings.Proxy == nil {
 			break
@@ -6567,6 +6590,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OnboardingInfo.SystemModelSetting(childComplexity), true
+
+	case "OpenCodeGoQuotaSettings.authCookie":
+		if e.complexity.OpenCodeGoQuotaSettings.AuthCookie == nil {
+			break
+		}
+
+		return e.complexity.OpenCodeGoQuotaSettings.AuthCookie(childComplexity), true
+	case "OpenCodeGoQuotaSettings.workspaceId":
+		if e.complexity.OpenCodeGoQuotaSettings.WorkspaceID == nil {
+			break
+		}
+
+		return e.complexity.OpenCodeGoQuotaSettings.WorkspaceID(childComplexity), true
 
 	case "OverrideMatch.eq":
 		if e.complexity.OverrideMatch.Eq == nil {
@@ -10665,6 +10701,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelOverrideTemplateWhereInput,
 		ec.unmarshalInputChannelPoliciesInput,
 		ec.unmarshalInputChannelProbeWhereInput,
+		ec.unmarshalInputChannelProviderQuotaSettingsInput,
 		ec.unmarshalInputChannelRateLimitInput,
 		ec.unmarshalInputChannelRegexAssociationInput,
 		ec.unmarshalInputChannelSettingsInput,
@@ -10728,6 +10765,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputOAuthCredentialsInput,
 		ec.unmarshalInputOIDCIdentityOrder,
 		ec.unmarshalInputOIDCIdentityWhereInput,
+		ec.unmarshalInputOpenCodeGoQuotaSettingsInput,
 		ec.unmarshalInputOverrideMatchInput,
 		ec.unmarshalInputOverrideOperationInput,
 		ec.unmarshalInputPriceTierInput,
@@ -18292,6 +18330,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_retryableStatusCodes(ctx, field)
 			case "retryableErrorPatterns":
 				return ec.fieldContext_ChannelSettings_retryableErrorPatterns(ctx, field)
+			case "providerQuota":
+				return ec.fieldContext_ChannelSettings_providerQuota(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -22132,6 +22172,41 @@ func (ec *executionContext) fieldContext_ChannelProbeSetting_frequency(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelProviderQuotaSettings_opencodeGo(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelProviderQuotaSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelProviderQuotaSettings_opencodeGo,
+		func(ctx context.Context) (any, error) {
+			return obj.OpencodeGo, nil
+		},
+		nil,
+		ec.marshalOOpenCodeGoQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOpenCodeGoQuotaSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelProviderQuotaSettings_opencodeGo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelProviderQuotaSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "workspaceId":
+				return ec.fieldContext_OpenCodeGoQuotaSettings_workspaceId(ctx, field)
+			case "authCookie":
+				return ec.fieldContext_OpenCodeGoQuotaSettings_authCookie(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OpenCodeGoQuotaSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelRateLimit_rpm(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -22847,6 +22922,39 @@ func (ec *executionContext) fieldContext_ChannelSettings_retryableErrorPatterns(
 				return ec.fieldContext_RetryableErrorPattern_regex(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RetryableErrorPattern", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_providerQuota(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_providerQuota,
+		func(ctx context.Context) (any, error) {
+			return obj.ProviderQuota, nil
+		},
+		nil,
+		ec.marshalOChannelProviderQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_providerQuota(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "opencodeGo":
+				return ec.fieldContext_ChannelProviderQuotaSettings_opencodeGo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelProviderQuotaSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -35924,6 +36032,64 @@ func (ec *executionContext) fieldContext_OnboardingInfo_autoDisableChannel(_ con
 				return ec.fieldContext_AutoDisableChannelOnboarding_completedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AutoDisableChannelOnboarding", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OpenCodeGoQuotaSettings_workspaceId(ctx context.Context, field graphql.CollectedField, obj *objects.OpenCodeGoQuotaSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OpenCodeGoQuotaSettings_workspaceId,
+		func(ctx context.Context) (any, error) {
+			return obj.WorkspaceID, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OpenCodeGoQuotaSettings_workspaceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OpenCodeGoQuotaSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OpenCodeGoQuotaSettings_authCookie(ctx context.Context, field graphql.CollectedField, obj *objects.OpenCodeGoQuotaSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OpenCodeGoQuotaSettings_authCookie,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthCookie, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OpenCodeGoQuotaSettings_authCookie(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OpenCodeGoQuotaSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -63177,6 +63343,33 @@ func (ec *executionContext) unmarshalInputChannelProbeWhereInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelProviderQuotaSettingsInput(ctx context.Context, obj any) (objects.ChannelProviderQuotaSettings, error) {
+	var it objects.ChannelProviderQuotaSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"opencodeGo"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "opencodeGo":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opencodeGo"))
+			data, err := ec.unmarshalOOpenCodeGoQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOpenCodeGoQuotaSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OpencodeGo = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Context, obj any) (objects.ChannelRateLimit, error) {
 	var it objects.ChannelRateLimit
 	asMap := map[string]any{}
@@ -63273,7 +63466,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "providerQuota"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63385,6 +63578,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.RetryableErrorPatterns = data
+		case "providerQuota":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerQuota"))
+			data, err := ec.unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProviderQuota = data
 		}
 	}
 
@@ -69470,6 +69670,40 @@ func (ec *executionContext) unmarshalInputOIDCIdentityWhereInput(ctx context.Con
 				return it, err
 			}
 			it.HasUserWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOpenCodeGoQuotaSettingsInput(ctx context.Context, obj any) (objects.OpenCodeGoQuotaSettings, error) {
+	var it objects.OpenCodeGoQuotaSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId", "authCookie"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "authCookie":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("authCookie"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AuthCookie = data
 		}
 	}
 
@@ -88162,6 +88396,42 @@ func (ec *executionContext) _ChannelProbeSetting(ctx context.Context, sel ast.Se
 	return out
 }
 
+var channelProviderQuotaSettingsImplementors = []string{"ChannelProviderQuotaSettings"}
+
+func (ec *executionContext) _ChannelProviderQuotaSettings(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelProviderQuotaSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelProviderQuotaSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelProviderQuotaSettings")
+		case "opencodeGo":
+			out.Values[i] = ec._ChannelProviderQuotaSettings_opencodeGo(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelRateLimitImplementors = []string{"ChannelRateLimit"}
 
 func (ec *executionContext) _ChannelRateLimit(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelRateLimit) graphql.Marshaler {
@@ -88359,6 +88629,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_retryableStatusCodes(ctx, field, obj)
 		case "retryableErrorPatterns":
 			out.Values[i] = ec._ChannelSettings_retryableErrorPatterns(ctx, field, obj)
+		case "providerQuota":
+			out.Values[i] = ec._ChannelSettings_providerQuota(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -92355,6 +92627,44 @@ func (ec *executionContext) _OnboardingInfo(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._OnboardingInfo_systemModelSetting(ctx, field, obj)
 		case "autoDisableChannel":
 			out.Values[i] = ec._OnboardingInfo_autoDisableChannel(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var openCodeGoQuotaSettingsImplementors = []string{"OpenCodeGoQuotaSettings"}
+
+func (ec *executionContext) _OpenCodeGoQuotaSettings(ctx context.Context, sel ast.SelectionSet, obj *objects.OpenCodeGoQuotaSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, openCodeGoQuotaSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OpenCodeGoQuotaSettings")
+		case "workspaceId":
+			out.Values[i] = ec._OpenCodeGoQuotaSettings_workspaceId(ctx, field, obj)
+		case "authCookie":
+			out.Values[i] = ec._OpenCodeGoQuotaSettings_authCookie(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -110590,6 +110900,21 @@ func (ec *executionContext) unmarshalOChannelProbeWhereInput2ᚖgithubᚗcomᚋl
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOChannelProviderQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelProviderQuotaSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelProviderQuotaSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx context.Context, v any) (*objects.ChannelProviderQuotaSettings, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelProviderQuotaSettingsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOChannelRateLimit2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRateLimit(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelRateLimit) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -112443,6 +112768,21 @@ func (ec *executionContext) marshalOOnboardingInfo2ᚖgithubᚗcomᚋloopljᚋax
 		return graphql.Null
 	}
 	return ec._OnboardingInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOOpenCodeGoQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOpenCodeGoQuotaSettings(ctx context.Context, sel ast.SelectionSet, v *objects.OpenCodeGoQuotaSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OpenCodeGoQuotaSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOpenCodeGoQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOpenCodeGoQuotaSettings(ctx context.Context, v any) (*objects.OpenCodeGoQuotaSettings, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputOpenCodeGoQuotaSettingsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOOverrideApplyMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOverrideApplyMode(ctx context.Context, v any) (*OverrideApplyMode, error) {

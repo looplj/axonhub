@@ -79,6 +79,7 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 
 	authURL, state, err := h.oidc.GetAuthorizeURL(c.Request.Context(), provider, baseURL)
 	if err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -112,6 +113,7 @@ func (h *OIDCHandlers) GetLinkAuthorizeURL(c *gin.Context) {
 
 	authURL, state, err := h.oidc.GetLinkAuthorizeURL(c.Request.Context(), provider, baseURL, userID)
 	if err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -205,6 +207,7 @@ func (h *OIDCHandlers) Exchange(c *gin.Context) {
 			return
 		}
 
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 
 		return
@@ -212,6 +215,7 @@ func (h *OIDCHandlers) Exchange(c *gin.Context) {
 
 	token, err := h.auth.GenerateJWTToken(c.Request.Context(), user)
 	if err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token: " + err.Error()})
 		return
 	}

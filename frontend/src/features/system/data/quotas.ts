@@ -28,6 +28,13 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
             quotaData
             providerType
           }
+          settings {
+            providerQuota {
+              opencodeGo {
+                workspaceId
+              }
+            }
+          }
         }
       }
     }
@@ -178,6 +185,22 @@ export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
   };
 }
 
+export type OpenCodeGoQuotaWindow = {
+  usage_percent?: number;
+  reset_in_seconds?: number;
+  reset_time?: string;
+  status?: string;
+  percent_remaining?: number;
+}
+
+export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
+  windows?: {
+    rolling?: OpenCodeGoQuotaWindow;
+    weekly?: OpenCodeGoQuotaWindow;
+    monthly?: OpenCodeGoQuotaWindow;
+  };
+}
+
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
@@ -215,6 +238,13 @@ export type ProviderQuotaChannel = {
       type: 'nanogpt_responses'
       quotaStatus?: {
         quotaData: ProviderNanoGPTQuotaData
+      }
+    }
+    | {
+      type: 'opencode_go' | 'opencode_go_anthropic'
+      workspaceId?: string | null
+      quotaStatus?: {
+        quotaData: ProviderOpenCodeGoQuotaData
       }
     }
     | {
@@ -268,6 +298,13 @@ type QueryChannelsResponse = {
           quotaData: unknown;
           providerType?: string;
         };
+        settings?: {
+          providerQuota?: {
+            opencodeGo?: {
+              workspaceId?: string | null;
+            } | null;
+          } | null;
+        } | null;
       };
     }>;
   };
@@ -320,6 +357,14 @@ function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][
       ...base,
       type: 'nanogpt_responses' as const,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData },
+    };
+  }
+  if (node.type === 'opencode_go' || node.type === 'opencode_go_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'opencode_go' | 'opencode_go_anthropic',
+      workspaceId: node.settings?.providerQuota?.opencodeGo?.workspaceId ?? null,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderOpenCodeGoQuotaData },
     };
   }
   if (node.type === 'openai' || node.type === 'openai_responses') {

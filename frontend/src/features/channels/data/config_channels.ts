@@ -679,7 +679,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   },
   ollama: {
     channelType: 'ollama',
-    baseURL: 'https://api.ollama.cloud',
+    baseURL: 'https://ollama.com',
     defaultModels: ['llama3.2', 'llama3.1', 'llama3', 'mistral', 'codellama', 'gemma2', 'qwen2.5'],
     apiFormat: 'ollama/chat' as ApiFormat,
     color: 'bg-slate-100 text-slate-800 border-slate-200',
