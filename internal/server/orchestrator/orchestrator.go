@@ -247,6 +247,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// response is saved when pass-through is enabled.
 		applyPassThroughResponse(outbound, processor.SystemService),
 		applyPassThroughStream(outbound, processor.SystemService),
+		// Restore prompt protection must run AFTER pass-through capture but BEFORE
+		// the response is returned to client, so client sees original unmasked content
+		restorePromptProtection(inbound),
 		persistRequest(inbound),
 	)
 

@@ -35,6 +35,9 @@ func (svc *PromptProtectionRuleService) Preview(ctx context.Context, input Promp
 
 	result := input.TestText
 	if hasMatch && input.Settings.Action == objects.PromptProtectionActionMask {
+		// Note: Preview uses simple fixed replacement for UI demonstration.
+		// Actual runtime uses unique tags (format: «axh:replacement:uuid:base64_original»)
+		// to enable per-match restoration. The AI sees the replacement text within the tag.
 		result, err = re.Replace(input.TestText, input.Settings.Replacement, -1, -1)
 		if err != nil {
 			return nil, err
