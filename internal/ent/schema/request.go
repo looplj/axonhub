@@ -175,7 +175,7 @@ func (Request) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
 			scopes.APIKeyScopeQueryRule(scopes.ScopeWriteRequests),
-			scopes.UserProjectScopeReadRule(scopes.ScopeReadRequests),
+			scopes.UserProjectScopeReadRequestsRule(scopes.ScopeReadRequests),
 			scopes.OwnerRule(),
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests),
 		},

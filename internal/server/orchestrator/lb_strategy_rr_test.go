@@ -314,6 +314,63 @@ func TestRoundRobinStrategy_ScoreConsistency(t *testing.T) {
 	}
 }
 
+func TestRoundRobinHealthStrategy_Score(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	recentFailure := now.Add(-time.Minute)
+	oldFailure := now.Add(-(roundRobinHealthCooldown + time.Minute))
+
+	healthy := &biz.AggregatedMetrics{LastFailureAt: &recentFailure}
+	recentFailures := &biz.AggregatedMetrics{LastFailureAt: &recentFailure}
+	recentFailures.ConsecutiveFailures = roundRobinFailureThreshold
+	oldFailures := &biz.AggregatedMetrics{LastFailureAt: &oldFailure}
+	oldFailures.ConsecutiveFailures = roundRobinFailureThreshold
+	failuresWithoutTimestamp := &biz.AggregatedMetrics{}
+	failuresWithoutTimestamp.ConsecutiveFailures = roundRobinFailureThreshold
+
+	tests := []struct {
+		name     string
+		metrics  *biz.AggregatedMetrics
+		expected float64
+	}{
+		{
+			name:     "healthy channel",
+			metrics:  healthy,
+			expected: 0,
+		},
+		{
+			name:     "recent consecutive failures reaches threshold",
+			metrics:  recentFailures,
+			expected: rateLimitExhaustedScore,
+		},
+		{
+			name:     "old consecutive failures recovered after cooldown",
+			metrics:  oldFailures,
+			expected: 0,
+		},
+		{
+			name:     "consecutive failures without timestamp treated as unhealthy",
+			metrics:  failuresWithoutTimestamp,
+			expected: rateLimitExhaustedScore,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockProvider := &mockMetricsProvider{
+				metrics: map[int]*biz.AggregatedMetrics{1: tt.metrics},
+			}
+			strategy := NewRoundRobinHealthStrategy(mockProvider)
+			channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
+
+			assert.Equal(t, tt.expected, strategy.Score(ctx, channel))
+			debugScore, debug := strategy.ScoreWithDebug(ctx, channel)
+			assert.Equal(t, tt.expected, debugScore)
+			assert.Equal(t, strategy.Name(), debug.StrategyName)
+		})
+	}
+}
+
 func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 	ctx := context.Background()
 	ctx = authz.WithTestBypass(ctx)

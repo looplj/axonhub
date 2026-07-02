@@ -291,7 +291,7 @@ print(response.text)`
 
         <div className='flex-1 overflow-hidden flex flex-col'>
           <label className='text-sm font-medium'>{t('apikeys.dialogs.view.usageExamples')}</label>
-          {selectedApiKey?.type === 'user' ? (
+          {selectedApiKey?.type === 'user' || selectedApiKey?.type === 'personal' ? (
             <Tabs defaultValue='claudeCode' className='mt-2 flex-1 flex flex-col min-h-0'>
               <TabsList className='grid w-full grid-cols-5 shrink-0'>
                 <TabsTrigger value='claudeCode'>{t('apikeys.dialogs.view.tabs.claudeCode')}</TabsTrigger>
