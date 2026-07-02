@@ -414,7 +414,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		part := &Part{
 			FunctionCall: &FunctionCall{
 				ID:   toolCall.ID,
-				Name: toolCall.Function.Name,
+				Name: toolCall.Function.CompositeName(),
 				Args: args,
 			},
 		}
@@ -713,13 +713,47 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 							MIMEType: part.InlineData.MIMEType,
 						},
 					})
+				} else if isVideoMIMEType(part.InlineData.MIMEType) {
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type:     "video_url",
+						VideoURL: &llm.VideoURL{URL: dataURL},
+					})
+				} else if isAudioMIMEType(part.InlineData.MIMEType) {
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type:       "input_audio",
+						InputAudio: &llm.InputAudio{Format: audioMIMETypeToFormat(part.InlineData.MIMEType), Data: part.InlineData.Data},
+					})
 				} else {
 					// Image type
 					contentParts = append(contentParts, llm.MessageContentPart{
-						Type: "image_url",
-						ImageURL: &llm.ImageURL{
-							URL: dataURL,
-						},
+						Type:     "image_url",
+						ImageURL: &llm.ImageURL{URL: dataURL},
+					})
+				}
+
+			case part.FileData != nil:
+				// Convert file data based on MIME type
+				mimeType := part.FileData.MIMEType
+				if isDocumentMIMEType(mimeType) {
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type:     "document",
+						Document: &llm.DocumentURL{URL: part.FileData.FileURI, MIMEType: mimeType},
+					})
+				} else if isVideoMIMEType(mimeType) {
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type:     "video_url",
+						VideoURL: &llm.VideoURL{URL: part.FileData.FileURI},
+					})
+				} else if isAudioMIMEType(mimeType) {
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type:       "input_audio",
+						InputAudio: &llm.InputAudio{Format: audioMIMETypeToFormat(mimeType)},
+					})
+				} else {
+					// Image type
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type:     "image_url",
+						ImageURL: &llm.ImageURL{URL: part.FileData.FileURI},
 					})
 				}
 

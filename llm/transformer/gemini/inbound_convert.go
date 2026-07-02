@@ -611,7 +611,7 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			part := &Part{
 				FunctionCall: &FunctionCall{
 					ID:   toolCall.ID,
-					Name: toolCall.Function.Name,
+					Name: toolCall.Function.CompositeName(),
 					Args: args,
 				},
 			}

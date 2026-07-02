@@ -954,3 +954,45 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 		})
 	}
 }
+
+func TestMessageContentFromLLM_FiltersDocument(t *testing.T) {
+	c := llm.MessageContent{
+		MultipleContent: []llm.MessageContentPart{
+			{
+				Type: "text",
+				Text: lo.ToPtr("hello"),
+			},
+			{
+				Type: "document",
+				Document: &llm.DocumentURL{
+					URL:      "data:application/pdf;base64,JVBERi0xLjQ=",
+					MIMEType: "application/pdf",
+				},
+			},
+			{
+				Type: "image_url",
+				ImageURL: &llm.ImageURL{URL: "https://example.com/img.png"},
+			},
+		},
+	}
+
+	result := MessageContentFromLLM(c)
+	assert.NotNil(t, result.MultipleContent)
+	assert.Len(t, result.MultipleContent, 2)
+	assert.Equal(t, "text", result.MultipleContent[0].Type)
+	assert.Equal(t, "image_url", result.MultipleContent[1].Type)
+}
+
+func TestMessageFromLLMWithConfig_ReasoningFieldNone_StripsDetails(t *testing.T) {
+	m := llm.Message{
+		Role:             "assistant",
+		ReasoningContent: lo.ToPtr("some reasoning"),
+		ReasoningDetails: []json.RawMessage{json.RawMessage(`{"type":"summary_text","text":"summary"}`)},
+	}
+
+	result := MessageFromLLMWithConfig(m, ReasoningFieldNone)
+
+	assert.Nil(t, result.ReasoningContent)
+	assert.Nil(t, result.Reasoning)
+	assert.Nil(t, result.ReasoningDetails)
+}

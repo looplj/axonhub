@@ -199,6 +199,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					"tools": [
 						{
 							"type": "image_generation",
+							"model": "gpt-image-1",
+							"input_image_mask": {"image_url": "mask.png"},
 							"quality": "high",
 							"size": "1024x1024"
 						}
@@ -210,6 +212,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				require.Len(t, result.Tools, 1)
 				require.Equal(t, llm.ToolTypeImageGeneration, result.Tools[0].Type)
 				require.NotNil(t, result.Tools[0].ImageGeneration)
+				require.Equal(t, "gpt-image-1", result.Tools[0].ImageGeneration.Model)
+				require.Equal(t, map[string]any{"image_url": "mask.png"}, result.Tools[0].ImageGeneration.InputImageMask)
 				require.Equal(t, "high", result.Tools[0].ImageGeneration.Quality)
 				require.Equal(t, "1024x1024", result.Tools[0].ImageGeneration.Size)
 			},
@@ -962,6 +966,52 @@ func TestConvertItemToMessage_Compaction(t *testing.T) {
 				require.Equal(t, "compaction", result.Content.MultipleContent[0].Type)
 				require.NotNil(t, result.Content.MultipleContent[0].Compact)
 				require.Equal(t, "", result.Content.MultipleContent[0].Compact.EncryptedContent)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertItemToMessage(tt.item)
+			tt.validate(t, result, err)
+		})
+	}
+}
+
+func TestConvertItemToMessage_InputAudio(t *testing.T) {
+	tests := []struct {
+		name     string
+		item     *Item
+		validate func(t *testing.T, result *llm.Message, err error)
+	}{
+		{
+			name: "standalone input_audio item",
+			item: &Item{
+				Type: "input_audio",
+				InputAudio: &llm.InputAudio{
+					Data:   "audio-base64-data",
+					Format: "wav",
+				},
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "user", result.Role)
+				require.Len(t, result.Content.MultipleContent, 1)
+				require.Equal(t, "input_audio", result.Content.MultipleContent[0].Type)
+				require.NotNil(t, result.Content.MultipleContent[0].InputAudio)
+				require.Equal(t, "audio-base64-data", result.Content.MultipleContent[0].InputAudio.Data)
+				require.Equal(t, "wav", result.Content.MultipleContent[0].InputAudio.Format)
+			},
+		},
+		{
+			name: "input_audio item with nil InputAudio",
+			item: &Item{
+				Type: "input_audio",
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.Nil(t, result)
 			},
 		},
 	}
@@ -2138,10 +2188,11 @@ func TestConvertToLLMRequest_NamespaceToolMapRecorded(t *testing.T) {
 		Input: Input{Text: lo.ToPtr("use the tool")},
 		Tools: []Tool{
 			{
-				Type: "namespace",
-				Name: "mcp__node_repl",
+				Type:        "namespace",
+				Name:        "mcp__node_repl",
+				Description: "Tools in the mcp__node_repl namespace.",
 				Tools: []Tool{
-					{Type: "function", Name: "run", Parameters: map[string]any{"type": "object"}},
+					{Type: "function", Name: "run", Description: "Run JavaScript", Parameters: map[string]any{"type": "object"}},
 				},
 			},
 		},
@@ -2164,6 +2215,7 @@ func TestConvertToLLMRequest_NamespaceToolMapRecorded(t *testing.T) {
 	// The flattened function must also be in the tools list.
 	require.Len(t, result.Tools, 1)
 	require.Equal(t, "mcp__node_repl__run", result.Tools[0].Function.Name)
+	require.Equal(t, "Tools in the mcp__node_repl namespace.\n\nRun JavaScript", result.Tools[0].Function.Description)
 }
 
 // TestConvertToResponsesAPIResponse_NamespaceFunctionCallRestored covers #1a/D1:

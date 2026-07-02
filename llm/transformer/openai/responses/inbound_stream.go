@@ -797,6 +797,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 	item := Item{
 		ID:               s.currentItemID,
 		Type:             "reasoning",
+		Status:           lo.ToPtr("completed"),
 		Summary:          summary,
 		EncryptedContent: encryptedContent,
 	}

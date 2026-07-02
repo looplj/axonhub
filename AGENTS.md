@@ -80,3 +80,4 @@ All detailed rules are in `.agent/rules/`:
 | [e2e.md](.agent/rules/e2e.md) | `frontend/tests/**/*.ts` | E2E testing rules |
 | [docs.md](.agent/rules/docs.md) | `docs/**/*.md` | Documentation rules |
 | [workflows/add-channel.md](.agent/rules/workflows/add-channel.md) | Manual | Workflow for adding a new channel |
+| [spec-audit-method.md](.agent/rules/spec-audit-method.md) | `docs/specs/**/*.md` | 协议转换字段审计的 MCP 取证纪律与防误判判据 |

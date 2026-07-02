@@ -207,7 +207,7 @@ func (s *geminiInboundStream) transformChunk(chunk *llm.Response) (*httpclient.S
 			}
 
 			if tc.Function.Name != "" {
-				agg.name = tc.Function.Name
+				agg.name = tc.Function.CompositeName()
 			}
 
 			if tc.Function.Arguments != "" {

@@ -49,6 +49,46 @@ func convertImageSourceToLLMImageURLPart(source *ImageSource, cacheControl *Cach
 	return part, true
 }
 
+// convertImageSourceToLLMDocumentURLPart converts an Anthropic document source
+// (used by type:"document" content blocks for PDFs etc.) to a canonical
+// llm.MessageContentPart with a DocumentURL.
+func convertImageSourceToLLMDocumentURLPart(source *ImageSource, cacheControl *CacheControl) (llm.MessageContentPart, bool) {
+	if source == nil {
+		return llm.MessageContentPart{}, false
+	}
+
+	part := llm.MessageContentPart{
+		Type:         "document",
+		CacheControl: convertToLLMCacheControl(cacheControl),
+	}
+
+	if source.Type == "base64" {
+		if source.Data == "" {
+			return llm.MessageContentPart{}, false
+		}
+
+		mediaType := source.MediaType
+		if mediaType == "" {
+			mediaType = "application/octet-stream"
+		}
+
+		// Use xurl.BuildDataURL (single exact-size concat) instead of fmt.Sprintf
+		// to avoid the printer's doubling-growth buffer churn on large base64 data.
+		docURL := xurl.BuildDataURL(mediaType, source.Data, true)
+		part.Document = &llm.DocumentURL{URL: docURL, MIMEType: mediaType}
+
+		return part, true
+	}
+
+	if source.URL == "" {
+		return llm.MessageContentPart{}, false
+	}
+
+	part.Document = &llm.DocumentURL{URL: source.URL}
+
+	return part, true
+}
+
 // convertToLLMRequest converts Anthropic MessageRequest to ChatCompletionRequest.
 //
 //nolint:maintidx // TODO: fix.
@@ -166,7 +206,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				case "thinking":
 					// Keep thinking content in MultipleContent to preserve order
 					if block.Thinking != nil && *block.Thinking != "" {
-						reasoningContent = *block.Thinking
+						if reasoningContent != "" {
+							reasoningContent += "\n"
+						}
+						reasoningContent += *block.Thinking
 						hasReasoningInContent = true
 					}
 
@@ -189,6 +232,11 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					hasContent = true
 				case "image":
 					if part, ok := convertImageSourceToLLMImageURLPart(block.Source, block.CacheControl); ok {
+						contentParts = append(contentParts, part)
+						hasContent = true
+					}
+				case "document":
+					if part, ok := convertImageSourceToLLMDocumentURLPart(block.Source, block.CacheControl); ok {
 						contentParts = append(contentParts, part)
 						hasContent = true
 					}
@@ -222,6 +270,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 									})
 								case "image":
 									if part, ok := convertImageSourceToLLMImageURLPart(contentBlock.Source, contentBlock.CacheControl); ok {
+										toolContentParts = append(toolContentParts, part)
+									}
+								case "document":
+									if part, ok := convertImageSourceToLLMDocumentURLPart(contentBlock.Source, contentBlock.CacheControl); ok {
 										toolContentParts = append(toolContentParts, part)
 									}
 								}

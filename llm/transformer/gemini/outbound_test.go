@@ -848,3 +848,116 @@ func TestClearFunctionIDsForVertexAI(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, string(jsonBytes), "\"id\":")
 }
+
+func TestOutboundTransformer_TransformResponse_InlineDataAudio(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-key")
+	require.NoError(t, err)
+
+	geminiResponse := &GenerateContentResponse{
+		ResponseID:   "resp-audio",
+		ModelVersion: "gemini-2.0-flash",
+		Candidates: []*Candidate{
+			{
+				Index: 0,
+				Content: &Content{
+					Role: "model",
+					Parts: []*Part{
+						{
+							InlineData: &Blob{
+								MIMEType: "audio/wav",
+								Data:     "base64audiodata",
+							},
+						},
+					},
+				},
+				FinishReason: "STOP",
+			},
+		},
+	}
+
+	respBody, err := json.Marshal(geminiResponse)
+	require.NoError(t, err)
+
+	resp, err := transformer.TransformResponse(nil, &httpclient.Response{StatusCode: 200, Body: respBody})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Choices, 1)
+	require.Len(t, resp.Choices[0].Message.Content.MultipleContent, 1)
+	require.Equal(t, "input_audio", resp.Choices[0].Message.Content.MultipleContent[0].Type)
+}
+
+func TestOutboundTransformer_TransformResponse_InlineDataVideo(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-key")
+	require.NoError(t, err)
+
+	geminiResponse := &GenerateContentResponse{
+		ResponseID:   "resp-video",
+		ModelVersion: "gemini-2.0-flash",
+		Candidates: []*Candidate{
+			{
+				Index: 0,
+				Content: &Content{
+					Role: "model",
+					Parts: []*Part{
+						{
+							InlineData: &Blob{
+								MIMEType: "video/mp4",
+								Data:     "base64videodata",
+							},
+						},
+					},
+				},
+				FinishReason: "STOP",
+			},
+		},
+	}
+
+	respBody, err := json.Marshal(geminiResponse)
+	require.NoError(t, err)
+
+	resp, err := transformer.TransformResponse(nil, &httpclient.Response{StatusCode: 200, Body: respBody})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Choices, 1)
+	require.Len(t, resp.Choices[0].Message.Content.MultipleContent, 1)
+	require.Equal(t, "video_url", resp.Choices[0].Message.Content.MultipleContent[0].Type)
+}
+
+func TestOutboundTransformer_TransformResponse_FileData(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "test-key")
+	require.NoError(t, err)
+
+	geminiResponse := &GenerateContentResponse{
+		ResponseID:   "resp-filedata",
+		ModelVersion: "gemini-2.0-flash",
+		Candidates: []*Candidate{
+			{
+				Index: 0,
+				Content: &Content{
+					Role: "model",
+					Parts: []*Part{
+						{
+							FileData: &FileData{
+								MIMEType: "application/pdf",
+								FileURI:  "https://example.com/doc.pdf",
+							},
+						},
+					},
+				},
+				FinishReason: "STOP",
+			},
+		},
+	}
+
+	respBody, err := json.Marshal(geminiResponse)
+	require.NoError(t, err)
+
+	resp, err := transformer.TransformResponse(nil, &httpclient.Response{StatusCode: 200, Body: respBody})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Choices, 1)
+	require.Len(t, resp.Choices[0].Message.Content.MultipleContent, 1)
+	require.Equal(t, "document", resp.Choices[0].Message.Content.MultipleContent[0].Type)
+	require.NotNil(t, resp.Choices[0].Message.Content.MultipleContent[0].Document)
+	require.Equal(t, "https://example.com/doc.pdf", resp.Choices[0].Message.Content.MultipleContent[0].Document.URL)
+}

@@ -392,3 +392,36 @@ func TestCompactInboundTransformer_TransformStream(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "compact does not support streaming")
 }
+
+func TestConvertCompactMessageToItems_InputAudio(t *testing.T) {
+	msg := llm.Message{
+		Role: "user",
+		Content: llm.MessageContent{
+			MultipleContent: []llm.MessageContentPart{
+				{
+					Type: "text",
+					Text: lo.ToPtr("describe this audio"),
+				},
+				{
+					Type: "input_audio",
+					InputAudio: &llm.InputAudio{
+						Data:   "audio-base64-data",
+						Format: "wav",
+					},
+				},
+			},
+		},
+	}
+
+	items := convertCompactMessageToItems(msg)
+	require.Len(t, items, 1)
+	require.Equal(t, "message", items[0].Type)
+	require.Equal(t, "user", items[0].Role)
+	require.NotNil(t, items[0].Content)
+	require.Len(t, items[0].Content.Items, 2)
+	assert.Equal(t, "input_text", items[0].Content.Items[0].Type)
+	assert.Equal(t, "input_audio", items[0].Content.Items[1].Type)
+	require.NotNil(t, items[0].Content.Items[1].InputAudio)
+	assert.Equal(t, "audio-base64-data", items[0].Content.Items[1].InputAudio.Data)
+	assert.Equal(t, "wav", items[0].Content.Items[1].InputAudio.Format)
+}

@@ -2497,3 +2497,135 @@ func TestInboundTransformer_TransformRequest_DisableParallelToolUseMapsToParalle
 		})
 	}
 }
+
+func TestConvertImageSourceToLLMDocumentURLPart(t *testing.T) {
+	t.Run("base64 source", func(t *testing.T) {
+		part, ok := convertImageSourceToLLMDocumentURLPart(&ImageSource{
+			Type:      "base64",
+			MediaType: "application/pdf",
+			Data:      "pdf-base64-data",
+		}, nil)
+		require.True(t, ok)
+		require.Equal(t, "document", part.Type)
+		require.NotNil(t, part.Document)
+		require.Contains(t, part.Document.URL, "data:application/pdf;base64,")
+		require.Equal(t, "application/pdf", part.Document.MIMEType)
+	})
+
+	t.Run("url source", func(t *testing.T) {
+		part, ok := convertImageSourceToLLMDocumentURLPart(&ImageSource{
+			Type: "url",
+			URL:  "https://example.com/doc.pdf",
+		}, nil)
+		require.True(t, ok)
+		require.Equal(t, "document", part.Type)
+		require.NotNil(t, part.Document)
+		require.Equal(t, "https://example.com/doc.pdf", part.Document.URL)
+	})
+
+	t.Run("nil source", func(t *testing.T) {
+		_, ok := convertImageSourceToLLMDocumentURLPart(nil, nil)
+		require.False(t, ok)
+	})
+
+	t.Run("empty base64 data", func(t *testing.T) {
+		_, ok := convertImageSourceToLLMDocumentURLPart(&ImageSource{
+			Type:      "base64",
+			MediaType: "application/pdf",
+			Data:      "",
+		}, nil)
+		require.False(t, ok)
+	})
+}
+
+func TestInboundTransformer_ToolResultWithDocument(t *testing.T) {
+	transformer := NewInboundTransformer()
+	ctx := context.Background()
+
+	httpReq := &httpclient.Request{
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{
+			"model": "claude-sonnet-4-5-20250929",
+			"max_tokens": 100,
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"tool_use_id": "call_doc_1",
+							"type": "tool_result",
+							"content": [
+								{
+									"type": "document",
+									"source": {
+										"type": "base64",
+										"media_type": "application/pdf",
+										"data": "JVBERi0xLjQ="
+									}
+								}
+							]
+						}
+					]
+				}
+			]
+		}`),
+	}
+
+	req, err := transformer.TransformRequest(ctx, httpReq)
+	require.NoError(t, err)
+	require.Len(t, req.Messages, 1)
+
+	msg := req.Messages[0]
+	require.Equal(t, "tool", msg.Role)
+	require.Len(t, msg.Content.MultipleContent, 1)
+	require.Equal(t, "document", msg.Content.MultipleContent[0].Type)
+	require.NotNil(t, msg.Content.MultipleContent[0].Document)
+	require.Contains(t, msg.Content.MultipleContent[0].Document.URL, "data:application/pdf;base64,")
+}
+
+func TestInboundTransformer_MultipleThinkingBlocks(t *testing.T) {
+	transformer := NewInboundTransformer()
+	ctx := context.Background()
+
+	httpReq := &httpclient.Request{
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{
+			"model": "claude-sonnet-4-5-20250929",
+			"max_tokens": 100,
+			"messages": [
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "thinking",
+							"thinking": "First thought",
+							"signature": "sig1"
+						},
+						{
+							"type": "thinking",
+							"thinking": "Second thought",
+							"signature": "sig2"
+						},
+						{
+							"type": "text",
+							"text": "Final answer"
+						}
+					]
+				}
+			]
+		}`),
+	}
+
+	req, err := transformer.TransformRequest(ctx, httpReq)
+	require.NoError(t, err)
+	require.Len(t, req.Messages, 1)
+
+	msg := req.Messages[0]
+	require.NotNil(t, msg.ReasoningContent)
+	require.Contains(t, *msg.ReasoningContent, "First thought")
+	require.Contains(t, *msg.ReasoningContent, "Second thought")
+}

@@ -1816,3 +1816,315 @@ func TestOutboundTransformer_TransformRequest_ToolChoiceNoneSkipsDisableParallel
 	require.Equal(t, "none", ar.ToolChoice.Type)
 	require.Nil(t, ar.ToolChoice.DisableParallelToolUse, "disable_parallel_tool_use must NOT be injected when tool_choice is none")
 }
+
+func TestConvertMultiplePartContent_Document(t *testing.T) {
+	t.Run("base64 document URL", func(t *testing.T) {
+		msg := llm.Message{
+			Role: "user",
+			Content: llm.MessageContent{
+				MultipleContent: []llm.MessageContentPart{
+					{
+						Type: "text",
+						Text: lo.ToPtr("analyze this PDF"),
+					},
+					{
+						Type: "document",
+						Document: &llm.DocumentURL{
+							URL:      "data:application/pdf;base64,JVBERi0xLjQ=",
+							MIMEType: "application/pdf",
+						},
+					},
+				},
+			},
+		}
+
+		content, ok := convertMultiplePartContent(msg)
+		require.True(t, ok)
+		require.Len(t, content.MultipleContent, 2)
+		require.Equal(t, "text", content.MultipleContent[0].Type)
+		require.Equal(t, "document", content.MultipleContent[1].Type)
+		require.NotNil(t, content.MultipleContent[1].Source)
+		require.Equal(t, "base64", content.MultipleContent[1].Source.Type)
+		require.Equal(t, "application/pdf", content.MultipleContent[1].Source.MediaType)
+		require.Equal(t, "JVBERi0xLjQ=", content.MultipleContent[1].Source.Data)
+	})
+
+	t.Run("url document", func(t *testing.T) {
+		msg := llm.Message{
+			Role: "user",
+			Content: llm.MessageContent{
+				MultipleContent: []llm.MessageContentPart{
+					{
+						Type: "document",
+						Document: &llm.DocumentURL{
+							URL: "https://example.com/doc.pdf",
+						},
+					},
+				},
+			},
+		}
+
+		content, ok := convertMultiplePartContent(msg)
+		require.True(t, ok)
+		require.Len(t, content.MultipleContent, 1)
+		require.Equal(t, "document", content.MultipleContent[0].Type)
+		require.NotNil(t, content.MultipleContent[0].Source)
+		require.Equal(t, "url", content.MultipleContent[0].Source.Type)
+		require.Equal(t, "https://example.com/doc.pdf", content.MultipleContent[0].Source.URL)
+	})
+}
+
+func TestConvertToAnthropicTrivialContent_Document(t *testing.T) {
+	content := llm.MessageContent{
+		MultipleContent: []llm.MessageContentPart{
+			{
+				Type: "text",
+				Text: lo.ToPtr("result text"),
+			},
+			{
+				Type: "document",
+				Document: &llm.DocumentURL{
+					URL:      "data:application/pdf;base64,JVBERi0xLjQ=",
+					MIMEType: "application/pdf",
+				},
+			},
+		},
+	}
+
+	result := convertToAnthropicTrivialContent(content)
+	require.NotNil(t, result)
+	require.Len(t, result.MultipleContent, 2)
+	require.Equal(t, "text", result.MultipleContent[0].Type)
+	require.Equal(t, "document", result.MultipleContent[1].Type)
+	require.NotNil(t, result.MultipleContent[1].Source)
+	require.Equal(t, "base64", result.MultipleContent[1].Source.Type)
+	require.Equal(t, "application/pdf", result.MultipleContent[1].Source.MediaType)
+	require.Equal(t, "JVBERi0xLjQ=", result.MultipleContent[1].Source.Data)
+}
+
+func TestExtractUserContentBlocks_WithImage(t *testing.T) {
+	msg := llm.Message{
+		Role: "user",
+		Content: llm.MessageContent{
+			MultipleContent: []llm.MessageContentPart{
+				{
+					Type: "text",
+					Text: lo.ToPtr("what is this?"),
+				},
+				{
+					Type: "image_url",
+					ImageURL: &llm.ImageURL{
+						URL: "https://example.com/photo.png",
+					},
+				},
+			},
+		},
+	}
+
+	blocks := extractUserContentBlocks(msg)
+	require.Len(t, blocks, 2)
+	require.Equal(t, "text", blocks[0].Type)
+	require.Equal(t, "image", blocks[1].Type)
+	require.NotNil(t, blocks[1].Source)
+	require.Equal(t, "url", blocks[1].Source.Type)
+	require.Equal(t, "https://example.com/photo.png", blocks[1].Source.URL)
+}
+
+func TestExtractUserContentBlocks_WithDocument(t *testing.T) {
+	msg := llm.Message{
+		Role: "user",
+		Content: llm.MessageContent{
+			MultipleContent: []llm.MessageContentPart{
+				{
+					Type: "text",
+					Text: lo.ToPtr("analyze this PDF"),
+				},
+				{
+					Type: "document",
+					Document: &llm.DocumentURL{
+						URL: "data:application/pdf;base64,JVBERi0xLjQ=",
+					},
+				},
+			},
+		},
+	}
+
+	blocks := extractUserContentBlocks(msg)
+	require.Len(t, blocks, 2)
+	require.Equal(t, "text", blocks[0].Type)
+	require.Equal(t, "document", blocks[1].Type)
+	require.NotNil(t, blocks[1].Source)
+	require.Equal(t, "base64", blocks[1].Source.Type)
+	require.Equal(t, "application/pdf", blocks[1].Source.MediaType)
+}
+
+func TestHasThinkingContent_WithReasoningField(t *testing.T) {
+	require.True(t, hasThinkingContent(llm.Message{Reasoning: lo.ToPtr("some reasoning")}))
+	require.False(t, hasThinkingContent(llm.Message{}))
+}
+
+func TestPrepareAnthropicReasoning_UnrecognizedSignature(t *testing.T) {
+	content := lo.ToPtr("thinking content")
+	sig := lo.ToPtr("unrecognized_signature_format")
+	config := &Config{Type: PlatformDirect}
+
+	resultContent, resultSig := prepareAnthropicReasoning(content, sig, config)
+
+	require.NotNil(t, resultContent)
+	require.Equal(t, "thinking content", *resultContent)
+	require.Nil(t, resultSig)
+}
+
+func TestBuildPreBlocks_ReasoningFallback(t *testing.T) {
+	// When ReasoningContent is nil but Reasoning is set,
+	// the thinking block should still be created using Reasoning.
+	msg := llm.Message{
+		Role:      "assistant",
+		Reasoning: lo.ToPtr("my reasoning text"),
+	}
+	config := &Config{Type: PlatformDirect}
+
+	blocks := buildPreBlocks(msg, config)
+
+	require.Len(t, blocks, 1)
+	require.Equal(t, "thinking", blocks[0].Type)
+	require.NotNil(t, blocks[0].Thinking)
+	require.Equal(t, "my reasoning text", *blocks[0].Thinking)
+}
+
+func TestBuildMessageContent_ReasoningFallback(t *testing.T) {
+	// When ReasoningContent is nil but Reasoning is set,
+	// buildMessageContent should produce a thinking block.
+	msg := llm.Message{
+		Role: "user",
+		Content: llm.MessageContent{
+			Content: lo.ToPtr("hello"),
+		},
+		Reasoning: lo.ToPtr("my reasoning text"),
+	}
+
+	content, ok := buildMessageContent(msg, nil)
+	require.True(t, ok)
+	require.Nil(t, content.Content)
+	require.Len(t, content.MultipleContent, 2)
+	require.Equal(t, "thinking", content.MultipleContent[0].Type)
+	require.NotNil(t, content.MultipleContent[0].Thinking)
+	require.Equal(t, "my reasoning text", *content.MultipleContent[0].Thinking)
+}
+
+func TestOutboundTransformer_TransformResponse_ImageBlock(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("", "")
+
+	t.Run("base64 image", func(t *testing.T) {
+		httpResp := &httpclient.Response{
+			StatusCode: http.StatusOK,
+			Body: []byte(`{
+				"id": "msg_img1",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "image",
+						"source": {
+							"type": "base64",
+							"media_type": "image/png",
+							"data": "iVBORw0KGgo="
+						}
+					}
+				],
+				"model": "claude-3-sonnet-20240229",
+				"stop_reason": "end_turn"
+			}`),
+		}
+
+		result, err := transformer.TransformResponse(t.Context(), httpResp)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Len(t, result.Choices, 1)
+		require.Len(t, result.Choices[0].Message.Content.MultipleContent, 1)
+
+		part := result.Choices[0].Message.Content.MultipleContent[0]
+		require.Equal(t, "image_url", part.Type)
+		require.NotNil(t, part.ImageURL)
+		require.Equal(t, "data:image/png;base64,iVBORw0KGgo=", part.ImageURL.URL)
+	})
+
+	t.Run("url image", func(t *testing.T) {
+		httpResp := &httpclient.Response{
+			StatusCode: http.StatusOK,
+			Body: []byte(`{
+				"id": "msg_img2",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "image",
+						"source": {
+							"type": "url",
+							"url": "https://example.com/image.png"
+						}
+					}
+				],
+				"model": "claude-3-sonnet-20240229",
+				"stop_reason": "end_turn"
+			}`),
+		}
+
+		result, err := transformer.TransformResponse(t.Context(), httpResp)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Len(t, result.Choices, 1)
+		require.Len(t, result.Choices[0].Message.Content.MultipleContent, 1)
+
+		part := result.Choices[0].Message.Content.MultipleContent[0]
+		require.Equal(t, "image_url", part.Type)
+		require.NotNil(t, part.ImageURL)
+		require.Equal(t, "https://example.com/image.png", part.ImageURL.URL)
+	})
+}
+
+func TestOutboundTransformer_TransformResponse_ImageBlockIndex(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("", "")
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id": "msg_imgidx",
+			"type": "message",
+			"role": "assistant",
+			"content": [
+				{
+					"type": "text",
+					"text": "Here is an image:"
+				},
+				{
+					"type": "image",
+					"source": {
+						"type": "url",
+						"url": "https://example.com/img.png"
+					}
+				}
+			],
+			"model": "claude-3-sonnet-20240229",
+			"stop_reason": "end_turn"
+		}`),
+	}
+
+	result, err := transformer.TransformResponse(t.Context(), httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result.Choices, 1)
+
+	parts := result.Choices[0].Message.Content.MultipleContent
+	require.Len(t, parts, 2)
+
+	// Text block should have index 0
+	require.Equal(t, "text", parts[0].Type)
+	require.NotNil(t, parts[0].TransformerMetadata)
+	require.Equal(t, 0, parts[0].TransformerMetadata["anthropic_block_index"])
+
+	// Image block should have index 1
+	require.Equal(t, "image_url", parts[1].Type)
+	require.NotNil(t, parts[1].TransformerMetadata)
+	require.Equal(t, 1, parts[1].TransformerMetadata["anthropic_block_index"])
+}

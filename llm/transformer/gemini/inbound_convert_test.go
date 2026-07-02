@@ -3038,3 +3038,45 @@ func TestConvertLLMToGeminiResponse_GroundingMetadata_Additional(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertLLMToGeminiResponse_ToolCallCompositeName(t *testing.T) {
+	input := &llm.Response{
+		ID:    "resp_ns",
+		Model: "gemini-2.5-flash",
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_001",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "get_weather",
+								Namespace: "tools",
+								Arguments: `{}`,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := convertLLMToGeminiResponse(input, false)
+	require.NotNil(t, result)
+	require.Len(t, result.Candidates, 1)
+
+	// Find the function call part
+	var fc *FunctionCall
+	for _, part := range result.Candidates[0].Content.Parts {
+		if part.FunctionCall != nil {
+			fc = part.FunctionCall
+			break
+		}
+	}
+	require.NotNil(t, fc)
+	// CompositeName should produce "tools__get_weather" when Namespace is set
+	require.Equal(t, "tools__get_weather", fc.Name)
+}

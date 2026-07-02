@@ -61,6 +61,16 @@ type FunctionCall struct {
 	Arguments string `json:"arguments"`
 }
 
+// CompositeName returns the flat function name used by providers that do not
+// support namespace-separated tool calls (Chat Completions, Anthropic, Gemini).
+// When Namespace is set, the result is "namespace__name"; otherwise just Name.
+func (fc FunctionCall) CompositeName() string {
+	if fc.Namespace != "" {
+		return fc.Namespace + "__" + fc.Name
+	}
+	return fc.Name
+}
+
 // ToolCall represents a tool call in the response.
 type ToolCall struct {
 	ID string `json:"id,omitempty"`

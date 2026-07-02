@@ -140,6 +140,10 @@ func TestConvertToolMessage(t *testing.T) {
 						Text: lo.ToPtr("Text result"),
 					},
 					{
+						Type:     "input_image",
+						ImageURL: lo.ToPtr("https://example.com/image.jpg"),
+					},
+					{
 						Type: "input_text",
 						Text: lo.ToPtr("More text"),
 					},
@@ -202,7 +206,19 @@ func TestConvertToolMessage(t *testing.T) {
 				Type:   "function_call_output",
 				CallID: "call_no_text",
 				Output: &Input{
-					Text: lo.ToPtr(""),
+					Items: []Item{
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("https://example.com/image.jpg"),
+						},
+						{
+							Type:       "input_audio",
+							InputAudio: &llm.InputAudio{
+								Data:   "audio-data",
+								Format: "wav",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -219,6 +235,40 @@ func TestConvertToolMessage(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestConvertAssistantMessage_WithImage(t *testing.T) {
+	msgs := []llm.Message{
+		{
+			Role: "assistant",
+			Content: llm.MessageContent{
+				MultipleContent: []llm.MessageContentPart{
+					{
+						Type: "text",
+						Text: lo.ToPtr("here is the generated image"),
+					},
+					{
+						Type: "image_url",
+						ImageURL: &llm.ImageURL{
+							URL: "https://example.com/generated.png",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := convertInputFromMessages(msgs, llm.TransformOptions{ArrayInputs: lo.ToPtr(true)}, nil)
+	require.Len(t, result.Items, 1)
+	item := result.Items[0]
+	require.Equal(t, "message", item.Type)
+	require.Equal(t, "assistant", item.Role)
+	require.NotNil(t, item.Content)
+	require.Len(t, item.Content.Items, 2)
+	require.Equal(t, "output_text", item.Content.Items[0].Type)
+	require.Equal(t, "input_image", item.Content.Items[1].Type)
+	require.NotNil(t, item.Content.Items[1].ImageURL)
+	require.Equal(t, "https://example.com/generated.png", *item.Content.Items[1].ImageURL)
 }
 
 func TestConvertWebSearchToTool(t *testing.T) {
@@ -700,11 +750,77 @@ func TestConvertInputFromMessages(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "user message with input_audio",
+			msgs: []llm.Message{
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						MultipleContent: []llm.MessageContentPart{
+							{
+								Type: "input_audio",
+								InputAudio: &llm.InputAudio{
+									Data:   "audio-base64-data",
+									Format: "wav",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: Input{
+				Items: []Item{
+					{
+						Type: "message",
+						Role: "user",
+						Content: &Input{
+							Items: []Item{
+								{
+									Type: "input_audio",
+									InputAudio: &llm.InputAudio{
+										Data:   "audio-base64-data",
+										Format: "wav",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := convertInputFromMessages(tt.msgs, tt.transformOptions, nil)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsStructurallyRepresentedInputItem(t *testing.T) {
+	tests := []struct {
+		name     string
+		itemType string
+		expected bool
+	}{
+		{"empty", "", true},
+		{"message", "message", true},
+		{"input_text", "input_text", true},
+		{"input_image", "input_image", true},
+		{"input_audio", "input_audio", true},
+		{"function_call", "function_call", true},
+		{"function_call_output", "function_call_output", true},
+		{"reasoning", "reasoning", true},
+		{"compaction", "compaction", true},
+		{"unknown_type", "unknown_type", false},
+		{"file_search", "file_search", false},
+	}
+
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isStructurallyRepresentedInputItem(tt.itemType)
 			require.Equal(t, tt.expected, result)
 		})
 	}

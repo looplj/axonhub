@@ -190,6 +190,13 @@ func convertCompactMessageToItems(msg llm.Message) []Item {
 					Detail:   part.ImageURL.Detail,
 				})
 			}
+		case "input_audio":
+			if part.InputAudio != nil {
+				contentItems = append(contentItems, Item{
+					Type:       "input_audio",
+					InputAudio: part.InputAudio,
+				})
+			}
 		case "compaction", "compaction_summary":
 			if part.Compact != nil {
 				flushMessage()

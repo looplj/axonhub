@@ -140,6 +140,7 @@ func MessageFromLLM(m llm.Message) Message {
 // MessageFromLLMWithConfig creates OpenAI Message from unified llm.Message with reasoning field configuration.
 func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Message {
 	var reasoningContent, reasoning *string
+	reasoningDetails := m.ReasoningDetails
 
 	// Apply reasoning field configuration
 	switch reasoningField {
@@ -163,6 +164,7 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 		// Strip all reasoning fields
 		reasoningContent = nil
 		reasoning = nil
+		reasoningDetails = nil
 	default: // ReasoningFieldAll
 		// Preserve both reasoning fields with sync logic
 		reasoningContent = m.ReasoningContent
@@ -185,7 +187,7 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: reasoningContent,
 		Reasoning:        reasoning,
-		ReasoningDetails: m.ReasoningDetails,
+		ReasoningDetails: reasoningDetails,
 		Images:           m.Images,
 	}
 
@@ -245,7 +247,7 @@ func MessageContentFromLLM(c llm.MessageContent) MessageContent {
 	if c.MultipleContent != nil {
 		content.MultipleContent = lo.FilterMap(c.MultipleContent, func(p llm.MessageContentPart, _ int) (MessageContentPart, bool) {
 			switch p.Type {
-			case "compaction", "compaction_summary":
+			case "compaction", "compaction_summary", "document":
 				return MessageContentPart{}, false
 			default:
 				return MessageContentPartFromLLM(p), true
@@ -305,7 +307,7 @@ func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
 		ID:   tc.ID,
 		Type: tc.Type,
 		Function: FunctionCall{
-			Name:      tc.Function.Name,
+			Name:      tc.Function.CompositeName(),
 			Arguments: tc.Function.Arguments,
 		},
 		Index: tc.Index,

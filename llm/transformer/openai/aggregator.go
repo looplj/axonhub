@@ -20,6 +20,9 @@ type choiceAggregator struct {
 	content             strings.Builder
 	reasoningContent    strings.Builder
 	hasReasoningContent bool                  // Tracks whether any delta carried reasoning_content (even an empty string).
+	reasoning           strings.Builder
+	hasReasoning        bool                  // Tracks whether any delta carried the alternate "reasoning" field.
+	refusal             strings.Builder
 	toolCalls           map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
 	finishReason        *string
 	role                string
@@ -180,6 +183,17 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 					choiceAgg.reasoningContent.WriteString(*choice.Delta.ReasoningContent)
 				}
 
+				// Handle alternate reasoning field (used by some providers instead of reasoning_content)
+				if choice.Delta.Reasoning != nil {
+					choiceAgg.hasReasoning = true
+					choiceAgg.reasoning.WriteString(*choice.Delta.Reasoning)
+				}
+
+				// Handle refusal
+				if choice.Delta.Refusal != "" {
+					choiceAgg.refusal.WriteString(choice.Delta.Refusal)
+				}
+
 				// Handle tool calls
 				if len(choice.Delta.ToolCalls) > 0 {
 					for _, deltaToolCall := range choice.Delta.ToolCalls {
@@ -293,6 +307,25 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		if choiceAgg.hasReasoningContent {
 			reasoningContent := choiceAgg.reasoningContent.String()
 			message.ReasoningContent = &reasoningContent
+		}
+
+		// Set reasoning from the alternate "reasoning" field if any delta carried it.
+		if choiceAgg.hasReasoning {
+			reasoning := choiceAgg.reasoning.String()
+			message.Reasoning = &reasoning
+		}
+
+		// Sync reasoning fields: if one field has value and the other is nil, copy the value
+		if message.ReasoningContent == nil && message.Reasoning != nil && *message.Reasoning != "" {
+			message.ReasoningContent = message.Reasoning
+		}
+		if message.Reasoning == nil && message.ReasoningContent != nil && *message.ReasoningContent != "" {
+			message.Reasoning = message.ReasoningContent
+		}
+
+		// Set refusal if any
+		if choiceAgg.refusal.Len() > 0 {
+			message.Refusal = choiceAgg.refusal.String()
 		}
 
 		// Set content if available

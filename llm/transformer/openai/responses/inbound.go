@@ -558,6 +558,24 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 
 		return nil, nil
 
+	case "input_audio":
+		// Input audio as a standalone item
+		if item.InputAudio != nil {
+			return &llm.Message{
+				Role: lo.Ternary(item.Role != "", item.Role, "user"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type:       "input_audio",
+							InputAudio: item.InputAudio,
+						},
+					},
+				},
+			}, nil
+		}
+
+		return nil, nil
+
 	case "function_call":
 		// Function call from assistant - convert to tool call
 		return &llm.Message{
@@ -786,8 +804,10 @@ func convertToolsToLLM(tools []Tool, metadata map[string]any) ([]llm.Tool, error
 			result = append(result, llm.Tool{
 				Type: llm.ToolTypeImageGeneration,
 				ImageGeneration: &llm.ImageGeneration{
+					Model:             tool.Model,
 					Background:        tool.Background,
 					InputFidelity:     tool.InputFidelity,
+					InputImageMask:    tool.InputImageMask,
 					Moderation:        tool.Moderation,
 					OutputCompression: tool.OutputCompression,
 					OutputFormat:      tool.OutputFormat,
@@ -859,6 +879,10 @@ func convertToolsToLLM(tools []Tool, metadata map[string]any) ([]llm.Tool, error
 					return nil, fmt.Errorf("failed to marshal namespace tool parameters: %w", err)
 				}
 				compositeName := tool.Name + "__" + subTool.Name
+				descriptionPrefix := tool.Description
+				if descriptionPrefix == "" {
+					descriptionPrefix = "Tools in the " + tool.Name + " namespace."
+				}
 				if nsMap != nil {
 					nsMap[compositeName] = namespaceToolEntry{
 						Leaf:      subTool.Name,
@@ -869,7 +893,7 @@ func convertToolsToLLM(tools []Tool, metadata map[string]any) ([]llm.Tool, error
 					Type: "function",
 					Function: llm.Function{
 						Name:        compositeName,
-						Description: subTool.Description,
+						Description: descriptionPrefix + "\n\n" + subTool.Description,
 						Parameters:  params,
 						Strict:      subTool.Strict,
 					},

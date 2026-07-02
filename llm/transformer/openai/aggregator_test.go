@@ -442,3 +442,54 @@ func TestAggregateStreamChunks_OmitsReasoningContentWhenAbsent(t *testing.T) {
 	require.NotNil(t, got.Choices[0].Message)
 	require.Nil(t, got.Choices[0].Message.ReasoningContent)
 }
+
+func TestAggregateStreamChunks_Refusal(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"role":"assistant","refusal":"I cannot"}}]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"refusal":" help with that."},"finish_reason":"stop"}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	require.Len(t, got.Choices, 1)
+	require.Equal(t, "I cannot help with that.", got.Choices[0].Message.Refusal)
+}
+
+func TestAggregateStreamChunks_ReasoningAlternateField(t *testing.T) {
+	// Some providers send "reasoning" instead of "reasoning_content" in streaming deltas.
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"synthetic-1","choices":[{"index":0,"delta":{"role":"assistant","reasoning":"Let me think"}}]}`),
+		},
+		{
+			Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"synthetic-1","choices":[{"index":0,"delta":{"reasoning":" about this.","content":"The answer is 42"},"finish_reason":"stop"}]}`),
+		},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	err = json.Unmarshal(gotBytes, &got)
+	require.NoError(t, err)
+
+	require.Len(t, got.Choices, 1)
+	// Reasoning should be aggregated from the "reasoning" field
+	require.NotNil(t, got.Choices[0].Message.Reasoning)
+	require.Equal(t, "Let me think about this.", *got.Choices[0].Message.Reasoning)
+	// ReasoningContent should be synced (same as non-streaming ToLLMMessage)
+	require.NotNil(t, got.Choices[0].Message.ReasoningContent)
+	require.Equal(t, "Let me think about this.", *got.Choices[0].Message.ReasoningContent)
+	// Content should also be aggregated
+	require.NotNil(t, got.Choices[0].Message.Content.Content)
+	require.Equal(t, "The answer is 42", *got.Choices[0].Message.Content.Content)
+}

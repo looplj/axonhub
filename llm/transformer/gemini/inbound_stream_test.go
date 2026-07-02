@@ -1019,3 +1019,65 @@ func TestInboundTransformer_TransformStreamChunk_FinishReasons(t *testing.T) {
 		})
 	}
 }
+
+func TestInboundTransformer_TransformStream_ToolCallCompositeName(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	responses := []*llm.Response{
+		{
+			ID:     "chatcmpl-ns-1",
+			Model:  "gemini-2.0-flash",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						ToolCalls: []llm.ToolCall{
+							{
+								Index: 0,
+								ID:    "call_1",
+								Type:  "function",
+								Function: llm.FunctionCall{
+									Name:      "get_weather",
+									Namespace: "tools",
+									Arguments: `{}`,
+								},
+							},
+						},
+					},
+					FinishReason: lo.ToPtr("tool_calls"),
+				},
+			},
+		},
+	}
+
+	inputStream := streams.SliceStream(responses)
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+
+	var last GenerateContentResponse
+
+	for outputStream.Next() {
+		var r GenerateContentResponse
+		require.NoError(t, json.Unmarshal(outputStream.Current().Data, &r))
+		last = r
+	}
+
+	require.NoError(t, outputStream.Err())
+
+	require.Len(t, last.Candidates, 1)
+	parts := last.Candidates[0].Content.Parts
+
+	var fc *FunctionCall
+
+	for _, p := range parts {
+		if p != nil && p.FunctionCall != nil {
+			fc = p.FunctionCall
+			break
+		}
+	}
+
+	require.NotNil(t, fc)
+	require.Equal(t, "tools__get_weather", fc.Name)
+}

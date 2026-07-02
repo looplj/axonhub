@@ -175,6 +175,13 @@ func convertUserMessage(msg llm.Message) Item {
 						Detail:   p.ImageURL.Detail,
 					})
 				}
+			case "input_audio":
+				if p.InputAudio != nil {
+					contentItems = append(contentItems, Item{
+						Type:       "input_audio",
+						InputAudio: p.InputAudio,
+					})
+				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {
 					contentItems = append(contentItems, compactionItemFromPart(p, p.Type))
@@ -233,9 +240,15 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 				Input:     lo.ToPtr(tc.ResponseCustomToolCall.Input),
 			})
 		} else {
-			// Restore namespace group identity via table lookup (never string
-			// splitting — group names may contain "__").
-			fcName, fcNamespace := resolveNamespaceFromMetadata(metadata, tc.Function.Name)
+			// Restore namespace group identity. If the ToolCall already carries
+			// a Namespace (e.g. from a Responses function_call input item),
+			// use it directly; otherwise fall back to table lookup for
+			// composite names produced by the upstream model.
+			fcName := tc.Function.Name
+			fcNamespace := tc.Function.Namespace
+			if fcNamespace == "" {
+				fcName, fcNamespace = resolveNamespaceFromMetadata(metadata, tc.Function.Name)
+			}
 			toolCallItems = append(toolCallItems, Item{
 				Type:      "function_call",
 				CallID:    tc.ID,
@@ -277,6 +290,14 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 						Text: p.Text,
 					})
 				}
+			case "image_url":
+				if p.ImageURL != nil {
+					contentItems = append(contentItems, Item{
+						Type:     "input_image",
+						ImageURL: &p.ImageURL.URL,
+						Detail:   p.ImageURL.Detail,
+					})
+				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {
 					flushMessage()
@@ -305,11 +326,29 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 		output.Text = msg.Content.Content
 	} else if len(msg.Content.MultipleContent) > 0 {
 		for _, p := range msg.Content.MultipleContent {
-			if p.Type == "text" && p.Text != nil {
-				output.Items = append(output.Items, Item{
-					Type: "input_text",
-					Text: p.Text,
-				})
+			switch p.Type {
+			case "text":
+				if p.Text != nil {
+					output.Items = append(output.Items, Item{
+						Type: "input_text",
+						Text: p.Text,
+					})
+				}
+			case "image_url":
+				if p.ImageURL != nil {
+					output.Items = append(output.Items, Item{
+						Type:     "input_image",
+						ImageURL: &p.ImageURL.URL,
+						Detail:   p.ImageURL.Detail,
+					})
+				}
+			case "input_audio":
+				if p.InputAudio != nil {
+					output.Items = append(output.Items, Item{
+						Type:       "input_audio",
+						InputAudio: p.InputAudio,
+					})
+				}
 			}
 		}
 	}

@@ -119,7 +119,7 @@ func prepareAnthropicReasoning(reasoningContent, reasoningSignature *string, con
 			return reasoningContent, decoded
 		}
 
-		return nil, nil
+		return reasoningContent, nil
 	}
 
 	return reasoningContent, reasoningSignature
@@ -570,12 +570,23 @@ func extractUserContentBlocks(msg llm.Message) []MessageContentBlock {
 		})
 	} else if len(msg.Content.MultipleContent) > 0 {
 		for _, part := range msg.Content.MultipleContent {
-			if part.Type == "text" && part.Text != nil {
-				blocks = append(blocks, MessageContentBlock{
-					Type:         "text",
-					Text:         part.Text,
-					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
-				})
+			switch part.Type {
+			case "text":
+				if part.Text != nil {
+					blocks = append(blocks, MessageContentBlock{
+						Type:         "text",
+						Text:         part.Text,
+						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+					})
+				}
+			case "image_url":
+				if block, ok := convertImageURLToAnthropicBlock(part); ok {
+					blocks = append(blocks, block)
+				}
+			case "document":
+				if block, ok := convertDocumentURLToAnthropicBlock(part); ok {
+					blocks = append(blocks, block)
+				}
 			}
 		}
 	}
@@ -621,8 +632,14 @@ func convertAssistantWithToolCalls(msg llm.Message, config *Config) ([]MessagePa
 func buildPreBlocks(msg llm.Message, config *Config) []MessageContentBlock {
 	var blocks []MessageContentBlock
 
+	// Prefer ReasoningContent, fallback to Reasoning if ReasoningContent is nil
+	reasoningContent := msg.ReasoningContent
+	if reasoningContent == nil && msg.Reasoning != nil {
+		reasoningContent = msg.Reasoning
+	}
+
 	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
-		msg.ReasoningContent,
+		reasoningContent,
 		msg.ReasoningSignature,
 		config,
 	)
@@ -669,8 +686,14 @@ func buildMessageContent(msg llm.Message, config *Config) (MessageContent, bool)
 	var blocks []MessageContentBlock
 
 	if hasThinkingContent(msg) {
+		// Prefer ReasoningContent, fallback to Reasoning if ReasoningContent is nil
+		reasoningContent := msg.ReasoningContent
+		if reasoningContent == nil && msg.Reasoning != nil {
+			reasoningContent = msg.Reasoning
+		}
+
 		reasoningContent, reasoningSignature := prepareAnthropicReasoning(
-			msg.ReasoningContent,
+			reasoningContent,
 			msg.ReasoningSignature,
 			config,
 		)
@@ -700,15 +723,22 @@ func buildMessageContent(msg llm.Message, config *Config) (MessageContent, bool)
 // hasThinkingContent checks if message has reasoning content.
 func hasThinkingContent(msg llm.Message) bool {
 	return (msg.ReasoningContent != nil && *msg.ReasoningContent != "") ||
-		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "")
+		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "") ||
+		(msg.Reasoning != nil && *msg.Reasoning != "")
 }
 
 // buildMultipleContentWithThinking creates content blocks including thinking.
 func buildMultipleContentWithThinking(msg llm.Message, config *Config) MessageContent {
 	blocks := make([]MessageContentBlock, 0, 3)
 
+	// Prefer ReasoningContent, fallback to Reasoning if ReasoningContent is nil
+	reasoningContent := msg.ReasoningContent
+	if reasoningContent == nil && msg.Reasoning != nil {
+		reasoningContent = msg.Reasoning
+	}
+
 	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
-		msg.ReasoningContent,
+		reasoningContent,
 		msg.ReasoningSignature,
 		config,
 	)
@@ -797,6 +827,36 @@ func convertImageURLToAnthropicBlock(part llm.MessageContentPart) (MessageConten
 	}, true
 }
 
+// convertDocumentURLToAnthropicBlock converts a canonical document content part
+// to an Anthropic document content block (used for PDFs etc.).
+func convertDocumentURLToAnthropicBlock(part llm.MessageContentPart) (MessageContentBlock, bool) {
+	if part.Document == nil || part.Document.URL == "" {
+		return MessageContentBlock{}, false
+	}
+
+	url := part.Document.URL
+	if parsed := xurl.ParseDataURL(url); parsed != nil {
+		return MessageContentBlock{
+			Type: "document",
+			Source: &ImageSource{
+				Type:      "base64",
+				MediaType: parsed.MediaType,
+				Data:      parsed.Data,
+			},
+			CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+		}, true
+	}
+
+	return MessageContentBlock{
+		Type: "document",
+		Source: &ImageSource{
+			Type: "url",
+			URL:  part.Document.URL,
+		},
+		CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+	}, true
+}
+
 // convertToAnthropicTrivialContent converts llm.MessageContent to Anthropic MessageContent format.
 func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageContent {
 	if content.Content != nil {
@@ -818,6 +878,10 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 				}
 			case "image_url":
 				if block, ok := convertImageURLToAnthropicBlock(part); ok {
+					blocks = append(blocks, block)
+				}
+			case "document":
+				if block, ok := convertDocumentURLToAnthropicBlock(part); ok {
 					blocks = append(blocks, block)
 				}
 			}
@@ -956,6 +1020,30 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 					})
 				}
 			}
+		case "document":
+			if part.Document != nil && part.Document.URL != "" {
+				url := part.Document.URL
+				if parsed := xurl.ParseDataURL(url); parsed != nil {
+					appendOrdered(part.TransformerMetadata, MessageContentBlock{
+						Type: "document",
+						Source: &ImageSource{
+							Type:      "base64",
+							MediaType: parsed.MediaType,
+							Data:      parsed.Data,
+						},
+						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+					})
+				} else {
+					appendOrdered(part.TransformerMetadata, MessageContentBlock{
+						Type: "document",
+						Source: &ImageSource{
+							Type: "url",
+							URL:  part.Document.URL,
+						},
+						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+					})
+				}
+			}
 		}
 	}
 
@@ -1063,13 +1151,9 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 				})...)
 			}
 		case "image":
-			if block.Source != nil {
-				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
-					Type: "image",
-					ImageURL: &llm.ImageURL{
-						URL: block.Source.Data,
-					},
-				})
+			if part, ok := convertImageSourceToLLMImageURLPart(block.Source, block.CacheControl); ok {
+				setAnthropicBlockIndex(&part.TransformerMetadata, i)
+				content.MultipleContent = append(content.MultipleContent, part)
 			}
 		case "tool_use":
 			if block.ID != "" && block.Name != nil {
@@ -1239,7 +1323,7 @@ func toolUseBlockFromLLM(toolCall llm.ToolCall) MessageContentBlock {
 	return MessageContentBlock{
 		Type:         blockType,
 		ID:           toolCall.ID,
-		Name:         &toolCall.Function.Name,
+		Name:         lo.ToPtr(toolCall.Function.CompositeName()),
 		Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
 		CacheControl: convertToAnthropicCacheControl(toolCall.CacheControl),
 		Caller:       getAnthropicCaller(toolCall.TransformerMetadata),
