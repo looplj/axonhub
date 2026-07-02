@@ -96,6 +96,29 @@ func newUniversalOptions(cfg Config) (*redis.UniversalOptions, error) {
 		return nil, errors.New("tls_insecure_skip_verify requires TLS to be enabled (tls=true or rediss://)")
 	}
 
+	// Pool configuration with zero-value sentinel
+	if cfg.PoolSize > 0 {
+		opts.PoolSize = cfg.PoolSize
+	}
+	if cfg.MinIdleConns > 0 {
+		opts.MinIdleConns = cfg.MinIdleConns
+	}
+	if cfg.MaxRetries > 0 {
+		opts.MaxRetries = cfg.MaxRetries
+	}
+	if cfg.DialTimeout > 0 {
+		opts.DialTimeout = cfg.DialTimeout
+	}
+	if cfg.ReadTimeout > 0 {
+		opts.ReadTimeout = cfg.ReadTimeout
+	}
+	if cfg.WriteTimeout > 0 {
+		opts.WriteTimeout = cfg.WriteTimeout
+	}
+	if cfg.PoolTimeout > 0 {
+		opts.PoolTimeout = cfg.PoolTimeout
+	}
+
 	return opts, nil
 }
 
