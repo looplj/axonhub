@@ -23,10 +23,11 @@ type Config struct {
 	Trace     tracing.Config `conf:"trace" yaml:"trace" json:"trace"`
 	Dashboard Dashboard      `conf:"dashboard" yaml:"dashboard" json:"dashboard"`
 
-	Debug            bool `conf:"debug" yaml:"debug" json:"debug"`
-	DisableSSLVerify bool `conf:"disable_ssl_verify" yaml:"disable_ssl_verify" json:"disable_ssl_verify"`
-	CORS             CORS `conf:"cors" yaml:"cors" json:"cors"`
-	API              API  `conf:"api" yaml:"api" json:"api"`
+	Debug            bool            `conf:"debug" yaml:"debug" json:"debug"`
+	DisableSSLVerify bool            `conf:"disable_ssl_verify" yaml:"disable_ssl_verify" json:"disable_ssl_verify"`
+	CORS             CORS            `conf:"cors" yaml:"cors" json:"cors"`
+	API              API             `conf:"api" yaml:"api" json:"api"`
+	IPAccessControl  IPAccessControl `conf:"ip_access_control" yaml:"ip_access_control" json:"ip_access_control"`
 }
 
 // Dashboard holds configuration for the dashboard cache settings.
@@ -59,4 +60,10 @@ type API struct {
 type APIAuth struct {
 	AllowNoAuth bool   `conf:"allow_no_auth" yaml:"allow_no_auth" json:"allow_no_auth"`
 	KeyPrefix   string `conf:"key_prefix" yaml:"key_prefix" json:"key_prefix"`
+}
+
+type IPAccessControl struct {
+	Enabled     bool     `conf:"enabled" yaml:"enabled" json:"enabled"`
+	AllowedIPs  []string `conf:"allowed_ips" yaml:"allowed_ips" json:"allowed_ips"`
+	RedirectURL string   `conf:"redirect_url" yaml:"redirect_url" json:"redirect_url"`
 }
