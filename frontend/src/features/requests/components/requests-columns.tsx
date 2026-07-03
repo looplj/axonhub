@@ -226,7 +226,6 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const sourceColors: Record<string, string> = {
           api: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
           playground: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
-          test: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
         };
         return (
           <Badge

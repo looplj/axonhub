@@ -163,10 +163,7 @@ export function DataTableToolbar<TData>({
       value: 'playground',
       label: t('requests.source.playground'),
     },
-    {
-      value: 'test',
-      label: t('requests.source.test'),
-    },
+
   ];
 
   return (
