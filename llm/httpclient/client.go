@@ -17,6 +17,12 @@ import (
 
 	"github.com/looplj/axonhub/llm/streams"
 )
+// MaxErrorBodySize is the maximum number of bytes read from an upstream error
+// response body. Error bodies beyond this size are truncated to prevent OOM
+// from pathological upstream responses that echo large request payloads in
+// validation error messages, producing response bodies of 1+ GB.
+const MaxErrorBodySize = 1 << 20 // 1 MB
+
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
@@ -219,12 +225,17 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}()
 
-	body, err := io.ReadAll(rawResp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
+	var body []byte
+	// Cap error response bodies at 1 MB to prevent OOM from pathological
+	// upstream error bodies (e.g., vLLM echoing multi-MB input in validation
+	// errors). Successful responses are read in full because they are
+	// typically small JSON payloads.
 	if rawResp.StatusCode >= 400 {
+		body, err = io.ReadAll(io.LimitReader(rawResp.Body, MaxErrorBodySize))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read error response body: %w", err)
+		}
+
 		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.DebugContext(ctx, "HTTP request failed",
 				slog.String("method", rawReq.Method),
@@ -241,6 +252,11 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 			Body:       body,
 			Headers:    rawResp.Header,
 		}
+	}
+
+	body, err = io.ReadAll(rawResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
@@ -301,7 +317,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		}()
 
 		// Read error body for streaming requests
-		body, err := io.ReadAll(rawResp.Body)
+		body, err := io.ReadAll(io.LimitReader(rawResp.Body, MaxErrorBodySize))
 		if err != nil {
 			return nil, err
 		}
