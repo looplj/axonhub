@@ -293,9 +293,11 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 		}
 	}
 
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	// Wrap with NoNil to filter out non-standard events (e.g. inference-cost, cost)
+	// that TransformStreamChunk skips by returning nil.
+	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	})), nil
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(
@@ -318,7 +320,19 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		Body: event.Data,
 	}
 
-	return t.TransformResponse(ctx, httpResp)
+	resp, err := t.TransformResponse(ctx, httpResp)
+	if err != nil {
+		return nil, err
+	}
+
+	// Skip non-standard events with empty choices (e.g. inference-cost, cost)
+	// that some providers emit alongside standard chat completion chunks.
+	// Returning nil causes NoNil to filter it from the client stream.
+	if len(resp.Choices) == 0 {
+		return nil, nil
+	}
+
+	return resp, nil
 }
 
 func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
