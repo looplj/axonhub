@@ -21,22 +21,56 @@ interface Props {
   currentRow: Channel;
 }
 
+// Form schema: reasoningEffortMapping is edited as a JSON string and parsed on submit.
 const transformOptionsFormSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
+  reasoningEffortMappingJSON: z.string().optional(),
 });
+
+type TransformOptionsFormValues = z.infer<typeof transformOptionsFormSchema>;
+
+// Serialize the reasoning_effort mapping (Record<string,string>) to a JSON string for the textarea.
+function reasoningEffortMappingToJSON(mapping?: Record<string, string> | null): string {
+  if (!mapping || Object.keys(mapping).length === 0) {
+    return '';
+  }
+  return JSON.stringify(mapping);
+}
+
+// Parse the textarea JSON string into a Record<string,string>. Returns null when empty,
+// throws on invalid JSON (caught by the caller to show a validation error).
+function parseReasoningEffortMapping(json: string): Record<string, string> | null {
+  const trimmed = json.trim();
+  if (trimmed === '') {
+    return null;
+  }
+  const parsed = JSON.parse(trimmed);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('must be a JSON object like {"xhigh": "max"}');
+  }
+  const result: Record<string, string> = {};
+  for (const [k, v] of Object.entries(parsed)) {
+    if (typeof v !== 'string') {
+      throw new Error(`value for key "${k}" must be a string`);
+    }
+    result[k] = v;
+  }
+  return result;
+}
 
 export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
 
-  const form = useForm<TransformOptions>({
+  const form = useForm<TransformOptionsFormValues>({
     resolver: zodResolver(transformOptionsFormSchema),
     defaultValues: {
       forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
       forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
       replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
+      reasoningEffortMappingJSON: reasoningEffortMappingToJSON(currentRow.settings?.transformOptions?.reasoningEffortMapping),
     },
   });
 
@@ -46,14 +80,31 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
         forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
         forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
         replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
+        reasoningEffortMappingJSON: reasoningEffortMappingToJSON(currentRow.settings?.transformOptions?.reasoningEffortMapping),
       });
     }
   }, [open, currentRow, form]);
 
-  const onSubmit = async (values: TransformOptions) => {
+  const onSubmit = async (values: TransformOptionsFormValues) => {
+    let reasoningEffortMapping: Record<string, string> | null;
     try {
+      reasoningEffortMapping = parseReasoningEffortMapping(values.reasoningEffortMappingJSON || '');
+    } catch (e) {
+      toast.error(t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.invalid', { error: (e as Error).message }));
+      return;
+    }
+
+    try {
+      const transformOptions: TransformOptions = {
+        forceArrayInstructions: values.forceArrayInstructions,
+        forceArrayInputs: values.forceArrayInputs,
+        replaceDeveloperRoleWithSystem: values.replaceDeveloperRoleWithSystem,
+      };
+      if (reasoningEffortMapping) {
+        transformOptions.reasoningEffortMapping = reasoningEffortMapping;
+      }
       const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
-        transformOptions: values,
+        transformOptions,
       });
 
       await updateChannel.mutateAsync({
@@ -152,6 +203,30 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
                             {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description')}
                           </p>
                         </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='reasoningEffortMappingJSON'
+                    render={({ field }) => (
+                      <FormItem className='space-y-1'>
+                        <FormLabel className='text-sm font-normal'>
+                          {t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.label')}
+                        </FormLabel>
+                        <p className='text-muted-foreground text-xs'>
+                          {t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.description')}
+                        </p>
+                        <FormControl>
+                          <textarea
+                            {...field}
+                            value={field.value || ''}
+                            placeholder='{"xhigh": "max"}'
+                            className='flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

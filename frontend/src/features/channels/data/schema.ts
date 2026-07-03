@@ -179,6 +179,7 @@ export const transformOptionsSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
+  reasoningEffortMapping: z.record(z.string(), z.string()).optional(),
 });
 export type TransformOptions = z.infer<typeof transformOptionsSchema>;
 

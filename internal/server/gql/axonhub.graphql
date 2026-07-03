@@ -56,6 +56,7 @@ type TransformOptions {
   forceArrayInstructions: Boolean!
   forceArrayInputs: Boolean!
   replaceDeveloperRoleWithSystem: Boolean!
+  reasoningEffortMapping: JSONRawMessage
 }
 
 type SyncChannelModelsPayload {
@@ -67,6 +68,7 @@ input TransformOptionsInput {
   forceArrayInstructions: Boolean
   forceArrayInputs: Boolean
   replaceDeveloperRoleWithSystem: Boolean
+  reasoningEffortMapping: JSONRawMessageInput
 }
 
 enum ProxyType {
