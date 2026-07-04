@@ -51,7 +51,6 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 	sim := newCodexSimulatorWithToken(t, accessToken)
 	req := newCodexChatCompletionRequest(t)
 	req.Header.Set("Conversation_id", "legacy-conversation")
-	req.Header.Set("Openai-Beta", "responses=experimental")
 	req.Header.Set("Session_id", "provided-session")
 	req.Header.Set("Version", "9.9.9")
 
@@ -63,11 +62,11 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 	assert.Equal(t, "application/json", finalReq.Header.Get("Content-Type"))
 	assert.Equal(t, AxonHubOriginator, finalReq.Header.Get("Originator"))
 	assert.Equal(t, "axonhub/1.0", finalReq.Header.Get("User-Agent"))
-	assert.Equal(t, "provided-session", finalReq.Header.Get("Session_id"))
+	assert.Equal(t, "provided-session", finalReq.Header.Get("Session-Id"))
+	assert.Empty(t, finalReq.Header.Get("Session_id"))
 	assert.Equal(t, testChatAccountID, finalReq.Header.Get("Chatgpt-Account-Id"))
 	assert.Equal(t, "Bearer "+accessToken, finalReq.Header.Get("Authorization"))
 	assert.Equal(t, "legacy-conversation", finalReq.Header.Get("Conversation_id"))
-	assert.Equal(t, "responses=experimental", finalReq.Header.Get("Openai-Beta"))
 	assert.Equal(t, "9.9.9", finalReq.Header.Get("Version"))
 }
 
@@ -114,7 +113,21 @@ func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 		finalReq, err := sim.Simulate(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, "header-session", finalReq.Header.Get("Session_id"))
+		assert.Equal(t, "header-session", finalReq.Header.Get("Session-Id"))
+		assert.Empty(t, finalReq.Header.Get("Session_id"))
+	})
+
+	t.Run("inbound Session-Id (hyphen) header is used", func(t *testing.T) {
+		ctx := shared.WithSessionID(context.Background(), "context-session")
+		sim := newCodexSimulator(t)
+		req := newCodexChatCompletionRequest(t)
+		req.Header.Set("Session-Id", "hyphen-session")
+
+		finalReq, err := sim.Simulate(ctx, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "hyphen-session", finalReq.Header.Get("Session-Id"))
+		assert.Empty(t, finalReq.Header.Get("Session_id"))
 	})
 
 	t.Run("no inbound Session_id uses session_id from X-Codex-Turn-Metadata", func(t *testing.T) {
@@ -126,7 +139,8 @@ func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 		finalReq, err := sim.Simulate(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, "turn-session", finalReq.Header.Get("Session_id"))
+		assert.Equal(t, "turn-session", finalReq.Header.Get("Session-Id"))
+		assert.Empty(t, finalReq.Header.Get("Session_id"))
 	})
 
 	t.Run("no inbound header but context has session uses context", func(t *testing.T) {
@@ -137,7 +151,8 @@ func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 		finalReq, err := sim.Simulate(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, "context-session", finalReq.Header.Get("Session_id"))
+		assert.Equal(t, "context-session", finalReq.Header.Get("Session-Id"))
+		assert.Empty(t, finalReq.Header.Get("Session_id"))
 	})
 
 	t.Run("invalid X-Codex-Turn-Metadata falls back to context session", func(t *testing.T) {
@@ -149,7 +164,8 @@ func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 		finalReq, err := sim.Simulate(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, "context-session", finalReq.Header.Get("Session_id"))
+		assert.Equal(t, "context-session", finalReq.Header.Get("Session-Id"))
+		assert.Empty(t, finalReq.Header.Get("Session_id"))
 	})
 
 	t.Run("no inbound no context generates uuid", func(t *testing.T) {
@@ -159,10 +175,14 @@ func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 		finalReq, err := sim.Simulate(context.Background(), req)
 		require.NoError(t, err)
 
-		sessionID := finalReq.Header.Get("Session_id")
+		sessionID := finalReq.Header.Get("Session-Id")
 		assert.NotEmpty(t, sessionID)
 		_, parseErr := uuid.Parse(sessionID)
 		assert.NoError(t, parseErr)
+		assert.Empty(t, finalReq.Header.Get("Session_id"))
+
+		assert.Equal(t, sessionID, finalReq.Header.Get("Conversation_id"))
+		assert.Equal(t, codexDefaultVersion, finalReq.Header.Get("Version"))
 	})
 }
 
