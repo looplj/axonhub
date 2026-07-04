@@ -33,4 +33,6 @@ const (
 	ClientID    = "app_EMoamEEZ73f0CkXaXp7hrann"
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
+
+	codexDefaultVersion = "0.142.5"
 )
