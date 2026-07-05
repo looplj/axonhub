@@ -2,9 +2,29 @@ package responses
 
 import (
 	"encoding/json"
+	"reflect"
+	"strings"
+
+	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 )
+
+const responsesRequestPreservationDiagnosticsTransformerMetadataKey = "responses_request_preservation_diagnostics"
+
+type requestPreservationDiagnostics struct {
+	NativePreservation        bool
+	UnknownTopLevelFieldCount int
+	NativeToolCount           int
+	NamespaceToolCount        int
+	ToolSearchToolCount       int
+	UnknownToolCount          int
+	RawOnlyToolCount          int
+	AdditionalToolsCount      int
+	RawInputItemCount         int
+	UnknownInputItemCount     int
+	RawToolChoicePreserved    bool
+}
 
 func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, rawBody []byte) {
 	if chatReq == nil || req == nil {
@@ -12,14 +32,24 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	}
 
 	raw := parseRawRequestFragments(rawBody)
+	nativeToolSignatures := buildRepresentedToolSignatures(req.Tools)
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
-		RawTools:       buildRawOnlyToolFragments(req.Tools, raw.Tools),
-		ToolSignatures: buildRepresentedToolSignatures(req.Tools),
-		RawToolChoice:  rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
-		RawInputItems:  buildRawOnlyInputFragments(req.Input, raw.InputItems),
+		RawTopLevelFields: raw.TopLevelFields,
+		NativeTools: &llm.OpenAIResponsesNativeTools{
+			Raw:        cloneRawMessages(raw.Tools),
+			Signatures: nativeToolSignatures,
+		},
+		AdditionalTools: buildAdditionalToolsFragments(req.Input, raw.InputItems),
+		RawTools:        buildRawOnlyToolFragments(req.Tools, raw.Tools),
+		ToolSignatures:  nativeToolSignatures,
+		RawToolChoice:   rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
+		RawInputItems:   buildRawOnlyInputFragments(req.Input, raw.InputItems),
+	}
+	if len(req.ClientMetadata) > 0 {
+		requestExt.ClientMetadata = lo.Assign(map[string]string{}, req.ClientMetadata)
 	}
 
-	if len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
+	if len(requestExt.ClientMetadata) == 0 && len(requestExt.RawTopLevelFields) == 0 && isEmptyNativeTools(requestExt.NativeTools) && len(requestExt.AdditionalTools) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
 		return
 	}
 
@@ -31,9 +61,14 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 }
 
 type rawRequestFragments struct {
-	Tools      []json.RawMessage
-	ToolChoice json.RawMessage
-	InputItems []json.RawMessage
+	TopLevelFields map[string]json.RawMessage
+	Tools          []json.RawMessage
+	ToolChoice     json.RawMessage
+	InputItems     []json.RawMessage
+}
+
+func isEmptyNativeTools(nativeTools *llm.OpenAIResponsesNativeTools) bool {
+	return nativeTools == nil || len(nativeTools.Raw) == 0
 }
 
 func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
@@ -56,10 +91,46 @@ func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
 	}
 
 	return rawRequestFragments{
-		Tools:      raw.Tools,
-		ToolChoice: raw.ToolChoice,
-		InputItems: inputItems,
+		TopLevelFields: buildRawUnknownTopLevelFields(rawBody),
+		Tools:          raw.Tools,
+		ToolChoice:     raw.ToolChoice,
+		InputItems:     inputItems,
 	}
+}
+
+var knownRequestTopLevelFields = requestJSONFields(reflect.TypeOf(Request{}))
+
+func requestJSONFields(requestType reflect.Type) map[string]struct{} {
+	fields := make(map[string]struct{}, requestType.NumField())
+	for i := 0; i < requestType.NumField(); i++ {
+		jsonName := strings.Split(requestType.Field(i).Tag.Get("json"), ",")[0]
+		if jsonName == "" || jsonName == "-" {
+			continue
+		}
+		fields[jsonName] = struct{}{}
+	}
+	return fields
+}
+
+func buildRawUnknownTopLevelFields(rawBody []byte) map[string]json.RawMessage {
+	var obj map[string]json.RawMessage
+	if len(rawBody) == 0 || json.Unmarshal(rawBody, &obj) != nil {
+		return nil
+	}
+
+	unknown := make(map[string]json.RawMessage)
+	for key, value := range obj {
+		if _, ok := knownRequestTopLevelFields[key]; ok {
+			continue
+		}
+		unknown[key] = cloneRaw(value)
+	}
+
+	if len(unknown) == 0 {
+		return nil
+	}
+
+	return unknown
 }
 
 func buildRepresentedToolSignatures(tools []Tool) []string {
@@ -144,11 +215,33 @@ func rawUnsupportedToolChoice(choice *ToolChoice, rawChoice json.RawMessage) jso
 		return nil
 	}
 
-	if len(choice.Tools) > 0 {
+	var rawObject map[string]json.RawMessage
+	if json.Unmarshal(rawChoice, &rawObject) == nil {
 		return cloneRaw(rawChoice)
 	}
 
 	return nil
+}
+
+func buildAdditionalToolsFragments(input Input, rawItems []json.RawMessage) []llm.OpenAIResponsesRawFragment {
+	if len(input.Items) == 0 {
+		return nil
+	}
+
+	fragments := make([]llm.OpenAIResponsesRawFragment, 0)
+	for i := range input.Items {
+		item := input.Items[i]
+		if item.Type != "additional_tools" || i >= len(rawItems) || len(rawItems[i]) == 0 {
+			continue
+		}
+		fragments = append(fragments, llm.OpenAIResponsesRawFragment{
+			Type:          item.Type,
+			OriginalIndex: i,
+			Raw:           cloneRaw(rawItems[i]),
+		})
+	}
+
+	return fragments
 }
 
 func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.OpenAIResponsesRawFragment {
@@ -210,7 +303,17 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		return nil, err
 	}
 
-	if tools, ok := mergeRawOnlyTools(obj["tools"], requestExt); ok {
+	recordRequestPreservationDiagnostics(llmReq, requestExt)
+	mergeRawUnknownTopLevelFields(obj, requestExt.RawTopLevelFields)
+	if len(requestExt.ClientMetadata) > 0 {
+		clientMetadataRaw, err := json.Marshal(requestExt.ClientMetadata)
+		if err != nil {
+			return nil, err
+		}
+		obj["client_metadata"] = clientMetadataRaw
+	}
+
+	if tools, ok := mergeNativeTools(obj["tools"], requestExt); ok {
 		toolsRaw, err := json.Marshal(tools)
 		if err != nil {
 			return nil, err
@@ -231,6 +334,195 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 	}
 
 	return json.Marshal(obj)
+}
+
+func recordRequestPreservationDiagnostics(llmReq *llm.Request, requestExt *llm.OpenAIResponsesRequestExtensions) {
+	if llmReq == nil || requestExt == nil {
+		return
+	}
+	if llmReq.TransformerMetadata == nil {
+		llmReq.TransformerMetadata = map[string]any{}
+	}
+
+	diagnostics := requestPreservationDiagnostics{
+		UnknownTopLevelFieldCount: len(requestExt.RawTopLevelFields),
+		RawOnlyToolCount:          len(requestExt.RawTools),
+		AdditionalToolsCount:      len(requestExt.AdditionalTools),
+		RawInputItemCount:         len(requestExt.RawInputItems),
+		RawToolChoicePreserved:    len(requestExt.RawToolChoice) > 0,
+	}
+	if requestExt.NativeTools != nil {
+		diagnostics.NativeToolCount = len(requestExt.NativeTools.Raw)
+		diagnostics.NamespaceToolCount = countNativeToolsByType(requestExt.NativeTools.Raw, "namespace")
+		diagnostics.ToolSearchToolCount = countNativeToolsByType(requestExt.NativeTools.Raw, "tool_search")
+	}
+	diagnostics.UnknownToolCount = countUnknownToolFragments(requestExt.RawTools)
+	diagnostics.UnknownInputItemCount = countUnknownInputFragments(requestExt.RawInputItems)
+	diagnostics.NativePreservation = diagnostics.UnknownTopLevelFieldCount > 0 ||
+		diagnostics.NativeToolCount > 0 ||
+		diagnostics.RawOnlyToolCount > 0 ||
+		diagnostics.AdditionalToolsCount > 0 ||
+		diagnostics.RawInputItemCount > 0 ||
+		diagnostics.RawToolChoicePreserved
+
+	llmReq.TransformerMetadata[responsesRequestPreservationDiagnosticsTransformerMetadataKey] = diagnostics
+}
+
+func countNativeToolsByType(rawTools []json.RawMessage, toolType string) int {
+	count := 0
+	for _, raw := range rawTools {
+		var tool Tool
+		if json.Unmarshal(raw, &tool) != nil {
+			continue
+		}
+		if tool.Type == toolType {
+			count++
+		}
+	}
+	return count
+}
+
+func countUnknownToolFragments(fragments []llm.OpenAIResponsesRawFragment) int {
+	count := 0
+	for _, fragment := range fragments {
+		if isKnownNativeToolType(fragment.Type) {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+func isKnownNativeToolType(toolType string) bool {
+	switch toolType {
+	case "function", "image_generation", "web_search", "custom", "namespace", "tool_search", "file_search", "mcp":
+		return true
+	default:
+		return false
+	}
+}
+
+func countUnknownInputFragments(fragments []llm.OpenAIResponsesRawFragment) int {
+	count := 0
+	for _, fragment := range fragments {
+		if fragment.Type == "additional_tools" || isStructurallyRepresentedInputItem(fragment.Type) {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+func mergeRawUnknownTopLevelFields(obj map[string]json.RawMessage, rawFields map[string]json.RawMessage) {
+	if len(rawFields) == 0 {
+		return
+	}
+
+	for key, value := range rawFields {
+		if _, exists := obj[key]; exists {
+			continue
+		}
+		obj[key] = cloneRaw(value)
+	}
+}
+
+func mergeNativeTools(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {
+	if requestExt == nil {
+		return nil, false
+	}
+
+	var structuredTools []json.RawMessage
+	if len(structuredRaw) > 0 {
+		if err := json.Unmarshal(structuredRaw, &structuredTools); err != nil {
+			return nil, false
+		}
+	}
+
+	if requestExt.NativeTools != nil && len(requestExt.NativeTools.Raw) > 0 && structuredToolSignaturesMatch(structuredTools, requestExt.NativeTools.Signatures) {
+		if tools, ok := mergeNativeToolRawWithStructured(requestExt.NativeTools.Raw, structuredTools); ok {
+			return tools, true
+		}
+	}
+
+	return mergeRawOnlyTools(structuredRaw, requestExt)
+}
+
+func mergeNativeToolRawWithStructured(nativeRaw []json.RawMessage, structuredTools []json.RawMessage) ([]json.RawMessage, bool) {
+	tools := make([]json.RawMessage, 0, len(nativeRaw))
+	structuredIndex := 0
+
+	for _, raw := range nativeRaw {
+		var native Tool
+		if err := json.Unmarshal(raw, &native); err != nil {
+			return nil, false
+		}
+
+		if native.Type == "namespace" {
+			tools = append(tools, cloneRaw(raw))
+			structuredIndex += representedToolCount(native)
+			continue
+		}
+
+		if !isStructurallyRepresentedToolType(native.Type) {
+			tools = append(tools, cloneRaw(raw))
+			continue
+		}
+
+		if structuredIndex >= len(structuredTools) {
+			return nil, false
+		}
+		merged, ok := mergeNativeToolRawWithStructuredTool(raw, structuredTools[structuredIndex])
+		if !ok {
+			return nil, false
+		}
+		tools = append(tools, merged)
+		structuredIndex++
+	}
+
+	if structuredIndex != len(structuredTools) {
+		return nil, false
+	}
+
+	return tools, true
+}
+
+func representedToolCount(tool Tool) int {
+	if tool.Type != "namespace" {
+		if isStructurallyRepresentedToolType(tool.Type) {
+			return 1
+		}
+		return 0
+	}
+
+	count := 0
+	for _, subTool := range tool.Tools {
+		if subTool.Type == "function" {
+			count++
+		}
+	}
+	return count
+}
+
+func mergeNativeToolRawWithStructuredTool(nativeRaw, structuredRaw json.RawMessage) (json.RawMessage, bool) {
+	var nativeObj map[string]json.RawMessage
+	if err := json.Unmarshal(nativeRaw, &nativeObj); err != nil {
+		return nil, false
+	}
+
+	var structuredObj map[string]json.RawMessage
+	if err := json.Unmarshal(structuredRaw, &structuredObj); err != nil {
+		return nil, false
+	}
+
+	for key, value := range structuredObj {
+		nativeObj[key] = cloneRaw(value)
+	}
+
+	merged, err := json.Marshal(nativeObj)
+	if err != nil {
+		return nil, false
+	}
+	return merged, true
 }
 
 func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {

@@ -227,6 +227,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		Metadata:  nil,
 	}
+	shared.RecordResponsesLossyDowngradeDiagnostics(llmReq)
 	shared.PropagateRequestMetadata(httpReq, llmReq)
 	return httpReq, nil
 }

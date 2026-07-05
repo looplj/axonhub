@@ -15,8 +15,9 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/deepseek"
 	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/llm/transformer/nanogpt"
-	"github.com/looplj/axonhub/llm/transformer/openrouter"
 	chatoutbound "github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openrouter"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // TestCrossProtocol_NamespaceMapSurvivesRoundTrip verifies that the namespace
@@ -29,6 +30,75 @@ import (
 // This was previously a known gap (chat outbound did not clone request
 // TransformerMetadata to the response). The fix adds shared.PropagateRequestMetadata
 // / MergeResponseMetadata calls to the chat, anthropic, and gemini outbounds.
+
+func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnostics(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model": "gpt-4o",
+			"input": []map[string]any{
+				{"type": "additional_tools", "tools": []map[string]any{{"type": "tool_search", "name": "search_docs"}}},
+				{"type": "message", "role": "user", "content": []map[string]any{{"type": "input_text", "text": "hello"}}},
+			},
+			"tools": []map[string]any{
+				{
+					"type":  "namespace",
+					"name":  "mcp__node_repl",
+					"tools": []map[string]any{{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}}},
+				},
+				{"type": "tool_search", "name": "search_docs", "namespace": "docs"},
+				{"type": "future_tool", "name": "future"},
+			},
+		}),
+	}
+
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Model = "gpt-4o"
+
+	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	require.True(t, ok)
+	require.True(t, diagnostics.LossyDowngrade)
+	require.Equal(t, 1, diagnostics.NamespaceToolCount)
+	require.Equal(t, 1, diagnostics.ToolSearchToolCount)
+	require.Equal(t, 1, diagnostics.UnknownToolCount)
+	require.Equal(t, 1, diagnostics.AdditionalToolsCount)
+}
+
+func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForUnknownTopLevelOnly(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model":                  "gpt-4o",
+			"input":                  "hello",
+			"codex_future_top_level": map[string]any{"enabled": true},
+		}),
+	}
+
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Model = "gpt-4o"
+
+	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	require.True(t, ok)
+	require.True(t, diagnostics.LossyDowngrade)
+	require.Equal(t, 1, diagnostics.UnknownTopLevelFieldCount)
+	require.Equal(t, 0, diagnostics.NamespaceToolCount)
+	require.Equal(t, 0, diagnostics.ToolSearchToolCount)
+	require.Equal(t, 0, diagnostics.UnknownToolCount)
+	require.Equal(t, 0, diagnostics.AdditionalToolsCount)
+}
+
 func TestCrossProtocol_NamespaceMapSurvivesRoundTrip(t *testing.T) {
 	// --- Step 1: responses inbound (request) — namespace map is recorded ---
 	responsesInbound := NewInboundTransformer()
@@ -280,6 +350,7 @@ func TestCrossProtocol_DeepSeekIndependentOutboundPropagatesMetadata(t *testing.
 	_, exists := httpReq.TransformerMetadata[responsesNamespaceToolMapTransformerMetadataKey]
 	require.True(t, exists, "deepseek outbound must carry the namespace tool map")
 }
+
 // TestCrossProtocol_OpenRouterResponseMetadataRoundTrip verifies that openrouter —
 // which builds its own TransformResponse/TransformStream for the chat path (NOT
 // delegating to the chat base, unlike deepseek/moonshot/zai/doubao) — propagates

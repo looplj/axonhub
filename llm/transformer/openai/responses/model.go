@@ -120,6 +120,7 @@ type Request struct {
 	SafetyIdentifier *string           `json:"safety_identifier,omitempty"`
 	User             *string           `json:"user,omitempty"`
 	Metadata         map[string]string `json:"metadata,omitempty"`
+	ClientMetadata   map[string]string `json:"client_metadata,omitempty"`
 	CacheControl     *CacheControl     `json:"cache_control,omitempty"`
 	MaxOutputTokens  *int64            `json:"max_output_tokens,omitempty"`
 	MaxToolCalls     *int64            `json:"max_tool_calls,omitempty"`
