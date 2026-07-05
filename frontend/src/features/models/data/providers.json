@@ -9,6 +9,7 @@
         {
           "id": "grok-4.3",
           "name": "Grok 4.3",
+          "description": "xAI's default Grok for chat, coding, agentic tools, and lower hallucination risk",
           "family": "grok",
           "attachment": true,
           "reasoning": {
@@ -78,6 +79,7 @@
         {
           "id": "grok-build-0.1",
           "name": "Grok Build 0.1",
+          "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
           "family": "grok-build",
           "attachment": true,
           "reasoning": {
@@ -137,6 +139,7 @@
         {
           "id": "grok-imagine-image-quality",
           "name": "Grok Imagine Image Quality",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "grok",
           "attachment": true,
           "reasoning": {
@@ -168,6 +171,7 @@
         {
           "id": "grok-4.20-multi-agent-0309",
           "name": "Grok 4.20 Multi-Agent",
+          "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
           "family": "grok",
           "attachment": true,
           "reasoning": {
@@ -237,6 +241,7 @@
         {
           "id": "grok-4.20-0309-non-reasoning",
           "name": "Grok 4.20 (Non-Reasoning)",
+          "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
           "family": "grok",
           "attachment": true,
           "reasoning": {
@@ -289,6 +294,7 @@
         {
           "id": "grok-4.20-0309-reasoning",
           "name": "Grok 4.20 (Reasoning)",
+          "description": "Reasoning Grok for document-heavy analysis and long-horizon tool use",
           "family": "grok",
           "attachment": true,
           "reasoning": {
@@ -343,6 +349,7 @@
         {
           "id": "grok-imagine-video",
           "name": "Grok Imagine Video",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "grok",
           "attachment": true,
           "reasoning": {
@@ -374,6 +381,7 @@
         {
           "id": "grok-imagine-image",
           "name": "Grok Imagine Image",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "grok",
           "attachment": true,
           "reasoning": {
@@ -606,8 +614,54 @@
       "display_name": "Mistral",
       "models": [
         {
+          "id": "mistral-medium-latest",
+          "name": "Mistral Medium (latest)",
+          "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
+          "family": "mistral-medium",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-29",
+          "last_updated": "2026-04-29",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "cost": {
+            "input": 1.5,
+            "output": 7.5
+          },
+          "display_name": "Mistral Medium (latest)",
+          "type": "chat"
+        },
+        {
           "id": "mistral-medium-2604",
           "name": "Mistral Medium 3.5",
+          "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
           "family": "mistral-medium",
           "attachment": true,
           "reasoning": {
@@ -652,6 +706,7 @@
         {
           "id": "mistral-small-latest",
           "name": "Mistral Small (latest)",
+          "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
           "family": "mistral-small",
           "attachment": true,
           "reasoning": {
@@ -696,6 +751,7 @@
         {
           "id": "mistral-small-2603",
           "name": "Mistral Small 4",
+          "description": "Fast Mistral production model for chat, extraction, and cost-sensitive agents",
           "family": "mistral-small",
           "attachment": true,
           "reasoning": {
@@ -740,6 +796,7 @@
         {
           "id": "devstral-latest",
           "name": "Devstral 2",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -774,6 +831,7 @@
         {
           "id": "devstral-2512",
           "name": "Devstral 2",
+          "description": "Mistral's coding-agent model for repository work, terminal tasks, and software fixes",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -808,6 +866,7 @@
         {
           "id": "labs-devstral-small-2512",
           "name": "Devstral Small 2",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -843,6 +902,7 @@
         {
           "id": "devstral-medium-latest",
           "name": "Devstral 2 (latest)",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -875,42 +935,9 @@
           "type": "chat"
         },
         {
-          "id": "mistral-medium-latest",
-          "name": "Mistral Medium (latest)",
-          "family": "mistral-medium",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-05",
-          "release_date": "2025-08-12",
-          "last_updated": "2025-08-12",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "cost": {
-            "input": 0.4,
-            "output": 2
-          },
-          "display_name": "Mistral Medium (latest)",
-          "type": "chat"
-        },
-        {
           "id": "mistral-medium-2508",
           "name": "Mistral Medium 3.1",
+          "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
           "family": "mistral-medium",
           "attachment": true,
           "reasoning": {
@@ -945,6 +972,7 @@
         {
           "id": "devstral-small-2507",
           "name": "Devstral Small",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -979,6 +1007,7 @@
         {
           "id": "devstral-medium-2507",
           "name": "Devstral Medium",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -1013,6 +1042,7 @@
         {
           "id": "mistral-small-2506",
           "name": "Mistral Small 3.2",
+          "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
           "family": "mistral-small",
           "attachment": false,
           "reasoning": {
@@ -1047,6 +1077,7 @@
         {
           "id": "devstral-small-2505",
           "name": "Devstral Small 2505",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -1081,6 +1112,7 @@
         {
           "id": "mistral-medium-2505",
           "name": "Mistral Medium 3",
+          "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
           "family": "mistral-medium",
           "attachment": true,
           "reasoning": {
@@ -1115,6 +1147,7 @@
         {
           "id": "magistral-small",
           "name": "Magistral Small",
+          "description": "Mistral reasoning model for transparent analysis, math, and complex decisions",
           "family": "magistral-small",
           "attachment": false,
           "reasoning": {
@@ -1150,6 +1183,7 @@
         {
           "id": "magistral-medium-latest",
           "name": "Magistral Medium (latest)",
+          "description": "Mistral reasoning model for transparent analysis, math, and complex decisions",
           "family": "magistral-medium",
           "attachment": false,
           "reasoning": {
@@ -1185,6 +1219,7 @@
         {
           "id": "mistral-large-2411",
           "name": "Mistral Large 2.1",
+          "description": "Flagship Mistral model for advanced reasoning, coding, and multilingual work",
           "family": "mistral-large",
           "attachment": false,
           "reasoning": {
@@ -1218,6 +1253,7 @@
         {
           "id": "mistral-large-latest",
           "name": "Mistral Large (latest)",
+          "description": "Flagship Mistral model for advanced reasoning, coding, and multilingual work",
           "family": "mistral-large",
           "attachment": true,
           "reasoning": {
@@ -1252,6 +1288,7 @@
         {
           "id": "pixtral-large-latest",
           "name": "Pixtral Large (latest)",
+          "description": "Mistral's larger vision model for document-heavy image understanding and chat",
           "family": "pixtral",
           "attachment": true,
           "reasoning": {
@@ -1286,6 +1323,7 @@
         {
           "id": "mistral-large-2512",
           "name": "Mistral Large 3",
+          "description": "Mistral's largest general model for enterprise agents, coding, and multilingual reasoning",
           "family": "mistral-large",
           "attachment": true,
           "reasoning": {
@@ -1320,6 +1358,7 @@
         {
           "id": "ministral-3b-latest",
           "name": "Ministral 3B (latest)",
+          "description": "Compact Mistral model for edge, latency-sensitive, and cost-efficient workloads",
           "family": "ministral",
           "attachment": false,
           "reasoning": {
@@ -1353,6 +1392,7 @@
         {
           "id": "ministral-8b-latest",
           "name": "Ministral 8B (latest)",
+          "description": "Compact Mistral model for edge, latency-sensitive, and cost-efficient workloads",
           "family": "ministral",
           "attachment": false,
           "reasoning": {
@@ -1386,6 +1426,7 @@
         {
           "id": "pixtral-12b",
           "name": "Pixtral 12B",
+          "description": "Mistral vision-language model for image understanding and multimodal chat",
           "family": "pixtral",
           "attachment": true,
           "reasoning": {
@@ -1420,6 +1461,7 @@
         {
           "id": "mistral-nemo",
           "name": "Mistral Nemo",
+          "description": "Efficient Mistral-NVIDIA open model for multilingual chat and local deployment",
           "family": "mistral-nemo",
           "attachment": false,
           "reasoning": {
@@ -1453,6 +1495,7 @@
         {
           "id": "open-mistral-nemo",
           "name": "Open Mistral Nemo",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "mistral-nemo",
           "attachment": false,
           "reasoning": {
@@ -1487,6 +1530,7 @@
         {
           "id": "codestral-latest",
           "name": "Codestral (latest)",
+          "description": "Mistral code model for completions, refactors, and developer IDE workflows",
           "family": "codestral",
           "attachment": false,
           "reasoning": {
@@ -1520,6 +1564,7 @@
         {
           "id": "open-mixtral-8x22b",
           "name": "Mixtral 8x22B",
+          "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
           "family": "mixtral",
           "attachment": false,
           "reasoning": {
@@ -1553,6 +1598,7 @@
         {
           "id": "mistral-embed",
           "name": "Mistral Embed",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "family": "mistral-embed",
           "attachment": false,
           "reasoning": {
@@ -1585,6 +1631,7 @@
         {
           "id": "open-mixtral-8x7b",
           "name": "Mixtral 8x7B",
+          "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
           "family": "mixtral",
           "attachment": false,
           "reasoning": {
@@ -1618,6 +1665,7 @@
         {
           "id": "open-mistral-7b",
           "name": "Mistral 7B",
+          "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
           "family": "mistral",
           "attachment": false,
           "reasoning": {
@@ -1659,6 +1707,7 @@
         {
           "id": "gemini-3.5-flash",
           "name": "Gemini 3.5 Flash",
+          "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
           "family": "gemini-flash",
           "attachment": true,
           "reasoning": {
@@ -1730,6 +1779,7 @@
         {
           "id": "gemini-3.1-flash-lite",
           "name": "Gemini 3.1 Flash Lite",
+          "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
           "family": "gemini-flash-lite",
           "attachment": true,
           "reasoning": {
@@ -1787,6 +1837,7 @@
         {
           "id": "gemma-4-31b-it",
           "name": "Gemma 4 31B IT",
+          "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
           "family": "gemma",
           "attachment": true,
           "reasoning": {
@@ -1823,6 +1874,7 @@
         {
           "id": "gemma-4-26b-a4b-it",
           "name": "Gemma 4 26B A4B IT",
+          "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
           "family": "gemma",
           "attachment": true,
           "reasoning": {
@@ -1859,6 +1911,7 @@
         {
           "id": "gemini-3.1-flash-lite-preview",
           "name": "Gemini 3.1 Flash Lite Preview",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "gemini-flash-lite",
           "attachment": true,
           "reasoning": {
@@ -1917,6 +1970,7 @@
         {
           "id": "gemini-3.1-flash-image-preview",
           "name": "Nano Banana 2",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "gemini-flash",
           "attachment": true,
           "reasoning": {
@@ -1968,6 +2022,7 @@
         {
           "id": "gemini-3.1-pro-preview-customtools",
           "name": "Gemini 3.1 Pro Preview Custom Tools",
+          "description": "Advanced Gemini model for complex reasoning, coding, and multimodal analysis",
           "family": "gemini-pro",
           "attachment": true,
           "reasoning": {
@@ -2051,6 +2106,7 @@
         {
           "id": "gemini-3.1-pro-preview",
           "name": "Gemini 3.1 Pro Preview",
+          "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
           "family": "gemini-pro",
           "attachment": true,
           "reasoning": {
@@ -2134,6 +2190,7 @@
         {
           "id": "gemini-3-flash-preview",
           "name": "Gemini 3 Flash Preview",
+          "description": "New Gemini flash lane bringing frontier-style multimodal reasoning to cheaper runs",
           "family": "gemini-flash",
           "attachment": true,
           "reasoning": {
@@ -2205,6 +2262,7 @@
         {
           "id": "gemini-3-pro-image-preview",
           "name": "Nano Banana Pro",
+          "description": "Nano Banana Pro for higher-fidelity image generation and design-heavy edits",
           "family": "gemini-pro",
           "attachment": true,
           "reasoning": {
@@ -2259,6 +2317,7 @@
         {
           "id": "gemini-3-pro-preview",
           "name": "Gemini 3 Pro Preview",
+          "description": "Preview Gemini flagship for complex reasoning, coding, and rich multimodal prompts",
           "family": "gemini-pro",
           "attachment": true,
           "reasoning": {
@@ -2342,6 +2401,7 @@
         {
           "id": "gemini-flash-lite-latest",
           "name": "Gemini Flash-Lite Latest",
+          "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
           "family": "gemini-flash-lite",
           "attachment": true,
           "reasoning": {
@@ -2392,6 +2452,7 @@
         {
           "id": "gemini-flash-latest",
           "name": "Gemini Flash Latest",
+          "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
           "family": "gemini-flash",
           "attachment": true,
           "reasoning": {
@@ -2443,6 +2504,7 @@
         {
           "id": "gemini-2.5-flash-image",
           "name": "Gemini 2.5 Flash Image",
+          "description": "Nano Banana image model for fast generation, edits, and character-consistent assets",
           "family": "gemini-flash",
           "attachment": false,
           "reasoning": {
@@ -2480,6 +2542,7 @@
         {
           "id": "gemini-2.5-pro",
           "name": "Gemini 2.5 Pro",
+          "description": "Google's proven reasoning model for coding, math, and multimodal analysis",
           "family": "gemini-pro",
           "attachment": true,
           "reasoning": {
@@ -2568,6 +2631,7 @@
         {
           "id": "gemini-2.5-flash",
           "name": "Gemini 2.5 Flash",
+          "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
           "family": "gemini-flash",
           "attachment": true,
           "reasoning": {
@@ -2645,6 +2709,7 @@
         {
           "id": "gemini-2.5-flash-lite",
           "name": "Gemini 2.5 Flash Lite",
+          "description": "Lean Gemini 2.5 lane for cheap multimodal traffic and quick agents",
           "family": "gemini-flash-lite",
           "attachment": true,
           "reasoning": {
@@ -2721,6 +2786,7 @@
         {
           "id": "gemini-embedding-001",
           "name": "Gemini Embedding 001",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "family": "gemini",
           "attachment": false,
           "reasoning": {
@@ -2754,6 +2820,7 @@
         {
           "id": "gemini-2.5-flash-preview-tts",
           "name": "Gemini 2.5 Flash Preview TTS",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "family": "gemini-flash",
           "attachment": false,
           "reasoning": {
@@ -2787,6 +2854,7 @@
         {
           "id": "gemini-2.5-pro-preview-tts",
           "name": "Gemini 2.5 Pro Preview TTS",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "family": "gemini-flash",
           "attachment": false,
           "reasoning": {
@@ -2840,6 +2908,7 @@
         {
           "id": "gemini-2.0-flash",
           "name": "Gemini 2.0 Flash",
+          "description": "Earlier Gemini Flash workhorse for responsive multimodal apps and tool use",
           "family": "gemini-flash",
           "attachment": true,
           "reasoning": {
@@ -2882,6 +2951,7 @@
         {
           "id": "gemini-2.0-flash-lite",
           "name": "Gemini 2.0 Flash Lite",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "gemini-flash-lite",
           "attachment": true,
           "reasoning": {
@@ -3460,6 +3530,7 @@
         {
           "id": "gpt-5.5-pro",
           "name": "GPT-5.5 Pro",
+          "description": "Highest-accuracy GPT-5.5 tier for slower, precision-heavy reasoning and coding",
           "family": "gpt-pro",
           "attachment": true,
           "reasoning": {
@@ -3527,6 +3598,7 @@
         {
           "id": "gpt-5.5",
           "name": "GPT-5.5",
+          "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -3631,6 +3703,7 @@
         {
           "id": "gpt-image-2",
           "name": "gpt-image-2",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "gpt-image",
           "attachment": true,
           "reasoning": {
@@ -3677,6 +3750,7 @@
         {
           "id": "gpt-5.4-nano",
           "name": "GPT-5.4 nano",
+          "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
           "family": "gpt-nano",
           "attachment": true,
           "reasoning": {
@@ -3749,6 +3823,7 @@
         {
           "id": "gpt-5.4-mini",
           "name": "GPT-5.4 mini",
+          "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
           "family": "gpt-mini",
           "attachment": true,
           "reasoning": {
@@ -3837,6 +3912,7 @@
         {
           "id": "gpt-5.4",
           "name": "GPT-5.4",
+          "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -3942,6 +4018,7 @@
         {
           "id": "gpt-5.4-pro",
           "name": "GPT-5.4 Pro",
+          "description": "More exact GPT-5.4 tier for demanding professional reasoning and agent tasks",
           "family": "gpt-pro",
           "attachment": true,
           "reasoning": {
@@ -4023,6 +4100,7 @@
         {
           "id": "gpt-5.3-chat-latest",
           "name": "GPT-5.3 Chat (latest)",
+          "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -4059,6 +4137,7 @@
         {
           "id": "gpt-5.3-codex-spark",
           "name": "GPT-5.3 Codex Spark",
+          "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
           "family": "gpt-codex-spark",
           "attachment": true,
           "reasoning": {
@@ -4131,6 +4210,7 @@
         {
           "id": "gpt-5.3-codex",
           "name": "GPT-5.3 Codex",
+          "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -4203,6 +4283,7 @@
         {
           "id": "chatgpt-image-latest",
           "name": "chatgpt-image-latest",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "gpt-image",
           "attachment": true,
           "reasoning": {
@@ -4234,6 +4315,7 @@
         {
           "id": "gpt-5.2-pro",
           "name": "GPT-5.2 Pro",
+          "description": "Higher-accuracy GPT-5.2 variant for tougher reasoning and review workflows",
           "family": "gpt-pro",
           "attachment": true,
           "reasoning": {
@@ -4301,6 +4383,7 @@
         {
           "id": "gpt-5.2",
           "name": "GPT-5.2",
+          "description": "Reliable GPT generation for broad coding, writing, and tool-assisted product work",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -4373,6 +4456,7 @@
         {
           "id": "gpt-5.2-chat-latest",
           "name": "GPT-5.2 Chat",
+          "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -4418,6 +4502,7 @@
         {
           "id": "gpt-5.2-codex",
           "name": "GPT-5.2 Codex",
+          "description": "Code-specialist GPT for repository edits, reviews, and long-running software agents",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -4489,6 +4574,7 @@
         {
           "id": "gpt-image-1.5",
           "name": "gpt-image-1.5",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "gpt-image",
           "attachment": true,
           "reasoning": {
@@ -4520,6 +4606,7 @@
         {
           "id": "gpt-5.1-codex",
           "name": "GPT-5.1 Codex",
+          "description": "Codex GPT for repository edits, code review, and practical software agents",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -4589,6 +4676,7 @@
         {
           "id": "gpt-5.1-codex-max",
           "name": "GPT-5.1 Codex Max",
+          "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -4659,6 +4747,7 @@
         {
           "id": "gpt-5.1-codex-mini",
           "name": "GPT-5.1 Codex mini",
+          "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -4728,6 +4817,7 @@
         {
           "id": "gpt-5.1-chat-latest",
           "name": "GPT-5.1 Chat",
+          "description": "Chat-tuned GPT-5.1 for polished assistants, writing, and product conversations",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -4773,6 +4863,7 @@
         {
           "id": "gpt-5.1",
           "name": "GPT-5.1",
+          "description": "Sharper GPT-5 generation for coding, product work, and tool-assisted tasks",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -4843,6 +4934,7 @@
         {
           "id": "gpt-5-pro",
           "name": "GPT-5 Pro",
+          "description": "Higher-accuracy GPT-5 tier for tough analysis, coding reviews, and planning",
           "family": "gpt-pro",
           "attachment": true,
           "reasoning": {
@@ -4903,6 +4995,7 @@
         {
           "id": "gpt-image-1-mini",
           "name": "gpt-image-1-mini",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "family": "gpt-image",
           "attachment": true,
           "reasoning": {
@@ -4934,6 +5027,7 @@
         {
           "id": "gpt-5-codex",
           "name": "GPT-5-Codex",
+          "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
           "family": "gpt-codex",
           "attachment": false,
           "reasoning": {
@@ -5003,6 +5097,7 @@
         {
           "id": "gpt-5",
           "name": "GPT-5",
+          "description": "Original GPT-5 workhorse for reasoning, coding, writing, and tool workflows",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -5073,6 +5168,7 @@
         {
           "id": "gpt-5-chat-latest",
           "name": "GPT-5 Chat (latest)",
+          "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -5112,6 +5208,7 @@
         {
           "id": "gpt-5-mini",
           "name": "GPT-5 Mini",
+          "description": "Small GPT-5 for responsive agents, coding help, and everyday automation",
           "family": "gpt-mini",
           "attachment": true,
           "reasoning": {
@@ -5182,6 +5279,7 @@
         {
           "id": "gpt-5-nano",
           "name": "GPT-5 Nano",
+          "description": "Tiny GPT-5 lane for routing, extraction, classification, and bulk jobs",
           "family": "gpt-nano",
           "attachment": true,
           "reasoning": {
@@ -5306,6 +5404,7 @@
         {
           "id": "o3-pro",
           "name": "o3-pro",
+          "description": "High-effort o3 tier for difficult technical reasoning and careful answers",
           "family": "o-pro",
           "attachment": true,
           "reasoning": {
@@ -5366,6 +5465,7 @@
         {
           "id": "gpt-image-1",
           "name": "gpt-image-1",
+          "description": "OpenAI image model for production generation, edits, and brand-safe visual workflows",
           "family": "gpt-image",
           "attachment": true,
           "reasoning": {
@@ -5396,6 +5496,7 @@
         {
           "id": "o3",
           "name": "o3",
+          "description": "Deliberate o-series reasoner for hard math, coding, and multi-step analysis",
           "family": "o",
           "attachment": true,
           "reasoning": {
@@ -5458,6 +5559,7 @@
         {
           "id": "o4-mini",
           "name": "o4-mini",
+          "description": "Fast o-series model for compact reasoning, coding, and tool use",
           "family": "o-mini",
           "attachment": true,
           "reasoning": {
@@ -5519,6 +5621,7 @@
         {
           "id": "gpt-4.1-nano",
           "name": "GPT-4.1 nano",
+          "description": "Tiny GPT-4.1 option for classification, routing, and very high-volume tasks",
           "family": "gpt-nano",
           "attachment": true,
           "reasoning": {
@@ -5555,6 +5658,7 @@
         {
           "id": "gpt-4.1",
           "name": "GPT-4.1",
+          "description": "Long-lived GPT workhorse for coding, instruction following, and production apps",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -5592,6 +5696,7 @@
         {
           "id": "gpt-4.1-mini",
           "name": "GPT-4.1 mini",
+          "description": "Affordable GPT-4.1 lane for fast coding help and structured extraction",
           "family": "gpt-mini",
           "attachment": true,
           "reasoning": {
@@ -5629,6 +5734,7 @@
         {
           "id": "o1-pro",
           "name": "o1-pro",
+          "description": "O-series reasoning model for hard analysis, math, coding, and planning",
           "family": "o-pro",
           "attachment": true,
           "reasoning": {
@@ -5689,6 +5795,7 @@
         {
           "id": "o3-mini",
           "name": "o3-mini",
+          "description": "Smaller o-series reasoner for economical coding, math, and planning tasks",
           "family": "o-mini",
           "attachment": false,
           "reasoning": {
@@ -5749,6 +5856,7 @@
         {
           "id": "o1",
           "name": "o1",
+          "description": "O-series reasoning model for hard analysis, math, coding, and planning",
           "family": "o",
           "attachment": true,
           "reasoning": {
@@ -5811,6 +5919,7 @@
         {
           "id": "gpt-4o-2024-11-20",
           "name": "GPT-4o (2024-11-20)",
+          "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -5847,6 +5956,7 @@
         {
           "id": "gpt-4o-2024-08-06",
           "name": "GPT-4o (2024-08-06)",
+          "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -5883,6 +5993,7 @@
         {
           "id": "gpt-4o-mini",
           "name": "GPT-4o mini",
+          "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
           "family": "gpt-mini",
           "attachment": true,
           "reasoning": {
@@ -5920,6 +6031,7 @@
         {
           "id": "o4-mini-deep-research",
           "name": "o4-mini-deep-research",
+          "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
           "family": "o-mini",
           "attachment": true,
           "reasoning": {
@@ -5978,6 +6090,7 @@
         {
           "id": "o3-deep-research",
           "name": "o3-deep-research",
+          "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
           "family": "o",
           "attachment": true,
           "reasoning": {
@@ -6036,6 +6149,7 @@
         {
           "id": "gpt-4o",
           "name": "GPT-4o",
+          "description": "Omni-era GPT for multimodal chat, practical coding, and general assistants",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -6073,6 +6187,7 @@
         {
           "id": "gpt-4o-2024-05-13",
           "name": "GPT-4o (2024-05-13)",
+          "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -6108,6 +6223,7 @@
         {
           "id": "text-embedding-3-large",
           "name": "text-embedding-3-large",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "family": "text-embedding",
           "attachment": false,
           "reasoning": {
@@ -6141,6 +6257,7 @@
         {
           "id": "text-embedding-3-small",
           "name": "text-embedding-3-small",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "family": "text-embedding",
           "attachment": false,
           "reasoning": {
@@ -6174,6 +6291,7 @@
         {
           "id": "gpt-4",
           "name": "GPT-4",
+          "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -6208,6 +6326,7 @@
         {
           "id": "gpt-4-turbo",
           "name": "GPT-4 Turbo",
+          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
           "family": "gpt",
           "attachment": true,
           "reasoning": {
@@ -6243,6 +6362,7 @@
         {
           "id": "gpt-3.5-turbo",
           "name": "GPT-3.5-turbo",
+          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
           "family": "gpt",
           "attachment": false,
           "reasoning": {
@@ -6278,6 +6398,7 @@
         {
           "id": "text-embedding-ada-002",
           "name": "text-embedding-ada-002",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "family": "text-embedding",
           "attachment": false,
           "reasoning": {
@@ -6441,6 +6562,7 @@
         {
           "id": "glm-5.2",
           "name": "GLM-5.2",
+          "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
           "family": "glm",
           "attachment": false,
           "reasoning": {
@@ -6500,6 +6622,7 @@
         {
           "id": "glm-5.1",
           "name": "GLM-5.1",
+          "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
           "family": "glm",
           "attachment": false,
           "reasoning": {
@@ -6555,6 +6678,7 @@
         {
           "id": "glm-5v-turbo",
           "name": "GLM-5V-Turbo",
+          "description": "Fast GLM vision model for screenshots, documents, and multimodal agent tasks",
           "family": "glm",
           "attachment": true,
           "reasoning": {
@@ -6612,6 +6736,7 @@
         {
           "id": "glm-5-turbo",
           "name": "GLM-5-Turbo",
+          "description": "Faster GLM-5 lane for coding agents that need lower latency",
           "family": "glm",
           "attachment": false,
           "reasoning": {
@@ -6667,6 +6792,7 @@
         {
           "id": "glm-5",
           "name": "GLM-5",
+          "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
           "family": "glm",
           "attachment": false,
           "reasoning": {
@@ -6721,6 +6847,7 @@
         {
           "id": "glm-4.7-flashx",
           "name": "GLM-4.7-FlashX",
+          "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
           "family": "glm-flash",
           "attachment": false,
           "reasoning": {
@@ -6762,6 +6889,7 @@
         {
           "id": "glm-4.7-flash",
           "name": "GLM-4.7-Flash",
+          "description": "Budget GLM lane for fast coding help, routing, and everyday automation",
           "family": "glm-flash",
           "attachment": false,
           "reasoning": {
@@ -6808,6 +6936,7 @@
         {
           "id": "glm-4.7",
           "name": "GLM-4.7",
+          "description": "Mature GLM model for dependable coding, reasoning, and structured agent tasks",
           "family": "glm",
           "attachment": false,
           "reasoning": {
@@ -6863,6 +6992,7 @@
         {
           "id": "glm-4.6v",
           "name": "GLM-4.6V",
+          "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
           "family": "glm",
           "attachment": true,
           "reasoning": {
@@ -6904,6 +7034,7 @@
         {
           "id": "glm-4.6",
           "name": "GLM-4.6",
+          "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
           "family": "glm",
           "attachment": false,
           "reasoning": {
@@ -6950,6 +7081,7 @@
         {
           "id": "glm-4.5v",
           "name": "GLM-4.5V",
+          "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
           "family": "glm",
           "attachment": true,
           "reasoning": {
@@ -6991,6 +7123,7 @@
         {
           "id": "glm-4.5",
           "name": "GLM-4.5",
+          "description": "Hybrid-reasoning GLM release that made the 4.5 line broadly useful",
           "family": "glm",
           "attachment": false,
           "reasoning": {
@@ -7032,6 +7165,7 @@
         {
           "id": "glm-4.5-air",
           "name": "GLM-4.5-Air",
+          "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
           "family": "glm-air",
           "attachment": false,
           "reasoning": {
@@ -7073,6 +7207,7 @@
         {
           "id": "glm-4.5-flash",
           "name": "GLM-4.5-Flash",
+          "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
           "family": "glm-flash",
           "attachment": false,
           "reasoning": {
@@ -7123,6 +7258,7 @@
         {
           "id": "kimi-k2.7-code-highspeed",
           "name": "Kimi K2.7 Code Highspeed",
+          "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
           "family": "kimi-k2.7-code-highspeed",
           "attachment": true,
           "reasoning": {
@@ -7178,6 +7314,7 @@
         {
           "id": "kimi-k2.6",
           "name": "Kimi K2.6",
+          "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
           "family": "kimi-k2",
           "attachment": true,
           "reasoning": {
@@ -7235,6 +7372,7 @@
         {
           "id": "kimi-k2.7-code",
           "name": "Kimi K2.7 Code",
+          "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
           "family": "kimi-k2.7-code",
           "attachment": true,
           "reasoning": {
@@ -7290,6 +7428,7 @@
         {
           "id": "kimi-k2.5",
           "name": "Kimi K2.5",
+          "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
           "family": "kimi-k2",
           "attachment": false,
           "reasoning": {
@@ -7347,6 +7486,7 @@
         {
           "id": "kimi-k2-thinking",
           "name": "Kimi K2 Thinking",
+          "description": "Thinking Kimi model for slower research passes, planning, and hard technical questions",
           "family": "kimi-thinking",
           "attachment": false,
           "reasoning": {
@@ -7397,6 +7537,7 @@
         {
           "id": "kimi-k2-thinking-turbo",
           "name": "Kimi K2 Thinking Turbo",
+          "description": "Kimi reasoning model for long-horizon research, planning, and tool use",
           "family": "kimi-thinking",
           "attachment": false,
           "reasoning": {
@@ -7447,6 +7588,7 @@
         {
           "id": "kimi-k2-turbo-preview",
           "name": "Kimi K2 Turbo",
+          "description": "Fast Kimi model for responsive chat, coding help, and agent loops",
           "family": "kimi-k2",
           "attachment": false,
           "reasoning": {
@@ -7481,6 +7623,7 @@
         {
           "id": "kimi-k2-0905-preview",
           "name": "Kimi K2 0905",
+          "description": "Kimi model for long-context chat, coding, and agentic reasoning",
           "family": "kimi-k2",
           "attachment": false,
           "reasoning": {
@@ -7515,6 +7658,7 @@
         {
           "id": "kimi-k2-0711-preview",
           "name": "Kimi K2 0711",
+          "description": "Kimi model for long-context chat, coding, and agentic reasoning",
           "family": "kimi-k2",
           "attachment": false,
           "reasoning": {
@@ -7558,6 +7702,7 @@
         {
           "id": "nvidia/nemotron-3-ultra-550b-a55b",
           "name": "Nemotron 3 Ultra 550B A55B",
+          "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -7598,6 +7743,7 @@
         {
           "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
           "name": "Nemotron 3 Nano Omni",
+          "description": "Open Nemotron omni model combining reasoning with text, vision, and audio",
           "family": "nemotron",
           "attachment": true,
           "reasoning": {
@@ -7645,6 +7791,7 @@
         {
           "id": "nvidia/synthetic-video-detector",
           "name": "synthetic-video-detector",
+          "description": "Video model for prompt-guided generation, editing, and motion workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -7676,6 +7823,7 @@
         {
           "id": "nvidia/active-speaker-detection",
           "name": "Active Speaker Detection",
+          "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -7707,6 +7855,7 @@
         {
           "id": "nvidia/nemotron-3-content-safety",
           "name": "nemotron-3-content-safety",
+          "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -7739,6 +7888,7 @@
         {
           "id": "nvidia/llama-nemotron-rerank-vl-1b-v2",
           "name": "llama-nemotron-rerank-vl-1b-v2",
+          "description": "Reranking model for improving retrieval quality in search and recommendation systems",
           "family": "nemotron",
           "attachment": true,
           "reasoning": {
@@ -7772,6 +7922,7 @@
         {
           "id": "nvidia/nemotron-voicechat",
           "name": "nemotron-voicechat",
+          "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
           "family": "nemotron",
           "attachment": true,
           "reasoning": {
@@ -7805,6 +7956,7 @@
         {
           "id": "nvidia/nemotron-3-super-120b-a12b",
           "name": "Nemotron 3 Super",
+          "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -7844,6 +7996,7 @@
         {
           "id": "nvidia/gliner-pii",
           "name": "gliner-pii",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -7875,6 +8028,7 @@
         {
           "id": "nvidia/cosmos-transfer2_5-2b",
           "name": "cosmos-transfer2.5-2b",
+          "description": "Video model for prompt-guided generation, editing, and motion workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -7908,6 +8062,7 @@
         {
           "id": "nvidia/llama-nemotron-embed-vl-1b-v2",
           "name": "llama-nemotron-embed-vl-1b-v2",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "family": "nemotron",
           "attachment": true,
           "reasoning": {
@@ -7941,6 +8096,7 @@
         {
           "id": "nvidia/nemotron-content-safety-reasoning-4b",
           "name": "nemotron-content-safety-reasoning-4b",
+          "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -7975,6 +8131,7 @@
         {
           "id": "nvidia/usdcode",
           "name": "usdcode",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8006,6 +8163,7 @@
         {
           "id": "nvidia/riva-translate-4b-instruct-v1_1",
           "name": "riva-translate-4b-instruct-v1_1",
+          "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8037,6 +8195,7 @@
         {
           "id": "nvidia/streampetr",
           "name": "streampetr",
+          "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -8068,6 +8227,7 @@
         {
           "id": "nvidia/llama-3_1-nemotron-safety-guard-8b-v3",
           "name": "llama-3.1-nemotron-safety-guard-8b-v3",
+          "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -8100,6 +8260,7 @@
         {
           "id": "nvidia/nvidia-nemotron-nano-9b-v2",
           "name": "nvidia-nemotron-nano-9b-v2",
+          "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -8139,6 +8300,7 @@
         {
           "id": "nvidia/llama-3_2-nemoretriever-300m-embed-v1",
           "name": "llama-3_2-nemoretriever-300m-embed-v1",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8170,6 +8332,7 @@
         {
           "id": "nvidia/cosmos-transfer1-7b",
           "name": "cosmos-transfer1-7b",
+          "description": "Video model for prompt-guided generation, editing, and motion workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -8203,6 +8366,7 @@
         {
           "id": "nvidia/magpie-tts-zeroshot",
           "name": "magpie-tts-zeroshot",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -8235,6 +8399,7 @@
         {
           "id": "nvidia/sparsedrive",
           "name": "sparsedrive",
+          "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -8266,6 +8431,7 @@
         {
           "id": "nvidia/cosmos-predict1-5b",
           "name": "cosmos-predict1-5b",
+          "description": "Video model for prompt-guided generation, editing, and motion workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -8299,6 +8465,7 @@
         {
           "id": "nvidia/bevformer",
           "name": "bevformer",
+          "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
           "attachment": true,
           "reasoning": {
             "supported": false
@@ -8330,6 +8497,7 @@
         {
           "id": "nvidia/nv-embedcode-7b-v1",
           "name": "nv-embedcode-7b-v1",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8361,6 +8529,7 @@
         {
           "id": "nvidia/nemotron-3-nano-30b-a3b",
           "name": "nemotron-3-nano-30b-a3b",
+          "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -8400,6 +8569,7 @@
         {
           "id": "nvidia/studiovoice",
           "name": "studiovoice",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8431,6 +8601,7 @@
         {
           "id": "nvidia/nemotron-mini-4b-instruct",
           "name": "nemotron-mini-4b-instruct",
+          "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
           "family": "nemotron",
           "attachment": false,
           "reasoning": {
@@ -8463,6 +8634,7 @@
         {
           "id": "nvidia/usdvalidate",
           "name": "usdvalidate",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8494,6 +8666,7 @@
         {
           "id": "nvidia/nv-embed-v1",
           "name": "nv-embed-v1",
+          "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8525,6 +8698,7 @@
         {
           "id": "nvidia/rerank-qa-mistral-4b",
           "name": "rerank-qa-mistral-4b",
+          "description": "Reranking model for improving retrieval quality in search and recommendation systems",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -8565,6 +8739,7 @@
         {
           "id": "mimo-v2.5-pro-ultraspeed",
           "name": "MiMo-V2.5-Pro-UltraSpeed",
+          "description": "MiMo pro model for strong multimodal reasoning and agent execution",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -8620,6 +8795,7 @@
         {
           "id": "mimo-v2.5",
           "name": "MiMo-V2.5",
+          "description": "Open MiMo model for multimodal coding agents and long-context automation",
           "family": "mimo",
           "attachment": true,
           "reasoning": {
@@ -8638,7 +8814,7 @@
           "temperature": true,
           "knowledge": "2024-12",
           "release_date": "2026-04-22",
-          "last_updated": "2026-04-22",
+          "last_updated": "2026-06-24",
           "modalities": {
             "input": [
               "text",
@@ -8656,25 +8832,9 @@
             "output": 131072
           },
           "cost": {
-            "input": 0.4,
-            "output": 2,
-            "cache_read": 0.08,
-            "tiers": [
-              {
-                "input": 0.8,
-                "output": 4,
-                "cache_read": 0.16,
-                "tier": {
-                  "type": "context",
-                  "size": 256000
-                }
-              }
-            ],
-            "context_over_200k": {
-              "input": 0.8,
-              "output": 4,
-              "cache_read": 0.16
-            }
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.0028
           },
           "display_name": "MiMo-V2.5",
           "type": "chat",
@@ -8693,6 +8853,7 @@
         {
           "id": "mimo-v2.5-pro",
           "name": "MiMo-V2.5-Pro",
+          "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -8711,7 +8872,7 @@
           "temperature": true,
           "knowledge": "2024-12",
           "release_date": "2026-04-22",
-          "last_updated": "2026-04-22",
+          "last_updated": "2026-06-24",
           "modalities": {
             "input": [
               "text"
@@ -8726,25 +8887,9 @@
             "output": 131072
           },
           "cost": {
-            "input": 1,
-            "output": 3,
-            "cache_read": 0.2,
-            "tiers": [
-              {
-                "input": 2,
-                "output": 6,
-                "cache_read": 0.4,
-                "tier": {
-                  "type": "context",
-                  "size": 256000
-                }
-              }
-            ],
-            "context_over_200k": {
-              "input": 2,
-              "output": 6,
-              "cache_read": 0.4
-            }
+            "input": 0.435,
+            "output": 0.87,
+            "cache_read": 0.0036
           },
           "display_name": "MiMo-V2.5-Pro",
           "type": "chat",
@@ -8763,6 +8908,7 @@
         {
           "id": "mimo-v2.5-tts-voiceclone",
           "name": "MiMo-V2.5-TTS-VoiceClone",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -8794,6 +8940,7 @@
         {
           "id": "mimo-v2.5-tts-voicedesign",
           "name": "MiMo-V2.5-TTS-VoiceDesign",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -8825,6 +8972,7 @@
         {
           "id": "mimo-v2.5-tts",
           "name": "MiMo-V2.5-TTS",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -8856,6 +9004,7 @@
         {
           "id": "mimo-v2-omni",
           "name": "MiMo-V2-Omni",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "mimo",
           "attachment": true,
           "reasoning": {
@@ -8874,7 +9023,7 @@
           "temperature": true,
           "knowledge": "2024-12",
           "release_date": "2026-03-18",
-          "last_updated": "2026-03-18",
+          "last_updated": "2026-06-24",
           "modalities": {
             "input": [
               "text",
@@ -8894,9 +9043,9 @@
           },
           "status": "deprecated",
           "cost": {
-            "input": 0.4,
-            "output": 2,
-            "cache_read": 0.08
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.0028
           },
           "display_name": "MiMo-V2-Omni",
           "type": "chat",
@@ -8915,6 +9064,7 @@
         {
           "id": "mimo-v2-pro",
           "name": "MiMo-V2-Pro",
+          "description": "Earlier MiMo Pro model for multimodal agents, reasoning, and code tasks",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -8933,7 +9083,7 @@
           "temperature": true,
           "knowledge": "2024-12",
           "release_date": "2026-03-18",
-          "last_updated": "2026-03-18",
+          "last_updated": "2026-06-24",
           "modalities": {
             "input": [
               "text"
@@ -8949,25 +9099,9 @@
           },
           "status": "deprecated",
           "cost": {
-            "input": 1,
-            "output": 3,
-            "cache_read": 0.2,
-            "tiers": [
-              {
-                "input": 2,
-                "output": 6,
-                "cache_read": 0.4,
-                "tier": {
-                  "type": "context",
-                  "size": 256000
-                }
-              }
-            ],
-            "context_over_200k": {
-              "input": 2,
-              "output": 6,
-              "cache_read": 0.4
-            }
+            "input": 0.435,
+            "output": 0.87,
+            "cache_read": 0.0036
           },
           "display_name": "MiMo-V2-Pro",
           "type": "chat",
@@ -8986,6 +9120,7 @@
         {
           "id": "mimo-v2-tts",
           "name": "MiMo-V2-TTS",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -9017,6 +9152,7 @@
         {
           "id": "mimo-v2-flash",
           "name": "MiMo-V2-Flash",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "mimo",
           "attachment": false,
           "reasoning": {
@@ -9035,7 +9171,7 @@
           "temperature": true,
           "knowledge": "2024-12-01",
           "release_date": "2025-12-16",
-          "last_updated": "2026-02-04",
+          "last_updated": "2026-06-24",
           "modalities": {
             "input": [
               "text"
@@ -9051,9 +9187,9 @@
           },
           "status": "deprecated",
           "cost": {
-            "input": 0.1,
-            "output": 0.3,
-            "cache_read": 0.01
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.0028
           },
           "display_name": "MiMo-V2-Flash",
           "type": "chat",
@@ -9078,8 +9214,68 @@
       "display_name": "Anthropic",
       "models": [
         {
+          "id": "claude-sonnet-5",
+          "name": "Claude Sonnet 5",
+          "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
+          "family": "claude-sonnet",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "temperature": false,
+          "knowledge": "2026-01-31",
+          "release_date": "2026-06-30",
+          "last_updated": "2026-06-30",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 0.2,
+            "cache_write": 2.5
+          },
+          "display_name": "Claude Sonnet 5",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
+        {
           "id": "claude-fable-5",
           "name": "Claude Fable 5",
+          "description": "Claude model for creative writing, analysis, and controlled agent workflows",
           "family": "claude-fable",
           "attachment": true,
           "reasoning": {
@@ -9155,6 +9351,7 @@
         {
           "id": "claude-opus-4-8",
           "name": "Claude Opus 4.8",
+          "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -9250,6 +9447,7 @@
         {
           "id": "claude-opus-4-7",
           "name": "Claude Opus 4.7",
+          "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -9346,6 +9544,7 @@
         {
           "id": "claude-sonnet-4-6",
           "name": "Claude Sonnet 4.6",
+          "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -9427,6 +9626,7 @@
         {
           "id": "claude-opus-4-6",
           "name": "Claude Opus 4.6",
+          "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -9528,6 +9728,7 @@
         {
           "id": "claude-opus-4-5",
           "name": "Claude Opus 4.5 (latest)",
+          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -9607,6 +9808,7 @@
         {
           "id": "claude-opus-4-5-20251101",
           "name": "Claude Opus 4.5",
+          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -9686,6 +9888,7 @@
         {
           "id": "claude-haiku-4-5-20251001",
           "name": "Claude Haiku 4.5",
+          "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
           "family": "claude-haiku",
           "attachment": true,
           "reasoning": {
@@ -9751,6 +9954,7 @@
         {
           "id": "claude-haiku-4-5",
           "name": "Claude Haiku 4.5 (latest)",
+          "description": "Fast Claude lane for lightweight agents, office tasks, and responsive chat",
           "family": "claude-haiku",
           "attachment": true,
           "reasoning": {
@@ -9816,6 +10020,7 @@
         {
           "id": "claude-sonnet-4-5",
           "name": "Claude Sonnet 4.5 (latest)",
+          "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -9881,6 +10086,7 @@
         {
           "id": "claude-sonnet-4-5-20250929",
           "name": "Claude Sonnet 4.5",
+          "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -9946,6 +10152,7 @@
         {
           "id": "claude-opus-4-1-20250805",
           "name": "Claude Opus 4.1",
+          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -10011,6 +10218,7 @@
         {
           "id": "claude-opus-4-1",
           "name": "Claude Opus 4.1 (latest)",
+          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -10076,6 +10284,7 @@
         {
           "id": "claude-opus-4-0",
           "name": "Claude Opus 4 (latest)",
+          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -10141,6 +10350,7 @@
         {
           "id": "claude-opus-4-20250514",
           "name": "Claude Opus 4",
+          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -10206,6 +10416,7 @@
         {
           "id": "claude-sonnet-4-20250514",
           "name": "Claude Sonnet 4",
+          "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -10271,6 +10482,7 @@
         {
           "id": "claude-sonnet-4-0",
           "name": "Claude Sonnet 4 (latest)",
+          "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -10336,6 +10548,7 @@
         {
           "id": "claude-3-7-sonnet-20250219",
           "name": "Claude Sonnet 3.7",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -10401,6 +10614,7 @@
         {
           "id": "claude-3-5-sonnet-20241022",
           "name": "Claude Sonnet 3.5 v2",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -10439,6 +10653,7 @@
         {
           "id": "claude-3-5-sonnet-20240620",
           "name": "Claude Sonnet 3.5",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -10477,6 +10692,7 @@
         {
           "id": "claude-3-haiku-20240307",
           "name": "Claude Haiku 3",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "claude-haiku",
           "attachment": true,
           "reasoning": {
@@ -10515,6 +10731,7 @@
         {
           "id": "claude-3-sonnet-20240229",
           "name": "Claude Sonnet 3",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -10553,6 +10770,7 @@
         {
           "id": "claude-3-opus-20240229",
           "name": "Claude Opus 3",
+          "description": "Legacy model retained for compatibility with older integrations",
           "family": "claude-opus",
           "attachment": true,
           "reasoning": {
@@ -10600,6 +10818,7 @@
         {
           "id": "step-3.7-flash",
           "name": "Step 3.7 Flash",
+          "description": "Newer StepFun flash model for faster agents, coding, and multimodal prompts",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -10616,10 +10835,13 @@
             }
           ],
           "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "temperature": true,
           "knowledge": "2026-01-01",
           "release_date": "2026-05-29",
-          "last_updated": "2026-05-29",
+          "last_updated": "2026-06-29",
           "modalities": {
             "input": [
               "text",
@@ -10636,16 +10858,86 @@
             "output": 256000
           },
           "cost": {
-            "input": 0.19,
-            "output": 1.13,
+            "input": 0.2,
+            "output": 1.15,
             "cache_read": 0.04
           },
           "display_name": "Step 3.7 Flash",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          }
+        },
+        {
+          "id": "stepaudio-2.5-asr",
+          "name": "StepAudio 2.5 ASR",
+          "description": "Speech transcription model for accurate audio-to-text and captioning workflows",
+          "family": "step",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2026-04-24",
+          "last_updated": "2026-07-02",
+          "modalities": {
+            "input": [
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "display_name": "StepAudio 2.5 ASR",
+          "type": "chat"
+        },
+        {
+          "id": "stepaudio-2.5-tts",
+          "name": "StepAudio 2.5 TTS",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
+          "family": "step",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2026-04-16",
+          "last_updated": "2026-07-02",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "display_name": "StepAudio 2.5 TTS",
           "type": "chat"
         },
         {
           "id": "step-3.5-flash-2603",
           "name": "Step 3.5 Flash 2603",
+          "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -10661,6 +10953,9 @@
             }
           ],
           "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "temperature": true,
           "knowledge": "2025-01",
           "release_date": "2026-04-02",
@@ -10685,11 +10980,52 @@
             "cache_read": 0.02
           },
           "display_name": "Step 3.5 Flash 2603",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          }
+        },
+        {
+          "id": "step-tts-2",
+          "name": "Step TTS 2",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
+          "family": "step",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2026-03-01",
+          "last_updated": "2026-07-02",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "display_name": "Step TTS 2",
           "type": "chat"
         },
         {
           "id": "step-3.5-flash",
           "name": "Step 3.5 Flash",
+          "description": "StepFun flash lane for quick multimodal reasoning and coding assistance",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -10697,6 +11033,9 @@
           },
           "reasoning_options": [],
           "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "temperature": true,
           "knowledge": "2025-01",
           "release_date": "2026-01-29",
@@ -10721,11 +11060,23 @@
             "cache_read": 0.02
           },
           "display_name": "Step 3.5 Flash",
-          "type": "chat"
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          }
         },
         {
           "id": "step-1-32k",
           "name": "Step 1 (32K)",
+          "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -10762,6 +11113,7 @@
         {
           "id": "step-2-16k",
           "name": "Step 2 (16K)",
+          "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -10797,6 +11149,69 @@
         }
       ]
     },
+    "longcat": {
+      "id": "longcat",
+      "api": "https://api.longcat.chat/openai",
+      "name": "LongCat",
+      "doc": "https://longcat.chat/platform/docs/",
+      "display_name": "LongCat",
+      "models": [
+        {
+          "id": "LongCat-2.0",
+          "name": "LongCat-2.0",
+          "description": "Meituan LongCat-2.0, a reasoning model with tool calling and a 1M-token context window",
+          "family": "longcat",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "release_date": "2026-06-30",
+          "last_updated": "2026-06-30",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0.75,
+            "output": 2.95,
+            "cache_read": 0.015
+          },
+          "display_name": "LongCat-2.0",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          }
+        }
+      ]
+    },
     "alibaba": {
       "id": "alibaba",
       "api": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
@@ -10807,6 +11222,7 @@
         {
           "id": "qwen3.7-plus",
           "name": "Qwen3.7 Plus",
+          "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -10876,6 +11292,7 @@
         {
           "id": "qwen3.7-max",
           "name": "Qwen3.7 Max",
+          "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -10924,6 +11341,7 @@
         {
           "id": "qwen3.6-flash",
           "name": "Qwen3.6 Flash",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen3.6",
           "attachment": true,
           "reasoning": {
@@ -10980,6 +11398,7 @@
         {
           "id": "qwen3.6-27b",
           "name": "Qwen3.6 27B",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": true,
           "reasoning": {
@@ -11036,6 +11455,7 @@
         {
           "id": "qwen3.6-max-preview",
           "name": "Qwen3.6 Max Preview",
+          "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11091,6 +11511,7 @@
         {
           "id": "qwen3.6-35b-a3b",
           "name": "Qwen3.6 35B-A3B",
+          "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
           "family": "qwen",
           "attachment": true,
           "reasoning": {
@@ -11147,6 +11568,7 @@
         {
           "id": "qwen3.6-plus",
           "name": "Qwen3.6 Plus",
+          "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11222,6 +11644,7 @@
         {
           "id": "qwen3.5-27b",
           "name": "Qwen3.5 27B",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": true,
           "reasoning": {
@@ -11278,6 +11701,7 @@
         {
           "id": "qwen3.5-35b-a3b",
           "name": "Qwen3.5 35B-A3B",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": true,
           "reasoning": {
@@ -11334,6 +11758,7 @@
         {
           "id": "qwen3.5-122b-a10b",
           "name": "Qwen3.5 122B-A10B",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": true,
           "reasoning": {
@@ -11390,6 +11815,7 @@
         {
           "id": "qwen3.5-plus",
           "name": "Qwen3.5 Plus",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11446,6 +11872,7 @@
         {
           "id": "qwen3.5-397b-a17b",
           "name": "Qwen3.5 397B-A17B",
+          "description": "Large open Qwen multimodal MoE for visual agents and long technical tasks",
           "family": "qwen",
           "attachment": true,
           "reasoning": {
@@ -11502,6 +11929,7 @@
         {
           "id": "qwen3-max",
           "name": "Qwen3 Max",
+          "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11546,6 +11974,7 @@
         {
           "id": "qwen3-vl-plus",
           "name": "Qwen3 VL Plus",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11606,6 +12035,7 @@
         {
           "id": "qwen3-livetranslate-flash-realtime",
           "name": "Qwen3-LiveTranslate Flash Realtime",
+          "description": "Speech generation model for controllable voice, narration, and audio delivery",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11645,6 +12075,7 @@
         {
           "id": "qwen3-omni-flash",
           "name": "Qwen3-Omni Flash",
+          "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11701,6 +12132,7 @@
         {
           "id": "qwen3-omni-flash-realtime",
           "name": "Qwen3-Omni Flash Realtime",
+          "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11740,6 +12172,7 @@
         {
           "id": "qwen3-asr-flash",
           "name": "Qwen3-ASR Flash",
+          "description": "Speech transcription model for accurate audio-to-text and captioning workflows",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11773,6 +12206,7 @@
         {
           "id": "qwen3-next-80b-a3b-instruct",
           "name": "Qwen3 Next 80B A3B Instruct",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11806,6 +12240,7 @@
         {
           "id": "qwen3-next-80b-a3b-thinking",
           "name": "Qwen3 Next 80B A3B Thinking",
+          "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11861,6 +12296,7 @@
         {
           "id": "qwen-flash",
           "name": "Qwen Flash",
+          "description": "Efficient Qwen model for fast chat, extraction, and high-volume workloads",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11925,6 +12361,7 @@
         {
           "id": "qwen3-coder-flash",
           "name": "Qwen3 Coder Flash",
+          "description": "Qwen coding model for software agents, repository edits, and code reasoning",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11958,6 +12395,7 @@
         {
           "id": "qwen3-coder-plus",
           "name": "Qwen3 Coder Plus",
+          "description": "Hosted Qwen coder for software agents, repo edits, and long-context code",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -11991,6 +12429,7 @@
         {
           "id": "qwen-omni-turbo-realtime",
           "name": "Qwen-Omni Turbo Realtime",
+          "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12029,6 +12468,7 @@
         {
           "id": "qwen3-coder-30b-a3b-instruct",
           "name": "Qwen3-Coder 30B-A3B Instruct",
+          "description": "Smaller Qwen coder for efficient local agents and repo-level fixes",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12062,6 +12502,7 @@
         {
           "id": "qwen3-32b",
           "name": "Qwen3 32B",
+          "description": "Dense open Qwen model for self-hosted chat, reasoning, and coding",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12121,6 +12562,7 @@
         {
           "id": "qwen3-8b",
           "name": "Qwen3 8B",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12180,6 +12622,7 @@
         {
           "id": "qwen3-vl-235b-a22b",
           "name": "Qwen3-VL 235B-A22B",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12232,6 +12675,7 @@
         {
           "id": "qwen3-vl-30b-a3b",
           "name": "Qwen3-VL 30B-A3B",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12284,6 +12728,7 @@
         {
           "id": "qwen3-235b-a22b",
           "name": "Qwen3 235B A22B",
+          "description": "Large open Qwen MoE for multilingual reasoning, coding, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12343,6 +12788,7 @@
         {
           "id": "qwen3-coder-480b-a35b-instruct",
           "name": "Qwen3-Coder 480B-A35B Instruct",
+          "description": "Open Qwen coding heavyweight for repository reasoning and agentic engineering",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12376,6 +12822,7 @@
         {
           "id": "qwen3-14b",
           "name": "Qwen3 14B",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12435,6 +12882,7 @@
         {
           "id": "qvq-max",
           "name": "QVQ Max",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qvq",
           "attachment": false,
           "reasoning": {
@@ -12471,6 +12919,7 @@
         {
           "id": "qwq-plus",
           "name": "QwQ Plus",
+          "description": "Qwen reasoning model for deliberate problem solving, math, and coding",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12528,6 +12977,7 @@
         {
           "id": "qwen-omni-turbo",
           "name": "Qwen-Omni Turbo",
+          "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12567,6 +13017,7 @@
         {
           "id": "qwen-mt-turbo",
           "name": "Qwen Mt Turbo",
+          "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12600,6 +13051,7 @@
         {
           "id": "qwen-mt-plus",
           "name": "Qwen Mt Plus",
+          "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12633,6 +13085,7 @@
         {
           "id": "qwen2-5-omni-7b",
           "name": "Qwen2.5-Omni 7B",
+          "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12671,6 +13124,7 @@
         {
           "id": "qwen-turbo",
           "name": "Qwen Turbo",
+          "description": "Efficient Qwen model for fast chat, extraction, and high-volume workloads",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12736,6 +13190,7 @@
         {
           "id": "qwen-vl-ocr",
           "name": "Qwen Vl Ocr",
+          "description": "OCR model for extracting structured text from documents and screenshots",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12770,6 +13225,7 @@
         {
           "id": "qwen2-5-14b-instruct",
           "name": "Qwen2.5 14B Instruct",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12803,6 +13259,7 @@
         {
           "id": "qwen2-5-vl-72b-instruct",
           "name": "Qwen2.5-VL 72B Instruct",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12837,6 +13294,7 @@
         {
           "id": "qwen2-5-72b-instruct",
           "name": "Qwen2.5 72B Instruct",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12870,6 +13328,7 @@
         {
           "id": "qwen2-5-32b-instruct",
           "name": "Qwen2.5 32B Instruct",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12903,6 +13362,7 @@
         {
           "id": "qwen2-5-7b-instruct",
           "name": "Qwen2.5 7B Instruct",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12936,6 +13396,7 @@
         {
           "id": "qwen2-5-vl-7b-instruct",
           "name": "Qwen2.5-VL 7B Instruct",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -12970,6 +13431,7 @@
         {
           "id": "qwen-vl-max",
           "name": "Qwen-VL Max",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -13004,6 +13466,7 @@
         {
           "id": "qwen-max",
           "name": "Qwen Max",
+          "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -13043,6 +13506,7 @@
         {
           "id": "qwen-plus",
           "name": "Qwen Plus",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -13108,6 +13572,7 @@
         {
           "id": "qwen-vl-plus",
           "name": "Qwen-VL Plus",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -13142,6 +13607,7 @@
         {
           "id": "qwen-plus-character-ja",
           "name": "Qwen Plus Character (Japanese)",
+          "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -14310,6 +14776,7 @@
         {
           "id": "deepseek-v4-flash",
           "name": "DeepSeek V4 Flash",
+          "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
           "family": "deepseek-flash",
           "attachment": false,
           "reasoning": {
@@ -14372,6 +14839,7 @@
         {
           "id": "deepseek-v4-pro",
           "name": "DeepSeek V4 Pro",
+          "description": "Open MoE flagship with million-token context for coding and long agent runs",
           "family": "deepseek-thinking",
           "attachment": false,
           "reasoning": {
@@ -14434,6 +14902,7 @@
         {
           "id": "deepseek-reasoner",
           "name": "DeepSeek Reasoner",
+          "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
           "family": "deepseek-thinking",
           "attachment": true,
           "reasoning": {
@@ -14484,6 +14953,7 @@
         {
           "id": "deepseek-chat",
           "name": "DeepSeek Chat",
+          "description": "DeepSeek chat model for instruction following, coding, and analysis",
           "family": "deepseek",
           "attachment": true,
           "reasoning": {
@@ -14527,6 +14997,7 @@
         {
           "id": "MiniMax-M3",
           "name": "MiniMax-M3",
+          "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
           "family": "minimax",
           "attachment": true,
           "reasoning": {
@@ -14589,6 +15060,7 @@
         {
           "id": "MiniMax-M2.7-highspeed",
           "name": "MiniMax-M2.7-highspeed",
+          "description": "Low-latency M2.7 variant for interactive coding plans and agent loops",
           "family": "minimax",
           "attachment": false,
           "reasoning": {
@@ -14636,6 +15108,7 @@
         {
           "id": "MiniMax-M2.7",
           "name": "MiniMax-M2.7",
+          "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
           "family": "minimax",
           "attachment": false,
           "reasoning": {
@@ -14683,6 +15156,7 @@
         {
           "id": "MiniMax-M2.5-highspeed",
           "name": "MiniMax-M2.5-highspeed",
+          "description": "High-speed MiniMax model for low-latency coding and agent workflows",
           "family": "minimax",
           "attachment": false,
           "reasoning": {
@@ -14724,6 +15198,7 @@
         {
           "id": "MiniMax-M2.5",
           "name": "MiniMax-M2.5",
+          "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
           "family": "minimax",
           "attachment": false,
           "reasoning": {
@@ -14765,6 +15240,7 @@
         {
           "id": "MiniMax-M2.1",
           "name": "MiniMax-M2.1",
+          "description": "Earlier MiniMax agent model for practical coding and productivity tasks",
           "family": "minimax",
           "attachment": false,
           "reasoning": {
@@ -14804,6 +15280,7 @@
         {
           "id": "MiniMax-M2",
           "name": "MiniMax-M2",
+          "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
           "family": "minimax",
           "attachment": false,
           "reasoning": {
@@ -14852,6 +15329,7 @@
         {
           "id": "llama-4-scout-17b-16e-instruct-fp8",
           "name": "Llama-4-Scout-17B-16E-Instruct-FP8",
+          "description": "Open multimodal Llama model for long-context analysis and efficient agents",
           "family": "llama",
           "attachment": true,
           "reasoning": {
@@ -14886,6 +15364,7 @@
         {
           "id": "llama-4-maverick-17b-128e-instruct-fp8",
           "name": "Llama-4-Maverick-17B-128E-Instruct-FP8",
+          "description": "Open multimodal Llama model for strong reasoning and fast responses",
           "family": "llama",
           "attachment": true,
           "reasoning": {
@@ -14920,6 +15399,7 @@
         {
           "id": "llama-3.3-70b-instruct",
           "name": "Llama-3.3-70B-Instruct",
+          "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
           "family": "llama",
           "attachment": true,
           "reasoning": {
@@ -14953,6 +15433,7 @@
         {
           "id": "llama-3.3-8b-instruct",
           "name": "Llama-3.3-8B-Instruct",
+          "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
           "family": "llama",
           "attachment": true,
           "reasoning": {
@@ -14990,7 +15471,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-06-27T07:10:57Z",
+      "updated_at": "2026-07-03T04:02:17Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -15006,7 +15487,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15053,7 +15534,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15100,7 +15581,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -15146,7 +15627,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15189,7 +15670,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15230,7 +15711,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15273,7 +15754,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15332,7 +15813,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15391,7 +15872,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15449,7 +15930,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15507,7 +15988,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15567,7 +16048,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15625,7 +16106,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15682,7 +16163,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15740,7 +16221,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15796,7 +16277,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15854,7 +16335,8 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "structured_output": true,
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15881,13 +16363,15 @@
               "工具调用能力",
               "文本生成能力",
               "深度思考能力",
+              "结构化输出能力(beta)",
               "视觉理解能力"
             ],
             "capabilities": [
               "多模态理解",
               "工具调用",
               "文本生成",
-              "深度思考"
+              "深度思考",
+              "结构化输出"
             ],
             "raw_limits": [
               "上下文窗口: 256k 最大输入: 224k 最大回答(默认 4k): 128k 最大思维链: 128k",
@@ -15909,7 +16393,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -15965,7 +16449,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16020,7 +16504,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16074,7 +16558,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -16123,7 +16607,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16178,7 +16662,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16234,7 +16718,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16288,7 +16772,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -16330,7 +16814,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16372,7 +16856,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16414,7 +16898,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16458,7 +16942,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16499,7 +16983,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16540,7 +17024,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16581,7 +17065,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -16610,7 +17094,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": false,
           "modalities": {
             "output": [
@@ -16639,7 +17123,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-06-27T07:10:57Z",
+          "last_updated": "2026-07-03T04:02:17Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -16761,6 +17245,7 @@
         {
           "id": "kat-coder-pro-v2",
           "name": "Kat Coder Pro V2",
+          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
           "family": "kat-coder",
           "attachment": false,
           "reasoning": {
@@ -16802,6 +17287,7 @@
         {
           "id": "kat-coder-pro",
           "name": "Kat Coder Pro",
+          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -16836,6 +17322,7 @@
         {
           "id": "kat-coder-pro-v1",
           "name": "KAT-Coder-Pro V1",
+          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
           "family": "kat-coder",
           "attachment": false,
           "reasoning": {
@@ -16872,6 +17359,7 @@
         {
           "id": "kat-coder-air-v1",
           "name": "KAT Coder Air V1",
+          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
           "attachment": false,
           "reasoning": {
             "supported": false
@@ -16905,6 +17393,7 @@
         {
           "id": "kat-coder-exp-72b-1010",
           "name": "KAT Coder Exp 72B 1010",
+          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
           "attachment": false,
           "reasoning": {
             "supported": false
