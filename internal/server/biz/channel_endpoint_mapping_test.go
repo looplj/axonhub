@@ -69,6 +69,11 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
+			name:     "cline exposes chat only",
+			typ:      channel.TypeCline,
+			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
+		},
+		{
 			name:     "minimax exposes chat only",
 			typ:      channel.TypeMinimax,
 			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},

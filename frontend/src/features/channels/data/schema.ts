@@ -57,6 +57,7 @@ export const channelTypeSchema = z.enum([
   'openai',
   'openai_responses',
   'atlascloud',
+  'cline',
   'codex',
   'anthropic',
   'anthropic_aws',
