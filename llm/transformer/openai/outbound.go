@@ -328,14 +328,16 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		return nil, err
 	}
 
-	// Skip non-standard events with explicit empty choices array (e.g. inference-cost,
-	// cost) that some providers emit alongside standard chat completion chunks.
-	// Returning nil causes NoNil to filter it from the client stream.
-	//
-	// We only filter when the raw JSON has "choices":[] (present but empty).
-	// Events without a "choices" key (e.g. stub/aggregate-only events) are passed through.
+	// Skip non-standard events with explicit empty choices array and no usage
+	// (e.g. inference-cost, cost) that some providers emit alongside standard chat
+	// completion chunks. Keep the standard OpenAI include_usage terminal chunk,
+	// which is encoded as choices:[] with a non-null usage object.
+	// Returning nil causes NoNil to filter skipped events from the client stream.
 	if choicesVal := gjson.GetBytes(event.Data, "choices"); choicesVal.Exists() && choicesVal.IsArray() && len(choicesVal.Array()) == 0 {
-		return nil, nil
+		usageVal := gjson.GetBytes(event.Data, "usage")
+		if !usageVal.Exists() || usageVal.Raw == "null" {
+			return nil, nil
+		}
 	}
 
 	return resp, nil
