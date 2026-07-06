@@ -1,0 +1,54 @@
+name: Publish Helm chart
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  helm-chart:
+    if: github.repository_owner == 'looplj'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-helm-chart-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      CHART_DIR: deploy/helm
+      OCI_REGISTRY: oci://ghcr.io/${{ github.repository_owner }}/charts
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Sync chart metadata with release tag
+        run: |
+          tag_name="${GITHUB_REF#refs/tags/}"
+          chart_version="${tag_name#v}"
+
+          sed -i -E "s/^version:.*/version: ${chart_version}/" "$CHART_DIR/Chart.yaml"
+          sed -i -E "s/^appVersion:.*/appVersion: \"${tag_name}\"/" "$CHART_DIR/Chart.yaml"
+
+          echo "CHART_VERSION=${chart_version}" >> "$GITHUB_ENV"
+          echo "TAG_NAME=${tag_name}" >> "$GITHUB_ENV"
+
+      - name: Lint chart
+        run: helm lint "$CHART_DIR"
+
+      - name: Package chart
+        run: helm package "$CHART_DIR" --destination .chart-packages
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Push chart to GHCR
+        run: helm push ".chart-packages/axonhub-${CHART_VERSION}.tgz" "$OCI_REGISTRY"
+
+      - name: Verify published chart
+        run: helm show chart "$OCI_REGISTRY/axonhub" --version "$CHART_VERSION"
