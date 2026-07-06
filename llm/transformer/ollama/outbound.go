@@ -43,17 +43,40 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 }
 
 type ChatRequest struct {
-	Model    string        `json:"model"`
-	Messages []ChatMessage `json:"messages"`
-	Stream   *bool         `json:"stream,omitempty"`
-	Options  *Options      `json:"options,omitempty"`
+	Model    string                 `json:"model"`
+	Messages []ChatMessage          `json:"messages"`
+	Stream   *bool                  `json:"stream,omitempty"`
+	Options  *Options               `json:"options,omitempty"`
+	Tools    []ollamaToolDefinition `json:"tools,omitempty"`
 }
 
 type ChatMessage struct {
-	Role     string   `json:"role"`
-	Content  string   `json:"content"`
-	Images   []string `json:"images,omitempty"`
-	Thinking string   `json:"thinking,omitempty"`
+	Role      string           `json:"role"`
+	Content   string           `json:"content"`
+	Images    []string         `json:"images,omitempty"`
+	Thinking  string           `json:"thinking,omitempty"`
+	ToolCalls []ollamaToolCall `json:"tool_calls,omitempty"`
+}
+
+type ollamaToolDefinition struct {
+	Type     string             `json:"type"`
+	Function ollamaToolFunction `json:"function"`
+}
+
+type ollamaToolFunction struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters"`
+}
+
+type ollamaToolCall struct {
+	Function ollamaToolCallFunction `json:"function"`
+}
+
+type ollamaToolCallFunction struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	Arguments   map[string]any `json:"arguments"`
 }
 
 type Options struct {
@@ -107,10 +130,54 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	for _, msg := range llmReq.Messages {
-		ollamaReq.Messages = append(ollamaReq.Messages, ChatMessage{
+		chatMsg := ChatMessage{
 			Role:    msg.Role,
 			Content: getContentString(msg.Content),
 			Images:  getImages(msg.Content),
+		}
+
+		if len(msg.ToolCalls) > 0 {
+			chatMsg.ToolCalls = make([]ollamaToolCall, 0, len(msg.ToolCalls))
+			for _, tc := range msg.ToolCalls {
+				rawArgs := tc.Function.Arguments
+				if rawArgs == "" {
+					rawArgs = "{}"
+				}
+
+				var args map[string]any
+				if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
+					return nil, fmt.Errorf("failed to parse tool call arguments for %s: %w", tc.Function.Name, err)
+				}
+
+				chatMsg.ToolCalls = append(chatMsg.ToolCalls, ollamaToolCall{
+					Function: ollamaToolCallFunction{
+						Name:      tc.Function.Name,
+						Arguments: args,
+					},
+				})
+			}
+		}
+
+		ollamaReq.Messages = append(ollamaReq.Messages, chatMsg)
+	}
+
+	for _, tool := range llmReq.Tools {
+		if tool.Type != llm.ToolTypeFunction {
+			continue
+		}
+
+		parameters := tool.Function.Parameters
+		if parameters == nil {
+			parameters = json.RawMessage("{}")
+		}
+
+		ollamaReq.Tools = append(ollamaReq.Tools, ollamaToolDefinition{
+			Type: "function",
+			Function: ollamaToolFunction{
+				Name:        tool.Function.Name,
+				Description: tool.Function.Description,
+				Parameters:  parameters,
+			},
 		})
 	}
 
@@ -267,17 +334,42 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	content := ""
 
 	var reasoningContent *string
+	var toolCalls []llm.ToolCall
 
 	if ollamaResp.Message != nil {
 		content = ollamaResp.Message.Content
 		if ollamaResp.Message.Thinking != "" {
 			reasoningContent = &ollamaResp.Message.Thinking
 		}
+
+		if len(ollamaResp.Message.ToolCalls) > 0 {
+			toolCalls = make([]llm.ToolCall, 0, len(ollamaResp.Message.ToolCalls))
+			for i, tc := range ollamaResp.Message.ToolCalls {
+				args, _ := json.Marshal(tc.Function.Arguments)
+				if string(args) == "null" {
+					args = []byte("{}")
+				}
+
+				toolCalls = append(toolCalls, llm.ToolCall{
+					ID:   fmt.Sprintf("ollama-%s-%d", ollamaResp.Model, i),
+					Type: "function",
+					Function: llm.FunctionCall{
+						Name:      tc.Function.Name,
+						Arguments: string(args),
+					},
+					Index: i,
+				})
+			}
+		}
 	}
 
 	finishReason := "stop"
 	if ollamaResp.DoneReason != "" {
 		finishReason = ollamaResp.DoneReason
+	}
+
+	if len(toolCalls) > 0 {
+		finishReason = "tool_calls"
 	}
 
 	return &llm.Response{
@@ -294,6 +386,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 						Content: &content,
 					},
 					ReasoningContent: reasoningContent,
+					ToolCalls:        toolCalls,
 				},
 				FinishReason: &finishReason,
 			},
@@ -326,11 +419,32 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 	content := ""
 
 	var reasoningContent *string
+	var toolCalls []llm.ToolCall
 
 	if ollamaResp.Message != nil {
 		content = ollamaResp.Message.Content
 		if ollamaResp.Message.Thinking != "" {
 			reasoningContent = &ollamaResp.Message.Thinking
+		}
+
+		if len(ollamaResp.Message.ToolCalls) > 0 {
+			toolCalls = make([]llm.ToolCall, 0, len(ollamaResp.Message.ToolCalls))
+			for i, tc := range ollamaResp.Message.ToolCalls {
+				args, _ := json.Marshal(tc.Function.Arguments)
+				if string(args) == "null" {
+					args = []byte("{}")
+				}
+
+				toolCalls = append(toolCalls, llm.ToolCall{
+					ID:   fmt.Sprintf("ollama-%s-%d", ollamaResp.Model, i),
+					Type: "function",
+					Function: llm.FunctionCall{
+						Name:      tc.Function.Name,
+						Arguments: string(args),
+					},
+					Index: i,
+				})
+			}
 		}
 	}
 
@@ -343,13 +457,17 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 			{
 				Index: 0,
 				Delta: &llm.Message{
-					Role: "assistant",
-					Content: llm.MessageContent{
-						Content: &content,
-					},
+					Role:             "assistant",
+					Content:          llm.MessageContent{Content: &content},
 					ReasoningContent: reasoningContent,
+					ToolCalls:        toolCalls,
 				},
 				FinishReason: func() *string {
+					if len(toolCalls) > 0 {
+						reason := "tool_calls"
+						return &reason
+					}
+
 					if ollamaResp.Done && ollamaResp.DoneReason != "" {
 						return &ollamaResp.DoneReason
 					}
@@ -400,6 +518,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 	var model string
 	var promptEvalCount, evalCount int64
 	var finishReason string
+	var lastToolCalls []ollamaToolCall
 
 	for _, chunk := range chunks {
 		var ollamaResp ChatResponse
@@ -414,6 +533,10 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 		if ollamaResp.Message != nil {
 			fullContent.WriteString(ollamaResp.Message.Content)
 			fullThinking.WriteString(ollamaResp.Message.Thinking)
+
+			if len(ollamaResp.Message.ToolCalls) > 0 {
+				lastToolCalls = ollamaResp.Message.ToolCalls
+			}
 		}
 
 		if ollamaResp.PromptEvalCount > 0 {
@@ -440,6 +563,31 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 		reasoningContent = &thinkingStr
 	}
 
+	var toolCalls []llm.ToolCall
+	if len(lastToolCalls) > 0 {
+		toolCalls = make([]llm.ToolCall, 0, len(lastToolCalls))
+		for i, tc := range lastToolCalls {
+			args, _ := json.Marshal(tc.Function.Arguments)
+			if string(args) == "null" {
+				args = []byte("{}")
+			}
+
+			toolCalls = append(toolCalls, llm.ToolCall{
+				ID:   fmt.Sprintf("ollama-%s-%d", model, i),
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      tc.Function.Name,
+					Arguments: string(args),
+				},
+				Index: i,
+			})
+		}
+	}
+
+	if len(toolCalls) > 0 {
+		finishReason = "tool_calls"
+	}
+
 	aggregatedResp := &llm.Response{
 		ID:      fmt.Sprintf("ollama-%s", model),
 		Object:  "chat.completion",
@@ -454,6 +602,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 						Content: &contentStr,
 					},
 					ReasoningContent: reasoningContent,
+					ToolCalls:        toolCalls,
 				},
 				FinishReason: &finishReason,
 			},
