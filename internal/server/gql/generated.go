@@ -36,6 +36,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/shopspring/decimal"
@@ -1299,6 +1300,11 @@ type ComplexityRoot struct {
 	QuotaEnforcementSettings struct {
 		Enabled func(childComplexity int) int
 		Mode    func(childComplexity int) int
+	}
+
+	ReasoningEffortMapping struct {
+		From func(childComplexity int) int
+		To   func(childComplexity int) int
 	}
 
 	RegexAssociation struct {
@@ -7997,6 +8003,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.QuotaEnforcementSettings.Mode(childComplexity), true
 
+	case "ReasoningEffortMapping.from":
+		if e.complexity.ReasoningEffortMapping.From == nil {
+			break
+		}
+
+		return e.complexity.ReasoningEffortMapping.From(childComplexity), true
+	case "ReasoningEffortMapping.to":
+		if e.complexity.ReasoningEffortMapping.To == nil {
+			break
+		}
+
+		return e.complexity.ReasoningEffortMapping.To(childComplexity), true
+
 	case "RegexAssociation.exclude":
 		if e.complexity.RegexAssociation.Exclude == nil {
 			break
@@ -10758,6 +10777,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputProxyConfigInput,
 		ec.unmarshalInputQueryChannelInput,
 		ec.unmarshalInputQueryModelsInput,
+		ec.unmarshalInputReasoningEffortMappingInput,
 		ec.unmarshalInputRegexAssociationInput,
 		ec.unmarshalInputRemoveUserFromProjectInput,
 		ec.unmarshalInputRequestExecutionOrder,
@@ -43287,6 +43307,64 @@ func (ec *executionContext) fieldContext_QuotaEnforcementSettings_mode(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ReasoningEffortMapping_from(ctx context.Context, field graphql.CollectedField, obj *llm.ReasoningEffortMapping) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ReasoningEffortMapping_from,
+		func(ctx context.Context) (any, error) {
+			return obj.From, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ReasoningEffortMapping_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ReasoningEffortMapping",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ReasoningEffortMapping_to(ctx context.Context, field graphql.CollectedField, obj *llm.ReasoningEffortMapping) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ReasoningEffortMapping_to,
+		func(ctx context.Context) (any, error) {
+			return obj.To, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ReasoningEffortMapping_to(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ReasoningEffortMapping",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RegexAssociation_pattern(ctx context.Context, field graphql.CollectedField, obj *objects.RegexAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -52888,7 +52966,7 @@ func (ec *executionContext) _TransformOptions_reasoningEffortMapping(ctx context
 			return obj.ReasoningEffortMapping, nil
 		},
 		nil,
-		ec.marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage,
+		ec.marshalOReasoningEffortMapping2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMappingᚄ,
 		true,
 		false,
 	)
@@ -52901,7 +52979,13 @@ func (ec *executionContext) fieldContext_TransformOptions_reasoningEffortMapping
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+			switch field.Name {
+			case "from":
+				return ec.fieldContext_ReasoningEffortMapping_from(ctx, field)
+			case "to":
+				return ec.fieldContext_ReasoningEffortMapping_to(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ReasoningEffortMapping", field.Name)
 		},
 	}
 	return fc, nil
@@ -72724,6 +72808,40 @@ func (ec *executionContext) unmarshalInputQueryModelsInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputReasoningEffortMappingInput(ctx context.Context, obj any) (llm.ReasoningEffortMapping, error) {
+	var it llm.ReasoningEffortMapping
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"from", "to"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "from":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.From = data
+		case "to":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("to"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.To = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRegexAssociationInput(ctx context.Context, obj any) (objects.RegexAssociation, error) {
 	var it objects.RegexAssociation
 	asMap := map[string]any{}
@@ -78244,7 +78362,7 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 			it.ReplaceDeveloperRoleWithSystem = data
 		case "reasoningEffortMapping":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortMapping"))
-			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			data, err := ec.unmarshalOReasoningEffortMappingInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMappingᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -96012,6 +96130,50 @@ func (ec *executionContext) _QuotaEnforcementSettings(ctx context.Context, sel a
 	return out
 }
 
+var reasoningEffortMappingImplementors = []string{"ReasoningEffortMapping"}
+
+func (ec *executionContext) _ReasoningEffortMapping(ctx context.Context, sel ast.SelectionSet, obj *llm.ReasoningEffortMapping) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, reasoningEffortMappingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReasoningEffortMapping")
+		case "from":
+			out.Values[i] = ec._ReasoningEffortMapping_from(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "to":
+			out.Values[i] = ec._ReasoningEffortMapping_to(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var regexAssociationImplementors = []string{"RegexAssociation"}
 
 func (ec *executionContext) _RegexAssociation(ctx context.Context, sel ast.SelectionSet, obj *objects.RegexAssociation) graphql.Marshaler {
@@ -107335,6 +107497,15 @@ func (ec *executionContext) marshalNQuotaEnforcementSettings2ᚖgithubᚗcomᚋl
 	return ec._QuotaEnforcementSettings(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNReasoningEffortMapping2githubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMapping(ctx context.Context, sel ast.SelectionSet, v llm.ReasoningEffortMapping) graphql.Marshaler {
+	return ec._ReasoningEffortMapping(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNReasoningEffortMappingInput2githubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMapping(ctx context.Context, v any) (llm.ReasoningEffortMapping, error) {
+	res, err := ec.unmarshalInputReasoningEffortMappingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNRemoveUserFromProjectInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRemoveUserFromProjectInput(ctx context.Context, v any) (RemoveUserFromProjectInput, error) {
 	res, err := ec.unmarshalInputRemoveUserFromProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -113670,6 +113841,71 @@ func (ec *executionContext) marshalOQuotaEnforcementMode2ᚖgithubᚗcomᚋloopl
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOReasoningEffortMapping2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMappingᚄ(ctx context.Context, sel ast.SelectionSet, v []llm.ReasoningEffortMapping) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNReasoningEffortMapping2githubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMapping(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOReasoningEffortMappingInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMappingᚄ(ctx context.Context, v any) ([]llm.ReasoningEffortMapping, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]llm.ReasoningEffortMapping, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNReasoningEffortMappingInput2githubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMapping(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalORegexAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRegexAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.RegexAssociation) graphql.Marshaler {

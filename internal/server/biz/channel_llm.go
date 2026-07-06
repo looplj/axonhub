@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -88,24 +87,6 @@ func (c *Channel) ChooseModel(model string) (string, error) {
 	}
 
 	return entry.ActualModel, nil
-}
-
-// reasoningEffortMappingFromSettings extracts the reasoning_effort mapping from channel
-// settings as a map[string]string. Returns nil when unconfigured, nil-settings, or on
-// unmarshal error (treated as no mapping — values pass through unchanged).
-func reasoningEffortMappingFromSettings(channelSettings *objects.ChannelSettings) map[string]string {
-	if channelSettings == nil {
-		return nil
-	}
-	raw := channelSettings.TransformOptions.ReasoningEffortMapping
-	if len(raw) == 0 {
-		return nil
-	}
-	var mapping map[string]string
-	if err := json.Unmarshal(raw, &mapping); err != nil {
-		return nil
-	}
-	return mapping
 }
 
 // getProxyConfig extracts proxy configuration from channel settings
@@ -980,7 +961,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 			PlatformType:           openai.PlatformOpenAI,
 			BaseURL:                c.BaseURL,
 			APIKeyProvider:         getAPIKeyProvider(ch),
-			ReasoningEffortMapping: reasoningEffortMappingFromSettings(c.Settings),
+			ReasoningEffortMapping: c.Settings.TransformOptions.ReasoningEffortMapping,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

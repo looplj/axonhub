@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { useUpdateChannel } from '../data/channels';
-import { Channel, TransformOptions } from '../data/schema';
+import { Channel, ReasoningEffortMapping, TransformOptions } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 
 interface Props {
@@ -21,44 +23,32 @@ interface Props {
   currentRow: Channel;
 }
 
-// Form schema: reasoningEffortMapping is edited as a JSON string and parsed on submit.
+// Form schema: reasoningEffortMapping is a list of {from, to} entries, validated for
+// uniqueness of `from` (duplicate from values would make the result order-dependent).
 const transformOptionsFormSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
-  reasoningEffortMappingJSON: z.string().optional(),
+  reasoningEffortMapping: z
+    .array(
+      z.object({
+        from: z.string().min(1),
+        to: z.string().min(1),
+      })
+    )
+    .refine(
+      (mappings) => {
+        const fromValues = mappings.map((m) => m.from);
+        return new Set(fromValues).size === fromValues.length;
+      },
+      { message: 'Each source effort can only be mapped once' }
+    )
+    .optional(),
 });
 
 type TransformOptionsFormValues = z.infer<typeof transformOptionsFormSchema>;
 
-// Serialize the reasoning_effort mapping (Record<string,string>) to a JSON string for the textarea.
-function reasoningEffortMappingToJSON(mapping?: Record<string, string> | null): string {
-  if (!mapping || Object.keys(mapping).length === 0) {
-    return '';
-  }
-  return JSON.stringify(mapping);
-}
-
-// Parse the textarea JSON string into a Record<string,string>. Returns null when empty,
-// throws on invalid JSON (caught by the caller to show a validation error).
-function parseReasoningEffortMapping(json: string): Record<string, string> | null {
-  const trimmed = json.trim();
-  if (trimmed === '') {
-    return null;
-  }
-  const parsed = JSON.parse(trimmed);
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('must be a JSON object like {"xhigh": "max"}');
-  }
-  const result: Record<string, string> = {};
-  for (const [k, v] of Object.entries(parsed)) {
-    if (typeof v !== 'string') {
-      throw new Error(`value for key "${k}" must be a string`);
-    }
-    result[k] = v;
-  }
-  return result;
-}
+const EFFORT_SUGGESTIONS = ['none', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
@@ -70,9 +60,13 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
       forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
       forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
       replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-      reasoningEffortMappingJSON: reasoningEffortMappingToJSON(currentRow.settings?.transformOptions?.reasoningEffortMapping),
+      reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
     },
   });
+
+  // Draft row for the add-new controls. Kept separate from the form list so partial
+  // input never lands in the validated list (empty rows are filtered on submit anyway).
+  const [draft, setDraft] = useState<ReasoningEffortMapping>({ from: '', to: '' });
 
   useEffect(() => {
     if (open) {
@@ -80,29 +74,44 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
         forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
         forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
         replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-        reasoningEffortMappingJSON: reasoningEffortMappingToJSON(currentRow.settings?.transformOptions?.reasoningEffortMapping),
+        reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
       });
+      setDraft({ from: '', to: '' });
     }
   }, [open, currentRow, form]);
 
-  const onSubmit = async (values: TransformOptionsFormValues) => {
-    let reasoningEffortMapping: Record<string, string> | null;
-    try {
-      reasoningEffortMapping = parseReasoningEffortMapping(values.reasoningEffortMappingJSON || '');
-    } catch (e) {
-      toast.error(t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.invalid', { error: (e as Error).message }));
+  const mappings = form.watch('reasoningEffortMapping') || [];
+
+  const addMapping = () => {
+    const sanitized = { from: draft.from.trim(), to: draft.to.trim() };
+    if (!sanitized.from || !sanitized.to) {
       return;
     }
+    form.setValue('reasoningEffortMapping', [...mappings, sanitized], {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    setDraft({ from: '', to: '' });
+  };
 
+  const removeMapping = (index: number) => {
+    form.setValue(
+      'reasoningEffortMapping',
+      mappings.filter((_, i) => i !== index),
+      { shouldValidate: true, shouldDirty: true }
+    );
+  };
+
+  const onSubmit = async (values: TransformOptionsFormValues) => {
     try {
       const transformOptions: TransformOptions = {
         forceArrayInstructions: values.forceArrayInstructions,
         forceArrayInputs: values.forceArrayInputs,
         replaceDeveloperRoleWithSystem: values.replaceDeveloperRoleWithSystem,
       };
-      if (reasoningEffortMapping) {
-        transformOptions.reasoningEffortMapping = reasoningEffortMapping;
-      }
+      // Empty list is treated as "clear": send [] so the backend removes the mapping.
+      // undefined would mean "don't touch", but the dialog is the sole editor here.
+      transformOptions.reasoningEffortMapping = values.reasoningEffortMapping || [];
       const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
         transformOptions,
       });
@@ -210,9 +219,9 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
 
                   <FormField
                     control={form.control}
-                    name='reasoningEffortMappingJSON'
-                    render={({ field }) => (
-                      <FormItem className='space-y-1'>
+                    name='reasoningEffortMapping'
+                    render={() => (
+                      <FormItem className='space-y-2'>
                         <FormLabel className='text-sm font-normal'>
                           {t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.label')}
                         </FormLabel>
@@ -220,12 +229,71 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
                           {t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.description')}
                         </p>
                         <FormControl>
-                          <textarea
-                            {...field}
-                            value={field.value || ''}
-                            placeholder='{"xhigh": "max"}'
-                            className='flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
-                          />
+                          <div className='space-y-2'>
+                            <div className='grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] md:items-center'>
+                              <Input
+                                list='reasoning-effort-from-suggestions'
+                                placeholder={t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.fromPlaceholder')}
+                                value={draft.from}
+                                onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+                                className='min-w-0'
+                              />
+                              <span className='text-muted-foreground hidden justify-center md:flex'>→</span>
+                              <Input
+                                list='reasoning-effort-to-suggestions'
+                                placeholder={t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.toPlaceholder')}
+                                value={draft.to}
+                                onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+                                className='min-w-0'
+                              />
+                              <Button
+                                type='button'
+                                size='sm'
+                                onClick={addMapping}
+                                disabled={!draft.from.trim() || !draft.to.trim()}
+                              >
+                                <Plus size={16} />
+                              </Button>
+                              <datalist id='reasoning-effort-from-suggestions'>
+                                {EFFORT_SUGGESTIONS.map((v) => (
+                                  <option key={v} value={v} />
+                                ))}
+                              </datalist>
+                              <datalist id='reasoning-effort-to-suggestions'>
+                                {EFFORT_SUGGESTIONS.map((v) => (
+                                  <option key={v} value={v} />
+                                ))}
+                              </datalist>
+                            </div>
+
+                            {mappings.length === 0 ? (
+                              <p className='text-muted-foreground py-2 text-center text-sm'>
+                                {t('channels.dialogs.fields.transformOptions.reasoningEffortMapping.noMappings')}
+                              </p>
+                            ) : (
+                              mappings.map((mapping, index) => (
+                                <div
+                                  key={index}
+                                  className='flex items-center justify-between rounded-lg border p-2'
+                                >
+                                  <div className='flex flex-1 items-center gap-2'>
+                                    <span className='text-sm'>{mapping.from}</span>
+                                    <span className='text-muted-foreground'>→</span>
+                                    <span className='text-sm'>{mapping.to}</span>
+                                  </div>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={() => removeMapping(index)}
+                                    className='text-destructive hover:text-destructive'
+                                  >
+                                    <X size={16} />
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

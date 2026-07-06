@@ -67,11 +67,12 @@ type Config struct {
 	ReasoningField ReasoningField `json:"reasoning_field,omitempty"`
 
 	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound ones for
-	// non-standard OpenAI-compatible providers. Each entry {"from": "to"} replaces the
-	// effort value when present; values not in the map pass through unchanged.
-	// e.g. {"xhigh": "max"} converts Anthropic's internal "xhigh" (mapped from "max")
-	// back to "max" for providers that only recognize "max". Consumed in TransformRequest.
-	ReasoningEffortMapping map[string]string `json:"reasoning_effort_mapping,omitempty"`
+	// non-standard OpenAI-compatible providers. The first entry whose From matches the
+	// effort value wins; values not in the list pass through unchanged.
+	// e.g. [{"from":"xhigh","to":"max"}] converts Anthropic's internal "xhigh" (mapped
+	// from "max") back to "max" for providers that only recognize "max". Consumed in
+	// TransformRequest.
+	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoning_effort_mapping,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format.

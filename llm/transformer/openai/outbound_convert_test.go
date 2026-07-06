@@ -593,18 +593,19 @@ func TestApplyReasoningEffortMapping(t *testing.T) {
 	tests := []struct {
 		name    string
 		effort  string
-		mapping map[string]string
+		mapping []llm.ReasoningEffortMapping
 		want    string
 	}{
-		{name: "xhigh mapped to max", effort: "xhigh", mapping: map[string]string{"xhigh": "max"}, want: "max"},
-		{name: "high mapped to medium", effort: "high", mapping: map[string]string{"high": "medium"}, want: "medium"},
-		{name: "max passes through (not in map)", effort: "max", mapping: map[string]string{"xhigh": "max"}, want: "max"},
-		{name: "low passes through (not in map)", effort: "low", mapping: map[string]string{"xhigh": "max"}, want: "low"},
-		{name: "empty effort passes through", effort: "", mapping: map[string]string{"xhigh": "max"}, want: ""},
+		{name: "xhigh mapped to max", effort: "xhigh", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: "max"},
+		{name: "high mapped to medium", effort: "high", mapping: []llm.ReasoningEffortMapping{{From: "high", To: "medium"}}, want: "medium"},
+		{name: "max passes through (not in list)", effort: "max", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: "max"},
+		{name: "low passes through (not in list)", effort: "low", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: "low"},
+		{name: "empty effort passes through", effort: "", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: ""},
 		{name: "nil mapping passes through", effort: "xhigh", mapping: nil, want: "xhigh"},
-		{name: "empty mapping passes through", effort: "xhigh", mapping: map[string]string{}, want: "xhigh"},
-		{name: "multiple entries hit", effort: "high", mapping: map[string]string{"xhigh": "max", "high": "medium"}, want: "medium"},
-		{name: "multiple entries miss", effort: "low", mapping: map[string]string{"xhigh": "max", "high": "medium"}, want: "low"},
+		{name: "empty mapping passes through", effort: "xhigh", mapping: []llm.ReasoningEffortMapping{}, want: "xhigh"},
+		{name: "multiple entries hit", effort: "high", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}, {From: "high", To: "medium"}}, want: "medium"},
+		{name: "multiple entries miss", effort: "low", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}, {From: "high", To: "medium"}}, want: "low"},
+		{name: "first matching entry wins", effort: "xhigh", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}, {From: "xhigh", To: "high"}}, want: "max"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
