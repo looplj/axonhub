@@ -364,6 +364,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		if c.Type == channel.TypeCline {
 			return cline.NewOutboundTransformerWithConfig(&cline.Config{
 				BaseURL:        baseURL,
+				EndpointPath:   ep.Path,
 				APIKeyProvider: apiKeyProvider(),
 			})
 		}

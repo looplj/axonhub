@@ -18,6 +18,7 @@ import (
 // Config holds all configuration for the Cline outbound transformer.
 type Config struct {
 	BaseURL        string              `json:"base_url,omitempty"`
+	EndpointPath   string              `json:"endpoint_path,omitempty"`
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 }
 
@@ -39,6 +40,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	oaiConfig := &openai.Config{
 		PlatformType:   openai.PlatformOpenAI,
 		BaseURL:        config.BaseURL,
+		EndpointPath:   config.EndpointPath,
 		APIKeyProvider: config.APIKeyProvider,
 		ReasoningField: openai.ReasoningFieldReasoning,
 	}

@@ -30,6 +30,28 @@ func newTestTransformer(t *testing.T) *OutboundTransformer {
 	return clineTransformer
 }
 
+func TestOutboundTransformer_TransformRequest_UsesConfiguredEndpointPath(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.cline.bot/api/v1",
+		EndpointPath:   "/custom/chat/completions",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+
+	content := "hello"
+	req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model: "cline-pass/deepseek-v4-flash",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: &content},
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, req.Method)
+	assert.Equal(t, "https://api.cline.bot/api/v1/custom/chat/completions", req.URL)
+}
+
 func TestOutboundTransformer_TransformResponse_UnwrapsClineData(t *testing.T) {
 	transformer := newTestTransformer(t)
 
