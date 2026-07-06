@@ -182,3 +182,22 @@ func TestOutboundTransformer_AggregateStreamChunks_UsesClineReasoningFields(t *t
 	require.NotNil(t, resp.Choices[0].Message.Content.Content)
 	assert.Equal(t, "ok", *resp.Choices[0].Message.Content.Content)
 }
+
+func TestOutboundTransformer_AggregateStreamChunks_IgnoresDoneChunk(t *testing.T) {
+	transformer := newTestTransformer(t)
+
+	data, meta, err := transformer.AggregateStreamChunks(context.Background(), nil, []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","created":123,"model":"cline-pass/deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`)},
+		{Data: []byte(`[DONE]`)},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "chatcmpl-1", meta.ID)
+
+	var resp llm.Response
+	require.NoError(t, json.Unmarshal(data, &resp))
+	require.Len(t, resp.Choices, 1)
+	require.NotNil(t, resp.Choices[0].Message)
+	require.NotNil(t, resp.Choices[0].Message.Content.Content)
+	assert.Equal(t, "ok", *resp.Choices[0].Message.Content.Content)
+}
