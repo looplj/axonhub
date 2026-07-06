@@ -3,6 +3,7 @@ package cline
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/spf13/cast"
 
@@ -61,7 +62,14 @@ func parseClineErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 	}
 
 	if payload.Success != nil && !*payload.Success {
-		return clineResponseError(http.StatusBadGateway, payload.Error)
+		if payload.Error != nil {
+			return clineResponseError(http.StatusBadGateway, payload.Error)
+		}
+		if payload.Errors != nil {
+			return clineResponseError(http.StatusBadGateway, payload.Errors)
+		}
+
+		return clineResponseError(http.StatusBadGateway, "stream error")
 	}
 	if payload.Error != nil {
 		return clineResponseError(http.StatusBadGateway, payload.Error)
@@ -80,6 +88,20 @@ func parseClineErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 	return nil
 }
 
+func clineErrorMessage(raw any) string {
+	switch v := raw.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if msg := cast.ToString(v["message"]); msg != "" {
+			return msg
+		}
+		return cast.ToString(v)
+	default:
+		return cast.ToString(v)
+	}
+}
+
 func clineResponseError(statusCode int, raw any) *llm.ResponseError {
 	if statusCode == 0 {
 		statusCode = http.StatusBadGateway
@@ -96,6 +118,14 @@ func clineResponseError(statusCode int, raw any) *llm.ResponseError {
 		detail.Code = cast.ToString(v["code"])
 		detail.Param = cast.ToString(v["param"])
 		detail.RequestID = cast.ToString(v["request_id"])
+	case []any:
+		messages := make([]string, 0, len(v))
+		for _, item := range v {
+			if msg := clineErrorMessage(item); msg != "" {
+				messages = append(messages, msg)
+			}
+		}
+		detail.Message = strings.Join(messages, "; ")
 	default:
 		detail.Message = cast.ToString(v)
 	}

@@ -145,6 +145,20 @@ func TestOutboundTransformer_TransformStreamChunk_ReturnsClineInBandError(t *tes
 	assert.Equal(t, "response_format json_object is not supported", respErr.Detail.Message)
 }
 
+func TestOutboundTransformer_TransformStreamChunk_UsesErrorsFallbackForClineFailure(t *testing.T) {
+	transformer := newTestTransformer(t)
+
+	_, err := transformer.TransformStreamChunk(context.Background(), &httpclient.StreamEvent{
+		Data: []byte(`{"success":false,"errors":[{"message":"quota exceeded"}]}`),
+	})
+
+	require.Error(t, err)
+	var respErr *llm.ResponseError
+	require.True(t, errors.As(err, &respErr))
+	assert.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+	assert.Contains(t, respErr.Detail.Message, "quota exceeded")
+}
+
 func TestOutboundTransformer_AggregateStreamChunks_UsesClineReasoningFields(t *testing.T) {
 	transformer := newTestTransformer(t)
 
