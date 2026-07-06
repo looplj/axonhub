@@ -295,6 +295,9 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 
 	// Wrap with NoNil to filter out non-standard events (e.g. inference-cost, cost)
 	// that TransformStreamChunk skips by returning nil.
+	//
+	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
+	// in the raw JSON. Events without a choices key (nil slice) are passed through.
 	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
 	})), nil
@@ -325,10 +328,13 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		return nil, err
 	}
 
-	// Skip non-standard events with empty choices (e.g. inference-cost, cost)
-	// that some providers emit alongside standard chat completion chunks.
+	// Skip non-standard events with explicit empty choices array (e.g. inference-cost,
+	// cost) that some providers emit alongside standard chat completion chunks.
 	// Returning nil causes NoNil to filter it from the client stream.
-	if len(resp.Choices) == 0 {
+	//
+	// We only filter when the raw JSON has "choices":[] (present but empty).
+	// Events without a "choices" key (e.g. stub/aggregate-only events) are passed through.
+	if choicesVal := gjson.GetBytes(event.Data, "choices"); choicesVal.Exists() && choicesVal.IsArray() && len(choicesVal.Array()) == 0 {
 		return nil, nil
 	}
 
