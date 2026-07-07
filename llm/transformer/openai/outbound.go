@@ -293,9 +293,14 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 		}
 	}
 
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	// Wrap with NoNil to filter out non-standard events (e.g. inference-cost, cost)
+	// that TransformStreamChunk skips by returning nil.
+	//
+	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
+	// in the raw JSON. Events without a choices key (nil slice) are passed through.
+	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	})), nil
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(
@@ -318,7 +323,24 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		Body: event.Data,
 	}
 
-	return t.TransformResponse(ctx, httpResp)
+	resp, err := t.TransformResponse(ctx, httpResp)
+	if err != nil {
+		return nil, err
+	}
+
+	// Skip non-standard events with explicit empty choices array and no usage
+	// (e.g. inference-cost, cost) that some providers emit alongside standard chat
+	// completion chunks. Keep the standard OpenAI include_usage terminal chunk,
+	// which is encoded as choices:[] with a non-null usage object.
+	// Returning nil causes NoNil to filter skipped events from the client stream.
+	if choicesVal := gjson.GetBytes(event.Data, "choices"); choicesVal.Exists() && choicesVal.IsArray() && len(choicesVal.Array()) == 0 {
+		usageVal := gjson.GetBytes(event.Data, "usage")
+		if !usageVal.Exists() || usageVal.Raw == "null" {
+			return nil, nil
+		}
+	}
+
+	return resp, nil
 }
 
 func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {

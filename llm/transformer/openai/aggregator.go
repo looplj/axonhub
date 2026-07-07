@@ -246,8 +246,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			systemFingerprint = chunk.SystemFingerprint
 		}
 
-		// Keep the last chunk for metadata
-		lastChunkResponse = chunk
+		// Keep the last chunk with valid choices for metadata.
+		// Skip non-standard events (e.g. inference-cost) that have empty
+		// choices and would overwrite the real last chunk's ID/Model/Created.
+		if len(chunk.Choices) > 0 {
+			lastChunkResponse = chunk
+		}
 	}
 
 	// Create a complete ChatCompletionResponse based on the last chunk structure
