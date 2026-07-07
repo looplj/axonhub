@@ -17,12 +17,13 @@ func (r *Response) ToOpenAIResponse() *openai.Response {
 		return nil
 	}
 
-	r.Response.Choices = make([]openai.Choice, 0, len(r.Choices))
+	resp := r.Response
+	resp.Choices = make([]openai.Choice, 0, len(r.Choices))
 	for _, choice := range r.Choices {
-		r.Response.Choices = append(r.Response.Choices, choice.ToOpenAIChoice())
+		resp.Choices = append(resp.Choices, choice.ToOpenAIChoice())
 	}
 
-	return &r.Response
+	return &resp
 }
 
 type Choice struct {
