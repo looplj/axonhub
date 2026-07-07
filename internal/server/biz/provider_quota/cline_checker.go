@@ -49,7 +49,7 @@ type clinePlan struct {
 	Type         string            `json:"type,omitempty"`
 	Interval     string            `json:"interval,omitempty"`
 	IsActive     bool              `json:"isActive,omitempty"`
-	Entitlements clineEntitlements `json:"entitlements,omitempty"`
+	Entitlements clineEntitlements `json:"entitlements,omitzero"`
 }
 
 type clineEntitlements struct {
@@ -322,7 +322,7 @@ func (c *ClineQuotaChecker) fetchUsageItems(ctx context.Context, hc *httpclient.
 	cutoff := c.now().Add(-30 * 24 * time.Hour)
 	path := "/api/v1/users/" + url.PathEscape(userID) + "/usages"
 
-	for page := 0; page < clineMaxUsagePages; page++ {
+	for range clineMaxUsagePages {
 		query := url.Values{}
 		query.Set("limit", fmt.Sprintf("%d", clineUsagePageLimit))
 		if cursor != "" {
@@ -346,7 +346,7 @@ func (c *ClineQuotaChecker) fetchUsageItems(ctx context.Context, hc *httpclient.
 	}
 
 	meta.Truncated = true
-	return nil, meta, fmt.Errorf("Cline usage pagination exceeded %d pages before reaching the 30d window boundary", clineMaxUsagePages)
+	return items, meta, nil
 }
 
 func oldestClineUsageTime(items []clineUsageItem) *time.Time {
@@ -393,10 +393,6 @@ func buildClineQuotaData(now time.Time, scope clineModelScope, threshold clineIn
 	if scope != clineModelScopePassOnly && passStatus == "exhausted" {
 		status = "warning"
 		statusBasis = "mixed_pool_pass_exhausted"
-	}
-	if scope == clineModelScopeDirect {
-		status = "available"
-		statusBasis = "direct_credit_balance_informational"
 	}
 
 	limits := clineLimitStatuses(windows, scope == clineModelScopePassOnly)

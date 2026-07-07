@@ -350,7 +350,7 @@ func TestCline_FetchUsageItems_MultiplePages(t *testing.T) {
 	require.False(t, meta.Truncated)
 }
 
-func TestCline_FetchUsageItems_ReturnsErrorWhenPaginationDoesNotReachBoundary(t *testing.T) {
+func TestCline_FetchUsageItems_ReturnsTruncatedItemsWhenPaginationDoesNotReachBoundary(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return jsonResponse(http.StatusOK, `{"data":{"items":[{"createdAt":"2026-07-07T11:00:00Z","costUsd":1}],"nextToken":"still_more"}}`), nil
 	})})
@@ -359,11 +359,11 @@ func TestCline_FetchUsageItems_ReturnsErrorWhenPaginationDoesNotReachBoundary(t 
 	checker.now = func() time.Time { return time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC) }
 
 	items, meta, err := checker.fetchUsageItems(context.Background(), httpClient, "https://api.cline.bot/v1", "user_test", "key")
-	require.Error(t, err)
-	require.Nil(t, items)
+	require.NoError(t, err)
+	require.Len(t, items, clineMaxUsagePages)
 	require.True(t, meta.Truncated)
 	require.Equal(t, clineMaxUsagePages, meta.Pages)
-	require.Contains(t, err.Error(), "exceeded")
+	require.Equal(t, clineMaxUsagePages, meta.ItemsSeen)
 }
 
 func jsonResponse(status int, body string) *http.Response {
