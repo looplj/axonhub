@@ -75,6 +75,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		Success *bool    `json:"success"`
 		Data    Response `json:"data"`
 		Error   any      `json:"error"`
+		Errors  any      `json:"errors"`
 	}
 	if err := json.Unmarshal(httpResp.Body, &wrapped); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Cline response: %w", err)
@@ -82,7 +83,14 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 
 	if wrapped.Success != nil {
 		if !*wrapped.Success {
-			return nil, clineResponseError(http.StatusBadGateway, wrapped.Error)
+			if wrapped.Error != nil {
+				return nil, clineResponseError(http.StatusBadGateway, wrapped.Error)
+			}
+			if wrapped.Errors != nil {
+				return nil, clineResponseError(http.StatusBadGateway, wrapped.Errors)
+			}
+
+			return nil, clineResponseError(http.StatusBadGateway, "Cline request failed")
 		}
 
 		return wrapped.Data.ToOpenAIResponse().ToLLMResponse(), nil

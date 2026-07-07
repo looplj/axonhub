@@ -118,6 +118,25 @@ func TestOutboundTransformer_TransformResponse_ReturnsClineErrorEnvelope(t *test
 	assert.Equal(t, "api_error", respErr.Detail.Type)
 }
 
+func TestOutboundTransformer_TransformResponse_UsesErrorsFallbackForClineFailure(t *testing.T) {
+	transformer := newTestTransformer(t)
+
+	_, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"success": false,
+			"errors": [{"message": "quota exceeded"}]
+		}`),
+	})
+
+	require.Error(t, err)
+	var respErr *llm.ResponseError
+	require.True(t, errors.As(err, &respErr))
+	assert.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+	assert.Contains(t, respErr.Detail.Message, "quota exceeded")
+	assert.Equal(t, "api_error", respErr.Detail.Type)
+}
+
 func TestOutboundTransformer_TransformError_ParsesStringError(t *testing.T) {
 	transformer := newTestTransformer(t)
 
