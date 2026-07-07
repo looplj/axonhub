@@ -1502,6 +1502,10 @@ func spanToKey(span Span) string {
 	}
 
 	switch span.Type {
+	case "system_instruction":
+		if span.Value.SystemInstruction != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.SystemInstruction.Instruction)
+		}
 	case "user_query":
 		if span.Value.UserQuery != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.UserQuery.Text)
