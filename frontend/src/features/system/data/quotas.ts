@@ -52,7 +52,7 @@ export async function resetChannelQuotaNow(channelID: string) {
 type ProviderQuotaDataCommon = {
   plan_type?: string;
   error?: string;
-}
+};
 
 type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
   windows?: {
@@ -61,7 +61,7 @@ type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
     overage?: { utilization?: number; reset?: number; status?: string };
   };
   representative_claim?: string;
-}
+};
 
 type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
   rate_limit?: {
@@ -78,8 +78,7 @@ type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
       limit_window_seconds?: number;
     };
   };
-}
-
+};
 
 type CopilotQuotaSnapshot = {
   entitlement: number;
@@ -113,14 +112,14 @@ type ProviderGitHubCopilotQuotaData = ProviderQuotaDataCommon & {
     completions?: number;
     [key: string]: number | undefined;
   };
-}
+};
 
 export type NanoGPTQuotaWindow = {
   used?: number;
   remaining?: number;
   percentUsed?: number;
   resetAt?: number;
-}
+};
 
 export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
   state?: string;
@@ -137,7 +136,7 @@ export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
     dailyInputTokens?: NanoGPTQuotaWindow | null;
   };
   period?: { currentPeriodEnd?: string };
-}
+};
 
 export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
   current_period_used_percent?: number | null;
@@ -147,17 +146,36 @@ export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
   window_start?: string | null;
   window_end?: string | null;
   plan_tier?: string | null;
-}
+};
 
 export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
-  weeklyTokenLimit?: { percentRemaining?: number | null; remainingCredits?: string | null; maxCredits?: string | null; nextRegenAt?: string | null } | null;
-  rollingFiveHourLimit?: { limited?: boolean | null; remaining?: number | null; max?: number | null; nextTickAt?: string | null; tickPercent?: number | null } | null;
-}
+  weeklyTokenLimit?: {
+    percentRemaining?: number | null;
+    remainingCredits?: string | null;
+    maxCredits?: string | null;
+    nextRegenAt?: string | null;
+  } | null;
+  rollingFiveHourLimit?: {
+    limited?: boolean | null;
+    remaining?: number | null;
+    max?: number | null;
+    nextTickAt?: string | null;
+    tickPercent?: number | null;
+  } | null;
+};
 
 export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
   balance?: { credits_remaining_usd?: number | null; total_credits_usd?: number | null } | null;
-  subscription?: { kwh_included?: number | null; kwh_used?: number | null; kwh_remaining?: number | null; in_overage?: boolean | null; status?: string | null; plan?: string | null; kwh_reset_date?: string | null } | null;
-}
+  subscription?: {
+    kwh_included?: number | null;
+    kwh_used?: number | null;
+    kwh_remaining?: number | null;
+    in_overage?: boolean | null;
+    status?: string | null;
+    plan?: string | null;
+    kwh_reset_date?: string | null;
+  } | null;
+};
 
 export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
   is_subscriber?: boolean;
@@ -183,7 +201,7 @@ export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
     payg_spent_usd?: number;
     payg_limit_usd?: number;
   };
-}
+};
 
 export type OpenCodeGoQuotaWindow = {
   usage_percent?: number;
@@ -191,7 +209,7 @@ export type OpenCodeGoQuotaWindow = {
   reset_time?: string;
   status?: string;
   percent_remaining?: number;
-}
+};
 
 export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
   windows?: {
@@ -199,120 +217,202 @@ export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
     weekly?: OpenCodeGoQuotaWindow;
     monthly?: OpenCodeGoQuotaWindow;
   };
+};
+
+export type ClineQuotaWindow = {
+  items_count: number;
+  used_cost_units: number;
+  limit_cost_units: number;
+  remaining_cost_units: number;
+  credits_used: number;
+  usage_ratio?: number;
+  usage_percent?: number;
+  next_reset_at?: string | null;
+};
+
+type ClineBalance = {
+  raw_balance?: number | null;
+  unit_note?: string;
+};
+
+type ClineUsageFetch = {
+  pages: number;
+  items_seen: number;
+  truncated: boolean;
+};
+
+type ProviderClinePassQuotaData = ProviderQuotaDataCommon & {
+  model_scope: 'cline_pass_only' | 'mixed' | 'unknown';
+  status_basis: string;
+  pool: 'cline_pass';
+  pool_note?: string;
+  cost_scale: number;
+  balance: ClineBalance;
+  windows: {
+    last5h: ClineQuotaWindow;
+    last7d: ClineQuotaWindow;
+    last30d: ClineQuotaWindow;
+  };
+  usage_fetch: ClineUsageFetch;
+};
+
+type ProviderClineDirectQuotaData = ProviderQuotaDataCommon & {
+  model_scope: 'direct_only';
+  status_basis: string;
+  pool: 'direct_credit' | string;
+  pool_note?: string;
+  balance: ClineBalance;
+  cost_scale?: never;
+  windows?: never;
+  usage_fetch?: never;
+};
+
+type ProviderClineErrorQuotaData = ProviderQuotaDataCommon & {
+  model_scope?: undefined;
+  status_basis?: string;
+  pool?: string;
+  balance?: ClineBalance;
+  cost_scale?: never;
+  windows?: never;
+  usage_fetch?: never;
+};
+
+export type ProviderClineQuotaData = ProviderClinePassQuotaData | ProviderClineDirectQuotaData | ProviderClineErrorQuotaData;
+
+export function isClinePassPoolQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
+  return qd.pool === 'cline_pass';
 }
 
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
-  quotaStatus?: {
+  quotaStatus: {
     status: 'available' | 'warning' | 'exhausted' | 'unknown';
     nextResetAt: string | null;
     ready: boolean;
   };
 } & (
-    | {
-      type: 'claudecode'
-      quotaStatus?: {
-        quotaData: ProviderClaudeQuotaData
-      }
+  | {
+      type: 'claudecode';
+      quotaStatus: {
+        quotaData: ProviderClaudeQuotaData;
+      };
     }
-    | {
-      type: 'codex'
-      quotaStatus?: {
-        quotaData: ProviderCodexQuotaData
-      }
+  | {
+      type: 'codex';
+      quotaStatus: {
+        quotaData: ProviderCodexQuotaData;
+      };
     }
-    | {
-      type: 'github_copilot'
-      quotaStatus?: {
-        quotaData: ProviderGitHubCopilotQuotaData
-      }
+  | {
+      type: 'cline';
+      quotaStatus: {
+        quotaData: ProviderClineQuotaData;
+      };
     }
-    | {
-      type: 'nanogpt'
-      quotaStatus?: {
-        quotaData: ProviderNanoGPTQuotaData
-      }
+  | {
+      type: 'github_copilot';
+      quotaStatus: {
+        quotaData: ProviderGitHubCopilotQuotaData;
+      };
     }
-    | {
-      type: 'nanogpt_responses'
-      quotaStatus?: {
-        quotaData: ProviderNanoGPTQuotaData
-      }
+  | {
+      type: 'nanogpt';
+      quotaStatus: {
+        quotaData: ProviderNanoGPTQuotaData;
+      };
     }
-    | {
-      type: 'opencode_go' | 'opencode_go_anthropic'
-      workspaceId?: string | null
-      quotaStatus?: {
-        quotaData: ProviderOpenCodeGoQuotaData
-      }
+  | {
+      type: 'nanogpt_responses';
+      quotaStatus: {
+        quotaData: ProviderNanoGPTQuotaData;
+      };
     }
-    | {
-      type: 'openai' | 'openai_responses'
-      providerType: 'wafer'
-      quotaStatus?: {
-        quotaData: ProviderWaferQuotaData
-      }
+  | {
+      type: 'opencode_go' | 'opencode_go_anthropic';
+      workspaceId?: string | null;
+      quotaStatus: {
+        quotaData: ProviderOpenCodeGoQuotaData;
+      };
     }
-    | {
-      type: 'openai' | 'openai_responses'
-      providerType: 'synthetic'
-      quotaStatus?: {
-        quotaData: ProviderSyntheticQuotaData
-      }
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'wafer';
+      quotaStatus: {
+        quotaData: ProviderWaferQuotaData;
+      };
     }
-    | {
-      type: 'openai' | 'openai_responses'
-      providerType: 'neuralwatt'
-      quotaStatus?: {
-        quotaData: ProviderNeuralWattQuotaData
-      }
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'synthetic';
+      quotaStatus: {
+        quotaData: ProviderSyntheticQuotaData;
+      };
     }
-    | {
-      type: 'openai' | 'openai_responses'
-      providerType: 'apertis'
-      quotaStatus?: {
-        quotaData: ProviderApertisQuotaData
-      }
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'neuralwatt';
+      quotaStatus: {
+        quotaData: ProviderNeuralWattQuotaData;
+      };
     }
-    | {
-      type: 'openai' | 'openai_responses'
-      providerType?: undefined
-      quotaStatus?: {
-        quotaData: ProviderQuotaDataCommon
-      }
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType: 'apertis';
+      quotaStatus: {
+        quotaData: ProviderApertisQuotaData;
+      };
     }
-  )
+  | {
+      type: 'openai' | 'openai_responses';
+      providerType?: undefined;
+      quotaStatus: {
+        quotaData: ProviderQuotaDataCommon;
+      };
+    }
+);
+
+type ProviderQuotaStatusNode = {
+  status: 'available' | 'warning' | 'exhausted' | 'unknown';
+  nextResetAt: string | null;
+  ready: boolean;
+  quotaData: unknown;
+  providerType: string;
+};
+
+type QueryChannelNode = {
+  id: string;
+  name: string;
+  type: string;
+  providerQuotaStatus: ProviderQuotaStatusNode | null;
+  settings?: {
+    providerQuota?: {
+      opencodeGo?: {
+        workspaceId?: string | null;
+      } | null;
+    } | null;
+  } | null;
+};
 
 type QueryChannelsResponse = {
   queryChannels: {
     edges: Array<{
-      node: {
-        id: string;
-        name: string;
-        type: string;
-        providerQuotaStatus: {
-          status: 'available' | 'warning' | 'exhausted' | 'unknown';
-          nextResetAt: string | null;
-          ready: boolean;
-          quotaData: unknown;
-          providerType?: string;
-        };
-        settings?: {
-          providerQuota?: {
-            opencodeGo?: {
-              workspaceId?: string | null;
-            } | null;
-          } | null;
-        } | null;
-      };
-    }>;
+      node: QueryChannelNode | null;
+    } | null>;
   };
+};
+
+type QueryChannelNodeWithQuota = QueryChannelNode & {
+  providerQuotaStatus: ProviderQuotaStatusNode;
+};
+
+function hasProviderQuotaStatus(node: QueryChannelNode | null | undefined): node is QueryChannelNodeWithQuota {
+  return node?.providerQuotaStatus != null;
 }
 
-function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][0]['node']): ProviderQuotaChannel {
+function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel {
   const quotaStatus = node.providerQuotaStatus;
-  const providerType = quotaStatus?.providerType;
+  const providerType = quotaStatus.providerType;
 
   const base = {
     id: node.id,
@@ -336,6 +436,13 @@ function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][
       ...base,
       type: 'codex' as const,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCodexQuotaData },
+    };
+  }
+  if (node.type === 'cline') {
+    return {
+      ...base,
+      type: 'cline' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderClineQuotaData },
     };
   }
   if (node.type === 'github_copilot') {
@@ -417,13 +524,13 @@ function parseChannelNode(node: QueryChannelsResponse['queryChannels']['edges'][
 }
 
 export function useProviderQuotaStatuses() {
-  const { data } = useQuery({
+  const query = useQuery({
     queryKey: ['provider-quotas'],
     queryFn: async () => {
       const input = {
         where: {
-          statusIn: ['enabled']
-        }
+          statusIn: ['enabled'],
+        },
       };
       return graphqlRequest<QueryChannelsResponse>(PROVIDER_QUOTA_STATUSES_QUERY, { input });
     },
@@ -431,18 +538,23 @@ export function useProviderQuotaStatuses() {
     refetchIntervalInBackground: true,
   });
 
-  const channels = data?.queryChannels?.edges?.map((e) => e.node) || [];
+  const channels = (query.data?.queryChannels?.edges ?? [])
+    .map((edge) => edge?.node ?? null)
+    .filter(hasProviderQuotaStatus)
+    .filter((c) => {
+      // Skip channels that have no credentials configured, since they cannot be
+      // checked and only add noise to the quota popover. Other errors are still
+      // shown so admins can spot credential/permission issues.
+      const quotaData = c.providerQuotaStatus.quotaData as { error?: string } | undefined;
+      return quotaData?.error !== 'channel has no credentials';
+    })
+    .map(parseChannelNode);
 
-  const oauthChannels = channels.filter((c) => {
-    if (c.providerQuotaStatus == null) {
-      return false;
-    }
-    // Skip channels that have no credentials configured, since they cannot be
-    // checked and only add noise to the quota popover. Other errors are still
-    // shown so admins can spot credential/permission issues.
-    const quotaData = c.providerQuotaStatus.quotaData as { error?: string } | undefined;
-    return quotaData?.error !== 'channel has no credentials';
-  });
-
-  return oauthChannels.map(parseChannelNode);
+  return {
+    channels,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    isFetching: query.isFetching,
+  };
 }
