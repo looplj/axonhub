@@ -209,6 +209,60 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with thinking disabled - maps to reasoning_effort none",
+			request: &httpclient.Request{
+				Method: http.MethodPost,
+				URL:    "/v1/chat/completions",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: mustMarshal(Request{
+					Model: "deepseek-reasoner",
+					Messages: []Message{
+						{
+							Role: "user",
+							Content: MessageContent{
+								Content: lo.ToPtr("Hello"),
+							},
+						},
+					},
+					Thinking: &Thinking{Type: "disabled"},
+				}),
+			},
+			wantErr: false,
+			validate: func(req *llm.Request) bool {
+				return req != nil &&
+					req.ReasoningEffort == "none"
+			},
+		},
+		{
+			name: "request with thinking enabled - no reasoning_effort mapping",
+			request: &httpclient.Request{
+				Method: http.MethodPost,
+				URL:    "/v1/chat/completions",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: mustMarshal(Request{
+					Model: "deepseek-reasoner",
+					Messages: []Message{
+						{
+							Role: "user",
+							Content: MessageContent{
+								Content: lo.ToPtr("Hello"),
+							},
+						},
+					},
+					Thinking: &Thinking{Type: "enabled"},
+				}),
+			},
+			wantErr: false,
+			validate: func(req *llm.Request) bool {
+				return req != nil &&
+					req.ReasoningEffort == ""
+			},
+		},
+		{
 			name: "request with reasoning summary",
 			request: &httpclient.Request{
 				Method: http.MethodPost,
