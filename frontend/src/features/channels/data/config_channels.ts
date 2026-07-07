@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   OpenAI,
   Anthropic,
+  Cline,
   Google,
   DeepSeek,
   Doubao,
@@ -716,6 +717,25 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: EvolinkIcon,
   },
+  cline: {
+    channelType: 'cline',
+    baseURL: 'https://api.cline.bot/api/v1',
+    defaultModels: [
+      'cline-pass/deepseek-v4-flash',
+      'cline-pass/deepseek-v4-pro',
+      'cline-pass/qwen3.7-plus',
+      'cline-pass/qwen3.7-max',
+      'cline-pass/kimi-k2.7-code',
+      'cline-pass/kimi-k2.6',
+      'cline-pass/glm-5.2',
+      'cline-pass/mimo-v2.5',
+      'cline-pass/mimo-v2.5-pro',
+      'cline-pass/minimax-m3',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Cline,
+  },
 };
 
 /**
@@ -738,6 +758,7 @@ export const getDefaultModels = (channelType: ChannelType): string[] => {
 export type Provider =
   | 'openai'
   | 'atlascloud'
+  | 'cline'
   | 'anthropic'
   | 'claudecode'
   | 'deepseek'
@@ -780,6 +801,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   openai: 'openai',
   openai_responses: 'openai',
   atlascloud: 'atlascloud',
+  cline: 'cline',
   openai_fake: 'openai',
   anthropic: 'anthropic',
   anthropic_aws: 'anthropic',

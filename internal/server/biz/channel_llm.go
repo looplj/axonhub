@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
 	"github.com/looplj/axonhub/llm/transformer/bailian"
 	"github.com/looplj/axonhub/llm/transformer/cerebras"
+	"github.com/looplj/axonhub/llm/transformer/cline"
 	"github.com/looplj/axonhub/llm/transformer/deepseek"
 	"github.com/looplj/axonhub/llm/transformer/doubao"
 	"github.com/looplj/axonhub/llm/transformer/fireworks"
@@ -360,6 +361,14 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 
 	switch ep.APIFormat {
 	case llm.APIFormatOpenAIChatCompletion.String():
+		if c.Type == channel.TypeCline {
+			return cline.NewOutboundTransformerWithConfig(&cline.Config{
+				BaseURL:        baseURL,
+				EndpointPath:   ep.Path,
+				APIKeyProvider: apiKeyProvider(),
+			})
+		}
+
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType:   openai.PlatformOpenAI,
 			BaseURL:        baseURL,
@@ -493,6 +502,18 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		return ch, nil
 	case channel.TypeFireworks:
 		transformer, err := fireworks.NewOutboundTransformerWithConfig(&fireworks.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeCline:
+		transformer, err := cline.NewOutboundTransformerWithConfig(&cline.Config{
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})
