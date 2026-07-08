@@ -1,0 +1,138 @@
+--- /tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/responses/model.go	2026-07-06 17:54:18
++++ /Users/asuan/项目/AI/axonhub/llm/transformer/openai/responses/model.go	2026-07-05 22:32:09
+@@ -62,6 +62,9 @@
+ 	Quality string `json:"quality,omitempty"`
+ 	// This field is for ImageGeneration
+ 	Size string `json:"size,omitempty"`
++
++	// Tools holds sub-tools for namespace type.
++	Tools []Tool `json:"tools,omitempty"`
+ }
+ 
+ type WebSearchFilters struct {
+@@ -96,6 +99,11 @@
+ 
+ 	Temperature *float64 `json:"temperature,omitempty"`
+ 
++	// FrequencyPenalty penalizes frequent tokens (sampling parameter).
++	FrequencyPenalty *float64 `json:"frequency_penalty,omitempty"`
++	// PresencePenalty penalizes already-present tokens (sampling parameter).
++	PresencePenalty *float64 `json:"presence_penalty,omitempty"`
++
+ 	// Input can be a string prompt or an array of input items.
+ 	Input Input `json:"input"`
+ 	// Tools includes the function/image_generation/web_search/custom tools.
+@@ -112,6 +120,8 @@
+ 	SafetyIdentifier *string           `json:"safety_identifier,omitempty"`
+ 	User             *string           `json:"user,omitempty"`
+ 	Metadata         map[string]string `json:"metadata,omitempty"`
++	ClientMetadata   map[string]string `json:"client_metadata,omitempty"`
++	CacheControl     *CacheControl     `json:"cache_control,omitempty"`
+ 	MaxOutputTokens  *int64            `json:"max_output_tokens,omitempty"`
+ 	MaxToolCalls     *int64            `json:"max_tool_calls,omitempty"`
+ 	Text             *TextOptions      `json:"text,omitempty"`
+@@ -124,8 +134,7 @@
+ 	PreviousResponseID *string `json:"previous_response_id,omitempty"`
+ 
+ 	// Reference to a prompt template and its variables.
+-	// TODO
+-	// Prompt *Prompt `json:"prompt,omitempty"`
++	Prompt *Prompt `json:"prompt,omitempty"`
+ 
+ 	// Used by OpenAI to cache responses for similar requests.
+ 	PromptCacheKey *string `json:"prompt_cache_key,omitempty"`
+@@ -153,6 +162,12 @@
+ 
+ 	// Nucleus sampling parameter.
+ 	TopP *float64 `json:"top_p,omitempty"`
++
++	// TopK for top-k sampling (OpenRouter extension).
++	TopK *int64 `json:"top_k,omitempty"`
++
++	// Modalities specifies output types (e.g. text, audio).
++	Modalities []string `json:"modalities,omitempty"`
+ }
+ 
+ // Prompt represents a reference to a prompt template.
+@@ -170,8 +185,16 @@
+ 	GenerateSummary string `json:"generate_summary,omitempty"`
+ 	// The summary type. Any of "auto", "concise", "detailed".
+ 	Summary string `json:"summary,omitempty"`
++	// Enabled toggles reasoning mode (OpenRouter ReasoningConfig.enabled, nullable bool).
++	Enabled *bool `json:"enabled,omitempty"`
+ 	// Maximum number of reasoning tokens.
+ 	MaxTokens *int64 `json:"max_tokens,omitempty"`
++}
++
++// CacheControl mirrors the OpenRouter/Anthropic top-level cache_control directive.
++type CacheControl struct {
++	Type string `json:"type"`
++	TTL  string `json:"ttl,omitempty"`
+ }
+ 
+ // StreamOptions represents options for streaming responses.
+@@ -422,7 +445,54 @@
+ 
+ const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
+ const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
++const responsesReasoningEnabledTransformerMetadataKey = "openai_responses_reasoning_enabled"
++const responsesNamespaceToolMapTransformerMetadataKey = "openai_responses_namespace_tool_map"
+ 
++const responsesBackgroundTransformerMetadataKey = "background"
++const responsesTruncationTransformerMetadataKey = "truncation"
++const responsesPromptCacheRetentionTransformerMetadataKey = "prompt_cache_retention"
++const responsesMaxToolCallsTransformerMetadataKey = "max_tool_calls"
++const responsesPromptTransformerMetadataKey = "prompt"
++const responsesIncludeObfuscationTransformerMetadataKey = "include_obfuscation"
++const responsesImageOutputFormatTransformerMetadataKey = "image_output_format"
++
++const responsesImageGenOutputFormatTransformerMetadataKey = "output_format"
++const responsesImageGenQualityTransformerMetadataKey = "quality"
++const responsesImageGenSizeTransformerMetadataKey = "size"
++const responsesImageGenActionTransformerMetadataKey = "image_generation_action"
++
++// namespaceToolEntry records the leaf name and namespace group for a namespace
++// tool that was flattened into a composite "grp__leaf" function during inbound
++// conversion. It lets the outbound side restore {name, namespace} via table
++// lookup rather than string splitting (group names may themselves contain "__").
++type namespaceToolEntry struct {
++	Leaf      string `json:"leaf"`
++	Namespace string `json:"namespace"`
++}
++
++// resolveNamespaceFromMetadata looks up a composite function name in the
++// namespace tool map stored in TransformerMetadata. If found, it returns the
++// leaf name and namespace; otherwise it returns the original name with an empty
++// namespace (flat tools that were never part of a namespace group).
++func resolveNamespaceFromMetadata(metadata map[string]any, compositeName string) (name, namespace string) {
++	if len(metadata) == 0 || compositeName == "" {
++		return compositeName, ""
++	}
++	raw, ok := metadata[responsesNamespaceToolMapTransformerMetadataKey]
++	if !ok || raw == nil {
++		return compositeName, ""
++	}
++	m, ok := raw.(map[string]namespaceToolEntry)
++	if !ok {
++		return compositeName, ""
++	}
++	entry, ok := m[compositeName]
++	if !ok {
++		return compositeName, ""
++	}
++	return entry.Leaf, entry.Namespace
++}
++
+ type responsesReasoningItemMetadata struct {
+ 	ID   string `json:"id,omitempty"`
+ 	Done bool   `json:"done,omitempty"`
+@@ -538,6 +608,9 @@
+ 	// The detail of the image. high, low, or auto, for input_image type.
+ 	Detail *string `json:"detail,omitempty"`
+ 
++	// InputAudio is the audio data, for input_audio type.
++	InputAudio *llm.InputAudio `json:"input_audio,omitempty"`
++
+ 	// Text for output_text/input_text type.
+ 	Text *string `json:"text,omitempty"`
+ 

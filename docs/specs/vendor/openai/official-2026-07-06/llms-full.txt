@@ -1,0 +1,2478 @@
+# OpenAI API reference — full documentation
+
+> Single-file Markdown export of API reference docs and endpoint pages.
+
+Curated index: https://developers.openai.com/api/reference/llms.txt
+
+# Administration Overview
+
+Use the Administration API to manage organization resources such as users, invites, projects, API keys, and audit logs.
+To access these endpoints, [create an Admin API key](https://platform.openai.com/settings/organization/admin-keys). Admin API keys cannot be used for non-administration endpoints.
+
+Related guides:
+
+- [Best practices in setting up your organization](https://developers.openai.com/api/docs/guides/production-best-practices#setting-up-your-organization)
+- [Using the Admin APIs](https://developers.openai.com/api/docs/guides/admin-apis).
+
+---
+
+# Chat Completions Overview
+
+The Chat Completions API endpoint will generate a model response from a
+list of messages comprising a conversation.
+
+Related guides:
+
+- [Quickstart](https://developers.openai.com/docs/quickstart?api-mode=chat)
+- [Text inputs and outputs](https://developers.openai.com/docs/guides/text?api-mode=chat)
+- [Image inputs](https://developers.openai.com/docs/guides/images?api-mode=chat)
+- [Audio inputs and outputs](https://developers.openai.com/docs/guides/audio?api-mode=chat)
+- [Structured Outputs](https://developers.openai.com/docs/guides/structured-outputs?api-mode=chat)
+- [Function calling](https://developers.openai.com/docs/guides/function-calling?api-mode=chat)
+- [Conversation state](https://developers.openai.com/docs/guides/conversation-state?api-mode=chat)
+
+**Starting a new project?** We recommend trying [Responses](https://developers.openai.com/docs/api-reference/responses)
+to take advantage of the latest OpenAI platform features. Compare
+[Chat Completions with Responses](https://developers.openai.com/docs/guides/responses-vs-chat-completions?api-mode=responses).
+
+---
+
+# API Overview
+
+Use this reference to look up OpenAI API endpoints, request and response
+schemas, streaming events, client library methods, and shared behavior such as
+authentication, errors, rate limits, and request IDs.
+
+## Start here
+
+1. Choose the API surface for your application:
+   - [Responses](https://developers.openai.com/api/reference/responses/overview) for direct model requests, tool use, audio, image, and text inputs, and stateful interactions.
+   - [Realtime API](https://developers.openai.com/api/docs/guides/realtime) for low-latency voice or audio sessions over WebRTC, WebSocket, or SIP. Use the [client events](https://developers.openai.com/api/reference/resources/realtime/client-events) and [server events](https://developers.openai.com/api/reference/resources/realtime/server-events) references while building sessions.
+   - [Administration](https://developers.openai.com/api/reference/administration/overview) for organization workflows such as users, invites, projects, API keys, and audit logs.
+2. Create credentials. Use a standard [API key](https://platform.openai.com/settings/organization/api-keys) for application requests, an [Admin API key](https://platform.openai.com/settings/organization/admin-keys) for Administration endpoints, or [workload identity federation](https://developers.openai.com/api/docs/guides/workload-identity-federation) for short-lived access tokens.
+3. Install an official client library from the [libraries page](https://developers.openai.com/api/docs/libraries), or call the HTTP API directly from any environment that supports HTTP requests.
+4. Make a first request with the [developer quickstart](https://developers.openai.com/api/docs/quickstart) or go straight to the [Responses create reference](https://developers.openai.com/api/reference/resources/responses/methods/create).
+5. Before production, review [error codes](https://developers.openai.com/api/docs/guides/error-codes), [rate limits](https://developers.openai.com/api/docs/guides/rate-limits), and request ID logging below.
+
+## Authentication
+
+The OpenAI API accepts bearer credentials from API keys or from short-lived access tokens created with [workload identity federation](https://developers.openai.com/api/docs/guides/workload-identity-federation).
+
+**Remember that your API key is a secret.** Don't share it with others or expose it in any client-side code such as browsers or apps. Load API keys from an environment variable or key management service on the server.
+
+Provide API credentials with [HTTP Bearer authentication](https://swagger.io/docs/specification/v3_0/authentication/bearer-authentication/).
+
+```bash
+Authorization: Bearer OPENAI_API_KEY_OR_ACCESS_TOKEN
+```
+
+If you belong to more than one organization or access projects through a legacy user API key, pass a header to specify which organization and project to use for an API request:
+
+```bash
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "OpenAI-Organization: $ORGANIZATION_ID" \
+  -H "OpenAI-Project: $PROJECT_ID"
+```
+
+Usage from these API requests counts as usage for the specified organization and project. Find organization and project IDs in your [dashboard settings](https://platform.openai.com/settings/organization/general).
+
+## Debugging requests
+
+[Error codes](https://developers.openai.com/api/docs/guides/error-codes) describe failures returned from API responses. Inspect HTTP response headers for the unique ID of a request and rate limit details. Common response headers include:
+
+**API meta information**
+
+- `openai-organization`: The [organization](https://developers.openai.com/api/docs/guides/production-best-practices#setting-up-your-organization) associated with the request
+- `openai-processing-ms`: Time taken processing your API request
+- `openai-version`: REST API version used for this request (currently `2020-10-01`)
+- `x-request-id`: Unique identifier for this API request (used in troubleshooting)
+
+**[Rate limiting information](https://developers.openai.com/api/docs/guides/rate-limits)**
+
+- `x-ratelimit-limit-requests`
+- `x-ratelimit-limit-tokens`
+- `x-ratelimit-remaining-requests`
+- `x-ratelimit-remaining-tokens`
+- `x-ratelimit-reset-requests`
+- `x-ratelimit-reset-tokens`
+- `x-ratelimit-limit-project-tokens`
+- `x-ratelimit-remaining-project-tokens`
+- `x-ratelimit-reset-project-tokens`
+
+Project-token headers may be present when a project-scoped token limit applies.
+
+**OpenAI recommends logging request IDs in production deployments** for more efficient troubleshooting with the [support team](https://help.openai.com/en/), should the need arise. Official [client libraries](https://developers.openai.com/api/docs/libraries) provide a property on top-level response objects containing the value of the `x-request-id` header.
+
+### Supplying your own request ID with `X-Client-Request-Id`
+
+Along with the server-generated `x-request-id`, you can supply your own unique identifier for each request via the `X-Client-Request-Id` request header. This header isn't added automatically; you must explicitly set it on the request.
+
+When you include `X-Client-Request-Id`:
+
+- You control the ID format (for example, a UUID or your internal trace ID), but it must contain only ASCII characters and be no more than 512 characters long; otherwise, the request will fail with a 400 error. Make this value unique per request.
+
+- OpenAI logs this value internally for supported endpoints, including chat/completions, embeddings, responses, and more.
+
+- In cases like timeouts or network issues when you can't get the `X-Request-Id` response header, you can share the `X-Client-Request-Id` value with the support team to look up whether OpenAI received the request and when.
+
+**Example:**
+
+```bash
+curl https://api.openai.com/v1/chat/completions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "X-Client-Request-Id: 123e4567-e89b-12d3-a456-426614174000"
+```
+
+## Backwards compatibility
+
+OpenAI provides stability to API users by avoiding breaking changes in major API versions whenever reasonably possible. This includes:
+
+- The REST API (currently `v1`)
+- First-party [client libraries](https://developers.openai.com/api/docs/libraries) (released libraries adhere to [semantic versioning](https://semver.org/))
+- [Model](https://developers.openai.com/api/docs/models) families (like `gpt-4o` or `o4-mini`)
+
+**Model prompting behavior between snapshots is subject to change**.
+Model outputs are by their nature variable, so expect changes in prompting and model behavior between snapshots. The best way to ensure consistent prompting behavior and model output is to use pinned model versions, and to run [evals](https://developers.openai.com/api/docs/guides/evals) for your applications.
+
+**Backwards-compatible API changes**:
+
+- Adding new resources (URLs) to the REST API and client libraries
+- Adding new optional API parameters
+- Adding new properties to JSON response objects or event data
+- Changing the order of properties in a JSON response object
+- Changing the length or format of opaque strings, like resource identifiers
+- Adding new event types in streaming APIs
+
+See the [changelog](https://developers.openai.com/api/docs/changelog) for a list of backwards-compatible changes and rare breaking changes.
+
+---
+
+# Realtime Beta Overview
+
+Communicate with a multimodal model in real time over low latency interfaces like WebRTC, WebSocket, and SIP. Natively supports speech-to-speech as well as text, image, and audio inputs and outputs.
+[Learn more about the Realtime API](https://developers.openai.com/docs/guides/realtime).
+
+---
+
+# Audio
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Speech — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Transcriptions — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Translations — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/translations/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Voice Consents — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Voice Consents — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Voice Consents — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Voice Consents — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Voice Consents — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Audio Voices — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/audio/subresources/voices/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Batches
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/batches
+
+This API reference page is generated by Stainless.
+
+---
+
+# Batches — Cancel
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/batches/methods/cancel
+
+This API reference page is generated by Stainless.
+
+---
+
+# Batches — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/batches/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Batches — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/batches/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Batches — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/batches/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Assistants
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/assistants
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Assistants — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Assistants — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Assistants — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Assistants — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Assistants — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Sessions
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/sessions
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Sessions — Cancel
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/sessions/methods/cancel
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Sessions — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/sessions/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Threads
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Threads — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Threads — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Threads — List Items
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/list_items
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Chatkit Threads — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Messages
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Messages — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Messages — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Messages — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Messages — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Messages — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs — Cancel
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/cancel
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs — Submit Tool Outputs
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/submit_tool_outputs
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs Steps
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/subresources/steps
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs Steps — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/subresources/steps/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Beta Threads Runs Steps — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/subresources/steps/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Chat
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/chat
+
+This API reference page is generated by Stainless.
+
+---
+
+# Chat Completions — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Completions
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/completions
+
+This API reference page is generated by Stainless.
+
+---
+
+# Completions — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/completions/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers Files
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/subresources/files
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers Files — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers Files — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers Files — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers Files — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Containers Files Content — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/containers/subresources/files/subresources/content/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Conversations
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/conversations
+
+This API reference page is generated by Stainless.
+
+---
+
+# Conversations — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/conversations/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Conversations — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/conversations/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Conversations — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/conversations/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Conversations — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/conversations/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Conversations Items — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/conversations/subresources/items/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Embeddings
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/embeddings
+
+This API reference page is generated by Stainless.
+
+---
+
+# Embeddings — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/embeddings/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Evals
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/evals
+
+This API reference page is generated by Stainless.
+
+---
+
+# Evals — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/evals/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Evals — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/evals/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Evals — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/evals/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Evals — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/evals/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Evals — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/evals/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Evals Runs — Cancel
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/evals/subresources/runs/methods/cancel
+
+This API reference page is generated by Stainless.
+
+---
+
+# Files
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/files
+
+This API reference page is generated by Stainless.
+
+---
+
+# Files — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/files/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Files — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/files/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Files — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/files/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Files — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/files/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Fine Tuning
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/fine_tuning
+
+This API reference page is generated by Stainless.
+
+---
+
+# Fine Tuning Checkpoints Permissions — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/fine_tuning/subresources/checkpoints/subresources/permissions/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Fine Tuning Checkpoints Permissions — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/fine_tuning/subresources/checkpoints/subresources/permissions/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Fine Tuning Jobs — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/fine_tuning/subresources/jobs/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Fine Tuning Jobs Checkpoints — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/fine_tuning/subresources/jobs/subresources/checkpoints/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Graders
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/graders
+
+This API reference page is generated by Stainless.
+
+---
+
+# Images
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/images
+
+This API reference page is generated by Stainless.
+
+---
+
+# Images — Create Variation
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/images/methods/create_variation
+
+This API reference page is generated by Stainless.
+
+---
+
+# Models
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/models
+
+This API reference page is generated by Stainless.
+
+---
+
+# Models — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/models/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Models — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/models/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Models — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/models/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Moderations
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/moderations
+
+This API reference page is generated by Stainless.
+
+---
+
+# Moderations — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/moderations/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs Admin Api Keys
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs Admin Api Keys — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs Admin Api Keys — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs Admin Api Keys — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs Admin Api Keys — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Audit Logs Usage
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/usage
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups Users
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups Users — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups Users — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Groups Users — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Invites
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/invites
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Invites — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Invites — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Invites — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Invites — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Api Keys
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Api Keys — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Api Keys — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Api Keys — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Groups
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/groups
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Groups — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/groups/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Groups — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/groups/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Rate Limits
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/rate_limits
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Service Accounts
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Service Accounts — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Service Accounts — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Service Accounts — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Service Accounts — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Users
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Users — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Users — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Users — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Users — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Projects Users — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Roles
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/roles
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Roles — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Roles — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Roles — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Roles — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users Roles — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users/subresources/roles/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users Roles — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users/subresources/roles/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Organization Users Roles — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/organization/subresources/users/subresources/roles/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Groups
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/groups
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Groups Roles — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/groups/subresources/roles/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Groups Roles — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/groups/subresources/roles/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Groups Roles — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/groups/subresources/roles/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Roles — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Roles — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Roles — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Roles — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Users
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/users
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Users Roles — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/users/subresources/roles/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Users Roles — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/users/subresources/roles/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Projects Users Roles — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/projects/subresources/users/subresources/roles/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Calls
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/calls
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Calls — Accept
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/accept
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Calls — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Calls — Hangup
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/hangup
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Calls — Refer
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/refer
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Calls — Reject
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/reject
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Client Secrets
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets
+
+This API reference page is generated by Stainless.
+
+---
+
+# Realtime Client Secrets — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses — Cancel
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses/methods/cancel
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses — Compact
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses/methods/compact
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses Input Items — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses/subresources/input_items/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses Input Tokens
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/responses/subresources/input_tokens
+
+This API reference page is generated by Stainless.
+
+---
+
+# Unwrap
+
+Unwrap is a convenience helper available in the official SDKs to verify a webhook signature and parse the JSON payload in a single call. Use `client.webhooks.unwrap(body, headers, options?)` to verify the signature and parse the JSON payload in one call. For end-to-end webhook examples, see the [Webhooks guide](https://developers.openai.com/api/docs/guides/webhooks).
+
+## Supported SDKs
+
+This helper is available in official SDKs, including:
+
+- [JavaScript / TypeScript](https://developers.openai.com/api/reference/typescript/resources/webhooks/methods/unwrap)
+- [Python](https://developers.openai.com/api/reference/python/resources/webhooks/methods/unwrap)
+- [Ruby](https://developers.openai.com/api/reference/ruby/resources/webhooks/methods/unwrap)
+- [Go](https://developers.openai.com/api/reference/go/resources/webhooks/methods/unwrap)
+
+---
+
+# Uploads
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/uploads
+
+This API reference page is generated by Stainless.
+
+---
+
+# Uploads — Cancel
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/uploads/methods/cancel
+
+This API reference page is generated by Stainless.
+
+---
+
+# Uploads — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/uploads/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Uploads Parts — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/uploads/subresources/parts/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores — Search
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/methods/search
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores File Batches
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores File Batches — Cancel
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/cancel
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores File Batches — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores File Batches — List Files
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/list_files
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores File Batches — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores Files
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/files
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores Files — Content
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/content
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores Files — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores Files — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores Files — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores Files — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Vector Stores Files — Update
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/update
+
+This API reference page is generated by Stainless.
+
+---
+
+# Videos
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/videos
+
+This API reference page is generated by Stainless.
+
+---
+
+# Videos — Create
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/videos/methods/create
+
+This API reference page is generated by Stainless.
+
+---
+
+# Videos — Delete
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/videos/methods/delete
+
+This API reference page is generated by Stainless.
+
+---
+
+# Videos — List
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/videos/methods/list
+
+This API reference page is generated by Stainless.
+
+---
+
+# Videos — Retrieve
+
+OpenAI API endpoint method reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/videos/methods/retrieve
+
+This API reference page is generated by Stainless.
+
+---
+
+# Webhooks
+
+OpenAI API endpoint reference.
+
+Canonical reference URL: https://developers.openai.com/api/reference/resources/webhooks
+
+This API reference page is generated by Stainless.
+
+---
+
+# Responses Overview
+
+OpenAI's most advanced interface for generating model responses. Supports
+text and image inputs, and text outputs. Create stateful interactions
+with the model, using the output of previous responses as input. Extend
+the model's capabilities with built-in tools for file search, web search,
+computer use, and more. Allow the model access to external systems and data
+using function calling.
+
+Related guides:
+
+- [Quickstart](https://developers.openai.com/docs/quickstart?api-mode=responses)
+- [Text inputs and outputs](https://developers.openai.com/docs/guides/text?api-mode=responses)
+- [Image inputs](https://developers.openai.com/docs/guides/images?api-mode=responses)
+- [Structured Outputs](https://developers.openai.com/docs/guides/structured-outputs?api-mode=responses)
+- [Function calling](https://developers.openai.com/docs/guides/function-calling?api-mode=responses)
+- [Conversation state](https://developers.openai.com/docs/guides/conversation-state?api-mode=responses)
+- [WebSocket mode](https://developers.openai.com/docs/guides/websocket-mode)
+- [Extend the models with tools](https://developers.openai.com/docs/guides/tools?api-mode=responses)
+
+---
+
+# Workload identity token exchange
+
+Use this reference to exchange an externally issued identity token for a short-lived OpenAI access token after you configure a trusted provider and service account mapping. For concepts, dashboard configuration, provider-specific setup, and SDK examples, see the [workload identity federation guide](https://developers.openai.com/api/docs/guides/workload-identity-federation).
+
+## Exchange a subject token
+
+Exchange the external subject token at the OpenAI token endpoint:
+
+```bash
+curl https://auth.openai.com/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+    "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    "subject_token": "'"$EXTERNAL_OIDC_JWT"'",
+    "identity_provider_id": "'"$IDENTITY_PROVIDER_ID"'",
+    "service_account_id": "'"$SERVICE_ACCOUNT_ID"'"
+  }'
+```
+
+### Request parameters
+
+| Parameter              | Required | Description                                                                                      |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `grant_type`           | Yes      | Must be `urn:ietf:params:oauth:grant-type:token-exchange`.                                       |
+| `subject_token_type`   | Yes      | Supports `urn:ietf:params:oauth:token-type:jwt` and `urn:ietf:params:oauth:token-type:id_token`. |
+| `subject_token`        | Yes      | The externally issued OIDC JWT or SPIFFE JWT-SVID from your Workload Identity Provider.          |
+| `identity_provider_id` | Yes      | The OpenAI Workload Identity Provider ID configured for the external issuer.                     |
+| `service_account_id`   | Yes      | The OpenAI service account ID to resolve against the matching service account mapping.           |
+
+The token exchange uses the permissions configured on the matching service account mapping. A `scope` value in the request body doesn't grant access.
+
+## Subject token validation
+
+OpenAI verifies the external subject token before resolving a mapping. The token must:
+
+- Be a JWT with a `kid` and supported `alg` in the header.
+- Include `iss`, `aud`, `sub`, `exp`, and `iat` claims.
+- Match the configured Workload Identity Provider issuer and audience.
+- Be signed by a key from the configured JWKS source.
+
+If verification fails, the token exchange returns an authentication error and doesn't mint an OpenAI access token.
+
+After subject token validation succeeds, OpenAI resolves the requested service account mapping against the token's raw claims and derived attributes. Mapping mismatches fail the token exchange during mapping resolution.
+
+## Response
+
+Successful responses include a short-lived bearer token:
+
+```json
+{
+  "access_token": "eyJ...",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "api.model.read api.model.request"
+}
+```
+
+The `scope` property is returned only when the resolved mapping has permissions. Access tokens expire after at most one hour and never outlive the external subject token used for the exchange.
+
+## Token exchange errors
+
+If token exchange fails, OpenAI doesn't mint an access token. Common causes include:
+
+| Error category             | Typical causes                                                                                                                                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing request parameter  | `subject_token`, `subject_token_type`, `identity_provider_id`, or `service_account_id` is missing.                                                                                                                                                   |
+| Unsupported token request  | `subject_token_type` isn't `urn:ietf:params:oauth:token-type:jwt` or `urn:ietf:params:oauth:token-type:id_token`.                                                                                                                                    |
+| Provider resolution error  | The Workload Identity Provider ID is malformed or unknown.                                                                                                                                                                                           |
+| Subject token verification | The JWT is malformed, the header is missing `kid` or `alg`, the algorithm is unsupported, the signature is invalid, the issuer or audience doesn't match, a required claim is missing, the token is expired, or no JWKS key matches the token `kid`. |
+| Mapping resolution         | No mapping exists for the requested service account, the matching mapping is disabled, the token attributes don't match the mapping, or an attribute transformation fails.                                                                           |
+
+Most subject-token problems are visible by decoding the JWT payload locally and comparing its `iss`, `aud`, `sub`, `exp`, `iat`, and provider-specific claims with your Workload Identity Provider and service account mapping configuration.
+
+If token exchange succeeds but a later OpenAI API request fails, debug the minted access token as an authorization issue. The token still has the project, service account, endpoint authorization, IP allowlist, and other policy checks that apply to normal OpenAI API requests.
+
+## Authorization behavior
+
+Workload identity access tokens are backed by an OpenAI service account and project. On OpenAI API surfaces, they authorize like service-account API credentials rather than user OAuth tokens.
+
+If a mapping defines permissions, those permissions further narrow the effective API access for tokens minted from that mapping. If a mapping doesn't define permissions, OpenAI doesn't add a workload identity federation-specific scope restriction, and authorization is derived from the mapped service account's project and organization roles.
+
+Workload identity tokens don't bypass normal endpoint authorization. The target endpoint must still allow the effective permissions and project access carried by the token.
+
+## Limitations
+
+Workload identity federation currently has the following limitations:
+
+- Workload identity access tokens can't be used to call Admin API endpoints. For Admin APIs, use an admin API key.
+- Each organization can create at most 50 Workload Identity Providers. Each Workload Identity Provider can have at most 50 service account mappings.
+- Workload identity access tokens aren't accepted by these endpoints: `DELETE /v1/models/{id}` and `POST /v1/images/request_audit`.
+- Arbitrary OIDC issuer endpoints other than the providers documented in the [setup guides](https://developers.openai.com/api/docs/guides/workload-identity-federation) aren't supported yet.
+- SPIFFE support is limited to JWT-SVID subject tokens. X.509-SVIDs aren't supported by this token exchange endpoint.

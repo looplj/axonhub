@@ -1,0 +1,97 @@
+--- /tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/model.go	2026-07-06 17:54:18
++++ /Users/asuan/项目/AI/axonhub/llm/transformer/openai/model.go	2026-07-01 11:01:15
+@@ -10,6 +10,10 @@
+ // TransformerMetadataKeyCitations is the key used to store citations in TransformerMetadata.
+ const TransformerMetadataKeyCitations = "citations"
+ 
++// TransformerMetadataKeyVideoPrompt carries the original video generation prompt
++// so the outbound response builder can backfill it.
++const TransformerMetadataKeyVideoPrompt = "video_prompt"
++
+ // Request represents an OpenAI chat completion request.
+ // This is a clean OpenAI-specific model without helper fields.
+ type Request struct {
+@@ -49,6 +53,18 @@
+ 	// TopP for nucleus sampling.
+ 	TopP *float64 `json:"top_p,omitempty"`
+ 
++	// TopK for top-k sampling (OpenRouter extension).
++	TopK *int64 `json:"top_k,omitempty"`
++
++	// RepetitionPenalty penalizes repeated tokens (OpenRouter extension).
++	RepetitionPenalty *float64 `json:"repetition_penalty,omitempty"`
++
++	// MinP minimum probability threshold (OpenRouter extension).
++	MinP *float64 `json:"min_p,omitempty"`
++
++	// TopA top-a sampling threshold (OpenRouter extension).
++	TopA *float64 `json:"top_a,omitempty"`
++
+ 	// PromptCacheKey is used by OpenAI to cache responses.
+ 	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
+ 
+@@ -59,11 +75,16 @@
+ 	User *string `json:"user,omitempty"`
+ 
+ 	// LogitBias modifies likelihood of specified tokens.
+-	LogitBias map[string]int64 `json:"logit_bias,omitempty"`
++	LogitBias map[string]float64 `json:"logit_bias,omitempty"`
+ 
+ 	// Metadata is key-value pairs attached to the object.
+ 	Metadata map[string]string `json:"metadata,omitempty"`
+ 
++	// CacheControl is the OpenRouter top-level cache_control directive
++	// (Anthropic-style prompt-caching marker). Carried through TransformerMetadata
++	// cross-format; canonical llm.Request has no CacheControl field.
++	CacheControl *CacheControl `json:"cache_control,omitempty"`
++
+ 	// Modalities specifies output types (text, audio, image).
+ 	Modalities []string `json:"modalities,omitempty"`
+ 
+@@ -77,6 +98,12 @@
+ 	// Extension field, not part of official OpenAI Chat Completions API.
+ 	ReasoningSummary *string `json:"reasoning_summary,omitempty"`
+ 
++	// Reasoning is the OpenRouter chat reasoning configuration object {effort, summary}
++	// (yaml:4884). When present, effort/summary override the flat reasoning_effort/
++	// reasoning_summary shorthand (spec: reasoning_effort is a shorthand, "cannot be
++	// used simultaneously with reasoning.effort if they differ" — object form wins).
++	Reasoning *ChatReasoningConfig `json:"reasoning,omitempty"`
++
+ 	// ServiceTier specifies the processing type.
+ 	ServiceTier *string `json:"service_tier,omitempty"`
+ 
+@@ -95,6 +122,20 @@
+ 
+ 	// Verbosity constrains response verbosity.
+ 	Verbosity *string `json:"verbosity,omitempty"`
++}
++
++// ChatReasoningConfig mirrors the OpenRouter ChatRequest.reasoning object {effort, summary}.
++type ChatReasoningConfig struct {
++	// Effort constrains reasoning effort (max/xhigh/high/medium/low/minimal/none/null).
++	Effort string `json:"effort,omitempty"`
++	// Summary is the reasoning summary verbosity (auto/concise/detailed/null).
++	Summary *string `json:"summary,omitempty"`
++}
++
++// CacheControl mirrors the OpenRouter/Anthropic top-level cache_control directive.
++type CacheControl struct {
++	Type string `json:"type"`
++	TTL  string `json:"ttl,omitempty"`
+ }
+ 
+ // StreamOptions for streaming responses.
+@@ -169,6 +210,12 @@
+ 	// Reasoning is used by some providers (e.g., Synthetic) instead of reasoning_content.
+ 	Reasoning *string `json:"reasoning,omitempty"`
+ 
++	// ReasoningDetails carries structured reasoning detail items (OpenRouter).
++	ReasoningDetails []json.RawMessage `json:"reasoning_details,omitempty"`
++
++	// Images carries generated images from image generation models.
++	Images []llm.ChatImage `json:"images,omitempty"`
++
+ 	// Annotations contains citation information for the message.
+ 	// This is used by providers like Perplexity to provide source URLs.
+ 	Annotations []Annotation `json:"annotations,omitempty"`

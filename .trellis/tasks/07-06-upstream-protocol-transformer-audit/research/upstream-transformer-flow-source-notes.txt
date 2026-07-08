@@ -1,0 +1,1970 @@
+===== llm/transformer/interfaces.go =====
+package transformer
+
+import (
+	"context"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+)
+
+// Inbound represents a transformer accpet the request from client and respond to client with the transformed response.
+// e.g: OpenAPI transformer accepts the request from client with OpenAPI format and respond with OpenAI format.
+type Inbound interface {
+	// TransformRequest transforms HTTP request to the unified request format.
+	TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error)
+
+	// TransformResponse transforms the unified response format to HTTP response.
+	TransformResponse(ctx context.Context, response *llm.Response) (*httpclient.Response, error)
+
+	// TransformStream transforms the unified stream response format to HTTP response.
+	TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error)
+
+	// TransformError transforms the unified error response to HTTP error response.
+	TransformError(ctx context.Context, err error) *httpclient.Error
+
+	// AggregateStreamChunks aggregates streaming chunks into a complete response body.
+	// This method handles unified-specific streaming formats and converts the chunks to a the client request format complete response.
+	// e.g: the client request with OpenAI chat completion format, and the provider is Anthropic Claude, the chunks is the unified stream event format,
+	// the AggregateStreamChunks will convert the chunks to the OpenAI chat completion format.
+	AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
+}
+
+// Outbound represents a transformer that convert the unified Request to the undering provider format.
+// And transform the response from the undering provider format to unified Response format.
+type Outbound interface {
+	// APIFormat returns the API format of the transformer.
+	// e.g: openai/chat_completions, claude/messages.
+	APIFormat() llm.APIFormat
+
+	// TransformRequest transforms the unified request to HTTP request.
+	// The returned httpclient.Request must have RequestType and APIFormat fields set,
+	// as they are used for routing in composite transformers (e.g., DeepSeek uses
+	// RequestType to route between chat-completion and completion sub-transformers).
+	TransformRequest(ctx context.Context, request *llm.Request) (*httpclient.Request, error)
+
+	// TransformResponse transforms the HTTP response to the unified response format.
+	TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error)
+
+	// TransformStream transforms the HTTP stream response to the unified response format.
+	TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error)
+
+	// TransformError transforms the HTTP error response to the unified error response.
+	TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError
+
+	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
+	// This method handles provider-specific streaming formats and converts the chunks to a original provider format complete response.
+	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the Claude response format, the AggregateStreamChunks will convert
+	// the chunks to the OpenAI chat completion response format.
+	// The req parameter is the original HTTP request, used for routing in composite transformers (e.g., DeepSeek uses
+	// RequestType to route between chat-completion and completion sub-transformers).
+	AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
+}
+
+// VideoTaskOutbound is an optional extension interface for outbound transformers that support
+// video task query/delete operations (async task model).
+type VideoTaskOutbound interface {
+	BuildGetVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
+	ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error)
+
+	BuildDeleteVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
+}
+===== internal/server/orchestrator/outbound.go =====
+package orchestrator
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/samber/lo"
+
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcontext"
+	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
+)
+
+// OutboundPersistentStream wraps a stream and tracks all responses for final saving to database.
+// It implements the streams.Stream interface and handles persistence in the Close method.
+//
+//nolint:containedctx // Checked.
+type OutboundPersistentStream struct {
+	ctx context.Context
+
+	RequestService  *biz.RequestService
+	UsageLogService *biz.UsageLogService
+
+	stream      streams.Stream[*httpclient.StreamEvent]
+	request     *ent.Request
+	requestExec *ent.RequestExecution
+
+	transformer    transformer.Outbound
+	perf           *biz.PerformanceRecord
+	responseChunks []*httpclient.StreamEvent
+	closed         bool
+	state          *PersistenceState
+}
+
+var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
+
+func NewOutboundPersistentStream(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	request *ent.Request,
+	requestExec *ent.RequestExecution,
+	requestService *biz.RequestService,
+	usageLogService *biz.UsageLogService,
+	outboundTransformer transformer.Outbound,
+	perf *biz.PerformanceRecord,
+	state *PersistenceState,
+) *OutboundPersistentStream {
+	s := &OutboundPersistentStream{
+		ctx:             ctx,
+		stream:          stream,
+		request:         request,
+		requestExec:     requestExec,
+		RequestService:  requestService,
+		UsageLogService: usageLogService,
+		transformer:     outboundTransformer,
+		perf:            perf,
+		responseChunks:  make([]*httpclient.StreamEvent, 0),
+		closed:          false,
+		state:           state,
+	}
+
+	return s
+}
+
+func (ts *OutboundPersistentStream) Next() bool {
+	return ts.stream.Next()
+}
+
+func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
+	event := ts.stream.Current()
+	if event != nil {
+		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
+		// summary to avoid buffering the full audio payload in memory.
+		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
+		// Check if this is a terminal event, which indicates the stream completed successfully.
+		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
+		// response.completed; for Anthropic Messages API this is message_stop.
+		if isTerminalStreamEvent(event) {
+			ts.state.StreamCompleted = true
+		}
+	}
+
+	return event
+}
+
+func (ts *OutboundPersistentStream) Err() error {
+	return ts.stream.Err()
+}
+
+func (ts *OutboundPersistentStream) Close() error {
+	if ts.closed {
+		return nil
+	}
+
+	ts.closed = true
+	ctx := ts.ctx
+
+	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
+
+	streamErr := ts.stream.Err()
+	ctxErr := ctx.Err()
+
+	// If we received the [DONE] event, treat the stream as successfully completed
+	// even if there's a context cancellation error. This handles the case where
+	// the client disconnects immediately after receiving the last chunk.
+	if ts.state.StreamCompleted {
+		ts.logFinalizationDecision(ctx, "terminal_event_completed", streamErr, ctxErr, true, nil)
+		// Stream completed successfully - perform final persistence
+		log.Debug(ctx, "Stream completed successfully (received [DONE]), performing final persistence")
+		ts.persistResponseChunks(ctx)
+
+		return ts.stream.Close()
+	}
+
+	// If there's an explicit stream error (not just context cancellation), treat as failure
+	// regardless of what chunks we have. Stream errors indicate the upstream response
+	// was incomplete or corrupted.
+	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
+		ts.logFinalizationDecision(ctx, "explicit_stream_error", streamErr, ctxErr, false, nil)
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		if ts.requestExec != nil {
+			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, streamErr); err != nil {
+				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
+	var responseBody []byte
+	var meta llm.ResponseMeta
+	var aggErr error
+	aggregatedCompleted := false
+
+	if len(ts.responseChunks) > 0 {
+		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.state.RawProviderRequest, ts.responseChunks)
+		aggregatedCompleted = aggErr == nil && isCompletedAggregated(meta)
+		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
+		if aggregatedCompleted {
+			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
+			ts.state.StreamCompleted = true
+		}
+	} else {
+		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
+	}
+
+	// ended without a terminal event / complete aggregated response.
+	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
+		ts.logFinalizationDecision(ctx, "incomplete_stream_with_error", streamErr, ctxErr, aggregatedCompleted, aggErr)
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		errToReport := streamErr
+		if errToReport == nil {
+			errToReport = ctxErr
+		}
+		if errToReport == nil {
+			errToReport = errors.New("stream ended without terminal event or completed response")
+		}
+
+		if ts.requestExec != nil {
+			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, errToReport); err != nil {
+				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
+	if !ts.state.StreamCompleted {
+		ts.logFinalizationDecision(ctx, "incomplete_stream_without_terminal_event", streamErr, ctxErr, aggregatedCompleted, aggErr)
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		errToReport := errors.New("stream ended without terminal event or completed response")
+		if ts.requestExec != nil {
+			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, errToReport); err != nil {
+				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
+	// Stream completed successfully - perform final persistence
+	log.Debug(ctx, "Stream completed successfully, performing final persistence")
+	decision := "completed_after_aggregation"
+	if len(responseBody) == 0 {
+		decision = "completed_via_chunk_persistence"
+	}
+	ts.logFinalizationDecision(ctx, decision, streamErr, ctxErr, aggregatedCompleted, aggErr)
+
+	if len(responseBody) > 0 {
+		ts.persistAggregatedResponse(context.WithoutCancel(ctx), responseBody, meta)
+	} else {
+		ts.persistResponseChunks(ctx)
+	}
+
+	return ts.stream.Close()
+}
+
+func (ts *OutboundPersistentStream) logFinalizationDecision(ctx context.Context, decision string, streamErr error, ctxErr error, aggregatedCompleted bool, aggregatedErr error) {
+	fields := []log.Field{
+		log.String("decision", decision),
+		log.Bool("terminal_event_seen", ts.state.StreamCompleted),
+		log.Int("chunk_count", len(ts.responseChunks)),
+		log.String("api_format", string(ts.transformer.APIFormat())),
+		log.Bool("aggregated_completed", aggregatedCompleted),
+	}
+
+	if streamErr != nil {
+		fields = append(fields, log.String("stream_err", streamErr.Error()))
+	}
+	if ctxErr != nil {
+		fields = append(fields, log.String("ctx_err", ctxErr.Error()))
+	}
+	if aggregatedErr != nil {
+		fields = append(fields, log.String("aggregated_err", aggregatedErr.Error()))
+	}
+
+	log.Debug(ctx, "Outbound stream finalization decision", fields...)
+}
+
+func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
+	defer func() {
+		if cause := recover(); cause != nil {
+			log.Warn(ctx, "Failed to persist outbound response chunks", log.Any("cause", cause))
+		}
+===== internal/server/orchestrator/inbound.go =====
+package orchestrator
+
+import (
+	"bytes"
+	"context"
+	"errors"
+
+	"github.com/looplj/axonhub/internal/dumper"
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
+)
+
+// InboundPersistentStream wraps a stream and tracks all responses for final saving to database.
+// It implements the streams.Stream interface and handles persistence in the Close method.
+//
+//nolint:containedctx // Checked.
+type InboundPersistentStream struct {
+	ctx            context.Context
+	stream         streams.Stream[*httpclient.StreamEvent]
+	request        *ent.Request
+	requestExec    *ent.RequestExecution
+	requestService *biz.RequestService
+	transformer    transformer.Inbound
+	perf           *biz.PerformanceRecord
+	responseChunks []*httpclient.StreamEvent
+	closed         bool
+	state          *PersistenceState
+}
+
+var _ streams.Stream[*httpclient.StreamEvent] = (*InboundPersistentStream)(nil)
+
+func NewInboundPersistentStream(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	request *ent.Request,
+	requestExec *ent.RequestExecution,
+	requestService *biz.RequestService,
+	transformer transformer.Inbound,
+	perf *biz.PerformanceRecord,
+	state *PersistenceState,
+) *InboundPersistentStream {
+	s := &InboundPersistentStream{
+		ctx:            ctx,
+		stream:         stream,
+		request:        request,
+		requestExec:    requestExec,
+		requestService: requestService,
+		transformer:    transformer,
+		perf:           perf,
+		responseChunks: make([]*httpclient.StreamEvent, 0),
+		closed:         false,
+		state:          state,
+	}
+
+	return s
+}
+
+func (ts *InboundPersistentStream) Next() bool {
+	return ts.stream.Next()
+}
+
+func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
+	event := ts.stream.Current()
+	if event != nil {
+		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
+		// summary to avoid buffering the full audio payload in memory.
+		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
+		if isTerminalStreamEvent(event) {
+			ts.state.StreamCompleted = true
+		}
+	}
+
+	return event
+}
+
+// isTerminalStreamEvent checks if the event represents the end of a successfully completed stream.
+// For Chat Completions API this is the raw [DONE] event; for Responses API this is response.completed.
+func isTerminalStreamEvent(event *httpclient.StreamEvent) bool {
+	// For chat completions, check for [DONE] event
+	return bytes.Equal(event.Data, llm.DoneStreamEvent.Data) ||
+		// For Responses API, check for response.completed event
+		event.Type == "response.completed" ||
+		// For Anthropic Messages API, check for message_stop event
+		event.Type == "message_stop" ||
+		// For OpenAI audio APIs (TTS sse / STT stream) which have no [DONE] sentinel:
+		// rely on the terminal *.done event surfaced as StreamEvent.Type.
+		event.Type == "speech.audio.done" ||
+		event.Type == "transcript.text.done" ||
+		event.Type == httpclient.BinaryStreamDoneEventType
+}
+
+func (ts *InboundPersistentStream) Err() error {
+	return ts.stream.Err()
+}
+
+func (ts *InboundPersistentStream) Close() error {
+	if ts.closed {
+		return nil
+	}
+
+	ts.closed = true
+	ctx := ts.ctx
+
+	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
+
+	streamErr := ts.stream.Err()
+	ctxErr := ctx.Err()
+
+	// If we received the [DONE] event, treat the stream as successfully completed
+	// even if there's a context cancellation error. This handles the case where
+	// the client disconnects immediately after receiving the last chunk.
+	if ts.state.StreamCompleted {
+		// Stream completed successfully - perform final persistence
+		log.Debug(ctx, "Stream completed successfully (received terminal event), performing final persistence")
+		ts.persistResponseChunks(ctx)
+
+		return ts.stream.Close()
+	}
+
+	// If there's an explicit stream error (not just context cancellation), treat as failure
+	// regardless of what chunks we have. Stream errors indicate the upstream response
+	// was incomplete or corrupted.
+	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
+		if ts.request != nil {
+			persistCtx := context.WithoutCancel(ctx)
+
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
+	// If we haven't received a terminal event, check if the chunks we DO have form a complete response.
+	// This handles models that aggregate internally (like Codex) or upstream proxy hung connections
+	// where the provider sent the full JSON payload but failed to send [DONE] before dropping.
+	var responseBody []byte
+	var meta llm.ResponseMeta
+	var aggErr error
+
+	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
+		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
+		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && isCompletedAggregated(meta) {
+			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
+			ts.state.StreamCompleted = true
+		}
+	}
+
+	// Check if context was canceled (client disconnected before [DONE]).
+	// Skip the error path if we determined the stream actually completed successfully above.
+	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
+		if ts.request != nil {
+			persistCtx := context.WithoutCancel(ctx)
+
+			errToReport := ctxErr
+			if errToReport == nil {
+				errToReport = streamErr
+			}
+
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
+	// If the stream ended without a terminal event and we couldn't determine it was
+	// completed through aggregation, mark it as incomplete/failed. This handles the case
+	// where the upstream connection drops silently (EOF) without sending a terminal event,
+	// which would otherwise fall through and incorrectly mark the request as "completed".
+	if !ts.state.StreamCompleted {
+		log.Debug(ctx, "Stream ended without terminal event or completed response, treating as incomplete")
+
+		if ts.request != nil {
+			persistCtx := context.WithoutCancel(ctx)
+
+			errToReport := errors.New("stream ended without terminal event or completed response")
+
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
+	// Stream completed successfully - perform final persistence
+	log.Debug(ctx, "Stream completed successfully, performing final persistence")
+
+	// We already aggregated the chunks above, so pass them directly to avoid double-aggregation
+	if len(responseBody) > 0 {
+		ts._persistResponse(context.WithoutCancel(ctx), responseBody, meta)
+	} else {
+		ts.persistResponseChunks(ctx)
+	}
+
+	return ts.stream.Close()
+}
+
+func (ts *InboundPersistentStream) persistResponseChunks(ctx context.Context) {
+	defer func() {
+		if cause := recover(); cause != nil {
+			log.Warn(ctx, "Failed to persist inbound response chunks", log.Any("cause", cause))
+		}
+	}()
+
+	// Use context without cancellation to ensure persistence even if client canceled
+	persistCtx := context.WithoutCancel(ctx)
+
+	// Aggregate stream chunks first, then delegate to _persistResponse
+	responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
+	if err != nil {
+		log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
+		dumper.DumpStreamEvents(persistCtx, ts.responseChunks, "response_chunks.json")
+	}
+
+	ts._persistResponse(persistCtx, responseBody, meta)
+}
+
+// _persistResponse performs the actual persistence with pre-aggregated data.
+// This avoids redundant aggregation when the data is already available.
+func (ts *InboundPersistentStream) _persistResponse(ctx context.Context, responseBody []byte, meta llm.ResponseMeta) {
+	if ts.request == nil {
+		return
+	}
+
+	// Build latency metrics from performance record
+	var metrics *biz.LatencyMetrics
+
+	if ts.perf != nil {
+		firstTokenLatencyMs, requestLatencyMs, _ := ts.perf.Calculate()
+
+		metrics = &biz.LatencyMetrics{
+===== llm/transformer/openai/outbound.go =====
+package openai
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/spf13/cast"
+	"github.com/tidwall/gjson"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
+)
+
+// PlatformType represents the platform type for OpenAI API.
+type PlatformType string
+
+const (
+	PlatformOpenAI PlatformType = "openai"
+	PlatformGoogle PlatformType = "google"
+)
+
+// ReasoningField specifies which reasoning field to use in outbound messages.
+type ReasoningField string
+
+const (
+	// ReasoningFieldContent uses reasoning_content field (DeepSeek, Gemini, etc).
+	ReasoningFieldContent ReasoningField = "reasoning_content"
+	// ReasoningFieldReasoning uses reasoning field (NanoGPT, OpenRouter).
+	ReasoningFieldReasoning ReasoningField = "reasoning"
+	// ReasoningFieldNone strips all reasoning fields (Fireworks, bailian, etc).
+	ReasoningFieldNone ReasoningField = "none"
+	// ReasoningFieldAll preserves both reasoning and reasoning_content fields (default).
+	ReasoningFieldAll ReasoningField = "all"
+)
+
+// Config holds all configuration for the OpenAI outbound transformer.
+type Config struct {
+	// Platform configuration
+	PlatformType PlatformType `json:"type"`
+
+	// BaseURL is the base URL for the OpenAI API, required.
+	BaseURL string `json:"base_url,omitempty"`
+
+	// RawURL is whether to use raw URL for requests, default is false.
+	// If true, the request URL will be used as is, without appending the chat completions endpoint.
+	RawURL bool `json:"raw_url,omitempty"`
+
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/chat/completions").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
+
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// ReasoningField specifies which reasoning field to use in outbound messages.
+	// Use ReasoningFieldContent (default) for DeepSeek/Mimo/Gemini, ReasoningFieldReasoning for NanoGPT/OpenRouter,
+	// or ReasoningFieldNone to strip all reasoning fields.
+	ReasoningField ReasoningField `json:"reasoning_field,omitempty"`
+}
+
+// OutboundTransformer implements transformer.Outbound for OpenAI format.
+type OutboundTransformer struct {
+	config *Config
+}
+
+// NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
+func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
+	config := &Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
+	}
+
+	err := validateConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("invalid OpenAI transformer configuration: %w", err)
+	}
+
+	return NewOutboundTransformerWithConfig(config)
+}
+
+// NewOutboundTransformerWithConfig creates a new OpenAI OutboundTransformer with unified configuration.
+func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
+	err := validateConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("invalid OpenAI transformer configuration: %w", err)
+	}
+
+	if strings.HasSuffix(config.BaseURL, "##") {
+		config.RawURL = true
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	} else if !config.RawURL {
+		if config.EndpointPath != "" {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+		} else {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		}
+	}
+
+	return &OutboundTransformer{
+		config: config,
+	}, nil
+}
+
+// validateConfig validates the configuration for the given platform.
+func validateConfig(config *Config) error {
+	if config == nil {
+		return errors.New("config cannot be nil")
+	}
+
+	// Standard OpenAI validation
+	if config.APIKeyProvider == nil {
+		return errors.New("API key provider is required")
+	}
+
+	if config.BaseURL == "" {
+		return errors.New("base URL is required")
+	}
+
+	switch config.PlatformType {
+	case PlatformOpenAI, PlatformGoogle:
+		return nil
+	default:
+		return fmt.Errorf("unsupported platform type: %v", config.PlatformType)
+	}
+}
+
+func (t *OutboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIChatCompletion
+}
+
+// TransformRequest transforms ChatCompletionRequest to Request.
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	if llmReq == nil {
+		return nil, fmt.Errorf("chat completion request is nil")
+	}
+
+	// Validate required fields for chat requests
+	if llmReq.Model == "" {
+		return nil, fmt.Errorf("model is required")
+	}
+
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeEmbedding:
+		return t.transformEmbeddingRequest(ctx, llmReq)
+	case llm.RequestTypeImage:
+		return t.buildImageGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeVideo:
+		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeSpeech:
+		return t.buildSpeechRequest(ctx, llmReq)
+	case llm.RequestTypeTranscription:
+		return t.buildTranscriptionRequest(ctx, llmReq)
+	case llm.RequestTypeTranslation:
+		return t.buildTranslationRequest(ctx, llmReq)
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
+	case llm.RequestTypeRerank:
+		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
+	}
+
+	if len(llmReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	// Determine which reasoning field to use, default to ReasoningFieldContent.
+	// reasoning_content is the standard field used by most providers (OpenAI o-series,
+	// DeepSeek, Mimo, Gemini, etc.) to return chain-of-thought in responses, and some
+	// require it echoed back in assistant messages. Providers that don't support it
+	// safely ignore the field. Previously defaulted to ReasoningFieldNone to minimize
+	// payload, but this broke providers requiring echo-back (e.g., Mimo #1654).
+	// Channels that want to strip reasoning can explicitly set ReasoningFieldNone in config.
+	reasoningField := t.config.ReasoningField
+	if reasoningField == "" {
+		reasoningField = ReasoningFieldContent
+	}
+
+	// Convert to OpenAI Request format (this strips helper fields)
+	oaiReq := RequestFromLLM(llmReq, reasoningField)
+	//nolint:exhaustive // Checked.
+	switch t.config.PlatformType {
+	case PlatformOpenAI:
+		stripUnsupportedToolCallExtraContent(oaiReq)
+	}
+
+	body, err := json.Marshal(oaiReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform request: %w", err)
+	}
+
+	// Get API key from provider
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
+	// Prepare headers
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "application/json")
+
+	authConfig := &httpclient.AuthConfig{
+		Type:   "bearer",
+		APIKey: apiKey,
+	}
+
+	// Build platform-specific URL
+	url, err := t.buildFullRequestURL(llmReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build platform URL: %w", err)
+	}
+
+	return &httpclient.Request{
+		Method:    http.MethodPost,
+		URL:       url,
+		Headers:   headers,
+		Body:      body,
+		Auth:      authConfig,
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Metadata:  nil,
+	}, nil
+}
+
+// TransformResponse transforms Response to ChatCompletionResponse.
+func (t *OutboundTransformer) TransformResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
+	if httpResp == nil {
+		return nil, fmt.Errorf("http response is nil")
+	}
+
+	// Check for HTTP error status codes
+===== llm/transformer/openai/inbound.go =====
+package openai
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/streams"
+	transformer "github.com/looplj/axonhub/llm/transformer"
+)
+
+// InboundTransformer implements transformer.Inbound for OpenAI format.
+type InboundTransformer struct{}
+
+// NewInboundTransformer creates a new OpenAI InboundTransformer.
+func NewInboundTransformer() *InboundTransformer {
+	return &InboundTransformer{}
+}
+
+// TransformRequest transforms HTTP request to ChatCompletionRequest.
+func (t *InboundTransformer) TransformRequest(
+	ctx context.Context,
+	httpReq *httpclient.Request,
+) (*llm.Request, error) {
+	if httpReq == nil {
+		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
+	}
+
+	if len(httpReq.Body) == 0 {
+		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+
+	// Check content type
+	contentType := httpReq.Headers.Get("Content-Type")
+	if contentType == "" {
+		contentType = httpReq.Headers.Get("Content-Type")
+	}
+
+	if !strings.Contains(strings.ToLower(contentType), "application/json") {
+		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
+	}
+
+	// Parse into OpenAI-specific Request type
+	var oaiReq Request
+
+	err := json.Unmarshal(httpReq.Body, &oaiReq)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to decode openai request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	// Validate required fields
+	if oaiReq.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
+	if len(oaiReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	// Convert to unified llm.Request
+	chatReq := oaiReq.ToLLMRequest()
+	chatReq.RawRequest = httpReq
+	chatReq.RequestType = llm.RequestTypeChat
+	chatReq.APIFormat = llm.APIFormatOpenAIChatCompletion
+
+	return chatReq, nil
+}
+
+// TransformResponse transforms ChatCompletionResponse to Response.
+func (t *InboundTransformer) TransformResponse(
+	ctx context.Context,
+	chatResp *llm.Response,
+) (*httpclient.Response, error) {
+	if chatResp == nil {
+		return nil, fmt.Errorf("chat completion response is nil")
+	}
+
+	// Convert to OpenAI Response format
+	oaiResp := ResponseFromLLM(chatResp)
+
+	body, err := json.Marshal(oaiResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
+	}
+
+	// Create generic response
+	return &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       body,
+		Headers: http.Header{
+			"Content-Type":  []string{"application/json"},
+			"Cache-Control": []string{"no-cache"},
+		},
+	}, nil
+}
+
+func (t *InboundTransformer) TransformStream(
+	ctx context.Context,
+	stream streams.Stream[*llm.Response],
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	return streams.NoNil(streams.MapErr(stream, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
+		return t.TransformStreamChunk(ctx, chunk)
+	})), nil
+}
+
+func (t *InboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	chatResp *llm.Response,
+) (*httpclient.StreamEvent, error) {
+	if chatResp == nil {
+		return nil, fmt.Errorf("chat completion response is nil")
+	}
+
+	if chatResp.Object == "[DONE]" {
+		return &httpclient.StreamEvent{
+			Data: []byte("[DONE]"),
+		}, nil
+	}
+
+	// Skip events that only contain ReasoningSignature (used by Anthropic inbound)
+	// OpenAI format doesn't support ReasoningSignature in streaming
+	if isReasoningSignatureEvent(chatResp) {
+		//nolint:nilnil // Skip this event
+		return nil, nil
+	}
+
+	// Convert to OpenAI Response format
+	oaiResp := ResponseFromLLM(chatResp)
+
+	// For OpenAI, we keep the original response format as the event data
+	eventData, err := json.Marshal(oaiResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
+	}
+
+	return &httpclient.StreamEvent{
+		Type: "",
+		Data: eventData,
+	}, nil
+}
+
+// isReasoningSignatureEvent checks if the response contains ONLY ReasoningSignature.
+// This is a helper function to filter out reasoning signature events when transforming
+// to OpenAI format, since OpenAI format doesn't support ReasoningSignature in streaming.
+// If the response contains ONLY ReasoningSignature (pure signature event), we skip it.
+// If the chunk also contains other content (text, reasoning_content, tool_calls, etc.),
+// we should NOT skip it (e.g., thinking chunks with both signature and content).
+func isReasoningSignatureEvent(resp *llm.Response) bool {
+	if len(resp.Choices) != 1 {
+		return false
+	}
+
+	delta := resp.Choices[0].Delta
+	if delta == nil {
+		return false
+	}
+
+	// Check if ReasoningSignature is set
+	if delta.ReasoningSignature == nil || *delta.ReasoningSignature == "" {
+		return false
+	}
+
+	// Check if there's any other content besides the signature
+	hasContent := delta.Content.Content != nil || len(delta.Content.MultipleContent) > 0
+	hasReasoningContent := delta.ReasoningContent != nil && *delta.ReasoningContent != ""
+	hasToolCalls := len(delta.ToolCalls) > 0
+	hasRefusal := delta.Refusal != ""
+
+	// Only skip if ONLY ReasoningSignature is present (pure signature event)
+	return !hasContent && !hasReasoningContent && !hasToolCalls && !hasRefusal
+}
+
+func (t *InboundTransformer) AggregateStreamChunks(
+	ctx context.Context,
+	chunks []*httpclient.StreamEvent,
+) ([]byte, llm.ResponseMeta, error) {
+	return AggregateStreamChunks(ctx, chunks, DefaultTransformChunk)
+}
+
+// TransformError transforms LLM error response to HTTP error response.
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
+	if rawErr == nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: "An unexpected error occurred", Type: "unexpected_error"}}),
+		}
+	}
+
+	if errors.Is(rawErr, transformer.ErrInvalidModel) {
+		return &httpclient.Error{
+			StatusCode: http.StatusUnprocessableEntity,
+			Status:     http.StatusText(http.StatusUnprocessableEntity),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "invalid_model_error"}}),
+		}
+	}
+
+	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
+		return httpErr
+	}
+
+	// Handle validation errors
+	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
+		return &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "invalid_request_error"}}),
+		}
+	}
+
+	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
+		return &httpclient.Error{
+			StatusCode: llmErr.StatusCode,
+			Status:     http.StatusText(llmErr.StatusCode),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llmErr.Detail}),
+		}
+	}
+
+	return &httpclient.Error{
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
+		Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "internal_server_error"}}),
+	}
+}
+===== llm/transformer/openai/responses/outbound.go =====
+package responses
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"maps"
+	"net/http"
+	"reflect"
+	"strings"
+	"sync"
+
+	"github.com/samber/lo"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
+)
+
+var (
+	_ transformer.Outbound               = (*OutboundTransformer)(nil)
+	_ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
+)
+
+// Config holds all configuration for the OpenAI Responses outbound transformer.
+const (
+	TransportHTTP      = "http"
+	TransportWebSocket = "websocket"
+)
+
+type Config struct {
+	// BaseURL is the base URL for the OpenAI API, required.
+	BaseURL string `json:"base_url,omitempty"`
+
+	// RawURL is whether to use raw URL for requests, default is false.
+	// If true, the request URL will be used as is, without appending the response endpoint.
+	RawURL bool `json:"raw_url,omitempty"`
+
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/responses").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
+
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// Transport selects the upstream transport for Responses API requests.
+	// Empty and "http" use the existing HTTP/SSE transport; "websocket" uses Responses WebSocket mode.
+	Transport string `json:"transport,omitempty"`
+}
+
+func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
+	if apiKey == "" || baseURL == "" {
+		return nil, fmt.Errorf("apiKey or baseURL is empty")
+	}
+
+	config := &Config{
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
+	}
+
+	return NewOutboundTransformerWithConfig(config)
+}
+
+func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+
+	if config.APIKeyProvider == nil {
+		return nil, fmt.Errorf("API key provider is required")
+	}
+
+	if strings.HasSuffix(config.BaseURL, "##") {
+		config.RawURL = true
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	} else {
+		if config.EndpointPath != "" {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+		} else {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		}
+	}
+
+	return &OutboundTransformer{
+		config: config,
+	}, nil
+}
+
+func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	if t == nil || t.config == nil || t.config.Transport != TransportWebSocket {
+		return executor
+	}
+
+	if !ExecutorComparable(executor) {
+		return NewWebSocketExecutor(executor)
+	}
+
+	t.executorMu.Lock()
+	defer t.executorMu.Unlock()
+
+	if t.webSocketExecutors == nil {
+		t.webSocketExecutors = make(map[pipeline.Executor]*WebSocketExecutor)
+	}
+	if cached, ok := t.webSocketExecutors[executor]; ok {
+		return cached
+	}
+
+	webSocketExecutor := NewWebSocketExecutor(executor)
+	t.webSocketExecutors[executor] = webSocketExecutor
+
+	return webSocketExecutor
+}
+
+func (t *OutboundTransformer) Stop() {
+	if t == nil {
+		return
+	}
+
+	t.executorMu.Lock()
+	executors := make([]*WebSocketExecutor, 0, len(t.webSocketExecutors))
+	for _, executor := range t.webSocketExecutors {
+		executors = append(executors, executor)
+	}
+	t.webSocketExecutors = nil
+	t.executorMu.Unlock()
+
+	for _, executor := range executors {
+		_ = executor.Close()
+	}
+}
+
+func ExecutorComparable(executor pipeline.Executor) bool {
+	if executor == nil {
+		return true
+	}
+
+	return reflect.TypeOf(executor).Comparable()
+}
+
+type OutboundTransformer struct {
+	config *Config
+
+	executorMu         sync.Mutex
+	webSocketExecutors map[pipeline.Executor]*WebSocketExecutor
+}
+
+func (t *OutboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIResponse
+}
+
+// TransformError transforms HTTP error response to unified error response.
+func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	if rawErr == nil {
+		return &llm.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Message: http.StatusText(http.StatusInternalServerError),
+				Type:    "api_error",
+			},
+		}
+	}
+
+	// Try to parse as OpenAI error format first
+	var openaiError struct {
+		Error llm.ErrorDetail `json:"error"`
+	}
+
+	err := json.Unmarshal(rawErr.Body, &openaiError)
+	if err == nil && openaiError.Error.Message != "" {
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail:     openaiError.Error,
+		}
+	}
+
+	// If JSON parsing fails, use the upstream status text
+	return &llm.ResponseError{
+		StatusCode: rawErr.StatusCode,
+		Detail: llm.ErrorDetail{
+			Message: strings.TrimSpace(string(rawErr.Body)),
+			Type:    "api_error",
+		},
+	}
+}
+
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	if llmReq == nil {
+		return nil, fmt.Errorf("chat request is nil")
+	}
+
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeCompact:
+		return t.transformCompactRequest(ctx, llmReq)
+	case llm.RequestTypeImage:
+		imageReq, err := buildImageToolRequest(llmReq)
+		if err != nil {
+			return nil, err
+		}
+
+		llmReq = imageReq
+	case llm.RequestTypeChat, "":
+		// continue
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
+	}
+
+	// Initialize TransformerMetadata if nil
+	if llmReq.TransformerMetadata == nil {
+		llmReq.TransformerMetadata = map[string]any{}
+	}
+
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
+	var tools []Tool
+	// Convert tools to Responses API format
+	for _, item := range llmReq.Tools {
+		switch item.Type {
+		case llm.ToolTypeImageGeneration:
+			tool := convertImageGenerationToTool(item)
+			if action := xmap.GetStringPtr(llmReq.TransformerMetadata, "image_generation_action"); action != nil {
+				tool.Action = *action
+			}
+			tools = append(tools, tool)
+			// Store image output format in TransformerMetadata
+			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
+		case llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch:
+			tool := convertWebSearchToTool(item)
+			tools = append(tools, tool)
+		case llm.ToolTypeResponsesCustomTool:
+			tool := convertCustomToTool(item)
+			tools = append(tools, tool)
+		case "function":
+			tool := convertFunctionToTool(item)
+			tools = append(tools, tool)
+===== llm/transformer/openai/responses/inbound.go =====
+package responses
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"maps"
+	"net/http"
+	"strings"
+
+	"github.com/samber/lo"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
+	"github.com/looplj/axonhub/llm/transformer"
+)
+
+var _ transformer.Inbound = (*InboundTransformer)(nil)
+
+// InboundTransformer implements transformer.Inbound for OpenAI Responses API format.
+type InboundTransformer struct{}
+
+// NewInboundTransformer creates a new OpenAI Responses InboundTransformer.
+func NewInboundTransformer() *InboundTransformer {
+	return &InboundTransformer{}
+}
+
+// APIFormat returns the API format of the transformer.
+func (t *InboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIResponse
+}
+
+// TransformRequest transforms OpenAI Responses API HTTP request to llm.Request.
+func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
+	if httpReq == nil {
+		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
+	}
+
+	if len(httpReq.Body) == 0 {
+		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+
+	// Check content type
+	contentType := httpReq.Headers.Get("Content-Type")
+	if contentType != "" && !strings.Contains(strings.ToLower(contentType), "application/json") {
+		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
+	}
+
+	var req Request
+	if err := json.Unmarshal(httpReq.Body, &req); err != nil {
+		return nil, fmt.Errorf("%w: failed to decode responses api request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	// Validate required fields
+	if req.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
+	return convertToLLMRequest(&req, httpReq.Body)
+}
+
+// TransformResponse transforms llm.Response to OpenAI Responses API HTTP response.
+func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*httpclient.Response, error) {
+	if chatResp == nil {
+		return nil, fmt.Errorf("chat completion response is nil")
+	}
+
+	// Convert to Responses API format
+	resp := convertToResponsesAPIResponse(chatResp)
+
+	body, err := json.Marshal(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal responses api response: %w", err)
+	}
+
+	return &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       body,
+		Headers: http.Header{
+			"Content-Type":  []string{"application/json"},
+			"Cache-Control": []string{"no-cache"},
+		},
+	}, nil
+}
+
+type ResponseError struct {
+	Error ResponseErrorDetail `json:"error"`
+}
+
+type ResponseErrorDetail struct {
+	Message string `json:"message"`
+	Type    string `json:"type"`
+	Code    string `json:"code,omitempty"`
+}
+
+// TransformError transforms LLM error response to HTTP error response in Responses API format.
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
+	if rawErr == nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       xjson.MustMarshal(&ResponseError{Error: ResponseErrorDetail{Message: "internal server error", Type: "internal_error"}}),
+		}
+	}
+
+	if errors.Is(rawErr, transformer.ErrInvalidModel) {
+		return &httpclient.Error{
+			StatusCode: http.StatusUnprocessableEntity,
+			Status:     http.StatusText(http.StatusUnprocessableEntity),
+			Body:       xjson.MustMarshal(&ResponseError{Error: ResponseErrorDetail{Message: rawErr.Error(), Type: "invalid_model_error"}}),
+		}
+	}
+
+	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
+		errResp := ResponseError{
+			Error: ResponseErrorDetail{
+				Message: llmErr.Detail.Message,
+				Type:    llmErr.Detail.Type,
+				Code:    llmErr.Detail.Code,
+			},
+		}
+
+		return &httpclient.Error{
+			StatusCode: llmErr.StatusCode,
+			Status:     http.StatusText(llmErr.StatusCode),
+			Body:       xjson.MustMarshal(&errResp),
+		}
+	}
+
+	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
+		return httpErr
+	}
+
+	// Handle validation errors
+	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
+		errResp := ResponseError{
+			Error: ResponseErrorDetail{
+				Message: rawErr.Error(),
+				Type:    "invalid_request_error",
+			},
+		}
+
+		return &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Body:       xjson.MustMarshal(&errResp),
+		}
+	}
+
+	errResp := ResponseError{
+		Error: ResponseErrorDetail{
+			Message: rawErr.Error(),
+			Type:    "internal_error",
+		},
+	}
+
+	return &httpclient.Error{
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
+		Body:       xjson.MustMarshal(&errResp),
+	}
+}
+
+// convertToLLMRequest converts OpenAI Responses API Request to llm.Request.
+func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) {
+	chatReq := &llm.Request{
+		Model:               req.Model,
+		Temperature:         req.Temperature,
+		Stream:              req.Stream,
+		Metadata:            maps.Clone(req.Metadata),
+		RequestType:         llm.RequestTypeChat,
+		APIFormat:           llm.APIFormatOpenAIResponse,
+		MaxCompletionTokens: req.MaxOutputTokens,
+		User:                req.User,
+		Store:               req.Store,
+		TopLogprobs:         req.TopLogprobs,
+		TopP:                req.TopP,
+		SafetyIdentifier:    req.SafetyIdentifier,
+		ServiceTier:         req.ServiceTier,
+		ParallelToolCalls:   req.ParallelToolCalls,
+		PromptCacheKey:      req.PromptCacheKey,
+		PreviousResponseID:  req.PreviousResponseID,
+		TransformerMetadata: map[string]any{},
+		TransformOptions:    llm.TransformOptions{},
+	}
+
+	// Store help fields in TransformerMetadata
+	if len(req.Include) > 0 {
+		chatReq.TransformerMetadata["include"] = req.Include
+	}
+
+	if req.MaxToolCalls != nil {
+		chatReq.TransformerMetadata["max_tool_calls"] = req.MaxToolCalls
+	}
+
+	if req.PromptCacheRetention != nil {
+		chatReq.TransformerMetadata["prompt_cache_retention"] = req.PromptCacheRetention
+	}
+
+	if req.Truncation != nil {
+		chatReq.TransformerMetadata["truncation"] = req.Truncation
+	}
+
+	// Convert reasoning
+	if req.Reasoning != nil {
+		if req.Reasoning.Effort != "" {
+			chatReq.ReasoningEffort = req.Reasoning.Effort
+		}
+
+		if req.Reasoning.MaxTokens != nil {
+			chatReq.ReasoningBudget = req.Reasoning.MaxTokens
+		}
+
+		// Priority: summary > generate_summary
+		if req.Reasoning.Summary != "" {
+			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.Summary)
+		} else if req.Reasoning.GenerateSummary != "" {
+			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.GenerateSummary)
+		}
+	}
+
+	// Convert tool choice
+	if req.ToolChoice != nil {
+		chatReq.ToolChoice = convertToolChoiceToLLM(req.ToolChoice)
+	}
+
+	// Convert stream options
+	if req.StreamOptions != nil {
+		chatReq.StreamOptions = &llm.StreamOptions{}
+		if req.StreamOptions.IncludeObfuscation != nil {
+			chatReq.TransformerMetadata["include_obfuscation"] = req.StreamOptions.IncludeObfuscation
+		}
+	}
+
+	// Convert instructions to system message
+	messages := make([]llm.Message, 0)
+===== llm/transformer/anthropic/outbound.go =====
+package anthropic
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+
+	// Import bedrock package to register its decoder.
+	"github.com/samber/lo"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
+	_ "github.com/looplj/axonhub/llm/bedrock"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/vertex"
+)
+
+func init() {
+	httpclient.RegisterMergeWithAppendHeaders("Anthropic-Beta")
+}
+
+// PlatformType represents the platform type for Anthropic API.
+type PlatformType string
+
+const (
+	PlatformDirect     PlatformType = "direct"     // Direct Anthropic API
+	PlatformBedrock    PlatformType = "bedrock"    // AWS Bedrock
+	PlatformVertex     PlatformType = "vertex"     // Google Vertex AI
+	PlatformDeepSeek   PlatformType = "deepseek"   // DeepSeek with Anthropic format
+	PlatformDoubao     PlatformType = "doubao"     // Doubao with Anthropic format
+	PlatformMoonshot   PlatformType = "moonshot"   // Moonshot with Anthropic format
+	PlatformZhipu      PlatformType = "zhipu"      // Zhipu with Anthropic format
+	PlatformZai        PlatformType = "zai"        // Zai with Anthropic format
+	PlatformLongCat    PlatformType = "longcat"    // LongCat with Anthropic format (Bearer auth)
+	PlatformClaudeCode PlatformType = "claudecode" // Claude Code CLI
+)
+
+// Config holds all configuration for the Anthropic outbound transformer.
+type Config struct {
+	// Platform configuration
+	Type PlatformType `json:"type"`
+
+	Region string `json:"region,omitempty"` // For Vertex
+
+	ProjectID string `json:"project_id,omitempty"` // For Vertex
+
+	JSONData string `json:"json_data,omitempty"` // For Vertex
+
+	// BaseURL is the base URL for the Anthropic API, required.
+	BaseURL string `json:"base_url,omitempty"`
+
+	// APIKeyProvider provides API keys for authentication, required.
+	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	// EndpointPath is an optional custom path override for this endpoint.
+	// When set, it replaces the default API path (e.g., "/messages").
+	// Must start with "/". Skips default version normalization when set.
+	EndpointPath string `json:"endpoint_path,omitempty"`
+
+	// Thinking configuration
+	// Maps ReasoningEffort values to Anthropic thinking budget tokens
+	ReasoningEffortToBudget map[string]int64 `json:"reasoning_effort_to_budget,omitempty"`
+}
+
+// OutboundTransformer implements transformer.Outbound for Anthropic format.
+type OutboundTransformer struct {
+	config *Config
+}
+
+// NewOutboundTransformer creates a new Anthropic OutboundTransformer with legacy parameters.
+// Deprecated: Use NewOutboundTransformerWithConfig instead.
+func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
+	config := &Config{
+		Type:           PlatformDirect,
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(apiKey),
+	}
+
+	return NewOutboundTransformerWithConfig(config)
+}
+
+// NewOutboundTransformerWithConfig creates a new Anthropic OutboundTransformer with unified configuration.
+func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
+	var t transformer.Outbound = &OutboundTransformer{
+		config: config,
+	}
+
+	if config.Type == PlatformVertex {
+		executor, err := vertex.NewExecutorFromJSON(config.Region, config.ProjectID, config.JSONData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vertex transformer: %w", err)
+		}
+
+		t = &VertexTransformer{
+			Outbound: t,
+			executor: executor,
+		}
+	}
+
+	// For Vertex/Bedrock, don't normalize with version - they have special URL formats
+	//nolint:exhaustive // Checked.
+	switch config.Type {
+	case PlatformVertex, PlatformBedrock:
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	default:
+		if config.EndpointPath != "" {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+		} else {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		}
+	}
+
+	return t, nil
+}
+
+// APIFormat returns the API format of the transformer.
+func (t *OutboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatAnthropicMessage
+}
+
+// TransformRequest transforms ChatCompletionRequest to Anthropic HTTP request.
+func (t *OutboundTransformer) TransformRequest(
+	ctx context.Context,
+	llmReq *llm.Request,
+) (*httpclient.Request, error) {
+	if llmReq == nil {
+		return nil, fmt.Errorf("chat completion request is nil")
+	}
+
+	// Get API key from provider (Vertex/ClaudeCode use OAuth, not API keys)
+	var apiKey string
+	if t.config.APIKeyProvider != nil {
+		apiKey = t.config.APIKeyProvider.Get(ctx)
+	}
+
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeChat, "":
+		// continue
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
+	}
+
+	// Validate required fields
+	if llmReq.Model == "" {
+		return nil, fmt.Errorf("model is required")
+	}
+
+	if len(llmReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	// Validate max_tokens
+	if llmReq.MaxTokens != nil && *llmReq.MaxTokens <= 0 {
+		return nil, fmt.Errorf("%w: max_tokens must be positive", transformer.ErrInvalidRequest)
+	}
+
+	// Convert to Anthropic request format
+	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
+
+	// Anthropic supports two prompt-caching modes (see
+	// https://docs.claude.com/en/docs/build-with-claude/prompt-caching):
+	//   1. Automatic caching: a single top-level cache_control field. Anthropic
+	//      itself manages the breakpoint placement, so we forward it untouched
+	//      and intentionally skip our own breakpoint optimization pipeline.
+	//   2. Explicit cache breakpoints: per-block cache_control fields. We run
+	//      our optimization pipeline only in this mode.
+	if anthropicReq.CacheControl == nil && countCacheControls(anthropicReq) > 0 {
+		optimizeCacheControl(anthropicReq)
+	}
+
+	// Determine endpoint based on platform
+	url, err := t.buildFullRequestURL(llmReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build platform URL: %w", err)
+	}
+
+	// Prepare headers
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "application/json")
+
+	//nolint:exhaustive // Checked.
+	switch t.config.Type {
+	case PlatformBedrock:
+		headers.Set("Anthropic-Version", "bedrock-2023-05-31")
+
+		anthropicReq.AnthropicVersion = "bedrock-2023-05-31"
+		// Clear the model as it's not used with Bedrock
+		anthropicReq.Model = ""
+		// Clear stream as it's not used with Bedrock
+		anthropicReq.Stream = nil
+	case PlatformVertex:
+		headers.Set("Anthropic-Version", "vertex-2023-10-16")
+	default:
+		headers.Set("Anthropic-Version", "2023-06-01")
+	}
+
+	// Apply platform-specific transformations
+	body, err := json.Marshal(anthropicReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal anthropic request: %w", err)
+	}
+
+	// Add beta header for web search feature only when:
+	// 1. Native web search tool is present, AND
+	// 2. Platform is direct Anthropic API or Bedrock (not Vertex which may not support this beta)
+	if containsNativeWebSearchTool(anthropicReq.Tools) {
+		//nolint:exhaustive // Checked.
+		switch t.config.Type {
+		case PlatformDirect:
+			headers.Add("Anthropic-Beta", "web-search-2025-03-05")
+		case PlatformBedrock:
+			anthropicReq.AnthropicBeta = append(anthropicReq.AnthropicBeta, "web-search-2025-03-05")
+		}
+	}
+
+	// Prepare authentication
+	var authConfig *httpclient.AuthConfig
+
+	if apiKey != "" {
+		// LongCat uses Bearer token authentication instead of X-API-Key
+		if t.config.Type == PlatformLongCat || t.config.Type == PlatformBedrock {
+			authConfig = &httpclient.AuthConfig{
+				Type:   httpclient.AuthTypeBearer,
+				APIKey: apiKey,
+			}
+		} else {
+			authConfig = &httpclient.AuthConfig{
+				Type:      httpclient.AuthTypeAPIKey,
+				APIKey:    apiKey,
+				HeaderKey: "X-API-Key",
+			}
+		}
+===== llm/transformer/anthropic/inbound.go =====
+package anthropic
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	transformer "github.com/looplj/axonhub/llm/transformer"
+)
+
+// InboundTransformer implements transformer.Inbound for Anthropic format.
+type InboundTransformer struct{}
+
+// NewInboundTransformer creates a new Anthropic InboundTransformer.
+func NewInboundTransformer() *InboundTransformer {
+	return &InboundTransformer{}
+}
+
+// TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest.
+//
+//nolint:maintidx
+func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
+	if httpReq == nil {
+		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
+	}
+
+	if len(httpReq.Body) == 0 {
+		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+
+	// Check content type
+	contentType := httpReq.Headers.Get("Content-Type")
+	if contentType == "" {
+		contentType = httpReq.Headers.Get("Content-Type")
+	}
+
+	if !strings.Contains(strings.ToLower(contentType), "application/json") {
+		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
+	}
+
+	var anthropicReq MessageRequest
+
+	err := json.Unmarshal(httpReq.Body, &anthropicReq)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to decode anthropic request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	// Validate required fields
+	if anthropicReq.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
+	if len(anthropicReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	if anthropicReq.MaxTokens <= 0 {
+		return nil, fmt.Errorf("%w: max_tokens is required and must be positive", transformer.ErrInvalidRequest)
+	}
+
+	// Validate system prompt format
+	if anthropicReq.System != nil {
+		if anthropicReq.System.Prompt == nil && len(anthropicReq.System.MultiplePrompts) > 0 {
+			// Validate that all system prompts are text type
+			for _, prompt := range anthropicReq.System.MultiplePrompts {
+				if prompt.Type != "text" {
+					return nil, fmt.Errorf("%w: system prompt must be text", transformer.ErrInvalidRequest)
+				}
+			}
+		}
+	}
+
+	// Validate thinking configuration
+	if anthropicReq.Thinking != nil {
+		switch anthropicReq.Thinking.Type {
+		case "disabled":
+			// valid
+		case "enabled":
+			if anthropicReq.Thinking.BudgetTokens <= 0 {
+				return nil, fmt.Errorf("%w: budget_tokens is required and must be positive when thinking type is enabled", transformer.ErrInvalidRequest)
+			}
+		case "adaptive":
+			// output_config is optional for adaptive thinking (defaults to "high" effort upstream)
+			if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
+				switch anthropicReq.OutputConfig.Effort {
+				case "low", "medium", "high", "xhigh", "max":
+					// valid
+				default:
+					return nil, fmt.Errorf("%w: output_config.effort must be one of: low, medium, high, xhigh, max", transformer.ErrInvalidRequest)
+				}
+			}
+		default:
+			return nil, fmt.Errorf("%w: thinking.type must be one of: enabled, disabled, adaptive", transformer.ErrInvalidRequest)
+		}
+	}
+
+	// Validate tool_choice
+	if anthropicReq.ToolChoice != nil {
+		switch anthropicReq.ToolChoice.Type {
+		case "auto", "none", "any", "tool":
+			// valid
+		default:
+			return nil, fmt.Errorf("%w: tool_choice.type must be one of: auto, none, any, tool", transformer.ErrInvalidRequest)
+		}
+
+		if anthropicReq.ToolChoice.Type == "tool" {
+			if anthropicReq.ToolChoice.Name == nil || *anthropicReq.ToolChoice.Name == "" {
+				return nil, fmt.Errorf("%w: tool_choice.name is required when type is tool", transformer.ErrInvalidRequest)
+			}
+		}
+	}
+
+	return convertToLLMRequest(&anthropicReq)
+}
+
+// TransformResponse transforms ChatCompletionResponse to Anthropic HTTP response.
+func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*httpclient.Response, error) {
+	if chatResp == nil {
+		return nil, fmt.Errorf("chat completion response is nil")
+	}
+
+	// Convert to Anthropic response format
+	anthropicResp := convertToAnthropicResponse(chatResp)
+
+	body, err := json.Marshal(anthropicResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal anthropic response: %w", err)
+	}
+
+	return &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       body,
+		Headers: http.Header{
+			"Content-Type":  []string{"application/json"},
+			"Cache-Control": []string{"no-cache"},
+		},
+	}, nil
+}
+
+func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	// InboundTransformer doesn't have platform type info, default to Direct (Anthropic official)
+	return AggregateStreamChunks(ctx, chunks, PlatformDirect)
+}
+
+// TransformError transforms LLM error response to HTTP error response in Anthropic format.
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
+	if rawErr == nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body: xjson.MustMarshal(
+				&AnthropicError{Type: "error", StatusCode: http.StatusInternalServerError, RequestID: "", Error: ErrorDetail{Message: "internal server error"}},
+			),
+		}
+	}
+
+	if errors.Is(rawErr, transformer.ErrInvalidModel) {
+		return &httpclient.Error{
+			StatusCode: http.StatusUnprocessableEntity,
+			Status:     http.StatusText(http.StatusUnprocessableEntity),
+			Body: xjson.MustMarshal(
+				&AnthropicError{Type: "invalid_model_error", StatusCode: http.StatusUnprocessableEntity, RequestID: "", Error: ErrorDetail{Message: rawErr.Error()}},
+			),
+		}
+	}
+
+	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
+		return &httpclient.Error{
+			StatusCode: llmErr.StatusCode,
+			Status:     http.StatusText(llmErr.StatusCode),
+			Body: xjson.MustMarshal(
+				&AnthropicError{
+					Type:       llmErr.Detail.Type,
+					StatusCode: llmErr.StatusCode,
+					RequestID:  llmErr.Detail.RequestID,
+					Error:      ErrorDetail{Type: llmErr.Detail.Type, Message: llmErr.Detail.Message},
+				},
+			),
+		}
+	}
+
+	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
+		return httpErr
+	}
+
+	// Handle validation errors
+	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
+		return &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Body: xjson.MustMarshal(
+				&AnthropicError{
+					Type:       "invalid_request_error",
+					StatusCode: http.StatusBadRequest,
+					RequestID:  "",
+					Error:      ErrorDetail{Type: "invalid_request_error", Message: rawErr.Error()},
+				},
+			),
+		}
+	}
+
+	return &httpclient.Error{
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
+		Body: xjson.MustMarshal(
+			&AnthropicError{
+				Type:       "internal_server_error",
+				StatusCode: http.StatusInternalServerError,
+				RequestID:  "",
+				Error:      ErrorDetail{Type: "internal_server_error", Message: rawErr.Error()},
+			},
+		),
+	}
+}

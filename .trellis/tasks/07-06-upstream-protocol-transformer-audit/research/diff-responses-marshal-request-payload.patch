@@ -1,0 +1,21 @@
+--- .trellis/tasks/07-06-upstream-protocol-transformer-audit/research/upstream-responses-marshal-request-payload.go.txt	2026-07-06 18:03:04
++++ .trellis/tasks/07-06-upstream-protocol-transformer-audit/research/current-responses-marshal-request-payload.go.txt	2026-07-06 18:03:04
+@@ -14,7 +14,17 @@
+ 		return nil, err
+ 	}
+ 
+-	if tools, ok := mergeRawOnlyTools(obj["tools"], requestExt); ok {
++	recordRequestPreservationDiagnostics(llmReq, requestExt)
++	mergeRawUnknownTopLevelFields(obj, requestExt.RawTopLevelFields)
++	if len(requestExt.ClientMetadata) > 0 {
++		clientMetadataRaw, err := json.Marshal(requestExt.ClientMetadata)
++		if err != nil {
++			return nil, err
++		}
++		obj["client_metadata"] = clientMetadataRaw
++	}
++
++	if tools, ok := mergeNativeTools(obj["tools"], requestExt); ok {
+ 		toolsRaw, err := json.Marshal(tools)
+ 		if err != nil {
+ 			return nil, err

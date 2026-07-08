@@ -1,0 +1,19 @@
+{"file":".trellis/workflow.md","reason":"Trellis phase gates and sub-agent dispatch workflow"}
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec index for implementation context"}
+{"file":".trellis/spec/backend/protocol-transformer-guidelines.md","reason":"Protocol transformer field ownership, slice workflow, and preserve-or-diagnose rules"}
+{"file":"CONTEXT.md","reason":"Protocol bridge glossary and native preservation terminology"}
+{"file":"docs/adr/0001-separate-openai-responses-native-preservation.md","reason":"Decision to separate OpenAI Responses native preservation from cross-protocol canonical conversion"}
+{"file":"docs/adr/0002-protocol-field-ownership-and-first-preservation-slice.md","reason":"Decision on protocol field ownership and first frozen preservation slice"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/prd.md","reason":"Task requirements, acceptance criteria, and frozen first scope"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/design.md","reason":"Clean repair design and module ownership model"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/implement.md","reason":"Vertical slice implementation plan and gates"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/architecture-audit.md","reason":"Author architecture findings and repair stance"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/native-struct-field-comparison.md","reason":"Native request struct field comparison evidence"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/requestfromllm-callers.txt","reason":"Shared OpenAI-compatible Chat builder blast-radius evidence"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/upstream-transformer-flow-source-notes.txt","reason":"Upstream transformer and orchestrator flow notes"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/protocol-field-extraction/field-routing-classification.zh.md","reason":"Field ownership and handling route classification"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/protocol-field-extraction/author-drop-policy.zh.md","reason":"Rules for allowed drop, preservation, and diagnostics"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/protocol-field-extraction/field-trigger-conditions.zh.md","reason":"Trigger conditions for low-frequency protocol and MCP fields"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/architecture-optimization-principles.zh.md","reason":"Architecture optimization principles for field ownership and deep module decisions"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/final-protocol-field-list-and-decision-tree.zh.md","reason":"Complete protocol field list and decision tree required before implementation"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/final-field-ownership-matrix.zh.md","reason":"Final implementation map for field ownership, modules, and slice assignment"}

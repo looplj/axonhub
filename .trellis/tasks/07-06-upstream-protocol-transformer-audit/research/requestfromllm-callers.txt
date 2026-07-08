@@ -1,0 +1,33 @@
+# RequestFromLLM caller literal evidence
+## upstream
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/moonshot/outbound.go:84:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/gemini/openai/outbound.go:336:	oaiReq := openai.RequestFromLLM(&req, openai.ReasoningFieldContent)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/openrouter/outbound.go:108:	body, err := json.Marshal(openai.RequestFromLLM(llmReq, openai.ReasoningFieldReasoning))
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/doubao/outbound.go:136:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/deepseek/outbound.go:103:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/zai/thinking_test.go:134:		Request: *openai.RequestFromLLM(chatReq, openai.ReasoningFieldContent),
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/zai/outbound.go:117:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/model_test.go:249:	roundTripped := RequestFromLLM(llmReq, ReasoningFieldNone)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/copilot/outbound.go:123:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldAll)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/outbound_reasoning_test.go:178:	req := RequestFromLLM(llmReq, ReasoningFieldContent)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/outbound_reasoning_test.go:208:	req := RequestFromLLM(llmReq, ReasoningFieldReasoning)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/outbound_reasoning_test.go:231:	req := RequestFromLLM(llmReq, ReasoningFieldNone)
+/tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/outbound.go:189:	oaiReq := RequestFromLLM(llmReq, reasoningField)
+
+## current
+/Users/asuan/项目/AI/axonhub/llm/transformer/moonshot/outbound.go:84:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/Users/asuan/项目/AI/axonhub/llm/transformer/gemini/openai/outbound.go:337:	oaiReq := openai.RequestFromLLM(&req, openai.ReasoningFieldContent)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openrouter/outbound.go:109:	body, err := json.Marshal(openai.RequestFromLLM(llmReq, openai.ReasoningFieldReasoning))
+/Users/asuan/项目/AI/axonhub/llm/transformer/doubao/outbound.go:137:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/Users/asuan/项目/AI/axonhub/llm/transformer/deepseek/outbound.go:103:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/Users/asuan/项目/AI/axonhub/llm/transformer/zai/thinking_test.go:134:		Request: *openai.RequestFromLLM(chatReq, openai.ReasoningFieldContent),
+/Users/asuan/项目/AI/axonhub/llm/transformer/zai/outbound.go:116:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/model_test.go:249:	roundTripped := RequestFromLLM(llmReq, ReasoningFieldNone)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/copilot/outbound.go:124:	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldAll)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/inbound_test.go:1213:	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/inbound_test.go:1233:	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/inbound_test.go:1316:	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/outbound_reasoning_test.go:178:	req := RequestFromLLM(llmReq, ReasoningFieldContent)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/outbound_reasoning_test.go:208:	req := RequestFromLLM(llmReq, ReasoningFieldReasoning)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/outbound_reasoning_test.go:231:	req := RequestFromLLM(llmReq, ReasoningFieldNone)
+/Users/asuan/项目/AI/axonhub/llm/transformer/openai/outbound.go:190:	oaiReq := RequestFromLLM(llmReq, reasoningField)

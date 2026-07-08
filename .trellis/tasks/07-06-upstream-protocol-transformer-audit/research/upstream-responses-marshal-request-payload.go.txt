@@ -1,0 +1,38 @@
+func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	requestExt := openAIResponsesRequestExtensions(llmReq)
+	if requestExt == nil {
+		return body, nil
+	}
+
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(body, &obj); err != nil {
+		return nil, err
+	}
+
+	if tools, ok := mergeRawOnlyTools(obj["tools"], requestExt); ok {
+		toolsRaw, err := json.Marshal(tools)
+		if err != nil {
+			return nil, err
+		}
+		obj["tools"] = toolsRaw
+	}
+
+	if len(requestExt.RawToolChoice) > 0 && rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
+		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
+	}
+
+	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
+		inputRaw, err := json.Marshal(input)
+		if err != nil {
+			return nil, err
+		}
+		obj["input"] = inputRaw
+	}
+
+	return json.Marshal(obj)
+}

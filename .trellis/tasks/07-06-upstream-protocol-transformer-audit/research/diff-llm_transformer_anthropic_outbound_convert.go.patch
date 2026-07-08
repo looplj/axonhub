@@ -1,0 +1,356 @@
+--- /tmp/axonhub-upstream-20260706-175405/llm/transformer/anthropic/outbound_convert.go	2026-07-06 17:54:18
++++ /Users/asuan/项目/AI/axonhub/llm/transformer/anthropic/outbound_convert.go	2026-07-02 16:32:41
+@@ -1,6 +1,8 @@
+ package anthropic
+ 
+ import (
++	"encoding/json"
++
+ 	"github.com/samber/lo"
+ 
+ 	"github.com/looplj/axonhub/llm"
+@@ -19,6 +21,20 @@
+ 	req := buildBaseRequest(chatReq, config)
+ 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
+ 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
++
++	// Map parallel_tool_calls (true=allow) inversely to Anthropic's
++	// disable_parallel_tool_use (true=disable), which nests inside tool_choice.
++	// Synthesize {type:"auto"} when the client expressed a parallel preference
++	// without setting tool_choice; skip when there are no tools (Anthropic
++	// requires tools for disable_parallel_tool_use) or tool_choice is "none".
++	if len(chatReq.Tools) > 0 && chatReq.ParallelToolCalls != nil {
++		if req.ToolChoice == nil {
++			req.ToolChoice = &ToolChoice{Type: "auto"}
++		}
++		if req.ToolChoice.Type != "none" {
++			req.ToolChoice.DisableParallelToolUse = lo.ToPtr(!*chatReq.ParallelToolCalls)
++		}
++	}
+ 	req.Messages = convertMessages(chatReq, config)
+ 	req.StopSequences = convertStopSequences(chatReq.Stop)
+ 
+@@ -103,7 +119,7 @@
+ 			return reasoningContent, decoded
+ 		}
+ 
+-		return nil, nil
++		return reasoningContent, nil
+ 	}
+ 
+ 	return reasoningContent, reasoningSignature
+@@ -120,10 +136,25 @@
+ 		MaxTokens:   resolveMaxTokens(chatReq),
+ 	}
+ 
+-	if chatReq.Metadata != nil && chatReq.Metadata["user_id"] != "" {
+-		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
++	// Restore service_tier so it survives non-pass-through format conversion.
++	if chatReq.ServiceTier != nil {
++		req.ServiceTier = *chatReq.ServiceTier
+ 	}
+ 
++	// Identity: prefer anthropic-native metadata.user_id (authoritative for
++	// same-protocol round-trip); fall back to canonical.User so chat/responses
++	// -> anthropic routing preserves the user (#13 bridge).
++	userID := ""
++	if chatReq.Metadata != nil {
++		userID = chatReq.Metadata["user_id"]
++	}
++	if userID == "" && chatReq.User != nil {
++		userID = *chatReq.User
++	}
++	if userID != "" {
++		req.Metadata = &AnthropicMetadata{UserID: userID}
++	}
++
+ 	// DeepSeek Anthropic format supports output_config.effort. When reasoning_effort
+ 	// is present, prefer output_config over thinking so suffix-based effort routing
+ 	// (for example deepseek-chat-max) preserves the explicit effort level.
+@@ -163,10 +194,16 @@
+ 
+ 	// Restore output_config from TransformerMetadata
+ 	if chatReq.TransformerMetadata != nil {
+-		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
+-			if supportsOutputConfig(config) {
++		if supportsOutputConfig(config) {
++			// Prefer the full stashed OutputConfig (carries format/task_budget)
++			// when present; fall back to effort-only for older metadata.
++			if oc, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfig].(*OutputConfig); ok && oc != nil {
++				req.OutputConfig = oc
++			} else if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
+ 				req.OutputConfig = &OutputConfig{Effort: effort}
+-			} else if req.Thinking == nil || req.Thinking.Type == "adaptive" {
++			}
++		} else if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
++			if req.Thinking == nil || req.Thinking.Type == "adaptive" {
+ 				req.Thinking = &Thinking{
+ 					Type:         "enabled",
+ 					BudgetTokens: getThinkingBudgetTokensWithConfig(effort, config),
+@@ -179,8 +216,29 @@
+ 	// When present we keep it as-is on the upstream request and skip our own
+ 	// per-block breakpoint optimization (handled in TransformRequest).
+ 	if chatReq.TransformerMetadata != nil {
+-		if cc, ok := chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl].(*CacheControl); ok && cc != nil {
+-			req.CacheControl = cc
++		if raw := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl]); len(raw) > 0 {
++			var cc CacheControl
++			if err := json.Unmarshal(raw, &cc); err == nil && cc.Type != "" {
++				req.CacheControl = &cc
++			}
++		}
++	}
++
++	// Restore Anthropic's top-level context_management (context-compression
++	// strategy) carried through TransformerMetadata as opaque json.RawMessage.
++	if chatReq.TransformerMetadata != nil {
++		if cm := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyContextManagement]); len(cm) > 0 {
++			req.ContextManagement = cm
++		}
++	}
++
++	// Restore top_k carried through TransformerMetadata (canonical llm.Request
++	// has no TopK field). Mirrors the cache_control restoration above.
++	if chatReq.TransformerMetadata != nil {
++		if topK, ok := chatReq.TransformerMetadata[shared.TransformerMetadataKeyTopK].(*int64); ok && topK != nil {
++			req.TopK = topK
++		} else if topK, ok := chatReq.TransformerMetadata[transformerMetadataKeyTopKLegacy].(*int64); ok && topK != nil {
++			req.TopK = topK
+ 		}
+ 	}
+ 
+@@ -512,12 +570,23 @@
+ 		})
+ 	} else if len(msg.Content.MultipleContent) > 0 {
+ 		for _, part := range msg.Content.MultipleContent {
+-			if part.Type == "text" && part.Text != nil {
+-				blocks = append(blocks, MessageContentBlock{
+-					Type:         "text",
+-					Text:         part.Text,
+-					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+-				})
++			switch part.Type {
++			case "text":
++				if part.Text != nil {
++					blocks = append(blocks, MessageContentBlock{
++						Type:         "text",
++						Text:         part.Text,
++						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
++					})
++				}
++			case "image_url":
++				if block, ok := convertImageURLToAnthropicBlock(part); ok {
++					blocks = append(blocks, block)
++				}
++			case "document":
++				if block, ok := convertDocumentURLToAnthropicBlock(part); ok {
++					blocks = append(blocks, block)
++				}
+ 			}
+ 		}
+ 	}
+@@ -563,8 +632,14 @@
+ func buildPreBlocks(msg llm.Message, config *Config) []MessageContentBlock {
+ 	var blocks []MessageContentBlock
+ 
++	// Prefer ReasoningContent, fallback to Reasoning if ReasoningContent is nil
++	reasoningContent := msg.ReasoningContent
++	if reasoningContent == nil && msg.Reasoning != nil {
++		reasoningContent = msg.Reasoning
++	}
++
+ 	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
+-		msg.ReasoningContent,
++		reasoningContent,
+ 		msg.ReasoningSignature,
+ 		config,
+ 	)
+@@ -611,8 +686,14 @@
+ 	var blocks []MessageContentBlock
+ 
+ 	if hasThinkingContent(msg) {
++		// Prefer ReasoningContent, fallback to Reasoning if ReasoningContent is nil
++		reasoningContent := msg.ReasoningContent
++		if reasoningContent == nil && msg.Reasoning != nil {
++			reasoningContent = msg.Reasoning
++		}
++
+ 		reasoningContent, reasoningSignature := prepareAnthropicReasoning(
+-			msg.ReasoningContent,
++			reasoningContent,
+ 			msg.ReasoningSignature,
+ 			config,
+ 		)
+@@ -642,15 +723,22 @@
+ // hasThinkingContent checks if message has reasoning content.
+ func hasThinkingContent(msg llm.Message) bool {
+ 	return (msg.ReasoningContent != nil && *msg.ReasoningContent != "") ||
+-		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "")
++		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "") ||
++		(msg.Reasoning != nil && *msg.Reasoning != "")
+ }
+ 
+ // buildMultipleContentWithThinking creates content blocks including thinking.
+ func buildMultipleContentWithThinking(msg llm.Message, config *Config) MessageContent {
+ 	blocks := make([]MessageContentBlock, 0, 3)
+ 
++	// Prefer ReasoningContent, fallback to Reasoning if ReasoningContent is nil
++	reasoningContent := msg.ReasoningContent
++	if reasoningContent == nil && msg.Reasoning != nil {
++		reasoningContent = msg.Reasoning
++	}
++
+ 	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
+-		msg.ReasoningContent,
++		reasoningContent,
+ 		msg.ReasoningSignature,
+ 		config,
+ 	)
+@@ -739,6 +827,36 @@
+ 	}, true
+ }
+ 
++// convertDocumentURLToAnthropicBlock converts a canonical document content part
++// to an Anthropic document content block (used for PDFs etc.).
++func convertDocumentURLToAnthropicBlock(part llm.MessageContentPart) (MessageContentBlock, bool) {
++	if part.Document == nil || part.Document.URL == "" {
++		return MessageContentBlock{}, false
++	}
++
++	url := part.Document.URL
++	if parsed := xurl.ParseDataURL(url); parsed != nil {
++		return MessageContentBlock{
++			Type: "document",
++			Source: &ImageSource{
++				Type:      "base64",
++				MediaType: parsed.MediaType,
++				Data:      parsed.Data,
++			},
++			CacheControl: convertToAnthropicCacheControl(part.CacheControl),
++		}, true
++	}
++
++	return MessageContentBlock{
++		Type: "document",
++		Source: &ImageSource{
++			Type: "url",
++			URL:  part.Document.URL,
++		},
++		CacheControl: convertToAnthropicCacheControl(part.CacheControl),
++	}, true
++}
++
+ // convertToAnthropicTrivialContent converts llm.MessageContent to Anthropic MessageContent format.
+ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageContent {
+ 	if content.Content != nil {
+@@ -762,6 +880,10 @@
+ 				if block, ok := convertImageURLToAnthropicBlock(part); ok {
+ 					blocks = append(blocks, block)
+ 				}
++			case "document":
++				if block, ok := convertDocumentURLToAnthropicBlock(part); ok {
++					blocks = append(blocks, block)
++				}
+ 			}
+ 		}
+ 
+@@ -898,6 +1020,30 @@
+ 					})
+ 				}
+ 			}
++		case "document":
++			if part.Document != nil && part.Document.URL != "" {
++				url := part.Document.URL
++				if parsed := xurl.ParseDataURL(url); parsed != nil {
++					appendOrdered(part.TransformerMetadata, MessageContentBlock{
++						Type: "document",
++						Source: &ImageSource{
++							Type:      "base64",
++							MediaType: parsed.MediaType,
++							Data:      parsed.Data,
++						},
++						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
++					})
++				} else {
++					appendOrdered(part.TransformerMetadata, MessageContentBlock{
++						Type: "document",
++						Source: &ImageSource{
++							Type: "url",
++							URL:  part.Document.URL,
++						},
++						CacheControl: convertToAnthropicCacheControl(part.CacheControl),
++					})
++				}
++			}
+ 		}
+ 	}
+ 
+@@ -1005,13 +1151,9 @@
+ 				})...)
+ 			}
+ 		case "image":
+-			if block.Source != nil {
+-				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
+-					Type: "image",
+-					ImageURL: &llm.ImageURL{
+-						URL: block.Source.Data,
+-					},
+-				})
++			if part, ok := convertImageSourceToLLMImageURLPart(block.Source, block.CacheControl); ok {
++				setAnthropicBlockIndex(&part.TransformerMetadata, i)
++				content.MultipleContent = append(content.MultipleContent, part)
+ 			}
+ 		case "tool_use":
+ 			if block.ID != "" && block.Name != nil {
+@@ -1112,15 +1254,33 @@
+ 		InlineToolResults:        inlineToolResults,
+ 	}
+ 
++	finishReason := convertToLlmFinishReason(anthropicResp.StopReason)
++
+ 	choice := llm.Choice{
+ 		Index:        0,
+ 		Message:      message,
+-		FinishReason: convertToLlmFinishReason(anthropicResp.StopReason),
++		FinishReason: finishReason,
+ 	}
+ 
++	// Carry the original Anthropic stop_reason when it would otherwise be
++	// lost in the canonical finish_reason mapping. Only stop_sequence
++	// collapses ambiguously to "stop" (same as end_turn), so persist it to
++	// let an Anthropic->canonical->Anthropic round-trip restore it.
++	if anthropicResp.StopReason != nil && *anthropicResp.StopReason == "stop_sequence" {
++		choice.TransformerMetadata = map[string]any{
++			TransformerMetadataKeyAnthropicStopReason: *anthropicResp.StopReason,
++		}
++	}
++
+ 	resp.Choices = []llm.Choice{choice}
+ 
+ 	resp.Usage = convertToLlmUsage(anthropicResp.Usage, platformType)
++
++	// Backfill service_tier from usage so it survives non-streaming conversion,
++	// mirroring the streaming path.
++	if anthropicResp.Usage != nil {
++		resp.ServiceTier = anthropicResp.Usage.ServiceTier
++	}
+ 	if transformerMetadata != nil {
+ 		resp.TransformerMetadata = transformerMetadata
+ 	}
+@@ -1132,6 +1292,7 @@
+ // tool_use-like block (tool_use or any special *_tool_use). For special
+ // blocks, TransformerMetadata is populated with anthropic_type (+ optional
+ // anthropic_caller) so the block can be round-tripped.
++
+ func toolCallFromAnthropicBlock(block MessageContentBlock) llm.ToolCall {
+ 	repaired := xjson.SafeJSONRawMessage(string(block.Input))
+ 
+@@ -1162,7 +1323,7 @@
+ 	return MessageContentBlock{
+ 		Type:         blockType,
+ 		ID:           toolCall.ID,
+-		Name:         &toolCall.Function.Name,
++		Name:         lo.ToPtr(toolCall.Function.CompositeName()),
+ 		Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
+ 		CacheControl: convertToAnthropicCacheControl(toolCall.CacheControl),
+ 		Caller:       getAnthropicCaller(toolCall.TransformerMetadata),

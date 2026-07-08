@@ -1,0 +1,129 @@
+--- /tmp/axonhub-upstream-20260706-175405/llm/provider_extensions.go	2026-07-06 17:54:18
++++ /Users/asuan/项目/AI/axonhub/llm/provider_extensions.go	2026-07-06 10:02:22
+@@ -1,7 +1,11 @@
+ package llm
+ 
+-import "encoding/json"
++import (
++	"encoding/json"
+ 
++	"github.com/samber/lo"
++)
++
+ // ProviderExtensions carries provider/API-format private data that should not
+ // be serialized through the common llm request/response JSON model.
+ type ProviderExtensions struct {
+@@ -13,12 +17,33 @@
+ }
+ 
+ type OpenAIResponsesRequestExtensions struct {
+-	RawTools       []OpenAIResponsesRawFragment `json:"-"`
+-	ToolSignatures []string                     `json:"-"`
+-	RawToolChoice  json.RawMessage              `json:"-"`
+-	RawInputItems  []OpenAIResponsesRawFragment `json:"-"`
++	ClientMetadata    map[string]string           `json:"-"`
++	RawTopLevelFields map[string]json.RawMessage  `json:"-"`
++	NativeTools       *OpenAIResponsesNativeTools `json:"-"`
++
++	// AdditionalTools carries raw input items with type="additional_tools".
++	// They are replayed from this field, not RawInputItems, so diagnostics can
++	// distinguish lazy tool declarations from other raw-only input items.
++	AdditionalTools []OpenAIResponsesRawFragment `json:"-"`
++	RawTools        []OpenAIResponsesRawFragment `json:"-"`
++	ToolSignatures  []string                     `json:"-"`
++	RawToolChoice   json.RawMessage              `json:"-"`
++	RawInputItems   []OpenAIResponsesRawFragment `json:"-"`
++
++	// PrependCount records how many messages were prepended to the canonical
++	// request by the prompt pipeline between inbound and outbound. The
++	// outbound Responses merge uses it to offset raw-only input items so they
++	// keep their original position relative to the user's structured items
++	// instead of landing ahead of the injected prepend (see
++	// mergeRawOnlyInputItems). Set by the prompt pipeline when it prepends.
++	PrependCount int `json:"-"`
+ }
+ 
++type OpenAIResponsesNativeTools struct {
++	Raw        []json.RawMessage `json:"-"`
++	Signatures []string          `json:"-"`
++}
++
+ type OpenAIResponsesRawFragment struct {
+ 	Type          string          `json:"-"`
+ 	Name          string          `json:"-"`
+@@ -53,10 +78,15 @@
+ 		cloned.OpenAIResponses = &OpenAIResponsesProviderExtensions{}
+ 		if src.OpenAIResponses.Request != nil {
+ 			cloned.OpenAIResponses.Request = &OpenAIResponsesRequestExtensions{
+-				RawTools:       cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
+-				ToolSignatures: append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
+-				RawToolChoice:  cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
+-				RawInputItems:  cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
++				ClientMetadata:    cloneStringMap(src.OpenAIResponses.Request.ClientMetadata),
++				RawTopLevelFields: cloneRawMessageMap(src.OpenAIResponses.Request.RawTopLevelFields),
++				NativeTools:       cloneOpenAIResponsesNativeTools(src.OpenAIResponses.Request.NativeTools),
++				AdditionalTools:   cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.AdditionalTools),
++				RawTools:          cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
++				ToolSignatures:    append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
++				RawToolChoice:     cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
++				RawInputItems:     cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
++				PrependCount:      src.OpenAIResponses.Request.PrependCount,
+ 			}
+ 		}
+ 	}
+@@ -64,6 +94,30 @@
+ 	return cloned
+ }
+ 
++func cloneOpenAIResponsesNativeTools(src *OpenAIResponsesNativeTools) *OpenAIResponsesNativeTools {
++	if src == nil {
++		return nil
++	}
++
++	return &OpenAIResponsesNativeTools{
++		Raw:        cloneRawMessages(src.Raw),
++		Signatures: append([]string(nil), src.Signatures...),
++	}
++}
++
++func cloneRawMessages(src []json.RawMessage) []json.RawMessage {
++	if len(src) == 0 {
++		return nil
++	}
++
++	out := make([]json.RawMessage, len(src))
++	for i := range src {
++		out[i] = cloneRawMessage(src[i])
++	}
++
++	return out
++}
++
+ func cloneOpenAIResponsesRawFragments(src []OpenAIResponsesRawFragment) []OpenAIResponsesRawFragment {
+ 	if len(src) == 0 {
+ 		return nil
+@@ -85,3 +139,24 @@
+ 
+ 	return append(json.RawMessage(nil), src...)
+ }
++
++func cloneStringMap(src map[string]string) map[string]string {
++	if len(src) == 0 {
++		return nil
++	}
++
++	return lo.Assign(map[string]string{}, src)
++}
++
++func cloneRawMessageMap(src map[string]json.RawMessage) map[string]json.RawMessage {
++	if len(src) == 0 {
++		return nil
++	}
++
++	out := make(map[string]json.RawMessage, len(src))
++	for key, value := range src {
++		out[key] = cloneRawMessage(value)
++	}
++
++	return out
++}

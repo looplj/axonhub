@@ -1,0 +1,230 @@
+[
+  {
+    "schema": "ResponseAudioDeltaEvent",
+    "event_type": "response.audio.delta"
+  },
+  {
+    "schema": "ResponseAudioDoneEvent",
+    "event_type": "response.audio.done"
+  },
+  {
+    "schema": "ResponseAudioTranscriptDeltaEvent",
+    "event_type": "response.audio.transcript.delta"
+  },
+  {
+    "schema": "ResponseAudioTranscriptDoneEvent",
+    "event_type": "response.audio.transcript.done"
+  },
+  {
+    "schema": "ResponseCodeInterpreterCallCodeDeltaEvent",
+    "event_type": "response.code_interpreter_call_code.delta"
+  },
+  {
+    "schema": "ResponseCodeInterpreterCallCodeDoneEvent",
+    "event_type": "response.code_interpreter_call_code.done"
+  },
+  {
+    "schema": "ResponseCodeInterpreterCallCompletedEvent",
+    "event_type": "response.code_interpreter_call.completed"
+  },
+  {
+    "schema": "ResponseCodeInterpreterCallInProgressEvent",
+    "event_type": "response.code_interpreter_call.in_progress"
+  },
+  {
+    "schema": "ResponseCodeInterpreterCallInterpretingEvent",
+    "event_type": "response.code_interpreter_call.interpreting"
+  },
+  {
+    "schema": "ResponseCompletedEvent",
+    "event_type": "response.completed"
+  },
+  {
+    "schema": "ResponseContentPartAddedEvent",
+    "event_type": "response.content_part.added"
+  },
+  {
+    "schema": "ResponseContentPartDoneEvent",
+    "event_type": "response.content_part.done"
+  },
+  {
+    "schema": "ResponseCreatedEvent",
+    "event_type": "response.created"
+  },
+  {
+    "schema": "ResponseCustomToolCallInputDeltaEvent",
+    "event_type": "response.custom_tool_call_input.delta"
+  },
+  {
+    "schema": "ResponseCustomToolCallInputDoneEvent",
+    "event_type": "response.custom_tool_call_input.done"
+  },
+  {
+    "schema": "ResponseErrorEvent",
+    "event_type": "error"
+  },
+  {
+    "schema": "ResponseFailedEvent",
+    "event_type": "response.failed"
+  },
+  {
+    "schema": "ResponseFileSearchCallCompletedEvent",
+    "event_type": "response.file_search_call.completed"
+  },
+  {
+    "schema": "ResponseFileSearchCallInProgressEvent",
+    "event_type": "response.file_search_call.in_progress"
+  },
+  {
+    "schema": "ResponseFileSearchCallSearchingEvent",
+    "event_type": "response.file_search_call.searching"
+  },
+  {
+    "schema": "ResponseFunctionCallArgumentsDeltaEvent",
+    "event_type": "response.function_call_arguments.delta"
+  },
+  {
+    "schema": "ResponseFunctionCallArgumentsDoneEvent",
+    "event_type": "response.function_call_arguments.done"
+  },
+  {
+    "schema": "ResponseImageGenCallCompletedEvent",
+    "event_type": "response.image_generation_call.completed"
+  },
+  {
+    "schema": "ResponseImageGenCallGeneratingEvent",
+    "event_type": "response.image_generation_call.generating"
+  },
+  {
+    "schema": "ResponseImageGenCallInProgressEvent",
+    "event_type": "response.image_generation_call.in_progress"
+  },
+  {
+    "schema": "ResponseImageGenCallPartialImageEvent",
+    "event_type": "response.image_generation_call.partial_image"
+  },
+  {
+    "schema": "ResponseInProgressEvent",
+    "event_type": "response.in_progress"
+  },
+  {
+    "schema": "ResponseIncompleteEvent",
+    "event_type": "response.incomplete"
+  },
+  {
+    "schema": "ResponseMCPCallArgumentsDeltaEvent",
+    "event_type": "response.mcp_call_arguments.delta"
+  },
+  {
+    "schema": "ResponseMCPCallArgumentsDoneEvent",
+    "event_type": "response.mcp_call_arguments.done"
+  },
+  {
+    "schema": "ResponseMCPCallCompletedEvent",
+    "event_type": "response.mcp_call.completed"
+  },
+  {
+    "schema": "ResponseMCPCallFailedEvent",
+    "event_type": "response.mcp_call.failed"
+  },
+  {
+    "schema": "ResponseMCPCallInProgressEvent",
+    "event_type": "response.mcp_call.in_progress"
+  },
+  {
+    "schema": "ResponseMCPListToolsCompletedEvent",
+    "event_type": "response.mcp_list_tools.completed"
+  },
+  {
+    "schema": "ResponseMCPListToolsFailedEvent",
+    "event_type": "response.mcp_list_tools.failed"
+  },
+  {
+    "schema": "ResponseMCPListToolsInProgressEvent",
+    "event_type": "response.mcp_list_tools.in_progress"
+  },
+  {
+    "schema": "ResponseOutputItemAddedEvent",
+    "event_type": "response.output_item.added"
+  },
+  {
+    "schema": "ResponseOutputItemDoneEvent",
+    "event_type": "response.output_item.done"
+  },
+  {
+    "schema": "ResponseOutputTextAnnotationAddedEvent",
+    "event_type": "response.output_text.annotation.added"
+  },
+  {
+    "schema": "ResponseQueuedEvent",
+    "event_type": "response.queued"
+  },
+  {
+    "schema": "ResponseReasoningSummaryPartAddedEvent",
+    "event_type": "response.reasoning_summary_part.added"
+  },
+  {
+    "schema": "ResponseReasoningSummaryPartDoneEvent",
+    "event_type": "response.reasoning_summary_part.done"
+  },
+  {
+    "schema": "ResponseReasoningSummaryTextDeltaEvent",
+    "event_type": "response.reasoning_summary_text.delta"
+  },
+  {
+    "schema": "ResponseReasoningSummaryTextDoneEvent",
+    "event_type": "response.reasoning_summary_text.done"
+  },
+  {
+    "schema": "ResponseReasoningTextDeltaEvent",
+    "event_type": "response.reasoning_text.delta"
+  },
+  {
+    "schema": "ResponseReasoningTextDoneEvent",
+    "event_type": "response.reasoning_text.done"
+  },
+  {
+    "schema": "ResponseRefusalDeltaEvent",
+    "event_type": "response.refusal.delta"
+  },
+  {
+    "schema": "ResponseRefusalDoneEvent",
+    "event_type": "response.refusal.done"
+  },
+  {
+    "schema": "ResponseStreamEvent",
+    "event_type": "response.custom_tool_call_input.done"
+  },
+  {
+    "schema": "ResponseTextDeltaEvent",
+    "event_type": "response.output_text.delta"
+  },
+  {
+    "schema": "ResponseTextDoneEvent",
+    "event_type": "response.output_text.done"
+  },
+  {
+    "schema": "ResponseWebSearchCallCompletedEvent",
+    "event_type": "response.web_search_call.completed"
+  },
+  {
+    "schema": "ResponseWebSearchCallInProgressEvent",
+    "event_type": "response.web_search_call.in_progress"
+  },
+  {
+    "schema": "ResponseWebSearchCallSearchingEvent",
+    "event_type": "response.web_search_call.searching"
+  },
+  {
+    "schema": "ResponsesClientEvent",
+    "event_type": "response.create"
+  },
+  {
+    "schema": "ResponsesClientEventResponseCreate",
+    "event_type": "response.create"
+  },
+  {
+    "schema": "ResponsesServerEvent",
+    "event_type": "response.custom_tool_call_input.done"
+  }
+]

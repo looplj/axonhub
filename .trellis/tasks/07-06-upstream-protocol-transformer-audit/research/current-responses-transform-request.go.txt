@@ -1,0 +1,137 @@
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	if llmReq == nil {
+		return nil, fmt.Errorf("chat request is nil")
+	}
+
+	//nolint:exhaustive // Checked.
+	switch llmReq.RequestType {
+	case llm.RequestTypeCompact:
+		return t.transformCompactRequest(ctx, llmReq)
+	case llm.RequestTypeImage:
+		imageReq, err := buildImageToolRequest(llmReq)
+		if err != nil {
+			return nil, err
+		}
+
+		llmReq = imageReq
+	case llm.RequestTypeChat, "":
+		// continue
+	default:
+		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
+	}
+
+	// Initialize TransformerMetadata if nil
+	if llmReq.TransformerMetadata == nil {
+		llmReq.TransformerMetadata = map[string]any{}
+	}
+
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
+	var tools []Tool
+	// Convert tools to Responses API format
+	for _, item := range llmReq.Tools {
+		switch item.Type {
+		case llm.ToolTypeImageGeneration:
+			tool := convertImageGenerationToTool(item)
+			if action := xmap.GetStringPtr(llmReq.TransformerMetadata, responsesImageGenActionTransformerMetadataKey); action != nil {
+				tool.Action = *action
+			}
+			tools = append(tools, tool)
+			// Store image output format in TransformerMetadata
+			llmReq.TransformerMetadata[responsesImageOutputFormatTransformerMetadataKey] = tool.OutputFormat
+		case llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch:
+			tool := convertWebSearchToTool(item)
+			tools = append(tools, tool)
+		case llm.ToolTypeResponsesCustomTool:
+			tool := convertCustomToTool(item)
+			tools = append(tools, tool)
+		case "function":
+			tool := convertFunctionToTool(item)
+			tools = append(tools, tool)
+		default:
+			// Skip unsupported tool types
+			continue
+		}
+	}
+
+	payload := Request{
+		Model:                llmReq.Model,
+		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, llmReq.TransformerMetadata),
+		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
+		Tools:                tools,
+		ParallelToolCalls:    llmReq.ParallelToolCalls,
+		Stream:               llmReq.Stream,
+		Text:                 convertToTextOptions(llmReq),
+		Store:                llmReq.Store,
+		ServiceTier:          llmReq.ServiceTier,
+		SafetyIdentifier:     llmReq.SafetyIdentifier,
+		User:                 llmReq.User,
+		Metadata:             llmReq.Metadata,
+		MaxOutputTokens:      llmReq.MaxCompletionTokens,
+		Temperature:          llmReq.Temperature,
+		FrequencyPenalty:     llmReq.FrequencyPenalty,
+		PresencePenalty:      llmReq.PresencePenalty,
+		TopLogprobs:          llmReq.TopLogprobs,
+		TopP:                 llmReq.TopP,
+		TopK:                 xmap.GetInt64Ptr(llmReq.TransformerMetadata, shared.TransformerMetadataKeyTopK),
+		CacheControl:         restoreCacheControl(llmReq.TransformerMetadata),
+		Modalities:           llmReq.Modalities,
+		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
+		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
+		Reasoning:            convertReasoning(llmReq),
+		PromptCacheKey:       llmReq.PromptCacheKey,
+		PreviousResponseID:   llmReq.PreviousResponseID,
+		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, shared.MetadataKeyInclude),
+		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, responsesMaxToolCallsTransformerMetadataKey),
+		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, responsesPromptCacheRetentionTransformerMetadataKey),
+		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, responsesTruncationTransformerMetadataKey),
+		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, responsesBackgroundTransformerMetadataKey),
+		Prompt:               xmap.GetPtr[Prompt](llmReq.TransformerMetadata, responsesPromptTransformerMetadataKey),
+	}
+
+	if lo.FromPtr(payload.PromptCacheKey) == "" {
+		if sessionID, ok := shared.GetSessionID(ctx); ok {
+			payload.PromptCacheKey = lo.ToPtr(sessionID)
+		}
+	}
+
+	// Clear `parallel_tool_calls` when no tools are sent (Responses API compatibility).
+	if len(payload.Tools) == 0 {
+		payload.ParallelToolCalls = nil
+	}
+
+	// Set MaxOutputTokens to MaxTokens if not set
+	if payload.MaxOutputTokens == nil {
+		payload.MaxOutputTokens = llmReq.MaxTokens
+	}
+
+	body, err := marshalRequestPayload(payload, llmReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal responses api request: %w", err)
+	}
+
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "application/json")
+
+	fullURL, err := t.buildFullRequestURL(llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     fullURL,
+		Headers: headers,
+		Body:    body,
+		Auth: &httpclient.AuthConfig{
+			Type:   "bearer",
+			APIKey: apiKey,
+		},
+		APIFormat:             string(llm.APIFormatOpenAIResponse),
+		SkipInboundQueryMerge: true,
+		Metadata:              nil,
+	}
+	shared.PropagateRequestMetadata(httpReq, llmReq)
+	return httpReq, nil
+}

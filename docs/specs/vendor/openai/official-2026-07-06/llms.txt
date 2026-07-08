@@ -1,0 +1,248 @@
+# OpenAI API reference
+
+> Reference documentation for OpenAI API endpoint groups and methods.
+
+Each entry has a Markdown twin at `/api/reference/<slug>.md`.
+
+## Documentation sets
+- [Combined API reference docs](https://developers.openai.com/api/reference/llms-full.txt): Single-file Markdown export of API reference docs.
+
+## Administration
+- [Administration Overview](https://developers.openai.com/api/reference/administration/overview.md)
+
+## Chat Completions
+- [Chat Completions Overview](https://developers.openai.com/api/reference/chat-completions/overview.md)
+
+## Overview
+- [API Overview](https://developers.openai.com/api/reference/overview.md)
+
+## Realtime Beta
+- [Realtime Beta Overview](https://developers.openai.com/api/reference/realtime-beta/overview.md)
+
+## Resources
+- [Audio](https://developers.openai.com/api/reference/resources/audio.md): OpenAI API endpoint reference.
+- [Audio Speech — Create](https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create.md): OpenAI API endpoint method reference.
+- [Audio Transcriptions — Create](https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create.md): OpenAI API endpoint method reference.
+- [Audio Translations — Create](https://developers.openai.com/api/reference/resources/audio/subresources/translations/methods/create.md): OpenAI API endpoint method reference.
+- [Audio Voice Consents — Create](https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/create.md): OpenAI API endpoint method reference.
+- [Audio Voice Consents — Delete](https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/delete.md): OpenAI API endpoint method reference.
+- [Audio Voice Consents — List](https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/list.md): OpenAI API endpoint method reference.
+- [Audio Voice Consents — Retrieve](https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Audio Voice Consents — Update](https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/update.md): OpenAI API endpoint method reference.
+- [Audio Voices — Create](https://developers.openai.com/api/reference/resources/audio/subresources/voices/methods/create.md): OpenAI API endpoint method reference.
+- [Batches](https://developers.openai.com/api/reference/resources/batches.md): OpenAI API endpoint reference.
+- [Batches — Cancel](https://developers.openai.com/api/reference/resources/batches/methods/cancel.md): OpenAI API endpoint method reference.
+- [Batches — Create](https://developers.openai.com/api/reference/resources/batches/methods/create.md): OpenAI API endpoint method reference.
+- [Batches — List](https://developers.openai.com/api/reference/resources/batches/methods/list.md): OpenAI API endpoint method reference.
+- [Batches — Retrieve](https://developers.openai.com/api/reference/resources/batches/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Beta Assistants](https://developers.openai.com/api/reference/resources/beta/subresources/assistants.md): OpenAI API endpoint reference.
+- [Beta Assistants — Create](https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/create.md): OpenAI API endpoint method reference.
+- [Beta Assistants — Delete](https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/delete.md): OpenAI API endpoint method reference.
+- [Beta Assistants — List](https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/list.md): OpenAI API endpoint method reference.
+- [Beta Assistants — Retrieve](https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Beta Assistants — Update](https://developers.openai.com/api/reference/resources/beta/subresources/assistants/methods/update.md): OpenAI API endpoint method reference.
+- [Beta Chatkit](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit.md): OpenAI API endpoint reference.
+- [Beta Chatkit Sessions](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/sessions.md): OpenAI API endpoint reference.
+- [Beta Chatkit Sessions — Cancel](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/sessions/methods/cancel.md): OpenAI API endpoint method reference.
+- [Beta Chatkit Sessions — Create](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/sessions/methods/create.md): OpenAI API endpoint method reference.
+- [Beta Chatkit Threads](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads.md): OpenAI API endpoint reference.
+- [Beta Chatkit Threads — Delete](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/delete.md): OpenAI API endpoint method reference.
+- [Beta Chatkit Threads — List](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/list.md): OpenAI API endpoint method reference.
+- [Beta Chatkit Threads — List Items](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/list_items.md): OpenAI API endpoint method reference.
+- [Beta Chatkit Threads — Retrieve](https://developers.openai.com/api/reference/resources/beta/subresources/chatkit/subresources/threads/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Beta Threads](https://developers.openai.com/api/reference/resources/beta/subresources/threads.md): OpenAI API endpoint reference.
+- [Beta Threads — Create](https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/create.md): OpenAI API endpoint method reference.
+- [Beta Threads — Delete](https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/delete.md): OpenAI API endpoint method reference.
+- [Beta Threads — Retrieve](https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Beta Threads — Update](https://developers.openai.com/api/reference/resources/beta/subresources/threads/methods/update.md): OpenAI API endpoint method reference.
+- [Beta Threads Messages](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages.md): OpenAI API endpoint reference.
+- [Beta Threads Messages — Create](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/create.md): OpenAI API endpoint method reference.
+- [Beta Threads Messages — Delete](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/delete.md): OpenAI API endpoint method reference.
+- [Beta Threads Messages — List](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/list.md): OpenAI API endpoint method reference.
+- [Beta Threads Messages — Retrieve](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Beta Threads Messages — Update](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/messages/methods/update.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs.md): OpenAI API endpoint reference.
+- [Beta Threads Runs — Cancel](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/cancel.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs — Create](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/create.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs — List](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/list.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs — Retrieve](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs — Submit Tool Outputs](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/submit_tool_outputs.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs — Update](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/methods/update.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs Steps](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/subresources/steps.md): OpenAI API endpoint reference.
+- [Beta Threads Runs Steps — List](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/subresources/steps/methods/list.md): OpenAI API endpoint method reference.
+- [Beta Threads Runs Steps — Retrieve](https://developers.openai.com/api/reference/resources/beta/subresources/threads/subresources/runs/subresources/steps/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Chat](https://developers.openai.com/api/reference/resources/chat.md): OpenAI API endpoint reference.
+- [Chat Completions — Retrieve](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Completions](https://developers.openai.com/api/reference/resources/completions.md): OpenAI API endpoint reference.
+- [Completions — Create](https://developers.openai.com/api/reference/resources/completions/methods/create.md): OpenAI API endpoint method reference.
+- [Containers](https://developers.openai.com/api/reference/resources/containers.md): OpenAI API endpoint reference.
+- [Containers — Create](https://developers.openai.com/api/reference/resources/containers/methods/create.md): OpenAI API endpoint method reference.
+- [Containers — Delete](https://developers.openai.com/api/reference/resources/containers/methods/delete.md): OpenAI API endpoint method reference.
+- [Containers — List](https://developers.openai.com/api/reference/resources/containers/methods/list.md): OpenAI API endpoint method reference.
+- [Containers — Retrieve](https://developers.openai.com/api/reference/resources/containers/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Containers Files](https://developers.openai.com/api/reference/resources/containers/subresources/files.md): OpenAI API endpoint reference.
+- [Containers Files — Create](https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/create.md): OpenAI API endpoint method reference.
+- [Containers Files — Delete](https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/delete.md): OpenAI API endpoint method reference.
+- [Containers Files — List](https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/list.md): OpenAI API endpoint method reference.
+- [Containers Files — Retrieve](https://developers.openai.com/api/reference/resources/containers/subresources/files/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Containers Files Content — Retrieve](https://developers.openai.com/api/reference/resources/containers/subresources/files/subresources/content/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Conversations](https://developers.openai.com/api/reference/resources/conversations.md): OpenAI API endpoint reference.
+- [Conversations — Create](https://developers.openai.com/api/reference/resources/conversations/methods/create.md): OpenAI API endpoint method reference.
+- [Conversations — Delete](https://developers.openai.com/api/reference/resources/conversations/methods/delete.md): OpenAI API endpoint method reference.
+- [Conversations — Retrieve](https://developers.openai.com/api/reference/resources/conversations/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Conversations — Update](https://developers.openai.com/api/reference/resources/conversations/methods/update.md): OpenAI API endpoint method reference.
+- [Conversations Items — List](https://developers.openai.com/api/reference/resources/conversations/subresources/items/methods/list.md): OpenAI API endpoint method reference.
+- [Embeddings](https://developers.openai.com/api/reference/resources/embeddings.md): OpenAI API endpoint reference.
+- [Embeddings — Create](https://developers.openai.com/api/reference/resources/embeddings/methods/create.md): OpenAI API endpoint method reference.
+- [Evals](https://developers.openai.com/api/reference/resources/evals.md): OpenAI API endpoint reference.
+- [Evals — Create](https://developers.openai.com/api/reference/resources/evals/methods/create.md): OpenAI API endpoint method reference.
+- [Evals — Delete](https://developers.openai.com/api/reference/resources/evals/methods/delete.md): OpenAI API endpoint method reference.
+- [Evals — List](https://developers.openai.com/api/reference/resources/evals/methods/list.md): OpenAI API endpoint method reference.
+- [Evals — Retrieve](https://developers.openai.com/api/reference/resources/evals/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Evals — Update](https://developers.openai.com/api/reference/resources/evals/methods/update.md): OpenAI API endpoint method reference.
+- [Evals Runs — Cancel](https://developers.openai.com/api/reference/resources/evals/subresources/runs/methods/cancel.md): OpenAI API endpoint method reference.
+- [Files](https://developers.openai.com/api/reference/resources/files.md): OpenAI API endpoint reference.
+- [Files — Create](https://developers.openai.com/api/reference/resources/files/methods/create.md): OpenAI API endpoint method reference.
+- [Files — Delete](https://developers.openai.com/api/reference/resources/files/methods/delete.md): OpenAI API endpoint method reference.
+- [Files — List](https://developers.openai.com/api/reference/resources/files/methods/list.md): OpenAI API endpoint method reference.
+- [Files — Retrieve](https://developers.openai.com/api/reference/resources/files/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Fine Tuning](https://developers.openai.com/api/reference/resources/fine_tuning.md): OpenAI API endpoint reference.
+- [Fine Tuning Checkpoints Permissions — Create](https://developers.openai.com/api/reference/resources/fine_tuning/subresources/checkpoints/subresources/permissions/methods/create.md): OpenAI API endpoint method reference.
+- [Fine Tuning Checkpoints Permissions — Delete](https://developers.openai.com/api/reference/resources/fine_tuning/subresources/checkpoints/subresources/permissions/methods/delete.md): OpenAI API endpoint method reference.
+- [Fine Tuning Jobs — List](https://developers.openai.com/api/reference/resources/fine_tuning/subresources/jobs/methods/list.md): OpenAI API endpoint method reference.
+- [Fine Tuning Jobs Checkpoints — List](https://developers.openai.com/api/reference/resources/fine_tuning/subresources/jobs/subresources/checkpoints/methods/list.md): OpenAI API endpoint method reference.
+- [Graders](https://developers.openai.com/api/reference/resources/graders.md): OpenAI API endpoint reference.
+- [Images](https://developers.openai.com/api/reference/resources/images.md): OpenAI API endpoint reference.
+- [Images — Create Variation](https://developers.openai.com/api/reference/resources/images/methods/create_variation.md): OpenAI API endpoint method reference.
+- [Models](https://developers.openai.com/api/reference/resources/models.md): OpenAI API endpoint reference.
+- [Models — Delete](https://developers.openai.com/api/reference/resources/models/methods/delete.md): OpenAI API endpoint method reference.
+- [Models — List](https://developers.openai.com/api/reference/resources/models/methods/list.md): OpenAI API endpoint method reference.
+- [Models — Retrieve](https://developers.openai.com/api/reference/resources/models/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Moderations](https://developers.openai.com/api/reference/resources/moderations.md): OpenAI API endpoint reference.
+- [Moderations — Create](https://developers.openai.com/api/reference/resources/moderations/methods/create.md): OpenAI API endpoint method reference.
+- [Organization](https://developers.openai.com/api/reference/resources/organization.md): OpenAI API endpoint reference.
+- [Organization Audit Logs](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs.md): OpenAI API endpoint reference.
+- [Organization Audit Logs — List](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Audit Logs Admin Api Keys](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys.md): OpenAI API endpoint reference.
+- [Organization Audit Logs Admin Api Keys — Create](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Audit Logs Admin Api Keys — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Audit Logs Admin Api Keys — List](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Audit Logs Admin Api Keys — Retrieve](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/admin_api_keys/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Organization Audit Logs Usage](https://developers.openai.com/api/reference/resources/organization/subresources/audit_logs/subresources/usage.md): OpenAI API endpoint reference.
+- [Organization Groups](https://developers.openai.com/api/reference/resources/organization/subresources/groups.md): OpenAI API endpoint reference.
+- [Organization Groups — Create](https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Groups — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Groups — List](https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Groups — Update](https://developers.openai.com/api/reference/resources/organization/subresources/groups/methods/update.md): OpenAI API endpoint method reference.
+- [Organization Groups Users](https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users.md): OpenAI API endpoint reference.
+- [Organization Groups Users — Create](https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Groups Users — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Groups Users — List](https://developers.openai.com/api/reference/resources/organization/subresources/groups/subresources/users/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Invites](https://developers.openai.com/api/reference/resources/organization/subresources/invites.md): OpenAI API endpoint reference.
+- [Organization Invites — Create](https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Invites — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Invites — List](https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Invites — Retrieve](https://developers.openai.com/api/reference/resources/organization/subresources/invites/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Organization Projects](https://developers.openai.com/api/reference/resources/organization/subresources/projects.md): OpenAI API endpoint reference.
+- [Organization Projects — Create](https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Projects — List](https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Projects — Retrieve](https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Organization Projects — Update](https://developers.openai.com/api/reference/resources/organization/subresources/projects/methods/update.md): OpenAI API endpoint method reference.
+- [Organization Projects Api Keys](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys.md): OpenAI API endpoint reference.
+- [Organization Projects Api Keys — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Projects Api Keys — List](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Projects Api Keys — Retrieve](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/api_keys/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Organization Projects Groups](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/groups.md): OpenAI API endpoint reference.
+- [Organization Projects Groups — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/groups/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Projects Groups — List](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/groups/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Projects Rate Limits](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/rate_limits.md): OpenAI API endpoint reference.
+- [Organization Projects Service Accounts](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts.md): OpenAI API endpoint reference.
+- [Organization Projects Service Accounts — Create](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Projects Service Accounts — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Projects Service Accounts — List](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Projects Service Accounts — Retrieve](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/service_accounts/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Organization Projects Users](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users.md): OpenAI API endpoint reference.
+- [Organization Projects Users — Create](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Projects Users — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Projects Users — List](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Projects Users — Retrieve](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Organization Projects Users — Update](https://developers.openai.com/api/reference/resources/organization/subresources/projects/subresources/users/methods/update.md): OpenAI API endpoint method reference.
+- [Organization Roles](https://developers.openai.com/api/reference/resources/organization/subresources/roles.md): OpenAI API endpoint reference.
+- [Organization Roles — Create](https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Roles — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Roles — List](https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Roles — Update](https://developers.openai.com/api/reference/resources/organization/subresources/roles/methods/update.md): OpenAI API endpoint method reference.
+- [Organization Users](https://developers.openai.com/api/reference/resources/organization/subresources/users.md): OpenAI API endpoint reference.
+- [Organization Users — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Users — List](https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/list.md): OpenAI API endpoint method reference.
+- [Organization Users — Retrieve](https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Organization Users — Update](https://developers.openai.com/api/reference/resources/organization/subresources/users/methods/update.md): OpenAI API endpoint method reference.
+- [Organization Users Roles — Create](https://developers.openai.com/api/reference/resources/organization/subresources/users/subresources/roles/methods/create.md): OpenAI API endpoint method reference.
+- [Organization Users Roles — Delete](https://developers.openai.com/api/reference/resources/organization/subresources/users/subresources/roles/methods/delete.md): OpenAI API endpoint method reference.
+- [Organization Users Roles — List](https://developers.openai.com/api/reference/resources/organization/subresources/users/subresources/roles/methods/list.md): OpenAI API endpoint method reference.
+- [Projects](https://developers.openai.com/api/reference/resources/projects.md): OpenAI API endpoint reference.
+- [Projects Groups](https://developers.openai.com/api/reference/resources/projects/subresources/groups.md): OpenAI API endpoint reference.
+- [Projects Groups Roles — Create](https://developers.openai.com/api/reference/resources/projects/subresources/groups/subresources/roles/methods/create.md): OpenAI API endpoint method reference.
+- [Projects Groups Roles — Delete](https://developers.openai.com/api/reference/resources/projects/subresources/groups/subresources/roles/methods/delete.md): OpenAI API endpoint method reference.
+- [Projects Groups Roles — List](https://developers.openai.com/api/reference/resources/projects/subresources/groups/subresources/roles/methods/list.md): OpenAI API endpoint method reference.
+- [Projects Roles — Create](https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/create.md): OpenAI API endpoint method reference.
+- [Projects Roles — Delete](https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/delete.md): OpenAI API endpoint method reference.
+- [Projects Roles — List](https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/list.md): OpenAI API endpoint method reference.
+- [Projects Roles — Update](https://developers.openai.com/api/reference/resources/projects/subresources/roles/methods/update.md): OpenAI API endpoint method reference.
+- [Projects Users](https://developers.openai.com/api/reference/resources/projects/subresources/users.md): OpenAI API endpoint reference.
+- [Projects Users Roles — Create](https://developers.openai.com/api/reference/resources/projects/subresources/users/subresources/roles/methods/create.md): OpenAI API endpoint method reference.
+- [Projects Users Roles — Delete](https://developers.openai.com/api/reference/resources/projects/subresources/users/subresources/roles/methods/delete.md): OpenAI API endpoint method reference.
+- [Projects Users Roles — List](https://developers.openai.com/api/reference/resources/projects/subresources/users/subresources/roles/methods/list.md): OpenAI API endpoint method reference.
+- [Realtime](https://developers.openai.com/api/reference/resources/realtime.md): OpenAI API endpoint reference.
+- [Realtime Calls](https://developers.openai.com/api/reference/resources/realtime/subresources/calls.md): OpenAI API endpoint reference.
+- [Realtime Calls — Accept](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/accept.md): OpenAI API endpoint method reference.
+- [Realtime Calls — Create](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/create.md): OpenAI API endpoint method reference.
+- [Realtime Calls — Hangup](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/hangup.md): OpenAI API endpoint method reference.
+- [Realtime Calls — Refer](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/refer.md): OpenAI API endpoint method reference.
+- [Realtime Calls — Reject](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/reject.md): OpenAI API endpoint method reference.
+- [Realtime Client Secrets](https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets.md): OpenAI API endpoint reference.
+- [Realtime Client Secrets — Create](https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets/methods/create.md): OpenAI API endpoint method reference.
+- [Responses](https://developers.openai.com/api/reference/resources/responses.md): OpenAI API endpoint reference.
+- [Responses — Cancel](https://developers.openai.com/api/reference/resources/responses/methods/cancel.md): OpenAI API endpoint method reference.
+- [Responses — Compact](https://developers.openai.com/api/reference/resources/responses/methods/compact.md): OpenAI API endpoint method reference.
+- [Responses — Create](https://developers.openai.com/api/reference/resources/responses/methods/create.md): OpenAI API endpoint method reference.
+- [Responses — Delete](https://developers.openai.com/api/reference/resources/responses/methods/delete.md): OpenAI API endpoint method reference.
+- [Responses — Retrieve](https://developers.openai.com/api/reference/resources/responses/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Responses Input Items — List](https://developers.openai.com/api/reference/resources/responses/subresources/input_items/methods/list.md): OpenAI API endpoint method reference.
+- [Responses Input Tokens](https://developers.openai.com/api/reference/resources/responses/subresources/input_tokens.md): OpenAI API endpoint reference.
+- [Unwrap](https://developers.openai.com/api/reference/resources/webhooks/methods/unwrap.md)
+- [Uploads](https://developers.openai.com/api/reference/resources/uploads.md): OpenAI API endpoint reference.
+- [Uploads — Cancel](https://developers.openai.com/api/reference/resources/uploads/methods/cancel.md): OpenAI API endpoint method reference.
+- [Uploads — Create](https://developers.openai.com/api/reference/resources/uploads/methods/create.md): OpenAI API endpoint method reference.
+- [Uploads Parts — Create](https://developers.openai.com/api/reference/resources/uploads/subresources/parts/methods/create.md): OpenAI API endpoint method reference.
+- [Vector Stores](https://developers.openai.com/api/reference/resources/vector_stores.md): OpenAI API endpoint reference.
+- [Vector Stores — Create](https://developers.openai.com/api/reference/resources/vector_stores/methods/create.md): OpenAI API endpoint method reference.
+- [Vector Stores — Delete](https://developers.openai.com/api/reference/resources/vector_stores/methods/delete.md): OpenAI API endpoint method reference.
+- [Vector Stores — List](https://developers.openai.com/api/reference/resources/vector_stores/methods/list.md): OpenAI API endpoint method reference.
+- [Vector Stores — Retrieve](https://developers.openai.com/api/reference/resources/vector_stores/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Vector Stores — Search](https://developers.openai.com/api/reference/resources/vector_stores/methods/search.md): OpenAI API endpoint method reference.
+- [Vector Stores — Update](https://developers.openai.com/api/reference/resources/vector_stores/methods/update.md): OpenAI API endpoint method reference.
+- [Vector Stores File Batches](https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches.md): OpenAI API endpoint reference.
+- [Vector Stores File Batches — Cancel](https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/cancel.md): OpenAI API endpoint method reference.
+- [Vector Stores File Batches — Create](https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/create.md): OpenAI API endpoint method reference.
+- [Vector Stores File Batches — List Files](https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/list_files.md): OpenAI API endpoint method reference.
+- [Vector Stores File Batches — Retrieve](https://developers.openai.com/api/reference/resources/vector_stores/subresources/file_batches/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Vector Stores Files](https://developers.openai.com/api/reference/resources/vector_stores/subresources/files.md): OpenAI API endpoint reference.
+- [Vector Stores Files — Content](https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/content.md): OpenAI API endpoint method reference.
+- [Vector Stores Files — Create](https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/create.md): OpenAI API endpoint method reference.
+- [Vector Stores Files — Delete](https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/delete.md): OpenAI API endpoint method reference.
+- [Vector Stores Files — List](https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/list.md): OpenAI API endpoint method reference.
+- [Vector Stores Files — Retrieve](https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Vector Stores Files — Update](https://developers.openai.com/api/reference/resources/vector_stores/subresources/files/methods/update.md): OpenAI API endpoint method reference.
+- [Videos](https://developers.openai.com/api/reference/resources/videos.md): OpenAI API endpoint reference.
+- [Videos — Create](https://developers.openai.com/api/reference/resources/videos/methods/create.md): OpenAI API endpoint method reference.
+- [Videos — Delete](https://developers.openai.com/api/reference/resources/videos/methods/delete.md): OpenAI API endpoint method reference.
+- [Videos — List](https://developers.openai.com/api/reference/resources/videos/methods/list.md): OpenAI API endpoint method reference.
+- [Videos — Retrieve](https://developers.openai.com/api/reference/resources/videos/methods/retrieve.md): OpenAI API endpoint method reference.
+- [Webhooks](https://developers.openai.com/api/reference/resources/webhooks.md): OpenAI API endpoint reference.
+
+## Responses
+- [Responses Overview](https://developers.openai.com/api/reference/responses/overview.md)
+
+## Workload Identity Federation
+- [Workload identity token exchange](https://developers.openai.com/api/reference/workload-identity-federation.md): Exchange a trusted workload identity token for a short-lived OpenAI API credential.

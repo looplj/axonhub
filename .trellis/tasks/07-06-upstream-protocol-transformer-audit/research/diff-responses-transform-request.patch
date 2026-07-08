@@ -1,0 +1,77 @@
+--- .trellis/tasks/07-06-upstream-protocol-transformer-audit/research/upstream-responses-transform-request.go.txt	2026-07-06 18:03:04
++++ .trellis/tasks/07-06-upstream-protocol-transformer-audit/research/current-responses-transform-request.go.txt	2026-07-06 18:03:04
+@@ -33,12 +33,12 @@
+ 		switch item.Type {
+ 		case llm.ToolTypeImageGeneration:
+ 			tool := convertImageGenerationToTool(item)
+-			if action := xmap.GetStringPtr(llmReq.TransformerMetadata, "image_generation_action"); action != nil {
++			if action := xmap.GetStringPtr(llmReq.TransformerMetadata, responsesImageGenActionTransformerMetadataKey); action != nil {
+ 				tool.Action = *action
+ 			}
+ 			tools = append(tools, tool)
+ 			// Store image output format in TransformerMetadata
+-			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
++			llmReq.TransformerMetadata[responsesImageOutputFormatTransformerMetadataKey] = tool.OutputFormat
+ 		case llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch:
+ 			tool := convertWebSearchToTool(item)
+ 			tools = append(tools, tool)
+@@ -56,7 +56,7 @@
+ 
+ 	payload := Request{
+ 		Model:                llmReq.Model,
+-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
++		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, llmReq.TransformerMetadata),
+ 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
+ 		Tools:                tools,
+ 		ParallelToolCalls:    llmReq.ParallelToolCalls,
+@@ -68,17 +68,25 @@
+ 		User:                 llmReq.User,
+ 		Metadata:             llmReq.Metadata,
+ 		MaxOutputTokens:      llmReq.MaxCompletionTokens,
++		Temperature:          llmReq.Temperature,
++		FrequencyPenalty:     llmReq.FrequencyPenalty,
++		PresencePenalty:      llmReq.PresencePenalty,
+ 		TopLogprobs:          llmReq.TopLogprobs,
+ 		TopP:                 llmReq.TopP,
++		TopK:                 xmap.GetInt64Ptr(llmReq.TransformerMetadata, shared.TransformerMetadataKeyTopK),
++		CacheControl:         restoreCacheControl(llmReq.TransformerMetadata),
++		Modalities:           llmReq.Modalities,
+ 		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
+ 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
+ 		Reasoning:            convertReasoning(llmReq),
+ 		PromptCacheKey:       llmReq.PromptCacheKey,
+ 		PreviousResponseID:   llmReq.PreviousResponseID,
+-		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, "include"),
+-		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
+-		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
+-		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
++		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, shared.MetadataKeyInclude),
++		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, responsesMaxToolCallsTransformerMetadataKey),
++		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, responsesPromptCacheRetentionTransformerMetadataKey),
++		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, responsesTruncationTransformerMetadataKey),
++		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, responsesBackgroundTransformerMetadataKey),
++		Prompt:               xmap.GetPtr[Prompt](llmReq.TransformerMetadata, responsesPromptTransformerMetadataKey),
+ 	}
+ 
+ 	if lo.FromPtr(payload.PromptCacheKey) == "" {
+@@ -111,7 +119,7 @@
+ 		return nil, err
+ 	}
+ 
+-	return &httpclient.Request{
++	httpReq := &httpclient.Request{
+ 		Method:  http.MethodPost,
+ 		URL:     fullURL,
+ 		Headers: headers,
+@@ -121,8 +129,9 @@
+ 			APIKey: apiKey,
+ 		},
+ 		APIFormat:             string(llm.APIFormatOpenAIResponse),
+-		TransformerMetadata:   llmReq.TransformerMetadata,
+ 		SkipInboundQueryMerge: true,
+ 		Metadata:              nil,
+-	}, nil
++	}
++	shared.PropagateRequestMetadata(httpReq, llmReq)
++	return httpReq, nil
+ }

@@ -1,0 +1,102 @@
+--- /tmp/axonhub-upstream-20260706-175405/llm/transformer/openai/outbound_convert.go	2026-07-06 17:54:18
++++ /Users/asuan/项目/AI/axonhub/llm/transformer/openai/outbound_convert.go	2026-07-02 13:02:24
+@@ -1,6 +1,8 @@
+ package openai
+ 
+ import (
++	"encoding/json"
++
+ 	"github.com/samber/lo"
+ 
+ 	"github.com/looplj/axonhub/llm"
+@@ -31,12 +33,47 @@
+ 		Metadata:            r.Metadata,
+ 		Modalities:          r.Modalities,
+ 		ReasoningEffort:     r.ReasoningEffort,
++		ReasoningBudget:     r.ReasoningBudget,
++		ReasoningSummary:    r.ReasoningSummary,
+ 		ServiceTier:         r.ServiceTier,
+ 		Stream:              r.Stream,
+ 		ParallelToolCalls:   r.ParallelToolCalls,
+ 		Verbosity:           r.Verbosity,
+ 	}
+ 
++	// Restore top_k carried through TransformerMetadata (canonical llm.Request has
++	// no TopK field). Mirrors the Anthropic top_k restoration, shared neutral key.
++	if r.TransformerMetadata != nil {
++		if topK, ok := r.TransformerMetadata[TransformerMetadataKeyTopK].(*int64); ok && topK != nil {
++			req.TopK = topK
++		}
++	}
++
++	// Restore OpenRouter sampling knobs (repetition_penalty/min_p/top_a) carried
++	// through TransformerMetadata (mirrors top_k restoration).
++	if r.TransformerMetadata != nil {
++		if rp, ok := r.TransformerMetadata[TransformerMetadataKeyRepetitionPenalty].(*float64); ok && rp != nil {
++			req.RepetitionPenalty = rp
++		}
++		if minP, ok := r.TransformerMetadata[TransformerMetadataKeyMinP].(*float64); ok && minP != nil {
++			req.MinP = minP
++		}
++		if topA, ok := r.TransformerMetadata[TransformerMetadataKeyTopA].(*float64); ok && topA != nil {
++			req.TopA = topA
++		}
++	}
++
++	// Restore top-level cache_control carried through TransformerMetadata as
++	// opaque json.RawMessage (mirrors top_k restoration).
++	if r.TransformerMetadata != nil {
++		if raw, ok := r.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage); ok && len(raw) > 0 {
++			var cc CacheControl
++			if err := json.Unmarshal(raw, &cc); err == nil && cc.Type != "" {
++				req.CacheControl = &cc
++			}
++		}
++	}
++
+ 	// Convert messages
+ 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
+ 		return MessageFromLLMWithConfig(m, reasoningField)
+@@ -103,6 +140,7 @@
+ // MessageFromLLMWithConfig creates OpenAI Message from unified llm.Message with reasoning field configuration.
+ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Message {
+ 	var reasoningContent, reasoning *string
++	reasoningDetails := m.ReasoningDetails
+ 
+ 	// Apply reasoning field configuration
+ 	switch reasoningField {
+@@ -126,6 +164,7 @@
+ 		// Strip all reasoning fields
+ 		reasoningContent = nil
+ 		reasoning = nil
++		reasoningDetails = nil
+ 	default: // ReasoningFieldAll
+ 		// Preserve both reasoning fields with sync logic
+ 		reasoningContent = m.ReasoningContent
+@@ -148,6 +187,8 @@
+ 		ToolCallID:       m.ToolCallID,
+ 		ReasoningContent: reasoningContent,
+ 		Reasoning:        reasoning,
++		ReasoningDetails: reasoningDetails,
++		Images:           m.Images,
+ 	}
+ 
+ 	if m.Audio != nil {
+@@ -206,7 +247,7 @@
+ 	if c.MultipleContent != nil {
+ 		content.MultipleContent = lo.FilterMap(c.MultipleContent, func(p llm.MessageContentPart, _ int) (MessageContentPart, bool) {
+ 			switch p.Type {
+-			case "compaction", "compaction_summary":
++			case "compaction", "compaction_summary", "document":
+ 				return MessageContentPart{}, false
+ 			default:
+ 				return MessageContentPartFromLLM(p), true
+@@ -266,7 +307,7 @@
+ 		ID:   tc.ID,
+ 		Type: tc.Type,
+ 		Function: FunctionCall{
+-			Name:      tc.Function.Name,
++			Name:      tc.Function.CompositeName(),
+ 			Arguments: tc.Function.Arguments,
+ 		},
+ 		Index: tc.Index,

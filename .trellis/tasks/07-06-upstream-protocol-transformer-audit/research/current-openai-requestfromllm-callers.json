@@ -1,0 +1,1 @@
+{"function":"Users-asuan-AI-axonhub.llm.transformer.openai.outbound_convert.RequestFromLLM","direction":"inbound","mode":"calls","callers":[{"name":"TransformRequest","qualified_name":"Users-asuan-AI-axonhub.llm.transformer.openai.outbound.TransformRequest","hop":1,"risk":"CRITICAL"}]}

@@ -1,0 +1,17 @@
+{"file":".trellis/workflow.md","reason":"Review gates, check phase behavior, and sub-agent workflow"}
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec index for review context"}
+{"file":".trellis/spec/backend/protocol-transformer-guidelines.md","reason":"Primary review checklist for protocol transformer changes"}
+{"file":"CONTEXT.md","reason":"Glossary terms the implementation must preserve"}
+{"file":"docs/adr/0001-separate-openai-responses-native-preservation.md","reason":"Review against native preservation decision"}
+{"file":"docs/adr/0002-protocol-field-ownership-and-first-preservation-slice.md","reason":"Review against field ownership and frozen-slice decision"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/prd.md","reason":"Acceptance criteria and out-of-scope boundaries"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/design.md","reason":"Architecture design to verify against"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/implement.md","reason":"Slice checklist and parent review gates"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/architecture-audit.md","reason":"Architecture concerns and author-framework preservation evidence"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/upstream-transformer-complexity.json","reason":"Complexity evidence for architecture review risk areas"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/protocol-field-extraction/field-routing-classification.zh.md","reason":"Field routing rules to check implementation ownership"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/protocol-field-extraction/author-drop-policy.zh.md","reason":"Drop and diagnostic policy for review"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/protocol-field-extraction/field-trigger-conditions.zh.md","reason":"MCP and low-frequency field distinctions for review"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/architecture-optimization-principles.zh.md","reason":"Review criteria for architecture clarity, module depth, and avoiding over-engineering"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/final-protocol-field-list-and-decision-tree.zh.md","reason":"Review source for field ownership and protocol decision tree"}
+{"file":".trellis/tasks/07-06-upstream-protocol-transformer-audit/research/final-field-ownership-matrix.zh.md","reason":"Review source for field ownership, module decisions, and slice boundaries"}

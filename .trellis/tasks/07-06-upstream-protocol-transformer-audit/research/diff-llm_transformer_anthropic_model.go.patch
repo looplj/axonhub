@@ -1,0 +1,91 @@
+--- /tmp/axonhub-upstream-20260706-175405/llm/transformer/anthropic/model.go	2026-07-06 17:54:18
++++ /Users/asuan/项目/AI/axonhub/llm/transformer/anthropic/model.go	2026-06-30 12:41:44
+@@ -5,6 +5,8 @@
+ 	"fmt"
+ 
+ 	"github.com/samber/lo"
++
++	"github.com/looplj/axonhub/llm/transformer/shared"
+ )
+ 
+ // MessageRequest represents the Anthropic Messages API request format.
+@@ -100,6 +102,14 @@
+ 	// When this field is set, AxonHub preserves it as-is and skips its own
+ 	// per-block cache_control breakpoint optimization pipeline.
+ 	CacheControl *CacheControl `json:"cache_control,omitempty"`
++
++	// ContextManagement is an optional context-management configuration
++	// (edits: clear_tool_uses / clear_thinking, etc.). Kept as json.RawMessage
++	// so it round-trips to the upstream Anthropic API without the proxy
++	// modeling the versioned, discriminated edits schema (mirrors the Caller /
++	// tool_result json.RawMessage passthrough). canonical llm.Request has no
++	// equivalent, so it is carried through TransformerMetadata.
++	ContextManagement json.RawMessage `json:"context_management,omitempty"`
+ }
+ 
+ type AnthropicMetadata struct {
+@@ -157,6 +167,14 @@
+ // TransformerMetadataKeyOutputConfigEffort is the key for storing output config effort in TransformerMetadata.
+ const TransformerMetadataKeyOutputConfigEffort = "output_config_effort"
+ 
++// TransformerMetadataKeyOutputConfig is the key for storing the full Anthropic
++// output_config (carrying effort + format + task_budget) so the Anthropic
++// outbound can restore it verbatim when the upstream supports output_config.
++// The value is *OutputConfig. Effort is ALSO mirrored under
++// TransformerMetadataKeyOutputConfigEffort for the cross-format reasoning_effort
++// mapping and the non-output_config thinking fallback.
++const TransformerMetadataKeyOutputConfig = "anthropic_output_config"
++
+ // TransformerMetadataKeyThinkingDisplay is the key for storing thinking display in TransformerMetadata.
+ const TransformerMetadataKeyThinkingDisplay = "thinking_display"
+ 
+@@ -166,13 +184,30 @@
+ // Anthropic outbound transformer restores it onto the upstream request
+ // untouched and skips its own breakpoint optimization pipeline so that
+ // Anthropic's automatic caching behavior is preserved.
+-const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
++const TransformerMetadataKeyCacheControl = shared.TransformerMetadataKeyCacheControl
++
++// TransformerMetadataKeyContextManagement is the key for storing the top-level
++// context_management (Anthropic context-compression strategy, edits[]) carried
++// by an Anthropic-format inbound request. The value is json.RawMessage (opaque
++// passthrough). The Anthropic outbound transformer restores it onto the upstream
++// request untouched so the client's context-management strategy is preserved.
++const TransformerMetadataKeyContextManagement = "anthropic_context_management"
+ 
+ // TransformerMetadataKeyAnthropicResponseContent stores provider-native Anthropic response content blocks
+ // so outbound->unified->inbound round-trip can restore Anthropic-only blocks such as
+ // server_tool_use and web_search_tool_result without expanding the unified llm schema.
+ const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_content"
+ 
++// TransformerMetadataKeyAnthropicStopReason stores the original Anthropic
++// stop_reason (e.g. "stop_sequence") so an Anthropic->canonical->Anthropic
++// round-trip restores it instead of collapsing to "end_turn".
++const TransformerMetadataKeyAnthropicStopReason = "anthropic_stop_reason"
++
++// transformerMetadataKeyTopKLegacy is the legacy Anthropic-specific key for top_k.
++// Kept for backward-compatible reading of persisted TransformerMetadata; new writes
++// use the shared neutral key shared.TransformerMetadataKeyTopK ("top_k").
++const transformerMetadataKeyTopKLegacy = "anthropic_top_k"
++
+ type Thinking struct {
+ 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
+ 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
+@@ -187,6 +222,17 @@
+ 	// Any of "low", "medium", "high", "max".
+ 	// "max" is only supported by claude-opus-4-6.
+ 	Effort string `json:"effort,omitempty" validate:"omitempty,oneof=low medium high max"`
++
++	// Format specifies a structured-output schema (json_schema) for the response.
++	// Anthropic-only; carried through TransformerMetadata and restored verbatim
++	// when the upstream supports output_config. Kept as json.RawMessage (opaque)
++	// since the gateway does not interpret the schema.
++	Format json.RawMessage `json:"format,omitempty"`
++
++	// TaskBudget is an advisory agentic-turn token budget the model counts down.
++	// Anthropic-only; carried through TransformerMetadata and restored verbatim
++	// when the upstream supports output_config.
++	TaskBudget json.RawMessage `json:"task_budget,omitempty"`
+ }
+ 
+ type ToolChoice struct {

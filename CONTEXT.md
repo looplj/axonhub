@@ -25,3 +25,7 @@
 - **ResponsesNativeAST（Responses 原生 AST）**: Hub 对 OpenAI Responses 标准字段、tool variants、item variants 和流式事件建立的一等结构化表示；它与 raw fallback 配合使用，避免只保留字节而无法诊断或降级。
 - **PassThroughBody（请求体透传）**: 复用客户端原始请求体并只 patch 必要字段的转发手段；它是缓解路径和对照基线，不是字段丢失问题的根本修复。
 - **LossyDowngrade（有损降级）**: 跨协议转换时，由于目标协议缺少等价语义而进行的显式改写、压扁或丢弃；必须可诊断，不应静默发生。
+
+- **FieldOwnership（字段归属）**: 每个协议字段只能有一个主要归属层，例如 CrossProtocolCanonical、协议 native、provider extension、same-protocol raw fallback 或 LossyDowngrade；归属决定测试入口和允许的丢弃方式。
+- **SameProtocolPreservation（同协议保真）**: 源协议和目标协议相同的时候，Hub 解析、转换、重建后仍保留该协议可表达的原生字段和身份信息；它优先于任何跨协议映射设计。
+- **PreservationSlice（保真切片）**: 只验证一组字段在一个协议方向上的 preserve-or-diagnose 行为的小范围实施单元；第一轮 PreservationSlice 冻结为 OpenAI Responses → OpenAI Responses。
