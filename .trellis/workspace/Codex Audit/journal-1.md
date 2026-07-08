@@ -42,3 +42,39 @@ Completed OpenAI Responses/Chat/Anthropic protocol preservation fixes, raw fidel
 ### Next Steps
 
 - None - task complete
+
+
+## Session 2: Merge latest upstream with protocol transformer fixes
+
+**Date**: 2026-07-08
+**Task**: Merge latest upstream with protocol transformer fixes
+**Branch**: `codex-transformer-field-fixes`
+
+### Summary
+
+Created a clean integration worktree from latest origin/unstable, cherry-picked 25 protocol transformer fix commits, resolved one OpenAI Chat inbound conflict, validated llm tests and diff check, and archived the Trellis merge attempt.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `35a8e5ba` | (see git log) |
+| `ef56b7c4` | (see git log) |
+| `2ca6970e` | (see git log) |
+| `c9721332` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
