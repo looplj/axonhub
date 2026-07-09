@@ -159,6 +159,12 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAITranscription.String()},
 		{APIFormat: llm.APIFormatOpenAITranslation.String()},
 	},
+	channel.TypeRequesty: {
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAISpeech.String()},
+		{APIFormat: llm.APIFormatOpenAITranscription.String()},
+		{APIFormat: llm.APIFormatOpenAITranslation.String()},
+	},
 	channel.TypeXiaomi:              openAIChatOnlyDefaultEndpoints,
 	channel.TypeXiaomiAnthropic:     {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeXai:                 {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},

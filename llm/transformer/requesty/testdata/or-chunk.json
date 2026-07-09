@@ -1,0 +1,28 @@
+{
+  "id": "gen-1758295230-SiI5bLSgznz9dz6HO9XP",
+  "provider": "Z.AI",
+  "model": "z-ai/glm-4.5-air:free",
+  "object": "chat.completion.chunk",
+  "created": 1758295230,
+  "choices": [
+    {
+      "index": 0,
+      "delta": {
+        "role": "assistant",
+        "content": "",
+        "reasoning": "We",
+        "reasoning_details": [
+          {
+            "type": "reasoning.text",
+            "text": "We",
+            "format": "unknown",
+            "index": 0
+          }
+        ]
+      },
+      "finish_reason": null,
+      "native_finish_reason": null,
+      "logprobs": null
+    }
+  ]
+}

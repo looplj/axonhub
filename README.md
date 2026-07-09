@@ -219,6 +219,7 @@ Here are some screenshots of AxonHub in action:
 | **Fireworks**          | ✅ Done    | MiniMax-M2.5, GLM-5, Kimi K2.5, etc. | OpenAI |
 | **Jina AI**            | ✅ Done    | Embeddings, Reranker, etc.   | Jina Embedding, Jina Rerank |
 | **OpenRouter**         | ✅ Done    | Various models               | OpenAI, Anthropic, Gemini, Image Generation |
+| **Requesty**           | ✅ Done    | Various models               | OpenAI, Anthropic, Gemini, Image Generation |
 | **ZAI**                | ✅ Done    | -                            | Image Generation |
 | **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic, Gemini |
