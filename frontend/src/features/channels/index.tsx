@@ -61,6 +61,13 @@ function ChannelsContent() {
     localStorage.setItem('channels-table-sorting', JSON.stringify(sorting));
   }, [sorting]);
 
+  useEffect(() => {
+    if (!showTypeTabs && selectedTypeTab !== 'all') {
+      setSelectedTypeTab('all');
+      resetCursor();
+    }
+  }, [showTypeTabs, selectedTypeTab, resetCursor]);
+
   // Fetch channel types for tabs
   const { data: channelTypeCounts = [] } = useChannelTypes(statusFilter.length > 0 ? statusFilter : ['enabled', 'disabled']);
 
