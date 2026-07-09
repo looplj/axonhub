@@ -35,6 +35,7 @@ import {
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
+import { RequestyIcon } from '../components/requesty-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -297,6 +298,19 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: OpenRouter,
+  },
+  requesty: {
+    channelType: 'requesty',
+    baseURL: 'https://router.requesty.ai/v1',
+    defaultModels: [
+      'openai/gpt-4o-mini',
+      'openai/gpt-4o',
+      'anthropic/claude-sonnet-4-0',
+      'google/gemini-2.5-flash',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: RequestyIcon,
   },
   xiaomi: {
     channelType: 'xiaomi',
@@ -774,6 +788,7 @@ export type Provider =
   | 'xiaomi'
   | 'xai'
   | 'openrouter'
+  | 'requesty'
   | 'vercel'
   | 'ppio'
   | 'siliconflow'
@@ -830,6 +845,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   xiaomi_anthropic: 'xiaomi',
   xai: 'xai',
   openrouter: 'openrouter',
+  requesty: 'requesty',
   vercel: 'vercel',
   ppio: 'ppio',
   siliconflow: 'siliconflow',
