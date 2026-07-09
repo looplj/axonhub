@@ -1,9 +1,9 @@
-import { format } from 'date-fns';
-import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { format } from 'date-fns';
+import { useQueryClient } from '@tanstack/react-query';
+import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -19,6 +19,8 @@ import {
   ProviderApertisQuotaData,
   ProviderOpenCodeGoQuotaData,
   OpenCodeGoQuotaWindow,
+  ClineQuotaWindow,
+  isClinePassPoolQuotaData,
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
@@ -81,10 +83,12 @@ function openCodeGoWorkspaceKey(channel: ProviderQuotaChannel): string {
   return workspaceId && workspaceId.trim() !== '' ? `ws:${workspaceId}` : `id:${channel.id}`;
 }
 
+function getClineUsagePercent(window?: ClineQuotaWindow): number {
+  return window?.usage_percent ?? (window?.usage_ratio ?? 0) * 100;
+}
+
 function getChannelPercentage(channel: ProviderQuotaChannel): number {
   let percentage = 0;
-  if (!channel.quotaStatus) return 0;
-
   if (channel.type === 'claudecode') {
     const qd = channel.quotaStatus.quotaData;
     const util5h = qd.windows?.['5h']?.utilization || 0;
@@ -93,6 +97,11 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (channel.type === 'codex') {
     const qd = channel.quotaStatus.quotaData;
     percentage = qd.rate_limit?.primary_window?.used_percent || 0;
+  } else if (channel.type === 'cline') {
+    const qd = channel.quotaStatus.quotaData;
+    percentage = isClinePassPoolQuotaData(qd)
+      ? Math.max(getClineUsagePercent(qd.windows.last5h), getClineUsagePercent(qd.windows.last7d), getClineUsagePercent(qd.windows.last30d))
+      : 0;
   } else if (channel.type === 'github_copilot') {
     const qd = channel.quotaStatus.quotaData;
     let lowestRemaining = 100;
@@ -120,36 +129,35 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
 
     percentage = 100 - lowestRemaining;
   } else if (channel.type === 'nanogpt' || channel.type === 'nanogpt_responses') {
-    const qd = channel.quotaStatus?.quotaData;
-    if (!qd) return 0;
+    const qd = channel.quotaStatus.quotaData;
     let maxPercent = 0;
     if (qd.windows?.weeklyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.weeklyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
   } else if (isOpenCodeGoType(channel.type)) {
-    const qd = channel.quotaStatus?.quotaData as ProviderOpenCodeGoQuotaData | undefined;
+    const qd = channel.quotaStatus.quotaData as ProviderOpenCodeGoQuotaData | undefined;
     percentage = Math.max(
       qd?.windows?.rolling?.usage_percent ?? 0,
       qd?.windows?.weekly?.usage_percent ?? 0,
       qd?.windows?.monthly?.usage_percent ?? 0
     );
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
-    const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
+    const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
   } else if (isOpenaiType(channel.type) && channel.providerType === 'synthetic') {
-    const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
+    const qd = channel.quotaStatus.quotaData as ProviderSyntheticQuotaData | undefined;
     const weeklyPct = qd?.weeklyTokenLimit?.percentRemaining ?? 100;
     percentage = 100 - weeklyPct;
   } else if (isOpenaiType(channel.type) && channel.providerType === 'neuralwatt') {
-    const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
+    const qd = channel.quotaStatus.quotaData as ProviderNeuralWattQuotaData | undefined;
     const kwhIncluded = qd?.subscription?.kwh_included ?? 0;
     const kwhUsed = qd?.subscription?.kwh_used ?? 0;
     if (kwhIncluded > 0) {
       percentage = (kwhUsed / kwhIncluded) * 100;
     }
   } else if (isOpenaiType(channel.type) && channel.providerType === 'apertis') {
-    percentage = getApertisPercentage(channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined);
+    percentage = getApertisPercentage(channel.quotaStatus.quotaData as ProviderApertisQuotaData | undefined);
   }
   return percentage;
 }
@@ -214,15 +222,7 @@ function ProgressBar({
 // UsageTimeBar shows usage on a single progress bar with a small triangle below
 // it marking how far the reset window has elapsed (time progress). Hovering
 // reveals the detailed figures via tooltip, keeping the row compact.
-function UsageTimeBar({
-  usagePercent,
-  durationPercent,
-  tooltip,
-}: {
-  usagePercent: number;
-  durationPercent?: number;
-  tooltip: ReactNode;
-}) {
+function UsageTimeBar({ usagePercent, durationPercent, tooltip }: { usagePercent: number; durationPercent?: number; tooltip: ReactNode }) {
   const markerLeft = durationPercent === undefined ? undefined : Math.min(Math.max(durationPercent, 0), 100);
 
   return (
@@ -250,9 +250,10 @@ function formatTokenCount(n: number): string {
 }
 
 function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel; enforcementMode?: QuotaEnforcementMode | null }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
+  const [isResetting, setIsResetting] = useState(false);
   const quota = channel.quotaStatus;
-  if (!quota) return null;
 
   const status = quota.status;
   const statusLabel = t(STATUS_LABELS[status]);
@@ -267,8 +268,6 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
   const percentage = getChannelPercentage(channel);
   const batteryLevel = getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
-  const queryClient = useQueryClient();
-  const [isResetting, setIsResetting] = useState(false);
 
   const handleResetCodexQuota = async () => {
     if (channel.type !== 'codex') return;
@@ -337,6 +336,27 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
     if (resetAfter === undefined) return undefined;
 
     return calcDurationPercent(limit, resetAfter);
+  };
+
+  const getClineDurationPercent = (key: 'last5h' | 'last7d' | 'last30d', window: ClineQuotaWindow): number | undefined => {
+    const limits: Record<'last5h' | 'last7d' | 'last30d', number> = {
+      last5h: 5 * 3600,
+      last7d: 7 * 24 * 3600,
+      last30d: 30 * 24 * 3600,
+    };
+    if (!window.next_reset_at) return undefined;
+    const resetAfter = (new Date(window.next_reset_at).getTime() - Date.now()) / 1000;
+    return calcDurationPercent(limits[key], resetAfter);
+  };
+
+  const formatClineCost = (units?: number, scale?: number) => {
+    if (units == null || !scale) return '';
+    return t('currencies.format', {
+      val: units / scale,
+      currency: 'USD',
+      locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+      minimumFractionDigits: 6,
+    });
   };
 
   const formatTimeToReset = (resetAtOrSeconds?: string | number | null, usedPercent?: number, regenerates?: boolean | number) => {
@@ -427,7 +447,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {channel.type === 'claudecode' && (
         <div className='mt-4 space-y-4'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData;
+            const qd = channel.quotaStatus.quotaData;
             if (!qd) return null;
             return (
               <>
@@ -514,7 +534,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {channel.type === 'github_copilot' && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData;
+            const qd = channel.quotaStatus.quotaData;
             if (!qd) return null;
             const items: React.ReactNode[] = [];
             const limited = qd.limited_user_quotas;
@@ -612,7 +632,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {channel.type === 'codex' && (
         <div className='mt-4 space-y-4'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData;
+            const qd = channel.quotaStatus.quotaData;
             if (!qd) return null;
             return (
               <>
@@ -729,18 +749,8 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
 
                 {(status === 'exhausted' || status === 'warning') && (
                   <div className='border-border/60 flex items-center justify-end gap-2 border-t border-dashed pt-3'>
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      className='h-7 text-xs'
-                      disabled={isResetting}
-                      onClick={handleResetCodexQuota}
-                    >
-                      {isResetting ? (
-                        <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' />
-                      ) : (
-                        <Zap className='mr-1.5 h-3.5 w-3.5' />
-                      )}
+                    <Button size='sm' variant='outline' className='h-7 text-xs' disabled={isResetting} onClick={handleResetCodexQuota}>
+                      {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}
                       {t('quota.codex.resetNow')}
                     </Button>
                   </div>
@@ -751,10 +761,117 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
         </div>
       )}
 
+      {channel.type === 'cline' && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData;
+            const items: React.ReactNode[] = [];
+
+            if (isClinePassPoolQuotaData(qd)) {
+              const entries: Array<['last5h' | 'last7d' | 'last30d', string]> = [
+                ['last5h', 'quota.window.5h'],
+                ['last7d', 'quota.window.7d'],
+                ['last30d', 'quota.window.30d'],
+              ];
+
+              entries.forEach(([key, labelKey], index) => {
+                const window = qd.windows[key];
+                const usedPct = getClineUsagePercent(window);
+                const hasUsagePercent = window.usage_percent != null || window.usage_ratio != null;
+                const durationPct = getClineDurationPercent(key, window);
+                const used = formatClineCost(window.used_cost_units, qd.cost_scale);
+                const limit = formatClineCost(window.limit_cost_units, qd.cost_scale);
+                const resetText = window.next_reset_at ? formatTimeToReset(window.next_reset_at, usedPct) : '';
+
+                items.push(
+                  <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>
+                        {t(labelKey)}{' '}
+                        {used && limit ? (
+                          <span className='font-normal opacity-70'>
+                            ({used}/{limit})
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className='text-foreground font-medium'>
+                        {hasUsagePercent ? t('quota.label.percent_used', { percent: Math.round(usedPct) }) : t('quota.label.unavailable')}
+                      </span>
+                    </div>
+                    {hasUsagePercent ? (
+                      <UsageTimeBar
+                        usagePercent={usedPct}
+                        durationPercent={durationPct}
+                        tooltip={
+                          <div className='space-y-0.5'>
+                            <div className='font-medium'>{t(labelKey)}</div>
+                            <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                            {durationPct !== undefined && (
+                              <div>
+                                {t('quota.label.time_elapsed')}: {Math.round(durationPct)}%
+                              </div>
+                            )}
+                            {resetText && <div>{resetText}</div>}
+                          </div>
+                        }
+                      />
+                    ) : (
+                      <div className='text-muted-foreground text-[11px]'>{t('quota.label.unavailable')}</div>
+                    )}
+                  </div>
+                );
+              });
+            }
+
+            if (qd.balance?.raw_balance != null) {
+              items.push(
+                <div key='balance' className='border-border/60 flex items-center justify-between border-t border-dashed pt-3 text-xs'>
+                  <span className='text-muted-foreground font-medium'>{t('quota.label.cline_balance')}</span>
+                  <span className='text-foreground font-medium'>{qd.balance.raw_balance.toLocaleString()}</span>
+                </div>
+              );
+            } else if (qd.model_scope === 'direct_only') {
+              items.push(
+                <div key='balance-unavailable' className='border-border/60 flex items-center justify-between border-t border-dashed pt-3 text-xs'>
+                  <span className='text-muted-foreground font-medium'>{t('quota.label.cline_balance')}</span>
+                  <span className='text-muted-foreground'>{t('quota.label.unavailable')}</span>
+                </div>
+              );
+            }
+
+            if (qd.model_scope === 'mixed') {
+              items.push(
+                <div key='mixed-note' className='text-muted-foreground bg-muted/40 rounded p-2 text-[11px]'>
+                  {t('quota.label.cline_mixed_pool_note')}
+                </div>
+              );
+            }
+
+            if (qd.model_scope === 'direct_only') {
+              items.push(
+                <div key='direct-note' className='text-muted-foreground bg-muted/40 rounded p-2 text-[11px]'>
+                  {t('quota.label.cline_direct_pool_note')}
+                </div>
+              );
+            }
+
+            if (items.length === 0) {
+              items.push(
+                <div key='unavailable' className='text-muted-foreground bg-muted/40 rounded p-2 text-[11px]'>
+                  {t('quota.label.unavailable')}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
       {(channel.type === 'nanogpt' || channel.type === 'nanogpt_responses') && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData as ProviderNanoGPTQuotaData | undefined;
+            const qd = channel.quotaStatus.quotaData as ProviderNanoGPTQuotaData | undefined;
             if (!qd) return null;
             const items: React.ReactNode[] = [];
 
@@ -817,7 +934,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {isOpenCodeGoType(channel.type) && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData as ProviderOpenCodeGoQuotaData | undefined;
+            const qd = channel.quotaStatus.quotaData as ProviderOpenCodeGoQuotaData | undefined;
             if (!qd) return null;
 
             const entries: Array<['rolling' | 'weekly' | 'monthly', string]> = [
@@ -872,7 +989,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {isOpenaiType(channel.type) && channel.providerType === 'wafer' && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData as ProviderWaferQuotaData | undefined;
+            const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
             if (!qd) return null;
             const items: React.ReactNode[] = [];
 
@@ -912,7 +1029,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {isOpenaiType(channel.type) && channel.providerType === 'synthetic' && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData as ProviderSyntheticQuotaData | undefined;
+            const qd = channel.quotaStatus.quotaData as ProviderSyntheticQuotaData | undefined;
             if (!qd) return null;
             const items: React.ReactNode[] = [];
 
@@ -997,7 +1114,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData as ProviderNeuralWattQuotaData | undefined;
+            const qd = channel.quotaStatus.quotaData as ProviderNeuralWattQuotaData | undefined;
             if (!qd) return null;
             const items: React.ReactNode[] = [];
 
@@ -1064,7 +1181,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {isOpenaiType(channel.type) && channel.providerType === 'apertis' && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus?.quotaData as ProviderApertisQuotaData | undefined;
+            const qd = channel.quotaStatus.quotaData as ProviderApertisQuotaData | undefined;
             if (!qd) return null;
             const items: React.ReactNode[] = [];
 
@@ -1221,17 +1338,19 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
   );
 }
 
-function QuotaBadgeTrigger({ channels }: { channels: ProviderQuotaChannel[] }) {
-  const highestUsed = Math.max(
-    ...channels.map((c) => {
-      const quota = c.quotaStatus;
-      if (!quota) return 0;
-      return getChannelPercentage(c);
-    })
-  );
+function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: ProviderQuotaChannel[]; isLoading?: boolean; isError?: boolean }) {
+  if (isLoading) {
+    return <Loader2 className='text-muted-foreground h-5 w-5 animate-spin' />;
+  }
 
-  const hasExhausted = channels.some((c) => c.quotaStatus?.status === 'exhausted');
-  const hasWarning = channels.some((c) => c.quotaStatus?.status === 'warning');
+  if (isError) {
+    return <BatteryWarning className='h-5 w-5 text-red-500 transition-colors' />;
+  }
+
+  const highestUsed = Math.max(...channels.map(getChannelPercentage));
+
+  const hasExhausted = channels.some((c) => c.quotaStatus.status === 'exhausted');
+  const hasWarning = channels.some((c) => c.quotaStatus.status === 'warning');
 
   let level: BatteryLevel = 'full';
   if (hasExhausted) level = 'warning';
@@ -1247,11 +1366,11 @@ function QuotaBadgeTrigger({ channels }: { channels: ProviderQuotaChannel[] }) {
 
 export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean; onRefresh: () => void }) {
   const { t } = useTranslation();
-  const channels = useProviderQuotaStatuses();
+  const { channels, isLoading, isError, error } = useProviderQuotaStatuses();
   const { data: enforcementSettings } = useQuotaEnforcementSettings();
   const enforcementMode = enforcementSettings?.enabled ? enforcementSettings.mode : null;
 
-  if (channels.length === 0) return null;
+  if (!isLoading && !isError && channels.length === 0) return null;
 
   const groupedChannels = channels.reduce((acc: ProviderQuotaChannel[], channel: ProviderQuotaChannel) => {
     if (channel.type === 'nanogpt_responses') {
@@ -1280,33 +1399,56 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
     return acc;
   }, [] as ProviderQuotaChannel[]);
 
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className='text-muted-foreground flex items-center gap-2 px-1 py-3 text-sm'>
+          <Loader2 className='h-4 w-4 animate-spin' />
+          <span>{t('system.providerQuota.loading')}</span>
+        </div>
+      );
+    }
+
+    if (isError) {
+      return (
+        <div className='rounded bg-red-500/10 p-2 text-xs break-words text-red-500'>
+          <span className='font-medium'>{t('system.providerQuota.error')}:</span> {error instanceof Error ? error.message : t('quota.label.unavailable')}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${groupedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
+      >
+        {groupedChannels.map((channel: ProviderQuotaChannel) => (
+          <QuotaRow key={channel.id} channel={channel} enforcementMode={enforcementMode} />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button type='button' className='hover:bg-muted relative rounded-md p-2 transition-colors'>
-          <QuotaBadgeTrigger channels={groupedChannels} />
+          <QuotaBadgeTrigger channels={groupedChannels} isLoading={isLoading} isError={isError} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className={groupedChannels.length > 4 ? 'w-full sm:w-[640px]' : 'w-full sm:w-80'} align='end'>
+      <PopoverContent className={!isLoading && !isError && groupedChannels.length > 4 ? 'w-full sm:w-[640px]' : 'w-full sm:w-80'} align='end'>
         <div className='space-y-1'>
           <div className='mb-2 flex items-center justify-between'>
             <div className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>{t('system.providerQuota.title')}</div>
             <button
               onClick={onRefresh}
-              disabled={isRefreshing}
-              className='text-muted-foreground hover:text-foreground transition-colors'
+              disabled={isRefreshing || isLoading}
+              className='text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50'
               aria-label={t('system.providerQuota.refresh.label')}
             >
               {isRefreshing ? <Loader2 className='h-4 w-4 animate-spin' /> : <RefreshCw className='h-4 w-4' />}
             </button>
           </div>
-          <div
-            className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${groupedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
-          >
-            {groupedChannels.map((channel: ProviderQuotaChannel) => (
-              <QuotaRow key={channel.id} channel={channel} enforcementMode={enforcementMode} />
-            ))}
-          </div>
+          {renderContent()}
         </div>
       </PopoverContent>
     </Popover>

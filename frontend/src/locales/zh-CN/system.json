@@ -307,6 +307,8 @@
   "system.autoBackup.triggerSuccess": "已备份",
   "system.autoBackup.triggerFailed": "触发备份失败",
   "system.providerQuota.title": "提供商配额",
+  "system.providerQuota.loading": "正在加载配额状态...",
+  "system.providerQuota.error": "加载配额状态失败",
   "system.providerQuota.refresh.success": "配额状态已刷新",
   "system.providerQuota.refresh.failure": "刷新配额状态失败",
   "quota.label.primary_window": "主要窗口",
@@ -316,6 +318,7 @@
   "quota.label.error": "错误",
   "quota.window.5h": "5小时窗口",
   "quota.window.7d": "7天窗口",
+  "quota.window.30d": "30天窗口",
   "quota.window.weekly": "每周窗口",
   "quota.window.monthly": "每月窗口",
   "quota.status.available": "可用",
@@ -331,6 +334,7 @@
   "quota.label.regenerates_pct_in_time": "再生 {{percent}}% 于 {{time}}",
   "quota.label.regenerating_now": "正在再生",
   "quota.label.no_usage_yet": "尚无使用量",
+  "quota.label.unavailable": "N/A",
   "quota.label.days": "天",
   "quota.label.day": "天",
   "quota.label.hours": "小时",
@@ -409,5 +413,8 @@
   "quota.label.token_usage": "令牌用量",
   "quota.label.account_balance": "账户余额",
   "quota.label.monthly_limit": "月度限额",
+  "quota.label.cline_balance": "Cline credits 余额",
+  "quota.label.cline_mixed_pool_note": "此渠道同时包含 ClinePass 与 Cline (usage-billing) 模型。这里显示 ClinePass 用量，Cline credits 余额是独立资源。",
+  "quota.label.cline_direct_pool_note": "此渠道使用 Cline (usage-billing) 模型。Cline credits 余额仅作为参考显示。",
   "quota.provider.apertis": "Apertis"
 }
