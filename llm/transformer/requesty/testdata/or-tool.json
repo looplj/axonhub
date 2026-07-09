@@ -1,0 +1,41 @@
+{
+  "id": "gen-1761364094-YUYoOUHw4ouwIQdCevsI",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_function_2653208710_1",
+            "type": "function",
+            "function": {
+              "name": "Read",
+              "arguments": "{\"file_path\": \"/axonhub/internal/server/middleware/trace_test.go\"}"
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "object": "chat.completion",
+  "created": 1761364095,
+  "model": "minimax/minimax-m2:free",
+  "usage": {
+    "prompt_tokens": 15604,
+    "completion_tokens": 71,
+    "total_tokens": 15675,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "audio_tokens": 0,
+      "reasoning_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  }
+}
