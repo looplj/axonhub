@@ -1,16 +1,33 @@
 import { z } from 'zod';
 
-// Model cost schema
-export const modelCostSchema = z.object({
+const modelTokenCostSchema = z.object({
   input: z.number().optional(),
   output: z.number().optional(),
   cache_read: z.number().optional(),
   cache_write: z.number().optional(),
 });
 
+const modelCostTierSchema = modelTokenCostSchema
+  .extend({
+    tier: z
+      .object({
+        type: z.string(),
+        size: z.number().optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
+// Model cost schema
+export const modelCostSchema = modelTokenCostSchema.extend({
+  tiers: z.array(modelCostTierSchema).optional(),
+  context_over_200k: modelTokenCostSchema.optional(),
+});
+
 // Model limit schema
 export const modelLimitSchema = z.object({
   context: z.number().optional().nullable(),
+  input: z.number().optional().nullable(),
   output: z.number().optional().nullable(),
 });
 
@@ -26,14 +43,37 @@ export const modelModalitiesSchema = z.object({
   output: z.array(z.string()).optional().nullable(),
 });
 
+const modelReasoningOptionSchema = z.object({
+  type: z.string(),
+  values: z.array(z.string().nullable()).optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+});
+
+const modelExperimentalModeSchema = z
+  .object({
+    cost: modelTokenCostSchema.optional(),
+    provider: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
+
+const modelExperimentalSchema = z
+  .object({
+    modes: z.record(z.string(), modelExperimentalModeSchema).optional(),
+  })
+  .passthrough();
+
 // Single model schema
 export const providerModelSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
+  description: z.string().optional(),
   family: z.string().optional(),
   attachment: z.boolean().optional(),
   reasoning: modelReasoningSchema.optional(),
+  reasoning_options: z.array(modelReasoningOptionSchema).optional(),
   tool_call: z.boolean().optional(),
+  structured_output: z.boolean().optional(),
   temperature: z.boolean().optional(),
   knowledge: z.string().optional(),
   release_date: z.string().optional(),
@@ -42,7 +82,9 @@ export const providerModelSchema = z.object({
   open_weights: z.boolean().optional(),
   cost: modelCostSchema.optional(),
   limit: modelLimitSchema.optional().nullable(),
+  experimental: modelExperimentalSchema.optional(),
   display_name: z.string().optional(),
+  extra_capabilities: z.record(z.string(), z.unknown()).optional(),
   vision: z.boolean().optional(),
   type: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
