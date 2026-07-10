@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -582,14 +583,28 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 		return nil, xerrors.DuplicateNameError("channel", input.Name)
 	}
 
-	channel, err := svc.createChannel(ctx, input)
+	var created *ent.Channel
+	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
+		channel, err := svc.createChannel(ctx, input)
+		if err != nil {
+			return err
+		}
+
+		if err := svc.ensureChannelModelPrices(ctx, channel.ID, input.SupportedModels); err != nil {
+			return err
+		}
+
+		created = channel
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	svc.asyncReloadChannels()
 
-	return channel, nil
+	return created, nil
 }
 
 // NormalizeRetryableStatusCodes validates, deduplicates, and sorts additional
@@ -669,26 +684,6 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
-	mut := svc.entFromContext(ctx).Channel.UpdateOneID(id).
-		SetNillableType(input.Type).
-		SetNillableBaseURL(input.BaseURL).
-		SetNillableName(input.Name).
-		SetNillableDefaultTestModel(input.DefaultTestModel).
-		SetNillableOrderingWeight(input.OrderingWeight).
-		SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
-
-	if input.SupportedModels != nil {
-		mut.SetSupportedModels(input.SupportedModels)
-	}
-
-	if input.ManualModels != nil {
-		mut.SetManualModels(input.ManualModels)
-	}
-
-	if input.Tags != nil {
-		mut.SetTags(input.Tags)
-	}
-
 	if input.Settings != nil {
 		// Always normalize and validate override settings.
 		if input.Settings.BodyOverrideOperations != nil {
@@ -714,47 +709,97 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
 		}
-
-		mut.SetSettings(input.Settings)
-	}
-
-	if input.Policies != nil {
-		mut.SetPolicies(*input.Policies)
-	}
-
-	if input.Credentials != nil {
-		mut.SetCredentials(*input.Credentials)
-	}
-
-	if input.Remark != nil {
-		mut.SetRemark(*input.Remark)
-	}
-
-	if input.ClearRemark {
-		mut.ClearRemark()
-	}
-
-	if input.ClearAutoSyncModelPattern {
-		mut.ClearAutoSyncModelPattern()
-	} else if input.AutoSyncModelPattern != nil {
-		mut.SetAutoSyncModelPattern(*input.AutoSyncModelPattern)
 	}
 
 	if input.Endpoints != nil {
 		if err := ValidateEndpoints(input.Endpoints); err != nil {
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
-
-		mut.SetEndpoints(input.Endpoints)
 	}
 
-	if input.ClearErrorMessage {
-		mut.ClearErrorMessage()
-	}
+	var updated *ent.Channel
+	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
+		db := svc.entFromContext(ctx)
+		var addedModels []string
 
-	channel, err := mut.Save(ctx)
+		if input.SupportedModels != nil {
+			current, err := db.Channel.Get(ctx, id)
+			if err != nil {
+				return fmt.Errorf("failed to get channel before update: %w", err)
+			}
+
+			addedModels = lo.Without(input.SupportedModels, current.SupportedModels...)
+		}
+
+		mut := db.Channel.UpdateOneID(id).
+			SetNillableType(input.Type).
+			SetNillableBaseURL(input.BaseURL).
+			SetNillableName(input.Name).
+			SetNillableDefaultTestModel(input.DefaultTestModel).
+			SetNillableOrderingWeight(input.OrderingWeight).
+			SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
+
+		if input.SupportedModels != nil {
+			mut.SetSupportedModels(input.SupportedModels)
+		}
+
+		if input.ManualModels != nil {
+			mut.SetManualModels(input.ManualModels)
+		}
+
+		if input.Tags != nil {
+			mut.SetTags(input.Tags)
+		}
+
+		if input.Settings != nil {
+			mut.SetSettings(input.Settings)
+		}
+
+		if input.Policies != nil {
+			mut.SetPolicies(*input.Policies)
+		}
+
+		if input.Credentials != nil {
+			mut.SetCredentials(*input.Credentials)
+		}
+
+		if input.Remark != nil {
+			mut.SetRemark(*input.Remark)
+		}
+
+		if input.ClearRemark {
+			mut.ClearRemark()
+		}
+
+		if input.ClearAutoSyncModelPattern {
+			mut.ClearAutoSyncModelPattern()
+		} else if input.AutoSyncModelPattern != nil {
+			mut.SetAutoSyncModelPattern(*input.AutoSyncModelPattern)
+		}
+
+		if input.Endpoints != nil {
+			mut.SetEndpoints(input.Endpoints)
+		}
+
+		if input.ClearErrorMessage {
+			mut.ClearErrorMessage()
+		}
+
+		channel, err := mut.Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to update channel: %w", err)
+		}
+
+		if err := svc.ensureChannelModelPrices(ctx, id, addedModels); err != nil {
+			return err
+		}
+
+		updated = channel
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to update channel: %w", err)
+		return nil, err
 	}
 
 	// Intentionally NO forgetLimiter call: ChannelLimiterManager.GetOrCreate
@@ -764,7 +809,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	// requests transiently exceed MaxConcurrent.
 	svc.asyncReloadChannels()
 
-	return channel, nil
+	return updated, nil
 }
 
 // UpdateChannelStatus updates the status of a channel.
