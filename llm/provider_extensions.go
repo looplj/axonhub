@@ -10,6 +10,14 @@ import (
 // be serialized through the common llm request/response JSON model.
 type ProviderExtensions struct {
 	OpenAIResponses *OpenAIResponsesProviderExtensions `json:"-"`
+	Diagnostics     *DiagnosticsProviderExtensions     `json:"-"`
+}
+
+// DiagnosticsProviderExtensions carries cross-protocol conversion diagnostics.
+// It is not provider-native request/response storage and must not be serialized
+// to upstream providers.
+type DiagnosticsProviderExtensions struct {
+	LossyDowngrades []LossyDowngrade `json:"-"`
 }
 
 type OpenAIResponsesProviderExtensions struct {
@@ -17,14 +25,18 @@ type OpenAIResponsesProviderExtensions struct {
 }
 
 type OpenAIResponsesRequestExtensions struct {
-	ClientMetadata    map[string]string            `json:"-"`
-	RawTopLevelFields map[string]json.RawMessage   `json:"-"`
-	NativeTools       *OpenAIResponsesNativeTools  `json:"-"`
-	AdditionalTools   []OpenAIResponsesRawFragment `json:"-"`
-	RawTools          []OpenAIResponsesRawFragment `json:"-"`
-	ToolSignatures    []string                     `json:"-"`
-	RawToolChoice     json.RawMessage              `json:"-"`
-	RawInputItems     []OpenAIResponsesRawFragment `json:"-"`
+	ClientMetadata    map[string]string           `json:"-"`
+	RawTopLevelFields map[string]json.RawMessage  `json:"-"`
+	NativeTools       *OpenAIResponsesNativeTools `json:"-"`
+
+	// AdditionalTools carries raw input items with type="additional_tools".
+	// They are replayed from this field, not RawInputItems, so diagnostics can
+	// distinguish lazy tool declarations from other raw-only input items.
+	AdditionalTools []OpenAIResponsesRawFragment `json:"-"`
+	RawTools        []OpenAIResponsesRawFragment `json:"-"`
+	ToolSignatures  []string                     `json:"-"`
+	RawToolChoice   json.RawMessage              `json:"-"`
+	RawInputItems   []OpenAIResponsesRawFragment `json:"-"`
 
 	// PrependCount records how many messages were prepended to the canonical
 	// request by the prompt pipeline between inbound and outbound. The
@@ -64,6 +76,22 @@ func EnsureOpenAIResponsesProviderExtensions(req *Request) *OpenAIResponsesProvi
 	return req.ProviderExtensions.OpenAIResponses
 }
 
+func EnsureDiagnosticsProviderExtensions(req *Request) *DiagnosticsProviderExtensions {
+	if req == nil {
+		return nil
+	}
+
+	if req.ProviderExtensions == nil {
+		req.ProviderExtensions = &ProviderExtensions{}
+	}
+
+	if req.ProviderExtensions.Diagnostics == nil {
+		req.ProviderExtensions.Diagnostics = &DiagnosticsProviderExtensions{}
+	}
+
+	return req.ProviderExtensions.Diagnostics
+}
+
 func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 	if src == nil {
 		return nil
@@ -84,6 +112,12 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 				RawInputItems:     cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
 				PrependCount:      src.OpenAIResponses.Request.PrependCount,
 			}
+		}
+	}
+
+	if src.Diagnostics != nil {
+		cloned.Diagnostics = &DiagnosticsProviderExtensions{
+			LossyDowngrades: append([]LossyDowngrade(nil), src.Diagnostics.LossyDowngrades...),
 		}
 	}
 

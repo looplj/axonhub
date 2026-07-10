@@ -65,6 +65,12 @@ type Config struct {
 	// Thinking configuration
 	// Maps ReasoningEffort values to Anthropic thinking budget tokens
 	ReasoningEffortToBudget map[string]int64 `json:"reasoning_effort_to_budget,omitempty"`
+
+	// ThinkingCapabilityOverride declares the actual thinking wire capability of
+	// an Anthropic-compatible upstream. It overrides the official Claude model
+	// policy for this channel, except for DeepSeek which has its own adapter
+	// policy and does not support Anthropic adaptive-thinking wire semantics.
+	ThinkingCapabilityOverride ThinkingCapability `json:"thinking_capability_override,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Anthropic format.
@@ -162,8 +168,15 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: max_tokens must be positive", transformer.ErrInvalidRequest)
 	}
 
+	thinkingPlan := resolveThinkingRequestPlan(llmReq, t.config)
+	if thinkingPlan.validationErr != nil {
+		return nil, fmt.Errorf("%w: %w", transformer.ErrInvalidRequest, thinkingPlan.validationErr)
+	}
+
+	recordAnthropicThinkingLossyDowngrade(llmReq, thinkingPlan)
+
 	// Convert to Anthropic request format
-	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
+	anthropicReq := convertToAnthropicRequestWithThinkingPlan(llmReq, t.config, thinkingPlan)
 
 	// Anthropic supports two prompt-caching modes (see
 	// https://docs.claude.com/en/docs/build-with-claude/prompt-caching):

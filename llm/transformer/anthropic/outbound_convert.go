@@ -18,7 +18,15 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 }
 
 func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
-	req := buildBaseRequest(chatReq, config)
+	return convertToAnthropicRequestWithThinkingPlan(chatReq, config, resolveThinkingRequestPlan(chatReq, config))
+}
+
+func convertToAnthropicRequestWithThinkingPlan(
+	chatReq *llm.Request,
+	config *Config,
+	thinkingPlan thinkingRequestPlan,
+) *MessageRequest {
+	req := buildBaseRequest(chatReq, thinkingPlan)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
 
@@ -42,6 +50,15 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	// when thinking is enabled (matching their OpenAI API behavior).
 	if config != nil && config.Type == PlatformDeepSeek && isThinkingEnabled(req) {
 		ensureAssistantThinkingBlocks(req.Messages)
+	}
+
+	// Prefer the full stashed OutputConfig (effort + format/task_budget) when the
+	// platform supports output_config. Effort-only conversion already lives in the
+	// thinking capability planner; this restores richer same-protocol fields.
+	if chatReq.TransformerMetadata != nil && supportsOutputConfig(config) {
+		if oc, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfig].(*OutputConfig); ok && oc != nil {
+			req.OutputConfig = oc
+		}
 	}
 
 	return req
@@ -126,7 +143,7 @@ func prepareAnthropicReasoning(reasoningContent, reasoningSignature *string, con
 }
 
 // buildBaseRequest creates the base MessageRequest with common fields.
-func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
+func buildBaseRequest(chatReq *llm.Request, thinkingPlan thinkingRequestPlan) *MessageRequest {
 	req := &MessageRequest{
 		Model:       chatReq.Model,
 		Temperature: chatReq.Temperature,
@@ -155,60 +172,13 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: userID}
 	}
 
-	// DeepSeek Anthropic format supports output_config.effort. When reasoning_effort
-	// is present, prefer output_config over thinking so suffix-based effort routing
-	// (for example deepseek-chat-max) preserves the explicit effort level.
-	// Note: "none" is not a valid effort value, so skip it (it means disabled thinking).
-	if config != nil && config.Type == PlatformDeepSeek && chatReq.ReasoningEffort != "" && chatReq.ReasoningEffort != "none" {
-		req.OutputConfig = &OutputConfig{Effort: chatReq.ReasoningEffort}
-	}
-
-	// Determine thinking config priority: disabled > adaptive > enabled
-	if chatReq.TransformerMetadata != nil {
-		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok {
-			switch v {
-			case "disabled":
-				req.Thinking = &Thinking{Type: "disabled"}
-			case "adaptive":
-				req.Thinking = &Thinking{Type: "adaptive"}
-			}
-		}
-	}
-
-	// Handle ReasoningEffort="none" as disabled thinking (e.g., from OpenAI inbound)
-	// This check is needed when TransformerMetadata is not set but ReasoningEffort is "none"
-	if req.Thinking == nil && chatReq.ReasoningEffort == "none" {
-		req.Thinking = &Thinking{Type: "disabled"}
-	}
-
-	if req.OutputConfig == nil && req.Thinking == nil && chatReq.ReasoningEffort != "none" && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
-		req.Thinking = buildThinking(chatReq, config)
-	}
+	req.Thinking = thinkingPlan.thinking
+	req.OutputConfig = thinkingPlan.outputConfig
 
 	// Restore thinking display from TransformerMetadata
 	if req.Thinking != nil && chatReq.TransformerMetadata != nil {
 		if display, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay].(string); ok && display != "" {
 			req.Thinking.Display = display
-		}
-	}
-
-	// Restore output_config from TransformerMetadata
-	if chatReq.TransformerMetadata != nil {
-		if supportsOutputConfig(config) {
-			// Prefer the full stashed OutputConfig (carries format/task_budget)
-			// when present; fall back to effort-only for older metadata.
-			if oc, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfig].(*OutputConfig); ok && oc != nil {
-				req.OutputConfig = oc
-			} else if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
-				req.OutputConfig = &OutputConfig{Effort: effort}
-			}
-		} else if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
-			if req.Thinking == nil || req.Thinking.Type == "adaptive" {
-				req.Thinking = &Thinking{
-					Type:         "enabled",
-					BudgetTokens: getThinkingBudgetTokensWithConfig(effort, config),
-				}
-			}
 		}
 	}
 
@@ -255,16 +225,6 @@ func resolveMaxTokens(chatReq *llm.Request) int64 {
 	default:
 		// Set to 8192 tokens to match common model upper limit.
 		return 8192
-	}
-}
-
-// buildThinking creates the Thinking configuration.
-func buildThinking(chatReq *llm.Request, config *Config) *Thinking {
-	budgetTokens := lo.FromPtrOr(chatReq.ReasoningBudget, getThinkingBudgetTokensWithConfig(chatReq.ReasoningEffort, config))
-
-	return &Thinking{
-		Type:         "enabled",
-		BudgetTokens: budgetTokens,
 	}
 }
 
@@ -767,9 +727,11 @@ func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageCo
 	}
 
 	block := &MessageContentBlock{
-		Type:      "thinking",
-		Thinking:  reasoningContent,
-		Signature: reasoningSignature,
+		Type:     "thinking",
+		Thinking: reasoningContent,
+	}
+	if reasoningSignature != nil && *reasoningSignature != "" {
+		block.Signature = reasoningSignature
 	}
 
 	return block

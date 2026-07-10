@@ -194,10 +194,10 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			},
 		},
 		{
-			name:            "unknown reasoning effort",
+			name:            "unknown reasoning effort is not guessed",
 			reasoningEffort: "unknown",
-			expectedType:    "enabled",
-			expectedBudget:  15000,
+			expectedType:    "",
+			expectedBudget:  0,
 			config:          nil,
 		},
 	}
@@ -207,9 +207,15 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			chatReq := &llm.Request{
 				Model:           "claude-3-sonnet-20240229",
 				ReasoningEffort: tt.reasoningEffort,
+				MaxTokens:       lo.ToPtr(int64(64000)),
 			}
 
 			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
+
+			if tt.expectedType == "" {
+				require.Nil(t, anthropicReq.Thinking)
+				return
+			}
 
 			if anthropicReq.Thinking == nil {
 				t.Errorf("Expected Thinking to be non-nil")
@@ -225,6 +231,151 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReasoningEffortToAdaptiveThinkingForEffortModels(t *testing.T) {
+	tests := []struct {
+		name            string
+		model           string
+		reasoningEffort string
+		expectedEffort  string
+	}{
+		{
+			name:            "opus 4.8 high uses adaptive max effort",
+			model:           "claude-opus-4-8",
+			reasoningEffort: "high",
+			expectedEffort:  "max",
+		},
+		{
+			name:            "opus 4.8 xhigh uses adaptive max effort",
+			model:           "claude-opus-4-8",
+			reasoningEffort: "xhigh",
+			expectedEffort:  "max",
+		},
+		{
+			name:            "opus 4.7 medium uses adaptive medium effort",
+			model:           "claude-opus-4-7",
+			reasoningEffort: "medium",
+			expectedEffort:  "medium",
+		},
+		{
+			name:            "sonnet 5 low uses adaptive low effort",
+			model:           "claude-sonnet-5",
+			reasoningEffort: "low",
+			expectedEffort:  "low",
+		},
+		{
+			name:            "provider-prefixed opus 4.8 max uses adaptive max effort",
+			model:           "anthropic/claude-opus-4-8",
+			reasoningEffort: "max",
+			expectedEffort:  "max",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chatReq := &llm.Request{
+				Model:           tt.model,
+				ReasoningEffort: tt.reasoningEffort,
+				MaxTokens:       lo.ToPtr(int64(8192)),
+			}
+
+			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
+
+			require.NotNil(t, anthropicReq.Thinking)
+			require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
+			require.Zero(t, anthropicReq.Thinking.BudgetTokens)
+			require.NotNil(t, anthropicReq.OutputConfig)
+			require.Equal(t, tt.expectedEffort, anthropicReq.OutputConfig.Effort)
+
+			thinkingJSON, err := json.Marshal(anthropicReq.Thinking)
+			require.NoError(t, err)
+			require.JSONEq(t, `{"type":"adaptive"}`, string(thinkingJSON))
+		})
+	}
+}
+
+func TestResolveThinkingCapability(t *testing.T) {
+	tests := []struct {
+		name     string
+		model    string
+		config   *Config
+		expected ThinkingCapability
+	}{
+		{
+			name:     "opus 4.8 is adaptive only",
+			model:    "claude-opus-4-8",
+			expected: ThinkingCapabilityAdaptiveOnly,
+		},
+		{
+			name:     "sonnet 4.6 prefers adaptive thinking",
+			model:    "claude-sonnet-4-6",
+			expected: ThinkingCapabilityAdaptivePreferred,
+		},
+		{
+			name:     "claude 3.7 supports manual thinking",
+			model:    "claude-3-7-sonnet-20250219",
+			expected: ThinkingCapabilityManualSupported,
+		},
+		{
+			name:     "unrecognised model is unknown rather than guessed manual",
+			model:    "third-party-claude-compatible",
+			expected: ThinkingCapabilityUnknown,
+		},
+		{
+			name:  "channel capability override wins for compatible upstream",
+			model: "third-party-claude-compatible",
+			config: &Config{
+				ThinkingCapabilityOverride: ThinkingCapabilityAdaptiveOnly,
+			},
+			expected: ThinkingCapabilityAdaptiveOnly,
+		},
+		{
+			name:  "DeepSeek stays outside Claude capability policy",
+			model: "claude-opus-4-8",
+			config: &Config{
+				Type:                       PlatformDeepSeek,
+				ThinkingCapabilityOverride: ThinkingCapabilityAdaptiveOnly,
+			},
+			expected: ThinkingCapabilityUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, resolveThinkingCapability(tt.model, tt.config))
+		})
+	}
+}
+
+func TestReasoningEffortNoneDisablesAdaptiveThinkingModel(t *testing.T) {
+	chatReq := &llm.Request{
+		Model:           "claude-opus-4-8",
+		ReasoningEffort: "none",
+		MaxTokens:       lo.ToPtr(int64(8192)),
+	}
+
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
+
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "disabled", anthropicReq.Thinking.Type)
+	require.Nil(t, anthropicReq.OutputConfig)
+}
+
+func TestManualThinkingBudgetClampedBelowMaxTokens(t *testing.T) {
+	chatReq := &llm.Request{
+		Model:           "claude-3-7-sonnet-20250219",
+		ReasoningEffort: "high",
+		MaxTokens:       lo.ToPtr(int64(8192)),
+	}
+
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
+
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+	require.Equal(t, int64(8191), anthropicReq.Thinking.BudgetTokens)
+	require.Less(t, anthropicReq.Thinking.BudgetTokens, anthropicReq.MaxTokens)
+	require.Nil(t, anthropicReq.OutputConfig)
 }
 
 func TestNoReasoningEffort(t *testing.T) {
@@ -290,6 +441,7 @@ func TestReasoningBudgetPriority(t *testing.T) {
 			chatReq := &llm.Request{
 				Model:           "claude-3-sonnet-20240229",
 				ReasoningEffort: tt.reasoningEffort,
+				MaxTokens:       lo.ToPtr(int64(64000)),
 				ReasoningBudget: tt.reasoningBudget,
 			}
 
@@ -781,6 +933,32 @@ func TestOutputConfig_Outbound(t *testing.T) {
 				require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
 				// DeepSeek supports output_config; Thinking is nil when no reasoning effort/budget is set
 				require.Nil(t, anthropicReq.Thinking)
+			},
+		},
+		{
+			name: "DeepSeek adaptive metadata downgrades to output_config without adaptive thinking",
+			chatReq: &llm.Request{
+				Model:           "claude-opus-4-8",
+				MaxTokens:       lo.ToPtr(int64(4096)),
+				ReasoningEffort: "high",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyThinkingType: "adaptive",
+				},
+			},
+			config: &Config{
+				Type: PlatformDeepSeek,
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.Nil(t, anthropicReq.Thinking)
+				require.NotNil(t, anthropicReq.OutputConfig)
+				require.Equal(t, "high", anthropicReq.OutputConfig.Effort)
 			},
 		},
 		{

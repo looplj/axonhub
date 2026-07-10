@@ -3,7 +3,7 @@
   "max_tokens": 2048,
   "thinking": {
     "type": "enabled",
-    "budget_tokens": 15000
+    "budget_tokens": 2047
   },
   "metadata": {
     "user_id": "user-123"

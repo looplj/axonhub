@@ -112,7 +112,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			name: "thinking with display omitted",
 			anthropicRequestJSON: `{
 				"model": "claude-sonnet-4-20250514",
-				"max_tokens": 4096,
+				"max_tokens": 12000,
 				"thinking": {
 					"type": "enabled",
 					"budget_tokens": 10000,
@@ -126,7 +126,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 				]
 			}`,
 			expectedModel:           "claude-sonnet-4-20250514",
-			expectedMaxTokens:       4096,
+			expectedMaxTokens:       12000,
 			expectedThinkingDisplay: "omitted",
 		},
 		{

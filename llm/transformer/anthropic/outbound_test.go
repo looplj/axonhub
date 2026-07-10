@@ -1798,6 +1798,144 @@ func TestOutboundTransformer_TransformRequest_ParallelToolCallsMapsToDisablePara
 	}
 }
 
+func TestOutboundTransformer_TransformRequest_Opus48ReasoningHighUsesAdaptiveMaxEffort(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-opus-4-8",
+		ReasoningEffort: "high",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+
+	require.Equal(t, int64(8192), anthropicReq.MaxTokens)
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
+	require.Zero(t, anthropicReq.Thinking.BudgetTokens)
+	require.NotNil(t, anthropicReq.OutputConfig)
+	require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
+}
+
+func TestOutboundTransformer_TransformRequest_Opus48ReasoningMinimalUsesAdaptiveLowEffort(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-opus-4-8",
+		ReasoningEffort: "minimal",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
+	require.Zero(t, anthropicReq.Thinking.BudgetTokens)
+	require.NotNil(t, anthropicReq.OutputConfig)
+	require.Equal(t, "low", anthropicReq.OutputConfig.Effort)
+}
+
+func TestOutboundTransformer_TransformRequest_DeepSeekDoesNotUseAnthropicAdaptivePolicy(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		Type:                       PlatformDeepSeek,
+		ThinkingCapabilityOverride: ThinkingCapabilityAdaptiveOnly,
+		BaseURL:                    "https://api.deepseek.com",
+		APIKeyProvider:             auth.NewStaticKeyProvider("test-api-key"),
+	})
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-opus-4-8",
+		ReasoningEffort: "high",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.Nil(t, anthropicReq.Thinking)
+	require.NotNil(t, anthropicReq.OutputConfig)
+	require.Equal(t, "high", anthropicReq.OutputConfig.Effort)
+}
+
+func TestOutboundTransformer_TransformRequest_ManualThinkingRejectsIllegalBudget(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name             string
+		maxTokens        int64
+		reasoningBudget  *int64
+		expectedErrorMsg string
+	}{
+		{
+			name:             "max tokens has no legal manual-thinking budget",
+			maxTokens:        1024,
+			expectedErrorMsg: "max_tokens must be greater than 1024",
+		},
+		{
+			name:             "zero explicit budget",
+			maxTokens:        8192,
+			reasoningBudget:  lo.ToPtr(int64(0)),
+			expectedErrorMsg: "budget_tokens must be at least 1024",
+		},
+		{
+			name:             "negative explicit budget",
+			maxTokens:        8192,
+			reasoningBudget:  lo.ToPtr(int64(-1)),
+			expectedErrorMsg: "budget_tokens must be at least 1024",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				Model:           "claude-3-7-sonnet-20250219",
+				MaxTokens:       lo.ToPtr(tt.maxTokens),
+				ReasoningEffort: "high",
+				ReasoningBudget: tt.reasoningBudget,
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+			})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.expectedErrorMsg)
+		})
+	}
+}
+
 func TestOutboundTransformer_TransformRequest_ToolChoiceNoneSkipsDisableParallelToolUse(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 	chatReq := &llm.Request{
@@ -2127,4 +2265,135 @@ func TestOutboundTransformer_TransformResponse_ImageBlockIndex(t *testing.T) {
 	require.Equal(t, "image_url", parts[1].Type)
 	require.NotNil(t, parts[1].TransformerMetadata)
 	require.Equal(t, 1, parts[1].TransformerMetadata["anthropic_block_index"])
+}
+
+func TestOutboundTransformer_TransformRequest_AdaptiveOnlyModelRejectsExplicitManualBudget(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	_, err = transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-opus-4-8",
+		MaxTokens:       lo.ToPtr(int64(8192)),
+		ReasoningEffort: "high",
+		ReasoningBudget: lo.ToPtr(int64(2048)),
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "manual thinking is not supported")
+}
+
+func TestOutboundTransformer_TransformRequest_ManualThinkingBudgetSafety(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	t.Run("explicit manual budget works without reasoning effort", func(t *testing.T) {
+		result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+			Model:           "claude-3-7-sonnet-20250219",
+			MaxTokens:       lo.ToPtr(int64(8192)),
+			ReasoningBudget: lo.ToPtr(int64(2048)),
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+			},
+		})
+		require.NoError(t, err)
+
+		var anthropicReq MessageRequest
+		require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+		require.NotNil(t, anthropicReq.Thinking)
+		require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+		require.Equal(t, int64(2048), anthropicReq.Thinking.BudgetTokens)
+	})
+
+	t.Run("invalid configured budget is rejected instead of serialized", func(t *testing.T) {
+		configured, err := NewOutboundTransformerWithConfig(&Config{
+			Type:           PlatformDirect,
+			BaseURL:        "https://api.anthropic.com",
+			APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+			ReasoningEffortToBudget: map[string]int64{
+				"high": 0,
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = configured.TransformRequest(t.Context(), &llm.Request{
+			Model:           "claude-3-7-sonnet-20250219",
+			MaxTokens:       lo.ToPtr(int64(8192)),
+			ReasoningEffort: "high",
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+			},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "budget_tokens must be at least 1024")
+	})
+}
+
+func TestOutboundTransformer_TransformRequest_AnthropicReasoningXHighUsesMaxEffort(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-opus-4-8",
+		ReasoningEffort: "xhigh",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.NotNil(t, anthropicReq.OutputConfig)
+	require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
+	require.Zero(t, anthropicReq.Thinking.BudgetTokens)
+}
+
+func TestOutboundTransformer_TransformRequest_UnknownThinkingCapabilityDiagnosesDroppedEffort(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		APIFormat:       llm.APIFormatOpenAIResponse,
+		Model:           "third-party-claude-compatible",
+		ReasoningEffort: "high",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	}
+
+	result, err := transformer.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.Nil(t, anthropicReq.Thinking)
+	require.Nil(t, anthropicReq.OutputConfig)
+	require.Equal(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "reasoning.effort",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(request))
 }
