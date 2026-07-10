@@ -50,6 +50,8 @@ const (
 	ModelAssociationConditionFieldHasVideo      = "has_video"
 	ModelAssociationConditionFieldHasDocument   = "has_document"
 	ModelAssociationConditionFieldHasAudio      = "has_audio"
+	ModelAssociationConditionFieldRequestHeader       = "request_header"
+	ModelAssociationConditionFieldRequestHeaderPrefix = "request_header."
 )
 
 type ModelAssociation struct {

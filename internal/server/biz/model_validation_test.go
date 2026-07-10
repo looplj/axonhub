@@ -774,6 +774,170 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 		err := svc.validateModelSettings(settings)
 		require.NoError(t, err)
 	})
+
+	t.Run("valid request_header conditions", func(t *testing.T) {
+		operators := []string{"eq", "ne", "contains", "not_contains", "start_with", "end_with"}
+		for _, op := range operators {
+			t.Run(op, func(t *testing.T) {
+				settings := &objects.ModelSettings{
+					Associations: []*objects.ModelAssociation{
+						{
+							Type: "model",
+							When: &objects.ModelAssociationWhen{
+								Enabled: true,
+								Condition: &objects.Condition{
+									Type:  objects.ConditionTypeGroup,
+									Logic: "and",
+									Conditions: []objects.Condition{
+										{
+											Type:     objects.ConditionTypeCondition,
+											Field:    "request_header.X-Model",
+											Operator: op,
+											Value:    "gpt-4o",
+										},
+									},
+								},
+							},
+							ModelID: &objects.ModelIDAssociation{
+								ModelID: "test-model",
+							},
+						},
+					},
+				}
+
+				err := svc.validateModelSettings(settings)
+				require.NoError(t, err)
+			})
+		}
+	})
+
+	t.Run("request_header rejects unsupported operator", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "request_header.X-Model",
+									Operator: "gt",
+									Value:    "gpt-4o",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `unsupported condition operator "gt" for request_header`)
+	})
+
+	t.Run("request_header rejects empty name", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "request_header.",
+									Operator: "eq",
+									Value:    "gpt-4o",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "request header name is required")
+	})
+
+	t.Run("request_header rejects sensitive header", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "request_header.Authorization",
+									Operator: "eq",
+									Value:    "secret",
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "sensitive")
+	})
+
+	t.Run("request_header rejects non-string value", func(t *testing.T) {
+		settings := &objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "model",
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    "request_header.X-Model",
+									Operator: "eq",
+									Value:    int64(123),
+								},
+							},
+						},
+					},
+					ModelID: &objects.ModelIDAssociation{
+						ModelID: "test-model",
+					},
+				},
+			},
+		}
+
+		err := svc.validateModelSettings(settings)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "condition value for request_header must be a non-empty string")
+	})
 }
 
 func TestModelService_CreateModel_WithRegexValidation(t *testing.T) {
