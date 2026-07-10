@@ -11,6 +11,15 @@ export type FilterBuilderOperator = {
   value: string;
 };
 
+export type FilterBuilderSubField = {
+  label: string;
+  placeholder?: string;
+  // separator joins the field value and the sub-value (e.g. "." -> "request_header.X-Model")
+  separator: string;
+  suggestions?: Array<{ label: string; value: string }>;
+  allowCustom?: boolean;
+};
+
 export type FilterBuilderField = {
   label: string;
   operators?: FilterBuilderOperator[];
@@ -18,6 +27,7 @@ export type FilterBuilderField = {
   placeholder?: string;
   type: FilterBuilderFieldType;
   value: string;
+  subField?: FilterBuilderSubField;
 };
 
 export type FilterBuilderCondition = {
@@ -76,6 +86,52 @@ function getFieldDefinition(fields: FilterBuilderField[], fieldValue?: string) {
   return fields.find((field) => field.value === fieldValue) ?? fields[0];
 }
 
+// resolveField maps a stored condition.field (which may include a sub-value suffix,
+// e.g. "request_header.X-Model") back to its FilterBuilderField definition.
+function resolveField(fields: FilterBuilderField[], conditionField?: string): FilterBuilderField {
+  if (!conditionField) {
+    return fields[0];
+  }
+
+  const exact = fields.find((field) => field.value === conditionField);
+  if (exact) {
+    return exact;
+  }
+
+  const withSub = fields.find((field) => {
+    if (!field.subField) {
+      return false;
+    }
+    return conditionField.startsWith(field.value + field.subField.separator);
+  });
+  if (withSub) {
+    return withSub;
+  }
+
+  return fields[0];
+}
+
+function extractSubValue(field: FilterBuilderField, conditionField?: string): string {
+  if (!field.subField || !conditionField) {
+    return '';
+  }
+
+  const prefix = field.value + field.subField.separator;
+  if (conditionField.startsWith(prefix)) {
+    return conditionField.slice(prefix.length);
+  }
+
+  return '';
+}
+
+function buildConditionField(field: FilterBuilderField, subValue: string): string {
+  if (field.subField) {
+    return field.value + field.subField.separator + subValue;
+  }
+
+  return field.value;
+}
+
 function buildLeafCondition(fields: FilterBuilderField[]): FilterBuilderCondition | null {
   const firstField = fields[0];
   if (!firstField) {
@@ -87,7 +143,7 @@ function buildLeafCondition(fields: FilterBuilderField[]): FilterBuilderConditio
 
   return {
     type: 'condition',
-    field: firstField.value,
+    field: buildConditionField(firstField, ''),
     operator: firstOperator?.value || '',
     value: firstField.type === 'boolean' ? true : '',
   };
@@ -307,12 +363,169 @@ function GroupEditor({
             );
           }
 
-          const field = getFieldDefinition(fields, condition.field);
+          const field = resolveField(fields, condition.field);
           if (!field) {
             return null;
           }
 
+          const subValue = extractSubValue(field, condition.field);
           const operators = field.operators && field.operators.length > 0 ? field.operators : defaultOperatorsByType[field.type];
+          const subListId = `filter-subfield-${index}-${depth}`;
+          const fieldSelect = (
+            <Select
+              value={field.value}
+              onValueChange={(fieldValue) => {
+                const nextField = getFieldDefinition(fields, fieldValue);
+                const nextOperators =
+                  nextField?.operators && nextField.operators.length > 0 ? nextField.operators : defaultOperatorsByType[nextField?.type || 'string'];
+
+                updateConditions(
+                  conditions.map((item, itemIndex) =>
+                    itemIndex === index
+                      ? {
+                          type: 'condition',
+                          field: buildConditionField(nextField, ''),
+                          operator: nextOperators[0]?.value || '',
+                          value: nextField?.type === 'boolean' ? true : '',
+                        }
+                      : item
+                  )
+                );
+              }}
+              disabled={disabled}
+            >
+              <SelectTrigger aria-label={fieldLabel} className='h-10 w-full min-w-0 text-xs'>
+                <SelectValue placeholder={fieldLabel} />
+              </SelectTrigger>
+              <SelectContent>
+                {fields.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+          const subFieldInput = field.subField ? (
+            <>
+              <Input
+                list={field.subField.suggestions && field.subField.suggestions.length > 0 ? subListId : undefined}
+                type='text'
+                value={subValue}
+                disabled={disabled}
+                aria-label={field.subField.label}
+                placeholder={field.subField.placeholder || field.subField.label}
+                onChange={(e) =>
+                  updateConditions(
+                    conditions.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, field: buildConditionField(field, e.target.value) } : item
+                    )
+                  )
+                }
+                className='h-10 min-w-0 text-xs'
+              />
+              {field.subField.suggestions && field.subField.suggestions.length > 0 ? (
+                <datalist id={subListId}>
+                  {field.subField.suggestions.map((suggestion) => (
+                    <option key={suggestion.value} value={suggestion.value}>
+                      {suggestion.label}
+                    </option>
+                  ))}
+                </datalist>
+              ) : null}
+            </>
+          ) : null;
+          const operatorSelect = (
+            <Select
+              value={condition.operator}
+              onValueChange={(operator) =>
+                updateConditions(conditions.map((item, itemIndex) => (itemIndex === index ? { ...item, operator } : item)))
+              }
+              disabled={disabled}
+            >
+              <SelectTrigger aria-label={operatorLabel} className='h-10 w-full min-w-0 text-xs'>
+                <SelectValue placeholder={operatorLabel} />
+              </SelectTrigger>
+              <SelectContent>
+                {operators.map((operator) => (
+                  <SelectItem key={operator.value} value={operator.value}>
+                    {operator.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+          const valueControl =
+            field.type === 'boolean' ? (
+              <Select
+                value={String(condition.value ?? true)}
+                onValueChange={(nextValue) =>
+                  updateConditions(conditions.map((item, itemIndex) => (itemIndex === index ? { ...item, value: nextValue === 'true' } : item)))
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger aria-label={valueLabel} className='h-10 w-full min-w-0 text-xs'>
+                  <SelectValue placeholder={valueLabel} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='true'>true</SelectItem>
+                  <SelectItem value='false'>false</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : field.options && field.options.length > 0 ? (
+              <Select
+                value={String(condition.value ?? '')}
+                onValueChange={(nextValue) =>
+                  updateConditions(conditions.map((item, itemIndex) => (itemIndex === index ? { ...item, value: nextValue } : item)))
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger aria-label={valueLabel} className='h-10 w-full min-w-0 text-xs'>
+                  <SelectValue placeholder={field.placeholder || valueLabel} />
+                </SelectTrigger>
+                <SelectContent>
+                  {field.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                type={field.type === 'number' ? 'number' : 'text'}
+                min={field.type === 'number' ? 0 : undefined}
+                value={String(condition.value ?? '')}
+                disabled={disabled}
+                aria-label={valueLabel}
+                placeholder={field.placeholder}
+                onChange={(e) =>
+                  updateConditions(
+                    conditions.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? {
+                            ...item,
+                            value: field.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value,
+                          }
+                        : item
+                    )
+                  )
+                }
+                className='h-10 min-w-0 text-xs'
+              />
+            );
+          const removeButton = (
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              disabled={disabled}
+              onClick={() => updateConditions(conditions.filter((_, itemIndex) => itemIndex !== index))}
+              className='h-10 w-10 justify-self-end text-muted-foreground hover:text-destructive sm:justify-self-auto'
+            >
+              <IconTrash className='h-4 w-4' />
+            </Button>
+          );
 
           return (
             <div key={itemKey}>
@@ -328,129 +541,23 @@ function GroupEditor({
                   </div>
                 </div>
               ) : null}
-              <div className='grid grid-cols-[10rem_10rem_1fr_2.5rem] items-center gap-2'>
-                <Select
-                  value={condition.field}
-                  onValueChange={(fieldValue) => {
-                    const nextField = getFieldDefinition(fields, fieldValue);
-                    const nextOperators =
-                      nextField?.operators && nextField.operators.length > 0 ? nextField.operators : defaultOperatorsByType[nextField?.type || 'string'];
-
-                    updateConditions(
-                      conditions.map((item, itemIndex) =>
-                        itemIndex === index
-                          ? {
-                              type: 'condition',
-                              field: fieldValue,
-                              operator: nextOperators[0]?.value || '',
-                              value: nextField?.type === 'boolean' ? true : '',
-                            }
-                          : item
-                      )
-                    );
-                  }}
-                  disabled={disabled}
-                >
-                  <SelectTrigger className='h-10 w-full text-xs'>
-                    <SelectValue placeholder={fieldLabel} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fields.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={condition.operator}
-                  onValueChange={(operator) =>
-                    updateConditions(conditions.map((item, itemIndex) => (itemIndex === index ? { ...item, operator } : item)))
-                  }
-                  disabled={disabled}
-                >
-                  <SelectTrigger className='h-10 w-full text-xs'>
-                    <SelectValue placeholder={operatorLabel} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {operators.map((operator) => (
-                      <SelectItem key={operator.value} value={operator.value}>
-                        {operator.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {field.type === 'boolean' ? (
-                  <Select
-                    value={String(condition.value ?? true)}
-                    onValueChange={(nextValue) =>
-                      updateConditions(conditions.map((item, itemIndex) => (itemIndex === index ? { ...item, value: nextValue === 'true' } : item)))
-                    }
-                    disabled={disabled}
-                  >
-                    <SelectTrigger className='h-10 w-full text-xs'>
-                      <SelectValue placeholder={valueLabel} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='true'>true</SelectItem>
-                      <SelectItem value='false'>false</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : field.options && field.options.length > 0 ? (
-                  <Select
-                    value={String(condition.value ?? '')}
-                    onValueChange={(nextValue) =>
-                      updateConditions(conditions.map((item, itemIndex) => (itemIndex === index ? { ...item, value: nextValue } : item)))
-                    }
-                    disabled={disabled}
-                  >
-                    <SelectTrigger className='h-10 w-full text-xs'>
-                      <SelectValue placeholder={field.placeholder || valueLabel} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {field.options.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    type={field.type === 'number' ? 'number' : 'text'}
-                    min={field.type === 'number' ? 0 : undefined}
-                    value={String(condition.value ?? '')}
-                    disabled={disabled}
-                    placeholder={field.placeholder}
-                    onChange={(e) =>
-                      updateConditions(
-                        conditions.map((item, itemIndex) =>
-                          itemIndex === index
-                            ? {
-                                ...item,
-                                value: field.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value,
-                              }
-                            : item
-                        )
-                      )
-                    }
-                    className='h-10 text-xs'
-                  />
-                )}
-
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  disabled={disabled}
-                  onClick={() => updateConditions(conditions.filter((_, itemIndex) => itemIndex !== index))}
-                  className='h-10 w-10 text-muted-foreground hover:text-destructive'
-                >
-                  <IconTrash className='h-4 w-4' />
-                </Button>
-              </div>
+              {field.subField ? (
+                <div className='space-y-2'>
+                  <div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>{fieldSelect}{subFieldInput}</div>
+                  <div className='grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)_2.5rem] gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_2.5rem] sm:items-center'>
+                    {operatorSelect}
+                    {valueControl}
+                    {removeButton}
+                  </div>
+                </div>
+              ) : (
+                <div className='grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(10rem,1.25fr)_2.5rem] sm:items-center'>
+                  {fieldSelect}
+                  {operatorSelect}
+                  {valueControl}
+                  {removeButton}
+                </div>
+              )}
             </div>
           );
         })}
