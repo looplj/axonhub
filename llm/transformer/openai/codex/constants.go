@@ -20,6 +20,9 @@ func DefaultModels() []string {
 		"gpt-5.4",
 		"gpt-5.4-mini",
 		"gpt-5.5",
+		"gpt-5.6-sol",
+		"gpt-5.6-terra",
+		"gpt-5.6-luna",
 	}
 }
 
@@ -34,5 +37,5 @@ const (
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 
-	codexDefaultVersion = "0.142.5"
+	codexDefaultVersion = "0.144.1"
 )
