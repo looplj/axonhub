@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -584,13 +583,13 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	var created *ent.Channel
-	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
+	owned, err := svc.runInTransaction(ctx, func(ctx context.Context) error {
 		channel, err := svc.createChannel(ctx, input)
 		if err != nil {
 			return err
 		}
 
-		if err := svc.ensureChannelModelPrices(ctx, channel.ID, input.SupportedModels); err != nil {
+		if _, err := svc.ensureChannelModelPrices(ctx, channel.ID, input.SupportedModels); err != nil {
 			return err
 		}
 
@@ -601,8 +600,11 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	if err != nil {
 		return nil, err
 	}
+	if owned {
+		created.Unwrap()
+	}
 
-	svc.asyncReloadChannels()
+	svc.reloadChannelsAfterCommit(ctx, owned)
 
 	return created, nil
 }
@@ -718,19 +720,8 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	var updated *ent.Channel
-	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
+	owned, err := svc.runInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
-		var addedModels []string
-
-		if input.SupportedModels != nil {
-			current, err := db.Channel.Get(ctx, id)
-			if err != nil {
-				return fmt.Errorf("failed to get channel before update: %w", err)
-			}
-
-			addedModels = lo.Without(input.SupportedModels, current.SupportedModels...)
-		}
-
 		mut := db.Channel.UpdateOneID(id).
 			SetNillableType(input.Type).
 			SetNillableBaseURL(input.BaseURL).
@@ -790,8 +781,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			return fmt.Errorf("failed to update channel: %w", err)
 		}
 
-		if err := svc.ensureChannelModelPrices(ctx, id, addedModels); err != nil {
-			return err
+		if input.SupportedModels != nil {
+			if _, err := svc.ensureChannelModelPrices(ctx, id, input.SupportedModels); err != nil {
+				return err
+			}
 		}
 
 		updated = channel
@@ -801,13 +794,16 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	if err != nil {
 		return nil, err
 	}
+	if owned {
+		updated.Unwrap()
+	}
 
 	// Intentionally NO forgetLimiter call: ChannelLimiterManager.GetOrCreate
 	// already detects rate-limit changes via cfg equality and rebuilds on the
 	// next request. Calling Forget on every update (including unrelated
 	// settings) would orphan in-flight slots and let the next batch of
 	// requests transiently exceed MaxConcurrent.
-	svc.asyncReloadChannels()
+	svc.reloadChannelsAfterCommit(ctx, owned)
 
 	return updated, nil
 }
@@ -837,6 +833,36 @@ func (svc *ChannelService) asyncReloadChannels() {
 	if err := svc.channelNotifier.Notify(context.Background(), live.NewForceRefreshEvent[struct{}]()); err != nil {
 		log.Warn(context.Background(), "channel cache watcher notify failed", log.Cause(err))
 	}
+}
+
+// reloadChannelsAfterCommit publishes immediately for transactions owned by
+// this service and registers an after-commit hook for caller-owned Ent
+// transactions (including the GraphQL Transactioner). A caller that supplies
+// only tx.Client() has no commit hook surface and remains responsible for its
+// own post-commit notification.
+func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context, owned bool) {
+	if owned {
+		svc.asyncReloadChannels()
+
+		return
+	}
+
+	tx := ent.TxFromContext(ctx)
+	if tx == nil {
+		return
+	}
+
+	tx.OnCommit(func(next ent.Committer) ent.Committer {
+		return ent.CommitFunc(func(ctx context.Context, tx *ent.Tx) error {
+			if err := next.Commit(ctx, tx); err != nil {
+				return err
+			}
+
+			svc.asyncReloadChannels()
+
+			return nil
+		})
+	})
 }
 
 // SaveChannelEndpoints updates the endpoints field for a channel.

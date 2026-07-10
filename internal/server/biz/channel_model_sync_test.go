@@ -108,6 +108,9 @@ func TestChannelService_SyncChannelModelsAutoConfiguresMissingPrices(t *testing.
 	}, updated.SupportedModels)
 	require.Equal(t, 1, notifier.notifyCount)
 	require.Equal(t, live.EventForceRefresh, notifier.events[0].Type)
+	returnedPrices, err := updated.QueryChannelModelPrices().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, returnedPrices, 2)
 
 	prices, err := client.ChannelModelPrice.Query().
 		Where(channelmodelprice.ChannelID(ch.ID)).
@@ -150,6 +153,78 @@ func TestChannelService_SyncChannelModelsAutoConfiguresMissingPrices(t *testing.
 		require.NoError(t, err)
 		require.False(t, exists, "unexpected automatic price for %s", modelID)
 	}
+
+	noCostModel, err := client.Model.Query().Where(model.ModelID("no-cost-model")).Only(ctx)
+	require.NoError(t, err)
+	_, err = client.Model.UpdateOne(noCostModel).
+		SetModelCard(&objects.ModelCard{Cost: objects.ModelCardCost{Input: 3}}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	updated, err = svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2, notifier.notifyCount)
+	retriedPrice, err := client.ChannelModelPrice.Query().
+		Where(
+			channelmodelprice.ChannelID(ch.ID),
+			channelmodelprice.ModelID("no-cost-model"),
+		).
+		Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "3", retriedPrice.Price.Items[0].Pricing.UsagePerUnit.String())
+	retriedVersions, err := retriedPrice.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, retriedVersions, 1)
+	require.Equal(t, retriedPrice.ReferenceID, retriedVersions[0].ReferenceID)
+}
+
+func TestChannelService_ModelSyncIgnoresProviderOnlyOrderChanges(t *testing.T) {
+	var requestCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		if requestCount == 1 {
+			_, _ = w.Write([]byte(`{"data":[{"id":"model-a"},{"id":"model-b"}]}`))
+
+			return
+		}
+
+		_, _ = w.Write([]byte(`{"data":[{"id":"model-b"},{"id":"model-a"}]}`))
+	}))
+	defer server.Close()
+
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	notifier := &channelSyncNotifierSpy{}
+	svc.channelNotifier = notifier
+	previousAsyncReloadDisabled := asyncReloadDisabled
+	asyncReloadDisabled = false
+	t.Cleanup(func() {
+		asyncReloadDisabled = previousAsyncReloadDisabled
+	})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Order-stable sync").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"old-model"}).
+		SetDefaultTestModel("old-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	first, err := svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"model-a", "model-b"}, first.SupportedModels)
+	require.Equal(t, 1, notifier.notifyCount)
+
+	second, err := svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"model-a", "model-b"}, second.SupportedModels)
+	require.Equal(t, 1, notifier.notifyCount)
 }
 
 func TestChannelService_PeriodicModelSyncNotifiesOnceForChangedBatch(t *testing.T) {

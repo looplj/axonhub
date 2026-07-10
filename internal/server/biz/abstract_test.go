@@ -165,3 +165,38 @@ func TestAbstractService_RunInTransaction(t *testing.T) {
 		require.Equal(t, 1, count)
 	})
 }
+
+func TestAbstractService_RunInTransactionReportsOwnership(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:ent-ownership?mode=memory&_fk=0")
+	defer client.Close()
+
+	svc := &AbstractService{db: client}
+	ctx := authz.WithTestBypass(context.Background())
+
+	t.Run("service-owned transaction", func(t *testing.T) {
+		owned, err := svc.runInTransaction(ctx, func(context.Context) error { return nil })
+		require.NoError(t, err)
+		require.True(t, owned)
+	})
+
+	t.Run("transaction from context", func(t *testing.T) {
+		tx, err := client.Tx(ctx)
+		require.NoError(t, err)
+
+		owned, err := svc.runInTransaction(ent.NewTxContext(ctx, tx), func(context.Context) error { return nil })
+		require.NoError(t, err)
+		require.False(t, owned)
+		require.NoError(t, tx.Rollback())
+	})
+
+	t.Run("transactional client from context", func(t *testing.T) {
+		tx, err := client.Tx(ctx)
+		require.NoError(t, err)
+
+		txClientCtx := ent.NewContext(ctx, tx.Client())
+		owned, err := svc.runInTransaction(txClientCtx, func(context.Context) error { return nil })
+		require.NoError(t, err)
+		require.False(t, owned)
+		require.NoError(t, tx.Rollback())
+	})
+}

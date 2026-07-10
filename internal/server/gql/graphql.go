@@ -135,12 +135,8 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	})
 	gqlSrv.Use(&loggingTracer{})
 	gqlSrv.Use(entgql.Transactioner{
-		TxOpener: deps.Ent,
-		// Skip transaction for TestChannel mutation to avoid transaction conflicts
-		// when multiple test requests are sent in parallel from the frontend.
-		// TestChannel performs LLM API calls which can be long-running, and the
-		// database operations within don't require transactional consistency.
-		SkipTxFunc: entgql.SkipOperations("TestChannel", "TestChannelAPIKeys"),
+		TxOpener:   deps.Ent,
+		SkipTxFunc: skipMutationTransaction,
 	})
 
 	// Set error presenter to handle CodedError and add extensions.code
@@ -175,6 +171,40 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Graphql:    gqlSrv,
 		Playground: playground.Handler("AxonHub", "/admin/graphql"),
 	}
+}
+
+func skipMutationTransaction(op *ast.OperationDefinition) bool {
+	// TestChannel performs long-running parallel provider requests whose database
+	// operations do not require one transaction.
+	if entgql.SkipOperations("TestChannel", "TestChannelAPIKeys")(op) {
+		return true
+	}
+
+	// Bulk import intentionally commits each row independently to preserve its
+	// partial-success contract. Any operation containing this field therefore
+	// lets its mutation services manage their own transactions.
+	return selectionSetHasField(op.SelectionSet, "bulkImportChannels")
+}
+
+func selectionSetHasField(selectionSet ast.SelectionSet, name string) bool {
+	for _, selection := range selectionSet {
+		switch selection := selection.(type) {
+		case *ast.Field:
+			if selection.Name == name {
+				return true
+			}
+		case *ast.InlineFragment:
+			if selectionSetHasField(selection.SelectionSet, name) {
+				return true
+			}
+		case *ast.FragmentSpread:
+			if selection.Definition != nil && selectionSetHasField(selection.Definition.SelectionSet, name) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 var guidTypeToNodeType = map[string]string{

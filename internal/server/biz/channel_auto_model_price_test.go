@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sync/atomic"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
@@ -75,6 +77,28 @@ func TestModelCardToChannelModelPrice(t *testing.T) {
 			}},
 			wantOK: false,
 		},
+		{
+			name: "non-finite costs are ignored while finite costs remain",
+			card: &objects.ModelCard{Cost: objects.ModelCardCost{
+				Input:      math.NaN(),
+				Output:     2,
+				CacheRead:  math.Inf(1),
+				CacheWrite: math.Inf(-1),
+			}},
+			wantOK:    true,
+			wantCodes: []objects.PriceItemCode{objects.PriceItemCodeCompletion},
+			wantCosts: []string{"2"},
+		},
+		{
+			name: "all non-finite costs are not priceable",
+			card: &objects.ModelCard{Cost: objects.ModelCardCost{
+				Input:      math.NaN(),
+				Output:     math.Inf(1),
+				CacheRead:  math.Inf(-1),
+				CacheWrite: math.NaN(),
+			}},
+			wantOK: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -132,7 +156,8 @@ func TestChannelService_EnsureChannelModelPrices_EligibilityAndIdempotence(t *te
 		"enabled-model",
 		"",
 	}
-	require.NoError(t, svc.ensureChannelModelPrices(ctx, ch.ID, candidates))
+	_, err := svc.ensureChannelModelPrices(ctx, ch.ID, candidates)
+	require.NoError(t, err)
 
 	prices := queryChannelModelPrices(t, ctx, client, ch.ID)
 	require.Len(t, prices, 2)
@@ -149,7 +174,8 @@ func TestChannelService_EnsureChannelModelPrices_EligibilityAndIdempotence(t *te
 	before := lo.SliceToMap(prices, func(price *ent.ChannelModelPrice) (string, *ent.ChannelModelPrice) {
 		return price.ModelID, price
 	})
-	require.NoError(t, svc.ensureChannelModelPrices(ctx, ch.ID, candidates))
+	_, err = svc.ensureChannelModelPrices(ctx, ch.ID, candidates)
+	require.NoError(t, err)
 
 	after := queryChannelModelPrices(t, ctx, client, ch.ID)
 	require.Len(t, after, 2)
@@ -195,6 +221,69 @@ func TestChannelService_CreateChannel_AutoFillsEligibleInitialModels(t *testing.
 	require.Equal(t, channelmodelpriceversion.StatusActive, version.Status)
 	require.Equal(t, prices[0].ReferenceID, version.ReferenceID)
 	require.Equal(t, prices[0].Price, version.Price)
+
+	returnedPrices, err := ch.QueryChannelModelPrices().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, returnedPrices, 1)
+}
+
+func TestChannelService_CreateChannel_DefersReloadForCallerOwnedTransaction(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := channelAutoPriceTestContext(client)
+	createModelLibraryEntry(t, ctx, client, "outer-tx-model", model.StatusEnabled, objects.ModelCardCost{Input: 1})
+
+	notifier := &channelSyncNotifierSpy{}
+	svc.channelNotifier = notifier
+	previousAsyncReloadDisabled := asyncReloadDisabled
+	asyncReloadDisabled = false
+	t.Cleanup(func() {
+		asyncReloadDisabled = previousAsyncReloadDisabled
+	})
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+	txCtx := ent.NewTxContext(ctx, tx)
+	txCtx = ent.NewContext(txCtx, tx.Client())
+
+	ch, err := svc.CreateChannel(txCtx, ent.CreateChannelInput{
+		Type:             channel.TypeOpenai,
+		Name:             "Outer transaction create",
+		BaseURL:          lo.ToPtr("https://api.openai.com/v1"),
+		Credentials:      objects.ChannelCredentials{APIKey: "key"},
+		SupportedModels:  []string{"outer-tx-model"},
+		DefaultTestModel: "outer-tx-model",
+	})
+	require.NoError(t, err)
+	require.Zero(t, notifier.notifyCount)
+
+	prices, err := ch.QueryChannelModelPrices().All(txCtx)
+	require.NoError(t, err)
+	require.Len(t, prices, 1)
+
+	require.NoError(t, tx.Commit())
+	ch.Unwrap()
+	prices, err = ch.QueryChannelModelPrices().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, prices, 1)
+	require.Equal(t, 1, notifier.notifyCount)
+
+	rollbackTx, err := client.Tx(ctx)
+	require.NoError(t, err)
+	rollbackCtx := ent.NewTxContext(ctx, rollbackTx)
+	rollbackCtx = ent.NewContext(rollbackCtx, rollbackTx.Client())
+	_, err = svc.CreateChannel(rollbackCtx, ent.CreateChannelInput{
+		Type:             channel.TypeOpenai,
+		Name:             "Rolled-back outer transaction create",
+		BaseURL:          lo.ToPtr("https://api.openai.com/v1"),
+		Credentials:      objects.ChannelCredentials{APIKey: "key"},
+		SupportedModels:  []string{"outer-tx-model"},
+		DefaultTestModel: "outer-tx-model",
+	})
+	require.NoError(t, err)
+	require.NoError(t, rollbackTx.Rollback())
+	require.Equal(t, 1, notifier.notifyCount)
 }
 
 func TestChannelService_EnsureChannelModelPrices_RecreatesSoftDeletedPrice(t *testing.T) {
@@ -223,7 +312,8 @@ func TestChannelService_EnsureChannelModelPrices_RecreatesSoftDeletedPrice(t *te
 	require.NoError(t, err)
 	require.False(t, channelModelPriceExists(t, ctx, client, ch.ID, "recreated-model"))
 
-	require.NoError(t, svc.ensureChannelModelPrices(ctx, ch.ID, []string{"recreated-model"}))
+	_, err = svc.ensureChannelModelPrices(ctx, ch.ID, []string{"recreated-model"})
+	require.NoError(t, err)
 	recreated := queryChannelModelPrice(t, ctx, client, ch.ID, "recreated-model")
 	require.NotEqual(t, created[0].ID, recreated.ID)
 	require.NotEqual(t, created[0].ReferenceID, recreated.ReferenceID)
@@ -245,7 +335,7 @@ func TestChannelService_EnsureChannelModelPrices_RecreatesSoftDeletedPrice(t *te
 	}))
 }
 
-func TestChannelService_UpdateChannel_AutoFillsOnlyAddedModels(t *testing.T) {
+func TestChannelService_UpdateChannel_RetriesSupportedModelsAndPreservesExistingPrices(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()
 
@@ -272,12 +362,15 @@ func TestChannelService_UpdateChannel_AutoFillsOnlyAddedModels(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, channelModelPriceExists(t, ctx, client, ch.ID, "late-library-model"))
 
-	_, err = svc.UpdateChannel(ctx, ch.ID, &ent.UpdateChannelInput{
+	updated, err := svc.UpdateChannel(ctx, ch.ID, &ent.UpdateChannelInput{
 		SupportedModels: []string{"existing-model", "late-library-model", "added-model"},
 	})
 	require.NoError(t, err)
 	require.True(t, channelModelPriceExists(t, ctx, client, ch.ID, "added-model"))
-	require.False(t, channelModelPriceExists(t, ctx, client, ch.ID, "late-library-model"))
+	require.True(t, channelModelPriceExists(t, ctx, client, ch.ID, "late-library-model"))
+	returnedPrices, err := updated.QueryChannelModelPrices().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, returnedPrices, 3)
 
 	_, err = svc.UpdateChannel(ctx, ch.ID, &ent.UpdateChannelInput{
 		SupportedModels: []string{"late-library-model", "added-model"},
@@ -296,17 +389,6 @@ func TestChannelService_UpdateChannel_AutoFillsOnlyAddedModels(t *testing.T) {
 	require.Equal(t, existingPrice.Price, preserved.Price)
 	require.Equal(t, existingVersionCount, countChannelModelPriceVersions(t, ctx, client, preserved.ID))
 
-	_, err = svc.UpdateChannel(ctx, ch.ID, &ent.UpdateChannelInput{
-		SupportedModels: []string{"existing-model", "added-model"},
-	})
-	require.NoError(t, err)
-	_, err = svc.UpdateChannel(ctx, ch.ID, &ent.UpdateChannelInput{
-		SupportedModels: []string{"existing-model", "late-library-model", "added-model"},
-	})
-	require.NoError(t, err)
-
-	latePrice := queryChannelModelPrice(t, ctx, client, ch.ID, "late-library-model")
-	require.NotNil(t, latePrice)
 }
 
 func TestChannelService_DuplicateChannel_PreservesSourcePriceAndFillsGaps(t *testing.T) {
@@ -360,6 +442,9 @@ func TestChannelService_DuplicateChannel_PreservesSourcePriceAndFillsGaps(t *tes
 	require.Equal(t, "4", gap.Price.Items[1].Pricing.UsagePerUnit.String())
 	require.Equal(t, 1, countChannelModelPriceVersions(t, ctx, client, gap.ID))
 	require.False(t, channelModelPriceExists(t, ctx, client, duplicated.ID, "no-cost-model"))
+	returnedPrices, err := duplicated.QueryChannelModelPrices().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, returnedPrices, 2)
 }
 
 func TestChannelService_UpdateChannel_RollsBackModelsWhenPriceVersionFails(t *testing.T) {
@@ -430,6 +515,31 @@ func TestChannelService_BulkCreateChannels_RollsBackWholeBatchWhenPriceVersionFa
 	require.Equal(t, 0, countAllChannelModelPriceVersions(t, ctx, client))
 }
 
+func TestChannelService_BulkCreateChannels_ReturnsQueryableEntities(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := channelAutoPriceTestContext(client)
+	createModelLibraryEntry(t, ctx, client, "bulk-query-model", model.StatusEnabled, objects.ModelCardCost{Input: 1})
+
+	channels, err := svc.BulkCreateChannels(ctx, BulkCreateChannelsInput{
+		Type:             channel.TypeOpenai,
+		Name:             "Bulk Queryable",
+		BaseURL:          lo.ToPtr("https://api.openai.com/v1"),
+		APIKeys:          []string{"key-1", "key-2"},
+		SupportedModels:  []string{"bulk-query-model"},
+		DefaultTestModel: "bulk-query-model",
+	})
+	require.NoError(t, err)
+	require.Len(t, channels, 2)
+
+	for _, ch := range channels {
+		prices, err := ch.QueryChannelModelPrices().All(ctx)
+		require.NoError(t, err)
+		require.Len(t, prices, 1)
+	}
+}
+
 func TestChannelService_BulkImportChannels_RollsBackOnlyFailingItem(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()
@@ -482,6 +592,83 @@ func TestChannelService_BulkImportChannels_RollsBackOnlyFailingItem(t *testing.T
 	require.ElementsMatch(t, []string{"import-good-1", "import-good-2"}, lo.Map(prices, func(price *ent.ChannelModelPrice, _ int) string {
 		return price.ModelID
 	}))
+	for _, ch := range result.Channels {
+		returnedPrices, err := ch.QueryChannelModelPrices().All(ctx)
+		require.NoError(t, err)
+		require.Len(t, returnedPrices, 1)
+	}
+}
+
+func TestChannelService_BulkImportChannels_RejectsCallerOwnedTransaction(t *testing.T) {
+	tests := []struct {
+		name    string
+		makeCtx func(context.Context, *ent.Tx) context.Context
+	}{
+		{
+			name: "transaction from context",
+			makeCtx: func(ctx context.Context, tx *ent.Tx) context.Context {
+				return ent.NewTxContext(ctx, tx)
+			},
+		},
+		{
+			name: "transactional client from context",
+			makeCtx: func(ctx context.Context, tx *ent.Tx) context.Context {
+				return ent.NewContext(ctx, tx.Client())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, client := setupTestChannelService(t)
+			defer client.Close()
+
+			ctx := channelAutoPriceTestContext(client)
+			tx, err := client.Tx(ctx)
+			require.NoError(t, err)
+
+			result, err := svc.BulkImportChannels(tt.makeCtx(ctx, tx), []*BulkImportChannelItem{
+				newBulkImportAutoPriceTestItem("Rejected Import", "priced-model"),
+			})
+			require.ErrorIs(t, err, errServiceOwnedTransactionRequired)
+			require.Nil(t, result)
+			require.NoError(t, tx.Commit())
+			require.Equal(t, 0, countAllChannels(t, ctx, client))
+			require.Equal(t, 0, countAllChannelModelPrices(t, ctx, client))
+			require.Equal(t, 0, countAllChannelModelPriceVersions(t, ctx, client))
+		})
+	}
+}
+
+func TestChannelService_AutoPricingSupportsWriteOnlyChannelMutations(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	setupCtx := channelAutoPriceTestContext(client)
+	createModelLibraryEntry(t, setupCtx, client, "write-only-model", model.StatusEnabled, objects.ModelCardCost{Input: 1})
+	channelToUpdate := createAutoPriceTestChannel(t, setupCtx, client, "Write-only update", []string{"old-model"})
+
+	writeCtx := authz.NewUserContext(ent.NewContext(context.Background(), client), 42)
+	writeCtx = contexts.WithUser(writeCtx, &ent.User{
+		ID:     42,
+		Scopes: []string{"write_channels"},
+	})
+
+	updated, err := svc.UpdateChannel(writeCtx, channelToUpdate.ID, &ent.UpdateChannelInput{
+		SupportedModels: []string{"old-model", "write-only-model"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"old-model", "write-only-model"}, updated.SupportedModels)
+	require.True(t, channelModelPriceExists(t, setupCtx, client, channelToUpdate.ID, "write-only-model"))
+
+	result, err := svc.BulkImportChannels(writeCtx, []*BulkImportChannelItem{
+		newBulkImportAutoPriceTestItem("Write-only import", "write-only-model"),
+	})
+	require.NoError(t, err)
+	require.True(t, result.Success)
+	require.Equal(t, 1, result.Created)
+	require.Len(t, result.Channels, 1)
+	require.True(t, channelModelPriceExists(t, setupCtx, client, result.Channels[0].ID, "write-only-model"))
 }
 
 func channelAutoPriceTestContext(client *ent.Client) context.Context {
