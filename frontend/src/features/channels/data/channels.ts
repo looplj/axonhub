@@ -103,6 +103,7 @@ const CREATE_CHANNEL_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -175,6 +176,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -247,6 +249,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -319,6 +322,7 @@ const UPDATE_CHANNEL_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -508,6 +512,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             forceArrayInstructions
             forceArrayInputs
             replaceDeveloperRoleWithSystem
+            reasoningEffortMapping { from to }
           }
           passThroughUserAgent
           passThroughBody
@@ -705,6 +710,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             forceArrayInstructions
             forceArrayInputs
             replaceDeveloperRoleWithSystem
+            reasoningEffortMapping { from to }
           }
           passThroughUserAgent
           passThroughBody
@@ -854,6 +860,7 @@ const QUERY_CHANNELS_QUERY = `
               forceArrayInstructions
               forceArrayInputs
               replaceDeveloperRoleWithSystem
+              reasoningEffortMapping { from to }
             }
             passThroughUserAgent
             passThroughBody

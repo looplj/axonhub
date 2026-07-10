@@ -52,10 +52,16 @@ input OverrideMatchInput {
   eq: String!
 }
 
+type ReasoningEffortMapping {
+  from: String!
+  to: String!
+}
+
 type TransformOptions {
   forceArrayInstructions: Boolean!
   forceArrayInputs: Boolean!
   replaceDeveloperRoleWithSystem: Boolean!
+  reasoningEffortMapping: [ReasoningEffortMapping!]
 }
 
 type SyncChannelModelsPayload {
@@ -63,10 +69,16 @@ type SyncChannelModelsPayload {
   supportedModels: [String!]!
 }
 
+input ReasoningEffortMappingInput {
+  from: String!
+  to: String!
+}
+
 input TransformOptionsInput {
   forceArrayInstructions: Boolean
   forceArrayInputs: Boolean
   replaceDeveloperRoleWithSystem: Boolean
+  reasoningEffortMapping: [ReasoningEffortMappingInput!]
 }
 
 enum ProxyType {

@@ -102,6 +102,12 @@ models:
   ModelMappingInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ReasoningEffortMapping:
+    model:
+      - github.com/looplj/axonhub/llm.ReasoningEffortMapping
+  ReasoningEffortMappingInput:
+    model:
+      - github.com/looplj/axonhub/llm.ReasoningEffortMapping
   ProxyType:
     model:
       - github.com/looplj/axonhub/internal/objects.ProxyType

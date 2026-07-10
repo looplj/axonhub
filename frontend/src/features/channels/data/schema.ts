@@ -176,10 +176,17 @@ export const proxyConfigSchema = z.object({
 export type ProxyConfig = z.infer<typeof proxyConfigSchema>;
 
 // Transform Options
+export const reasoningEffortMappingSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+});
+export type ReasoningEffortMapping = z.infer<typeof reasoningEffortMappingSchema>;
+
 export const transformOptionsSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
+  reasoningEffortMapping: z.array(reasoningEffortMappingSchema).nullish(),
 });
 export type TransformOptions = z.infer<typeof transformOptionsSchema>;
 
