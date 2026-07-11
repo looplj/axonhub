@@ -22,6 +22,6 @@ TDD per micro-slice; self-review each; module review after 8A-8E.
   - M1 outbound_stream/aggregator silent skip reasoning_text.*
   - M2 prefer-text production writer missing
 - fix commit: pending (this follow-up)
-- re-review: pending
-- report: research/reviews/g7-module-review.md
-- commits: 7a1d1cfe (+ follow-up)
+- re-review: PASS by Harvey `019f5352-3118-7133-bd18-a6a293f593e1`
+- report: research/reviews/g7-module-rereview.md
+- commits: 7a1d1cfe, e6fe1a78
