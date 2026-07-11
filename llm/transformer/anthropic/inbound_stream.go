@@ -391,8 +391,12 @@ func (s *anthropicInboundStream) Next() bool {
 
 		if s.stopReason == nil {
 			stopReason := "end_turn"
-			if len(s.toolCalls) > 0 {
-				stopReason = "tool_use"
+			for _, toolCall := range s.toolCalls {
+				anthropicType := getAnthropicType(toolCall.TransformerMetadata)
+				if anthropicType == "" || anthropicType == "tool_use" {
+					stopReason = "tool_use"
+					break
+				}
 			}
 			s.stopReason = &stopReason
 		}

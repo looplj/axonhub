@@ -72,6 +72,44 @@ func TestInboundStream_FinalizesOnCleanExhaustionWithoutFinishReason(t *testing.
 			expectedStopReason: "tool_use",
 		},
 		{
+			name: "server tool call",
+			delta: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					Index: 0,
+					ID:    "server_tool_123",
+					Type:  "function",
+					Function: llm.FunctionCall{
+						Name:      "web_search",
+						Arguments: `{"query":"test"}`,
+					},
+					TransformerMetadata: map[string]any{
+						TransformerMetadataKeyAnthropicType: "server_tool_use",
+					},
+				}},
+			},
+			expectedStopReason: "end_turn",
+		},
+		{
+			name: "mcp tool call",
+			delta: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					Index: 0,
+					ID:    "mcp_tool_123",
+					Type:  "function",
+					Function: llm.FunctionCall{
+						Name:      "mcp_search",
+						Arguments: `{"query":"test"}`,
+					},
+					TransformerMetadata: map[string]any{
+						TransformerMetadataKeyAnthropicType: "mcp_tool_use",
+					},
+				}},
+			},
+			expectedStopReason: "end_turn",
+		},
+		{
 			name: "text",
 			delta: &llm.Message{
 				Role: "assistant",
