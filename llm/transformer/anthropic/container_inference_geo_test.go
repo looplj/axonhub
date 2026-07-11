@@ -1,0 +1,85 @@
+package anthropic
+
+import (
+	"encoding/json"
+	"net/http"
+	"os"
+	"testing"
+
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	openai "github.com/looplj/axonhub/llm/transformer/openai"
+)
+
+func TestAnthropicContainerAndInferenceGeoSameProtocolRoundTrip(t *testing.T) {
+	body, err := os.ReadFile("testdata/anthropic-container-inference-geo.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	container, ok := llmReq.TransformerMetadata[TransformerMetadataKeyContainer].(json.RawMessage)
+	require.True(t, ok)
+	require.JSONEq(t, `{"id":"container_123","skills":[{"type":"custom","skill_id":"skill_abc"}],"future_nested":{"enabled":true,"note":"unknown-field"}}`, string(container))
+
+	geo, ok := llmReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo].(json.RawMessage)
+	require.True(t, ok)
+	require.JSONEq(t, `"us"`, string(geo))
+
+	// Must not widen the common request model.
+	_, hasContainer := llmReq.TransformerMetadata["container"]
+	require.False(t, hasContainer)
+
+	outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	upstream, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstream.Body, &outboundBody))
+	require.JSONEq(t, string(container), string(outboundBody["container"]))
+	require.JSONEq(t, string(geo), string(outboundBody["inference_geo"]))
+}
+
+func TestAnthropicContainerAndInferenceGeoNotSynthesizedToOpenAIChat(t *testing.T) {
+	body, err := os.ReadFile("testdata/anthropic-container-inference-geo.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstream, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstream.Body, &outboundBody))
+	require.NotContains(t, outboundBody, "container")
+	require.NotContains(t, outboundBody, "inference_geo")
+}
+
+func TestAnthropicContainerAndInferenceGeoOmittedWhenAbsent(t *testing.T) {
+	chatReq := &llm.Request{
+		Model:     "claude-3-sonnet-20240229",
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+		}},
+	}
+	anthropicReq := convertToAnthropicRequest(chatReq)
+	require.Empty(t, anthropicReq.Container)
+	require.Empty(t, anthropicReq.InferenceGeo)
+}

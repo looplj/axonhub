@@ -1,0 +1,13 @@
+{
+  "model": "claude-3-sonnet-20240229",
+  "max_tokens": 1024,
+  "messages": [
+    {"role": "user", "content": "hello geo"}
+  ],
+  "container": {
+    "id": "container_123",
+    "skills": [{"type": "custom", "skill_id": "skill_abc"}],
+    "future_nested": {"enabled": true, "note": "unknown-field"}
+  },
+  "inference_geo": "us"
+}

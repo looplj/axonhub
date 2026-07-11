@@ -134,6 +134,14 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		chatReq.TransformerMetadata[TransformerMetadataKeyContextManagement] = anthropicReq.ContextManagement
 	}
 
+	if len(anthropicReq.Container) > 0 {
+		chatReq.TransformerMetadata[TransformerMetadataKeyContainer] = anthropicReq.Container
+	}
+
+	if len(anthropicReq.InferenceGeo) > 0 {
+		chatReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo] = anthropicReq.InferenceGeo
+	}
+
 	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
 	// TopK field, so without this the Anthropic sampling parameter is dropped on
 	// non-pass-through format conversion.

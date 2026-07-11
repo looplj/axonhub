@@ -110,6 +110,15 @@ type MessageRequest struct {
 	// tool_result json.RawMessage passthrough). canonical llm.Request has no
 	// equivalent, so it is carried through TransformerMetadata.
 	ContextManagement json.RawMessage `json:"context_management,omitempty"`
+
+	// Container is an Anthropic-native top-level object. Keep as json.RawMessage so
+	// same-protocol replay preserves unknown nested keys without modeling the
+	// versioned internal shape on llm.Request.
+	Container json.RawMessage `json:"container,omitempty"`
+
+	// InferenceGeo is an Anthropic-native top-level geography selector/observation.
+	// Preserve raw JSON values, including future unknown strings/objects.
+	InferenceGeo json.RawMessage `json:"inference_geo,omitempty"`
 }
 
 type AnthropicMetadata struct {
@@ -192,6 +201,12 @@ const TransformerMetadataKeyCacheControl = shared.TransformerMetadataKeyCacheCon
 // passthrough). The Anthropic outbound transformer restores it onto the upstream
 // request untouched so the client's context-management strategy is preserved.
 const TransformerMetadataKeyContextManagement = "anthropic_context_management"
+
+// TransformerMetadataKeyContainer stores Anthropic top-level container as opaque JSON.
+const TransformerMetadataKeyContainer = "anthropic_container"
+
+// TransformerMetadataKeyInferenceGeo stores Anthropic top-level inference_geo as opaque JSON.
+const TransformerMetadataKeyInferenceGeo = "anthropic_inference_geo"
 
 // TransformerMetadataKeyAnthropicResponseContent stores provider-native Anthropic response content blocks
 // so outbound->unified->inbound round-trip can restore Anthropic-only blocks such as

@@ -202,6 +202,16 @@ func buildBaseRequest(chatReq *llm.Request, thinkingPlan thinkingRequestPlan) *M
 		}
 	}
 
+	// Restore Anthropic-native container / inference_geo as opaque JSON.
+	if chatReq.TransformerMetadata != nil {
+		if container := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyContainer]); len(container) > 0 {
+			req.Container = container
+		}
+		if geo := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo]); len(geo) > 0 {
+			req.InferenceGeo = geo
+		}
+	}
+
 	// Restore top_k carried through TransformerMetadata (canonical llm.Request
 	// has no TopK field). Mirrors the cache_control restoration above.
 	if chatReq.TransformerMetadata != nil {
