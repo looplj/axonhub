@@ -393,14 +393,17 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	chatReq.Messages = messages
 
 	// Convert tools. Adapter-specific tool variants (mcp_toolset) are not common
-	// llm.Tool shapes; preserve them as ordered raw fragments for same-protocol
-	// replay while still converting function/web_search tools.
+	// llm.Tool shapes; preserve them as index-addressable raw fragments so
+	// same-protocol replay keeps tools[] order relative to function tools.
 	if len(anthropicReq.Tools) > 0 {
 		tools := make([]llm.Tool, 0, len(anthropicReq.Tools))
-		rawTools := make([]json.RawMessage, 0)
-		for _, tool := range anthropicReq.Tools {
+		rawTools := make([]anthropicRawToolFragment, 0)
+		for i, tool := range anthropicReq.Tools {
 			if len(tool.Raw) > 0 {
-				rawTools = append(rawTools, append(json.RawMessage(nil), tool.Raw...))
+				rawTools = append(rawTools, anthropicRawToolFragment{
+					OriginalIndex: i,
+					Raw:           append(json.RawMessage(nil), tool.Raw...),
+				})
 				continue
 			}
 			llmTool, ok := convertToolToLLM(tool)

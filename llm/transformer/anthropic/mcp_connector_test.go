@@ -37,11 +37,12 @@ func TestAnthropicMCPConnectorSameProtocolRoundTrip(t *testing.T) {
 		}
 	]`, string(mcpServers))
 
-	rawTools, ok := llmReq.TransformerMetadata[TransformerMetadataKeyRawTools].([]json.RawMessage)
+	rawTools, ok := llmReq.TransformerMetadata[TransformerMetadataKeyRawTools].([]anthropicRawToolFragment)
 	require.True(t, ok)
 	require.Len(t, rawTools, 1)
-	require.Contains(t, string(rawTools[0]), `"type": "mcp_toolset"`)
-	require.Contains(t, string(rawTools[0]), `"future_nested"`)
+	require.Equal(t, 1, rawTools[0].OriginalIndex)
+	require.Contains(t, string(rawTools[0].Raw), `"type": "mcp_toolset"`)
+	require.Contains(t, string(rawTools[0].Raw), `"future_nested"`)
 
 	// Function tool still converted to common abstraction; mcp_toolset is not.
 	require.Len(t, llmReq.Tools, 1)
@@ -85,9 +86,10 @@ func TestAnthropicMCPToolsetOnlySameProtocolRoundTrip(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Empty(t, llmReq.Tools)
-	rawTools, ok := llmReq.TransformerMetadata[TransformerMetadataKeyRawTools].([]json.RawMessage)
+	rawTools, ok := llmReq.TransformerMetadata[TransformerMetadataKeyRawTools].([]anthropicRawToolFragment)
 	require.True(t, ok)
 	require.Len(t, rawTools, 1)
+	require.Equal(t, 0, rawTools[0].OriginalIndex)
 
 	outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
 	require.NoError(t, err)
@@ -141,4 +143,43 @@ func TestAnthropicMCPConnectorNotSynthesizedForResponsesOrChat(t *testing.T) {
 	if rawTools, ok := chatBody["tools"]; ok {
 		require.NotContains(t, string(rawTools), "mcp_toolset")
 	}
+}
+
+
+func TestAnthropicMCPToolsetOrderPreservedWhenFirst(t *testing.T) {
+	body := []byte(`{
+		"model": "claude-opus-4-8",
+		"max_tokens": 512,
+		"messages": [{"role": "user", "content": "order"}],
+		"mcp_servers": [{"type":"url","url":"https://example-server.modelcontextprotocol.io/sse","name":"example-mcp"}],
+		"tools": [
+			{"type":"mcp_toolset","mcp_server_name":"example-mcp","default_config":{"enabled":true}},
+			{"name":"lookup","description":"lookup","input_schema":{"type":"object","properties":{}}}
+		]
+	}`)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+	rawTools, ok := llmReq.TransformerMetadata[TransformerMetadataKeyRawTools].([]anthropicRawToolFragment)
+	require.True(t, ok)
+	require.Equal(t, 0, rawTools[0].OriginalIndex)
+	require.Len(t, llmReq.Tools, 1)
+	require.Equal(t, "lookup", llmReq.Tools[0].Function.Name)
+
+	outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	var tools []map[string]any
+	require.NoError(t, json.Unmarshal(outboundBody["tools"], &tools))
+	require.Len(t, tools, 2)
+	require.Equal(t, "mcp_toolset", tools[0]["type"])
+	require.Equal(t, "lookup", tools[1]["name"])
 }

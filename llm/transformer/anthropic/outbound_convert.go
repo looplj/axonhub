@@ -244,46 +244,110 @@ func resolveMaxTokens(chatReq *llm.Request) int64 {
 }
 
 
-// appendAnthropicRawTools re-attaches ordered adapter-specific tool fragments
-// (mcp_toolset) that were preserved outside common llm.Tool conversion.
+// anthropicRawToolFragment preserves adapter-specific tools[] entries with their
+// original wire index so same-protocol replay can reinsert them among converted
+// function/web_search tools without reordering.
+type anthropicRawToolFragment struct {
+	OriginalIndex int
+	Raw           json.RawMessage
+}
+
+// appendAnthropicRawTools re-attaches adapter-specific tool fragments
+// (mcp_toolset) at their original tools[] indexes.
 func appendAnthropicRawTools(tools []Tool, chatReq *llm.Request) []Tool {
-	if chatReq == nil || chatReq.TransformerMetadata == nil {
+	frags := anthropicRawToolFragments(chatReq)
+	if len(frags) == 0 {
 		return tools
+	}
+
+	rawByIndex := make(map[int]json.RawMessage, len(frags))
+	maxIndex := len(tools) + len(frags) - 1
+	for _, frag := range frags {
+		if len(frag.Raw) == 0 {
+			continue
+		}
+		rawByIndex[frag.OriginalIndex] = frag.Raw
+		if frag.OriginalIndex > maxIndex {
+			maxIndex = frag.OriginalIndex
+		}
+	}
+	if len(rawByIndex) == 0 {
+		return tools
+	}
+
+	out := make([]Tool, 0, maxIndex+1)
+	commonIdx := 0
+	for i := 0; i <= maxIndex; i++ {
+		if raw, ok := rawByIndex[i]; ok {
+			out = append(out, Tool{
+				Type: "mcp_toolset",
+				Raw:  append(json.RawMessage(nil), raw...),
+			})
+			continue
+		}
+		if commonIdx < len(tools) {
+			out = append(out, tools[commonIdx])
+			commonIdx++
+		}
+	}
+	for commonIdx < len(tools) {
+		out = append(out, tools[commonIdx])
+		commonIdx++
+	}
+	return out
+}
+
+func anthropicRawToolFragments(chatReq *llm.Request) []anthropicRawToolFragment {
+	if chatReq == nil || chatReq.TransformerMetadata == nil {
+		return nil
 	}
 	raw, ok := chatReq.TransformerMetadata[TransformerMetadataKeyRawTools]
 	if !ok || raw == nil {
-		return tools
+		return nil
 	}
 
-	var fragments []json.RawMessage
 	switch v := raw.(type) {
+	case []anthropicRawToolFragment:
+		return v
 	case []json.RawMessage:
-		fragments = v
+		// Backward-compatible: legacy unindexed fragments append after common tools.
+		out := make([]anthropicRawToolFragment, 0, len(v))
+		for i, frag := range v {
+			if len(frag) == 0 {
+				continue
+			}
+			out = append(out, anthropicRawToolFragment{OriginalIndex: i, Raw: frag})
+		}
+		return out
 	case []any:
-		for _, item := range v {
-			if frag := asJSONRawMessage(item); len(frag) > 0 {
-				fragments = append(fragments, frag)
+		out := make([]anthropicRawToolFragment, 0, len(v))
+		for i, item := range v {
+			switch frag := item.(type) {
+			case anthropicRawToolFragment:
+				out = append(out, frag)
+			case map[string]any:
+				idx := i
+				if n, ok := frag["OriginalIndex"].(int); ok {
+					idx = n
+				} else if n, ok := frag["OriginalIndex"].(float64); ok {
+					idx = int(n)
+				}
+				if rawFrag := asJSONRawMessage(frag["Raw"]); len(rawFrag) > 0 {
+					out = append(out, anthropicRawToolFragment{OriginalIndex: idx, Raw: rawFrag})
+				}
+			default:
+				if rawFrag := asJSONRawMessage(item); len(rawFrag) > 0 {
+					out = append(out, anthropicRawToolFragment{OriginalIndex: i, Raw: rawFrag})
+				}
 			}
 		}
+		return out
 	default:
 		if frag := asJSONRawMessage(raw); len(frag) > 0 {
-			// tolerate single fragment accidental storage
-			fragments = []json.RawMessage{frag}
+			return []anthropicRawToolFragment{{OriginalIndex: 0, Raw: frag}}
 		}
+		return nil
 	}
-	if len(fragments) == 0 {
-		return tools
-	}
-
-	out := make([]Tool, 0, len(tools)+len(fragments))
-	out = append(out, tools...)
-	for _, frag := range fragments {
-		if len(frag) == 0 {
-			continue
-		}
-		out = append(out, Tool{Type: "mcp_toolset", Raw: append(json.RawMessage(nil), frag...)})
-	}
-	return out
 }
 
 // convertToolsAnthropic converts LLM tools to Anthropic tools.
