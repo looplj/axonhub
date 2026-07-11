@@ -70,7 +70,7 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
   );
 
   const stat = usageStats?.[0];
-  const totalTokens = stat ? stat.inputTokens + stat.outputTokens + stat.cachedTokens + stat.reasoningTokens : 0;
+  const totalTokens = stat ? stat.inputTokens + stat.outputTokens : 0;
   const hasTopModels = stat && stat.topModels && stat.topModels.length > 0;
 
   return (
@@ -153,7 +153,7 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                   <h3 className="mb-3 text-sm font-medium">{t('apikeys.tokenUsageChart.topModels')}</h3>
                   <div className="space-y-4">
                     {stat.topModels.map((model, index) => {
-                      const modelTotal = model.inputTokens + model.outputTokens + model.cachedTokens + model.reasoningTokens;
+                      const modelTotal = model.inputTokens + model.outputTokens;
                       return (
                         <div key={model.modelId} className="rounded-lg border">
                           <div className="bg-muted/30 px-4 py-2">
