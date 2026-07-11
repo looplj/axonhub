@@ -20,10 +20,10 @@ No new protocol features. Close high-priority fixture/test evidence for fields a
 | Slice | Outcome | Status |
 |---|---|---|
 | S1 inventory high-priority rows mapped to G1–G7 | this ledger | completed |
-| S2 matrix row updates for implemented fields | protocol-conversion-strict-verification-matrix.md §9 | completed |
+| S2 matrix row updates for implemented fields | protocol-conversion-strict-verification-matrix.md §5 elevated rows + §9 index | completed |
 | S3 Trellis guidelines evidence pointers | protocol-transformer-guidelines.md Field Evidence Index | completed |
 | S4 residual fixture-only / intentional lossy notes | residual-gaps.md | completed |
-| S5 module review | research/reviews/ | in_progress |
+| S5 module review | research/reviews/hpf-module-review.md FAIL → docs majors fix → re-review | in_progress |
 
 ## Residual (explicitly not completed as features)
 - Broad token-limit precedence matrix across all three protocols (fixture-only expansion beyond existing token tests)

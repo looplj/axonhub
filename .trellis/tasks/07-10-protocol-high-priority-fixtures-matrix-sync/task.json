@@ -3,7 +3,7 @@
   "name": "protocol-high-priority-fixtures-matrix-sync",
   "title": "Protocol fix: high-priority fixtures and matrix sync",
   "description": "Close high-priority fixture-only gaps and synchronize protocol matrix, batch drafts, Trellis spec, and local evidence without introducing unrelated conversion features.",
-  "status": "completed",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -15,12 +15,12 @@
   "branch": null,
   "base_branch": "codex-transformer-field-fixes",
   "worktree_path": null,
-  "commit": "pending",
+  "commit": "c8718b9a91f3cf341d260b075ec6514873ce585e (base); HPF majors fix pending re-review",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": "07-10-07-10-protocol-transformer-field-fixes",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "HPF module review FAIL majors fixed in docs; awaiting re-review PASS before archive",
   "meta": {}
 }

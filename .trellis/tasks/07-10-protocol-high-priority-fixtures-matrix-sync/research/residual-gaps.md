@@ -21,3 +21,7 @@ These remain **fixture-only / documentation** items or intentional non-goals. Th
 
 ## Rule
 Any row still `UNCHECKED` outside the closed set above is either lower priority residual or blocked on source clarification, not an open G1–G7 implementation gap.
+
+## Matrix authority note (2026-07-12 HPF fix)
+
+G1–G7 same-protocol closed seams are reflected in the **main matrix §5 rows** (Status=`PARTIAL` + Code/Test evidence), not only in §9. Whole matrix remains INCOMPLETE for non-elevated rows.
