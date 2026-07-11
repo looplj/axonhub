@@ -124,17 +124,17 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell className="font-medium">{t('apikeys.columns.cachedTokens')}</TableCell>
+                        <TableCell className="font-medium">{t('apikeys.tokenUsageChart.cacheHitRate')}</TableCell>
                         <TableCell className="text-center tabular-nums">{formatNumber(stat.cachedTokens)}</TableCell>
                         <TableCell className="text-center tabular-nums">
-                          {pct(stat.cachedTokens, totalTokens)}%
+                          {pct(stat.cachedTokens, stat.inputTokens)}%
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell className="font-medium">{t('apikeys.columns.reasoningTokens')}</TableCell>
+                        <TableCell className="font-medium">{t('apikeys.tokenUsageChart.reasoningRatio')}</TableCell>
                         <TableCell className="text-center tabular-nums">{formatNumber(stat.reasoningTokens)}</TableCell>
                         <TableCell className="text-center tabular-nums">
-                          {pct(stat.reasoningTokens, totalTokens)}%
+                          {pct(stat.reasoningTokens, stat.outputTokens)}%
                         </TableCell>
                       </TableRow>
                       <TableRow className="bg-muted/50 font-semibold">
@@ -184,17 +184,17 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                                   </TableCell>
                                 </TableRow>
                                 <TableRow>
-                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.columns.cachedTokens')}</TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.tokenUsageChart.cacheHitRate')}</TableCell>
                                   <TableCell className="text-center tabular-nums">{formatNumber(model.cachedTokens)}</TableCell>
                                   <TableCell className="text-center tabular-nums whitespace-nowrap">
-                                    {pct(model.cachedTokens, modelTotal)}%
+                                    {pct(model.cachedTokens, model.inputTokens)}%
                                   </TableCell>
                                 </TableRow>
                                 <TableRow>
-                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.columns.reasoningTokens')}</TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.tokenUsageChart.reasoningRatio')}</TableCell>
                                   <TableCell className="text-center tabular-nums">{formatNumber(model.reasoningTokens)}</TableCell>
                                   <TableCell className="text-center tabular-nums whitespace-nowrap">
-                                    {pct(model.reasoningTokens, modelTotal)}%
+                                    {pct(model.reasoningTokens, model.outputTokens)}%
                                   </TableCell>
                                 </TableRow>
                               </TableBody>
