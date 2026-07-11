@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Adapter-specific MCP and no-fake-map rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main matrix MCP rows."}
+{"file": "docs/specs/protocols/anthropic-claude-messages-protocol.md", "reason": "Anthropic MCP companion baseline."}
+{"file": "docs/specs/protocols/drafts/batch-tools-mcp.md", "reason": "MCP connector evidence, owner and fixture backlog."}

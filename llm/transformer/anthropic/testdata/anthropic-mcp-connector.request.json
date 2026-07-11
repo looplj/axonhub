@@ -1,0 +1,44 @@
+{
+  "model": "claude-opus-4-8",
+  "max_tokens": 1000,
+  "messages": [
+    {"role": "user", "content": "What tools do you have available?"}
+  ],
+  "mcp_servers": [
+    {
+      "type": "url",
+      "url": "https://example-server.modelcontextprotocol.io/sse",
+      "name": "example-mcp",
+      "authorization_token": "YOUR_TOKEN",
+      "future_nested": {"enabled": true, "note": "unknown-server-field"}
+    }
+  ],
+  "tools": [
+    {
+      "name": "lookup",
+      "description": "lookup data",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "q": {"type": "string"}
+        }
+      }
+    },
+    {
+      "type": "mcp_toolset",
+      "mcp_server_name": "example-mcp",
+      "default_config": {
+        "enabled": true,
+        "defer_loading": false
+      },
+      "configs": {
+        "specific_tool_name": {
+          "enabled": true,
+          "defer_loading": true,
+          "future_option": {"x": 1}
+        }
+      },
+      "future_nested": {"keep": true}
+    }
+  ]
+}

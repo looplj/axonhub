@@ -119,6 +119,11 @@ type MessageRequest struct {
 	// InferenceGeo is an Anthropic-native top-level geography selector/observation.
 	// Preserve raw JSON values, including future unknown strings/objects.
 	InferenceGeo json.RawMessage `json:"inference_geo,omitempty"`
+
+	// MCPServers is the Anthropic MCP connector companion field. Keep as opaque
+	// json.RawMessage so same-protocol replay preserves auth/config and unknown
+	// nested keys. This is not equivalent to OpenAI Responses `mcp` tools.
+	MCPServers json.RawMessage `json:"mcp_servers,omitempty"`
 }
 
 type AnthropicMetadata struct {
@@ -208,6 +213,13 @@ const TransformerMetadataKeyContainer = "anthropic_container"
 // TransformerMetadataKeyInferenceGeo stores Anthropic top-level inference_geo as opaque JSON.
 const TransformerMetadataKeyInferenceGeo = "anthropic_inference_geo"
 
+// TransformerMetadataKeyMCPServers stores Anthropic top-level mcp_servers as opaque JSON.
+const TransformerMetadataKeyMCPServers = "anthropic_mcp_servers"
+
+// TransformerMetadataKeyRawTools stores ordered Anthropic adapter-specific tool
+// wire fragments (currently mcp_toolset) that must not be flattened into llm.Tool.
+const TransformerMetadataKeyRawTools = "anthropic_raw_tools"
+
 // TransformerMetadataKeyAnthropicResponseContent stores provider-native Anthropic response content blocks
 // so outbound->unified->inbound round-trip can restore Anthropic-only blocks such as
 // server_tool_use and web_search_tool_result without expanding the unified llm schema.
@@ -285,6 +297,11 @@ type Tool struct {
 	// UserLocation Parameters for the user's location. Used to provide more relevant search
 	// results.
 	UserLocation WebSearchToolUserLocation `json:"user_location,omitzero"`
+
+	// Raw holds the original tool JSON for adapter-specific variants that must not
+	// be modeled as common llm.Tool (e.g. type=mcp_toolset). When set, MarshalJSON
+	// emits Raw verbatim.
+	Raw json.RawMessage `json:"-"`
 }
 
 type WebSearchToolUserLocation struct {

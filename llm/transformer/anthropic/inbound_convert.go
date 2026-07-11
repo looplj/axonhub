@@ -142,6 +142,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		chatReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo] = anthropicReq.InferenceGeo
 	}
 
+	if len(anthropicReq.MCPServers) > 0 {
+		chatReq.TransformerMetadata[TransformerMetadataKeyMCPServers] = anthropicReq.MCPServers
+	}
+
 	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
 	// TopK field, so without this the Anthropic sampling parameter is dropped on
 	// non-pass-through format conversion.
@@ -388,10 +392,17 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 
 	chatReq.Messages = messages
 
-	// Convert tools
+	// Convert tools. Adapter-specific tool variants (mcp_toolset) are not common
+	// llm.Tool shapes; preserve them as ordered raw fragments for same-protocol
+	// replay while still converting function/web_search tools.
 	if len(anthropicReq.Tools) > 0 {
 		tools := make([]llm.Tool, 0, len(anthropicReq.Tools))
+		rawTools := make([]json.RawMessage, 0)
 		for _, tool := range anthropicReq.Tools {
+			if len(tool.Raw) > 0 {
+				rawTools = append(rawTools, append(json.RawMessage(nil), tool.Raw...))
+				continue
+			}
 			llmTool, ok := convertToolToLLM(tool)
 			if ok {
 				tools = append(tools, llmTool)
@@ -399,6 +410,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		}
 
 		chatReq.Tools = tools
+		if len(rawTools) > 0 {
+			chatReq.TransformerMetadata[TransformerMetadataKeyRawTools] = rawTools
+		}
 	}
 
 	// Convert stop sequences

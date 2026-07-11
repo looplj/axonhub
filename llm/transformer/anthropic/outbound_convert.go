@@ -28,6 +28,7 @@ func convertToAnthropicRequestWithThinkingPlan(
 ) *MessageRequest {
 	req := buildBaseRequest(chatReq, thinkingPlan)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
+	req.Tools = appendAnthropicRawTools(req.Tools, chatReq)
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
 
 	// Map parallel_tool_calls (true=allow) inversely to Anthropic's
@@ -210,6 +211,10 @@ func buildBaseRequest(chatReq *llm.Request, thinkingPlan thinkingRequestPlan) *M
 		if geo := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo]); len(geo) > 0 {
 			req.InferenceGeo = geo
 		}
+		if mcpServers := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyMCPServers]); len(mcpServers) > 0 {
+			req.MCPServers = mcpServers
+		}
+
 	}
 
 	// Restore top_k carried through TransformerMetadata (canonical llm.Request
@@ -236,6 +241,49 @@ func resolveMaxTokens(chatReq *llm.Request) int64 {
 		// Set to 8192 tokens to match common model upper limit.
 		return 8192
 	}
+}
+
+
+// appendAnthropicRawTools re-attaches ordered adapter-specific tool fragments
+// (mcp_toolset) that were preserved outside common llm.Tool conversion.
+func appendAnthropicRawTools(tools []Tool, chatReq *llm.Request) []Tool {
+	if chatReq == nil || chatReq.TransformerMetadata == nil {
+		return tools
+	}
+	raw, ok := chatReq.TransformerMetadata[TransformerMetadataKeyRawTools]
+	if !ok || raw == nil {
+		return tools
+	}
+
+	var fragments []json.RawMessage
+	switch v := raw.(type) {
+	case []json.RawMessage:
+		fragments = v
+	case []any:
+		for _, item := range v {
+			if frag := asJSONRawMessage(item); len(frag) > 0 {
+				fragments = append(fragments, frag)
+			}
+		}
+	default:
+		if frag := asJSONRawMessage(raw); len(frag) > 0 {
+			// tolerate single fragment accidental storage
+			fragments = []json.RawMessage{frag}
+		}
+	}
+	if len(fragments) == 0 {
+		return tools
+	}
+
+	out := make([]Tool, 0, len(tools)+len(fragments))
+	out = append(out, tools...)
+	for _, frag := range fragments {
+		if len(frag) == 0 {
+			continue
+		}
+		out = append(out, Tool{Type: "mcp_toolset", Raw: append(json.RawMessage(nil), frag...)})
+	}
+	return out
 }
 
 // convertToolsAnthropic converts LLM tools to Anthropic tools.

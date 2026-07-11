@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"encoding/json"
 	"slices"
 
 	"github.com/looplj/axonhub/llm"
@@ -68,4 +69,33 @@ func supportsAnthropicNativeTools(config *Config) bool {
 	default:
 		return false
 	}
+}
+
+
+// UnmarshalJSON captures opaque adapter-specific tool variants (mcp_toolset)
+// while still decoding known function/web_search tools into typed fields.
+func (t *Tool) UnmarshalJSON(data []byte) error {
+	type toolAlias Tool
+	var decoded toolAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*t = Tool(decoded)
+	var probe struct {
+		Type string `json:"type"`
+	}
+	_ = json.Unmarshal(data, &probe)
+	if probe.Type == "mcp_toolset" {
+		t.Raw = append(json.RawMessage(nil), data...)
+	}
+	return nil
+}
+
+// MarshalJSON emits opaque Raw tool variants verbatim.
+func (t Tool) MarshalJSON() ([]byte, error) {
+	if len(t.Raw) > 0 {
+		return t.Raw, nil
+	}
+	type toolAlias Tool
+	return json.Marshal(toolAlias(t))
 }

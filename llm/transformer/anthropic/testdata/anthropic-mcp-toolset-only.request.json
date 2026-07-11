@@ -1,0 +1,21 @@
+{
+  "model": "claude-opus-4-8",
+  "max_tokens": 512,
+  "messages": [
+    {"role": "user", "content": "use mcp"}
+  ],
+  "mcp_servers": [
+    {
+      "type": "url",
+      "url": "https://example-server.modelcontextprotocol.io/sse",
+      "name": "example-mcp"
+    }
+  ],
+  "tools": [
+    {
+      "type": "mcp_toolset",
+      "mcp_server_name": "example-mcp",
+      "default_config": {"enabled": true}
+    }
+  ]
+}
