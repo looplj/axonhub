@@ -2397,3 +2397,48 @@ func TestOutboundTransformer_TransformRequest_UnknownThinkingCapabilityDiagnoses
 		},
 	}, llm.LossyDowngrades(request))
 }
+
+func TestOutboundTransformer_TransformRequest_DiagnosesChatPromptCacheRetentionLoss(t *testing.T) {
+	chatBody := []byte(`{
+		"model": "gpt-4o",
+		"messages": [{"role": "user", "content": "hello cache retention"}],
+		"prompt_cache_retention": "24h",
+		"n": 3
+	}`)
+
+	llmReq := &llm.Request{
+		Model:     "claude-3-sonnet-20240229",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello cache retention")},
+		}},
+		RawRequest: &httpclient.Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Body:    chatBody,
+		},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	_, err = transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	require.ElementsMatch(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "prompt_cache_retention",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "n",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(llmReq))
+}

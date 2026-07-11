@@ -174,6 +174,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	recordAnthropicThinkingLossyDowngrade(llmReq, thinkingPlan)
+	recordAnthropicChatNativeLossyDowngrades(llmReq)
 
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithThinkingPlan(llmReq, t.config, thinkingPlan)
@@ -431,4 +432,22 @@ func containsNativeWebSearchTool(tools []Tool) bool {
 	}
 
 	return false
+}
+
+func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+		return
+	}
+
+	var source map[string]json.RawMessage
+	if err := json.Unmarshal(llmReq.RawRequest.Body, &source); err != nil {
+		return
+	}
+
+	for _, field := range []string{"prompt_cache_retention", "n"} {
+		if len(source[field]) == 0 {
+			continue
+		}
+		llm.AddLossyDowngradeIfPresent(llmReq, llm.APIFormatOpenAIChatCompletion, field, llm.APIFormatAnthropicMessage, true)
+	}
 }

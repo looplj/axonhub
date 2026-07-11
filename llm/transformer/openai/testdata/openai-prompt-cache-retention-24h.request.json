@@ -1,0 +1,7 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "hello cache retention"}
+  ],
+  "prompt_cache_retention": "24h"
+}
