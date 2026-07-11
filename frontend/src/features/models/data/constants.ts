@@ -16,6 +16,7 @@ export const DEVELOPER_IDS = [
   'bytedance',
   'stepfun',
   'meta',
+  'ibm',
 ];
 
 export const DEVELOPER_ICONS: Record<string, string> = {
@@ -36,4 +37,5 @@ export const DEVELOPER_ICONS: Record<string, string> = {
   bytedance: 'Doubao',
   stepfun: 'Stepfun',
   meta: 'Meta',
+  ibm: 'IBM',
 };
