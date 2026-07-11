@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Ownership, raw-preserve, and lossy rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main matrix row for Chat n."}
+{"file": "docs/specs/protocols/openai-chat-completions-protocol.md", "reason": "OpenAI Chat n protocol baseline."}
+{"file": "docs/specs/protocols/drafts/batch-common-fields.md", "reason": "n evidence, value semantics, and implementation candidate."}

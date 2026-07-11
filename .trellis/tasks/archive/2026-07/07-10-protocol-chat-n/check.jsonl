@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Review raw-preserve and no-fake-map rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Review matrix alignment."}
+{"file": "docs/specs/protocols/drafts/batch-common-fields.md", "reason": "Review n evidence and fixture requirements."}
