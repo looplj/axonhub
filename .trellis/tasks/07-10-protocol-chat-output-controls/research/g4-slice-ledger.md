@@ -10,12 +10,13 @@
 
 | Slice | Outcome | Evidence | Self-review | Status |
 |---|---|---|---|---|
-| S1 top-level `audio` raw preserve | Chat->Chat re-emits original `audio` object including unknown nested fields | fixture `openai-audio-prediction-moderation.request.json`; test `TestOpenAIChatRequestOutputControlsRawRoundTrip`; helper `openAIChatRawPreserveFields` | pass | completed |
-| S2 top-level `prediction` raw preserve | Chat->Chat re-emits original `prediction` including unknown nested fields | same fixture/test | pass | completed |
-| S3 top-level `moderation` raw preserve | Chat->Chat re-emits original `moderation` including unknown nested fields | same fixture/test | pass | completed |
-| S4 cross-protocol unsupported/lossy | Responses does not synthesize fields; Anthropic records lossy diagnostics for audio/prediction/moderation | `TestOpenAIChatRequestOutputControlsNotSynthesizedForResponses`; `TestOutboundTransformer_TransformRequest_DiagnosesChatOutputControlsLoss` | pass | completed |
-| S5 package verification | openai + anthropic package tests green | `go test ./transformer/openai -count=1`; `go test ./transformer/anthropic -count=1` | pass | completed |
+| S1 top-level `audio` raw preserve | Chat->Chat re-emits original `audio` including unknown nested fields | fixture `openai-audio.request.json`; test `TestOpenAIChatRequestOutputControlsRawRoundTrip/audio` | pass | completed |
+| S2 top-level `prediction` variants | Chat->Chat re-emits string and content[] prediction variants | fixtures `openai-prediction-string.request.json`, `openai-prediction-parts.request.json` | pass | completed |
+| S3 top-level `moderation` raw preserve | Chat->Chat re-emits moderation object including unknown nested fields | fixture `openai-moderation.request.json` | pass | completed |
+| S4 cross-protocol unsupported/lossy | Responses does not synthesize fields; Anthropic records field-level lossy diagnostics | `TestOpenAIChatRequestOutputControlsNotSynthesizedForResponses`; `TestOutboundTransformer_TransformRequest_DiagnosesChatOutputControlsLoss` | pass | completed |
+| S5 scope cleanup after review FAIL | Removed web_search_options/functions/function_call from G4 preserve/lossy lists | commit `7cd64f9f`; review note `g4-module-review-boyle-fail.md` | pass | completed |
+| S6 package verification | openai + anthropic package tests green | `go test ./transformer/openai -count=1`; `go test ./transformer/anthropic -count=1` | pass | completed |
 
 ## Module review gate
-- pending real sub-agent review
-- commit under review: `9a2692ed`
+- first review: FAIL by Boyle `019f5271-70a5-7663-bb34-e2185c7ea405`
+- re-review pending on commits `9a2692ed` + `7cd64f9f`
