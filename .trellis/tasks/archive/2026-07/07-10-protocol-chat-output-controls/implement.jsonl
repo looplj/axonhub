@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Native/raw preservation and row granularity rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main matrix rows."}
+{"file": "docs/specs/protocols/openai-chat-completions-protocol.md", "reason": "Official Chat top-level output-control baseline."}
+{"file": "docs/specs/protocols/drafts/batch-output-message-content.md", "reason": "audio/prediction/moderation field evidence and fixture backlog."}

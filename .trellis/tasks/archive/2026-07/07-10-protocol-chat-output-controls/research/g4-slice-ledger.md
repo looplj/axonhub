@@ -19,4 +19,5 @@
 
 ## Module review gate
 - first review: FAIL by Boyle `019f5271-70a5-7663-bb34-e2185c7ea405`
-- re-review pending on commits `9a2692ed` + `7cd64f9f`
+- re-review: PASS by Boyle on commits `9a2692ed` + `7cd64f9f`
+- report: `research/reviews/g4-module-review-boyle-pass.md`
