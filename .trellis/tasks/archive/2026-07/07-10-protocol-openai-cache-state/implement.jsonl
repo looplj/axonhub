@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Responses body/native-sidecar and lossy rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main matrix cache/state rows."}
+{"file": "docs/specs/protocols/openai-chat-completions-protocol.md", "reason": "Chat prompt_cache_retention baseline."}
+{"file": "docs/specs/protocols/openai-responses-protocol.md", "reason": "Responses comparison baseline."}
+{"file": "docs/specs/protocols/drafts/batch-limits-state-cache.md", "reason": "Owner/path/fixture evidence."}
