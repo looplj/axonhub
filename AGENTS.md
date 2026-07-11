@@ -81,3 +81,4 @@ All detailed rules are in `.agent/rules/`:
 | [docs.md](.agent/rules/docs.md) | `docs/**/*.md` | Documentation rules |
 | [workflows/add-channel.md](.agent/rules/workflows/add-channel.md) | Manual | Workflow for adding a new channel |
 | [spec-audit-method.md](.agent/rules/spec-audit-method.md) | `docs/specs/**/*.md` | 协议转换字段审计的 MCP 取证纪律与防误判判据 |
+| [Trellis: protocol-transformer-guidelines.md](.trellis/spec/backend/protocol-transformer-guidelines.md) | `llm/transformer/**`, `llm/model.go`, `llm/provider_extensions.go`, `llm/openai_responses_classification.go`, `docs/specs/protocols/**/*.md` | 协议转换默认基准路由、字段分类、行粒度、Round 5 baseline 决策 |
