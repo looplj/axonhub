@@ -266,3 +266,19 @@ Required tests for this area:
 - DeepSeek with adaptive-thinking metadata never serializes `thinking.type="adaptive"`.
 - unknown target capability records a lossy/unsupported diagnostic rather than guessing manual or adaptive thinking.
 - outbound HTTP/request transformer tests must assert the serialized request body, not only helper structs.
+
+
+## Field Evidence Index (2026-07-12)
+
+Implementation modules G1–G7 closed the following high-priority seams with targeted tests. Full matrix status language is in `docs/specs/protocols/protocol-conversion-strict-verification-matrix.md` §9.
+
+| Seam | Owner package | Primary tests |
+|---|---|---|
+| Chat top-level raw preserve (`n`, `prompt_cache_retention`, `audio`, `prediction`, `moderation`, `web_search_options`, `functions`, `function_call`) | `llm/transformer/openai` | `chat_n_test.go`, `chat_deprecated_functions_test.go` |
+| Chat deprecated `message.function_call` | `llm/transformer/openai` | `chat_deprecated_functions_test.go` |
+| Anthropic `container` / `inference_geo` | `llm/transformer/anthropic` | `container_inference_geo_test.go` |
+| Anthropic MCP connector | `llm/transformer/anthropic` | `mcp_connector_test.go` |
+| Responses reasoning object/stream | `llm/transformer/openai/responses` | `reasoning_context_test.go`, `reasoning_g7_test.go` |
+
+Rules unchanged: same-protocol first; no fake MCP bridges; LossyDowngrade for documented cross-protocol loss; stream fidelity stays in stream code.
+

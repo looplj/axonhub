@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Review evidence and matrix/spec sync rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Review final matrix correctness."}
+{"file": ".agent/summary/2026-07-09-protocol-round4-readiness-summary.md", "reason": "Review original readiness inventory."}
+{"file": ".agent/summary/2026-07-09-protocol-round5-baseline-hardening-summary.md", "reason": "Review baseline hardening and fixture priorities."}
