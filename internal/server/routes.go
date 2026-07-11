@@ -47,13 +47,9 @@ type Services struct {
 	SystemService *biz.SystemService
 }
 
-func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services Services) {
+func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services Services, ipAccessControl *middleware.IPAccessControlConfig) {
 	// IP 访问控制 - 全局最优先，拦截所有请求包括静态文件
-	server.Use(middleware.WithIPAccessControl(
-		server.Config.IPAccessControl.Enabled,
-		server.Config.IPAccessControl.AllowedIPs,
-		server.Config.IPAccessControl.RedirectURL,
-	))
+	server.Use(middleware.WithIPAccessControl(ipAccessControl))
 
 	// Serve static frontend files
 	server.NoRoute(static.Handler())

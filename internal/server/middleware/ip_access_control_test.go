@@ -15,6 +15,7 @@ func TestMatchIP(t *testing.T) {
 		clientIP  string
 		ips       []string
 		wantMatch bool
+		wantErr   bool
 	}{
 		{
 			name:      "exact match",
@@ -47,10 +48,10 @@ func TestMatchIP(t *testing.T) {
 			wantMatch: true,
 		},
 		{
-			name:      "invalid entries skipped",
-			clientIP:  "203.0.113.10",
-			ips:       []string{"bad-ip", "bad-prefix/33"},
-			wantMatch: false,
+			name:     "invalid entry rejected",
+			clientIP: "203.0.113.10",
+			ips:      []string{"bad-ip", "bad-prefix/33"},
+			wantErr:  true,
 		},
 		{
 			name:      "no match",
@@ -68,12 +69,23 @@ func TestMatchIP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			state, err := newIPAccessControlState(true, tt.ips, "")
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("newIPAccessControlState() error = nil, want error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("newIPAccessControlState() error = %v", err)
+			}
+
 			clientAddr, err := netip.ParseAddr(tt.clientIP)
 			if err != nil {
 				t.Fatalf("failed to parse client IP %q: %v", tt.clientIP, err)
 			}
-			if got := matchIP(clientAddr, tt.ips); got != tt.wantMatch {
-				t.Fatalf("matchIP() = %v, want %v", got, tt.wantMatch)
+			if got := state.allows(clientAddr); got != tt.wantMatch {
+				t.Fatalf("state.allows() = %v, want %v", got, tt.wantMatch)
 			}
 		})
 	}
@@ -123,7 +135,7 @@ func TestWithIPAccessControlDisabled(t *testing.T) {
 	}
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
-	handler := WithIPAccessControl(false, nil, "")
+	handler := WithIPAccessControl(newTestIPAccessControlConfig(t, false, nil, ""))
 	handler(ctx)
 
 	if recorder.Code != http.StatusOK {
@@ -143,7 +155,7 @@ func TestWithIPAccessControlAllowed(t *testing.T) {
 	req.RemoteAddr = "10.0.0.1:12345"
 	ctx.Request = req
 
-	handler := WithIPAccessControl(true, []string{"10.0.0.0/8"}, "")
+	handler := WithIPAccessControl(newTestIPAccessControlConfig(t, true, []string{"10.0.0.0/8"}, ""))
 	handler(ctx)
 
 	if recorder.Code != http.StatusOK {
@@ -163,7 +175,7 @@ func TestWithIPAccessControlDeniedRedirect(t *testing.T) {
 	req.RemoteAddr = "10.0.0.1:12345"
 	ctx.Request = req
 
-	handler := WithIPAccessControl(true, []string{"192.168.0.0/16"}, "https://example.com/blocked")
+	handler := WithIPAccessControl(newTestIPAccessControlConfig(t, true, []string{"192.168.0.0/16"}, "https://example.com/blocked"))
 	handler(ctx)
 
 	if recorder.Code != http.StatusFound {
@@ -186,7 +198,7 @@ func TestWithIPAccessControlDeniedNotFound(t *testing.T) {
 	req.RemoteAddr = "10.0.0.1:12345"
 	ctx.Request = req
 
-	handler := WithIPAccessControl(true, []string{"192.168.0.0/16"}, "")
+	handler := WithIPAccessControl(newTestIPAccessControlConfig(t, true, []string{"192.168.0.0/16"}, ""))
 	handler(ctx)
 
 	if recorder.Code != http.StatusNotFound {
@@ -209,7 +221,7 @@ func TestWithIPAccessControlEmptyClientIP(t *testing.T) {
 	req.RemoteAddr = ""
 	ctx.Request = req
 
-	handler := WithIPAccessControl(true, []string{"10.0.0.0/8"}, "")
+	handler := WithIPAccessControl(newTestIPAccessControlConfig(t, true, []string{"10.0.0.0/8"}, ""))
 	handler(ctx)
 
 	if recorder.Code != http.StatusNotFound {
@@ -230,10 +242,59 @@ func TestWithIPAccessControlSpoofedHeaderNotTrusted(t *testing.T) {
 	req.Header.Set("X-Forwarded-For", "192.168.1.1")
 	ctx.Request = req
 
-	handler := WithIPAccessControl(true, []string{"192.168.0.0/16"}, "https://example.com/blocked")
+	handler := WithIPAccessControl(newTestIPAccessControlConfig(t, true, []string{"192.168.0.0/16"}, "https://example.com/blocked"))
 	handler(ctx)
 
 	if recorder.Code != http.StatusFound {
 		t.Fatalf("status = %d, want %d (spoofed header should not bypass)", recorder.Code, http.StatusFound)
 	}
+}
+
+func TestIPAccessControlConfigApply(t *testing.T) {
+	cfg := newTestIPAccessControlConfig(t, true, []string{"192.0.2.1"}, "")
+
+	err := cfg.Apply(true, []string{"203.0.113.0/24"}, "")
+	if err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+
+	oldClient, err := netip.ParseAddr("192.0.2.1")
+	if err != nil {
+		t.Fatalf("parse old client IP: %v", err)
+	}
+	current := cfg.ptr.Load()
+	if current.allows(oldClient) {
+		t.Fatal("old configuration should not remain active after Apply")
+	}
+
+	newClient, err := netip.ParseAddr("203.0.113.10")
+	if err != nil {
+		t.Fatalf("parse new client IP: %v", err)
+	}
+	if !current.allows(newClient) {
+		t.Fatal("applied configuration should become active after Apply")
+	}
+}
+
+func TestIPAccessControlConfigApplyRejectsInvalidState(t *testing.T) {
+	cfg := newTestIPAccessControlConfig(t, true, []string{"192.0.2.1"}, "")
+	before := cfg.ptr.Load()
+
+	err := cfg.Apply(true, []string{"invalid-ip"}, "")
+	if err == nil {
+		t.Fatal("Apply() error = nil, want error")
+	}
+	if cfg.ptr.Load() != before {
+		t.Fatal("invalid configuration must not mutate live state")
+	}
+}
+
+func newTestIPAccessControlConfig(t *testing.T, enabled bool, allowedIPs []string, redirectURL string) *IPAccessControlConfig {
+	t.Helper()
+
+	cfg, err := NewIPAccessControlConfig(enabled, allowedIPs, redirectURL)
+	if err != nil {
+		t.Fatalf("NewIPAccessControlConfig() error = %v", err)
+	}
+	return cfg
 }
