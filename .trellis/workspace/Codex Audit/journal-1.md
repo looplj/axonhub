@@ -78,3 +78,37 @@ Created a clean integration worktree from latest origin/unstable, cherry-picked 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Slice 0 Anthropic adaptive thinking
+
+**Date**: 2026-07-12
+**Task**: Slice 0 Anthropic adaptive thinking
+**Branch**: `codex-transformer-field-fixes`
+
+### Summary
+
+Completed Slice 0: Anthropic thinking capability policy (adaptive/manual/unknown + DeepSeek isolation). Ported commit 1892df9b onto main field-fix branch as 7bc3a613 with conflict resolution, package tests green. Next: G1 Chat n and remaining protocol modules.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7bc3a613` | (see git log) |
+| `1892df9b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
