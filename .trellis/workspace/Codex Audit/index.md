@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 5
+- **Total Sessions**: 6
 - **Last Active**: 2026-07-12
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~180 | Active |
+| `journal-1.md` | ~213 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 6 | 2026-07-12 | G3 Anthropic container inference_geo | `18a95b4f` | `codex-transformer-field-fixes` |
 | 5 | 2026-07-12 | G2 Chat prompt_cache_retention | `d0d90090` | `codex-transformer-field-fixes` |
 | 4 | 2026-07-12 | G1 Chat n raw preserve | `0df2a310` | `codex-transformer-field-fixes` |
 | 3 | 2026-07-12 | Slice 0 Anthropic adaptive thinking | `7bc3a613`, `1892df9b` | `codex-transformer-field-fixes` |

@@ -178,3 +178,36 @@ Completed G2: Chat same-protocol preserves prompt_cache_retention (known+future 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: G3 Anthropic container inference_geo
+
+**Date**: 2026-07-12
+**Task**: G3 Anthropic container inference_geo
+**Branch**: `codex-transformer-field-fixes`
+
+### Summary
+
+Completed G3: Anthropic same-protocol preserves container and inference_geo as raw JSON including unknown nested keys; OpenAI Chat outbound does not synthesize them.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `18a95b4f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
