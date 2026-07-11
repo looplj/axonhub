@@ -215,3 +215,53 @@ func TestOpenAIChatRequestOutputControlsNotSynthesizedForResponses(t *testing.T)
 		})
 	}
 }
+
+func TestOpenAIChatRequestWebSearchOptionsRawRoundTrip(t *testing.T) {
+	body, err := os.ReadFile("testdata/openai-web-search-options.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var source, outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(body, &source))
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	require.Contains(t, outboundBody, "web_search_options")
+	require.JSONEq(t, string(source["web_search_options"]), string(outboundBody["web_search_options"]))
+	require.Contains(t, outboundBody, "tools")
+	require.JSONEq(t, string(source["tools"]), string(outboundBody["tools"]))
+
+	requestType := reflect.TypeOf(*llmReq)
+	_, has := requestType.FieldByName("WebSearchOptions")
+	require.False(t, has, "web_search_options must not widen llm.Request")
+}
+
+func TestOpenAIChatRequestWebSearchOptionsNotSynthesizedForResponses(t *testing.T) {
+	body, err := os.ReadFile("testdata/openai-web-search-options.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outbound, err := responses.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	require.NotContains(t, outboundBody, "web_search_options")
+}

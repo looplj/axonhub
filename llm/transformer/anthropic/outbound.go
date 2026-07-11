@@ -450,6 +450,7 @@ func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
 		"audio",
 		"prediction",
 		"moderation",
+		"web_search_options",
 	} {
 		if len(source[field]) == 0 {
 			continue
