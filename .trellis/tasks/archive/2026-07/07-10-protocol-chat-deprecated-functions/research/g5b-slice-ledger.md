@@ -21,6 +21,6 @@ TDD per ~5-minute slice; self-review each slice; real module sub-agent review af
 
 ## Module review gate
 - first review: FAIL by Aquinas `019f52ab-d3d0-73b3-8a71-bd6177020978` (M1 stream, M2 history)
-- re-review: pending after fix commit
-- report: research/reviews/
-- commit: pending fixup
+- re-review: PASS by Descartes `019f52b4-d743-79d0-8844-a0fc5e3675b9`
+- report: research/reviews/g5b-module-rereview.md
+- commits: 628e659d, 97686bd6
