@@ -112,3 +112,36 @@ Completed Slice 0: Anthropic thinking capability policy (adaptive/manual/unknown
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: G1 Chat n raw preserve
+
+**Date**: 2026-07-12
+**Task**: G1 Chat n raw preserve
+**Branch**: `codex-transformer-field-fixes`
+
+### Summary
+
+Completed G1 Chat n: same-protocol Chat->Chat preserves raw n (1 and 3) via marshalOpenAIChatRequest; no llm.Request.N widening; Responses path does not synthesize n. OpenAI package tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0df2a310` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
