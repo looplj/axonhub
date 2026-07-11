@@ -18,6 +18,10 @@ TDD per micro-slice; self-review each; module review after 8A-8E.
 - Golden inbound request compare now copies ProviderExtensions (sidecar-only).
 
 ## Module review gate
-- review: pending real sub-agent
-- report: research/reviews/
-- commits: pending
+- first review: PASS-with-majors by Wegener `019f5336-480a-72a0-adb7-15a918f06f8c`
+  - M1 outbound_stream/aggregator silent skip reasoning_text.*
+  - M2 prefer-text production writer missing
+- fix commit: pending (this follow-up)
+- re-review: pending
+- report: research/reviews/g7-module-review.md
+- commits: 7a1d1cfe (+ follow-up)

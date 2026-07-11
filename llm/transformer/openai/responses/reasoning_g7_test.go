@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -218,3 +219,63 @@ func TestResponsesReasoningTextStreamEvents(t *testing.T) {
 }
 
 func loPtr[T any](v T) *T { return &v }
+
+func TestResponsesOutboundStreamReasoningTextToCommon(t *testing.T) {
+	events := []*httpclient.StreamEvent{
+		{Type: string(StreamEventTypeResponseCreated), Data: []byte(`{"type":"response.created","response":{"id":"resp_rt","object":"response","created_at":1700000000,"model":"gpt-5.1","status":"in_progress","output":[]}}`)},
+		{Type: string(StreamEventTypeOutputItemAdded), Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"rs_1","type":"reasoning","status":"in_progress"}}`)},
+		{Type: string(StreamEventTypeReasoningTextDelta), Data: []byte(`{"type":"response.reasoning_text.delta","item_id":"rs_1","output_index":0,"content_index":0,"delta":"think-a"}`)},
+		{Type: string(StreamEventTypeReasoningTextDelta), Data: []byte(`{"type":"response.reasoning_text.delta","item_id":"rs_1","output_index":0,"content_index":0,"delta":"think-b"}`)},
+		{Type: string(StreamEventTypeReasoningTextDone), Data: []byte(`{"type":"response.reasoning_text.done","item_id":"rs_1","output_index":0,"content_index":0,"text":"think-athink-b"}`)},
+		{Type: string(StreamEventTypeOutputItemDone), Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"rs_1","type":"reasoning","status":"completed","content":[{"type":"reasoning_text","text":"think-athink-b"}]}}`)},
+		{Type: string(StreamEventTypeResponseCompleted), Data: []byte(`{"type":"response.completed","response":{"id":"resp_rt","object":"response","created_at":1700000000,"model":"gpt-5.1","status":"completed","output":[{"id":"rs_1","type":"reasoning","status":"completed","content":[{"type":"reasoning_text","text":"think-athink-b"}]}]}}`)},
+	}
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	stream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	var gotReasoning strings.Builder
+	var sawPreferText bool
+	for stream.Next() {
+		resp := stream.Current()
+		require.NotNil(t, resp)
+		if resp.TransformerMetadata != nil {
+			if v, ok := resp.TransformerMetadata[responsesReasoningPreferTextStreamTransformerMetadataKey].(bool); ok && v {
+				sawPreferText = true
+			}
+		}
+		if len(resp.Choices) == 0 || resp.Choices[0].Delta == nil || resp.Choices[0].Delta.ReasoningContent == nil {
+			continue
+		}
+		gotReasoning.WriteString(*resp.Choices[0].Delta.ReasoningContent)
+	}
+	require.NoError(t, stream.Err())
+	require.Equal(t, "think-athink-b", gotReasoning.String())
+	require.True(t, sawPreferText, "outbound stream must mark prefer-text for production re-emit")
+}
+
+func TestResponsesAggregatorReasoningTextContent(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Type: string(StreamEventTypeResponseCreated), Data: []byte(`{"type":"response.created","response":{"id":"resp_agg","object":"response","created_at":1,"model":"gpt-5.1","status":"in_progress","output":[]}}`)},
+		{Type: string(StreamEventTypeOutputItemAdded), Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"rs_agg","type":"reasoning","status":"in_progress"}}`)},
+		{Type: string(StreamEventTypeReasoningTextDelta), Data: []byte(`{"type":"response.reasoning_text.delta","item_id":"rs_agg","output_index":0,"content_index":0,"delta":"alpha"}`)},
+		{Type: string(StreamEventTypeReasoningTextDone), Data: []byte(`{"type":"response.reasoning_text.done","item_id":"rs_agg","output_index":0,"content_index":0,"text":"alpha"}`)},
+		{Type: string(StreamEventTypeOutputItemDone), Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"rs_agg","type":"reasoning","status":"completed","content":[{"type":"reasoning_text","text":"alpha"}]}}`)},
+		{Type: string(StreamEventTypeResponseCompleted), Data: []byte(`{"type":"response.completed","response":{"id":"resp_agg","object":"response","created_at":1,"model":"gpt-5.1","status":"completed","output":[]}}`)},
+	}
+
+	body, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotEmpty(t, body)
+
+	var resp Response
+	require.NoError(t, json.Unmarshal(body, &resp))
+	require.NotEmpty(t, resp.Output)
+	require.Equal(t, "reasoning", resp.Output[0].Type)
+	require.Len(t, resp.Output[0].ReasoningContent, 1)
+	require.Equal(t, "reasoning_text", resp.Output[0].ReasoningContent[0].Type)
+	require.Equal(t, "alpha", resp.Output[0].ReasoningContent[0].Text)
+	_ = meta
+}

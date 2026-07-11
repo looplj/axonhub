@@ -58,6 +58,8 @@ type aggregatedItem struct {
 
 	// For reasoning type
 	SummaryParts map[int]*aggregatedSummaryPart
+	// ReasoningTextParts holds type=reasoning content[]/reasoning_text parts.
+	ReasoningTextParts map[int]*aggregatedSummaryPart
 }
 
 type aggregatedSummaryPart struct {
@@ -75,8 +77,9 @@ type aggregatedContentPart struct {
 
 func newAggregatedItem() *aggregatedItem {
 	return &aggregatedItem{
-		Arguments:    &strings.Builder{},
-		SummaryParts: make(map[int]*aggregatedSummaryPart),
+		Arguments:          &strings.Builder{},
+		SummaryParts:       make(map[int]*aggregatedSummaryPart),
+		ReasoningTextParts: make(map[int]*aggregatedSummaryPart),
 	}
 }
 
@@ -131,6 +134,28 @@ func ensureSummaryPart(item *aggregatedItem, summaryIndex int) *aggregatedSummar
 
 	return part
 }
+
+func ensureReasoningTextPart(item *aggregatedItem, contentIndex int) *aggregatedSummaryPart {
+	if item == nil {
+		return nil
+	}
+	if item.ReasoningTextParts == nil {
+		item.ReasoningTextParts = make(map[int]*aggregatedSummaryPart)
+	}
+	if part, ok := item.ReasoningTextParts[contentIndex]; ok && part != nil {
+		if part.Text == nil {
+			part.Text = &strings.Builder{}
+		}
+		if part.Type == "" {
+			part.Type = "reasoning_text"
+		}
+		return part
+	}
+	part := &aggregatedSummaryPart{Type: "reasoning_text", Text: &strings.Builder{}}
+	item.ReasoningTextParts[contentIndex] = part
+	return part
+}
+
 
 func newStreamAggregator() *streamAggregator {
 	return &streamAggregator{
@@ -457,6 +482,39 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		applyDoneText(part.Text, ev.Text)
 		part.Final = true
 
+	case StreamEventTypeReasoningTextDelta:
+		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
+		if item == nil {
+			item = newAggregatedItem()
+			item.Type = "reasoning"
+			item.Status = "in_progress"
+			if ev.ItemID != nil && *ev.ItemID != "" {
+				item.ID = *ev.ItemID
+				a.outputItemsByID[item.ID] = item
+			}
+			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
+		}
+		contentIndex := lo.FromPtr(ev.ContentIndex)
+		part := ensureReasoningTextPart(item, contentIndex)
+		part.Text.WriteString(ev.Delta)
+
+	case StreamEventTypeReasoningTextDone:
+		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
+		if item == nil {
+			item = newAggregatedItem()
+			item.Type = "reasoning"
+			item.Status = "in_progress"
+			if ev.ItemID != nil && *ev.ItemID != "" {
+				item.ID = *ev.ItemID
+				a.outputItemsByID[item.ID] = item
+			}
+			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
+		}
+		contentIndex := lo.FromPtr(ev.ContentIndex)
+		part := ensureReasoningTextPart(item, contentIndex)
+		applyDoneText(part.Text, ev.Text)
+		part.Final = true
+
 	case StreamEventTypeOutputItemDone:
 		// Mark item as completed and update with final data
 		if ev.Item != nil {
@@ -678,11 +736,39 @@ func (a *streamAggregator) buildResponse() *Response {
 						}
 					}
 
+					var reasoningText []ReasoningContent
+					if len(item.ReasoningTextParts) > 0 {
+						maxContentIndex := -1
+						for idx := range item.ReasoningTextParts {
+							if idx > maxContentIndex {
+								maxContentIndex = idx
+							}
+						}
+						reasoningText = make([]ReasoningContent, 0, maxContentIndex+1)
+						for idx := 0; idx <= maxContentIndex; idx++ {
+							sp, ok := item.ReasoningTextParts[idx]
+							if !ok || sp == nil {
+								reasoningText = append(reasoningText, ReasoningContent{Type: "reasoning_text", Text: ""})
+								continue
+							}
+							partType := sp.Type
+							if partType == "" {
+								partType = "reasoning_text"
+							}
+							var text string
+							if sp.Text != nil {
+								text = sp.Text.String()
+							}
+							reasoningText = append(reasoningText, ReasoningContent{Type: partType, Text: text})
+						}
+					}
+
 					output = append(output, Item{
 						ID:               item.ID,
 						Type:             item.Type,
 						Status:           lo.ToPtr(item.Status),
 						Summary:          summary,
+						ReasoningContent: reasoningText,
 						EncryptedContent: item.EncryptedContent,
 					})
 				}

@@ -81,6 +81,9 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 			// exclude the last DONE event
 			for i, expectedEvent := range expectedEvents[:len(expectedEvents)-1] {
+				// Stream fixtures predate Responses reasoning sidecars (item id/done,
+				// summary/content origin). Compare protocol payload, not sidecar map.
+				expectedEvent.TransformerMetadata = actualLLMResponses[i].TransformerMetadata
 				if !xtest.Equal(expectedEvent, actualLLMResponses[i]) {
 					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, actualLLMResponses[i]))
 				}
