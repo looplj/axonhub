@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Native field ownership and no-fake-map rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main matrix row."}
+{"file": "docs/specs/protocols/openai-chat-completions-protocol.md", "reason": "Official Chat web_search_options baseline."}
+{"file": "docs/specs/protocols/drafts/batch-tools-mcp.md", "reason": "Tool separation and fixture guidance."}
