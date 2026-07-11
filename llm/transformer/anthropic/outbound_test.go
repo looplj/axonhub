@@ -2444,36 +2444,54 @@ func TestOutboundTransformer_TransformRequest_DiagnosesChatPromptCacheRetentionL
 }
 
 func TestOutboundTransformer_TransformRequest_DiagnosesChatOutputControlsLoss(t *testing.T) {
-	chatBody := []byte(`{
-		"model": "gpt-4o-audio-preview",
-		"messages": [{"role": "user", "content": "speak and predict"}],
-		"audio": {"voice": "alloy", "format": "wav", "future_option": {"enabled": true}},
-		"prediction": {"type": "content", "content": "known output", "future_prediction_flag": 1},
-		"moderation": {"type": "auto", "future_policy": "strict-unknown"}
-	}`)
-
-	llmReq := &llm.Request{
-		Model:     "claude-3-sonnet-20240229",
-		APIFormat: llm.APIFormatOpenAIChatCompletion,
-		MaxTokens: lo.ToPtr(int64(1024)),
-		Messages: []llm.Message{{
-			Role:    "user",
-			Content: llm.MessageContent{Content: lo.ToPtr("speak and predict")},
-		}},
-		RawRequest: &httpclient.Request{
-			Headers: http.Header{"Content-Type": []string{"application/json"}},
-			Body:    chatBody,
+	for _, tc := range []struct {
+		name  string
+		field string
+		body  string
+	}{
+		{
+			name:  "audio",
+			field: "audio",
+			body:  `{"model":"gpt-4o-audio-preview","messages":[{"role":"user","content":"speak"}],"audio":{"voice":"alloy","format":"wav","future_option":{"enabled":true}}}`,
 		},
+		{
+			name:  "prediction",
+			field: "prediction",
+			body:  `{"model":"gpt-4o","messages":[{"role":"user","content":"continue"}],"prediction":{"type":"content","content":"known output","future_prediction_flag":1}}`,
+		},
+		{
+			name:  "moderation",
+			field: "moderation",
+			body:  `{"model":"gpt-4o","messages":[{"role":"user","content":"check"}],"moderation":{"model":"omni-moderation-latest","future_policy":"strict-unknown"}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			llmReq := &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				APIFormat: llm.APIFormatOpenAIChatCompletion,
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+				}},
+				RawRequest: &httpclient.Request{
+					Headers: http.Header{"Content-Type": []string{"application/json"}},
+					Body:    []byte(tc.body),
+				},
+			}
+
+			transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+			require.NoError(t, err)
+			_, err = transformer.TransformRequest(t.Context(), llmReq)
+			require.NoError(t, err)
+
+			require.Equal(t, []llm.LossyDowngrade{{
+				SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+				SourceField:    tc.field,
+				TargetProtocol: llm.APIFormatAnthropicMessage,
+				Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+				Severity:       llm.LossyDowngradeSeverityWarning,
+			}}, llm.LossyDowngrades(llmReq))
+		})
 	}
-
-	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
-	require.NoError(t, err)
-	_, err = transformer.TransformRequest(t.Context(), llmReq)
-	require.NoError(t, err)
-
-	require.ElementsMatch(t, []llm.LossyDowngrade{
-		{SourceProtocol: llm.APIFormatOpenAIChatCompletion, SourceField: "audio", TargetProtocol: llm.APIFormatAnthropicMessage, Reason: llm.LossyDowngradeReasonNoEquivalentSemantics, Severity: llm.LossyDowngradeSeverityWarning},
-		{SourceProtocol: llm.APIFormatOpenAIChatCompletion, SourceField: "prediction", TargetProtocol: llm.APIFormatAnthropicMessage, Reason: llm.LossyDowngradeReasonNoEquivalentSemantics, Severity: llm.LossyDowngradeSeverityWarning},
-		{SourceProtocol: llm.APIFormatOpenAIChatCompletion, SourceField: "moderation", TargetProtocol: llm.APIFormatAnthropicMessage, Reason: llm.LossyDowngradeReasonNoEquivalentSemantics, Severity: llm.LossyDowngradeSeverityWarning},
-	}, llm.LossyDowngrades(llmReq))
 }

@@ -1,0 +1,11 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "continue"}
+  ],
+  "prediction": {
+    "type": "content",
+    "content": "known output",
+    "future_prediction_flag": 1
+  }
+}

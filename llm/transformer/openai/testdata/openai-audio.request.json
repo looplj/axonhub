@@ -1,0 +1,11 @@
+{
+  "model": "gpt-4o-audio-preview",
+  "messages": [
+    {"role": "user", "content": "speak please"}
+  ],
+  "audio": {
+    "voice": "alloy",
+    "format": "wav",
+    "future_option": {"enabled": true}
+  }
+}

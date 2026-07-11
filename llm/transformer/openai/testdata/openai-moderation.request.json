@@ -1,0 +1,10 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "check moderation"}
+  ],
+  "moderation": {
+    "model": "omni-moderation-latest",
+    "future_policy": "strict-unknown"
+  }
+}

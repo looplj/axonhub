@@ -1,0 +1,14 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "continue parts"}
+  ],
+  "prediction": {
+    "type": "content",
+    "content": [
+      {"type": "text", "text": "part-a"},
+      {"type": "text", "text": "part-b"}
+    ],
+    "future_prediction_flag": 2
+  }
+}

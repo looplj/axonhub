@@ -15,9 +15,6 @@ var openAIChatRawPreserveFields = []string{
 	"audio",
 	"prediction",
 	"moderation",
-	"web_search_options",
-	"functions",
-	"function_call",
 }
 
 // marshalOpenAIChatRequest emits a Chat request without changing the shared
