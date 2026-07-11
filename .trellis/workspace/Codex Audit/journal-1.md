@@ -211,3 +211,37 @@ Completed G3: Anthropic same-protocol preserves container and inference_geo as r
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: G4 Chat output controls review PASS
+
+**Date**: 2026-07-12
+**Task**: G4 Chat output controls review PASS
+**Branch**: `codex-transformer-field-fixes`
+
+### Summary
+
+G4 completed with real sub-agent review. Initial FAIL for over-scope and combined fixtures was fixed in 7cd64f9f; Boyle re-review PASS. Next G5 starts only after slice plan.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9a2692ed` | (see git log) |
+| `7cd64f9f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
