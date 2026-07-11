@@ -1,0 +1,30 @@
+{
+  "id": "resp_reasoning_content",
+  "object": "response",
+  "created_at": 1700000000,
+  "model": "gpt-5.1",
+  "status": "completed",
+  "output": [
+    {
+      "id": "rs_1",
+      "type": "reasoning",
+      "status": "completed",
+      "summary": [
+        {"type": "summary_text", "text": "short summary"}
+      ],
+      "content": [
+        {"type": "reasoning_text", "text": "raw reasoning text body"}
+      ],
+      "encrypted_content": "enc_abc"
+    },
+    {
+      "id": "msg_1",
+      "type": "message",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {"type": "output_text", "text": "final answer"}
+      ]
+    }
+  ]
+}

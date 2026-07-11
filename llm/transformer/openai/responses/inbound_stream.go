@@ -42,6 +42,7 @@ type responsesInboundStream struct {
 	hasMessageItemStarted   bool
 	hasReasoningItemStarted bool
 	hasReasoningSummaryPart bool
+	hasReasoningTextPart    bool
 	hasContentPartStarted   bool
 	hasFinished             bool
 	responseCompleted       bool
@@ -342,6 +343,16 @@ func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]an
 	if raw, ok := metadata[responsesNamespaceToolMapTransformerMetadataKey]; ok && raw != nil {
 		s.transformerMetadata[responsesNamespaceToolMapTransformerMetadataKey] = raw
 	}
+	// Reasoning text stream preference / original content sidecar.
+	for _, key := range []string{
+		responsesReasoningPreferTextStreamTransformerMetadataKey,
+		responsesReasoningTextContentTransformerMetadataKey,
+		responsesReasoningSummaryContentTransformerMetadataKey,
+	} {
+		if raw, ok := metadata[key]; ok && raw != nil {
+			s.transformerMetadata[key] = raw
+		}
+	}
 }
 
 func getResponsesReasoningItemMetadata(metadata map[string]any) (responsesReasoningItemMetadata, bool) {
@@ -376,7 +387,37 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 		return err
 	}
 
-	// Start reasoning summary part only when we actually have summary text.
+	s.accumulatedReasoning.WriteString(*content)
+
+	emitReasoningText := false
+	if s.transformerMetadata != nil {
+		if _, ok := s.transformerMetadata[responsesReasoningTextContentTransformerMetadataKey]; ok {
+			emitReasoningText = true
+		}
+		if v, ok := s.transformerMetadata[responsesReasoningPreferTextStreamTransformerMetadataKey].(bool); ok && v {
+			emitReasoningText = true
+		}
+	}
+
+	if emitReasoningText {
+		if !s.hasReasoningTextPart {
+			s.hasReasoningTextPart = true
+		}
+		err := s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeReasoningTextDelta,
+			ItemID:       &s.currentItemID,
+			OutputIndex:  s.outputIndex,
+			ContentIndex: lo.ToPtr(0),
+			Delta:        *content,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue reasoning_text.delta event: %w", err)
+		}
+		// When protocol-native text stream is requested, skip summary-compat events.
+		return nil
+	}
+
+	// Default common path: emit reasoning_summary_* for existing fixtures/clients.
 	if !s.hasReasoningSummaryPart {
 		s.hasReasoningSummaryPart = true
 
@@ -392,10 +433,6 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 		}
 	}
 
-	// Accumulate reasoning content
-	s.accumulatedReasoning.WriteString(*content)
-
-	// Emit reasoning_summary_text.delta
 	err := s.enqueueEvent(&StreamEvent{
 		Type:         StreamEventTypeReasoningSummaryTextDelta,
 		ItemID:       &s.currentItemID,
@@ -743,6 +780,20 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 	s.hasReasoningItemStarted = false
 	fullReasoning := s.accumulatedReasoning.String()
 	hadSummaryPart := s.hasReasoningSummaryPart
+	hadTextPart := s.hasReasoningTextPart
+
+	if hadTextPart {
+		err := s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeReasoningTextDone,
+			ItemID:       &s.currentItemID,
+			OutputIndex:  s.outputIndex,
+			ContentIndex: lo.ToPtr(0),
+			Text:         fullReasoning,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue reasoning_text.done event: %w", err)
+		}
+	}
 
 	// Emit reasoning summary done events only if we started the summary part.
 	if hadSummaryPart {
@@ -775,6 +826,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 	}
 
 	s.hasReasoningSummaryPart = false
+	s.hasReasoningTextPart = false
 
 	// Emit output_item.done with complete reasoning item
 	var encryptedContent *string
@@ -800,6 +852,12 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 		Status:           lo.ToPtr("completed"),
 		Summary:          summary,
 		EncryptedContent: encryptedContent,
+	}
+	if hadTextPart && fullReasoning != "" {
+		item.ReasoningContent = []ReasoningContent{{
+			Type: "reasoning_text",
+			Text: fullReasoning,
+		}}
 	}
 
 	err := s.enqueueEvent(&StreamEvent{

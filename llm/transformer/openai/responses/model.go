@@ -181,7 +181,12 @@ type Prompt struct {
 type Reasoning struct {
 	// The effort level for reasoning. Any of "low", "medium", "high".
 	Effort string `json:"effort,omitempty"`
+	// Context controls which reasoning items are rendered back on later turns.
+	// Any of "auto", "current_turn", "all_turns".
+	Context string `json:"context,omitempty"`
 	// Whether to generate a summary of the reasoning. Any of "auto", "concise", "detailed".
+	// Deprecated: use Summary instead. Keep as a separate wire field so
+	// same-protocol clients can still send/receive generate_summary.
 	GenerateSummary string `json:"generate_summary,omitempty"`
 	// The summary type. Any of "auto", "concise", "detailed".
 	Summary string `json:"summary,omitempty"`
@@ -446,6 +451,13 @@ type URLCitation struct {
 const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
 const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
 const responsesReasoningEnabledTransformerMetadataKey = "openai_responses_reasoning_enabled"
+const responsesReasoningContextTransformerMetadataKey = "openai_responses_reasoning_context"
+const responsesReasoningGenerateSummaryOriginTransformerMetadataKey = "openai_responses_reasoning_generate_summary_origin"
+const responsesReasoningGenerateSummaryValueTransformerMetadataKey = "openai_responses_reasoning_generate_summary_value"
+const responsesReasoningRawObjectTransformerMetadataKey = "openai_responses_reasoning_raw_object"
+const responsesReasoningTextContentTransformerMetadataKey = "openai_responses_reasoning_text_content"
+const responsesReasoningSummaryContentTransformerMetadataKey = "openai_responses_reasoning_summary_content"
+const responsesReasoningPreferTextStreamTransformerMetadataKey = "openai_responses_reasoning_prefer_text_stream"
 const responsesNamespaceToolMapTransformerMetadataKey = "openai_responses_namespace_tool_map"
 
 const responsesBackgroundTransformerMetadataKey = "background"
@@ -645,7 +657,8 @@ type Item struct {
 	// Reasoning summary content - array of summary text items.
 	Summary []ReasoningSummary `json:"summary,omitempty"`
 	// Reasoning text content - array of reasoning text items.
-	ReasoningContent []ReasoningContent `json:"reasoning_content,omitempty"`
+	// Wire field is "content" for type=reasoning; handled by custom JSON methods.
+	ReasoningContent []ReasoningContent `json:"-"`
 	// The encrypted content of the reasoning item.
 	EncryptedContent *string `json:"encrypted_content,omitempty"`
 
@@ -670,6 +683,25 @@ func (item *Item) UnmarshalJSON(data []byte) error {
 	}
 
 	*item = Item(raw.itemAlias)
+
+	// For reasoning items, wire "content" is reasoning_text parts, not message Content.
+	if item.Type == "reasoning" && item.Content != nil && len(item.Content.Items) > 0 {
+		parts := make([]ReasoningContent, 0, len(item.Content.Items))
+		for _, part := range item.Content.Items {
+			text := ""
+			if part.Text != nil {
+				text = *part.Text
+			}
+			partType := part.Type
+			if partType == "" {
+				partType = "reasoning_text"
+			}
+			parts = append(parts, ReasoningContent{Type: partType, Text: text})
+		}
+		item.ReasoningContent = parts
+		item.Content = nil
+	}
+
 	if len(raw.Arguments) == 0 || bytes.Equal(raw.Arguments, []byte("null")) {
 		return nil
 	}
@@ -747,11 +779,13 @@ func (item Item) MarshalJSON() ([]byte, error) {
 		return json.Marshal(itemAlias(item))
 	}
 
-	// Ensure reasoning items always include summary, even if empty.
+	// Ensure reasoning items always include summary, even if empty, and emit
+	// content[] for reasoning_text parts.
 	type reasoningItem struct {
 		itemAlias
 
-		Summary []ReasoningSummary `json:"summary"`
+		Summary []ReasoningSummary  `json:"summary"`
+		Content []ReasoningContent  `json:"content,omitempty"`
 	}
 
 	summary := item.Summary
@@ -762,6 +796,7 @@ func (item Item) MarshalJSON() ([]byte, error) {
 	return json.Marshal(reasoningItem{
 		itemAlias: itemAlias(item),
 		Summary:   summary,
+		Content:   item.ReasoningContent,
 	})
 }
 

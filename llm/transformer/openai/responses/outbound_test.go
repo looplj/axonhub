@@ -455,6 +455,7 @@ func TestOutboundTransformer_TransformRequest_PreservesAdditionalToolsInputItems
 	require.NotNil(t, llmReq.ProviderExtensions.OpenAIResponses.Request)
 	require.Len(t, llmReq.ProviderExtensions.OpenAIResponses.Request.AdditionalTools, 1)
 	require.JSONEq(t, `{"type":"additional_tools","x_reason":"lazy-load","tools":[{"type":"namespace","name":"docs","tools":[{"type":"function","name":"search","parameters":{"type":"object","properties":{}}}]},{"type":"tool_search","name":"search_docs","namespace":"docs"}]}`, string(llmReq.ProviderExtensions.OpenAIResponses.Request.AdditionalTools[0].Raw))
+	require.Empty(t, llmReq.ProviderExtensions.OpenAIResponses.Request.RawInputItems)
 
 	input, ok := payload["input"].([]any)
 	require.True(t, ok)
@@ -488,6 +489,35 @@ func TestOutboundTransformer_TransformRequest_PreservesUnknownToolVariants(t *te
 	require.NoError(t, err)
 	require.Len(t, tools, 1)
 	require.JSONEq(t, `{"type":"future_tool","name":"future","nested":{"enabled":true},"list":[1,2]}`, string(tools[0]))
+}
+
+func TestOutboundTransformer_TransformRequest_PreservesAdditionalToolsAlongsideRawOnlyInputItems(t *testing.T) {
+	payload, llmReq := roundTripResponsesRequestPayload(t, `{
+		"model": "gpt-4o",
+		"input": [
+			{"type": "additional_tools", "tools": [{"type": "tool_search", "name": "search_docs"}]},
+			{"type": "tool_search_call", "id": "ts_1", "status": "completed", "queries": ["docs"]},
+			{"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hello"}]}
+		]
+	}`, nil)
+
+	requestExt := llmReq.ProviderExtensions.OpenAIResponses.Request
+	require.Len(t, requestExt.AdditionalTools, 1)
+	require.Len(t, requestExt.RawInputItems, 1)
+	require.Equal(t, "tool_search_call", requestExt.RawInputItems[0].Type)
+
+	input, ok := payload["input"].([]any)
+	require.True(t, ok)
+	require.Len(t, input, 3)
+	first, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "additional_tools", first["type"])
+	second, ok := input[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tool_search_call", second["type"])
+	third, ok := input[2].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "message", third["type"])
 }
 
 func TestOutboundTransformer_TransformRequest_PreservesUnknownInputItemVariants(t *testing.T) {
@@ -524,6 +554,20 @@ func TestOutboundTransformer_TransformRequest_PreservesComplexToolChoiceRawForm(
 	require.JSONEq(t, `{"type":"future_choice","name":"get_weather","mode":"auto","x_policy":{"allow":["get_weather"]}}`, string(payload["tool_choice"]))
 }
 
+func TestOutboundTransformer_TransformRequest_EmitsClientMetadataPreservationDiagnostics(t *testing.T) {
+	_, httpReq := roundTripResponsesRequest(t, `{
+		"model": "gpt-4o",
+		"input": "hello",
+		"client_metadata": {"codex_version": "1.2.3"}
+	}`, nil)
+
+	require.NotNil(t, httpReq.TransformerMetadata)
+	diagnostics, ok := httpReq.TransformerMetadata[responsesRequestPreservationDiagnosticsTransformerMetadataKey].(requestPreservationDiagnostics)
+	require.True(t, ok)
+	require.True(t, diagnostics.NativePreservation)
+	require.Equal(t, 1, diagnostics.ClientMetadataCount)
+}
+
 func TestOutboundTransformer_TransformRequest_EmitsRequestPreservationDiagnostics(t *testing.T) {
 	_, httpReq := roundTripResponsesRequest(t, `{
 		"model": "gpt-4o",
@@ -546,7 +590,7 @@ func TestOutboundTransformer_TransformRequest_EmitsRequestPreservationDiagnostic
 	require.Equal(t, 1, diagnostics.NativeToolCount)
 	require.Equal(t, 1, diagnostics.RawOnlyToolCount)
 	require.Equal(t, 1, diagnostics.AdditionalToolsCount)
-	require.Equal(t, 1, diagnostics.RawInputItemCount)
+	require.Equal(t, 0, diagnostics.RawInputItemCount)
 	require.True(t, diagnostics.RawToolChoicePreserved)
 }
 

@@ -1,0 +1,11 @@
+{
+  "model": "gpt-5.1",
+  "input": "hello unknown nested reasoning",
+  "reasoning": {
+    "effort": "low",
+    "context": "auto",
+    "summary": "auto",
+    "future_nested": {"enabled": true, "mode": "experimental"},
+    "another_future": "keep-me"
+  }
+}

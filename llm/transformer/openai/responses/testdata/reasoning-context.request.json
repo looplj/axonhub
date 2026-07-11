@@ -1,0 +1,9 @@
+{
+  "model": "gpt-5.1",
+  "input": "hello reasoning context",
+  "reasoning": {
+    "effort": "high",
+    "context": "current_turn",
+    "summary": "auto"
+  }
+}

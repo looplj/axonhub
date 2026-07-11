@@ -239,11 +239,18 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 			chatReq.ReasoningBudget = req.Reasoning.MaxTokens
 		}
 
-		// Priority: summary > generate_summary
+		// Keep summary and deprecated generate_summary as distinct identities.
+		// summary maps to common ReasoningSummary; generate_summary is also
+		// projected there only when summary is absent, but always retains a
+		// separate origin/value sidecar for same-protocol wire fidelity.
 		if req.Reasoning.Summary != "" {
 			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.Summary)
 		} else if req.Reasoning.GenerateSummary != "" {
 			chatReq.ReasoningSummary = lo.ToPtr(req.Reasoning.GenerateSummary)
+			chatReq.TransformerMetadata[responsesReasoningGenerateSummaryOriginTransformerMetadataKey] = true
+		}
+		if req.Reasoning.GenerateSummary != "" {
+			chatReq.TransformerMetadata[responsesReasoningGenerateSummaryValueTransformerMetadataKey] = req.Reasoning.GenerateSummary
 		}
 
 		// Preserve reasoning.enabled through TransformerMetadata; canonical
@@ -251,6 +258,13 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		// on cross-format conversion (mirrors top_k/output_config handling).
 		if req.Reasoning.Enabled != nil {
 			chatReq.TransformerMetadata[responsesReasoningEnabledTransformerMetadataKey] = req.Reasoning.Enabled
+		}
+
+		// Preserve reasoning.context as Responses-native configuration. It is not
+		// a common effort/summary field and must not be stored as a protocol body
+		// field on llm.Request itself.
+		if req.Reasoning.Context != "" {
+			chatReq.TransformerMetadata[responsesReasoningContextTransformerMetadataKey] = req.Reasoning.Context
 		}
 	}
 
@@ -338,9 +352,24 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 
 	if len(rawBody) > 0 {
 		attachOpenAIResponsesRequestExtensions(chatReq, req, rawBody[0])
+		if rawReasoning := extractRawReasoningObject(rawBody[0]); len(rawReasoning) > 0 {
+			chatReq.TransformerMetadata[responsesReasoningRawObjectTransformerMetadataKey] = rawReasoning
+		}
 	}
 
 	return chatReq, nil
+}
+
+func extractRawReasoningObject(rawBody []byte) json.RawMessage {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(rawBody, &obj); err != nil {
+		return nil
+	}
+	raw, ok := obj["reasoning"]
+	if !ok || len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	return append(json.RawMessage(nil), raw...)
 }
 
 // convertToolChoiceToLLM converts Responses API ToolChoice to llm.ToolChoice.
@@ -437,13 +466,18 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		ReasoningSignature: reasoningItem.EncryptedContent,
 	}
 
-	// Extract reasoning content
+	// Prefer raw reasoning_text content[] over summary when both exist.
 	var reasoningText strings.Builder
-
-	for _, summary := range reasoningItem.Summary {
-		reasoningText.WriteString(summary.Text)
+	for _, part := range reasoningItem.ReasoningContent {
+		if part.Text != "" {
+			reasoningText.WriteString(part.Text)
+		}
 	}
-
+	if reasoningText.Len() == 0 {
+		for _, summary := range reasoningItem.Summary {
+			reasoningText.WriteString(summary.Text)
+		}
+	}
 	if reasoningText.Len() > 0 {
 		msg.ReasoningContent = lo.ToPtr(reasoningText.String())
 	}
@@ -1045,7 +1079,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		}
 
 		// Handle reasoning content
-		if reasoningItem, ok := buildReasoningItem(*message); ok {
+		if reasoningItem, ok := buildReasoningItem(*message, chatResp.TransformerMetadata); ok {
 			resp.Output = append(resp.Output, reasoningItem)
 		}
 
@@ -1208,27 +1242,85 @@ func generateItemID() string {
 
 // buildReasoningItem creates a reasoning Item from a message's reasoning content and signature.
 // Returns the item and true if the message has reasoning data, otherwise returns zero value and false.
-func buildReasoningItem(msg llm.Message) (Item, bool) {
+// When response metadata carries original reasoning_text content[] / summary[], re-emit those shapes.
+func buildReasoningItem(msg llm.Message, responseMetadata map[string]any) (Item, bool) {
 	hasContent := msg.ReasoningContent != nil && *msg.ReasoningContent != ""
 	hasSignature := msg.ReasoningSignature != nil && *msg.ReasoningSignature != ""
+	rawTextParts := reasoningTextContentFromMetadata(responseMetadata)
+	savedSummary := reasoningSummaryFromMetadata(responseMetadata)
 
-	if !hasContent && !hasSignature {
+	if !hasContent && !hasSignature && len(rawTextParts) == 0 {
 		return Item{}, false
 	}
 
 	summary := []ReasoningSummary{}
-	if hasContent {
+	if len(savedSummary) > 0 {
+		summary = savedSummary
+	} else if hasContent && len(rawTextParts) == 0 {
+		// Common path only had opaque reasoning text; emit as summary_text for
+		// backward compatibility with existing stream/non-stream consumers.
 		summary = append(summary, ReasoningSummary{
 			Type: "summary_text",
 			Text: *msg.ReasoningContent,
 		})
 	}
 
-	return Item{
+	item := Item{
 		ID:               generateItemID(),
 		Type:             "reasoning",
 		Status:           lo.ToPtr("completed"),
 		Summary:          summary,
 		EncryptedContent: msg.ReasoningSignature,
-	}, true
+	}
+	// Only emit content[]/reasoning_text when the original Responses item had it.
+	// Common-only ReasoningContent continues to use summary_text for backward
+	// compatibility with existing clients/tests.
+	if len(rawTextParts) > 0 {
+		item.ReasoningContent = rawTextParts
+	}
+	return item, true
+}
+
+func reasoningTextContentFromMetadata(meta map[string]any) []ReasoningContent {
+	if meta == nil {
+		return nil
+	}
+	raw, ok := meta[responsesReasoningTextContentTransformerMetadataKey]
+	if !ok || raw == nil {
+		return nil
+	}
+	if parts, ok := raw.([]ReasoningContent); ok {
+		return append([]ReasoningContent(nil), parts...)
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil
+	}
+	var parts []ReasoningContent
+	if err := json.Unmarshal(data, &parts); err != nil {
+		return nil
+	}
+	return parts
+}
+
+func reasoningSummaryFromMetadata(meta map[string]any) []ReasoningSummary {
+	if meta == nil {
+		return nil
+	}
+	raw, ok := meta[responsesReasoningSummaryContentTransformerMetadataKey]
+	if !ok || raw == nil {
+		return nil
+	}
+	if parts, ok := raw.([]ReasoningSummary); ok {
+		return append([]ReasoningSummary(nil), parts...)
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil
+	}
+	var parts []ReasoningSummary
+	if err := json.Unmarshal(data, &parts); err != nil {
+		return nil
+	}
+	return parts
 }

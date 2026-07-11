@@ -551,17 +551,33 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	// ReasoningConfig.enabled has no canonical slot; mirrors top_k handling).
 	enabled := xmap.GetBoolPtr(req.TransformerMetadata, responsesReasoningEnabledTransformerMetadataKey)
 
+	contextMode := ""
+	if req.TransformerMetadata != nil {
+		if v, ok := req.TransformerMetadata[responsesReasoningContextTransformerMetadataKey].(string); ok {
+			contextMode = v
+		}
+	}
+
 	// Check if any reasoning-related fields are present
+	generateSummaryMeta := ""
+	if req.TransformerMetadata != nil {
+		if v, ok := req.TransformerMetadata[responsesReasoningGenerateSummaryValueTransformerMetadataKey].(string); ok {
+			generateSummaryMeta = v
+		}
+	}
 	hasReasoningFields := req.ReasoningEffort != "" ||
 		req.ReasoningBudget != nil ||
 		req.ReasoningSummary != nil ||
-		enabled != nil
+		enabled != nil ||
+		contextMode != "" ||
+		generateSummaryMeta != ""
 	if !hasReasoningFields {
 		return nil
 	}
 
 	reasoning := &Reasoning{
 		Effort:    req.ReasoningEffort,
+		Context:   contextMode,
 		MaxTokens: req.ReasoningBudget,
 		Enabled:   enabled,
 	}
@@ -570,9 +586,26 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	if req.ReasoningEffort != "" && req.ReasoningBudget != nil {
 		reasoning.MaxTokens = nil // Ignore max_tokens when effort is specified
 	}
-	// Handle summary field (generate_summary is already merged at inbound)
-	if req.ReasoningSummary != nil {
-		reasoning.Summary = *req.ReasoningSummary
+	// Restore summary / generate_summary as distinct wire fields when possible.
+	generateSummary := ""
+	generateOnly := false
+	if req.TransformerMetadata != nil {
+		if v, ok := req.TransformerMetadata[responsesReasoningGenerateSummaryValueTransformerMetadataKey].(string); ok {
+			generateSummary = v
+		}
+		if origin, ok := req.TransformerMetadata[responsesReasoningGenerateSummaryOriginTransformerMetadataKey].(bool); ok && origin {
+			generateOnly = true
+		}
+	}
+	if generateOnly && req.ReasoningSummary != nil {
+		reasoning.GenerateSummary = *req.ReasoningSummary
+	} else {
+		if req.ReasoningSummary != nil {
+			reasoning.Summary = *req.ReasoningSummary
+		}
+		if generateSummary != "" {
+			reasoning.GenerateSummary = generateSummary
+		}
 	}
 
 	return reasoning
@@ -736,8 +769,27 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				},
 			})
 		case "reasoning":
-			for _, summary := range outputItem.Summary {
-				reasoningContent.WriteString(summary.Text)
+			// Prefer content[]/reasoning_text; fall back to summary_text.
+			hasReasoningText := false
+			for _, part := range outputItem.ReasoningContent {
+				if part.Text == "" {
+					continue
+				}
+				reasoningContent.WriteString(part.Text)
+				hasReasoningText = true
+			}
+			if !hasReasoningText {
+				for _, summary := range outputItem.Summary {
+					reasoningContent.WriteString(summary.Text)
+				}
+			}
+			if transformerMetadata != nil {
+				if len(outputItem.ReasoningContent) > 0 {
+					transformerMetadata[responsesReasoningTextContentTransformerMetadataKey] = append([]ReasoningContent(nil), outputItem.ReasoningContent...)
+				}
+				if len(outputItem.Summary) > 0 {
+					transformerMetadata[responsesReasoningSummaryContentTransformerMetadataKey] = append([]ReasoningSummary(nil), outputItem.Summary...)
+				}
 			}
 
 			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {

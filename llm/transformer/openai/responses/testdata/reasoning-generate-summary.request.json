@@ -1,0 +1,8 @@
+{
+  "model": "gpt-5.1",
+  "input": "hello generate_summary",
+  "reasoning": {
+    "effort": "medium",
+    "generate_summary": "detailed"
+  }
+}

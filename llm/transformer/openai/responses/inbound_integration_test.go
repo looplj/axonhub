@@ -193,6 +193,10 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			expected.TransformerMetadata = result.TransformerMetadata
 			// Copy TransformOptions from result as it contains dynamic fields (array_inputs, etc.)
 			expected.TransformOptions = result.TransformOptions
+			// ProviderExtensions carry same-protocol Responses sidecars (raw tools/input,
+			// native tool signatures, raw reasoning object helpers). They are not part of
+			// the golden JSON fixtures and should not fail protocol field assertions.
+			expected.ProviderExtensions = result.ProviderExtensions
 			if !xtest.Equal(expected, *result) {
 				t.Errorf("diff: %v", cmp.Diff(expected, *result))
 			}

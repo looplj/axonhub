@@ -99,6 +99,64 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForUnknownTopLe
 	require.Equal(t, 0, diagnostics.AdditionalToolsCount)
 }
 
+func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForKnownRawOnlyTool(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model": "gpt-4o",
+			"input": "run code",
+			"tools": []map[string]any{
+				{"type": "code_interpreter", "container": map[string]any{"type": "auto"}},
+			},
+		}),
+	}
+
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Model = "gpt-4o"
+
+	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	require.True(t, ok)
+	require.True(t, diagnostics.LossyDowngrade)
+	require.Equal(t, 1, diagnostics.RawOnlyToolCount)
+	require.Equal(t, 0, diagnostics.UnknownToolCount)
+}
+
+func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForClientMetadataOnly(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model":           "gpt-4o",
+			"input":           "hello",
+			"client_metadata": map[string]any{"codex_version": "1.2.3"},
+		}),
+	}
+
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Model = "gpt-4o"
+
+	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	require.True(t, ok)
+	require.True(t, diagnostics.LossyDowngrade)
+	require.Equal(t, 1, diagnostics.ClientMetadataCount)
+	require.Equal(t, 0, diagnostics.UnknownTopLevelFieldCount)
+	require.Equal(t, 0, diagnostics.NamespaceToolCount)
+	require.Equal(t, 0, diagnostics.ToolSearchToolCount)
+	require.Equal(t, 0, diagnostics.UnknownToolCount)
+	require.Equal(t, 0, diagnostics.AdditionalToolsCount)
+}
+
 func TestCrossProtocol_NamespaceMapSurvivesRoundTrip(t *testing.T) {
 	// --- Step 1: responses inbound (request) — namespace map is recorded ---
 	responsesInbound := NewInboundTransformer()

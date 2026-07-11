@@ -1,0 +1,9 @@
+{
+  "model": "gpt-5.1",
+  "input": "hello both summary fields",
+  "reasoning": {
+    "effort": "high",
+    "summary": "auto",
+    "generate_summary": "concise"
+  }
+}

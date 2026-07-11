@@ -120,7 +120,7 @@ func convertCompactMessagesToItems(msgs []llm.Message) []Item {
 	items := make([]Item, 0, len(msgs))
 
 	for _, msg := range msgs {
-		if reasoningItem, ok := buildReasoningItem(msg); ok {
+		if reasoningItem, ok := buildReasoningItem(msg, nil); ok {
 			items = append(items, reasoningItem)
 		}
 

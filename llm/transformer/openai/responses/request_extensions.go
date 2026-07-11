@@ -15,6 +15,7 @@ const responsesRequestPreservationDiagnosticsTransformerMetadataKey = "responses
 type requestPreservationDiagnostics struct {
 	NativePreservation        bool
 	UnknownTopLevelFieldCount int
+	ClientMetadataCount       int
 	NativeToolCount           int
 	NamespaceToolCount        int
 	ToolSearchToolCount       int
@@ -252,7 +253,7 @@ func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.O
 	fragments := make([]llm.OpenAIResponsesRawFragment, 0)
 	for i := range input.Items {
 		item := input.Items[i]
-		if i >= len(rawItems) || len(rawItems[i]) == 0 || isStructurallyRepresentedInputItem(item.Type) {
+		if i >= len(rawItems) || len(rawItems[i]) == 0 || item.Type == "additional_tools" || isStructurallyRepresentedInputItem(item.Type) {
 			continue
 		}
 
@@ -287,6 +288,54 @@ func openAIResponsesRequestExtensions(llmReq *llm.Request) *llm.OpenAIResponsesR
 	return requestExt
 }
 
+
+
+func rawReasoningObject(llmReq *llm.Request) json.RawMessage {
+	if llmReq == nil || llmReq.TransformerMetadata == nil {
+		return nil
+	}
+	raw, ok := llmReq.TransformerMetadata[responsesReasoningRawObjectTransformerMetadataKey].(json.RawMessage)
+	if !ok {
+		return nil
+	}
+	return raw
+}
+
+func mergeRawReasoningObject(obj map[string]json.RawMessage, llmReq *llm.Request) {
+	if obj == nil || llmReq == nil || llmReq.TransformerMetadata == nil {
+		return
+	}
+	raw, ok := llmReq.TransformerMetadata[responsesReasoningRawObjectTransformerMetadataKey].(json.RawMessage)
+	if !ok || len(raw) == 0 {
+		return
+	}
+	var rawObj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &rawObj); err != nil {
+		return
+	}
+	var structuredObj map[string]json.RawMessage
+	if structured, ok := obj["reasoning"]; ok && len(structured) > 0 {
+		_ = json.Unmarshal(structured, &structuredObj)
+	}
+	if structuredObj == nil {
+		structuredObj = map[string]json.RawMessage{}
+	}
+	// Start from original raw object so unknown nested keys survive, then let
+	// structured conversion overwrite known keys with current values.
+	merged := make(map[string]json.RawMessage, len(rawObj)+len(structuredObj))
+	for k, v := range rawObj {
+		merged[k] = cloneRaw(v)
+	}
+	for k, v := range structuredObj {
+		merged[k] = cloneRaw(v)
+	}
+	out, err := json.Marshal(merged)
+	if err != nil {
+		return
+	}
+	obj["reasoning"] = out
+}
+
 func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -294,7 +343,8 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 	}
 
 	requestExt := openAIResponsesRequestExtensions(llmReq)
-	if requestExt == nil {
+	hasRawReasoning := llmReq != nil && llmReq.TransformerMetadata != nil && len(rawReasoningObject(llmReq)) > 0
+	if requestExt == nil && !hasRawReasoning {
 		return body, nil
 	}
 
@@ -303,34 +353,37 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		return nil, err
 	}
 
-	recordRequestPreservationDiagnostics(llmReq, requestExt)
-	mergeRawUnknownTopLevelFields(obj, requestExt.RawTopLevelFields)
-	if len(requestExt.ClientMetadata) > 0 {
-		clientMetadataRaw, err := json.Marshal(requestExt.ClientMetadata)
-		if err != nil {
-			return nil, err
+	mergeRawReasoningObject(obj, llmReq)
+	if requestExt != nil {
+		recordRequestPreservationDiagnostics(llmReq, requestExt)
+		mergeRawUnknownTopLevelFields(obj, requestExt.RawTopLevelFields)
+		if len(requestExt.ClientMetadata) > 0 {
+			clientMetadataRaw, err := json.Marshal(requestExt.ClientMetadata)
+			if err != nil {
+				return nil, err
+			}
+			obj["client_metadata"] = clientMetadataRaw
 		}
-		obj["client_metadata"] = clientMetadataRaw
-	}
 
-	if tools, ok := mergeNativeTools(obj["tools"], requestExt); ok {
-		toolsRaw, err := json.Marshal(tools)
-		if err != nil {
-			return nil, err
+		if tools, ok := mergeNativeTools(obj["tools"], requestExt); ok {
+			toolsRaw, err := json.Marshal(tools)
+			if err != nil {
+				return nil, err
+			}
+			obj["tools"] = toolsRaw
 		}
-		obj["tools"] = toolsRaw
-	}
 
-	if len(requestExt.RawToolChoice) > 0 && rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
-		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
-	}
-
-	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
-		inputRaw, err := json.Marshal(input)
-		if err != nil {
-			return nil, err
+		if len(requestExt.RawToolChoice) > 0 && rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
+			obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 		}
-		obj["input"] = inputRaw
+
+		if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
+			inputRaw, err := json.Marshal(input)
+			if err != nil {
+				return nil, err
+			}
+			obj["input"] = inputRaw
+		}
 	}
 
 	return json.Marshal(obj)
@@ -346,6 +399,7 @@ func recordRequestPreservationDiagnostics(llmReq *llm.Request, requestExt *llm.O
 
 	diagnostics := requestPreservationDiagnostics{
 		UnknownTopLevelFieldCount: len(requestExt.RawTopLevelFields),
+		ClientMetadataCount:       len(requestExt.ClientMetadata),
 		RawOnlyToolCount:          len(requestExt.RawTools),
 		AdditionalToolsCount:      len(requestExt.AdditionalTools),
 		RawInputItemCount:         len(requestExt.RawInputItems),
@@ -359,6 +413,7 @@ func recordRequestPreservationDiagnostics(llmReq *llm.Request, requestExt *llm.O
 	diagnostics.UnknownToolCount = countUnknownToolFragments(requestExt.RawTools)
 	diagnostics.UnknownInputItemCount = countUnknownInputFragments(requestExt.RawInputItems)
 	diagnostics.NativePreservation = diagnostics.UnknownTopLevelFieldCount > 0 ||
+		diagnostics.ClientMetadataCount > 0 ||
 		diagnostics.NativeToolCount > 0 ||
 		diagnostics.RawOnlyToolCount > 0 ||
 		diagnostics.AdditionalToolsCount > 0 ||
@@ -385,7 +440,7 @@ func countNativeToolsByType(rawTools []json.RawMessage, toolType string) int {
 func countUnknownToolFragments(fragments []llm.OpenAIResponsesRawFragment) int {
 	count := 0
 	for _, fragment := range fragments {
-		if isKnownNativeToolType(fragment.Type) {
+		if llm.IsKnownOpenAIResponsesNativeToolType(fragment.Type) {
 			continue
 		}
 		count++
@@ -393,19 +448,10 @@ func countUnknownToolFragments(fragments []llm.OpenAIResponsesRawFragment) int {
 	return count
 }
 
-func isKnownNativeToolType(toolType string) bool {
-	switch toolType {
-	case "function", "image_generation", "web_search", "custom", "namespace", "tool_search", "file_search", "mcp":
-		return true
-	default:
-		return false
-	}
-}
-
 func countUnknownInputFragments(fragments []llm.OpenAIResponsesRawFragment) int {
 	count := 0
 	for _, fragment := range fragments {
-		if fragment.Type == "additional_tools" || isStructurallyRepresentedInputItem(fragment.Type) {
+		if fragment.Type == "additional_tools" || llm.IsKnownOpenAIResponsesInputItemType(fragment.Type) {
 			continue
 		}
 		count++
@@ -526,7 +572,8 @@ func mergeNativeToolRawWithStructuredTool(nativeRaw, structuredRaw json.RawMessa
 }
 
 func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {
-	if requestExt == nil || len(requestExt.RawInputItems) == 0 {
+	rawInputItems := rawInputReplayFragments(requestExt)
+	if requestExt == nil || len(rawInputItems) == 0 {
 		return nil, false
 	}
 
@@ -550,11 +597,11 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		prependCount = 0
 	}
 
-	total := len(structuredItems) + len(requestExt.RawInputItems)
+	total := len(structuredItems) + len(rawInputItems)
 	items := make([]json.RawMessage, 0, total)
 	structuredIndex := 0
-	rawByIndex := make(map[int]json.RawMessage, len(requestExt.RawInputItems))
-	for _, fragment := range requestExt.RawInputItems {
+	rawByIndex := make(map[int]json.RawMessage, len(rawInputItems))
+	for _, fragment := range rawInputItems {
 		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
 			return nil, false
 		}
@@ -578,6 +625,23 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 	}
 
 	return items, true
+}
+
+func rawInputReplayFragments(requestExt *llm.OpenAIResponsesRequestExtensions) []llm.OpenAIResponsesRawFragment {
+	if requestExt == nil {
+		return nil
+	}
+	if len(requestExt.AdditionalTools) == 0 {
+		return requestExt.RawInputItems
+	}
+	if len(requestExt.RawInputItems) == 0 {
+		return requestExt.AdditionalTools
+	}
+
+	fragments := make([]llm.OpenAIResponsesRawFragment, 0, len(requestExt.AdditionalTools)+len(requestExt.RawInputItems))
+	fragments = append(fragments, requestExt.AdditionalTools...)
+	fragments = append(fragments, requestExt.RawInputItems...)
+	return fragments
 }
 
 func mergeRawOnlyTools(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {

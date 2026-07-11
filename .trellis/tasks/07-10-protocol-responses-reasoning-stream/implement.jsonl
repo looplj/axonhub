@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Responses body/native sidecar and stream fidelity rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main matrix reasoning rows."}
+{"file": "docs/specs/protocols/openai-responses-protocol.md", "reason": "Official Responses reasoning request/output/stream baseline."}
+{"file": "docs/specs/protocols/drafts/batch-reasoning-stream.md", "reason": "Micro-slice evidence, variants, fixtures and source gaps."}
+{"file": "docs/specs/protocols/anthropic-claude-messages-protocol.md", "reason": "Cross-protocol reasoning/thinking boundary; no effort-budget conflation."}
