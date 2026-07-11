@@ -245,3 +245,36 @@ G4 completed with real sub-agent review. Initial FAIL for over-scope and combine
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: G5a Chat web_search_options review PASS
+
+**Date**: 2026-07-12
+**Task**: G5a Chat web_search_options review PASS
+**Branch**: `codex-transformer-field-fixes`
+
+### Summary
+
+G5a completed with real sub-agent review PASS (Laplace). Chat same-protocol preserves web_search_options without mutating tools[]; Anthropic records explicit lossy diagnostic; Responses no-synth. G2/G3 retrospective reviews also PASS.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6525bb82` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
