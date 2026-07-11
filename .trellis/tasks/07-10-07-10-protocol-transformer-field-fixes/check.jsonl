@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Review ownership, sidecar, diagnostic, and architecture constraints."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Review source-of-truth matrix alignment."}
+{"file": "docs/specs/protocols/drafts/batch-common-fields.md", "reason": "Review common-field evidence."}
+{"file": "docs/specs/protocols/drafts/batch-limits-state-cache.md", "reason": "Review limits/state/cache evidence."}
+{"file": "docs/specs/protocols/drafts/batch-output-message-content.md", "reason": "Review output/message/content evidence."}
+{"file": "docs/specs/protocols/drafts/batch-reasoning-stream.md", "reason": "Review reasoning/thinking/stream evidence."}
+{"file": "docs/specs/protocols/drafts/batch-tools-mcp.md", "reason": "Review tools/MCP evidence."}

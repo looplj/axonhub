@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Protocol transformer ownership, routing, row granularity, lossiness policy, and slice gates."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main strict protocol conversion audit matrix."}
+{"file": ".agent/summary/2026-07-09-protocol-round4-readiness-summary.md", "reason": "Authoritative remediation/readiness inventory."}
+{"file": ".agent/summary/2026-07-09-protocol-round5-baseline-hardening-summary.md", "reason": "Module ordering, canonical row rules, fixture backlog, and implementation candidates."}
