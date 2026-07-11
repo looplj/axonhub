@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-deprecated-function-call",
+  "object": "chat.completion",
+  "created": 1754705954,
+  "model": "gpt-4o",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "function_call": {
+          "name": "get_weather",
+          "arguments": "{\"location\":\"New York City\"}"
+        }
+      },
+      "finish_reason": "function_call"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 10,
+    "total_tokens": 30
+  }
+}

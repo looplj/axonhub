@@ -2530,3 +2530,50 @@ func TestOutboundTransformer_TransformRequest_DiagnosesChatWebSearchOptionsLoss(
 		Severity:       llm.LossyDowngradeSeverityWarning,
 	}}, llm.LossyDowngrades(llmReq))
 }
+
+
+func TestOutboundTransformer_TransformRequest_DiagnosesChatDeprecatedFunctionsLoss(t *testing.T) {
+	chatBody := []byte(`{
+		"model": "gpt-4o",
+		"messages": [{"role": "user", "content": "What is the weather in NYC?"}],
+		"functions": [{
+			"name": "get_weather",
+			"description": "Get weather",
+			"parameters": {"type": "object", "properties": {"location": {"type": "string"}}}
+		}],
+		"function_call": {"name": "get_weather"}
+	}`)
+	llmReq := &llm.Request{
+		Model:     "claude-3-sonnet-20240229",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("What is the weather in NYC?")},
+		}},
+		RawRequest: &httpclient.Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Body:    chatBody,
+		},
+	}
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	_, err = transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+	require.Equal(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "functions",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "function_call",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(llmReq))
+}

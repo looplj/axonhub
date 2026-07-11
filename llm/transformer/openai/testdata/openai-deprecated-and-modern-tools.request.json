@@ -1,0 +1,36 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "What is the weather in NYC?"}
+  ],
+  "functions": [
+    {
+      "name": "legacy_weather",
+      "description": "legacy function definition",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "function_call": "auto",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "modern tool definition",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {"type": "string"}
+          },
+          "required": ["location"]
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}

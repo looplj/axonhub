@@ -204,6 +204,11 @@ type Message struct {
 	ToolCallID *string    `json:"tool_call_id,omitempty"`
 	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
 
+	// FunctionCall is the deprecated assistant message function-call shape.
+	// Prefer ToolCalls for modern Chat Completions; keep this only for
+	// same-protocol compatibility with legacy clients/providers.
+	FunctionCall *FunctionCall `json:"function_call,omitempty"`
+
 	// ReasoningContent for deepseek-reasoner support.
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
 

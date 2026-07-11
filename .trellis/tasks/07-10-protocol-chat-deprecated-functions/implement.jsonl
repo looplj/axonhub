@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Deprecated compatibility and field ownership rules."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main matrix legacy rows."}
+{"file": "docs/specs/protocols/openai-chat-completions-protocol.md", "reason": "Official deprecated Chat schema."}
+{"file": "docs/specs/protocols/drafts/batch-tools-mcp.md", "reason": "Legacy tool/function evidence and fixture backlog."}

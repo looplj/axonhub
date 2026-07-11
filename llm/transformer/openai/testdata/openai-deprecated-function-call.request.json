@@ -1,0 +1,20 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "What is the weather in NYC?"}
+  ],
+  "functions": [
+    {
+      "name": "get_weather",
+      "description": "Get weather at the given location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string"}
+        },
+        "required": ["location"]
+      }
+    }
+  ],
+  "function_call": {"name": "get_weather"}
+}

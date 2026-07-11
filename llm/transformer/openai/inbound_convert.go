@@ -229,6 +229,18 @@ func (m Message) ToLLMMessage() llm.Message {
 		}
 	}
 
+	// Deprecated Chat message.function_call is a predecessor of tool_calls.
+	// Bridge it into the modern common lifecycle when no modern tool_calls exist.
+	if len(msg.ToolCalls) == 0 && m.FunctionCall != nil && (m.FunctionCall.Name != "" || m.FunctionCall.Arguments != "") {
+		msg.ToolCalls = []llm.ToolCall{{
+			Type: "function",
+			Function: llm.FunctionCall{
+				Name:      m.FunctionCall.Name,
+				Arguments: m.FunctionCall.Arguments,
+			},
+		}}
+	}
+
 	// Convert Annotations
 	if len(m.Annotations) > 0 {
 		msg.Annotations = lo.Map(m.Annotations, func(a Annotation, _ int) llm.Annotation {
@@ -354,11 +366,32 @@ func ChoiceFromLLM(c llm.Choice) Choice {
 
 	if c.Message != nil {
 		msg := MessageFromLLM(*c.Message)
+		// Deprecated Chat responses used message.function_call + finish_reason=function_call.
+		// When the common model only has tool_calls, re-emit the legacy wire shape for
+		// same-protocol clients that still expect function_call.
+		if c.FinishReason != nil && *c.FinishReason == "function_call" && len(msg.ToolCalls) > 0 {
+			first := msg.ToolCalls[0]
+			msg.FunctionCall = &FunctionCall{
+				Name:      first.Function.Name,
+				Arguments: first.Function.Arguments,
+			}
+			// Keep modern tool_calls absent on pure legacy finish_reason so clients
+			// that branch on function_call do not also see a modern shape.
+			msg.ToolCalls = nil
+		}
 		choice.Message = &msg
 	}
 
 	if c.Delta != nil {
 		delta := MessageFromLLM(*c.Delta)
+		if c.FinishReason != nil && *c.FinishReason == "function_call" && len(delta.ToolCalls) > 0 {
+			first := delta.ToolCalls[0]
+			delta.FunctionCall = &FunctionCall{
+				Name:      first.Function.Name,
+				Arguments: first.Function.Arguments,
+			}
+			delta.ToolCalls = nil
+		}
 		choice.Delta = &delta
 	}
 

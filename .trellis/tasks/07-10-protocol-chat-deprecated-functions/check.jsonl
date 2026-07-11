@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Review deprecated/modern path separation."}
+{"file": "docs/specs/protocols/drafts/batch-tools-mcp.md", "reason": "Review function/tool compatibility evidence."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Review matrix alignment."}
