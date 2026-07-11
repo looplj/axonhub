@@ -194,7 +194,17 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		stripUnsupportedToolCallExtraContent(oaiReq)
 	}
 
-	body, err := json.Marshal(oaiReq)
+	var (
+		body []byte
+		err  error
+	)
+	if t.config.PlatformType == PlatformOpenAI {
+		// Preserve Chat-native raw top-level fields such as n without widening
+		// the shared request model or common response multi-choice semantics.
+		body, err = marshalOpenAIChatRequest(oaiReq, llmReq)
+	} else {
+		body, err = json.Marshal(oaiReq)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform request: %w", err)
 	}

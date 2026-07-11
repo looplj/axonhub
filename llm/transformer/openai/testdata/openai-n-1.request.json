@@ -1,0 +1,7 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "return one choice"}
+  ],
+  "n": 1
+}
