@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/protocol-transformer-guidelines.md", "reason": "Protocol transformer baseline routing, field ownership, row granularity, and Round 5 implementation slice rules for this task."}
+{"file": "docs/specs/protocols/protocol-conversion-strict-verification-matrix.md", "reason": "Main strict protocol conversion audit matrix; use as baseline index before touching transformer fields."}
+{"file": "docs/specs/protocols/anthropic-claude-messages-protocol.md", "reason": "Anthropic Messages protocol baseline relevant to Opus/adaptive thinking and token/thinking fields."}
+{"file": "docs/specs/protocols/drafts/batch-reasoning-stream.md", "reason": "Reasoning/thinking/stream field evidence, row split plan, fixtures, and implementation slice candidates."}
