@@ -12,6 +12,12 @@ import (
 var openAIChatRawPreserveFields = []string{
 	"n",
 	"prompt_cache_retention",
+	"audio",
+	"prediction",
+	"moderation",
+	"web_search_options",
+	"functions",
+	"function_call",
 }
 
 // marshalOpenAIChatRequest emits a Chat request without changing the shared

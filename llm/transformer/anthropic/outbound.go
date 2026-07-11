@@ -444,7 +444,16 @@ func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
 		return
 	}
 
-	for _, field := range []string{"prompt_cache_retention", "n"} {
+	for _, field := range []string{
+		"prompt_cache_retention",
+		"n",
+		"audio",
+		"prediction",
+		"moderation",
+		"web_search_options",
+		"functions",
+		"function_call",
+	} {
 		if len(source[field]) == 0 {
 			continue
 		}

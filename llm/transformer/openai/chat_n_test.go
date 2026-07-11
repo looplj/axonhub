@@ -131,3 +131,59 @@ func TestOpenAIChatRequestPromptCacheRetentionIsNotSynthesizedForResponses(t *te
 	// inbound captured it; do not invent Responses cache retention from Chat raw.
 	require.NotContains(t, outboundBody, "prompt_cache_retention")
 }
+
+func TestOpenAIChatRequestOutputControlsRawRoundTrip(t *testing.T) {
+	body, err := os.ReadFile("testdata/openai-audio-prediction-moderation.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var source, outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(body, &source))
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+
+	for _, field := range []string{"audio", "prediction", "moderation"} {
+		require.Contains(t, outboundBody, field)
+		require.JSONEq(t, string(source[field]), string(outboundBody[field]))
+	}
+
+	// Ensure we did not widen common request model with these Chat-native fields.
+	requestType := reflect.TypeOf(*llmReq)
+	for _, name := range []string{"Audio", "Prediction", "Moderation"} {
+		_, has := requestType.FieldByName(name)
+		require.False(t, has, "field %s must not widen llm.Request", name)
+	}
+}
+
+func TestOpenAIChatRequestOutputControlsNotSynthesizedForResponses(t *testing.T) {
+	body, err := os.ReadFile("testdata/openai-audio-prediction-moderation.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outbound, err := responses.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	for _, field := range []string{"audio", "prediction", "moderation"} {
+		require.NotContains(t, outboundBody, field)
+	}
+}
