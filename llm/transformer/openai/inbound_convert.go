@@ -230,13 +230,18 @@ func (m Message) ToLLMMessage() llm.Message {
 	}
 
 	// Deprecated Chat message.function_call is a predecessor of tool_calls.
-	// Bridge it into the modern common lifecycle when no modern tool_calls exist.
+	// Bridge it into the modern common lifecycle when no modern tool_calls exist,
+	// and mark origin so same-protocol emitters can restore the legacy wire shape
+	// for stream deltas and multi-turn history (not only final finish_reason).
 	if len(msg.ToolCalls) == 0 && m.FunctionCall != nil && (m.FunctionCall.Name != "" || m.FunctionCall.Arguments != "") {
 		msg.ToolCalls = []llm.ToolCall{{
 			Type: "function",
 			Function: llm.FunctionCall{
 				Name:      m.FunctionCall.Name,
 				Arguments: m.FunctionCall.Arguments,
+			},
+			TransformerMetadata: map[string]any{
+				TransformerMetadataKeyDeprecatedFunctionCallOrigin: true,
 			},
 		}}
 	}
@@ -357,6 +362,49 @@ func ResponseFromLLM(r *llm.Response) *Response {
 	return resp
 }
 
+
+// hasDeprecatedFunctionCallOrigin reports whether tool_calls were bridged from
+// deprecated Chat message/delta.function_call.
+func hasDeprecatedFunctionCallOrigin(toolCalls []llm.ToolCall) bool {
+	for _, tc := range toolCalls {
+		if tc.TransformerMetadata == nil {
+			continue
+		}
+		if origin, ok := tc.TransformerMetadata[TransformerMetadataKeyDeprecatedFunctionCallOrigin].(bool); ok && origin {
+			return true
+		}
+	}
+	return false
+}
+
+// shouldEmitDeprecatedFunctionCall decides whether the Chat wire shape must use
+// legacy function_call instead of modern tool_calls.
+func shouldEmitDeprecatedFunctionCall(toolCalls []llm.ToolCall, finishReason *string) bool {
+	if hasDeprecatedFunctionCallOrigin(toolCalls) {
+		return true
+	}
+	return finishReason != nil && *finishReason == "function_call" && len(toolCalls) > 0
+}
+
+// messageFromLLMPreservingDeprecatedFunctionCall restores deprecated
+// function_call for same-protocol Chat clients, including stream deltas where
+// finish_reason is still null.
+func messageFromLLMPreservingDeprecatedFunctionCall(m llm.Message, finishReason *string) Message {
+	if shouldEmitDeprecatedFunctionCall(m.ToolCalls, finishReason) && len(m.ToolCalls) > 0 {
+		first := m.ToolCalls[0]
+		// Build without modern tool_calls, then attach legacy function_call.
+		legacy := m
+		legacy.ToolCalls = nil
+		msg := MessageFromLLM(legacy)
+		msg.FunctionCall = &FunctionCall{
+			Name:      first.Function.Name,
+			Arguments: first.Function.Arguments,
+		}
+		return msg
+	}
+	return MessageFromLLM(m)
+}
+
 // ChoiceFromLLM creates OpenAI Choice from unified llm.Choice.
 func ChoiceFromLLM(c llm.Choice) Choice {
 	choice := Choice{
@@ -365,33 +413,12 @@ func ChoiceFromLLM(c llm.Choice) Choice {
 	}
 
 	if c.Message != nil {
-		msg := MessageFromLLM(*c.Message)
-		// Deprecated Chat responses used message.function_call + finish_reason=function_call.
-		// When the common model only has tool_calls, re-emit the legacy wire shape for
-		// same-protocol clients that still expect function_call.
-		if c.FinishReason != nil && *c.FinishReason == "function_call" && len(msg.ToolCalls) > 0 {
-			first := msg.ToolCalls[0]
-			msg.FunctionCall = &FunctionCall{
-				Name:      first.Function.Name,
-				Arguments: first.Function.Arguments,
-			}
-			// Keep modern tool_calls absent on pure legacy finish_reason so clients
-			// that branch on function_call do not also see a modern shape.
-			msg.ToolCalls = nil
-		}
+		msg := messageFromLLMPreservingDeprecatedFunctionCall(*c.Message, c.FinishReason)
 		choice.Message = &msg
 	}
 
 	if c.Delta != nil {
-		delta := MessageFromLLM(*c.Delta)
-		if c.FinishReason != nil && *c.FinishReason == "function_call" && len(delta.ToolCalls) > 0 {
-			first := delta.ToolCalls[0]
-			delta.FunctionCall = &FunctionCall{
-				Name:      first.Function.Name,
-				Arguments: first.Function.Arguments,
-			}
-			delta.ToolCalls = nil
-		}
+		delta := messageFromLLMPreservingDeprecatedFunctionCall(*c.Delta, c.FinishReason)
 		choice.Delta = &delta
 	}
 

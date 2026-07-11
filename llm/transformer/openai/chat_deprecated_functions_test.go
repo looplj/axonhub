@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -228,4 +229,111 @@ func TestOpenAIChatModernToolPathUnaffectedByDeprecatedBridge(t *testing.T) {
 	_, hasFunctionCall := message["function_call"]
 	require.False(t, hasFunctionCall, "modern tool_calls response must not invent deprecated function_call")
 	require.Contains(t, message, "tool_calls")
+}
+
+
+func TestOpenAIChatRequestHistoryDeprecatedMessageFunctionCallRoundTrip(t *testing.T) {
+	body, err := os.ReadFile("testdata/openai-deprecated-message-function-call.history.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(llmReq.Messages), 2)
+	assistant := llmReq.Messages[1]
+	require.Equal(t, "assistant", assistant.Role)
+	require.Len(t, assistant.ToolCalls, 1)
+	require.True(t, hasDeprecatedFunctionCallOrigin(assistant.ToolCalls))
+	require.Equal(t, "get_weather", assistant.ToolCalls[0].Function.Name)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]any
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	messages, ok := outboundBody["messages"].([]any)
+	require.True(t, ok)
+	require.GreaterOrEqual(t, len(messages), 2)
+	outAssistant, ok := messages[1].(map[string]any)
+	require.True(t, ok)
+	functionCall, ok := outAssistant["function_call"].(map[string]any)
+	require.True(t, ok, "history assistant must re-emit function_call, got %v", outAssistant)
+	require.Equal(t, "get_weather", functionCall["name"])
+	require.JSONEq(t, `{"location":"NYC"}`, functionCall["arguments"].(string))
+	_, hasToolCalls := outAssistant["tool_calls"]
+	require.False(t, hasToolCalls, "legacy history must not rewrite to tool_calls: %v", outAssistant)
+}
+
+func TestOpenAIChatStreamDeprecatedMessageFunctionCallRoundTrip(t *testing.T) {
+	raw, err := os.ReadFile("testdata/openai-deprecated-message-function-call.stream.jsonl")
+	require.NoError(t, err)
+	lines := bytes.Split(bytes.TrimSpace(raw), []byte("\n"))
+	require.Len(t, lines, 3)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	inbound := NewInboundTransformer()
+
+	for i, line := range lines {
+		// TransformStreamChunk is concrete-only; stream chunks reuse TransformResponse.
+		llmResp, err := outbound.TransformResponse(t.Context(), &httpclient.Response{Body: line})
+		require.NoError(t, err)
+		require.Len(t, llmResp.Choices, 1)
+
+		httpEvent, err := inbound.TransformStreamChunk(t.Context(), llmResp)
+		require.NoError(t, err)
+		require.NotNil(t, httpEvent)
+
+		var clientBody map[string]any
+		require.NoError(t, json.Unmarshal(httpEvent.Data, &clientBody))
+		choice := clientBody["choices"].([]any)[0].(map[string]any)
+		delta := choice["delta"].(map[string]any)
+		_, hasToolCalls := delta["tool_calls"]
+		require.False(t, hasToolCalls, "stream chunk %d must not expose modern tool_calls: %v", i, delta)
+
+		switch i {
+		case 0, 1:
+			functionCall, ok := delta["function_call"].(map[string]any)
+			require.True(t, ok, "stream chunk %d must keep function_call: %v", i, delta)
+			if i == 0 {
+				require.Equal(t, "get_weather", functionCall["name"])
+			}
+			if i == 1 {
+				require.JSONEq(t, `{"location":"New York City"}`, functionCall["arguments"].(string))
+			}
+			require.Nil(t, choice["finish_reason"])
+		case 2:
+			require.Equal(t, "function_call", choice["finish_reason"])
+		}
+	}
+}
+
+func TestOpenAIChatResponseDeprecatedMessageFunctionCallDropsModernToolCalls(t *testing.T) {
+	body, err := os.ReadFile("testdata/openai-deprecated-message-function-call.response.json")
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	llmResp, err := outbound.TransformResponse(t.Context(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       body,
+	})
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	httpResp, err := inbound.TransformResponse(t.Context(), llmResp)
+	require.NoError(t, err)
+
+	var clientBody map[string]any
+	require.NoError(t, json.Unmarshal(httpResp.Body, &clientBody))
+	message := clientBody["choices"].([]any)[0].(map[string]any)["message"].(map[string]any)
+	_, hasToolCalls := message["tool_calls"]
+	require.False(t, hasToolCalls)
+	_, hasFunctionCall := message["function_call"]
+	require.True(t, hasFunctionCall)
 }

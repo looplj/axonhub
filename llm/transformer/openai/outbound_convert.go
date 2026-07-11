@@ -203,8 +203,15 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 	// Convert Content
 	msg.Content = MessageContentFromLLM(m.Content)
 
-	// Convert ToolCalls
-	if m.ToolCalls != nil {
+	// Convert ToolCalls. Deprecated function_call origins must round-trip as
+	// legacy function_call, not modern tool_calls, for multi-turn Chat history.
+	if shouldEmitDeprecatedFunctionCall(m.ToolCalls, nil) && len(m.ToolCalls) > 0 {
+		first := m.ToolCalls[0]
+		msg.FunctionCall = &FunctionCall{
+			Name:      first.Function.Name,
+			Arguments: first.Function.Arguments,
+		}
+	} else if m.ToolCalls != nil {
 		msg.ToolCalls = lo.Map(m.ToolCalls, func(tc llm.ToolCall, _ int) ToolCall {
 			return ToolCallFromLLM(tc)
 		})

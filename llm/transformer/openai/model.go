@@ -14,6 +14,11 @@ const TransformerMetadataKeyCitations = "citations"
 // so the outbound response builder can backfill it.
 const TransformerMetadataKeyVideoPrompt = "video_prompt"
 
+// TransformerMetadataKeyDeprecatedFunctionCallOrigin marks tool_calls that were
+// bridged from deprecated Chat message.function_call. Downstream Chat emitters
+// must re-emit function_call instead of modern tool_calls for these origins.
+const TransformerMetadataKeyDeprecatedFunctionCallOrigin = "openai.chat.function_call_origin"
+
 // Request represents an OpenAI chat completion request.
 // This is a clean OpenAI-specific model without helper fields.
 type Request struct {

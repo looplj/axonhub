@@ -1,0 +1,3 @@
+{"id":"chatcmpl-deprecated-stream","object":"chat.completion.chunk","created":1754705954,"model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant","function_call":{"name":"get_weather","arguments":""}},"finish_reason":null}]}
+{"id":"chatcmpl-deprecated-stream","object":"chat.completion.chunk","created":1754705954,"model":"gpt-4o","choices":[{"index":0,"delta":{"function_call":{"arguments":"{\"location\":\"New York City\"}"}},"finish_reason":null}]}
+{"id":"chatcmpl-deprecated-stream","object":"chat.completion.chunk","created":1754705954,"model":"gpt-4o","choices":[{"index":0,"delta":{},"finish_reason":"function_call"}]}

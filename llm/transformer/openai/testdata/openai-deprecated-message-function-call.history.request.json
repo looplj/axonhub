@@ -1,0 +1,20 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "user", "content": "What is the weather in NYC?"},
+    {
+      "role": "assistant",
+      "content": null,
+      "function_call": {
+        "name": "get_weather",
+        "arguments": "{\"location\":\"NYC\"}"
+      }
+    },
+    {
+      "role": "function",
+      "name": "get_weather",
+      "content": "{\"temp\":72}"
+    },
+    {"role": "user", "content": "thanks"}
+  ]
+}
