@@ -8,6 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -334,7 +335,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [useFetchedModels, setUseFetchedModels] = useState(false);
   const providerRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const providerListRef = useRef<HTMLDivElement | null>(null);
-  const providerWheelCleanupRef = useRef<(() => void) | null>(null);
+  const providerHorizontalScrollRef = useHorizontalScroll<HTMLDivElement>();
 
   // Expandable panel states
   const [showFetchedModelsPanel, setShowFetchedModelsPanel] = useState(false);
@@ -539,32 +540,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return () => clearTimeout(timer);
   }, [open, isEdit, selectedProvider]);
 
-  useEffect(() => () => providerWheelCleanupRef.current?.(), []);
-
-  const setProviderListRef = useCallback((el: HTMLDivElement | null) => {
-    providerWheelCleanupRef.current?.();
-    providerWheelCleanupRef.current = null;
-    providerListRef.current = el;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey || e.shiftKey) return;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      const style = window.getComputedStyle(el);
-      if (style.overflowX !== 'auto' && style.overflowX !== 'scroll') return;
-      if (el.scrollWidth <= el.clientWidth) return;
-      const atStart = el.scrollLeft <= 0;
-      const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth;
-      if (e.deltaY < 0 && atStart) return;
-      if (e.deltaY > 0 && atEnd) return;
-      e.preventDefault();
-      let delta = e.deltaY;
-      if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) delta *= 16;
-      else if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) delta *= el.clientWidth;
-      el.scrollLeft += delta;
-    };
-    el.addEventListener('wheel', handler, { passive: false });
-    providerWheelCleanupRef.current = () => el.removeEventListener('wheel', handler);
-  }, []);
+  const setProviderListRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      providerListRef.current = el;
+      providerHorizontalScrollRef(el);
+    },
+    [providerHorizontalScrollRef]
+  );
 
   // Auto-open supported models panel when showModelsPanel is true
   useEffect(() => {

@@ -53,10 +53,10 @@ function LastUpdatedInfo({ lastUpdated, locale, t }: LastUpdatedInfoProps) {
           </Tooltip>
         </TooltipProvider>
       </div>
-      <div className='h-6 w-6 sm:hidden'>
+      <div className='-my-2.5 h-11 w-11 sm:hidden'>
         <Popover>
           <PopoverTrigger asChild>
-            <button type='button' className='text-muted-foreground hover:text-foreground flex h-6 w-6 items-center justify-center rounded-full transition-colors'>
+            <button type='button' className='text-muted-foreground hover:text-foreground flex h-11 w-11 items-center justify-center rounded-full transition-colors'>
               <IconInfoCircle className='h-4 w-4' />
             </button>
           </PopoverTrigger>

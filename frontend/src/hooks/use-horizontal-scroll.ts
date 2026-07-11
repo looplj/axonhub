@@ -1,10 +1,31 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, type RefCallback } from 'react';
 
-export function useHorizontalScroll<T extends HTMLElement>(): RefObject<T | null> {
-  const ref = useRef<T>(null);
+function canScrollInDirection(element: Element, deltaY: number): boolean {
+  const maxScrollTop = element.scrollHeight - element.clientHeight;
+  if (maxScrollTop <= 1) return false;
+  if (deltaY < 0) return element.scrollTop > 1;
+  if (deltaY > 0) return element.scrollTop < maxScrollTop - 1;
+  return false;
+}
 
-  useEffect(() => {
-    const el = ref.current;
+function hasScrollableVerticalAncestor(element: HTMLElement, deltaY: number): boolean {
+  for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+    const { overflowY } = window.getComputedStyle(ancestor);
+    if ((overflowY === 'auto' || overflowY === 'scroll') && canScrollInDirection(ancestor, deltaY)) {
+      return true;
+    }
+  }
+
+  const scrollingElement = element.ownerDocument.scrollingElement;
+  return scrollingElement ? canScrollInDirection(scrollingElement, deltaY) : false;
+}
+
+export function useHorizontalScroll<T extends HTMLElement>(): RefCallback<T> {
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  const setRef = useCallback((el: T | null) => {
+    cleanupRef.current?.();
+    cleanupRef.current = null;
     if (!el) return;
 
     const handler = (e: WheelEvent) => {
@@ -23,8 +44,9 @@ export function useHorizontalScroll<T extends HTMLElement>(): RefObject<T | null
       if (overflowX !== 'auto' && overflowX !== 'scroll') return;
 
       if (el.scrollWidth <= el.clientWidth) return;
+      if (hasScrollableVerticalAncestor(el, e.deltaY)) return;
 
-      // Only preventDefault if the container can scroll further in the wheel direction
+      // Convert the wheel gesture only when no vertical ancestor can consume it.
       const atStart = el.scrollLeft <= 0;
       const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth;
 
@@ -45,8 +67,10 @@ export function useHorizontalScroll<T extends HTMLElement>(): RefObject<T | null
     };
 
     el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
+    cleanupRef.current = () => el.removeEventListener('wheel', handler);
   }, []);
 
-  return ref;
+  useEffect(() => () => cleanupRef.current?.(), []);
+
+  return setRef;
 }
