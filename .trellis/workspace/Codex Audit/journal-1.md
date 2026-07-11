@@ -145,3 +145,36 @@ Completed G1 Chat n: same-protocol Chat->Chat preserves raw n (1 and 3) via mars
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: G2 Chat prompt_cache_retention
+
+**Date**: 2026-07-12
+**Task**: G2 Chat prompt_cache_retention
+**Branch**: `codex-transformer-field-fixes`
+
+### Summary
+
+Completed G2: Chat same-protocol preserves prompt_cache_retention (known+future values) via raw replay helper shared with n; Anthropic path records lossy diagnostics for prompt_cache_retention and n; openai/anthropic tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d0d90090` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
