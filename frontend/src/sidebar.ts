@@ -22,7 +22,7 @@ import { useMe } from '@/features/auth/data/auth';
 import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types';
 
 export function useSidebarData(): SidebarData {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user: authUser } = useAuthStore((state) => state.auth);
   const { data: meData } = useMe();
   const { filterNavGroups } = useRoutePermissions();
@@ -33,7 +33,9 @@ export function useSidebarData(): SidebarData {
   // Generate user initials for avatar
   const getInitials = (firstName?: string, lastName?: string, email?: string) => {
     if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+      const isZh = i18n.language?.startsWith('zh');
+      const [first, second] = isZh ? [lastName, firstName] : [firstName, lastName];
+      return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase();
     }
     if (firstName) {
       return firstName.slice(0, 2).toUpperCase();
@@ -47,7 +49,8 @@ export function useSidebarData(): SidebarData {
   // Generate user display name
   const getDisplayName = (firstName?: string, lastName?: string, email?: string) => {
     if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
+      const isZh = i18n.language?.startsWith('zh');
+      return isZh ? `${lastName} ${firstName}` : `${firstName} ${lastName}`;
     }
     if (firstName) {
       return firstName;
