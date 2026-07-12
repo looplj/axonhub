@@ -4118,6 +4118,61 @@
           "type": "chat"
         },
         {
+          "id": "gpt-realtime-2.1",
+          "name": "GPT-Realtime-2.1",
+          "description": "Realtime speech-to-speech model with configurable reasoning, tool use, and robust voice-agent behavior",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": false,
+          "knowledge": "2024-09-30",
+          "release_date": "2026-07-06",
+          "last_updated": "2026-07-06",
+          "modalities": {
+            "input": [
+              "text",
+              "audio",
+              "image"
+            ],
+            "output": [
+              "text",
+              "audio"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 128000,
+            "input": 96000,
+            "output": 32000
+          },
+          "cost": {
+            "input": 4,
+            "output": 24,
+            "cache_read": 0.4,
+            "input_audio": 32,
+            "output_audio": 64
+          },
+          "display_name": "GPT-Realtime-2.1",
+          "type": "chat"
+        },
+        {
           "id": "gpt-5.5-pro",
           "name": "GPT-5.5 Pro",
           "description": "Highest-accuracy GPT-5.5 tier for slower, precision-heavy reasoning and coding",
@@ -17377,6 +17432,86 @@
       "display_name": "KwaiPilot",
       "models": [
         {
+          "id": "kat-coder-air-v2.5",
+          "name": "Kat Coder Air V2.5",
+          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+          "family": "kat-coder",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-07-10",
+          "last_updated": "2026-07-10",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 256000,
+            "output": 80000
+          },
+          "cost": {
+            "input": 0.15,
+            "output": 0.6,
+            "cache_read": 0.03
+          },
+          "display_name": "Kat Coder Air V2.5",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf"
+          },
+          "vision": false
+        },
+        {
+          "id": "kat-coder-pro-v2.5",
+          "name": "Kat Coder Pro V2.5",
+          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+          "family": "kat-coder",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-07-10",
+          "last_updated": "2026-07-10",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 256000,
+            "output": 80000
+          },
+          "cost": {
+            "input": 0.74,
+            "output": 2.96,
+            "cache_read": 0.15
+          },
+          "display_name": "Kat Coder Pro V2.5",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf"
+          },
+          "vision": false
+        },
+        {
           "id": "kat-coder-pro-v2",
           "name": "Kat Coder Pro V2",
           "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
@@ -17633,74 +17768,6 @@
               "input": 0.137,
               "output": 0.548
             },
-            "source": "public-provider-conf"
-          },
-          "vision": false,
-          "family": "kat-coder"
-        },
-        {
-          "id": "kat-coder-air-v2.5",
-          "name": "KwaiKAT: KAT-Coder-Air-V2.5",
-          "display_name": "KwaiKAT: KAT-Coder-Air-V2.5",
-          "type": "chat",
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "cost": {
-            "input": 0.135,
-            "output": 0.54,
-            "cache_read": 0.027
-          },
-          "limit": {
-            "context": 256000,
-            "output": 256000
-          },
-          "metadata": {
-            "ownedBy": "kuaishou",
-            "created": 1783491139,
-            "source": "public-provider-conf"
-          },
-          "vision": false,
-          "family": "kat-coder"
-        },
-        {
-          "id": "kat-coder-pro-v2.5",
-          "name": "KwaiKAT: KAT-Coder-Pro-V2.5",
-          "display_name": "KwaiKAT: KAT-Coder-Pro-V2.5",
-          "type": "chat",
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "cost": {
-            "input": 0.444,
-            "output": 1.776,
-            "cache_read": 0.09
-          },
-          "limit": {
-            "context": 256000,
-            "output": 256000
-          },
-          "metadata": {
-            "ownedBy": "kuaishou",
-            "created": 1783490305,
             "source": "public-provider-conf"
           },
           "vision": false,
