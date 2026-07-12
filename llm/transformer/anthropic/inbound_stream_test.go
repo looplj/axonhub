@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -14,6 +15,243 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+type failingResponseStream struct {
+	items []*llm.Response
+	index int
+	err   error
+}
+
+func (s *failingResponseStream) Next() bool {
+	return s.index < len(s.items)
+}
+
+func (s *failingResponseStream) Current() *llm.Response {
+	item := s.items[s.index]
+	s.index++
+
+	return item
+}
+
+func (s *failingResponseStream) Err() error {
+	return s.err
+}
+
+func (s *failingResponseStream) Close() error {
+	return nil
+}
+
+func TestInboundStream_FinalizesOnCleanExhaustionWithoutFinishReason(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Done"
+	thinking := "Thinking"
+
+	tests := []struct {
+		name               string
+		delta              *llm.Message
+		usage              *llm.Usage
+		expectedStopReason string
+	}{
+		{
+			name: "tool call",
+			delta: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					Index: 0,
+					ID:    "call_123",
+					Type:  "function",
+					Function: llm.FunctionCall{
+						Name:      "search",
+						Arguments: `{"query":"test"}`,
+					},
+				}},
+			},
+			usage: &llm.Usage{
+				CompletionTokens: 7,
+			},
+			expectedStopReason: "tool_use",
+		},
+		{
+			name: "server tool call",
+			delta: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					Index: 0,
+					ID:    "server_tool_123",
+					Type:  "function",
+					Function: llm.FunctionCall{
+						Name:      "web_search",
+						Arguments: `{"query":"test"}`,
+					},
+					TransformerMetadata: map[string]any{
+						TransformerMetadataKeyAnthropicType: "server_tool_use",
+					},
+				}},
+			},
+			expectedStopReason: "end_turn",
+		},
+		{
+			name: "mcp tool call",
+			delta: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					Index: 0,
+					ID:    "mcp_tool_123",
+					Type:  "function",
+					Function: llm.FunctionCall{
+						Name:      "mcp_search",
+						Arguments: `{"query":"test"}`,
+					},
+					TransformerMetadata: map[string]any{
+						TransformerMetadataKeyAnthropicType: "mcp_tool_use",
+					},
+				}},
+			},
+			expectedStopReason: "end_turn",
+		},
+		{
+			name: "text",
+			delta: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: &text,
+				},
+			},
+			expectedStopReason: "end_turn",
+		},
+		{
+			name: "thinking",
+			delta: &llm.Message{
+				Role:             "assistant",
+				ReasoningContent: &thinking,
+			},
+			expectedStopReason: "end_turn",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := []*llm.Response{
+				{
+					ID:     "msg_missing_finish_reason",
+					Object: "chat.completion.chunk",
+					Model:  "claude-sonnet-4-6",
+					Choices: []llm.Choice{{
+						Index: 0,
+						Delta: tt.delta,
+					}},
+				},
+				{
+					ID:      "msg_missing_finish_reason",
+					Object:  "chat.completion.chunk",
+					Model:   "claude-sonnet-4-6",
+					Choices: []llm.Choice{{Index: 0}},
+					Usage:   tt.usage,
+				},
+			}
+
+			events := collectInboundStreamEvents(t, transformer, input)
+			require.GreaterOrEqual(t, len(events), 3)
+
+			terminalEvents := events[len(events)-3:]
+			require.Equal(t, "content_block_stop", terminalEvents[0].Type)
+			require.Equal(t, "message_delta", terminalEvents[1].Type)
+			require.NotNil(t, terminalEvents[1].Delta)
+			require.Equal(t, tt.expectedStopReason, *terminalEvents[1].Delta.StopReason)
+			if tt.usage == nil {
+				require.Nil(t, terminalEvents[1].Usage)
+			} else {
+				require.NotNil(t, terminalEvents[1].Usage)
+				require.Equal(t, int64(7), terminalEvents[1].Usage.OutputTokens)
+			}
+			require.Equal(t, "message_stop", terminalEvents[2].Type)
+		})
+	}
+}
+
+func TestInboundStream_DoesNotDuplicateTerminalEvents(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Done"
+	finishReason := "stop"
+
+	events := collectInboundStreamEvents(t, transformer, []*llm.Response{
+		{
+			ID:     "msg_with_finish_reason",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: &text,
+					},
+				},
+			}},
+		},
+		{
+			ID:     "msg_with_finish_reason",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &finishReason,
+			}},
+			Usage: &llm.Usage{},
+		},
+	})
+
+	require.Equal(t, 1, countStreamEvents(events, "message_delta"))
+	require.Equal(t, 1, countStreamEvents(events, "message_stop"))
+}
+
+func TestInboundStream_DoesNotFinalizeOnSourceError(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Partial"
+	sourceErr := errors.New("upstream stream failed")
+	source := &failingResponseStream{
+		items: []*llm.Response{{
+			ID:     "msg_stream_error",
+			Object: "chat.completion.chunk",
+			Model:  "claude-sonnet-4-6",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: &text,
+					},
+				},
+			}},
+		}},
+		err: sourceErr,
+	}
+
+	stream, err := transformer.TransformStream(t.Context(), source)
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+
+	require.ErrorIs(t, stream.Err(), sourceErr)
+	require.Zero(t, countStreamEvents(events, "message_delta"))
+	require.Zero(t, countStreamEvents(events, "message_stop"))
+}
+
+func countStreamEvents(events []StreamEvent, eventType string) int {
+	count := 0
+	for _, event := range events {
+		if event.Type == eventType {
+			count++
+		}
+	}
+
+	return count
+}
 
 func TestInboundStream_EmitsCitationsDeltaBeforeContentBlockStop(t *testing.T) {
 	transformer := NewInboundTransformer()
