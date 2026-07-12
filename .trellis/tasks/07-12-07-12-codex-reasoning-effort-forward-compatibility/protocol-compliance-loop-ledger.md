@@ -41,16 +41,13 @@
 | G15a | request `input[]` message / function / function_output item id | PASS | `g15a_input_item_identity_test.go`; `g15a-*.request.json`; preserve + no synthetic ids | G15b |
 | G15b | custom tool + reasoning-following tool item id | PASS | `g15b_input_item_identity_test.go`; `g15b-*.request.json`; custom_tool_call(_output) + reasoning→tool path | G15c |
 | G15c | reasoning item id / presence | PASS | `g15c_reasoning_item_identity_test.go`; fixtures cover standalone, pure standalone, summary-only, reasoning→tool, and no cross-protocol invent | parent review |
-| Parent review (G13–G15) | integration | PENDING | — | required before commit |
-| Final integration docs/commit | matrices + guidelines + scoped commit | IN PROGRESS (docs sync) | this docs-only sync | parent review → commit |
+| Parent review (G13–G15) | integration | PASS | `research/reviews/g13-g15-parent-review.md`; independent review; no P0/P1/P2 | complete |
+| Final integration docs/commit | matrices + guidelines + scoped commit | PASS | targeted tests + `git diff --check`; scoped local commit `5c63811d` | complete |
 
 ## Checkpoint
 
 G13, G14, G15a/b/c are complete with public-seam fixtures and independent module reviews. Residual-coverage language is retired: custom-tool, summary-only, pure standalone, and reasoning→tool identities now have dedicated G15b/G15c fixtures.
 
-Still open (do not mark the task complete):
-
-1. Independent parent review across G13–G15.
-2. Final scoped commit after parent review PASS.
+父级审查、最终定向验证和 scoped local commit 已完成。任务执行证据完整；严格矩阵整体仍不宣称所有 Field ID / 跨协议方向完成。
 
 Rules retained: no Codex default injection; no model-capability gate; no item-id synthesis/fallback; no cross-protocol Codex id invention.

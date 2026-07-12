@@ -41,8 +41,8 @@ Evidence for G15a/b/c PASS:
 ## Final integration
 
 1. [x] Update protocol field matrices and Trellis guideline with G13–G15 evidence and client-only exclusions.
-2. [ ] Run targeted Go tests from `llm/` only; `git diff --check`. *(code already present; final gate remains with parent review/commit owner)*
-3. [ ] Independent parent review across G13–G15; any finding reopens the smallest responsible slice.
-4. [ ] Update spec and make one local, scoped commit only after all gates pass.
+2. [x] Run targeted Go tests from `llm/` only; `git diff --check`.
+3. [x] Independent parent review across G13–G15; no P0/P1/P2 finding reopened a slice. See `research/reviews/g13-g15-parent-review.md`.
+4. [x] Update spec and make one local, scoped commit: `5c63811d`.
 
-Do not mark the task complete until parent review and scoped commit both pass.
+Parent review and scoped commit both passed. This task does not claim the full 101/107 Field ID protocol matrix is complete.

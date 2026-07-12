@@ -7,19 +7,32 @@
 
 ## 0. 当前结论
 
-本文档整体状态仍是 **INCOMPLETE**：任意 `UNCHECKED` / 未闭环跨协议行存在时，不能作为“三协议转换已全部完成”的证据。
+本文档整体状态仍是 **INCOMPLETE**：任意 `UNCHECKED` / 未闭环跨协议行存在时，不能作为“协议转换已全部完成”的证据。
 
-截至 2026-07-12（G1–G7 implementation modules + 主矩阵同步）：
+截至 2026-07-13（G1–G8 边界证据 + G13–G15 Codex delta 文档规范化）：
 
-1. **Same-protocol 已闭环（有 code + targeted test）**：见 §5 中已从 `UNCHECKED` 提升为 `PARTIAL` 的 G1–G7 行，以及 §9 叠加证据表。覆盖范围包括：
-   - Chat：`n`、`prompt_cache_retention`、`audio`/`prediction`/`moderation`、`web_search_options`、deprecated `functions`/`function_call`
-   - Anthropic：`container`、`inference_geo`、`mcp_servers`、`tools[].type=mcp_toolset`
-   - Responses：`reasoning` 对象关键子路径（context / generate_summary / content / stream text / unknown nested）
-2. **历史已确认闭环**：Codex Responses `tools[].type = "namespace"` 在 Responses -> Chat 展开、reverse map、回包/流式恢复 `name + namespace`（仍是 P1/Codex 扩展叙事，不抬成公共 P0 全矩阵完成）。
-3. **未声称**：101 行全 `CONFIRMED`、全方向跨协议语义等价、Codex P1 = 公共 P0、或 residual fixture-only 项已实现为 feature。
-4. **Residual**：见 §9.3 与 `.trellis/tasks/07-10-protocol-high-priority-fixtures-matrix-sync/research/residual-gaps.md`。
+1. **Same-protocol 已有证据（有 code + targeted test，状态多为 `PARTIAL`）**：见 §5 / §6 主状态行与 §9 / §10 / §13。覆盖范围包括：
+   - Chat：`n`、`prompt_cache_retention`、`audio`/`prediction`/`moderation`、`web_search_options`、deprecated `functions`/`function_call`、`modalities`（G8）
+   - Anthropic：`container`、`inference_geo`、`mcp_servers`、`tools[].type=mcp_toolset`、top-level `cache_control`（G8）
+   - Responses：`reasoning` 对象关键子路径（G7）、`include`/`reasoning`/`stream_options` 请求保真（G13/G14）、`input[]` item identity（G15）、`context_management`/`conversation` raw fallback 与 hosted tools inventory（G8）
+2. **历史已确认闭环（P1 叙事）**：Codex Responses `tools[].type = "namespace"` 在 Responses -> Chat 展开、reverse map、回包/流式恢复 `name + namespace`（不抬成公共 P0 全矩阵完成）。
+3. **未声称**：全部 Field ID 已按 FDR 填完、全部行 `CONFIRMED`、全方向跨协议语义等价、Codex P1 = 公共 P0、或 residual fixture-only 项已实现为 feature。
+4. **规范化账本**：§11 FDR 规则、§12 Codex usage-profile delta register、§13 实施符合性账本、§14 后续 diff/slice 流程。这些章节**不替代** §5/§6 主状态，也不把 schema 新要求伪称为已完成。
+5. **Field ID 计数口径（唯一权威）**：
+   - §5 顶层请求行 = **84**
+   - §6 嵌套/结构/行为行 = **17**
+   - §5 + §6 主状态 Field ID = **101**
+   - §9 额外子 Field ID（未单独列入 §5/§6 主键行）= **6**
+   - 总唯一 Field ID = **107**
+   - **禁止**写“§5 主表 107”，也**禁止**只数 §5 而漏 §6。
+6. **Residual**：见 §9.3、§14.4 与 `.trellis/tasks/07-10-protocol-high-priority-fixtures-matrix-sync/research/residual-gaps.md`。
 
-权威阅读顺序：§5 行是主状态；§9 是 G1–G7 实现证据索引（与 §5 对齐，不是“仅附录、不提升主表”）。
+权威阅读顺序：
+
+1. **§5 + §6 主状态行**（Field ID 是规范主键；§5 顶层 + §6 嵌套/结构）
+2. **§9 / §10**（G1–G7 / G13–G15 证据索引；§9 子 ID 是索引，不替代主状态行）
+3. **§11–§14**（FDR 规则、Codex delta 登记、符合性账本、后续流程与 FDR 优先清单）
+4. G 编号只是变更批次标签；**不能**用 G 编号替代 Field ID，也不能把 G9–G12 helper 编号当作字段完成状态
 
 ## 1. 权威来源
 
@@ -904,7 +917,11 @@ See `.trellis/tasks/07-10-protocol-high-priority-fixtures-matrix-sync/research/r
 
 ## 10. 2026-07-12/13 Codex delta sync (G13–G15)
 
-Source delta: Codex `1f0566d..9e552e9d1`. Scope is OpenAI Responses **request** same-protocol preservation only. Parent review / scoped commit for this task are still open.
+Source delta: Codex `1f0566d..9e552e9d1`（含终点 `9e552e9d1`）。Scope is OpenAI Responses **request** same-protocol preservation only.
+
+G13–G15 public-seam fixtures / independent module review：见 §10.1 与 §13.4。跨模块 parent review 的可复核持久化证据为 `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md`，结论 PASS；实现批次锚点为 scoped local commit `5c63811d`。这些事实只证明本 delta 的 request same-protocol 范围，不等于 §5/§6 全矩阵完成。
+
+完整 Codex usage-profile 差分登记（含 client-only / no-delta / text-content / wire-neutral）见 **§12**；实施符合性对照见 **§13**。本节只索引 G13–G15 的 public-seam fixture 证据，不把 Codex 客户端策略写成 Hub 强制字段。
 
 ### 10.1 Fixtures and status
 
@@ -924,8 +941,308 @@ Source delta: Codex `1f0566d..9e552e9d1`. Scope is OpenAI Responses **request** 
 
 ### 10.2 Status language
 
-- Same-protocol request fidelity for G13–G15 is evidence-backed `PARTIAL`/`PASS` at the public seam.
+- Same-protocol request fidelity for G13–G15 is evidence-backed `PARTIAL`/`PASS` at the public seam（fixture + module review 索引见 §10.1 / §13.4）。
 - Cross-protocol remains **no-synth** for these item identities and Codex client policies.
 - Residual “waiting for G15 fixture coverage” language is retired.
-- Task completion still requires parent review + scoped commit (outside this docs sync).
+- Scoped local commit `5c63811d` 可作为实现批次 code/test 锚点；parent review PASS 见 `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md`。
+- 本附录**不等于** §5+§6 共 101 个主状态 Field ID（或含 §9 子 ID 的 107 唯一 ID）已全部按 FDR 填完，也**不等于**全方向/`CONFIRMED`。
 
+
+
+## 11. 规范化字段决策记录（FDR）规则
+
+本节定义后续如何把矩阵行提升为可验收的 Field Decision Record。**它是流程规范，不是已完成证明。**
+
+### 11.1 主键与编号
+
+| 概念 | 含义 | 可否当作完成状态 |
+|---|---|---|
+| **Field ID** | 稳定主键，如 `RSP.TOP.include`、`RSP.MSG.input_items` | 是：验收与反填都以 Field ID 为键 |
+| **G 编号** | 变更批次 / 实现切片标签（G1–G8 字段批次；G9–G12 helper；G13–G15 Codex delta） | 否：只能索引“哪次改动”，不能替代 Field ID 完成态 |
+| **§5 顶层行** | 顶层请求字段主状态（**84** 行） | 是：顶层 Status / Evidence 权威源之一 |
+| **§6 嵌套/结构行** | 嵌套结构/行为主状态（**17** 行） | 是：与 §5 合计 **101** 个主状态 Field ID |
+| **§9 子 Field ID** | 批次证据索引中的额外子 ID（**6** 个，不替代 §5/§6 主键行） | 否：索引用；计入总唯一 **107**，但不能写成“§5=107” |
+| **§9 / §10 / §13** | 批次证据索引 / 符合性账本 | 否：不能单独宣称字段完成 |
+
+### 11.2 每行 FDR 必填项
+
+后续任何“可按文档验收”的矩阵行，都必须能追溯到下列条目。已有 §5+§6 主状态行（101）与 §9 子 ID（+6 → 总唯一 107）**尚未**全部按 FDR 逐项写满；**不得**把本节 schema 要求伪称为已完成，也**不得**写“§5 主表 107”。
+
+| FDR 字段 | 必填 | 说明 / 允许值 |
+|---|---|---|
+| Field ID | 是 | 稳定 ID；总览行与子行不得混用 |
+| Official source | 是 | `SRC-*` + 本地章节/路径；Codex 扩展另标 P1 |
+| Owner | 是 | 如 `llm.Request`、`ProviderExtensions.*`、`TransformerMetadata`、`RawTopLevelFields`、`UNMAPPED` |
+| Preservation class | 是 | `native` / `raw_sidecar` / `typed+raw_sidecar` / `bridge_metadata` / `lossy_map` / `drop_with_diagnostic` / `unsupported` / `same_protocol_only` 等 |
+| 六方向策略 | 是 | Rsp↔Chat、Rsp↔Anthropic、Chat↔Anthropic；无路径写 `N/A` / `no-synth` / `same_protocol_only`，禁止留白装完成 |
+| Stream impact | 是 | `none` / `delta` / `done` / `final_response` / `usage` / `error` / `unchecked` |
+| Value semantics | 是 | 类型、枚举/union、缺省/null/省略差异、是否 open-string |
+| Code evidence | 是 | 文件/函数；未查写 `UNCHECKED` |
+| Test evidence | 是 | 测试名/fixture；未测写 `UNCHECKED` |
+| Review evidence | 是 | 可引用的 durable review 路径/链接；无则写 `见 task durable review report（待落盘）` 或省略具体结论，**不要**把未落盘 review 写成 PASS，也**不要**用 `PENDING` 充当矩阵字段 Status |
+| Implementation disposition | 是 | 见 §11.3 |
+
+### 11.3 Implementation disposition 枚举
+
+> **硬约束**：disposition **不是**平行处理体系。它只能**引用或组合**既有 §4.1.2 Handling Mode 与 §1.5 方向 Strategy；不得发明与二者冲突的新处理语义。
+
+| Disposition | 含义 | 何时使用 |
+|---|---|---|
+| `preserve_same_protocol` | 同协议保真；跨协议不伪造 | 绝大多数 Responses/Chat/Anthropic 原生字段 |
+| `raw_or_sidecar_only` | 仅 raw/sidecar 同协议恢复 | 未进公共模型的协议私有字段 |
+| `explicit_bridge` | 有文档化桥接规则 | 仅当官方/产品明确要求且有证据 |
+| `lossy_with_diagnostic` | 有损并记录 LossyDowngrade | 已知无法等价表达 |
+| `client_only_exclude` | 不进入 Hub transformer | Codex approval/sandbox/OAuth/multi-agent/telemetry 等 |
+| `no_delta` | 本次源 diff 无协议变化 | delta register 排除项 |
+| `text_content_only` | 只改文本内容，不改 schema | personality instructions、tool output truncation 文案 |
+| `wire_neutral_type_shell` | 类型换壳，wire 仍同形 | 如 `ResponseItemId` transparent string |
+| `unchecked_pending_evidence` | 尚无足够 code/test/review 证据 | 默认；不得标 `CONFIRMED`；**不是**矩阵 Status=`PENDING` |
+
+#### 11.3.1 Disposition → 既有 Handling Mode / 方向 Strategy 映射
+
+| Disposition | 允许引用的 §4.1.2 Handling Mode | 允许引用的 §1.5 Strategy（跨协议列） | 组合规则 |
+|---|---|---|---|
+| `preserve_same_protocol` | `common_native`, `common_native_with_value_caveat`, `protocol_native_sidecar`, `raw_fragment_ordered`, `same_protocol_only` | 同协议方向可用 `direct` / `rename` / `value_map` / `structural_transform`；跨协议无等价时用 `same_protocol_only` / `sidecar_only` / `drop_with_diagnostic` / `N/A` | 同协议保真优先；禁止“保真”名义下伪造跨协议等价 |
+| `raw_or_sidecar_only` | `protocol_native_sidecar`, `raw_fragment_ordered`, `same_protocol_only` | `sidecar_only`, `same_protocol_only`, `N/A` | 不得把 raw fallback 写成 typed semantic 完成 |
+| `explicit_bridge` | `bridge_metadata`, `structural_transform`, `semantic_downgrade` | `structural_transform`, `value_map`, `rename`, `direct`（仅当有证据） | 必须有文档化桥与测试；禁止隐形桥 |
+| `lossy_with_diagnostic` | `semantic_downgrade`, `drop_with_diagnostic` | `drop_with_diagnostic`, `value_map`（有损） | 必须挂 LossyDowngrade / 诊断原因 |
+| `client_only_exclude` | 不进入 Handling Mode（非 Hub 字段） | 不填六方向 / 或显式 `N/A`（非协议字段） | **禁止**新建 Hub Field ID |
+| `no_delta` | 保持既有 mode 不变 | 保持既有 strategy 不变 | 只登记排除，不改 Status |
+| `text_content_only` | 落在既有内容字段的 `common_native` / `structural_transform` / raw preserve | 通常 `direct` 原文透传或 `N/A` | **禁止**因文案变化新增 schema 行 |
+| `wire_neutral_type_shell` | 保持既有 owner/mode | 保持既有 strategy | wire 同形则不新开 schema G |
+| `unchecked_pending_evidence` | `unchecked` | `UNCHECKED` | 缺证据时的默认 disposition；字段 Status 仍用 §3 的 `PARTIAL`/`UNCHECKED` 等 |
+
+### 11.4 完成门槛与诚实声明
+
+1. FDR 必填项缺任意一项 → 该行不得 `CONFIRMED`。
+2. 仅有 G 批次 public-seam PASS、但 §5/§6 行仍 `PARTIAL`/`UNCHECKED` → 只能写“批次有证据”，不能写“字段已完成”。
+3. 新增 FDR 列/账本**不回溯宣称**旧行已填完。
+4. 当前计数口径：§5=**84**，§6=**17**，主状态 **101**；§9 额外子 ID **6**；总唯一 **107**。**绝大多数尚未按本节逐项 FDR 闭环**。
+5. disposition 若无法映射到 §4.1.2 / §1.5 已有类别 → 非法，必须先扩展既有枚举（另开文档变更），不得在 FDR 私自发明。
+
+### 11.5 与现有列的关系
+
+§4 矩阵列已覆盖 ID / Owner / Preservation Class / 六方向 / Stream / Code / Test / Status。FDR 是对这些列的**验收契约**，并额外要求：
+
+- Official source 可复核；
+- Value semantics 显式写出；
+- Review evidence 与 Implementation disposition 可审计；
+- disposition 必须能回链 §4.1.2 Handling Mode 与 §1.5 Strategy；
+- 任何实现切片结束后必须反填 §5/§6 + §12/§13（见 §14）。
+
+---
+
+## 12. Codex Responses usage-profile delta register
+
+### 12.1 基线与范围
+
+| 项 | 值 |
+|---|---|
+| Codex base | `1f0566d3f59298d1bb88820a0d35294f1eeb07ea`（短写 `1f0566d`） |
+| Codex head | `9e552e9d15ba52bed7077d5357f3e18e330f8f38`（短写 `9e552e9d1`） |
+| 范围写法 | `1f0566d..9e552e9d1` + 终点 `9e552e9d1` |
+| 研究来源 | `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/codex-delta-request-response-1f0566d-to-9e552e9d1.md` |
+|  | `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/codex-delta-streaming-metadata-1f0566d-to-9e552e9d1.md` |
+|  | `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/codex-delta-tools-mcp-1f0566d-to-9e552e9d1.md` |
+| 辅助基线 | `.agent/research/codex-reasoning-effort-latest-2026-07-12.md`（effort 值域；本 range 内无新 enum 成员） |
+
+**分层标签（Layer）**：
+
+| Layer | 含义 | 可否写成 Hub 矩阵字段完成 |
+|---|---|---|
+| `wire` | 实际改变发往/来自 OpenAI Responses 的 body/event 内容或出现策略 | 可关联 Field ID；Hub 通常只保真 supplied values |
+| `schema` | 公开/生产 tool 或 request schema 形状变化 | 本 range **未发现** 新 public tool/MCP schema |
+| `text-content` | 仅文本内容策略变化 | 不新增 Field ID |
+| `wire-neutral` | 内部类型/命名变化，serde wire 同形 | 不新增 Field ID |
+| `client-only` | 仅 Codex 本地控制面 | **禁止**写成 Hub 字段 |
+| `no-delta` | 审计范围内无相关变化 | 记录排除即可 |
+
+### 12.2 编号消歧（研究别名 → 权威编号）
+
+三份 research 初稿曾把 wire 项临时标成 G9–G11。权威编号以任务 PRD / §10 为准：
+
+| 权威 G | 主题 | 研究别名（作废作主键） | 历史同号但不同义 |
+|---|---|---|---|
+| **G13** | always-on `reasoning` + `include: reasoning.encrypted_content` | research “G9” | 历史 G9 = `stream_options` raw nested helper |
+| **G14** | capability-gated `reasoning.summary` + summary `stream_options` | research “G10” | 历史 G10 = raw JSON clone helper |
+| **G15** | outbound item id 前缀过滤 / identity presence | research “G11” | 历史 G11 = lossy-downgrade recorder |
+| G9–G12 | 架构 helper / repair（已完成，非本 delta 字段批次） | — | **不得**当作字段完成状态或本 delta 新缺口 |
+
+### 12.3 Delta 登记表
+
+| Delta ID | 主题 | Layer | Codex evidence (commit / area) | Matrix Field ID(s) | G group | Hub strategy / disposition |
+|---|---|---|---|---|---|---|
+| CD-REQ-001 | 每个 Responses 请求始终携带 `reasoning`，并始终 `include: ["reasoning.encrypted_content"]` | `wire`（emission policy） | `d2d00b663`；`client.rs` build_reasoning / include | `RSP.TOP.reasoning`, `RSP.TOP.include` | **G13** | `preserve_same_protocol`：只保真客户端实际发送的值/顺序；**禁止**因 Codex 常用而由 Hub 注入默认 |
+| CD-REQ-002 | 仅当模型 catalog 允许时发送 `reasoning.summary` 与 summary-delivery `stream_options` | `wire`（conditional emission） | `dffe1f02a`；`supports_reasoning_summary_parameter` | `RSP.TOP.reasoning`, `RSP.TOP.stream_options` | **G14** | `preserve_same_protocol`：有则保留、无则保持省略；**禁止**在 Hub 复制 Codex model catalog gate |
+| CD-REQ-003 | `input[]` item `id`：仅合法前缀出站；空/无前缀省略 | `wire` | `c9d52de5c`；`prepare_response_items_for_request` | `RSP.MSG.input_items`（总览 `RSP.TOP.input` 相关） | **G15** | `preserve_same_protocol`：保留已有非空 id、允许无 id；**禁止**强制 Codex 前缀表或合成 id |
+| CD-REQ-004 | `ResponseItemId` 类型换壳；serde transparent string | `wire-neutral` | `c9d52de5c`；`response_item_id.rs` | `RSP.MSG.input_items`（identity carrier，非新 wire key） | **G15**（并入，不单开 schema G） | `wire_neutral_type_shell`：Hub 仍按 string identity 处理 |
+| CD-REQ-005 | `personality = "none"` 改写 instructions 文本 | `text-content` | `09ccae2c0` | `RSP.TOP.instructions`（仅内容策略备注；**非**新 schema 行） | — | `text_content_only` / `client_only_exclude`：不立项 Hub schema 映射 |
+| CD-TOOL-001 | tool/exec 输出 truncation 增加 bytes-omitted 提示文本 | `text-content` | `6138909d6`；unified_exec / `function_call_output` 文本 | 无新 Field ID；落在既有 tool result / `function_call_output` 内容保真 | — | `text_content_only`：原文透传即可；**禁止**提升为新协议字段 |
+| CD-TOOL-002 | tool_search / defer_loading / namespace / apply_patch / web_search / MCP declaration schema | `no-delta` | tools crate 生产代码无功能 diff | 既有 `RSP.TOOL.tool_search`, `CODEX.TOOL.namespace`, `RSP.TOOL.hosted`, `ANT.TOP.mcp_servers`, `ANT.TOOL.mcp_toolset` 等 | 非本 delta 新 G | `no_delta`：继续既有矩阵残差，不因本 range 重开 |
+| CD-CLI-001 | approval 中心化 / guardian / permission hooks | `client-only` | `tools/approvals.rs` 等 | **无 Hub Field ID** | — | `client_only_exclude`；禁止桥到 Responses MCP approval items |
+| CD-CLI-002 | sandbox workspace roots / exec-server 本地沙箱 | `client-only` | `sandboxing.rs` 等 | **无 Hub Field ID** | — | `client_only_exclude` |
+| CD-CLI-003 | MCP OAuth refresh / 持久化策略 | `client-only` | `rmcp-client/src/oauth/**` | **无 Hub Field ID** | — | `client_only_exclude`；不改变 Responses MCP tool schema |
+| CD-CLI-004 | multi-agent 终端事件 `error`/`started_at`、InterAgentCommunication 等 | `client-only` | `protocol.rs` TurnComplete/Aborted 等 | **无 Hub Field ID** | — | `client_only_exclude` |
+| CD-CLI-005 | WebSocket timing telemetry / 本地 trace | `client-only` | `9993fb838` 等 | **无 Hub Field ID** | — | `client_only_exclude` |
+| CD-STR-001 | SSE / stream event 解析 | `no-delta` | `codex-api/src/sse/responses.rs` 0 字节 diff | `RSP.STREAM.events`（无本 delta 变化） | — | `no_delta`：不声称新 stream event 修复 |
+| CD-META-001 | model catalog 字段改名（`supports_reasoning_summaries` → `supports_reasoning_summary_parameter`） | `client-only` | `openai_models.rs` | **无 Hub Field ID** | 支撑 G14 客户端策略 | `client_only_exclude` |
+| CD-NOTE-001 | `ReasoningEffort` 自定义字符串 / `ultra→max` | `wire` 值域注意（本 range **无 enum delta**；`ultra→max` 在 base 已存在且未改） | 既有 `client.rs` + 辅助研究 | `RSP.TOP.reasoning`, `CHAT.TOP.reasoning_effort` | G13/G14 note | same-family open-string 保真；**禁止**把 `ultra→max` 写成全局协议映射 |
+| CD-CLI-006 | `RolloutLine.ordinal` 分页/本地 rollout 序号 | `client-only` | `5c19155cb`；`protocol.rs` rollout persistence | **无 Hub Field ID** | — | `client_only_exclude`：本地持久化/分页元数据，不进入 Responses/Chat/Anthropic transformer |
+| CD-CLI-007 | `event_mapping` / `stream_events_utils` 仅适配 `ResponseItemId` 类型 | `wire-neutral` | `c9d52de5c` 连带；`event_mapping.rs` / `stream_events_utils.rs` | **无 Hub Field ID** | — | `wire_neutral_type_shell`：本地 TurnItem/日志映射类型换壳；**不是** SSE/event schema delta，勿桥到 `RSP.STREAM.events` |
+| CD-CLI-008 | web-search history 仅适配 `ResponseItemId` API | `wire-neutral` / `client-only` | `ext/web-search/src/history.rs` | **无 Hub Field ID** | — | `wire_neutral_type_shell` + `client_only_exclude`：客户端 history 类型适配；不改变 public web_search tool/item schema |
+| CD-CLI-009 | apply_patch 审批路径保留 `PathUri` + `environment_id`（延迟绝对路径） | `client-only` | `b66c25c6a`；`apply_patch.rs` / `approvals.rs` | **无 Hub Field ID** | — | `client_only_exclude`：本地 approval/guardian 路径；**禁止**桥到 Responses MCP approval / tool schema |
+
+### 12.4 覆盖核对（三份 research → 本表）
+
+| Research 主题 | 覆盖 Delta ID | 结果 |
+|---|---|---|
+| reasoning / include always-on | CD-REQ-001 | 已登记 → G13 |
+| summary / stream_options capability gate | CD-REQ-002 | 已登记 → G14 |
+| ResponseItemId / id filtering | CD-REQ-003, CD-REQ-004 | 已登记 → G15 |
+| personality none instructions text | CD-REQ-005 | 已登记为 text-content，非 Hub schema |
+| tool output truncation text | CD-TOOL-001 | 已登记为 text-content |
+| ResponseItemId transparent type | CD-REQ-004 | 已登记为 wire-neutral |
+| approval / sandbox / OAuth / multi-agent / telemetry | CD-CLI-001..005 | 已登记为 client-only，**无 Hub Field ID** |
+| `RolloutLine.ordinal` | CD-CLI-006 | 已点名登记为 client-only，**无 Hub Field ID** |
+| `event_mapping` / `stream_events_utils` type adaptation | CD-CLI-007 | 已点名登记为 wire-neutral，**无 Hub Field ID**；勿误桥 stream 字段 |
+| web-search history `ResponseItemId` adaptation | CD-CLI-008 | 已点名登记为 wire-neutral/client-only，**无 Hub Field ID** |
+| apply_patch `PathUri` / `environment_id` approval path | CD-CLI-009 | 已点名登记为 client-only，**无 Hub Field ID**；勿桥 MCP approval |
+| tool/MCP no schema delta | CD-TOOL-002 | 已登记为 no-delta |
+| SSE parser / stream metadata 无变更 | CD-STR-001 | 已登记为 no-delta |
+
+### 12.5 硬性禁令
+
+1. **禁止**把 `client-only` 项写成 Hub §5 字段或伪造成 `CONFIRMED`。
+2. **禁止**把 Codex “始终发送 / 按 catalog 省略 / 前缀过滤”原样复制为 Hub 全局强制策略。
+3. **禁止**把 research 临时 G9–G11 与历史 helper G9–G12、权威字段批次 G13–G15 混用。
+4. 后续任何 Codex diff 必须先增补本 register，再决定是否开实现 slice（§14）。
+
+---
+
+## 13. 实施符合性账本（G1–G15）
+
+### 13.1 阅读规则
+
+- 本账本追溯**实现批次**与 **Field ID** 的符合性，不重写 §5/§6 全表。
+- **G1–G8、G13–G15**：字段/边界相关批次，必须有 Field ID 映射。
+- **G9–G12**：历史 helper/repair 编号（stream_options raw nested、raw JSON clone、lossy recorder、raw top-level capture）。它们是基础设施，**不能**作为“某字段已完成”的状态位。
+- `Review/conformance` 仅反映当前文档可引用的证据；无法确认则标 `UNCHECKED`，不杜撰。
+- `Actual owner/mode` 来自 §5 / §9 / §10 与既有测试索引；若与 required 不一致，记 gap，不在本 docs-only 任务中改生产代码。
+
+### 13.2 G1–G8 字段批次
+
+| G | Matrix Field ID(s) | Required owner / mode | Actual owner / mode (docs evidence) | Same-protocol evidence | Cross-protocol policy | Review / conformance |
+|---|---|---|---|---|---|---|
+| G1 | `CHAT.TOP.n` | Chat raw/native preserve；多 choice 不跨协议伪造 | `openAIChatRawPreserveFields` (`chat_n.go`) / `raw_preserve` | `chat_n_test.go` | no-synth → Responses；Anthropic LossyDowngrade | §9.1 索引；模块审查细节 `UNCHECKED`（本账本未重跑审查原文） |
+| G2 | `CHAT.TOP.prompt_cache_retention` | Chat raw preserve；≠ Anthropic cache_control | same raw preserve path / `raw_preserve` | `chat_n_test.go` retention cases | no-synth；不伪映射 Anthropic | 同 G1：证据在 §9；审查原文 `UNCHECKED` |
+| G3 | `ANT.TOP.container`, `ANT.TOP.inference_geo` | Anthropic opaque + metadata；OpenAI no-synth | Anthropic model + metadata / opaque JSON+metadata | `container_inference_geo_test.go` | no-synth to OpenAI | §9.1；审查原文 `UNCHECKED` |
+| G4 | `CHAT.TOP.audio`, `CHAT.TOP.prediction`, `CHAT.TOP.moderation` | Chat raw preserve output-controls | `chat_n.go` raw preserve | `chat_n_test.go` output-controls | no-synth / lossy | §9.1；审查原文 `UNCHECKED` |
+| G5a | `CHAT.TOP.web_search_options` | Chat raw preserve；禁止改名为 Responses web_search tool | `chat_n.go` raw preserve | web_search_options tests | no-synth Responses；Anthropic LossyDowngrade | §9.1；审查原文 `UNCHECKED` |
+| G5b | `CHAT.TOP.functions`, `CHAT.TOP.function_call`, `CHAT.MSG.function_call` | legacy shape 可往返；不破坏 modern tools | deprecated origin metadata + raw preserve / bridge+origin metadata | `chat_deprecated_functions_test.go` 等 | no fake modern rewrite unless explicit bridge | §9.1 含 `CHAT.MSG.function_call`；**注意**：`CHAT.MSG.function_call` 主要出现在 §9 索引，§5 是否有对等响应行需后续 FDR 对齐（文档缝） |
+| G6 | `ANT.TOP.mcp_servers`, `ANT.TOOL.mcp_toolset` | Anthropic MCP 隔离；禁止桥 Responses mcp/namespace | opaque JSON；`anthropic_raw_tools` ordered fragments | `mcp_connector_test.go` | not Responses mcp/namespace | §9.1；审查原文 `UNCHECKED` |
+| G7 | `RSP.TOP.reasoning` 及子证据 `RSP.TOP.reasoning.context`, `RSP.TOP.reasoning.generate_summary`, `RSP.RESP.reasoning.content`, `RSP.STREAM.reasoning_text`, `RSP.TOP.reasoning.unknown_nested` | reasoning 对象/输出/stream 分路径；effort≠budget | native+raw_sidecar / stream aggregator | `reasoning_context_test.go`, `reasoning_g7_test.go` 等 | 不与 Chat effort / Anthropic thinking 伪等价 | §9.1；子 Field ID 已在索引出现，主表仍以 `RSP.TOP.reasoning` 总览行为主 |
+| G8 | `CHAT.TOP.modalities` | Chat same-protocol typed modalities | `llm.Request.Modalities` + Chat typed / `common_typed` | `TestInboundTransformer_TransformRequest_ModalitiesRoundTripChat` 等 | 六向未闭环，保持 PARTIAL | G8 review PASS（`.trellis/tasks/07-12-protocol-residual-five-boundary-fields/research/reviews/g8-residual-five-fields-review.md`） |
+| G8 | `ANT.TOP.cache_control` | top-level cache_control 与 content-block 隔离；≠ OpenAI prompt_cache_* | `MessageRequest.CacheControl` + metadata / native+metadata | `TestTopLevelCacheControlRoundTrip` | no OpenAI prompt-cache bridge | G8 review PASS |
+| G8 | `RSP.TOP.context_management` | same-protocol raw top-level fallback only | `RawTopLevelFields` / `raw_fallback_same_protocol` | `TestResponsesContextManagement_SameProtocolRawTopLevelFallback` | no-synth to Anthropic | G8 review PASS；typed semantic support **未**宣称 |
+| G8 | `RSP.TOP.conversation` | string+object raw fallback；非跨协议 messages state | commented request field + `RawTopLevelFields` | `TestResponsesConversation_SameProtocolRawTopLevelFallback` | no-synth | G8 review PASS；typed request field仍未启用 |
+| G8 | `RSP.TOOL.hosted` | hosted inventory + same-protocol raw；无统一跨协议抽象 | native raw families + raw-tool merge / `native_raw_family_partial` | `TestResponsesHostedTools_SameProtocolRawPreserveAndChatLossy` | Chat lossy/no-synth；Anthropic 无统一 bridge | G8 review PASS w/ minors（Rsp→Anthropic 列曾偏乐观；以 no unified bridge 为准） |
+
+#### 13.2.1 G8 细节 `UNCHECKED` 清单（不杜撰）
+
+下列细节在现有文档/审查中**未能**于本规范化任务内重新核到可引用的逐文件实现结论，故保持 `UNCHECKED`：
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| G8 是否改动过生产 transformer 代码 | 任务 ledger 写 “No production transformer changes” | 本账本采信任务记录，但**未**在本任务重跑 `git show 5260e558` 逐文件核对 |
+| Hosted 各具体 family（file/computer/code/image 等）是否逐一有独立 fixture | `UNCHECKED` | 现有证据是 inventory + 代表性 raw preserve/Chat lossy；不能写成每个 hosted variant 全 CONFIRMED |
+| G8 与 G12 raw top-level capture helper 的代码所有权边界 | `UNCHECKED` | G12 是 helper 批次；G8 复用其行为但批次号不可混为字段完成态 |
+| G8 跨协议六方向是否因 review minors 需要改 §5 单元格 | `UNCHECKED` | review 指出 hosted Rsp→Anthropic 表述风险；§5 当前已偏 no-synth，是否仍有残留乐观措辞需另开 docs 校对 |
+
+### 13.3 G9–G12 helper 批次（非字段完成状态）
+
+| G | 主题 | 关联 Field ID（若有） | Required role | Actual role | Conformance note |
+|---|---|---|---|---|---|
+| G9 | Responses `stream_options` raw nested preservation | `RSP.TOP.stream_options` | helper：typed+raw nested 同协议保真 | 被 G14 证据复用（`RawStreamOptions` sidecar） | **不是**“stream_options 字段全矩阵完成” |
+| G10 | raw JSON clone helper | 多字段 raw 路径 | helper | 基础设施 | **禁止**标为字段 Status |
+| G11 | lossy-downgrade recorder | 跨协议 lossy 行 | helper | 基础设施；G14b 文档曾写 “false G11” 指误报/非本 helper 回归 | **禁止**与 research 临时 G11（item id）混淆 |
+| G12 | raw top-level capture helper | `RSP.TOP.context_management`, `RSP.TOP.conversation` 等 | helper | G8 raw fallback 依赖其能力 | **禁止**用 G12 完成替代 G8/字段 FDR |
+
+### 13.4 G13–G15 Codex delta 字段批次
+
+| G | Matrix Field ID(s) | Required owner / mode | Actual owner / mode | Same-protocol evidence | Cross-protocol policy | Review / conformance |
+|---|---|---|---|---|---|---|
+| G13 | `RSP.TOP.reasoning`, `RSP.TOP.include` | 保真 supplied `reasoning`/`include`；不注入 Codex always-on 默认 | Responses native include/reasoning + metadata/raw merge | `g13a_reasoning_include_test.go` + fixtures；aux `reasoning_effort_forward_compat_test.go` | no-synth；不跨协议伪造 encrypted include | independent module review PASS；parent review PASS（`.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md`）；scoped local commit `5c63811d` |
+| G14 | `RSP.TOP.reasoning`（summary 子路径）, `RSP.TOP.stream_options` | 保真 summary + summary-delivery options；不复制 catalog gate | typed `StreamOptions` + `RawStreamOptions` deep-clone sidecar | `g14a_summary_stream_options_test.go`, `g14b_stream_options_sidecar_test.go` | no-synth | independent module review PASS；parent review PASS（`.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md`）；scoped local commit `5c63811d` |
+| G15 | `RSP.MSG.input_items`（及 `RSP.TOP.input` 总览相关 identity） | presence-aware 非空 id 保真；无 id 保持无；不合成、不强制前缀 | `Message.ID` / `ToolCall.ResponseItemID` / `Message.ResponseReasoningItemID(*string)` 等 | `g15a/b/c_*_test.go` + fixtures | 跨协议不得发明 Responses item id | independent module review PASS；parent review PASS（`.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md`）；scoped local commit `5c63811d` |
+
+### 13.5 批次状态总览
+
+| 批次 | 类型 | 字段完成？ | 说明 |
+|---|---|---|---|
+| G1–G7 | 实现 + 测试 | **否（PARTIAL only）** | same-protocol 有证据，非全矩阵 CONFIRMED |
+| G8 | 边界证据 + 测试（ledger：无生产代码改动） | **否（PARTIAL）** | 五边界项有字段级证据；细节见 §13.2.1 UNCHECKED |
+| G9–G12 | helper/repair | **不适用** | 不得当字段完成状态 |
+| G13–G15 | Codex delta same-protocol fixtures | **否（PARTIAL only）** | same-protocol public-seam PASS（module review + fixtures；parent review PASS；commit `5c63811d`）；仍不代表全字段/全方向完成。持久化证据见 `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md`。 |
+
+
+### 13.6 Review 证据与 task artifacts 的边界
+
+- 任务目录中的 `protocol-compliance-loop-ledger.md` / `implement.md` / `prd.md` 是**执行记录**；父级审查的持久化证据必须有可引用报告或等价 artifact。
+- G13–G15 的 parent review 已落盘：`.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md`；相关 task artifacts 已同步为 PASS，scoped commit 为 `5c63811d`。
+- 未来任务在 review report 落盘前：不得主张 parent review PASS；字段 Status 也**不要**用 `PENDING`，仍只用 §3 的 `PARTIAL` / `UNCHECKED` / `CONFIRMED` / …。
+- 符合性账本与 §5/§6 在“是否宣称全矩阵 CONFIRMED”上保持诚实：批次 public-seam PASS ≠ 101 主状态行 FDR 全填完，更 ≠ 107 唯一 ID 全完成。
+
+---
+
+## 14. 后续 Codex diff 与实现 slice 规范
+
+### 14.1 强制顺序
+
+```text
+Codex / 协议源 diff
+  → 先写入 §12 delta register（Layer + Field ID + disposition）
+  → 再决定：文档-only / 开实现 slice / client-only 排除
+  → 合并前反填：§5 主表 + §11 FDR 缺口 + §13 符合性账本 +（如适用）§9/§10 证据索引
+```
+
+### 14.2 规则
+
+1. **任何后续 Codex diff** 必须先登记到 §12，再决定是否创建实现 slice。
+2. **任何实现 slice** 必须反填：对应 Field ID 的 §5 行、§11 FDR 必填项、§13 符合性账本。
+3. **稳定 Field ID 是规范主键**；G 编号只是变更批次。
+4. 不得重用历史 G 号表达新语义；新批次应分配新 G 或明确 “no new G / existing Field ID only”。
+5. client-only / no-delta / text-content / wire-neutral 必须保持分层，禁止上抬为 Hub schema 完成。
+6. 文档更新本身若未补测试证据，不得把 Status 从 `PARTIAL` 抬到 `CONFIRMED`。
+
+### 14.3 与相关文档的关系
+
+| 文档 | 角色 |
+|---|---|
+| 本文 §5 + §6 | Field 主状态权威（84 + 17 = 101） |
+| 本文 §9 子 ID | 批次证据索引（+6 → 总唯一 107）；不替代主状态行 |
+| 本文 §11–§14 | 规范化验收、Codex delta 账本、FDR 优先清单 |
+| `docs/specs/protocols/hub-protocol-field-matrix.md` | Hub carrier 视角摘要；冲突时回查本文 §5/§6 + 代码 |
+| `.trellis/spec/backend/protocol-transformer-guidelines.md` | 实现/审查行为准则；不替代 Field ID 主键 |
+| 任务 research 三份 delta 报告 | §12 事实来源；编号冲突以本文 §12.2 为准 |
+| `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md` | G13–G15 parent review PASS 的持久化证据；未来任务沿用同类可引用 artifact |
+
+### 14.4 下一批 FDR 优先审查 Field ID 清单
+
+基于既有 residual（§9.3、`residual-gaps.md`、§5/§6 粗粒度占位行），**先补 FDR/证据，不默认新开 feature**。下列为优先顺序建议：
+
+| 优先 Field ID | 为何优先 | 先补什么证据（FDR 最小集） |
+|---|---|---|
+| `CHAT.TOP.tools`（含 custom tool 形态） | residual 明确 Chat custom tool 源缺口；顶层 tools 总览行过粗，易误桥 Responses/Anthropic | 拆 function vs custom（及不支持形态）；same-protocol raw/typed 边界；跨协议 no-synth / lossy 策略；禁止发明未证实 custom 支持 |
+| `RSP.TOP.context_management` | G8 仅 raw fallback PARTIAL；易被误读为 typed semantic 完成 | Official value shape；typed vs `RawTopLevelFields` disposition 映射；跨协议 no-synth 原因；是否需要 typed request 字段的产品决策记录 |
+| `RSP.TOP.conversation` | 同 G8：string/object raw 有证据，但 request 字段仍 commented | string id vs object 两种 value semantics；same_protocol_only 六方向；与 Chat/Anthropic messages state 的非等价声明 |
+| `RSP.MSG.input_items`（子矩阵） | G15 只闭环 identity/presence；item variant 全量仍是结构主风险 | 按 item type 拆子 FDR（message / function_call(_output) / custom_tool / reasoning / 其他 raw）；顺序与 raw fragment；跨协议 no-synth id |
+| `RSP.STREAM.events` | 主状态仍是事件族总览；Codex range 确认 SSE parser **无 delta**，但 Hub 事件族保真未 FDR 化 | 事件族清单与 stream impact；delta/done/final/usage/error 分测策略；与 `stream_options`（请求控件）严格分离 |
+| `ANT.MSG.content_blocks` | content block 族是跨协议最大结构差之一；总览行无法 CONFIRMED | 按 block type 拆子 FDR（text/image/thinking/tool_use/tool_result/…）；thinking signature；与 Chat parts / Responses items 的非伪映射 |
+| `ANT.STREAM.events` | named SSE 与 OpenAI 事件模型不同；thinking/signature/input_json delta 必须单测 | 事件名清单；content_block_delta 子类型；usage/error；与 Chat chunk / Responses SSE 的 strategy 映射 |
+| `RSP.RESP.output` | 输出 item 族与请求 input 对称风险；function/custom/status/namespace 未全量 | output item type 子矩阵；final_response 证据；与 stream event 的对应关系；跨协议降级策略 |
+
+规则：
+
+1. 优先清单**不是**新 G 编号分配表；仍以 Field ID 为键。
+2. 进入实现 slice 前，必须先有 §11 FDR 最小集 +（若源自 Codex）§12 登记。
+3. 粗粒度总览行在子 FDR 未齐前，Status 最高 `PARTIAL`，不得 `CONFIRMED`。

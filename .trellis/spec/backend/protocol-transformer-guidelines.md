@@ -302,6 +302,14 @@ Required tests for this area:
 
 Implementation modules G1–G7 and Codex-delta G13–G15 closed the following high-priority seams with targeted tests. Full matrix status language is in `docs/specs/protocols/protocol-conversion-strict-verification-matrix.md` §9–§10.
 
+Normative process for acceptance (do not treat as “all fields complete”):
+
+- §11 Field Decision Record (FDR) required columns; disposition must map to matrix §4.1.2 Handling Mode + §1.5 Strategy (no parallel taxonomy)
+- §12 Codex Responses usage-profile delta register (`1f0566d..9e552e9d1`), including client-only / wire-neutral exclusions
+- §13 Implementation conformance ledger (G1–G15; G9–G12 are helpers only). G13–G15 public-seam fixtures + module review are indexed; parent review PASS is recorded in `.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/research/reviews/g13-g15-parent-review.md` (see matrix §13.6)
+- §14 Future Codex diff must register before any implementation slice; Field ID is the primary key, G numbers are batch labels only; FDR priority list is in matrix §14.4
+- Field ID counts: §5=84 top-level, §6=17 nested/structure, main-status 101; §9 adds 6 child IDs → 107 unique. Do not write “§5 has 107 rows”.
+
 | Seam | Owner package | Primary tests |
 |---|---|---|
 | Chat top-level raw preserve (`n`, `prompt_cache_retention`, `audio`, `prediction`, `moderation`, `web_search_options`, `functions`, `function_call`) | `llm/transformer/openai` | `chat_n_test.go`, `chat_deprecated_functions_test.go` |
@@ -314,4 +322,3 @@ Implementation modules G1–G7 and Codex-delta G13–G15 closed the following hi
 | Responses request input item identity (G15) | `llm/transformer/openai/responses` | `g15a_input_item_identity_test.go`, `g15b_input_item_identity_test.go`, `g15c_reasoning_item_identity_test.go` |
 
 Rules unchanged: same-protocol first; no fake MCP bridges; LossyDowngrade for documented cross-protocol loss; stream fidelity stays in stream code; request input item identity is presence-aware and non-synthesizing.
-
