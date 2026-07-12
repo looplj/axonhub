@@ -1,0 +1,34 @@
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "summary only reasoning"
+        }
+      ]
+    },
+    {
+      "type": "reasoning",
+      "id": "rs_summary_only_with_id",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "summary with item id, no encrypted_content"
+        }
+      ]
+    },
+    {
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "summary without item id and without encrypted_content"
+        }
+      ]
+    }
+  ]
+}

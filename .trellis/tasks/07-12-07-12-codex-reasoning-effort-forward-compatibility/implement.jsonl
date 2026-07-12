@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/protocol-transformer-guidelines.md","reason":"协议字段分类、同协议保真与跨协议不可伪造映射约束。"}
+{"file":"docs/specs/protocols/openai-responses-protocol.md","reason":"Responses reasoning 官方基准与 wire 字段。"}
+{"file":"docs/specs/protocols/openai-chat-completions-protocol.md","reason":"Chat reasoning_effort 官方基准。"}
+{"file":"docs/specs/protocols/anthropic-claude-messages-protocol.md","reason":"Anthropic effort/thinking 的目标协议约束。"}
+{"file":"docs/specs/protocols/hub-protocol-field-matrix.md","reason":"跨协议字段处理矩阵。"}
+{"file":".agent/research/codex-reasoning-effort-latest-2026-07-12.md","reason":"最新 Codex 源码事实记录；Slice 1 产物。"}

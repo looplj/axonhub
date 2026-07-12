@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/protocol-transformer-guidelines.md","reason":"审查架构边界与禁止伪造映射的约束。"}
+{"file":"docs/specs/protocols/protocol-conversion-strict-verification-matrix.md","reason":"审查字段状态、fixture 与不可实现边界的记录。"}
+{"file":"docs/specs/protocols/hub-protocol-field-matrix.md","reason":"审查每一协议方向的 reasoning 行。"}
+{"file":".trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/prd.md","reason":"审查本任务验收标准。"}
+{"file":".trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/design.md","reason":"审查开放字符串与 provider-specific mapping 设计。"}

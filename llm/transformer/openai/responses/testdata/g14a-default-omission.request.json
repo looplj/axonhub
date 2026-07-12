@@ -1,0 +1,5 @@
+{
+  "model": "o3",
+  "input": "plain request without summary policy",
+  "stream": true
+}

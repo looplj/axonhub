@@ -461,9 +461,14 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 	}
 
 	reasoningItem := &items[startIdx]
+	// Always mark Responses reasoning origin. Empty string means source omitted id;
+	// do not leave the pointer nil or outbound cannot distinguish from Chat/Anthropic
+	// ReasoningContent.
+	reasoningItemID := reasoningItem.ID
 	msg := &llm.Message{
-		Role:               "assistant",
-		ReasoningSignature: reasoningItem.EncryptedContent,
+		Role:                     "assistant",
+		ReasoningSignature:       reasoningItem.EncryptedContent,
+		ResponseReasoningItemID: &reasoningItemID,
 	}
 
 	// Prefer raw reasoning_text content[] over summary when both exist.
@@ -492,8 +497,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "function_call":
 			// Merge function_call into the same assistant message
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: "function",
+				ID:             nextItem.CallID,
+				ResponseItemID: nextItem.ID,
+				Type:           "function",
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
@@ -510,8 +516,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			}
 
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:             nextItem.CallID,
+				ResponseItemID: nextItem.ID,
+				Type:           llm.ToolTypeResponsesCustomTool,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID:    nextItem.CallID,
 					Name:      nextItem.Name,
@@ -611,13 +618,16 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		return nil, nil
 
 	case "function_call":
-		// Function call from assistant - convert to tool call
+		// Function call from assistant - convert to tool call.
+		// item.ID is the Responses item identity; item.CallID is the tool-call
+		// correlation id. Keep them separate for same-protocol replay.
 		return &llm.Message{
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: "function",
+					ID:             item.CallID,
+					ResponseItemID: item.ID,
+					Type:           "function",
 					Function: llm.FunctionCall{
 						Name:      item.Name,
 						Namespace: item.Namespace,
@@ -638,8 +648,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: llm.ToolTypeResponsesCustomTool,
+					ID:             item.CallID,
+					ResponseItemID: item.ID,
+					Type:           llm.ToolTypeResponsesCustomTool,
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 						CallID:    item.CallID,
 						Name:      item.Name,
@@ -656,6 +667,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Function call output - convert to tool message
 		msg := &llm.Message{
+			ID:         item.ID,
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),
@@ -672,6 +684,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Custom tool call output - convert to tool message
 		msg := &llm.Message{
+			ID:         item.ID,
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),

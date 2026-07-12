@@ -36,6 +36,10 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	nativeToolSignatures := buildRepresentedToolSignatures(req.Tools)
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
 		RawTopLevelFields: raw.TopLevelFields,
+		// stream_options is a known Responses-native object. Capture its raw
+		// wire form on the dedicated sidecar field so outbound can merge typed
+		// + raw nested values (G9) without polluting RawTopLevelFields (G14b).
+		RawStreamOptions: cloneRaw(raw.StreamOptions),
 		NativeTools: &llm.OpenAIResponsesNativeTools{
 			Raw:        cloneRawMessages(raw.Tools),
 			Signatures: nativeToolSignatures,
@@ -50,7 +54,7 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 		requestExt.ClientMetadata = lo.Assign(map[string]string{}, req.ClientMetadata)
 	}
 
-	if len(requestExt.ClientMetadata) == 0 && len(requestExt.RawTopLevelFields) == 0 && isEmptyNativeTools(requestExt.NativeTools) && len(requestExt.AdditionalTools) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
+	if len(requestExt.ClientMetadata) == 0 && len(requestExt.RawTopLevelFields) == 0 && len(requestExt.RawStreamOptions) == 0 && isEmptyNativeTools(requestExt.NativeTools) && len(requestExt.AdditionalTools) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
 		return
 	}
 
@@ -66,6 +70,7 @@ type rawRequestFragments struct {
 	Tools          []json.RawMessage
 	ToolChoice     json.RawMessage
 	InputItems     []json.RawMessage
+	StreamOptions  json.RawMessage
 }
 
 func isEmptyNativeTools(nativeTools *llm.OpenAIResponsesNativeTools) bool {
@@ -78,9 +83,10 @@ func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
 	}
 
 	var raw struct {
-		Tools      []json.RawMessage `json:"tools"`
-		ToolChoice json.RawMessage   `json:"tool_choice"`
-		Input      json.RawMessage   `json:"input"`
+		Tools         []json.RawMessage `json:"tools"`
+		ToolChoice    json.RawMessage   `json:"tool_choice"`
+		Input         json.RawMessage   `json:"input"`
+		StreamOptions json.RawMessage   `json:"stream_options"`
 	}
 	if err := json.Unmarshal(rawBody, &raw); err != nil {
 		return rawRequestFragments{}
@@ -96,6 +102,7 @@ func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
 		Tools:          raw.Tools,
 		ToolChoice:     raw.ToolChoice,
 		InputItems:     inputItems,
+		StreamOptions:  raw.StreamOptions,
 	}
 }
 
@@ -288,8 +295,6 @@ func openAIResponsesRequestExtensions(llmReq *llm.Request) *llm.OpenAIResponsesR
 	return requestExt
 }
 
-
-
 func rawReasoningObject(llmReq *llm.Request) json.RawMessage {
 	if llmReq == nil || llmReq.TransformerMetadata == nil {
 		return nil
@@ -336,6 +341,50 @@ func mergeRawReasoningObject(obj map[string]json.RawMessage, llmReq *llm.Request
 	obj["reasoning"] = out
 }
 
+// mergeOpenAIResponsesStreamOptions merges Responses-native raw stream_options into
+// the typed outbound object. Raw values take precedence for shared nested keys so
+// the same-protocol replay retains the exact inbound wire value, while typed and
+// unknown raw fields coexist (G9 semantics).
+//
+// Defensive rule: if the current typed outbound stream_options JSON cannot be
+// unmarshaled as an object, do not early-return and drop the raw overlay.
+// Prefer emitting the raw object fields instead.
+func mergeOpenAIResponsesStreamOptions(obj map[string]json.RawMessage, raw json.RawMessage) {
+	if obj == nil || len(raw) == 0 {
+		return
+	}
+
+	var rawOptions map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &rawOptions); err != nil {
+		return
+	}
+	if len(rawOptions) == 0 {
+		return
+	}
+
+	currentOptions := make(map[string]json.RawMessage)
+	if currentRaw := obj["stream_options"]; len(currentRaw) > 0 {
+		if err := json.Unmarshal(currentRaw, &currentOptions); err != nil {
+			// Typed value is not a JSON object (null/array/scalar/corrupt). Keep
+			// the raw overlay rather than discarding both sides.
+			currentOptions = make(map[string]json.RawMessage)
+		}
+	}
+
+	for name, value := range rawOptions {
+		currentOptions[name] = cloneRaw(value)
+	}
+	if len(currentOptions) == 0 {
+		return
+	}
+
+	encoded, err := json.Marshal(currentOptions)
+	if err != nil {
+		return
+	}
+	obj["stream_options"] = encoded
+}
+
 func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -356,6 +405,7 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 	mergeRawReasoningObject(obj, llmReq)
 	if requestExt != nil {
 		recordRequestPreservationDiagnostics(llmReq, requestExt)
+		mergeOpenAIResponsesStreamOptions(obj, requestExt.RawStreamOptions)
 		mergeRawUnknownTopLevelFields(obj, requestExt.RawTopLevelFields)
 		if len(requestExt.ClientMetadata) > 0 {
 			clientMetadataRaw, err := json.Marshal(requestExt.ClientMetadata)

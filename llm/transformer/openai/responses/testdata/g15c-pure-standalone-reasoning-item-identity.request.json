@@ -1,0 +1,26 @@
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "think only"
+        }
+      ]
+    },
+    {
+      "type": "reasoning",
+      "id": "rs_pure_standalone",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "pure reasoning, no following message or tool"
+        }
+      ],
+      "encrypted_content": "gAAAA_pure_standalone"
+    }
+  ]
+}

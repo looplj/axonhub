@@ -1,0 +1,63 @@
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "check weather then patch"
+        }
+      ]
+    },
+    {
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "I will call tools."
+        }
+      ],
+      "encrypted_content": "gAAAA_reason_sig"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_after_reason",
+      "call_id": "call_weather_after_reason",
+      "name": "get_weather",
+      "arguments": "{\"city\":\"sf\"}",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fc_out_after_reason",
+      "call_id": "call_weather_after_reason",
+      "output": "sunny"
+    },
+    {
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "Next custom tool."
+        }
+      ],
+      "encrypted_content": "gAAAA_reason_sig_2"
+    },
+    {
+      "type": "custom_tool_call",
+      "id": "ctc_after_reason",
+      "call_id": "call_patch_after_reason",
+      "name": "apply_patch",
+      "input": "*** Begin Patch\n*** End Patch\n",
+      "status": "completed"
+    },
+    {
+      "type": "custom_tool_call_output",
+      "id": "ctc_out_after_reason",
+      "call_id": "call_patch_after_reason",
+      "output": "patched"
+    }
+  ]
+}

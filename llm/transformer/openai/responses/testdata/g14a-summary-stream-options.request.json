@@ -1,0 +1,14 @@
+{
+  "model": "o3",
+  "input": "reason with summary delivery",
+  "stream": true,
+  "reasoning": {
+    "effort": "high",
+    "summary": "detailed"
+  },
+  "stream_options": {
+    "include_obfuscation": false,
+    "reasoning_summary_delivery": "sequential_cutoff",
+    "future_nested": {"x": 1}
+  }
+}

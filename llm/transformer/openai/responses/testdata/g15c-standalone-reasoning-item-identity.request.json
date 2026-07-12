@@ -1,0 +1,57 @@
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "think then answer"
+        }
+      ]
+    },
+    {
+      "type": "reasoning",
+      "id": "rs_standalone_legacy",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "I will answer carefully."
+        }
+      ],
+      "encrypted_content": "gAAAA_standalone_reason"
+    },
+    {
+      "type": "message",
+      "id": "msg_after_standalone_reason",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "done"
+        }
+      ]
+    },
+    {
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "no item id on this reasoning"
+        }
+      ],
+      "encrypted_content": "gAAAA_no_id_reason"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "also no message id"
+        }
+      ]
+    }
+  ]
+}

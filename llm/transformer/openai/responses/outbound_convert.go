@@ -191,6 +191,7 @@ func convertUserMessage(msg llm.Message) Item {
 	}
 
 	return Item{
+		ID:      msg.ID,
 		Type:    "message",
 		Role:    msg.Role,
 		Content: &Input{Items: contentItems},
@@ -208,12 +209,21 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 	// Handle reasoning content first.
 	// For Requests, reasoning is represented as an `input` item with type="reasoning".
 	// The Responses API uses the `summary` field to hold the reasoning summary text.
+	//
+	// Emit a reasoning item when:
+	// 1) ResponseReasoningItemID != nil — Responses-native origin (summary-only or with
+	//    encrypted content; empty id means omit id), or
+	// 2) encrypted content is present — legacy/common path that already used signature
+	//    as the gate.
+	// Do NOT emit solely because ReasoningContent is set: that would invent Responses
+	// reasoning items for Chat/Anthropic cross-protocol text.
 	var encryptedContent *string
 	if msg.ReasoningSignature != nil {
 		encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
 	}
 
-	if encryptedContent != nil {
+	emitResponsesReasoning := msg.ResponseReasoningItemID != nil || encryptedContent != nil
+	if emitResponsesReasoning {
 		summary := []ReasoningSummary{}
 		if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
 			summary = append(summary, ReasoningSummary{
@@ -222,7 +232,13 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 			})
 		}
 
+		reasoningItemID := ""
+		if msg.ResponseReasoningItemID != nil {
+			reasoningItemID = *msg.ResponseReasoningItemID
+		}
+		// Empty id omits via omitempty. Never fall back to Message.ID.
 		items = append(items, Item{
+			ID:               reasoningItemID,
 			Type:             "reasoning",
 			EncryptedContent: encryptedContent,
 			Summary:          summary,
@@ -233,6 +249,7 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 	for _, tc := range msg.ToolCalls {
 		if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
+				ID:        tc.ResponseItemID,
 				Type:      "custom_tool_call",
 				CallID:    tc.ResponseCustomToolCall.CallID,
 				Name:      tc.ResponseCustomToolCall.Name,
@@ -250,6 +267,9 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 				fcName, fcNamespace = resolveNamespaceFromMetadata(metadata, tc.Function.Name)
 			}
 			toolCallItems = append(toolCallItems, Item{
+				// ResponseItemID is the Responses item id; tc.ID is call_id only.
+				// Do not fall back to call_id when item id is absent.
+				ID:        tc.ResponseItemID,
 				Type:      "function_call",
 				CallID:    tc.ID,
 				Name:      fcName,
@@ -267,6 +287,7 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 		}
 
 		items = append(items, Item{
+			ID:      msg.ID,
 			Type:    "message",
 			Role:    msg.Role,
 			Status:  lo.ToPtr("completed"),
@@ -359,6 +380,7 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 	}
 
 	return Item{
+		ID:     msg.ID,
 		Type:   itemType,
 		CallID: lo.FromPtr(msg.ToolCallID),
 		Output: &output,

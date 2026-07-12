@@ -75,8 +75,34 @@ Responses `input` is not just Chat `messages` under another name. The canonical 
 | Message-like input | input text, input image, input file, role/status/type-bearing message objects. |
 | Assistant/model output replay | prior response output/message/function items can appear as input items. |
 | Function call/output | `function_call`, `function_call_output`; preserve `call_id`, `id`, `status`, `namespace` when present. |
+| Reasoning input item | `type=reasoning`; may carry `id`, `summary[]`, and/or `encrypted_content`. |
 | Tool Search items | `tool_search_call`, `tool_search_output`; preserve order and tool definitions. |
 | Tool outputs with multimodal content | function output can include text/image/file content, not only JSON string. |
+
+### 3.1 Request `input[]` item identity (same-protocol)
+
+Scope: **request** `input[]` only. Response `output[]` identity is out of scope here.
+
+| Identity | Owner | Rules |
+|---|---|---|
+| Message item `id` | `Message.ID` | Preserve non-empty source id; omit when source omitted. |
+| Tool item `id` | `ToolCall.ResponseItemID` (call/output item id) | Independent of `call_id` (`ToolCall.ID`). Never fall back between them. |
+| Reasoning item `id` | `Message.ResponseReasoningItemID` (`*string`) | Independent of following message/tool ids. |
+
+Reasoning item presence (`ResponseReasoningItemID`):
+
+| Carrier state | Meaning | Outbound |
+|---|---|---|
+| `nil` | not a Responses-native reasoning input item | do not invent `type=reasoning` from bare `ReasoningContent` |
+| non-nil, empty string | Responses reasoning origin, source omitted `id` | emit reasoning item, omit `id` |
+| non-nil, non-empty | Responses reasoning origin with source `id` | emit reasoning item with that `id` |
+
+Hard rules:
+
+- Do not synthesize `item_*` / Codex prefixes when source had no id.
+- Do not fall back reasoning id ↔ message id ↔ tool item id ↔ `call_id`.
+- Do not invent reasoning/tool item ids for cross-protocol content.
+- Multi-native-items merged into one canonical `Message` keep independent identities.
 
 Implementation rule: never flatten `input[]` into plain text before deciding whether the target protocol can carry each item.
 
@@ -115,9 +141,10 @@ Must preserve:
 
 - raw top-level fields not represented in `llm.Request`;
 - raw `input[]` typed items and order;
+- request `input[]` item identities for message / tool / reasoning items (presence-aware; no synthesis);
 - raw `tools[]`, `tool_choice`, and lazy-loading state;
 - `previous_response_id`, `conversation`, `include`, prompt cache fields;
-- reasoning and encrypted reasoning include state;
+- reasoning object and encrypted-reasoning include values only when client-supplied (no Codex default injection);
 - stream event types and item IDs/statuses.
 
 ### Responses → Chat

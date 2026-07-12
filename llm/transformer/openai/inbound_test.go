@@ -1319,6 +1319,74 @@ func TestInboundTransformer_TransformRequest_ReasoningObjectRoundTrip(t *testing
 	require.Equal(t, "detailed", *outReq.ReasoningSummary, "#4: reasoning.summary must survive round-trip")
 }
 
+// Forward-compat: unknown Chat reasoning_effort strings must survive same-protocol
+// chat → canonical → chat outbound without reject/downgrade/replace.
+func TestInboundTransformer_UnknownReasoningEffortFlatRoundTripChat(t *testing.T) {
+	const futureEffort = "future-effort"
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"` + futureEffort + `"}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	require.Equal(t, futureEffort, llmReq.ReasoningEffort, "unknown flat reasoning_effort must be captured verbatim")
+
+	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+	require.Equal(t, futureEffort, outReq.ReasoningEffort, "unknown effort must survive chat→canonical→chat convert")
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	require.Contains(t, outboundBody, "reasoning_effort")
+	var effort string
+	require.NoError(t, json.Unmarshal(outboundBody["reasoning_effort"], &effort))
+	require.Equal(t, futureEffort, effort, "unknown reasoning_effort must be re-emitted on Chat wire unchanged")
+}
+
+// Forward-compat: unknown Chat reasoning.effort object form must also preserve
+// the exact string via the canonical ReasoningEffort slot (outbound re-emits flat).
+func TestInboundTransformer_UnknownReasoningEffortObjectRoundTripChat(t *testing.T) {
+	const futureEffort = "future-effort"
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"o3","messages":[{"role":"user","content":"hi"}],"reasoning":{"effort":"` + futureEffort + `"}}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	require.Equal(t, futureEffort, llmReq.ReasoningEffort, "unknown reasoning.effort object must be captured verbatim")
+
+	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+	require.Equal(t, futureEffort, outReq.ReasoningEffort)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	require.Contains(t, outboundBody, "reasoning_effort")
+	var effort string
+	require.NoError(t, json.Unmarshal(outboundBody["reasoning_effort"], &effort))
+	require.Equal(t, futureEffort, effort, "unknown object effort must re-emit as flat reasoning_effort unchanged")
+}
+
 // CHAT.TOP.modalities: Chat same-protocol field-level round-trip.
 // Responses/Gemini modality tests are not sufficient evidence for this row.
 func TestInboundTransformer_TransformRequest_ModalitiesRoundTripChat(t *testing.T) {

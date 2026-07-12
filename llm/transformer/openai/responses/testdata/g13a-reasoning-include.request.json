@@ -1,0 +1,13 @@
+{
+  "model": "o3",
+  "input": "solve with encrypted reasoning",
+  "reasoning": {
+    "effort": "high",
+    "summary": "auto"
+  },
+  "include": [
+    "file_search_call.results",
+    "reasoning.encrypted_content",
+    "message.input_image.image_url"
+  ]
+}

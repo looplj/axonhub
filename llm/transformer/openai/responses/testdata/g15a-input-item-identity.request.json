@@ -1,0 +1,51 @@
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "type": "message",
+      "id": "legacy-id",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "what is the weather?"
+        }
+      ]
+    },
+    {
+      "type": "function_call",
+      "id": "fc_item_legacy",
+      "call_id": "call_weather_1",
+      "name": "get_weather",
+      "arguments": "{\"city\":\"sf\"}",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fc_out_legacy",
+      "call_id": "call_weather_1",
+      "output": "sunny"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "It is sunny in SF."
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "id": "any-string-not-codex-prefix",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "thanks"
+        }
+      ]
+    }
+  ]
+}

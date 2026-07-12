@@ -381,6 +381,23 @@ type Message struct {
 	// 3. OpenAI Responses encrypted content： https://platform.openai.com/docs/api-reference/responses/object#responses-object-output-reasoning-encrypted_content
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
 
+	// ResponseReasoningItemID marks an OpenAI Responses request input reasoning item
+	// (type=reasoning) for same-protocol identity round-trip only. Distinct from
+	// Message.ID, which belongs to a following message item when reasoning is merged
+	// with assistant content.
+	//
+	// Presence semantics:
+	//   - non-nil: message originated from a Responses type=reasoning input item.
+	//     The pointed string is the item.id; empty string means the source omitted id
+	//     (outbound must omit id, never synthesize).
+	//   - nil: not a Responses reasoning input item. Ordinary ReasoningContent from
+	//     Chat/Anthropic/etc. must not force a Responses reasoning item solely because
+	//     text is present.
+	//
+	// Scope: request input item identity. This field is not a claim that response
+	// output reasoning item id round-trip is complete.
+	ResponseReasoningItemID *string `json:"response_reasoning_item_id,omitempty"`
+
 	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
 	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 	// This field will be ignore when convert anthropic to other API format.

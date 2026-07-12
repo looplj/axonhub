@@ -1,0 +1,51 @@
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "type": "message",
+      "id": "msg_user_custom",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "apply the patch"
+        }
+      ]
+    },
+    {
+      "type": "custom_tool_call",
+      "id": "ctc_item_legacy",
+      "call_id": "call_patch_legacy",
+      "name": "apply_patch",
+      "input": "*** Begin Patch\n*** End Patch\n",
+      "status": "completed"
+    },
+    {
+      "type": "custom_tool_call_output",
+      "id": "ctc_out_legacy",
+      "call_id": "call_patch_legacy",
+      "output": "Patch applied."
+    },
+    {
+      "type": "custom_tool_call",
+      "call_id": "call_patch_no_item_id",
+      "name": "apply_patch",
+      "input": "*** Begin Patch\n*** End Patch\n"
+    },
+    {
+      "type": "custom_tool_call_output",
+      "call_id": "call_patch_no_item_id",
+      "output": "ok"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "done"
+        }
+      ]
+    }
+  ]
+}

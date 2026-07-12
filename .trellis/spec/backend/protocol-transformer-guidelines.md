@@ -36,6 +36,36 @@ Every new or repaired protocol field must have one primary owner before code is 
 
 
 
+## Responses Request Input Item Identity
+
+Scope: OpenAI Responses **request** `input[]` same-protocol round-trip only. Do not treat these rules as response `output[]` coverage or as a cross-protocol bridge.
+
+Executable rules:
+
+1. **Structured item conversion still owns `item.id`.** Even when a structured input item also has a raw sidecar path, typed convert must preserve or omit `item.id` correctly. Raw sidecar is not a license to drop identity.
+2. **Identities are independent under multi-item merge.** When multiple native input items are folded into one canonical `Message` (e.g. reasoning + function/custom tool + assistant message), keep:
+   - reasoning item id on `Message.ResponseReasoningItemID`
+   - following message item id on `Message.ID`
+   - tool item id on `ToolCall.ResponseItemID`
+   - tool `call_id` on `ToolCall.ID` / custom-tool call id fields
+3. **Reasoning uses a three-state presence carrier.** `Message.ResponseReasoningItemID` is `*string`:
+   - `nil` → not a Responses-native reasoning input item
+   - non-nil empty → Responses reasoning origin, source omitted id
+   - non-nil non-empty → Responses reasoning origin with that id
+4. **No fallback / synthesis / cross-protocol invention.**
+   - no `item_*` / Codex-prefix synthesis for request input
+   - no fallback among reasoning id, message id, tool item id, and `call_id`
+   - no inventing Responses reasoning/tool item ids from Chat/Anthropic content
+5. **Absence is a first-class result.** If the source omitted id, outbound must omit id.
+
+Required regressions for this area (public seam):
+
+- message / function / function_output identity + omission
+- custom_tool_call(_output) identity + omission
+- standalone / pure standalone / summary-only reasoning identity
+- reasoning→tool merge with independent ids
+- bare `ReasoningContent` must not invent `type=reasoning`
+
 ## Responses Body Field Storage
 
 OpenAI Responses-native request and response body fields must not be stored in `TransformerMetadata`.
@@ -268,9 +298,9 @@ Required tests for this area:
 - outbound HTTP/request transformer tests must assert the serialized request body, not only helper structs.
 
 
-## Field Evidence Index (2026-07-12)
+## Field Evidence Index (2026-07-12/13)
 
-Implementation modules G1–G7 closed the following high-priority seams with targeted tests. Full matrix status language is in `docs/specs/protocols/protocol-conversion-strict-verification-matrix.md` §9.
+Implementation modules G1–G7 and Codex-delta G13–G15 closed the following high-priority seams with targeted tests. Full matrix status language is in `docs/specs/protocols/protocol-conversion-strict-verification-matrix.md` §9–§10.
 
 | Seam | Owner package | Primary tests |
 |---|---|---|
@@ -279,6 +309,9 @@ Implementation modules G1–G7 closed the following high-priority seams with tar
 | Anthropic `container` / `inference_geo` | `llm/transformer/anthropic` | `container_inference_geo_test.go` |
 | Anthropic MCP connector | `llm/transformer/anthropic` | `mcp_connector_test.go` |
 | Responses reasoning object/stream | `llm/transformer/openai/responses` | `reasoning_context_test.go`, `reasoning_g7_test.go` |
+| Responses request reasoning/`include` (G13) | `llm/transformer/openai/responses` | `g13a_reasoning_include_test.go`, `reasoning_effort_forward_compat_test.go` |
+| Responses request summary/`stream_options` (G14) | `llm/transformer/openai/responses` | `g14a_summary_stream_options_test.go`, `g14b_stream_options_sidecar_test.go` |
+| Responses request input item identity (G15) | `llm/transformer/openai/responses` | `g15a_input_item_identity_test.go`, `g15b_input_item_identity_test.go`, `g15c_reasoning_item_identity_test.go` |
 
-Rules unchanged: same-protocol first; no fake MCP bridges; LossyDowngrade for documented cross-protocol loss; stream fidelity stays in stream code.
+Rules unchanged: same-protocol first; no fake MCP bridges; LossyDowngrade for documented cross-protocol loss; stream fidelity stays in stream code; request input item identity is presence-aware and non-synthesizing.
 

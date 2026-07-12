@@ -1,0 +1,26 @@
+{
+  "model": "gpt-4o",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "hello without ids"
+        }
+      ]
+    },
+    {
+      "type": "function_call",
+      "call_id": "call_no_item_id",
+      "name": "lookup",
+      "arguments": "{}"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_no_item_id",
+      "output": "ok"
+    }
+  ]
+}

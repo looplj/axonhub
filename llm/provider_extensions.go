@@ -25,9 +25,14 @@ type OpenAIResponsesProviderExtensions struct {
 }
 
 type OpenAIResponsesRequestExtensions struct {
-	ClientMetadata    map[string]string           `json:"-"`
-	RawTopLevelFields map[string]json.RawMessage  `json:"-"`
-	NativeTools       *OpenAIResponsesNativeTools `json:"-"`
+	ClientMetadata    map[string]string          `json:"-"`
+	RawTopLevelFields map[string]json.RawMessage `json:"-"`
+	// RawStreamOptions preserves Responses-native stream_options exactly,
+	// including nested extension fields. It is intentionally separate from
+	// RawTopLevelFields so known stream_options never inflate
+	// UnknownTopLevelFieldCount / false LossyDowngrade diagnostics.
+	RawStreamOptions json.RawMessage             `json:"-"`
+	NativeTools      *OpenAIResponsesNativeTools `json:"-"`
 
 	// AdditionalTools carries raw input items with type="additional_tools".
 	// They are replayed from this field, not RawInputItems, so diagnostics can
@@ -104,6 +109,7 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 			cloned.OpenAIResponses.Request = &OpenAIResponsesRequestExtensions{
 				ClientMetadata:    cloneStringMap(src.OpenAIResponses.Request.ClientMetadata),
 				RawTopLevelFields: cloneRawMessageMap(src.OpenAIResponses.Request.RawTopLevelFields),
+				RawStreamOptions:  cloneRawMessage(src.OpenAIResponses.Request.RawStreamOptions),
 				NativeTools:       cloneOpenAIResponsesNativeTools(src.OpenAIResponses.Request.NativeTools),
 				AdditionalTools:   cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.AdditionalTools),
 				RawTools:          cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
