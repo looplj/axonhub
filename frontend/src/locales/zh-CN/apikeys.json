@@ -35,6 +35,8 @@
   "apikeys.tokenUsageChart.overallUsage": "总体使用情况",
   "apikeys.tokenUsageChart.topModels": "Top 3 模型使用情况",
   "apikeys.tokenUsageChart.totalTokens": "总 Token 数",
+  "apikeys.tokenUsageChart.cacheHitRate": "缓存命中率",
+  "apikeys.tokenUsageChart.reasoningRatio": "推理占比",
   "apikeys.dialogs.create.title": "创建 API Key",
   "apikeys.dialogs.create.description": "创建一个新的 API Key 用于访问系统。",
   "apikeys.dialogs.edit.title": "编辑 API Key",
