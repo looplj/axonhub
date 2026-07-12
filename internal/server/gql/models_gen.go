@@ -58,6 +58,66 @@ type AddUserToProjectInput struct {
 	RoleIDs   []*objects.GUID `json:"roleIDs,omitempty"`
 }
 
+// Daily aggregated statistics for the combined trend chart
+type AnalyticsDailyStat struct {
+	Date                string  `json:"date"`
+	InputTokens         int     `json:"inputTokens"`
+	CachedInputTokens   int     `json:"cachedInputTokens"`
+	UncachedInputTokens int     `json:"uncachedInputTokens"`
+	OutputTokens        int     `json:"outputTokens"`
+	TotalTokens         int     `json:"totalTokens"`
+	RequestCount        int     `json:"requestCount"`
+	Cost                float64 `json:"cost"`
+}
+
+// Statistics for a single item in a dimension breakdown (channel/model/apiKey/user)
+type AnalyticsDimensionStat struct {
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	RequestCount      int     `json:"requestCount"`
+	InputTokens       int     `json:"inputTokens"`
+	CachedInputTokens int     `json:"cachedInputTokens"`
+	OutputTokens      int     `json:"outputTokens"`
+	TotalTokens       int     `json:"totalTokens"`
+	Cost              float64 `json:"cost"`
+}
+
+// Filter input for analytics queries. All fields are optional and support multi-select.
+// When multiple dimensions are specified, they are combined with AND logic.
+type AnalyticsFilter struct {
+	// Start date (inclusive, YYYY-MM-DD, parsed in system timezone)
+	StartTime *string `json:"startTime,omitempty"`
+	// End date (inclusive, YYYY-MM-DD, parsed in system timezone)
+	EndTime *string `json:"endTime,omitempty"`
+	// Filter by project IDs
+	ProjectIDs []*objects.GUID `json:"projectIDs,omitempty"`
+	// Filter by channel IDs
+	ChannelIDs []*objects.GUID `json:"channelIDs,omitempty"`
+	// Filter by model IDs (model identifier strings)
+	ModelIDs []string `json:"modelIDs,omitempty"`
+	// Filter by API key IDs
+	APIKeyIDs []*objects.GUID `json:"apiKeyIDs,omitempty"`
+	// Filter by user IDs (will match through api_keys.user_id)
+	UserIDs []*objects.GUID `json:"userIDs,omitempty"`
+}
+
+// Metadata for the analytics page (independent of filters)
+type AnalyticsMetadata struct {
+	// Earliest usage log date (YYYY-MM-DD), null if no data
+	EarliestDate *string `json:"earliestDate,omitempty"`
+}
+
+// Overview statistics for the analytics page
+type AnalyticsOverview struct {
+	TotalTokens              int     `json:"totalTokens"`
+	TotalInputTokens         int     `json:"totalInputTokens"`
+	TotalCachedInputTokens   int     `json:"totalCachedInputTokens"`
+	TotalUncachedInputTokens int     `json:"totalUncachedInputTokens"`
+	TotalOutputTokens        int     `json:"totalOutputTokens"`
+	TotalRequests            int     `json:"totalRequests"`
+	TotalCost                float64 `json:"totalCost"`
+}
+
 type ApplyChannelOverrideTemplateInput struct {
 	TemplateID objects.GUID       `json:"templateID"`
 	ChannelIDs []*objects.GUID    `json:"channelIDs"`

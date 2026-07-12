@@ -5,6 +5,8 @@
   "dashboard.sections.models": "模型分析",
   "dashboard.sections.performance": "性能分析",
   "dashboard.sections.users": "用户分析",
+  "dashboard.sections.analytics": "数据详情分析",
+  "dashboard.sections.analyticsDescription": "多维度数据分析，支持自定义筛选",
   "dashboard.cards.requestsByTime": "请求数统计",
   "dashboard.cards.successRate": "成功率",
   "dashboard.cards.tokenStats": "词元统计",

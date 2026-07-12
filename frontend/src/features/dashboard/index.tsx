@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
-import { BarChart3, Brain, Key, Users, Zap, ChevronDown } from 'lucide-react';
+import { BarChart3, Brain, Key, Users, Zap, ChevronDown, ChevronRight, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -183,6 +183,23 @@ export default function DashboardPage() {
           </Card>
         </div>
       </section>
+
+      {/* 使用详情分析 - 导航卡片 */}
+      <Link
+        to='/analytics'
+        className='flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/50'
+      >
+        <div className='flex items-center gap-3'>
+          <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10'>
+            <TrendingUp className='h-4 w-4 text-primary' />
+          </div>
+          <div>
+            <span className='text-lg font-semibold'>{t('dashboard.sections.analytics')}</span>
+            <p className='text-sm text-muted-foreground'>{t('dashboard.sections.analyticsDescription')}</p>
+          </div>
+        </div>
+        <ChevronRight className='h-5 w-5 text-muted-foreground' />
+      </Link>
 
       {/* 渠道分析 - 可折叠 */}
       <CollapsibleSection

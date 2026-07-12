@@ -35,6 +35,7 @@ import { Route as AuthenticatedDataStoragesIndexRouteImport } from './routes/_au
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedApiKeysIndexRouteImport } from './routes/_authenticated/api-keys/index'
+import { Route as AuthenticatedAnalyticsIndexRouteImport } from './routes/_authenticated/analytics/index'
 import { Route as OauthOidcIdpCallbackRouteImport } from './routes/oauth/oidc/idp-callback'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings/profile'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
@@ -195,6 +196,12 @@ const AuthenticatedApiKeysIndexRoute =
     path: '/api-keys/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAnalyticsIndexRoute =
+  AuthenticatedAnalyticsIndexRouteImport.update({
+    id: '/analytics/',
+    path: '/analytics/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const OauthOidcIdpCallbackRoute = OauthOidcIdpCallbackRouteImport.update({
   id: '/oauth/oidc/idp-callback',
   path: '/oauth/oidc/idp-callback',
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/oauth/oidc/idp-callback': typeof OauthOidcIdpCallbackRoute
+  '/analytics/': typeof AuthenticatedAnalyticsIndexRoute
   '/api-keys/': typeof AuthenticatedApiKeysIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
@@ -374,6 +382,7 @@ export interface FileRoutesByTo {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/oauth/oidc/idp-callback': typeof OauthOidcIdpCallbackRoute
+  '/analytics': typeof AuthenticatedAnalyticsIndexRoute
   '/api-keys': typeof AuthenticatedApiKeysIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
@@ -422,6 +431,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/oauth/oidc/idp-callback': typeof OauthOidcIdpCallbackRoute
+  '/_authenticated/analytics/': typeof AuthenticatedAnalyticsIndexRoute
   '/_authenticated/api-keys/': typeof AuthenticatedApiKeysIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/profile'
     | '/oauth/oidc/idp-callback'
+    | '/analytics/'
     | '/api-keys/'
     | '/channels/'
     | '/chats/'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/profile'
     | '/oauth/oidc/idp-callback'
+    | '/analytics'
     | '/api-keys'
     | '/channels'
     | '/chats'
@@ -562,6 +574,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/profile'
     | '/oauth/oidc/idp-callback'
+    | '/_authenticated/analytics/'
     | '/_authenticated/api-keys/'
     | '/_authenticated/channels/'
     | '/_authenticated/chats/'
@@ -787,6 +800,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedApiKeysIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/analytics/': {
+      id: '/_authenticated/analytics/'
+      path: '/analytics'
+      fullPath: '/analytics/'
+      preLoaderRoute: typeof AuthenticatedAnalyticsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/oauth/oidc/idp-callback': {
       id: '/oauth/oidc/idp-callback'
       path: '/oauth/oidc/idp-callback'
@@ -952,6 +972,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedDashboardChannelSuccessRatesRoute: typeof AuthenticatedDashboardChannelSuccessRatesRoute
   AuthenticatedRequestsRequestIdRoute: typeof AuthenticatedRequestsRequestIdRoute
+  AuthenticatedAnalyticsIndexRoute: typeof AuthenticatedAnalyticsIndexRoute
   AuthenticatedApiKeysIndexRoute: typeof AuthenticatedApiKeysIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
@@ -985,6 +1006,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardChannelSuccessRatesRoute:
     AuthenticatedDashboardChannelSuccessRatesRoute,
   AuthenticatedRequestsRequestIdRoute: AuthenticatedRequestsRequestIdRoute,
+  AuthenticatedAnalyticsIndexRoute: AuthenticatedAnalyticsIndexRoute,
   AuthenticatedApiKeysIndexRoute: AuthenticatedApiKeysIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
