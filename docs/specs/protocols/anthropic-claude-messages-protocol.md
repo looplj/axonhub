@@ -43,7 +43,8 @@ The canonical raw Messages API source exposes these request-body fields:
 | `container` | Container/context feature for supported workflows. Preserve if present. |
 | `inference_geo` | Inference geography selection/observation field. |
 | `metadata` | Metadata object, including user-identification related fields where supported. |
-| `output_config` | Output configuration object. |
+| `cache_control` | Top-level optional `CacheControlEphemeral` for request-level prompt caching. This is distinct from `content[].cache_control` breakpoints. |
+| `output_config` | Output configuration object. The local official raw exposes `effort` values `low`, `medium`, `high`, `xhigh`, `max`, and a `format` JSON-output configuration. |
 | `service_tier` | Standard/priority/batch tier selection. |
 | `stop_sequences` | Custom stop sequences. |
 | `stream` | Whether to stream SSE events. |
@@ -55,9 +56,13 @@ The canonical raw Messages API source exposes these request-body fields:
 | `top_k` | Top-k sampling. |
 | `top_p` | Nucleus sampling. |
 
-Content-block-level fields such as `cache_control`, citations, document/image/file source fields, and tool-result fields appear inside nested content/tool schemas; do not treat them as plain top-level request parameters unless source schema says so.
+Nested content blocks also have their own `content[].cache_control` breakpoint field. Do not conflate that nested field with the top-level request `cache_control`; citations, document/image/file source fields, and tool-result fields remain nested content/tool schema members.
 
 `mcp_servers` is not in the base Messages raw API field list extracted from `messages-api.official-raw.md`; it is confirmed by the official MCP connector companion doc. Treat it as a protocol extension/companion parameter that must be preserved when present.
+
+`context_management` was not found in the local base Messages official raw snapshot, so this baseline does not classify it as a P0 request field. Hub may preserve it as an adapter/companion extension, but that implementation fact is not protocol-source proof.
+
+Hub currently models and round-trips `output_config.task_budget` inside the full Anthropic `OutputConfig` metadata sidecar (`TestOutputConfig_FormatTaskBudgetRoundTrip`). Treat `task_budget` here as a Hub extension/preservation fact only; the local official raw evidence cited above establishes `effort` and `format`, not `task_budget`.
 
 ## 3. Message and content block protocol
 

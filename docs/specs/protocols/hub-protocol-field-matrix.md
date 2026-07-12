@@ -27,8 +27,8 @@
 |---|---|---|
 | `llm.Request` | `llm/model.go` | Cross-protocol common fields: messages, model, sampling, tool basics, stream flags, response format, reasoning shorthands, metadata, provider extensions. |
 | `OpenAI Responses native request struct` | `llm/transformer/openai/responses/model.go` | Many Responses request fields: input, tools, tool_choice, include, previous_response_id, prompt cache, reasoning, etc. |
-| `OpenAI Chat request struct` | `llm/transformer/openai/model.go` | Chat request fields: messages, tools, tool_choice, response_format, web-ish/sampling/reasoning fields except some current canonical fields are missing or external. |
-| `Anthropic MessageRequest` | `llm/transformer/anthropic/model.go` | Claude Messages request fields: max_tokens, messages, system, thinking, output_config, tools, tool_choice, cache_control, context_management, etc. |
+| `OpenAI Chat request + raw replay` | `llm/transformer/openai/model.go`, `llm/transformer/openai/chat_n.go` | Typed Chat fields plus same-protocol raw replay for `n`, `prompt_cache_retention`, `audio`, `prediction`, `moderation`, `web_search_options`, deprecated `functions`, and deprecated request `function_call`. |
+| `Anthropic MessageRequest + metadata/raw fragments` | `llm/transformer/anthropic/model.go`, `inbound_convert.go`, `outbound_convert.go` | Native Claude fields plus opaque metadata roundtrip for `container`, `inference_geo`, `mcp_servers`; adapter-only `mcp_toolset` entries are captured from `anthropic.Tool.Raw` as indexed raw fragments and merged back in order. |
 | `ProviderExtensions.OpenAIResponses.Request` | `llm/provider_extensions.go` | Responses private sidecar: client_metadata, raw top-level fields, native tools, additional_tools, raw tools, raw tool_choice, raw input items, prepend count. |
 
 ---
@@ -68,8 +68,8 @@ Canonical source files:
 | `client_metadata` | Codex/client metadata, not public canonical baseline here. | Responses native `ClientMetadata`; `ProviderExtensions.ClientMetadata`. | Preserved if sidecar present. | No Chat equivalent. | No Claude equivalent. | Keep as compatibility field, not public Responses baseline. |
 | `prompt` | Prompt template/reference. | Responses native `Prompt`; metadata key used outbound. | Preserved. | No direct Chat equivalent. | No direct Claude equivalent. | Diagnostics on downgrade. |
 | `prompt_cache_key` | Prompt cache key. | `llm.Request.PromptCacheKey`; protocol structs. | Preserved. | Preserved in Chat. | No direct Claude top-level equivalent; Claude uses cache_control. | Cross-protocol requires policy. |
-| `prompt_cache_retention` | Prompt cache retention. | Responses native `PromptCacheRetention`; metadata key. | Preserved. | Chat also has canonical field; Hub Chat struct lacks direct field currently. | No direct Claude equivalent. | Chat gap. |
-| `reasoning` | Responses reasoning config/state. | Responses native `Reasoning`; `llm` has reasoning shorthands. | Preserved as Responses object where set. | Chat has `reasoning_effort`/other reasoning forms, not same object. | Claude `thinking` differs. | Bridge required. |
+| `prompt_cache_retention` | Prompt cache retention. | Responses native `PromptCacheRetention`; metadata key. | Preserved in Responses. | Chat has a separate same-protocol `RawRequest` replay seam; no cross-protocol synthesis from Responses metadata. | No direct Claude equivalent. | Responses and Chat each preserve their native wire field, without claiming semantic bridgeability. |
+| `reasoning` | Responses reasoning config/state and reasoning output/stream fidelity. | Native `Reasoning` plus metadata/raw object sidecars; item/stream/aggregator support for reasoning text. | G7 preserves `context`, keeps deprecated `generate_summary` identity distinct, restores unknown nested keys, and handles reasoning `content[]`/`reasoning_text` plus `.delta`/`.done`. | Chat has `reasoning_effort`/other reasoning forms, not the same object. | Claude `thinking` differs. | Same-protocol support does not establish cross-protocol equivalence. |
 | `safety_identifier` | Stable safety/user id. | `llm.Request.SafetyIdentifier`; protocol structs. | Preserved. | Preserved. | No exact Claude field; may map to metadata/user_id if policy says. | Needs policy. |
 | `service_tier` | Service tier. | `llm.Request.ServiceTier`; protocol structs. | Preserved. | Preserved. | Claude has service_tier but enum differs. | Validate per target. |
 | `store` | Store output. | `llm.Request.Store`; protocol structs. | Preserved. | Preserved. | No direct Claude equivalent. | Diagnostics on downgrade. |
@@ -84,7 +84,7 @@ Canonical source files:
 
 ---
 
-# 2. OpenAI Chat Completions request fields
+# 2. OpenAI Chat Completions request and deprecated compatibility fields
 
 Canonical source files:
 
@@ -95,7 +95,7 @@ Canonical source files:
 |---|---|---|---|---|---|---|
 | `messages` | Ordered role messages. | `llm.Request.Messages`; Chat native `Request.Messages`. | Preserved. | Converts to Responses `input`/`instructions`. | Converts to Claude `messages` + top-level `system`. | Role semantics differ. |
 | `model` | Model id. | Common/protocol structs. | Preserved. | Preserved. | Preserved. | Common. |
-| `audio` | Audio output params. | Chat native `Request` has no direct `Audio` field in inspected struct; `llm` may carry modalities only. | Likely not fully modeled. | No direct Responses unless modalities/audio bridge. | No direct Claude equivalent. | Gap. |
+| `audio` | Audio output params. | Chat-native raw replay in `chat_n.go`; no public common typed carrier. | Preserved byte-for-byte for Chat→Chat from original `RawRequest`. | No direct Responses synthesis. | No direct Claude equivalent. | Same-protocol raw support; cross-protocol lossy/unsupported. |
 | `frequency_penalty` | Sampling penalty. | Common/protocol structs. | Preserved. | Responses native has field though not in canonical public list used here; current code emits it. | No Claude equivalent. | Potential provider extension / downgrade. |
 | `logit_bias` | Token bias map. | `llm.Request.LogitBias`; Chat native. | Preserved. | No direct Responses field confirmed in regenerated baseline. | No Claude equivalent. | Diagnostics on downgrade. |
 | `logprobs` | Return logprobs. | `llm.Request.Logprobs`; Chat native. | Preserved. | Responses uses `top_logprobs`/include logprobs. | No Claude equivalent. | Needs policy. |
@@ -103,13 +103,13 @@ Canonical source files:
 | `max_tokens` deprecated | Deprecated Chat output cap. | `llm.Request.MaxTokens`; Chat native. | Preserved. | Used as fallback for Responses `max_output_tokens`. | Used by Claude max token resolver. | Compatibility field. |
 | `metadata` | Metadata map. | Common/protocol structs. | Preserved. | Preserved. | Converted to Claude metadata where supported. | Mostly common. |
 | `modalities` | Output modalities. | `llm.Request.Modalities`; Chat native; Responses native. | Preserved. | Preserved to Responses native field. | No direct Claude equivalent. | Diagnostics on downgrade. |
-| `moderation` | Moderation config. | Not seen in Chat native `Request` / `llm.Request`. | Dropped / not modeled. | Dropped / not modeled. | Dropped / not modeled. | Gap against canonical Chat. |
-| `n` | Number of choices. | Not supported in `llm.Request` comment says always 1. | Not modeled. | Not modeled. | Not modeled. | Intentional unsupported. |
+| `moderation` | Moderation config. | Chat-native raw replay in `chat_n.go`; no public common typed carrier. | Preserved for Chat→Chat from original `RawRequest`. | Not synthesized to Responses. | Not synthesized to Claude. | Same-protocol raw support only. |
+| `n` | Number of choices. | Chat-native raw replay in `chat_n.go`; the commented common `llm.Request.N` remains unused. | Preserved for Chat→Chat from original `RawRequest`. | Not synthesized to Responses. | Not synthesized to Claude. | Same-protocol wire preservation, not common multi-choice semantics. |
 | `parallel_tool_calls` | Parallel tools. | Common/protocol structs. | Preserved. | Preserved. | Inverted into Claude `disable_parallel_tool_use` if tools exist. | Target shape differs. |
-| `prediction` | Predicted output. | TODO in `llm.Request`; not modeled. | Dropped / not modeled. | No direct equivalent. | No direct equivalent. | Gap. |
+| `prediction` | Predicted output. | Chat-native raw replay in `chat_n.go`; no public common typed carrier. | Preserved for Chat→Chat from original `RawRequest`. | No direct Responses synthesis. | No direct Claude equivalent. | Same-protocol raw support only. |
 | `presence_penalty` | Sampling penalty. | Common/protocol structs. | Preserved. | Current Responses emits it although regenerated baseline did not list it. | No Claude equivalent. | Needs policy. |
 | `prompt_cache_key` | Prompt cache key. | `llm.Request.PromptCacheKey`; Chat native. | Preserved. | Preserved. | No direct Claude equivalent. | Claude uses cache_control. |
-| `prompt_cache_retention` | Prompt cache retention. | `llm.Request` lacks direct field; Responses metadata path exists; Chat native struct lacks direct field. | Likely dropped in Chat path. | Responses can preserve via metadata if inbound captured. | No direct Claude equivalent. | Gap against canonical Chat. |
+| `prompt_cache_retention` | Prompt cache retention. | Responses has native/metadata support; Chat uses raw replay in `chat_n.go`. | Preserved for Chat→Chat from original `RawRequest`. | Responses retains its own native field, but Chat raw state is not synthesized cross-protocol. | No direct Claude equivalent. | Protocol-native preservation paths remain distinct. |
 | `reasoning_effort` | Reasoning effort. | `llm.Request.ReasoningEffort`; Chat native. | Preserved. | Converts to Responses reasoning-ish only where implemented. | Converts to Claude thinking via thinking helpers. | Semantics differ. |
 | `response_format` | Text/JSON schema/object. | `llm.Request.ResponseFormat`; Chat native. | Preserved. | Responses `text` config may represent some forms. | Claude JSON/output config differs. | Bridge required. |
 | `safety_identifier` | Safety/user id. | Common/protocol structs. | Preserved. | Preserved. | No direct Claude field except metadata policy. | Needs policy. |
@@ -123,13 +123,14 @@ Canonical source files:
 | `tool_choice` | Tool selection. | `llm.Request.ToolChoice`; Chat native. | Preserved for supported forms. | Converts to Responses tool_choice. | Converts to Claude tool_choice. | Object forms differ. |
 | `tools` function | Function tools. | `llm.Tools`; Chat native `Tools`. | Preserved. | Converts to Responses function tool. | Converts to Claude client tool. | Common-ish. |
 | `tools` custom | Custom tool forms. | Canonical Chat supports it; current Chat outbound filters `llm.Tools` to function only. | Currently at risk / not fully supported. | Responses has custom tools. | Claude custom client tools differ. | Clear gap. |
-| deprecated `function_call` | Old tool choice. | Chat native has field in canonical; current struct not seen with direct field; conversion focuses `ToolChoice`. | Likely normalized/dropped unless inbound handles elsewhere. | Should map to tool_choice/function. | Should map to Claude tool_choice. | Need audit. |
-| deprecated `functions` | Old tool list. | Current `llm.Request` uses `Tools`; direct deprecated field not in inspected common struct. | Likely normalized on inbound if implemented; not direct. | Should map to tools. | Should map to tools. | Need audit. |
+| deprecated `function_call` | Old request tool choice. | Chat-native raw replay in `chat_n.go`. | Original deprecated wire field is restored for Chat→Chat. | Not automatically rewritten as Responses tool choice. | Not automatically rewritten as Claude tool choice. | Deprecated identity is preserved without claiming a semantic bridge. |
+| deprecated `functions` | Old tool list. | Chat-native raw replay in `chat_n.go`. | Original deprecated wire field is restored for Chat→Chat. | Not automatically rewritten as Responses tools. | Not automatically rewritten as Claude tools. | Kept separate from modern `tools`. |
+| deprecated response `message.function_call` | Old assistant function-call response/history/stream shape. | Parsed into the modern common tool-call lifecycle with origin metadata in the OpenAI adapter. | Re-emitted as deprecated `message.function_call`; targeted response, request-history, and stream tests cover it. | No claim of Responses wire-shape equivalence. | No claim of Claude wire-shape equivalence. | Modern `tool_calls` remain intact when deprecated origin metadata is absent. |
 | `top_logprobs` | Logprob count. | Common/protocol structs. | Preserved. | Responses has top_logprobs. | No Claude equivalent. | Diagnostics on Claude downgrade. |
 | `top_p` | Nucleus sampling. | Common/protocol structs. | Preserved. | Preserved. | Preserved. | Common. |
 | `user` deprecated | User id. | Common/protocol structs. | Preserved. | Preserved as Responses deprecated field. | No direct Claude equivalent. | Prefer safety/metadata. |
 | `verbosity` | Verbosity setting. | `llm.Request.Verbosity`; Chat native. | Preserved. | No direct Responses equivalent confirmed. | No direct Claude equivalent. | Diagnostics on downgrade. |
-| `web_search_options` | Chat web search options object. | Canonical Chat supports it; inspected Chat native `Request` lacks direct field. | Likely not modeled in current Chat path. | Not same as Responses web_search tool. | Not same as Claude web search tool. | Gap and bridge required. |
+| `web_search_options` | Chat web search options object. | Chat-native raw replay in `chat_n.go`; no public common typed carrier. | Preserved for Chat→Chat from original `RawRequest`. | Not the Responses web-search tool and not synthesized. | Not the Claude web-search tool and not synthesized. | Same-protocol raw support; cross-protocol bridge remains unsupported. |
 
 ---
 
@@ -163,11 +164,11 @@ Canonical source files:
 | `tool_result` content block | User tool result. | Claude content block model/tests. | Preserved. | Converts to Responses function_call_output only with bridge. | Converts to Chat `tool` role message only with bridge. | Not same structure. |
 | `server_tool_use` / server tool results | Claude server-side tool blocks/results. | Some content block support visible in tests/model. | Preserve if modeled/raw. | OpenAI tools differ. | Chat tools differ. | Needs native coverage audit. |
 | `cache_control` | Prompt caching at block/top-level. | `MessageRequest.CacheControl`; content block cache_control. | Preserved. | OpenAI prompt_cache_key/retention differ. | OpenAI prompt_cache_key/retention differ. | Bridge policy required. |
-| `container` | Container/context field. | Canonical field; not seen in `MessageRequest` inspected struct. | Likely dropped / not modeled. | No direct equivalent. | No direct equivalent. | Gap. |
-| `inference_geo` | Inference geography. | Canonical field; not seen in `MessageRequest` inspected struct. | Likely dropped / not modeled. | No direct equivalent. | No direct equivalent. | Gap. |
+| `container` | Container/context field. | `MessageRequest.Container` opaque JSON -> `TransformerMetadata[anthropic_container]` -> Anthropic outbound restore. | Preserved for Claude→Claude, including unknown nested keys. | No direct equivalent; not synthesized. | No direct equivalent; not synthesized. | Same-protocol opaque preservation only. |
+| `inference_geo` | Inference geography. | `MessageRequest.InferenceGeo` opaque JSON -> `TransformerMetadata[anthropic_inference_geo]` -> Anthropic outbound restore. | Preserved for Claude→Claude. | No direct equivalent; not synthesized. | No direct equivalent; not synthesized. | Allowed-value/source audit remains separate from wire preservation. |
 | `context_management` | Claude context edits/management. | `MessageRequest.ContextManagement`; carried via metadata comment. | Preserved. | Responses has different `context_management`. | No direct Chat equivalent. | Same name does not mean same shape. |
-| `mcp_servers` | Remote MCP server definitions. | Canonical MCP connector field; not seen in `MessageRequest` inspected struct. | Likely dropped / not modeled unless raw path elsewhere. | Not same as OpenAI Responses `mcp`. | No Chat equivalent. | Major gap. |
-| `mcp_toolset` tool | Enables tools from MCP server. | Could be represented as `Tool` if model supports type; current conversion needs audit. | Not confirmed full support. | Bridge to OpenAI `mcp` required. | No direct Chat equivalent. | Major gap. |
+| `mcp_servers` | Remote MCP server definitions. | `MessageRequest.MCPServers` opaque JSON -> `TransformerMetadata[anthropic_mcp_servers]` -> Anthropic outbound restore. | Preserved for Claude→Claude, including auth/config and unknown nested keys. | Not equivalent to OpenAI Responses `mcp`; no automatic bridge. | No Chat equivalent. | Same-protocol opaque preservation only. |
+| `mcp_toolset` tool | Enables tools from MCP server. | `anthropic.Tool.Raw -> TransformerMetadata[anthropic_raw_tools] []anthropicRawToolFragment{OriginalIndex,Raw} -> appendAnthropicRawTools` ordered merge. It is not stored in public `llm.Tool.Raw`. | Preserved for Claude→Claude at the original `tools[]` index. | Not equivalent to OpenAI Responses `mcp`; no automatic bridge. | No direct Chat equivalent. | Adapter-native ordered raw preservation only. |
 | `anthropic_version` | Anthropic version header/field for platforms. | `MessageRequest.AnthropicVersion`. | Preserved where needed. | No OpenAI equivalent. | No OpenAI equivalent. | Provider-specific. |
 | `anthropic_beta` | Anthropic beta flags. | `MessageRequest.AnthropicBeta`. | Preserved where needed. | No OpenAI equivalent. | No OpenAI equivalent. | Provider-specific. |
 
@@ -180,10 +181,10 @@ Canonical source files:
 | Responses → Responses | Uses `llm.Request` plus `ProviderExtensions.OpenAIResponses.Request` and raw merge to preserve some native fields. | Native protocol is split across common fields, metadata, provider extensions, raw fragments; `context_management`/`conversation` need first-class audit. |
 | Responses → Chat | Converts through common messages/tools; lossy diagnostics exist for some Responses-native fields. | `tool_search`, `additional_tools`, `namespace`, `mcp`, Responses typed items cannot be represented natively in Chat. |
 | Responses → Claude | Converts through common messages/tools. | OpenAI Responses `mcp`/tool_search/items/reasoning differ from Claude content blocks/MCP connector/thinking. |
-| Chat → Chat | Uses Chat native `RequestFromLLM`; preserves many fields. | Current tool conversion is function-only; `custom tools`, `web_search_options`, `prompt_cache_retention`, `moderation`, `prediction`, `audio` need audit. |
+| Chat → Chat | Uses typed Chat conversion plus original `RawRequest` replay for the eight G1/G2/G4/G5 fields. Deprecated response `message.function_call` also uses bridge+origin metadata across response/history/stream. | Real residuals include Chat `custom` tool handling and typed/common semantics for raw-only fields; raw replay does not create cross-protocol support. |
 | Chat → Responses | Converts messages/tools into Responses request. | Chat `web_search_options` is not Responses web_search tool; custom tools need explicit support. |
 | Chat → Claude | Converts messages/tools into Claude request. | Chat custom tools / web_search_options / response_format semantics may be dropped or approximated. |
-| Claude → Claude | Uses Claude native `MessageRequest` for many fields. | `mcp_servers`, `container`, `inference_geo` not seen in current struct; stream aggregator is complex hotspot. |
+| Claude → Claude | Uses native `MessageRequest`, opaque metadata restoration for `container`/`inference_geo`/`mcp_servers`, and indexed adapter raw fragments for `mcp_toolset`. | Stream aggregation remains a complex hotspot; MCP connector fields still have no automatic OpenAI/Chat bridge. |
 | Claude → Responses | Converts through common abstraction. | Claude thinking/redacted_thinking/tool_use/tool_result/MCP connector do not map directly to Responses. |
 | Claude → Chat | Converts through common abstraction. | Claude content blocks and thinking/server tool results do not map directly to Chat messages. |
 
@@ -196,14 +197,14 @@ Canonical source files:
 | Chat `custom` tools are canonical but current Chat outbound filters to function tools. | Tool calls can silently disappear or become impossible in Chat same-protocol/cross-protocol paths. | `transformer/openai/outbound_convert.go RequestFromLLM`. |
 | Responses native protocol is split across native struct + `llm.Request` + metadata + provider extensions. | Same-protocol fidelity is hard to reason about; adding fields is scattered. | `responses/outbound.go`, `responses/request_extensions.go`, `provider_extensions.go`. |
 | Responses `context_management` and `conversation` are canonical but not first-class in inspected Responses native struct. | These can only survive if raw top-level fallback catches them; code cannot reason about them cleanly. | `responses/model.go`; canonical docs. |
-| Chat `web_search_options` is canonical but not seen in inspected Chat native struct. | Chat same-protocol and Chat→Responses web search behavior may be wrong. | `openai/model.go`; canonical docs. |
-| Anthropic `mcp_servers`, `container`, `inference_geo` are canonical/companion fields but not seen in inspected `MessageRequest`. | Claude same-protocol MCP connector/context fields may be dropped. | `anthropic/model.go`; canonical docs. |
+| Chat raw-only G1/G2/G4/G5 fields lack public typed/common carriers. | Same-protocol replay is covered, but code cannot safely reason about or synthesize their semantics for another protocol. | `openai/chat_n.go`; targeted Chat tests. |
+| Anthropic MCP/native metadata fields are same-protocol-only carriers. | `container`/`inference_geo`/`mcp_servers` and indexed `mcp_toolset` now round-trip, but remain non-equivalent to Responses MCP and Chat tools. | `anthropic/model.go`, `inbound_convert.go`, `outbound_convert.go`; targeted MCP/container tests. |
 | Claude stream aggregation is a high-complexity hotspot. | Even if request fields are fixed, response/stream native fidelity is risky. | `anthropic/aggregator.go AggregateStreamChunks`, cognitive 254. |
 
 ## Recommended next audit slice
 
-Before implementing architecture changes, verify the gaps above with targeted tests or request round-trip fixtures:
+G1–G7 round-trip fixtures now cover the repaired seams. The next audit slice should target residuals rather than re-open completed same-protocol work:
 
-1. OpenAI Chat same-protocol: `custom` tool and `web_search_options` round-trip.
+1. OpenAI Chat: `custom` tool handling and any desired typed/common semantics for the eight raw-only fields; keep cross-protocol loss explicit.
 2. OpenAI Responses same-protocol: `context_management`, `conversation`, `tool_search`, `additional_tools`, `namespace`, `mcp` round-trip.
-3. Anthropic same-protocol: `mcp_servers`, `mcp_toolset`, `container`, `inference_geo`, `thinking/redacted_thinking`, `tool_use/tool_result` round-trip.
+3. Anthropic: stream/content-block hotspot coverage and explicit diagnostics for unsupported cross-protocol MCP/thinking/tool-result conversions; do not reclassify completed native metadata roundtrips as gaps.
