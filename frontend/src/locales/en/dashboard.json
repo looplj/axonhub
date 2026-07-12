@@ -5,6 +5,8 @@
   "dashboard.sections.models": "Model Analytics",
   "dashboard.sections.performance": "Performance Analytics",
   "dashboard.sections.users": "User Analytics",
+  "dashboard.sections.analytics": "Data Details Analytics",
+  "dashboard.sections.analyticsDescription": "Multi-dimensional data analysis with custom filtering",
   "dashboard.cards.requestsByTime": "Requests by Time",
   "dashboard.cards.successRate": "Success Rate",
   "dashboard.cards.tokenStats": "Token Statistics",
