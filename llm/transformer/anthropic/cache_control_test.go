@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -735,4 +736,306 @@ func TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd(t *testing.T) {
 	require.NotNil(t, anthropicReq.Messages[0].Content.Content)
 	require.Equal(t, "Hi", *anthropicReq.Messages[0].Content.Content)
 	require.Equal(t, 0, countCacheControls(&anthropicReq))
+}
+
+
+// TestTopLevelCacheControlRoundTrip is the G8-S4 field-level contract for the
+// Anthropic top-level `cache_control` marker (automatic prompt caching).
+// This is distinct from content-block / tool / system-prompt cache_control
+// breakpoints: the two layers must not substitute for each other, and the
+// top-level field must not be bridged to OpenAI prompt-cache fields.
+func TestTopLevelCacheControlRoundTrip(t *testing.T) {
+	t.Run("same-protocol round-trip preserves type only", func(t *testing.T) {
+		inbound := NewInboundTransformer()
+		outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+		require.NoError(t, err)
+
+		httpReq := &httpclient.Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Body: []byte(`{
+				"model": "claude-opus-4-6",
+				"max_tokens": 1024,
+				"cache_control": {"type": "ephemeral"},
+				"messages": [{"role": "user", "content": "Hi"}]
+			}`),
+		}
+
+		llmReq, err := inbound.TransformRequest(t.Context(), httpReq)
+		require.NoError(t, err)
+
+		rawMeta, ok := llmReq.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage)
+		require.True(t, ok)
+		require.JSONEq(t, `{"type":"ephemeral"}`, string(rawMeta))
+
+		// Canonical request must not invent OpenAI-style prompt cache fields.
+		require.Nil(t, llmReq.PromptCacheKey)
+		_, hasPromptCacheRetention := llmReq.TransformerMetadata["prompt_cache_retention"]
+		require.False(t, hasPromptCacheRetention)
+
+		upstream, err := outbound.TransformRequest(t.Context(), llmReq)
+		require.NoError(t, err)
+
+		var raw map[string]any
+		require.NoError(t, json.Unmarshal(upstream.Body, &raw))
+		rawCC, hasTopLevel := raw["cache_control"]
+		require.True(t, hasTopLevel)
+		rawCCMap, ok := rawCC.(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "ephemeral", rawCCMap["type"])
+		_, hasTTL := rawCCMap["ttl"]
+		require.False(t, hasTTL, "omitted ttl must not be fabricated on outbound")
+
+		var anthropicReq MessageRequest
+		require.NoError(t, json.Unmarshal(upstream.Body, &anthropicReq))
+		require.NotNil(t, anthropicReq.CacheControl)
+		require.Equal(t, "ephemeral", anthropicReq.CacheControl.Type)
+		require.Empty(t, anthropicReq.CacheControl.TTL)
+		require.Equal(t, 0, countCacheControls(&anthropicReq))
+	})
+
+	t.Run("same-protocol round-trip preserves ttl", func(t *testing.T) {
+		inbound := NewInboundTransformer()
+		outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+		require.NoError(t, err)
+
+		for _, ttl := range []string{"5m", "1h"} {
+			ttl := ttl
+			t.Run(ttl, func(t *testing.T) {
+				body, err := json.Marshal(map[string]any{
+					"model":      "claude-opus-4-6",
+					"max_tokens": 1024,
+					"cache_control": map[string]string{
+						"type": "ephemeral",
+						"ttl":  ttl,
+					},
+					"messages": []map[string]string{
+						{"role": "user", "content": "Hi"},
+					},
+				})
+				require.NoError(t, err)
+
+				httpReq := &httpclient.Request{
+					Headers: http.Header{"Content-Type": []string{"application/json"}},
+					Body:    body,
+				}
+
+				llmReq, err := inbound.TransformRequest(t.Context(), httpReq)
+				require.NoError(t, err)
+
+				rawMeta, ok := llmReq.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage)
+				require.True(t, ok)
+				var metaCC CacheControl
+				require.NoError(t, json.Unmarshal(rawMeta, &metaCC))
+				require.Equal(t, "ephemeral", metaCC.Type)
+				require.Equal(t, ttl, metaCC.TTL)
+
+				upstream, err := outbound.TransformRequest(t.Context(), llmReq)
+				require.NoError(t, err)
+
+				var raw map[string]any
+				require.NoError(t, json.Unmarshal(upstream.Body, &raw))
+				rawCCMap, ok := raw["cache_control"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, "ephemeral", rawCCMap["type"])
+				require.Equal(t, ttl, rawCCMap["ttl"])
+
+				var anthropicReq MessageRequest
+				require.NoError(t, json.Unmarshal(upstream.Body, &anthropicReq))
+				require.NotNil(t, anthropicReq.CacheControl)
+				require.Equal(t, "ephemeral", anthropicReq.CacheControl.Type)
+				require.Equal(t, ttl, anthropicReq.CacheControl.TTL)
+			})
+		}
+	})
+
+	t.Run("omitted top-level cache_control is not fabricated", func(t *testing.T) {
+		inbound := NewInboundTransformer()
+		outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+		require.NoError(t, err)
+
+		httpReq := &httpclient.Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Body: []byte(`{
+				"model": "claude-opus-4-6",
+				"max_tokens": 1024,
+				"messages": [{"role": "user", "content": "Hi"}]
+			}`),
+		}
+
+		llmReq, err := inbound.TransformRequest(t.Context(), httpReq)
+		require.NoError(t, err)
+		_, present := llmReq.TransformerMetadata[TransformerMetadataKeyCacheControl]
+		require.False(t, present, "omitted top-level cache_control must not invent metadata")
+
+		// Also cover the convert helpers directly so the contract is not
+		// only exercised through the HTTP envelope.
+		chatReq, err := convertToLLMRequest(&MessageRequest{
+			Model:     "claude-opus-4-6",
+			MaxTokens: 1024,
+			Messages: []MessageParam{
+				{Role: "user", Content: MessageContent{Content: lo.ToPtr("Hi")}},
+			},
+		})
+		require.NoError(t, err)
+		_, present = chatReq.TransformerMetadata[TransformerMetadataKeyCacheControl]
+		require.False(t, present)
+
+		upstream, err := outbound.TransformRequest(t.Context(), llmReq)
+		require.NoError(t, err)
+
+		var raw map[string]any
+		require.NoError(t, json.Unmarshal(upstream.Body, &raw))
+		_, hasTopLevel := raw["cache_control"]
+		require.False(t, hasTopLevel, "outbound must not invent top-level cache_control")
+
+		var anthropicReq MessageRequest
+		require.NoError(t, json.Unmarshal(upstream.Body, &anthropicReq))
+		require.Nil(t, anthropicReq.CacheControl)
+	})
+
+	t.Run("top-level and content-block cache_control stay isolated", func(t *testing.T) {
+		inbound := NewInboundTransformer()
+		outbound, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+		require.NoError(t, err)
+
+		// Block-only: must NOT invent a top-level cache_control.
+		// Use two content parts so block cache_control stays on MultipleContent
+		// (single text parts collapse to message-level CacheControl).
+		blockOnly := &httpclient.Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Body: []byte(`{
+				"model": "claude-opus-4-6",
+				"max_tokens": 1024,
+				"messages": [{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "cached block",
+							"cache_control": {"type": "ephemeral", "ttl": "5m"}
+						},
+						{
+							"type": "text",
+							"text": "plain block"
+						}
+					]
+				}]
+			}`),
+		}
+		llmBlockOnly, err := inbound.TransformRequest(t.Context(), blockOnly)
+		require.NoError(t, err)
+		_, present := llmBlockOnly.TransformerMetadata[TransformerMetadataKeyCacheControl]
+		require.False(t, present, "content-block cache_control must not become top-level metadata")
+		require.Len(t, llmBlockOnly.Messages, 1)
+		require.Nil(t, llmBlockOnly.Messages[0].CacheControl)
+		require.Len(t, llmBlockOnly.Messages[0].Content.MultipleContent, 2)
+		require.NotNil(t, llmBlockOnly.Messages[0].Content.MultipleContent[0].CacheControl)
+		require.Equal(t, "ephemeral", llmBlockOnly.Messages[0].Content.MultipleContent[0].CacheControl.Type)
+		require.Equal(t, "5m", llmBlockOnly.Messages[0].Content.MultipleContent[0].CacheControl.TTL)
+		require.Nil(t, llmBlockOnly.Messages[0].Content.MultipleContent[1].CacheControl)
+
+		upstreamBlockOnly, err := outbound.TransformRequest(t.Context(), llmBlockOnly)
+		require.NoError(t, err)
+		var rawBlockOnly map[string]any
+		require.NoError(t, json.Unmarshal(upstreamBlockOnly.Body, &rawBlockOnly))
+		_, hasTopLevel := rawBlockOnly["cache_control"]
+		require.False(t, hasTopLevel, "block-only request must not invent top-level cache_control")
+		var blockOnlyReq MessageRequest
+		require.NoError(t, json.Unmarshal(upstreamBlockOnly.Body, &blockOnlyReq))
+		require.Nil(t, blockOnlyReq.CacheControl)
+		require.GreaterOrEqual(t, countCacheControls(&blockOnlyReq), 1)
+
+		// Top-level only: must NOT invent content-block cache_control.
+		topOnly := &httpclient.Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Body: []byte(`{
+				"model": "claude-opus-4-6",
+				"max_tokens": 1024,
+				"cache_control": {"type": "ephemeral", "ttl": "1h"},
+				"messages": [{"role": "user", "content": "Hi"}]
+			}`),
+		}
+		llmTopOnly, err := inbound.TransformRequest(t.Context(), topOnly)
+		require.NoError(t, err)
+		rawMeta, ok := llmTopOnly.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage)
+		require.True(t, ok)
+		var metaCC CacheControl
+		require.NoError(t, json.Unmarshal(rawMeta, &metaCC))
+		require.Equal(t, "1h", metaCC.TTL)
+		require.Len(t, llmTopOnly.Messages, 1)
+		require.Nil(t, llmTopOnly.Messages[0].CacheControl)
+		require.Nil(t, llmTopOnly.Messages[0].Content.MultipleContent)
+
+		upstreamTopOnly, err := outbound.TransformRequest(t.Context(), llmTopOnly)
+		require.NoError(t, err)
+		var rawTopOnly map[string]any
+		require.NoError(t, json.Unmarshal(upstreamTopOnly.Body, &rawTopOnly))
+		rawCCMap, ok := rawTopOnly["cache_control"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "ephemeral", rawCCMap["type"])
+		require.Equal(t, "1h", rawCCMap["ttl"])
+		var topOnlyReq MessageRequest
+		require.NoError(t, json.Unmarshal(upstreamTopOnly.Body, &topOnlyReq))
+		require.NotNil(t, topOnlyReq.CacheControl)
+		require.Equal(t, "1h", topOnlyReq.CacheControl.TTL)
+		require.Equal(t, 0, countCacheControls(&topOnlyReq), "top-level must not inject block cache_control")
+
+		// Both present: each layer must survive independently.
+		both := &httpclient.Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Body: []byte(`{
+				"model": "claude-opus-4-6",
+				"max_tokens": 1024,
+				"cache_control": {"type": "ephemeral", "ttl": "1h"},
+				"messages": [{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "cached block",
+							"cache_control": {"type": "ephemeral", "ttl": "5m"}
+						},
+						{
+							"type": "text",
+							"text": "plain block"
+						}
+					]
+				}]
+			}`),
+		}
+		llmBoth, err := inbound.TransformRequest(t.Context(), both)
+		require.NoError(t, err)
+		rawMeta, ok = llmBoth.TransformerMetadata[TransformerMetadataKeyCacheControl].(json.RawMessage)
+		require.True(t, ok)
+		require.NoError(t, json.Unmarshal(rawMeta, &metaCC))
+		require.Equal(t, "ephemeral", metaCC.Type)
+		require.Equal(t, "1h", metaCC.TTL)
+		require.Len(t, llmBoth.Messages, 1)
+		require.Nil(t, llmBoth.Messages[0].CacheControl)
+		require.Len(t, llmBoth.Messages[0].Content.MultipleContent, 2)
+		blockCC := llmBoth.Messages[0].Content.MultipleContent[0].CacheControl
+		require.NotNil(t, blockCC)
+		require.Equal(t, "ephemeral", blockCC.Type)
+		require.Equal(t, "5m", blockCC.TTL)
+		require.Nil(t, llmBoth.Messages[0].Content.MultipleContent[1].CacheControl)
+
+		upstreamBoth, err := outbound.TransformRequest(t.Context(), llmBoth)
+		require.NoError(t, err)
+		var rawBoth map[string]any
+		require.NoError(t, json.Unmarshal(upstreamBoth.Body, &rawBoth))
+		rawCCMap, ok = rawBoth["cache_control"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "ephemeral", rawCCMap["type"])
+		require.Equal(t, "1h", rawCCMap["ttl"])
+
+		var bothReq MessageRequest
+		require.NoError(t, json.Unmarshal(upstreamBoth.Body, &bothReq))
+		require.NotNil(t, bothReq.CacheControl)
+		require.Equal(t, "1h", bothReq.CacheControl.TTL)
+		require.Len(t, bothReq.Messages, 1)
+		require.Len(t, bothReq.Messages[0].Content.MultipleContent, 2)
+		require.NotNil(t, bothReq.Messages[0].Content.MultipleContent[0].CacheControl)
+		require.Equal(t, "5m", bothReq.Messages[0].Content.MultipleContent[0].CacheControl.TTL)
+		require.Nil(t, bothReq.Messages[0].Content.MultipleContent[1].CacheControl)
+	})
 }

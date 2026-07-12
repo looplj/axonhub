@@ -1,0 +1,16 @@
+{
+  "id": "protocol-residual-five-boundary-fields",
+  "name": "protocol-residual-five-boundary-fields",
+  "title": "Protocol residual five boundary fields (G8)",
+  "description": "Field-level tests and matrix evidence for Chat modalities, Anthropic top-level cache_control, Responses context_management/conversation, and Responses hosted tools inventory/coverage. No 101-row full certification claim.",
+  "status": "completed",
+  "priority": "P1",
+  "creator": "Codex",
+  "assignee": "Codex",
+  "createdAt": "2026-07-12",
+  "completedAt": "2026-07-12",
+  "base_branch": "codex-transformer-field-fixes",
+  "commit": "pending",
+  "parent": "07-10-07-10-protocol-transformer-field-fixes",
+  "notes": "Independent review PASS (g8-residual-five-fields-review.md). Tests only + matrix; no production code changes."
+}

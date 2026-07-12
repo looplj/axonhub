@@ -1318,3 +1318,63 @@ func TestInboundTransformer_TransformRequest_ReasoningObjectRoundTrip(t *testing
 	require.NotNil(t, outReq.ReasoningSummary)
 	require.Equal(t, "detailed", *outReq.ReasoningSummary, "#4: reasoning.summary must survive round-trip")
 }
+
+// CHAT.TOP.modalities: Chat same-protocol field-level round-trip.
+// Responses/Gemini modality tests are not sufficient evidence for this row.
+func TestInboundTransformer_TransformRequest_ModalitiesRoundTripChat(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}],"modalities":["text","audio"]}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	require.Equal(t, []string{"text", "audio"}, llmReq.Modalities)
+
+	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+	require.Equal(t, []string{"text", "audio"}, outReq.Modalities, "Chat modalities must survive chat→canonical→chat round-trip")
+
+	// Full outbound wire path: typed field must be present on the JSON body.
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	require.JSONEq(t, `["text","audio"]`, string(outboundBody["modalities"]))
+}
+
+func TestInboundTransformer_TransformRequest_ModalitiesOmittedChat(t *testing.T) {
+	inbound := NewInboundTransformer()
+	chatReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), chatReq)
+	require.NoError(t, err)
+	require.Empty(t, llmReq.Modalities)
+
+	outReq := RequestFromLLM(llmReq, ReasoningFieldNone)
+	require.Empty(t, outReq.Modalities)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	upstreamReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var outboundBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
+	_, has := outboundBody["modalities"]
+	require.False(t, has, "omitted modalities must not be synthesized")
+}
