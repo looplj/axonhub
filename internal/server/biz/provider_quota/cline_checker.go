@@ -117,13 +117,17 @@ type clineUsageLimitsFetchMeta struct {
 }
 
 type clineWindow struct {
-	key         string
-	duration    time.Duration
-	limitUnits  int64
-	usedUnits   int64
-	creditsUsed int64
-	itemsCount  int
-	nextResetAt *time.Time
+	key            string
+	duration       time.Duration
+	limitUnits     int64
+	usedUnits      int64
+	creditsUsed    int64
+	itemsCount     int
+	usageRatio     *float64
+	costUsageRatio *float64
+	usageSource    string
+	nextResetAt    *time.Time
+	resetSource    string
 }
 
 type clineUsageFetchMeta struct {
@@ -196,7 +200,17 @@ func (c *ClineQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		return QuotaData{}, err
 	}
 
-	return buildClineQuotaData(c.now(), scope, threshold, planSummaries, balance.Data.Balance, items, fetchMeta), nil
+	return buildClineQuotaData(
+		c.now(),
+		scope,
+		threshold,
+		planSummaries,
+		balance.Data.Balance,
+		items,
+		fetchMeta,
+		nil,
+		clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable},
+	), nil
 }
 
 func (c *ClineQuotaChecker) getJSON(ctx context.Context, hc *httpclient.HttpClient, baseURL, path string, query url.Values, apiKey string, out any) error {
@@ -481,31 +495,37 @@ func clineUsageLimitWindowKey(value string) (string, bool) {
 		return "", false
 	}
 }
-func buildClineQuotaData(now time.Time, scope clineModelScope, threshold clineInferenceCapThreshold, plans []map[string]any, balance *int64, items []clineUsageItem, fetchMeta clineUsageFetchMeta) QuotaData {
+func buildClineQuotaData(
+	now time.Time,
+	scope clineModelScope,
+	threshold clineInferenceCapThreshold,
+	plans []map[string]any,
+	balance *int64,
+	items []clineUsageItem,
+	usageFetchMeta clineUsageFetchMeta,
+	officialLimits map[string]clineOfficialWindowLimit,
+	officialMeta clineUsageLimitsFetchMeta,
+) QuotaData {
 	windows := []clineWindow{
-		buildClineWindow(now, "last5h", 5*time.Hour, threshold.Last5HoursUsageCostUSDPerUser, items),
-		buildClineWindow(now, "last7d", 7*24*time.Hour, threshold.Last7DaysUsageCostUSDPerUser, items),
-		buildClineWindow(now, "last30d", 30*24*time.Hour, threshold.Last30DaysUsageCostUSDPerUser, items),
+		buildClineWindow(now, "last5h", 5*time.Hour, threshold.Last5HoursUsageCostUSDPerUser, items, officialLimits["last5h"]),
+		buildClineWindow(now, "last7d", 7*24*time.Hour, threshold.Last7DaysUsageCostUSDPerUser, items, officialLimits["last7d"]),
+		buildClineWindow(now, "last30d", 30*24*time.Hour, threshold.Last30DaysUsageCostUSDPerUser, items, officialLimits["last30d"]),
 	}
 
 	passStatus := worstClineStatus(windows)
 	status := passStatus
 	statusBasis := "cline_pass_windows"
-
 	if scope != clineModelScopePassOnly && passStatus == "exhausted" {
 		status = "warning"
 		statusBasis = "mixed_pool_pass_exhausted"
 	}
 
-	limits := clineLimitStatuses(windows, scope == clineModelScopePassOnly)
-	nextResetAt := earliestClineWindowReset(windows)
-
 	return QuotaData{
 		Status:       status,
 		ProviderType: clineProviderType,
 		Ready:        IsReadyStatus(status),
-		NextResetAt:  nextResetAt,
-		Limits:       limits,
+		NextResetAt:  earliestClineWindowReset(windows),
+		Limits:       clineLimitStatuses(windows, scope == clineModelScopePassOnly),
 		RawData: map[string]any{
 			"model_scope":  string(scope),
 			"status_basis": statusBasis,
@@ -516,10 +536,11 @@ func buildClineQuotaData(now time.Time, scope clineModelScope, threshold clineIn
 			"plans":        plans,
 			"windows":      clineWindowsRawData(windows),
 			"usage_fetch": map[string]any{
-				"pages":      fetchMeta.Pages,
-				"items_seen": fetchMeta.ItemsSeen,
-				"truncated":  fetchMeta.Truncated,
+				"pages":      usageFetchMeta.Pages,
+				"items_seen": usageFetchMeta.ItemsSeen,
+				"truncated":  usageFetchMeta.Truncated,
 			},
+			"usage_limits_fetch": clineUsageLimitsFetchRawData(officialMeta),
 		},
 	}
 }
@@ -540,8 +561,21 @@ func buildClineDirectOnlyQuota(balance *int64, plans []map[string]any) QuotaData
 	}
 }
 
-func buildClineWindow(now time.Time, key string, duration time.Duration, limit int64, items []clineUsageItem) clineWindow {
-	window := clineWindow{key: key, duration: duration, limitUnits: limit}
+func buildClineWindow(
+	now time.Time,
+	key string,
+	duration time.Duration,
+	limit int64,
+	items []clineUsageItem,
+	official clineOfficialWindowLimit,
+) clineWindow {
+	window := clineWindow{
+		key:         key,
+		duration:    duration,
+		limitUnits:  limit,
+		usageSource: clineWindowSourceUnavailable,
+		resetSource: clineWindowSourceUnavailable,
+	}
 	start := now.Add(-duration)
 	var earliest *time.Time
 
@@ -559,27 +593,43 @@ func buildClineWindow(now time.Time, key string, duration time.Duration, limit i
 		}
 	}
 
+	if window.limitUnits > 0 {
+		costRatio := float64(window.usedUnits) / float64(window.limitUnits)
+		window.costUsageRatio = &costRatio
+		window.usageRatio = &costRatio
+		window.usageSource = clineWindowSourceEstimatedCost
+	}
 	if earliest != nil {
 		resetAt := earliest.Add(duration)
 		window.nextResetAt = &resetAt
+		window.resetSource = clineWindowSourceEstimatedUsage
+	}
+	if official.UsageRatio != nil {
+		ratio := *official.UsageRatio
+		window.usageRatio = &ratio
+		window.usageSource = clineWindowSourceOfficialUsageLimits
+	}
+	if official.NextResetAt != nil {
+		resetAt := *official.NextResetAt
+		window.nextResetAt = &resetAt
+		window.resetSource = clineWindowSourceOfficialUsageLimits
 	}
 
 	return window
 }
 
 func clineWindowStatus(window clineWindow) string {
-	if window.limitUnits <= 0 {
+	if window.usageRatio == nil {
 		return "unknown"
 	}
 
-	ratio := float64(window.usedUnits) / float64(window.limitUnits)
+	ratio := *window.usageRatio
 	if ratio >= 1.0 {
 		return "exhausted"
 	}
 	if ratio >= WarningThresholdRatio {
 		return "warning"
 	}
-
 	return "available"
 }
 
@@ -604,8 +654,8 @@ func clineLimitStatuses(windows []clineWindow, allowExhausted bool) []QuotaLimit
 
 	for _, window := range windows {
 		usageRatio := 0.0
-		if window.limitUnits > 0 {
-			usageRatio = float64(window.usedUnits) / float64(window.limitUnits)
+		if window.usageRatio != nil {
+			usageRatio = *window.usageRatio
 		}
 
 		status := clineWindowStatus(window)
@@ -651,11 +701,16 @@ func clineWindowsRawData(windows []clineWindow) map[string]any {
 			"limit_cost_units":     window.limitUnits,
 			"remaining_cost_units": window.limitUnits - window.usedUnits,
 			"credits_used":         window.creditsUsed,
+			"usage_source":         window.usageSource,
+			"reset_source":         window.resetSource,
 		}
-		if window.limitUnits > 0 {
-			ratio := float64(window.usedUnits) / float64(window.limitUnits)
-			entry["usage_ratio"] = ratio
-			entry["usage_percent"] = ratio * 100
+		if window.usageRatio != nil {
+			entry["usage_ratio"] = *window.usageRatio
+			entry["usage_percent"] = *window.usageRatio * 100
+		}
+		if window.costUsageRatio != nil {
+			entry["cost_usage_ratio"] = *window.costUsageRatio
+			entry["cost_usage_percent"] = *window.costUsageRatio * 100
 		}
 		if window.nextResetAt != nil {
 			entry["next_reset_at"] = window.nextResetAt.Format(time.RFC3339)
@@ -664,6 +719,16 @@ func clineWindowsRawData(windows []clineWindow) map[string]any {
 	}
 
 	return result
+}
+
+func clineUsageLimitsFetchRawData(meta clineUsageLimitsFetchMeta) map[string]any {
+	return map[string]any{
+		"status":             meta.Status,
+		"entries_seen":       meta.EntriesSeen,
+		"recognized_entries": meta.RecognizedEntries,
+		"usable_windows":     meta.UsableWindows,
+		"usable_fields":      meta.UsableFields,
+	}
 }
 
 func clineBalanceRawData(balance *int64) map[string]any {

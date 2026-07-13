@@ -54,6 +54,64 @@ func TestParseClineUsageLimits_MapsFieldsIndependentlyAndKeepsFirstValidValue(t 
 	require.NotNil(t, monthly.NextResetAt)
 }
 
+func TestBuildClineQuotaData_OfficialValuesDriveStatusAndResetWhileCostRemainsExact(t *testing.T) {
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	fiveHourRatio := 0.20
+	weeklyRatio := 0.90
+	monthlyRatio := 0.40
+	fiveHourReset := time.Date(2026, 7, 14, 14, 0, 0, 0, time.UTC)
+	weeklyReset := time.Date(2026, 7, 17, 2, 56, 47, 0, time.UTC)
+	monthlyReset := time.Date(2026, 8, 1, 11, 13, 17, 0, time.UTC)
+
+	quota := buildClineQuotaData(
+		now,
+		clineModelScopePassOnly,
+		clineInferenceCapThreshold{
+			Last5HoursUsageCostUSDPerUser: 100,
+			Last7DaysUsageCostUSDPerUser:  100,
+			Last30DaysUsageCostUSDPerUser: 100,
+		},
+		nil,
+		nil,
+		[]clineUsageItem{{CreatedAt: "2026-07-14T11:00:00Z", CostUSD: 50, CreditsUsed: 7}},
+		clineUsageFetchMeta{Pages: 1, ItemsSeen: 1},
+		map[string]clineOfficialWindowLimit{
+			"last5h":  {UsageRatio: &fiveHourRatio, NextResetAt: &fiveHourReset},
+			"last7d":  {UsageRatio: &weeklyRatio, NextResetAt: &weeklyReset},
+			"last30d": {UsageRatio: &monthlyRatio, NextResetAt: &monthlyReset},
+		},
+		clineUsageLimitsFetchMeta{
+			Status:            clineUsageLimitsFetchStatusComplete,
+			EntriesSeen:       3,
+			RecognizedEntries: 3,
+			UsableWindows:     3,
+			UsableFields:      6,
+		},
+	)
+
+	require.Equal(t, "warning", quota.Status)
+	require.True(t, quota.Ready)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, fiveHourReset, *quota.NextResetAt)
+	require.Len(t, quota.Limits, 3)
+	require.InDelta(t, 0.90, quota.Limits[1].UsageRatio, 0.000001)
+	require.Equal(t, "warning", quota.Limits[1].Status)
+
+	windows := quota.RawData["windows"].(map[string]any)
+	weekly := windows["last7d"].(map[string]any)
+	require.Equal(t, int64(50), weekly["used_cost_units"])
+	require.Equal(t, int64(100), weekly["limit_cost_units"])
+	require.Equal(t, int64(50), weekly["remaining_cost_units"])
+	require.Equal(t, int64(7), weekly["credits_used"])
+	require.InDelta(t, 0.90, weekly["usage_ratio"].(float64), 0.000001)
+	require.InDelta(t, 90.0, weekly["usage_percent"].(float64), 0.000001)
+	require.InDelta(t, 0.50, weekly["cost_usage_ratio"].(float64), 0.000001)
+	require.InDelta(t, 50.0, weekly["cost_usage_percent"].(float64), 0.000001)
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, weekly["usage_source"])
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, weekly["reset_source"])
+	require.Equal(t, weeklyReset.Format(time.RFC3339), weekly["next_reset_at"])
+}
+
 func TestCline_CheckQuota_HappyPathPassOnly(t *testing.T) {
 	now := time.Date(2026, 7, 7, 10, 30, 0, 0, time.UTC)
 	requestCount := 0
@@ -152,6 +210,8 @@ func TestCline_CheckQuota_WarningAtEightyPercent(t *testing.T) {
 		nil,
 		[]clineUsageItem{{CreatedAt: "2026-07-07T11:00:00Z", CostUSD: 80}},
 		clineUsageFetchMeta{Pages: 1, ItemsSeen: 1},
+		nil,
+		clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable},
 	)
 
 	require.Equal(t, "warning", quota.Status)
@@ -168,6 +228,8 @@ func TestCline_CheckQuota_ExhaustedWhenPassOnly(t *testing.T) {
 		nil,
 		[]clineUsageItem{{CreatedAt: "2026-07-07T11:00:00Z", CostUSD: 100}},
 		clineUsageFetchMeta{Pages: 1, ItemsSeen: 1},
+		nil,
+		clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable},
 	)
 
 	require.Equal(t, "exhausted", quota.Status)
@@ -183,6 +245,8 @@ func TestCline_CheckQuota_MixedScopeDoesNotExhaustWholeChannelFromPassPool(t *te
 		nil,
 		[]clineUsageItem{{CreatedAt: "2026-07-07T11:00:00Z", CostUSD: 100}},
 		clineUsageFetchMeta{Pages: 1, ItemsSeen: 1},
+		nil,
+		clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable},
 	)
 
 	require.Equal(t, "warning", quota.Status)
