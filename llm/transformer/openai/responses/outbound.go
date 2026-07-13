@@ -321,8 +321,27 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		SkipInboundQueryMerge: true,
 		Metadata:              nil,
 	}
+	recordResponsesChatNativeLossyDowngrades(llmReq)
 	shared.PropagateRequestMetadata(httpReq, llmReq)
 	return httpReq, nil
+}
+
+// recordResponsesChatNativeLossyDowngrades records explicit Chat→Responses field
+// losses that the Responses payload cannot represent. Allowlisted only.
+func recordResponsesChatNativeLossyDowngrades(llmReq *llm.Request) {
+	if llmReq == nil {
+		return
+	}
+	// seed is Chat-native and has no Responses request equivalent.
+	if llmReq.APIFormat == llm.APIFormatOpenAIChatCompletion {
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"seed",
+			llm.APIFormatOpenAIResponse,
+			llmReq.Seed != nil,
+		)
+	}
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
@@ -411,6 +430,15 @@ func (t *OutboundTransformer) transformStandardResponse(
 		llmResp.Usage = resp.Usage.ToUsage()
 	}
 
+	captureOpenAIResponsesResponseTopLevelFields(httpResp.Body, llmResp)
+	if resp.Status != nil && (*resp.Status == "queued" || *resp.Status == "in_progress") {
+		llm.EnsureOpenAIResponsesResponseExtensions(llmResp).Status = lo.ToPtr(*resp.Status)
+	}
+	if rawOutputItems := rawOnlyResponsesOutputItems(httpResp.Body); len(rawOutputItems) > 0 {
+		ext := llm.EnsureOpenAIResponsesResponseExtensions(llmResp)
+		ext.RawOutputItems = rawOutputItems
+	}
+
 	shared.MergeResponseMetadata(llmResp, httpResp)
 
 	msg := convertOutputToMessage(resp.Output, llmResp.TransformerMetadata)
@@ -432,7 +460,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 			choice.FinishReason = lo.ToPtr("length")
 		case "canceled", "cancelled":
 			choice.FinishReason = lo.ToPtr("cancelled")
-		}
+			}
 	}
 
 	llmResp.Choices = append(llmResp.Choices, choice)
@@ -454,4 +482,75 @@ func (t *OutboundTransformer) transformStandardResponse(
 	}
 
 	return llmResp, nil
+}
+
+var openAIResponsesRawResponseTopLevelFields = [...]string{"completed_at", "output_text", "incomplete_details"}
+
+func captureOpenAIResponsesResponseTopLevelFields(body []byte, llmResp *llm.Response) {
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return
+	}
+
+	var captured map[string]json.RawMessage
+	for _, field := range openAIResponsesRawResponseTopLevelFields {
+		raw, ok := envelope[field]
+		if !ok {
+			continue
+		}
+		if captured == nil {
+			captured = make(map[string]json.RawMessage)
+		}
+		captured[field] = append(json.RawMessage(nil), raw...)
+	}
+	if len(captured) == 0 {
+		return
+	}
+
+	ext := llm.EnsureOpenAIResponsesResponseExtensions(llmResp)
+	if ext.RawTopLevelFields == nil {
+		ext.RawTopLevelFields = make(map[string]json.RawMessage)
+	}
+	for field, raw := range captured {
+		ext.RawTopLevelFields[field] = raw
+	}
+}
+
+// rawOnlyResponsesOutputItems extracts output[] members that the canonical
+// response model cannot represent. Raw replay is same-Responses only and
+// preserves original ordering through OriginalIndex.
+func rawOnlyResponsesOutputItems(body []byte) []llm.OpenAIResponsesRawFragment {
+	var envelope struct {
+		Output []json.RawMessage `json:"output"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil
+	}
+
+	fragments := make([]llm.OpenAIResponsesRawFragment, 0)
+	for index, raw := range envelope.Output {
+		var probe struct {
+			Type string `json:"type"`
+			ID   string `json:"id"`
+		}
+		if err := json.Unmarshal(raw, &probe); err != nil || isStructurallyRepresentedResponsesOutputType(probe.Type) {
+			continue
+		}
+		fragments = append(fragments, llm.OpenAIResponsesRawFragment{
+			Type:          probe.Type,
+			OriginalIndex: index,
+			Raw:           append(json.RawMessage(nil), raw...),
+		})
+	}
+	return fragments
+}
+
+func isStructurallyRepresentedResponsesOutputType(itemType string) bool {
+	switch itemType {
+	case "message", "output_text", "function_call", "custom_tool_call", "reasoning",
+		"image_generation_call", "web_search_call", "compaction", "compaction_summary", "input_image":
+		return true
+	default:
+		return false
+	}
 }

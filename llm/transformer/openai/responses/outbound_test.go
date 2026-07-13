@@ -2216,3 +2216,61 @@ func TestOutboundTransformer_TransformRequest_RawInputItemsSurvivePromptAppend(t
 	require.True(t, ok)
 	require.Equal(t, "message", third["type"])
 }
+
+
+func TestOutboundTransformer_TransformRequest_DiagnosesChatSeedLoss(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		seed int64
+	}{
+		{name: "zero", seed: 0},
+		{name: "non_zero", seed: 7},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			llmReq := &llm.Request{
+				Model:     "gpt-4o",
+				APIFormat: llm.APIFormatOpenAIChatCompletion,
+				Seed:      lo.ToPtr(tc.seed),
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("hello seed")},
+				}},
+			}
+
+			transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+			result, err := transformer.TransformRequest(context.Background(), llmReq)
+			require.NoError(t, err)
+
+			var body map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(result.Body, &body))
+			_, hasSeed := body["seed"]
+			require.False(t, hasSeed, "Responses body must omit seed")
+
+			require.Equal(t, []llm.LossyDowngrade{{
+				SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+				SourceField:    "seed",
+				TargetProtocol: llm.APIFormatOpenAIResponse,
+				Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+				Severity:       llm.LossyDowngradeSeverityWarning,
+			}}, llm.LossyDowngrades(llmReq))
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformRequest_OmitsSeedDiagnosticWhenAbsent(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "gpt-4o",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+		}},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	_, err = transformer.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+	require.Empty(t, llm.LossyDowngrades(llmReq))
+}

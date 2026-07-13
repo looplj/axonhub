@@ -189,6 +189,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		chatMsg := llm.Message{
 			Role: msg.Role,
 		}
+		var pendingTopLevelRaw []llm.AnthropicRawContentFragment
 
 		var (
 			hasContent    bool
@@ -244,11 +245,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					hasContent = true
 				case "image":
 					if part, ok := convertImageSourceToLLMImageURLPart(block.Source, block.CacheControl); ok {
+						setAnthropicBlockIndex(&part.TransformerMetadata, blockIdx)
 						contentParts = append(contentParts, part)
 						hasContent = true
 					}
 				case "document":
 					if part, ok := convertImageSourceToLLMDocumentURLPart(block.Source, block.CacheControl); ok {
+						setAnthropicBlockIndex(&part.TransformerMetadata, blockIdx)
 						contentParts = append(contentParts, part)
 						hasContent = true
 					}
@@ -263,6 +266,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							CacheControl:    convertToLLMCacheControl(block.CacheControl),
 							ToolCallIsError: block.IsError,
 						}
+						var pendingNestedRaw []llm.AnthropicRawContentFragment
 
 						if block.Content.Content != nil {
 							toolMsg.Content = llm.MessageContent{
@@ -272,20 +276,40 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							// Handle multiple content blocks in tool_result
 							// Keep as MultipleContent to preserve the original format
 							toolContentParts := make([]llm.MessageContentPart, 0, len(block.Content.MultipleContent))
-							for _, contentBlock := range block.Content.MultipleContent {
+							for childIdx, contentBlock := range block.Content.MultipleContent {
 								switch contentBlock.Type {
 								case "text":
-									toolContentParts = append(toolContentParts, llm.MessageContentPart{
+									part := llm.MessageContentPart{
 										Type:         "text",
 										Text:         contentBlock.Text,
 										CacheControl: convertToLLMCacheControl(contentBlock.CacheControl),
-									})
+									}
+									setAnthropicBlockIndex(&part.TransformerMetadata, childIdx)
+									toolContentParts = append(toolContentParts, part)
 								case "image":
 									if part, ok := convertImageSourceToLLMImageURLPart(contentBlock.Source, contentBlock.CacheControl); ok {
+										setAnthropicBlockIndex(&part.TransformerMetadata, childIdx)
 										toolContentParts = append(toolContentParts, part)
 									}
 								case "document":
 									if part, ok := convertImageSourceToLLMDocumentURLPart(contentBlock.Source, contentBlock.CacheControl); ok {
+										setAnthropicBlockIndex(&part.TransformerMetadata, childIdx)
+										toolContentParts = append(toolContentParts, part)
+									}
+								default:
+									// Unknown/provider-native nested child: keep as raw part sidecar.
+									rawChild := contentBlock.Raw
+									if len(rawChild) == 0 {
+										rawChild = mustMarshalAnthropicBlock(contentBlock)
+									}
+									if len(rawChild) > 0 {
+										part := llm.MessageContentPart{Type: "anthropic_raw_block"}
+										setAnthropicBlockIndex(&part.TransformerMetadata, childIdx)
+										pendingNestedRaw = append(pendingNestedRaw, llm.AnthropicRawContentFragment{
+											PartIndex:          childIdx,
+											NestedInToolResult: true,
+											Raw:                append(json.RawMessage(nil), rawChild...),
+										})
 										toolContentParts = append(toolContentParts, part)
 									}
 								}
@@ -304,6 +328,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 						}
 
 						messages = append(messages, toolMsg)
+						if len(pendingNestedRaw) > 0 {
+							requestExt := llm.EnsureAnthropicRequestExtensions(chatReq)
+							for i := range pendingNestedRaw {
+								pendingNestedRaw[i].MessageIndex = len(messages) - 1
+								requestExt.RawContentFragments = append(requestExt.RawContentFragments, pendingNestedRaw[i])
+							}
+						}
 					}
 				case "tool_use":
 					tc := llm.ToolCall{
@@ -339,6 +370,22 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 						setAnthropicBlockIndex(&ir.TransformerMetadata, blockIdx)
 						chatMsg.InlineToolResults = append(chatMsg.InlineToolResults, ir)
 						hasContent = true
+					default:
+						// Unknown/future request content block: preserve ordered raw fragment.
+						rawBlock := block.Raw
+						if len(rawBlock) == 0 {
+							rawBlock = mustMarshalAnthropicBlock(block)
+						}
+						if len(rawBlock) > 0 {
+							part := llm.MessageContentPart{Type: "anthropic_raw_block"}
+							setAnthropicBlockIndex(&part.TransformerMetadata, blockIdx)
+							pendingTopLevelRaw = append(pendingTopLevelRaw, llm.AnthropicRawContentFragment{
+								PartIndex: blockIdx,
+								Raw:       append(json.RawMessage(nil), rawBlock...),
+							})
+							contentParts = append(contentParts, part)
+							hasContent = true
+						}
 					}
 				}
 			}
@@ -388,6 +435,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		}
 
 		messages = append(messages, chatMsg)
+		if len(pendingTopLevelRaw) > 0 {
+			requestExt := llm.EnsureAnthropicRequestExtensions(chatReq)
+			for i := range pendingTopLevelRaw {
+				pendingTopLevelRaw[i].MessageIndex = len(messages) - 1
+				requestExt.RawContentFragments = append(requestExt.RawContentFragments, pendingTopLevelRaw[i])
+			}
+		}
 	}
 
 	chatReq.Messages = messages
@@ -399,7 +453,8 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		tools := make([]llm.Tool, 0, len(anthropicReq.Tools))
 		rawTools := make([]anthropicRawToolFragment, 0)
 		for i, tool := range anthropicReq.Tools {
-			if len(tool.Raw) > 0 {
+			// Exclusive raw variants (mcp_toolset, code_execution_*, etc.) never enter llm.Tool.
+			if isExclusiveAnthropicRawTool(tool) {
 				rawTools = append(rawTools, anthropicRawToolFragment{
 					OriginalIndex: i,
 					Raw:           append(json.RawMessage(nil), tool.Raw...),
@@ -409,6 +464,19 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			llmTool, ok := convertToolToLLM(tool)
 			if ok {
 				tools = append(tools, llmTool)
+				// Keep original declaration bytes for same-protocol Anthropic-only children
+				// (allowed_callers, defer_loading, input_examples, strict extras, etc.).
+				if len(tool.Raw) > 0 {
+					rawTools = append(rawTools, anthropicRawToolFragment{
+						OriginalIndex: i,
+						Raw:           append(json.RawMessage(nil), tool.Raw...),
+					})
+				}
+			} else if len(tool.Raw) > 0 {
+				rawTools = append(rawTools, anthropicRawToolFragment{
+					OriginalIndex: i,
+					Raw:           append(json.RawMessage(nil), tool.Raw...),
+				})
 			}
 		}
 
@@ -602,40 +670,53 @@ func attachCitationsToFirstAnthropicTextBlock(contentBlocks []MessageContentBloc
 	return contentBlocks
 }
 
-func getAnthropicResponseContentFromMetadata(metadata map[string]any) []MessageContentBlock {
-	if len(metadata) == 0 {
+// getAnthropicResponseContentFromRaw restores provider-native response content
+// from Anthropic Response.RawContent. Other protocols must not read this field.
+func getAnthropicResponseContentFromRaw(chatResp *llm.Response) []MessageContentBlock {
+	if chatResp == nil || chatResp.ProviderExtensions == nil ||
+		chatResp.ProviderExtensions.Anthropic == nil ||
+		chatResp.ProviderExtensions.Anthropic.Response == nil {
 		return nil
 	}
 
-	raw, ok := metadata[TransformerMetadataKeyAnthropicResponseContent]
-	if !ok || raw == nil {
+	rawContent := chatResp.ProviderExtensions.Anthropic.Response.RawContent
+	if len(rawContent) == 0 {
 		return nil
 	}
 
-	if blocks, ok := raw.([]MessageContentBlock); ok {
-		return cloneAnthropicResponseContentBlocks(blocks)
+	blocks := make([]MessageContentBlock, 0, len(rawContent))
+	for _, raw := range rawContent {
+		if len(raw) == 0 {
+			continue
+		}
+		var block MessageContentBlock
+		if err := json.Unmarshal(raw, &block); err != nil {
+			continue
+		}
+		// Ensure unknown/future blocks keep original bytes for MarshalJSON.
+		if len(block.Raw) == 0 && !isKnownAnthropicContentBlockType(block.Type) {
+			block.Raw = append(json.RawMessage(nil), raw...)
+		}
+		// Text citations with native-only children also need their Raw retained.
+		// Unmarshal already does this when Raw is present on the citation JSON.
+		blocks = append(blocks, block)
 	}
-
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return nil
-	}
-
-	var blocks []MessageContentBlock
-	if err := json.Unmarshal(data, &blocks); err != nil {
-		return nil
-	}
-
 	return blocks
 }
 
-func mergeAnthropicResponseContentBlocks(contentBlocks []MessageContentBlock, metadata map[string]any, annotations []llm.Annotation) []MessageContentBlock {
-	providerBlocks := getAnthropicResponseContentFromMetadata(metadata)
+func mergeAnthropicResponseContentBlocks(contentBlocks []MessageContentBlock, chatResp *llm.Response, annotations []llm.Annotation) []MessageContentBlock {
+	var metadata map[string]any
+	if chatResp != nil {
+		metadata = chatResp.TransformerMetadata
+	}
+
+	providerBlocks := getAnthropicResponseContentFromRaw(chatResp)
 	if len(providerBlocks) == 0 {
 		return attachCitationsToFirstAnthropicTextBlock(contentBlocks, annotations, metadata)
 	}
 
-	providerBlocks = attachCitationsToFirstAnthropicTextBlock(providerBlocks, annotations, metadata)
+	// Prefer full native content[] when present. Annotations are already
+	// represented inside the preserved blocks for same-protocol replay.
 	return providerBlocks
 }
 
@@ -788,7 +869,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 				contentBlocks = append(contentBlocks, ob.block)
 			}
 
-			resp.Content = mergeAnthropicResponseContentBlocks(contentBlocks, chatResp.TransformerMetadata, message.Annotations)
+			resp.Content = mergeAnthropicResponseContentBlocks(contentBlocks, chatResp, message.Annotations)
 		}
 
 		// Convert finish reason
@@ -826,6 +907,8 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 	if chatResp.Usage != nil {
 		resp.Usage = convertToAnthropicUsage(chatResp.Usage)
 	}
+
+	applyAnthropicResponseNativeFields(resp, chatResp)
 
 	return resp
 }

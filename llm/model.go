@@ -548,6 +548,13 @@ type MessageContentPart struct {
 	// InputAudio is the input audio content, required when type is "input_audio"
 	InputAudio *InputAudio `json:"input_audio,omitempty"`
 
+	// OpenAIChatFile preserves the native Chat file content-part payload. It is
+	// adapter-specific and consumed only by the OpenAI Chat adapter.
+	OpenAIChatFile *OpenAIChatFileContentPart `json:"openai_chat_file,omitempty"`
+
+	// OpenAIChatRefusal preserves a native Chat content-array refusal payload.
+	OpenAIChatRefusal *string `json:"openai_chat_refusal,omitempty"`
+
 	// Compact is the compact content, required when type is "compaction" or "compaction_summary"
 	// This is used for OpenAI Responses API compaction-related items.
 	Compact *CompactContent `json:"compact,omitempty"`
@@ -741,6 +748,10 @@ type Response struct {
 	// APIFormat is the outbound API format of the response.
 	// e.g. the response from the chat/completions endpoint is in the openai/chat_completion format.
 	APIFormat APIFormat `json:"api_format,omitempty"`
+
+	// ProviderExtensions carries provider/API-format private response data that
+	// must not be serialized through the common llm response model.
+	ProviderExtensions *ProviderExtensions `json:"-"`
 
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.

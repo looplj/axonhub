@@ -33,6 +33,14 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 		}
 	}
 
+	if tc.Type == "custom" && tc.Custom != nil {
+		toolCall.OpenAIChatCustomToolCall = &llm.OpenAIChatCustomToolCall{
+			Name:  tc.Custom.Name,
+			Input: tc.Custom.Input,
+			Index: tc.Custom.Index,
+		}
+	}
+
 	return toolCall
 }
 
@@ -132,6 +140,17 @@ func (r *Request) ToLLMRequest() *llm.Request {
 				Function: llm.ToolFunction{
 					Name: r.ToolChoice.NamedToolChoice.Function.Name,
 				},
+			}
+		}
+		if r.ToolChoice.Custom != nil {
+			req.ToolChoice.OpenAIChatCustomToolChoice = &llm.OpenAIChatCustomToolChoice{
+				Name: r.ToolChoice.Custom.Name,
+			}
+		}
+		if r.ToolChoice.AllowedTools != nil {
+			req.ToolChoice.OpenAIChatAllowedTools = &llm.OpenAIChatAllowedToolsChoice{
+				Mode:  r.ToolChoice.AllowedTools.Mode,
+				Tools: append([]json.RawMessage(nil), r.ToolChoice.AllowedTools.Tools...),
 			}
 		}
 	}
@@ -316,6 +335,17 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 		}
 	}
 
+	if p.File != nil {
+		part.OpenAIChatFile = &llm.OpenAIChatFileContentPart{
+			FileData: p.File.FileData,
+			FileID:   p.File.FileID,
+			Filename: p.File.Filename,
+		}
+	}
+	if p.Refusal != nil {
+		part.OpenAIChatRefusal = p.Refusal
+	}
+
 	return part
 }
 
@@ -361,7 +391,6 @@ func ResponseFromLLM(r *llm.Response) *Response {
 
 	return resp
 }
-
 
 // hasDeprecatedFunctionCallOrigin reports whether tool_calls were bridged from
 // deprecated Chat message/delta.function_call.

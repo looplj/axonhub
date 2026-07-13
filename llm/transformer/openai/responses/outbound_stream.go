@@ -79,7 +79,6 @@ type outboundStreamState struct {
 	// Transformer metadata tracking
 	transformerMetadata        map[string]any
 	transformerMetadataEmitted bool
-
 }
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
@@ -683,13 +682,36 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	default:
-		// Unknown event type - skip
-		return nil // Intentionally skip this event
+		if isTransportOnlyResponsesStreamEvent(streamEvent.Type) {
+			// Known event families without a canonical behavior remain deliberately
+			// unsupported until their dedicated contract slice exists. Do not change
+			// the established Chat-facing stream sequence here.
+			return nil
+		}
+		// Preserve unsupported but syntactically valid Responses events as a
+		// same-protocol stream sidecar. Do not fabricate a generic llm chunk.
+		ext := llm.EnsureOpenAIResponsesResponseExtensions(resp)
+		ext.RawStreamEvents = append(ext.RawStreamEvents, llm.OpenAIResponsesRawStreamEvent{
+			Type: string(streamEvent.Type),
+			Raw:  append(json.RawMessage(nil), event.Data...),
+		})
+		s.enqueue(resp)
+		return nil
 	}
 
 	s.enqueue(resp)
 
 	return nil
+}
+
+func isTransportOnlyResponsesStreamEvent(eventType StreamEventType) bool {
+	switch eventType {
+	case "keepalive", "ping":
+		// Transport heartbeats have no protocol payload to preserve.
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {
@@ -722,7 +744,6 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 ) ([]byte, llm.ResponseMeta, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
-
 
 func cloneTransformerMetadata(src map[string]any) map[string]any {
 	if len(src) == 0 {

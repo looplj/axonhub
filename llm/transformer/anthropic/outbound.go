@@ -435,7 +435,64 @@ func containsNativeWebSearchTool(tools []Tool) bool {
 }
 
 func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
-	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+	if llmReq == nil {
+		return
+	}
+
+	// Typed OpenAI common fields with no Anthropic equivalent. Explicit allowlist
+	// only — do not reflect over the full request model.
+	switch llmReq.APIFormat {
+	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse:
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llmReq.APIFormat,
+			"frequency_penalty",
+			llm.APIFormatAnthropicMessage,
+			llmReq.FrequencyPenalty != nil,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llmReq.APIFormat,
+			"presence_penalty",
+			llm.APIFormatAnthropicMessage,
+			llmReq.PresencePenalty != nil,
+		)
+		// These OpenAI fields are deliberately not bridged to Anthropic's
+		// metadata.user_id or cache_control: their semantics are different.
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llmReq.APIFormat,
+			"safety_identifier",
+			llm.APIFormatAnthropicMessage,
+			llmReq.SafetyIdentifier != nil,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llmReq.APIFormat,
+			"prompt_cache_key",
+			llm.APIFormatAnthropicMessage,
+			llmReq.PromptCacheKey != nil,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llmReq.APIFormat,
+			"metadata",
+			llm.APIFormatAnthropicMessage,
+			hasOpenAIMetadataRemainder(llmReq.Metadata),
+		)
+	}
+	// seed is Chat-native; Responses has no seed wire field to diagnose from.
+	if llmReq.APIFormat == llm.APIFormatOpenAIChatCompletion {
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"seed",
+			llm.APIFormatAnthropicMessage,
+			llmReq.Seed != nil,
+		)
+	}
+
+	if llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
 		return
 	}
 
@@ -459,4 +516,13 @@ func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
 		}
 		llm.AddLossyDowngradeIfPresent(llmReq, llm.APIFormatOpenAIChatCompletion, field, llm.APIFormatAnthropicMessage, true)
 	}
+}
+
+func hasOpenAIMetadataRemainder(metadata map[string]string) bool {
+	for key := range metadata {
+		if key != "user_id" {
+			return true
+		}
+	}
+	return false
 }

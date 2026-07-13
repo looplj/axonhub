@@ -1,6 +1,10 @@
 package anthropic
 
-import "github.com/looplj/axonhub/llm"
+import (
+	"encoding/json"
+
+	"github.com/looplj/axonhub/llm"
+)
 
 // Usage represents usage information in Anthropic format.
 // Total input tokens in a request is the summation of input_tokens, cache_creation_input_tokens, and cache_read_input_tokens.
@@ -25,11 +29,61 @@ type Usage struct {
 
 	// For moonshot anthropic endpoint, it uses cached tokens instead of cache read input tokens.
 	CachedTokens int64 `json:"cached_tokens,omitempty"`
+
+	// Raw holds the original usage JSON for same-protocol replay of unmodeled children.
+	Raw json.RawMessage `json:"-"`
 }
 
 type CacheCreation struct {
 	Ephemeral5mInputTokens int64 `json:"ephemeral_5m_input_tokens"`
 	Ephemeral1hInputTokens int64 `json:"ephemeral_1h_input_tokens"`
+}
+
+// UnmarshalJSON keeps the original usage object when unmodeled children are
+// present so server-tool / future detail can be restored on same-protocol replay.
+func (u *Usage) UnmarshalJSON(data []byte) error {
+	type usageAlias Usage
+	var decoded usageAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*u = Usage(decoded)
+	if usageHasUnmodeledFields(data) {
+		u.Raw = append(json.RawMessage(nil), data...)
+	}
+	return nil
+}
+
+func usageHasUnmodeledFields(data []byte) bool {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return false
+	}
+	known := map[string]struct{}{
+		"input_tokens": {},
+		"output_tokens": {},
+		"cache_creation_input_tokens": {},
+		"cache_read_input_tokens": {},
+		"cache_creation": {},
+		"service_tier": {},
+		"cached_tokens": {},
+	}
+	for key := range obj {
+		if _, ok := known[key]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+// MarshalJSON emits the original usage object when present so server-tool and
+// future usage detail children survive same-protocol response replay.
+func (u Usage) MarshalJSON() ([]byte, error) {
+	if len(u.Raw) > 0 {
+		return u.Raw, nil
+	}
+	type usageAlias Usage
+	return json.Marshal(usageAlias(u))
 }
 
 // https://docs.claude.com/en/api/messages#response-usage

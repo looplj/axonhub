@@ -9,12 +9,13 @@
 
 本文档整体状态仍是 **INCOMPLETE**：任意 `UNCHECKED` / 未闭环跨协议行存在时，不能作为“协议转换已全部完成”的证据。
 
-截至 2026-07-13（G1–G8 边界证据 + G13–G15 Codex delta 文档规范化）：
+截至 2026-07-13（G1–G8 边界证据、C1/C2 + R1–R4 + A1–A8 + D1 transformer 闭环、G13–G15 Codex delta 文档规范化）：
 
 1. **Same-protocol 已有证据（有 code + targeted test，状态多为 `PARTIAL`）**：见 §5 / §6 主状态行与 §9 / §10 / §13。覆盖范围包括：
    - Chat：`n`、`prompt_cache_retention`、`audio`/`prediction`/`moderation`、`web_search_options`、deprecated `functions`/`function_call`、`modalities`（G8）
    - Anthropic：`container`、`inference_geo`、`mcp_servers`、`tools[].type=mcp_toolset`、top-level `cache_control`（G8）
    - Responses：`reasoning` 对象关键子路径（G7）、`include`/`reasoning`/`stream_options` 请求保真（G13/G14）、`input[]` item identity（G15）、`context_management`/`conversation` raw fallback 与 hosted tools inventory（G8）
+   - Transformer closure（见 §13.7）：Chat custom/file/refusal；Responses envelope/terminal/raw output/raw SSE；Anthropic raw request/response/stream/tool/stop/citation；明确的 no-equivalent diagnostics。该索引只覆盖列出的 seam，主矩阵仍保持 `PARTIAL`。
 2. **历史已确认闭环（P1 叙事）**：Codex Responses `tools[].type = "namespace"` 在 Responses -> Chat 展开、reverse map、回包/流式恢复 `name + namespace`（不抬成公共 P0 全矩阵完成）。
 3. **未声称**：全部 Field ID 已按 FDR 填完、全部行 `CONFIRMED`、全方向跨协议语义等价、Codex P1 = 公共 P0、或 residual fixture-only 项已实现为 feature。
 4. **规范化账本**：§11 FDR 规则、§12 Codex usage-profile delta register、§13 实施符合性账本、§14 后续 diff/slice 流程。这些章节**不替代** §5/§6 主状态，也不把 schema 新要求伪称为已完成。
@@ -1193,6 +1194,22 @@ G13–G15 public-seam fixtures / independent module review：见 §10.1 与 §13
 - 符合性账本与 §5/§6 在“是否宣称全矩阵 CONFIRMED”上保持诚实：批次 public-seam PASS ≠ 101 主状态行 FDR 全填完，更 ≠ 107 唯一 ID 全完成。
 
 ---
+
+### 13.7 2026-07-13 transformer closure（C1/C2、R1–R4、A1–A8、D1）
+
+这是一份**实现闭环索引**，不修改 §5/§6 的全量 Field ID 状态，也不宣称 101/107 行已经完整 FDR 化。权威的逐 slice RED→GREEN、self-review、模块复审记录在：
+
+`/Users/asuan/项目/AI/axonhub/.trellis/tasks/07-12-07-12-codex-reasoning-effort-forward-compatibility/protocol-compliance-loop-ledger.md`。
+
+| Batch | 已验证边界 | 命名 owner / policy | 最小证据 |
+|---|---|---|---|
+| C1/C2 | Chat custom tools/choices/calls、allowed_tools、file/refusal part | Chat adapter-local carrier；不桥接 Responses custom shape | `chat_custom_fidelity_test.go` |
+| R1–R4 | Responses envelope null/presence、nonterminal native status、terminal lifecycle、raw output/stream replay | `ProviderExtensions.OpenAIResponses.Response` sidecars + stream code；nonterminal status 不得借用 Chat finish_reason；raw 仅同协议 | `r1_envelope_refusal_test.go`、`r2_stream_terminal_error_test.go`、`r3_raw_output_items_test.go`、`r4_raw_stream_event_test.go` |
+| A1–A8 | Anthropic unknown request/response blocks、tools、response native fields、stream index、stop/citation | `ProviderExtensions.Anthropic.{Request,Response}`；outbound temporary hydration only；stream fidelity stays stream-local | `a1_unknown_content_blocks_test.go` 至 `a8_citation_native_details_test.go` |
+| D1 | no-equivalent cross-protocol losses | `ProviderExtensions.Diagnostics.LossyDowngrades`，不得泄漏到 wire payload | D1 request diagnostics tests |
+| Review hardening | raw-only/nonterminal empty output、terminal error/incomplete/cancelled mapping、Anthropic placeholder→Chat isolation | Responses local terminal helper；Chat target adapter drop；不建立 raw cross-protocol bridge | R1/R2/R3 additions and `TestA1_UnknownRequestContentBlock_DoesNotLeakToOpenAIChat` |
+
+已知未实现项仍按 §11.3 disposition 处理：不得把无等价或 client-only 字段强行转换；没有获批准的 product policy 不得因本闭环而变成默认映射。
 
 ## 14. 后续 Codex diff 与实现 slice 规范
 

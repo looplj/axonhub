@@ -46,6 +46,7 @@ type responsesInboundStream struct {
 	hasContentPartStarted   bool
 	hasFinished             bool
 	responseCompleted       bool
+	terminalFinishReason    string
 	pendingAnnotations      []llm.Annotation
 
 	// Response metadata
@@ -126,21 +127,8 @@ func (s *responsesInboundStream) Next() bool {
 	// Try to get the next chunk from source
 	if !s.source.Next() {
 		if s.err == nil && !s.errorEventEmitted && s.source.Err() == nil && s.hasFinished && !s.responseCompleted {
-			s.responseCompleted = true
-			s.aggregator.status = "completed"
-			response := s.aggregator.buildResponse()
-			if s.usage != nil {
-				response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
-			}
-			if calls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata); len(calls) > 0 {
-				response.Output = append(append([]Item(nil), calls...), response.Output...)
-			}
-
-			if err := s.enqueueEvent(&StreamEvent{
-				Type:     StreamEventTypeResponseCompleted,
-				Response: response,
-			}); err != nil {
-				s.err = fmt.Errorf("failed to enqueue response.completed event: %w", err)
+			if err := s.enqueueTerminalResponse(); err != nil {
+				s.err = fmt.Errorf("failed to enqueue terminal response event: %w", err)
 				return false
 			}
 
@@ -179,6 +167,10 @@ func (s *responsesInboundStream) Next() bool {
 	// Handle [DONE] marker
 	if chunk.Object == "[DONE]" {
 		return s.Next() // Try next chunk
+	}
+
+	if s.enqueueRawResponsesStreamEvents(chunk) {
+		return s.Next()
 	}
 
 	// Initialize response metadata from first chunk
@@ -286,6 +278,7 @@ func (s *responsesInboundStream) Next() bool {
 		// Handle finish reason
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
+			s.terminalFinishReason = *choice.FinishReason
 
 			// Close any open content parts
 			if err := s.closeCurrentContentPart(); err != nil {
@@ -301,31 +294,71 @@ func (s *responsesInboundStream) Next() bool {
 		}
 	}
 
-	// Handle final usage chunk and complete response
-	if chunk.Usage != nil && s.hasFinished && !s.responseCompleted {
-		s.responseCompleted = true
-		s.usage = chunk.Usage
-
-		// Build final response using aggregator
-		s.aggregator.status = "completed"
-		response := s.aggregator.buildResponse()
-		response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
-		if calls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata); len(calls) > 0 {
-			response.Output = append(append([]Item(nil), calls...), response.Output...)
-		}
-
-		err := s.enqueueEvent(&StreamEvent{
-			Type:     StreamEventTypeResponseCompleted,
-			Response: response,
-		})
-		if err != nil {
-			s.err = fmt.Errorf("failed to enqueue response.completed event: %w", err)
+	// Complete when finish has been observed. Prefer waiting for a later usage
+	// chunk when one is expected, but do not require usage: complete as soon as
+	// finish is known and either usage is already present or this chunk itself
+	// carries usage. Usage-less completion is finalized at stream end below.
+	if s.hasFinished && !s.responseCompleted && s.usage != nil {
+		if err := s.enqueueTerminalResponse(); err != nil {
+			s.err = fmt.Errorf("failed to enqueue terminal response event: %w", err)
 			return false
 		}
 	}
 
 	// Continue to the next event
 	return s.Next()
+}
+
+func (s *responsesInboundStream) enqueueTerminalResponse() error {
+	s.responseCompleted = true
+	eventType, status := responsesTerminalEvent(s.terminalFinishReason)
+	s.aggregator.status = status
+	response := s.aggregator.buildResponse()
+	if s.usage != nil {
+		response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
+	}
+	if calls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata); len(calls) > 0 {
+		response.Output = append(append([]Item(nil), calls...), response.Output...)
+	}
+
+	return s.enqueueEvent(&StreamEvent{Type: eventType, Response: response})
+}
+
+func responsesTerminalEvent(finishReason string) (StreamEventType, string) {
+	switch finishReason {
+	case "length":
+		return StreamEventTypeResponseIncomplete, "incomplete"
+	case "error":
+		return StreamEventTypeResponseFailed, "failed"
+	case "cancelled", "canceled":
+		return StreamEventTypeResponseCancelled, "canceled"
+	default:
+		return StreamEventTypeResponseCompleted, "completed"
+	}
+}
+
+// enqueueRawResponsesStreamEvents replays only Responses-native events that
+// could not be represented by the canonical chunk model. They deliberately do
+// not enter the synthesized event aggregator or any cross-protocol adapter.
+func (s *responsesInboundStream) enqueueRawResponsesStreamEvents(chunk *llm.Response) bool {
+	if chunk == nil || chunk.ProviderExtensions == nil || chunk.ProviderExtensions.OpenAIResponses == nil ||
+		chunk.ProviderExtensions.OpenAIResponses.Response == nil {
+		return false
+	}
+	events := chunk.ProviderExtensions.OpenAIResponses.Response.RawStreamEvents
+	if len(events) == 0 {
+		return false
+	}
+	for _, event := range events {
+		if len(event.Raw) == 0 || event.Type == "" {
+			continue
+		}
+		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+			Type: event.Type,
+			Data: append([]byte(nil), event.Raw...),
+		})
+	}
+	return len(s.eventQueue) > 0
 }
 
 func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]any) {

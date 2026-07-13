@@ -30,6 +30,10 @@ type Tool struct {
 	// Will be used when Type is "custom".
 	ResponseCustomTool *ResponseCustomTool `json:"response_custom_tool,omitempty"`
 
+	// OpenAIChatCustomTool is the Chat Completions custom-tool declaration.
+	// It is intentionally separate from ResponseCustomTool.
+	OpenAIChatCustomTool *OpenAIChatCustomTool `json:"openai_chat_custom_tool,omitempty"`
+
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
@@ -92,6 +96,10 @@ type ToolCall struct {
 	// Will be used when Type is "custom".
 	ResponseCustomToolCall *ResponseCustomToolCall `json:"response_custom_tool_call,omitempty"`
 
+	// OpenAIChatCustomToolCall is the Chat Completions custom-tool call.
+	// It is intentionally separate from ResponseCustomToolCall.
+	OpenAIChatCustomToolCall *OpenAIChatCustomToolCall `json:"openai_chat_custom_tool_call,omitempty"`
+
 	// Index is the index of the tool call in the list of tool calls.
 	// Cannot use omitempty, as an index of 0 would be omitted, which can break consumers.
 	Index int `json:"index"`
@@ -111,8 +119,10 @@ type ToolFunction struct {
 //
 // Tool choice can be a string or a struct.
 type ToolChoice struct {
-	ToolChoice      *string          `json:"tool_choice,omitempty"`
-	NamedToolChoice *NamedToolChoice `json:"named_tool_choice,omitempty"`
+	ToolChoice                 *string                       `json:"tool_choice,omitempty"`
+	NamedToolChoice            *NamedToolChoice              `json:"named_tool_choice,omitempty"`
+	OpenAIChatCustomToolChoice *OpenAIChatCustomToolChoice   `json:"openai_chat_custom_tool_choice,omitempty"`
+	OpenAIChatAllowedTools     *OpenAIChatAllowedToolsChoice `json:"openai_chat_allowed_tools,omitempty"`
 }
 
 type NamedToolChoice struct {

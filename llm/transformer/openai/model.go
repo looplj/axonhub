@@ -307,11 +307,20 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 
 // MessageContentPart represents different types of content (text, image, video, etc.)
 type MessageContentPart struct {
-	Type       string      `json:"type"`
-	Text       *string     `json:"text,omitempty"`
-	ImageURL   *ImageURL   `json:"image_url,omitempty"`
-	VideoURL   *VideoURL   `json:"video_url,omitempty"`
-	InputAudio *InputAudio `json:"input_audio,omitempty"`
+	Type       string       `json:"type"`
+	Text       *string      `json:"text,omitempty"`
+	ImageURL   *ImageURL    `json:"image_url,omitempty"`
+	VideoURL   *VideoURL    `json:"video_url,omitempty"`
+	InputAudio *InputAudio  `json:"input_audio,omitempty"`
+	File       *FileContent `json:"file,omitempty"`
+	Refusal    *string      `json:"refusal,omitempty"`
+}
+
+// FileContent is the OpenAI Chat file content-part payload.
+type FileContent struct {
+	FileData *string `json:"file_data,omitempty"`
+	FileID   *string `json:"file_id,omitempty"`
+	Filename *string `json:"filename,omitempty"`
 }
 
 // ImageURL represents an image URL with optional detail level.
@@ -401,15 +410,34 @@ type OpenAIError struct {
 	Detail     llm.ErrorDetail `json:"error"`
 }
 
-// Tool represents a function tool.
+// Tool represents an OpenAI Chat function or custom tool.
 type Tool struct {
-	Type     string   `json:"type"`
-	Function Function `json:"function"`
+	Type     string      `json:"type"`
+	Function Function    `json:"function,omitempty"`
+	Custom   *CustomTool `json:"custom,omitempty"`
+}
+
+// CustomTool is the Chat Completions custom-tool declaration.
+type CustomTool struct {
+	Name        string          `json:"name"`
+	Description *string         `json:"description,omitempty"`
+	Format      json.RawMessage `json:"format,omitempty"`
+}
+
+func (t Tool) MarshalJSON() ([]byte, error) {
+	if t.Type == "custom" && t.Custom != nil {
+		return json.Marshal(struct {
+			Type   string      `json:"type"`
+			Custom *CustomTool `json:"custom"`
+		}{Type: t.Type, Custom: t.Custom})
+	}
+	type toolAlias Tool
+	return json.Marshal(toolAlias(t))
 }
 
 // ToLLMTool converts OpenAI Tool to unified llm.Tool.
 func (t Tool) ToLLMTool() llm.Tool {
-	return llm.Tool{
+	result := llm.Tool{
 		Type: t.Type,
 		Function: llm.Function{
 			Name:        t.Function.Name,
@@ -418,6 +446,14 @@ func (t Tool) ToLLMTool() llm.Tool {
 			Strict:      t.Function.Strict,
 		},
 	}
+	if t.Type == "custom" && t.Custom != nil {
+		result.OpenAIChatCustomTool = &llm.OpenAIChatCustomTool{
+			Name:        t.Custom.Name,
+			Description: t.Custom.Description,
+			Format:      append(json.RawMessage(nil), t.Custom.Format...),
+		}
+	}
+	return result
 }
 
 // Function represents a function definition.
@@ -435,6 +471,53 @@ type FunctionCall struct {
 }
 
 // ToolCallExtraContent represents provider-specific extension fields for tool calls.
+// CustomToolCall is the Chat Completions custom-tool call payload.
+type CustomToolCall struct {
+	Name  string `json:"name"`
+	Input string `json:"input"`
+	Index *int   `json:"-"`
+}
+
+func (t ToolCall) MarshalJSON() ([]byte, error) {
+	if t.Type == "custom" && t.Custom != nil {
+		return json.Marshal(struct {
+			ID     string          `json:"id,omitempty"`
+			Type   string          `json:"type"`
+			Custom *CustomToolCall `json:"custom"`
+			Index  *int            `json:"index,omitempty"`
+		}{ID: t.ID, Type: t.Type, Custom: t.Custom, Index: t.Custom.Index})
+	}
+	type toolCallAlias ToolCall
+	return json.Marshal(toolCallAlias(t))
+}
+
+func (t *ToolCall) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ID     string          `json:"id,omitempty"`
+		Type   string          `json:"type,omitempty"`
+		Custom *CustomToolCall `json:"custom,omitempty"`
+		Index  *int            `json:"index,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if raw.Type == "custom" && raw.Custom != nil {
+		raw.Custom.Index = raw.Index
+		*t = ToolCall{ID: raw.ID, Type: raw.Type, Custom: raw.Custom}
+		if raw.Index != nil {
+			t.Index = *raw.Index
+		}
+		return nil
+	}
+	type toolCallAlias ToolCall
+	var alias toolCallAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	*t = ToolCall(alias)
+	return nil
+}
+
 type ToolCallExtraContent struct {
 	Google *ToolCallGoogleExtraContent `json:"google,omitempty"`
 }
@@ -446,10 +529,11 @@ type ToolCallExtraFields struct {
 
 // ToolCall represents a tool call in the response.
 type ToolCall struct {
-	ID       string       `json:"id,omitempty"`
-	Type     string       `json:"type,omitempty"`
-	Function FunctionCall `json:"function"`
-	Index    int          `json:"index"`
+	ID       string          `json:"id,omitempty"`
+	Type     string          `json:"type,omitempty"`
+	Function FunctionCall    `json:"function"`
+	Custom   *CustomToolCall `json:"custom,omitempty"`
+	Index    int             `json:"index"`
 	// ExtraContent carries provider-specific extension fields, such as Gemini OpenAI thought signature.
 	ExtraContent *ToolCallExtraContent `json:"extra_content,omitempty"`
 	// ExtraFields is a compatibility wrapper for payloads that nest extra_content under extra_fields.
@@ -463,40 +547,89 @@ type ToolFunction struct {
 
 // ToolChoice represents the tool choice parameter.
 type ToolChoice struct {
-	ToolChoice      *string          `json:"tool_choice,omitempty"`
-	NamedToolChoice *NamedToolChoice `json:"named_tool_choice,omitempty"`
+	ToolChoice      *string                 `json:"tool_choice,omitempty"`
+	NamedToolChoice *NamedToolChoice        `json:"named_tool_choice,omitempty"`
+	Custom          *CustomToolChoice       `json:"custom,omitempty"`
+	AllowedTools    *AllowedToolsToolChoice `json:"allowed_tools,omitempty"`
 }
 
-// NamedToolChoice represents a named tool choice.
+// NamedToolChoice represents a named function tool choice.
 type NamedToolChoice struct {
 	Type     string       `json:"type"`
 	Function ToolFunction `json:"function"`
+}
+
+// CustomToolChoice represents a named Chat custom-tool choice.
+type CustomToolChoice struct {
+	Name string `json:"name"`
+}
+
+// AllowedToolsToolChoice constrains Chat tool selection to the listed native
+// tool references. The references are raw because the official wire shape is
+// an array of maps rather than a shared llm.Tool contract.
+type AllowedToolsToolChoice struct {
+	Mode  string            `json:"mode"`
+	Tools []json.RawMessage `json:"tools"`
 }
 
 func (t ToolChoice) MarshalJSON() ([]byte, error) {
 	if t.ToolChoice != nil {
 		return json.Marshal(t.ToolChoice)
 	}
-
+	if t.Custom != nil {
+		return json.Marshal(struct {
+			Type   string            `json:"type"`
+			Custom *CustomToolChoice `json:"custom"`
+		}{Type: "custom", Custom: t.Custom})
+	}
+	if t.AllowedTools != nil {
+		return json.Marshal(struct {
+			Type         string                  `json:"type"`
+			AllowedTools *AllowedToolsToolChoice `json:"allowed_tools"`
+		}{Type: "allowed_tools", AllowedTools: t.AllowedTools})
+	}
 	return json.Marshal(t.NamedToolChoice)
 }
 
 func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	var str string
-
-	err := json.Unmarshal(data, &str)
-	if err == nil {
+	if err := json.Unmarshal(data, &str); err == nil {
 		t.ToolChoice = &str
+		t.NamedToolChoice = nil
+		t.Custom = nil
+		t.AllowedTools = nil
 		return nil
 	}
 
-	var named NamedToolChoice
-
-	err = json.Unmarshal(data, &named)
-	if err == nil {
-		t.NamedToolChoice = &named
+	var raw struct {
+		Type         string                  `json:"type"`
+		Function     *ToolFunction           `json:"function"`
+		Custom       *CustomToolChoice       `json:"custom"`
+		AllowedTools *AllowedToolsToolChoice `json:"allowed_tools"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return errors.New("invalid tool choice type")
+	}
+	if raw.Type == "custom" && raw.Custom != nil {
+		t.ToolChoice = nil
+		t.NamedToolChoice = nil
+		t.Custom = raw.Custom
+		t.AllowedTools = nil
 		return nil
 	}
-
+	if raw.Type == "allowed_tools" && raw.AllowedTools != nil {
+		t.ToolChoice = nil
+		t.NamedToolChoice = nil
+		t.Custom = nil
+		t.AllowedTools = raw.AllowedTools
+		return nil
+	}
+	if raw.Function != nil {
+		t.ToolChoice = nil
+		t.Custom = nil
+		t.AllowedTools = nil
+		t.NamedToolChoice = &NamedToolChoice{Type: raw.Type, Function: *raw.Function}
+		return nil
+	}
 	return errors.New("invalid tool choice type")
 }

@@ -31,21 +31,23 @@ func (t *InboundTransformer) TransformStream(
 //
 //nolint:containedctx // Checked.
 type anthropicInboundStream struct {
-	source                    streams.Stream[*llm.Response]
-	ctx                       context.Context
-	hasStarted                bool
-	hasTextContentStarted     bool
-	hasThinkingContentStarted bool
-	hasToolContentStarted     bool
-	hasFinished               bool
-	messageStoped             bool
-	messageID                 string
-	model                     string
-	contentIndex              int64
-	eventQueue                []*httpclient.StreamEvent
-	queueIndex                int
-	err                       error
-	stopReason                *string
+	source                      streams.Stream[*llm.Response]
+	ctx                         context.Context
+	hasStarted                  bool
+	hasTextContentStarted       bool
+	hasThinkingContentStarted   bool
+	hasToolContentStarted       bool
+	hasFinished                 bool
+	messageStoped               bool
+	messageID                   string
+	model                       string
+	contentIndex                int64
+	eventQueue                  []*httpclient.StreamEvent
+	queueIndex                  int
+	err                         error
+	stopReason                  *string
+	stopSequence                *string
+	hasReplayedContentBlockStop bool
 	// Tool call tracking
 	toolCalls            map[int]*llm.ToolCall // Track tool calls by index
 	currentToolCallIndex int
@@ -334,6 +336,10 @@ func (s *anthropicInboundStream) Next() bool {
 	// Handle [DONE] marker
 	if chunk.Object == "[DONE]" {
 		return s.Next() // Try next chunk
+	}
+
+	if s.enqueueRawAnthropicStreamEvents(chunk) {
+		return s.Next()
 	}
 
 	// Initialize message ID and model from first chunk
@@ -790,7 +796,7 @@ func (s *anthropicInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
-			contentClosed := false
+			contentClosed := s.hasReplayedContentBlockStop
 
 			if err := s.closeThinkingBlock(); err != nil {
 				s.err = fmt.Errorf("failed to close thinking block: %w", err)
@@ -844,18 +850,29 @@ func (s *anthropicInboundStream) Next() bool {
 				}
 			}
 
-			// Convert finish reason to Anthropic format
+			// Preserve Anthropic-native stop metadata when this chunk originated
+			// from the Anthropic stream adapter; otherwise map the common finish
+			// reason to the closest Anthropic lifecycle value.
 			var stopReason string
-
-			switch *choice.FinishReason {
-			case "stop":
-				stopReason = "end_turn"
-			case "length":
-				stopReason = "max_tokens"
-			case "tool_calls":
-				stopReason = "tool_use"
-			default:
-				stopReason = "end_turn"
+			if choice.TransformerMetadata != nil {
+				if raw, ok := choice.TransformerMetadata[TransformerMetadataKeyAnthropicStopReason].(string); ok && raw != "" {
+					stopReason = raw
+				}
+				if raw, ok := choice.TransformerMetadata[TransformerMetadataKeyAnthropicStopSequence].(string); ok && raw != "" {
+					s.stopSequence = &raw
+				}
+			}
+			if stopReason == "" {
+				switch *choice.FinishReason {
+				case "stop":
+					stopReason = "end_turn"
+				case "length":
+					stopReason = "max_tokens"
+				case "tool_calls":
+					stopReason = "tool_use"
+				default:
+					stopReason = "end_turn"
+				}
 			}
 
 			// Store the stop reason, but don't generate message_delta yet
@@ -872,7 +889,8 @@ func (s *anthropicInboundStream) Next() bool {
 
 		if s.stopReason != nil {
 			streamEvent.Delta = &StreamDelta{
-				StopReason: s.stopReason,
+				StopReason:   s.stopReason,
+				StopSequence: s.stopSequence,
 			}
 		}
 
@@ -900,6 +918,51 @@ func (s *anthropicInboundStream) Next() bool {
 
 	// Continue to the next event.
 	return s.Next()
+}
+
+// enqueueRawAnthropicStreamEvents replays only Anthropic-native stream events
+// that the common chunk model cannot represent. Other protocol adapters never
+// consume this sidecar.
+func (s *anthropicInboundStream) enqueueRawAnthropicStreamEvents(chunk *llm.Response) bool {
+	if chunk == nil || chunk.ProviderExtensions == nil || chunk.ProviderExtensions.Anthropic == nil ||
+		chunk.ProviderExtensions.Anthropic.Response == nil {
+		return false
+	}
+	events := chunk.ProviderExtensions.Anthropic.Response.RawStreamEvents
+	if len(events) == 0 {
+		return false
+	}
+	for _, event := range events {
+		if event.Type == "" || len(event.Raw) == 0 {
+			continue
+		}
+		s.syncRawContentBlockStop(event)
+		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+			Type: event.Type,
+			Data: append([]byte(nil), event.Raw...),
+		})
+	}
+	return len(s.eventQueue) > 0
+}
+
+// syncRawContentBlockStop advances the synthetic block index after a complete
+// Anthropic-native raw lifecycle. It only trusts a stop event whose public
+// payload confirms both its type and index, and advances monotonically so a
+// replayed sidecar does not depend on the order in which chunks arrive.
+func (s *anthropicInboundStream) syncRawContentBlockStop(event llm.AnthropicRawStreamEvent) {
+	if event.Type != "content_block_stop" {
+		return
+	}
+
+	var stop StreamEvent
+	if err := json.Unmarshal(event.Raw, &stop); err != nil || stop.Type != "content_block_stop" || stop.Index == nil {
+		return
+	}
+
+	s.hasReplayedContentBlockStop = true
+	if nextIndex := *stop.Index + 1; nextIndex > s.contentIndex {
+		s.contentIndex = nextIndex
+	}
 }
 
 func (s *anthropicInboundStream) Current() *httpclient.StreamEvent {

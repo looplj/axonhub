@@ -19,7 +19,8 @@ func (t *OutboundTransformer) TransformStream(
 	req *httpclient.Request,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) (streams.Stream[*llm.Response], error) {
-	// Filter out unnecessary stream events to optimize performance
+	// Filter transport/duplicate events only. Unknown semantic events must reach
+	// the fidelity adapter so they can be replayed to Anthropic unchanged.
 	filteredStream := streams.Filter(stream, filterStreamEvent)
 
 	// Append the DONE event to the filtered stream
@@ -32,8 +33,8 @@ func (t *OutboundTransformer) TransformStream(
 	return s, nil
 }
 
-// filterStreamEvent determines if a stream event should be processed
-// Filters out unnecessary events like ping, content_block_start, and content_block_stop.
+// filterStreamEvent keeps semantic events for conversion or Anthropic-native
+// replay, filtering only transport heartbeats and empty payloads.
 func filterStreamEvent(event *httpclient.StreamEvent) bool {
 	if event == nil || len(event.Data) == 0 {
 		return false
@@ -45,10 +46,10 @@ func filterStreamEvent(event *httpclient.StreamEvent) bool {
 		return true
 	case "error":
 		return true
-	case "ping", "content_block_stop":
-		return false // Skip these events as they're not needed for OpenAI format
+	case "ping":
+		return false // Transport heartbeat; it has no response semantics.
 	default:
-		return false // Skip unknown event types
+		return true
 	}
 }
 
@@ -58,6 +59,10 @@ type streamState struct {
 	streamModel  string
 	streamUsage  *llm.Usage
 	platformType PlatformType
+	// Indices of Anthropic content blocks whose semantic shape is unknown to
+	// the common model. Their full start/delta/stop lifecycle is replayed only
+	// when the target is Anthropic again.
+	rawContentBlockIndexes map[int64]struct{}
 	// Tool call tracking
 	toolIndex int
 	toolCalls map[int]*llm.ToolCall // index -> tool call
@@ -75,9 +80,10 @@ func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent], platformT
 	return &outboundStream{
 		stream: stream,
 		state: &streamState{
-			toolCalls:    make(map[int]*llm.ToolCall),
-			toolIndex:    -1,
-			platformType: platformType,
+			toolCalls:              make(map[int]*llm.ToolCall),
+			rawContentBlockIndexes: make(map[int64]struct{}),
+			toolIndex:              -1,
+			platformType:           platformType,
 		},
 	}
 }
@@ -251,11 +257,20 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			}
 			resp.Choices = []llm.Choice{choice}
 		default:
-			//nolint:nilnil // Ignore other content block starts (text, thinking, etc.).
+			if streamEvent.Index != nil && isUnknownAnthropicContentBlockType(cb.Type) {
+				state.rawContentBlockIndexes[*streamEvent.Index] = struct{}{}
+				return rawAnthropicStreamEventResponse(resp, event), nil
+			}
+			//nolint:nilnil // Text/thinking starts are represented by their deltas.
 			return nil, nil
 		}
 
 	case "content_block_delta":
+		if streamEvent.Index != nil {
+			if _, ok := state.rawContentBlockIndexes[*streamEvent.Index]; ok {
+				return rawAnthropicStreamEventResponse(resp, event), nil
+			}
+		}
 		if streamEvent.Delta != nil {
 			choice := llm.Choice{
 				Index: 0,
@@ -323,6 +338,16 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 
 			resp.Choices = []llm.Choice{choice}
 		}
+
+	case "content_block_stop":
+		if streamEvent.Index != nil {
+			if _, ok := state.rawContentBlockIndexes[*streamEvent.Index]; ok {
+				delete(state.rawContentBlockIndexes, *streamEvent.Index)
+				return rawAnthropicStreamEventResponse(resp, event), nil
+			}
+		}
+		//nolint:nilnil // Known blocks are closed by the target stream state machine.
+		return nil, nil
 
 	case "message_delta":
 		// Update stored usage if available (final usage information)
@@ -392,6 +417,9 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				streamChoice.TransformerMetadata = map[string]any{
 					TransformerMetadataKeyAnthropicStopReason: *streamEvent.Delta.StopReason,
 				}
+				if streamEvent.Delta.StopSequence != nil {
+					streamChoice.TransformerMetadata[TransformerMetadataKeyAnthropicStopSequence] = *streamEvent.Delta.StopSequence
+				}
 			}
 
 			resp.Choices = []llm.Choice{streamChoice}
@@ -406,11 +434,28 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		}
 
 	default:
-		// This should not happen due to filtering, but handle gracefully
-		return nil, fmt.Errorf("unexpected stream event type: %s", streamEvent.Type)
+		return rawAnthropicStreamEventResponse(resp, event), nil
 	}
 
 	return resp, nil
+}
+
+func rawAnthropicStreamEventResponse(resp *llm.Response, event *httpclient.StreamEvent) *llm.Response {
+	ext := llm.EnsureAnthropicResponseExtensions(resp)
+	ext.RawStreamEvents = append(ext.RawStreamEvents, llm.AnthropicRawStreamEvent{
+		Type: event.Type,
+		Raw:  append(json.RawMessage(nil), event.Data...),
+	})
+	return resp
+}
+
+func isUnknownAnthropicContentBlockType(blockType string) bool {
+	switch blockType {
+	case "text", "thinking", "redacted_thinking":
+		return false
+	default:
+		return !isAnthropicToolUseLike(blockType) && !isAnthropicToolResultLike(blockType)
+	}
 }
 
 func parseAnthropicStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {

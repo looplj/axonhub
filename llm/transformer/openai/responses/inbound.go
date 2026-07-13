@@ -77,6 +77,10 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal responses api response: %w", err)
 	}
+	body, err = restoreOpenAIResponsesResponseTopLevelFields(body, chatResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to restore responses api response fields: %w", err)
+	}
 
 	return &httpclient.Response{
 		StatusCode: http.StatusOK,
@@ -86,6 +90,38 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 			"Cache-Control": []string{"no-cache"},
 		},
 	}, nil
+}
+
+func restoreOpenAIResponsesResponseTopLevelFields(body []byte, chatResp *llm.Response) ([]byte, error) {
+	if chatResp.ProviderExtensions == nil || chatResp.ProviderExtensions.OpenAIResponses == nil ||
+		chatResp.ProviderExtensions.OpenAIResponses.Response == nil {
+		return body, nil
+	}
+	rawFields := chatResp.ProviderExtensions.OpenAIResponses.Response.RawTopLevelFields
+	if len(rawFields) == 0 {
+		return body, nil
+	}
+
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, err
+	}
+	changed := false
+	for _, field := range openAIResponsesRawResponseTopLevelFields {
+		if _, typed := envelope[field]; typed {
+			continue
+		}
+		raw := rawFields[field]
+		if len(raw) == 0 || !json.Valid(raw) {
+			continue
+		}
+		envelope[field] = append(json.RawMessage(nil), raw...)
+		changed = true
+	}
+	if !changed {
+		return body, nil
+	}
+	return json.Marshal(envelope)
 }
 
 type ResponseError struct {
@@ -466,8 +502,8 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 	// ReasoningContent.
 	reasoningItemID := reasoningItem.ID
 	msg := &llm.Message{
-		Role:                     "assistant",
-		ReasoningSignature:       reasoningItem.EncryptedContent,
+		Role:                    "assistant",
+		ReasoningSignature:      reasoningItem.EncryptedContent,
 		ResponseReasoningItemID: &reasoningItemID,
 	}
 
@@ -1056,6 +1092,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		Status:             lo.ToPtr("completed"),
 		PreviousResponseID: chatResp.PreviousResponseID,
 	}
+	hasNativeNonTerminalStatus := false
 
 	// Backfill service_tier and error so they survive conversion back to
 	// the Responses API format (canonical carries both).
@@ -1067,6 +1104,22 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			Type:    chatResp.Error.Detail.Type,
 			Code:    chatResp.Error.Detail.Code,
 			Message: chatResp.Error.Detail.Message,
+		}
+	}
+	if chatResp.ProviderExtensions != nil && chatResp.ProviderExtensions.OpenAIResponses != nil &&
+		chatResp.ProviderExtensions.OpenAIResponses.Response != nil {
+		if nativeStatus := chatResp.ProviderExtensions.OpenAIResponses.Response.Status; nativeStatus != nil {
+			resp.Status = lo.ToPtr(*nativeStatus)
+			hasNativeNonTerminalStatus = true
+		}
+		raw := chatResp.ProviderExtensions.OpenAIResponses.Response.RawTopLevelFields["incomplete_details"]
+		// Explicit JSON null is restored by the raw allowlist path. Unmarshaling
+		// null into a typed struct would invent an empty object instead.
+		if len(raw) > 0 && string(raw) != "null" {
+			var details ResponseIncompleteDetails
+			if err := json.Unmarshal(raw, &details); err == nil {
+				resp.IncompleteDetails = &details
+			}
 		}
 	}
 
@@ -1142,14 +1195,23 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			}
 		}
 
-		// Handle text content
+		// Handle text content and/or refusal content parts.
+		// Preserve the historical precedence: scalar Content wins over MultipleContent.
 		if message.Content.Content != nil && *message.Content.Content != "" {
 			text := *message.Content.Content
-			contentItems, _ := attachAnnotationsToFirstTextItem([]Item{{
+			contentItems := []Item{{
 				Type:        "output_text",
 				Text:        &text,
 				Annotations: []Annotation{},
-			}}, message.Annotations)
+			}}
+			if message.Refusal != "" {
+				refusal := message.Refusal
+				contentItems = append(contentItems, Item{
+					Type:    "refusal",
+					Refusal: &refusal,
+				})
+			}
+			contentItems, _ = attachAnnotationsToFirstTextItem(contentItems, message.Annotations)
 			resp.Output = append(resp.Output, Item{
 				ID:   messageItemID,
 				Type: "message",
@@ -1196,6 +1258,13 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				}
 			}
 
+			if message.Refusal != "" {
+				refusal := message.Refusal
+				contentItems = append(contentItems, Item{
+					Type:    "refusal",
+					Refusal: &refusal,
+				})
+			}
 			if len(contentItems) > 0 {
 				contentItems, _ = attachAnnotationsToFirstTextItem(contentItems, message.Annotations)
 				resp.Output = append(resp.Output, Item{
@@ -1206,10 +1275,23 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 					Status:  lo.ToPtr("completed"),
 				})
 			}
+		} else if message.Refusal != "" {
+			// Refusal-only assistant message (no text/multiple content).
+			refusal := message.Refusal
+			resp.Output = append(resp.Output, Item{
+				ID:   messageItemID,
+				Type: "message",
+				Role: "assistant",
+				Content: &Input{Items: []Item{{
+					Type:    "refusal",
+					Refusal: &refusal,
+				}}},
+				Status: lo.ToPtr("completed"),
+			})
 		}
 
 		// Set status based on finish reason
-		if choice.FinishReason != nil {
+		if choice.FinishReason != nil && !hasNativeNonTerminalStatus {
 			switch *choice.FinishReason {
 			case "stop":
 				resp.Status = lo.ToPtr("completed")
@@ -1219,12 +1301,17 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				resp.Status = lo.ToPtr("completed")
 			case "error":
 				resp.Status = lo.ToPtr("failed")
+			case "cancelled", "canceled":
+				resp.Status = lo.ToPtr("canceled")
 			}
 		}
 	}
 
-	// If no output items were created, create an empty message
-	if len(resp.Output) == 0 {
+	// Preserve an intentionally empty output[] when the canonical response has
+	// no representable output or carries Responses-native raw output sidecars.
+	// A synthetic message is only needed for the legacy case where a canonical
+	// choice exists but did not produce an output item.
+	if len(resp.Output) == 0 && len(chatResp.Choices) > 0 && lo.FromPtr(resp.Status) == "completed" && !hasRawResponsesOutputItems(chatResp) {
 		emptyText := ""
 		resp.Output = []Item{
 			{
@@ -1245,7 +1332,64 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		}
 	}
 
+	resp.Output = mergeRawResponsesOutputItems(resp.Output, chatResp)
+
 	return resp
+}
+
+func hasRawResponsesOutputItems(chatResp *llm.Response) bool {
+	return chatResp != nil && chatResp.ProviderExtensions != nil &&
+		chatResp.ProviderExtensions.OpenAIResponses != nil &&
+		chatResp.ProviderExtensions.OpenAIResponses.Response != nil &&
+		len(chatResp.ProviderExtensions.OpenAIResponses.Response.RawOutputItems) > 0
+}
+
+func mergeRawResponsesOutputItems(structured []Item, chatResp *llm.Response) []Item {
+	if chatResp == nil || chatResp.ProviderExtensions == nil || chatResp.ProviderExtensions.OpenAIResponses == nil ||
+		chatResp.ProviderExtensions.OpenAIResponses.Response == nil {
+		return structured
+	}
+	rawFragments := chatResp.ProviderExtensions.OpenAIResponses.Response.RawOutputItems
+	if len(rawFragments) == 0 {
+		return structured
+	}
+
+	rawByIndex := make(map[int]json.RawMessage, len(rawFragments))
+	maxIndex := len(structured) + len(rawFragments) - 1
+	for _, fragment := range rawFragments {
+		if len(fragment.Raw) == 0 {
+			continue
+		}
+		rawByIndex[fragment.OriginalIndex] = fragment.Raw
+		if fragment.OriginalIndex > maxIndex {
+			maxIndex = fragment.OriginalIndex
+		}
+	}
+	if len(rawByIndex) == 0 {
+		return structured
+	}
+
+	merged := make([]Item, 0, maxIndex+1)
+	structuredIndex := 0
+	for index := 0; index <= maxIndex; index++ {
+		if raw, ok := rawByIndex[index]; ok {
+			var item Item
+			if err := json.Unmarshal(raw, &item); err == nil {
+				item.Raw = append(json.RawMessage(nil), raw...)
+				merged = append(merged, item)
+			}
+			continue
+		}
+		if structuredIndex < len(structured) {
+			merged = append(merged, structured[structuredIndex])
+			structuredIndex++
+		}
+	}
+	for structuredIndex < len(structured) {
+		merged = append(merged, structured[structuredIndex])
+		structuredIndex++
+	}
+	return merged
 }
 
 // generateItemID generates a unique item ID for output items.

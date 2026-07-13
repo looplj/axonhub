@@ -188,3 +188,31 @@ func getAnthropicBlockIndex(src map[string]any) int {
 		return -1
 	}
 }
+
+// TransformerMetadataKeyAnthropicRawBlock is used only on the short-lived
+// outbound copy produced by hydrateAnthropicRawContent. Persistent canonical
+// requests store provider bytes in ProviderExtensions.Anthropic.Request.
+const TransformerMetadataKeyAnthropicRawBlock = "anthropic_raw_block"
+
+func setAnthropicRawBlock(dst *map[string]any, raw json.RawMessage) {
+	if len(raw) == 0 {
+		return
+	}
+	ensureMetaMap(dst)
+	(*dst)[TransformerMetadataKeyAnthropicRawBlock] = append(json.RawMessage(nil), raw...)
+}
+
+func getAnthropicRawBlock(src map[string]any) json.RawMessage {
+	return asJSONRawMessage(src[TransformerMetadataKeyAnthropicRawBlock])
+}
+
+func mustMarshalAnthropicBlock(block MessageContentBlock) json.RawMessage {
+	if len(block.Raw) > 0 {
+		return append(json.RawMessage(nil), block.Raw...)
+	}
+	data, err := json.Marshal(block)
+	if err != nil {
+		return nil
+	}
+	return data
+}

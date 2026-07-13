@@ -10,6 +10,7 @@ import (
 // be serialized through the common llm request/response JSON model.
 type ProviderExtensions struct {
 	OpenAIResponses *OpenAIResponsesProviderExtensions `json:"-"`
+	Anthropic       *AnthropicProviderExtensions       `json:"-"`
 	Diagnostics     *DiagnosticsProviderExtensions     `json:"-"`
 }
 
@@ -21,7 +22,76 @@ type DiagnosticsProviderExtensions struct {
 }
 
 type OpenAIResponsesProviderExtensions struct {
-	Request *OpenAIResponsesRequestExtensions `json:"-"`
+	Request  *OpenAIResponsesRequestExtensions  `json:"-"`
+	Response *OpenAIResponsesResponseExtensions `json:"-"`
+}
+
+// OpenAIResponsesResponseExtensions carries Responses-native response body
+// fragments that have no stable common llm.Response semantic.
+type OpenAIResponsesResponseExtensions struct {
+	// Status preserves a Responses-native lifecycle value that has no shared
+	// Chat finish_reason equivalent (for example queued or in_progress).
+	Status *string `json:"-"`
+	RawTopLevelFields map[string]json.RawMessage `json:"-"`
+	// RawOutputItems preserves Responses-native output items that have no
+	// canonical llm.Response representation. They are replayed only by the
+	// Responses inbound adapter at their original output[] positions.
+	RawOutputItems []OpenAIResponsesRawFragment `json:"-"`
+	// RawStreamEvents preserves Responses SSE events that have no canonical
+	// chunk representation. The Responses stream emitter replays them only to
+	// the same protocol family.
+	RawStreamEvents []OpenAIResponsesRawStreamEvent `json:"-"`
+}
+
+type OpenAIResponsesRawStreamEvent struct {
+	Type string          `json:"-"`
+	Raw  json.RawMessage `json:"-"`
+}
+
+// AnthropicProviderExtensions carries Anthropic-native request/response/stream
+// data that has no stable common llm representation.
+type AnthropicProviderExtensions struct {
+	Request  *AnthropicRequestExtensions  `json:"-"`
+	Response *AnthropicResponseExtensions `json:"-"`
+}
+
+// AnthropicRequestExtensions carries Anthropic-native request fragments that
+// have no stable common llm.Request representation. Only ordered raw content
+// fragments are stored here; the full original request body is never retained.
+type AnthropicRequestExtensions struct {
+	// RawContentFragments preserves unknown/future Anthropic request content
+	// blocks (including nested tool_result children) as ordered raw JSON
+	// fragments. They are replayed only by the Anthropic outbound adapter.
+	RawContentFragments []AnthropicRawContentFragment `json:"-"`
+}
+
+// AnthropicRawContentFragment stores one Anthropic-native content-block JSON
+// fragment with enough routing metadata for same-protocol ordered replay.
+// MessageIndex is the canonical llm.Request.Messages index that owns the
+// fragment. PartIndex is the MultipleContent / nested tool_result child index.
+// NestedInToolResult marks fragments that belong to a tool message's nested
+// tool_result content rather than a top-level message content array.
+type AnthropicRawContentFragment struct {
+	MessageIndex       int             `json:"-"`
+	PartIndex          int             `json:"-"`
+	NestedInToolResult bool            `json:"-"`
+	Raw                json.RawMessage `json:"-"`
+}
+
+type AnthropicResponseExtensions struct {
+	StopSequence    *string                   `json:"-"`
+	StopDetails     json.RawMessage           `json:"-"`
+	RawUsage        json.RawMessage           `json:"-"`
+	// RawContent preserves the complete Anthropic response content[] array for
+	// same-protocol non-stream replay when common llm.Response cannot own every
+	// block. Only the Anthropic inbound adapter may consume it.
+	RawContent      []json.RawMessage          `json:"-"`
+	RawStreamEvents []AnthropicRawStreamEvent `json:"-"`
+}
+
+type AnthropicRawStreamEvent struct {
+	Type string          `json:"-"`
+	Raw  json.RawMessage `json:"-"`
 }
 
 type OpenAIResponsesRequestExtensions struct {
@@ -81,6 +151,62 @@ func EnsureOpenAIResponsesProviderExtensions(req *Request) *OpenAIResponsesProvi
 	return req.ProviderExtensions.OpenAIResponses
 }
 
+func EnsureOpenAIResponsesResponseExtensions(resp *Response) *OpenAIResponsesResponseExtensions {
+	if resp == nil {
+		return nil
+	}
+	if resp.ProviderExtensions == nil {
+		resp.ProviderExtensions = &ProviderExtensions{}
+	}
+	if resp.ProviderExtensions.OpenAIResponses == nil {
+		resp.ProviderExtensions.OpenAIResponses = &OpenAIResponsesProviderExtensions{}
+	}
+	if resp.ProviderExtensions.OpenAIResponses.Response == nil {
+		resp.ProviderExtensions.OpenAIResponses.Response = &OpenAIResponsesResponseExtensions{}
+	}
+	return resp.ProviderExtensions.OpenAIResponses.Response
+}
+
+func EnsureAnthropicProviderExtensions(req *Request) *AnthropicProviderExtensions {
+	if req == nil {
+		return nil
+	}
+	if req.ProviderExtensions == nil {
+		req.ProviderExtensions = &ProviderExtensions{}
+	}
+	if req.ProviderExtensions.Anthropic == nil {
+		req.ProviderExtensions.Anthropic = &AnthropicProviderExtensions{}
+	}
+	return req.ProviderExtensions.Anthropic
+}
+
+func EnsureAnthropicRequestExtensions(req *Request) *AnthropicRequestExtensions {
+	ext := EnsureAnthropicProviderExtensions(req)
+	if ext == nil {
+		return nil
+	}
+	if ext.Request == nil {
+		ext.Request = &AnthropicRequestExtensions{}
+	}
+	return ext.Request
+}
+
+func EnsureAnthropicResponseExtensions(resp *Response) *AnthropicResponseExtensions {
+	if resp == nil {
+		return nil
+	}
+	if resp.ProviderExtensions == nil {
+		resp.ProviderExtensions = &ProviderExtensions{}
+	}
+	if resp.ProviderExtensions.Anthropic == nil {
+		resp.ProviderExtensions.Anthropic = &AnthropicProviderExtensions{}
+	}
+	if resp.ProviderExtensions.Anthropic.Response == nil {
+		resp.ProviderExtensions.Anthropic.Response = &AnthropicResponseExtensions{}
+	}
+	return resp.ProviderExtensions.Anthropic.Response
+}
+
 func EnsureDiagnosticsProviderExtensions(req *Request) *DiagnosticsProviderExtensions {
 	if req == nil {
 		return nil
@@ -119,6 +245,35 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 				PrependCount:      src.OpenAIResponses.Request.PrependCount,
 			}
 		}
+		if src.OpenAIResponses.Response != nil {
+			cloned.OpenAIResponses.Response = &OpenAIResponsesResponseExtensions{
+				RawTopLevelFields: cloneRawMessageMap(src.OpenAIResponses.Response.RawTopLevelFields),
+				RawOutputItems:    cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Response.RawOutputItems),
+				RawStreamEvents:   cloneOpenAIResponsesRawStreamEvents(src.OpenAIResponses.Response.RawStreamEvents),
+			}
+			if src.OpenAIResponses.Response.Status != nil {
+				cloned.OpenAIResponses.Response.Status = lo.ToPtr(*src.OpenAIResponses.Response.Status)
+			}
+		}
+	}
+	if src.Anthropic != nil {
+		cloned.Anthropic = &AnthropicProviderExtensions{}
+		if src.Anthropic.Request != nil {
+			cloned.Anthropic.Request = &AnthropicRequestExtensions{
+				RawContentFragments: cloneAnthropicRawContentFragments(src.Anthropic.Request.RawContentFragments),
+			}
+		}
+		if src.Anthropic.Response != nil {
+			cloned.Anthropic.Response = &AnthropicResponseExtensions{
+				StopDetails:     cloneRawMessage(src.Anthropic.Response.StopDetails),
+				RawUsage:        cloneRawMessage(src.Anthropic.Response.RawUsage),
+				RawContent:      cloneRawMessages(src.Anthropic.Response.RawContent),
+				RawStreamEvents: cloneAnthropicRawStreamEvents(src.Anthropic.Response.RawStreamEvents),
+			}
+			if src.Anthropic.Response.StopSequence != nil {
+				cloned.Anthropic.Response.StopSequence = lo.ToPtr(*src.Anthropic.Response.StopSequence)
+			}
+		}
 	}
 
 	if src.Diagnostics != nil {
@@ -128,6 +283,40 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 	}
 
 	return cloned
+}
+
+func cloneAnthropicRawContentFragments(src []AnthropicRawContentFragment) []AnthropicRawContentFragment {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]AnthropicRawContentFragment, len(src))
+	for i := range src {
+		out[i] = src[i]
+		out[i].Raw = cloneRawMessage(src[i].Raw)
+	}
+	return out
+}
+
+func cloneAnthropicRawStreamEvents(src []AnthropicRawStreamEvent) []AnthropicRawStreamEvent {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]AnthropicRawStreamEvent, len(src))
+	for i, event := range src {
+		out[i] = AnthropicRawStreamEvent{Type: event.Type, Raw: cloneRawMessage(event.Raw)}
+	}
+	return out
+}
+
+func cloneOpenAIResponsesRawStreamEvents(src []OpenAIResponsesRawStreamEvent) []OpenAIResponsesRawStreamEvent {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]OpenAIResponsesRawStreamEvent, len(src))
+	for i, event := range src {
+		out[i] = OpenAIResponsesRawStreamEvent{Type: event.Type, Raw: cloneRawMessage(event.Raw)}
+	}
+	return out
 }
 
 func cloneOpenAIResponsesNativeTools(src *OpenAIResponsesNativeTools) *OpenAIResponsesNativeTools {

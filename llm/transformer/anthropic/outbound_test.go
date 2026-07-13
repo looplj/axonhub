@@ -2531,7 +2531,6 @@ func TestOutboundTransformer_TransformRequest_DiagnosesChatWebSearchOptionsLoss(
 	}}, llm.LossyDowngrades(llmReq))
 }
 
-
 func TestOutboundTransformer_TransformRequest_DiagnosesChatDeprecatedFunctionsLoss(t *testing.T) {
 	chatBody := []byte(`{
 		"model": "gpt-4o",
@@ -2576,4 +2575,210 @@ func TestOutboundTransformer_TransformRequest_DiagnosesChatDeprecatedFunctionsLo
 			Severity:       llm.LossyDowngradeSeverityWarning,
 		},
 	}, llm.LossyDowngrades(llmReq))
+}
+
+func TestOutboundTransformer_TransformRequest_DiagnosesChatSamplingPenaltiesLoss(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:            "claude-3-sonnet-20240229",
+		APIFormat:        llm.APIFormatOpenAIChatCompletion,
+		MaxTokens:        lo.ToPtr(int64(1024)),
+		FrequencyPenalty: lo.ToPtr(0.5),
+		PresencePenalty:  lo.ToPtr(0.25),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello penalties")},
+		}},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(result.Body, &body))
+	_, hasFrequency := body["frequency_penalty"]
+	_, hasPresence := body["presence_penalty"]
+	require.False(t, hasFrequency, "Anthropic body must omit frequency_penalty")
+	require.False(t, hasPresence, "Anthropic body must omit presence_penalty")
+
+	require.ElementsMatch(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "frequency_penalty",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "presence_penalty",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(llmReq))
+}
+
+func TestOutboundTransformer_TransformRequest_DiagnosesResponsesSamplingPenaltiesLoss(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:            "claude-3-sonnet-20240229",
+		APIFormat:        llm.APIFormatOpenAIResponse,
+		MaxTokens:        lo.ToPtr(int64(1024)),
+		FrequencyPenalty: lo.ToPtr(0.4),
+		PresencePenalty:  lo.ToPtr(0.1),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello responses penalties")},
+		}},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(result.Body, &body))
+	_, hasFrequency := body["frequency_penalty"]
+	_, hasPresence := body["presence_penalty"]
+	require.False(t, hasFrequency, "Anthropic body must omit frequency_penalty")
+	require.False(t, hasPresence, "Anthropic body must omit presence_penalty")
+
+	require.ElementsMatch(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "frequency_penalty",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "presence_penalty",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(llmReq))
+}
+
+func TestOutboundTransformer_TransformRequest_DiagnosesChatSeedLoss(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		seed int64
+	}{
+		{name: "zero", seed: 0},
+		{name: "non_zero", seed: 42},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			llmReq := &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				APIFormat: llm.APIFormatOpenAIChatCompletion,
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Seed:      lo.ToPtr(tc.seed),
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("hello seed")},
+				}},
+			}
+
+			transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+			require.NoError(t, err)
+			result, err := transformer.TransformRequest(t.Context(), llmReq)
+			require.NoError(t, err)
+
+			var body map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(result.Body, &body))
+			_, hasSeed := body["seed"]
+			require.False(t, hasSeed, "Anthropic body must omit seed")
+
+			require.Equal(t, []llm.LossyDowngrade{{
+				SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+				SourceField:    "seed",
+				TargetProtocol: llm.APIFormatAnthropicMessage,
+				Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+				Severity:       llm.LossyDowngradeSeverityWarning,
+			}}, llm.LossyDowngrades(llmReq))
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformRequest_OmitsSamplingDiagnosticsWhenAbsent(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "claude-3-sonnet-20240229",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+		}},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	_, err = transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+	require.Empty(t, llm.LossyDowngrades(llmReq))
+}
+
+func TestOutboundTransformer_TransformRequest_DiagnosesOpenAIMetadataOnlyLosses(t *testing.T) {
+	for _, sourceFormat := range []llm.APIFormat{
+		llm.APIFormatOpenAIChatCompletion,
+		llm.APIFormatOpenAIResponse,
+	} {
+		t.Run(string(sourceFormat), func(t *testing.T) {
+			llmReq := &llm.Request{
+				Model:            "claude-3-sonnet-20240229",
+				APIFormat:        sourceFormat,
+				MaxTokens:        lo.ToPtr(int64(1024)),
+				SafetyIdentifier: lo.ToPtr("safety_123"),
+				PromptCacheKey:   lo.ToPtr("cache_123"),
+				Metadata: map[string]string{
+					"user_id": "user_123",
+					"trace":   "trace_123",
+				},
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+				}},
+			}
+
+			transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+			require.NoError(t, err)
+			result, err := transformer.TransformRequest(t.Context(), llmReq)
+			require.NoError(t, err)
+
+			var body map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(result.Body, &body))
+			require.JSONEq(t, `{"user_id":"user_123"}`, string(body["metadata"]))
+			require.NotContains(t, string(result.Body), "safety_123")
+			require.NotContains(t, string(result.Body), "cache_123")
+			require.NotContains(t, string(result.Body), "trace_123")
+
+			require.ElementsMatch(t, []llm.LossyDowngrade{
+				{
+					SourceProtocol: sourceFormat,
+					SourceField:    "safety_identifier",
+					TargetProtocol: llm.APIFormatAnthropicMessage,
+					Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+					Severity:       llm.LossyDowngradeSeverityWarning,
+				},
+				{
+					SourceProtocol: sourceFormat,
+					SourceField:    "prompt_cache_key",
+					TargetProtocol: llm.APIFormatAnthropicMessage,
+					Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+					Severity:       llm.LossyDowngradeSeverityWarning,
+				},
+				{
+					SourceProtocol: sourceFormat,
+					SourceField:    "metadata",
+					TargetProtocol: llm.APIFormatAnthropicMessage,
+					Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+					Severity:       llm.LossyDowngradeSeverityWarning,
+				},
+			}, llm.LossyDowngrades(llmReq))
+		})
+	}
 }

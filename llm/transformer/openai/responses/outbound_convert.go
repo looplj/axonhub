@@ -729,6 +729,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		toolCalls            []llm.ToolCall
 		annotations          []llm.Annotation
 		visibleTextRuneCount int64
+		refusalText          string
 	)
 
 	flushText := func() {
@@ -754,8 +755,13 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				continue
 			}
 			for _, contentItem := range outputItem.Content.Items {
-				if contentItem.Type == "output_text" {
+				switch contentItem.Type {
+				case "output_text":
 					annotations = appendOutputText(&textContent, &visibleTextRuneCount, annotations, contentItem)
+				case "refusal":
+					if contentItem.Refusal != nil && *contentItem.Refusal != "" {
+						refusalText = *contentItem.Refusal
+					}
 				}
 			}
 		case "output_text":
@@ -881,6 +887,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		Role:        "assistant",
 		ToolCalls:   toolCalls,
 		Annotations: annotations,
+		Refusal:     refusalText,
 	}
 
 	if reasoningContent.Len() > 0 {

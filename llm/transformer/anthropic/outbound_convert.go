@@ -44,7 +44,7 @@ func convertToAnthropicRequestWithThinkingPlan(
 			req.ToolChoice.DisableParallelToolUse = lo.ToPtr(!*chatReq.ParallelToolCalls)
 		}
 	}
-	req.Messages = convertMessages(chatReq, config)
+	req.Messages = convertMessages(hydrateAnthropicRawContent(chatReq), config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
 	// DeepSeek requires assistant messages in history to include a thinking block
@@ -63,6 +63,63 @@ func convertToAnthropicRequestWithThinkingPlan(
 	}
 
 	return req
+}
+
+// hydrateAnthropicRawContent materializes request-side raw fragments only in a
+// short-lived outbound copy. The canonical llm.Request keeps opaque Anthropic
+// bytes in ProviderExtensions rather than TransformerMetadata; existing block
+// builders can then reuse their ordered-content logic without making metadata
+// a persistent provider field bag.
+func hydrateAnthropicRawContent(chatReq *llm.Request) *llm.Request {
+	if chatReq == nil || chatReq.ProviderExtensions == nil || chatReq.ProviderExtensions.Anthropic == nil ||
+		chatReq.ProviderExtensions.Anthropic.Request == nil {
+		return chatReq
+	}
+
+	fragments := chatReq.ProviderExtensions.Anthropic.Request.RawContentFragments
+	if len(fragments) == 0 {
+		return chatReq
+	}
+
+	cloned := *chatReq
+	cloned.Messages = append([]llm.Message(nil), chatReq.Messages...)
+	for messageIndex := range cloned.Messages {
+		message := &cloned.Messages[messageIndex]
+		if len(message.Content.MultipleContent) == 0 {
+			continue
+		}
+
+		parts := append([]llm.MessageContentPart(nil), message.Content.MultipleContent...)
+		for partIndex := range parts {
+			part := &parts[partIndex]
+			if part.Type != "anthropic_raw_block" {
+				continue
+			}
+			for _, fragment := range fragments {
+				if fragment.MessageIndex != messageIndex || fragment.PartIndex != getAnthropicBlockIndex(part.TransformerMetadata) ||
+					fragment.NestedInToolResult != (message.Role == "tool") {
+					continue
+				}
+				part.TransformerMetadata = cloneAnthropicTransformerMetadata(part.TransformerMetadata)
+				setAnthropicRawBlock(&part.TransformerMetadata, fragment.Raw)
+				break
+			}
+		}
+		message.Content.MultipleContent = parts
+	}
+
+	return &cloned
+}
+
+func cloneAnthropicTransformerMetadata(src map[string]any) map[string]any {
+	if len(src) == 0 {
+		return nil
+	}
+	cloned := make(map[string]any, len(src)+1)
+	for key, value := range src {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func isThinkingEnabled(req *MessageRequest) bool {
@@ -243,7 +300,6 @@ func resolveMaxTokens(chatReq *llm.Request) int64 {
 	}
 }
 
-
 // anthropicRawToolFragment preserves adapter-specific tools[] entries with their
 // original wire index so same-protocol replay can reinsert them among converted
 // function/web_search tools without reordering.
@@ -252,8 +308,11 @@ type anthropicRawToolFragment struct {
 	Raw           json.RawMessage
 }
 
-// appendAnthropicRawTools re-attaches adapter-specific tool fragments
-// (mcp_toolset) at their original tools[] indexes.
+// appendAnthropicRawTools re-attaches Anthropic tool declaration fragments at
+// their original tools[] indexes. Exclusive raw variants (mcp_toolset /
+// non-web-search native tools) are inserted as raw-only tools; function/web_search
+// raw fragments replace the common typed reconstruction so Anthropic-only children
+// are preserved.
 func appendAnthropicRawTools(tools []Tool, chatReq *llm.Request) []Tool {
 	frags := anthropicRawToolFragments(chatReq)
 	if len(frags) == 0 {
@@ -279,10 +338,21 @@ func appendAnthropicRawTools(tools []Tool, chatReq *llm.Request) []Tool {
 	commonIdx := 0
 	for i := 0; i <= maxIndex; i++ {
 		if raw, ok := rawByIndex[i]; ok {
-			out = append(out, Tool{
-				Type: "mcp_toolset",
-				Raw:  append(json.RawMessage(nil), raw...),
-			})
+			tool := Tool{Raw: append(json.RawMessage(nil), raw...)}
+			// Best-effort type probe for debug/clarity; MarshalJSON uses Raw.
+			var probe struct {
+				Type string `json:"type"`
+			}
+			_ = json.Unmarshal(raw, &probe)
+			if probe.Type != "" {
+				tool.Type = probe.Type
+			}
+			// If this raw fragment overlays a common tool (function/web_search),
+			// consume that common tool slot so order stays correct.
+			if !isExclusiveAnthropicRawTool(tool) && commonIdx < len(tools) {
+				commonIdx++
+			}
+			out = append(out, tool)
 			continue
 		}
 		if commonIdx < len(tools) {
@@ -669,6 +739,15 @@ func extractUserContentBlocks(msg llm.Message) []MessageContentBlock {
 				if block, ok := convertDocumentURLToAnthropicBlock(part); ok {
 					blocks = append(blocks, block)
 				}
+			case "anthropic_raw_block":
+				// Preserve top-level future/unknown blocks that ride next to
+				// tool_result through groupToolResultMessages / findToolResultsForAssistant.
+				if raw := getAnthropicRawBlock(part.TransformerMetadata); len(raw) > 0 {
+					blocks = append(blocks, MessageContentBlock{
+						Type: "anthropic_raw_block",
+						Raw:  append(json.RawMessage(nil), raw...),
+					})
+				}
 			}
 		}
 	}
@@ -872,13 +951,19 @@ func buildRedactedThinkingBlock(redactedContent *string) *MessageContentBlock {
 }
 
 func convertToToolResultBlock(msg llm.Message) MessageContentBlock {
-	return MessageContentBlock{
+	block := MessageContentBlock{
 		Type:         "tool_result",
 		ToolUseID:    msg.ToolCallID,
-		Content:      convertToAnthropicTrivialContent(msg.Content),
 		CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
 		IsError:      msg.ToolCallIsError,
 	}
+
+	// Rebuild from typed parts, including anthropic_raw_block children that
+	// preserve unknown nested tool_result content.
+	if content := convertToAnthropicTrivialContent(msg.Content); content != nil {
+		block.Content = content
+	}
+	return block
 }
 
 // convertImageURLToAnthropicBlock converts image_url content part to Anthropic MessageContentBlock.
@@ -967,6 +1052,13 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 			case "document":
 				if block, ok := convertDocumentURLToAnthropicBlock(part); ok {
 					blocks = append(blocks, block)
+				}
+			case "anthropic_raw_block":
+				if raw := getAnthropicRawBlock(part.TransformerMetadata); len(raw) > 0 {
+					blocks = append(blocks, MessageContentBlock{
+						Type: "anthropic_raw_block",
+						Raw:  append(json.RawMessage(nil), raw...),
+					})
 				}
 			}
 		}
@@ -1080,6 +1172,13 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 					CacheControl: convertToAnthropicCacheControl(part.CacheControl),
 				})
 			}
+		case "anthropic_raw_block":
+			if raw := getAnthropicRawBlock(part.TransformerMetadata); len(raw) > 0 {
+				appendOrdered(part.TransformerMetadata, MessageContentBlock{
+					Type: "anthropic_raw_block",
+					Raw:  append(json.RawMessage(nil), raw...),
+				})
+			}
 		case "image_url":
 			if part.ImageURL != nil && part.ImageURL.URL != "" {
 				url := part.ImageURL.URL
@@ -1173,12 +1272,24 @@ func llmAnnotationFromCitation(citation TextCitation) (llm.Annotation, bool) {
 	return annotation, true
 }
 
-func cloneAnthropicResponseContentBlocks(blocks []MessageContentBlock) []MessageContentBlock {
+// marshalAnthropicResponseContentRaw deep-copies each Anthropic response content
+// block as json.RawMessage for ProviderExtensions.Anthropic.Response.RawContent.
+// Prefer original Raw bytes for unknown/future blocks so nested native fields
+// survive same-protocol replay without re-encoding loss.
+func marshalAnthropicResponseContentRaw(blocks []MessageContentBlock) []json.RawMessage {
 	if len(blocks) == 0 {
 		return nil
 	}
 
-	return xjson.MustTo[[]MessageContentBlock](xjson.MustMarshal(blocks))
+	out := make([]json.RawMessage, len(blocks))
+	for i, block := range blocks {
+		if len(block.Raw) > 0 {
+			out[i] = append(json.RawMessage(nil), block.Raw...)
+			continue
+		}
+		out[i] = append(json.RawMessage(nil), xjson.MustMarshal(block)...)
+	}
+	return out
 }
 
 // convertToLlmResponse converts Anthropic Message to unified Response format.
@@ -1192,7 +1303,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		}
 	}
 
-	var transformerMetadata map[string]any
+	var needRawContent bool
 	resp := &llm.Response{
 		ID:          anthropicResp.ID,
 		Object:      "chat.completion",
@@ -1233,6 +1344,10 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 				annotations = append(annotations, lo.FilterMap(block.Citations, func(citation TextCitation, _ int) (llm.Annotation, bool) {
 					return llmAnnotationFromCitation(citation)
 				})...)
+				// The common annotation model does not carry every Anthropic citation
+				// child (encrypted_index, cited_text, and future variants). Keep the
+				// original ordered response content on the existing native sidecar.
+				needRawContent = true
 			}
 		case "image":
 			if part, ok := convertImageSourceToLLMImageURLPart(block.Source, block.CacheControl); ok {
@@ -1264,19 +1379,18 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 					toolCalls = append(toolCalls, tc)
 				}
 
-				if transformerMetadata == nil {
-					transformerMetadata = map[string]any{}
-				}
-				transformerMetadata[TransformerMetadataKeyAnthropicResponseContent] = cloneAnthropicResponseContentBlocks(anthropicResp.Content)
+				needRawContent = true
 			case isAnthropicSpecialToolResultBlock(block.Type):
 				ir := inlineToolResultFromBlock(&block)
 				setAnthropicBlockIndex(&ir.TransformerMetadata, i)
 				inlineToolResults = append(inlineToolResults, ir)
 
-				if transformerMetadata == nil {
-					transformerMetadata = map[string]any{}
-				}
-				transformerMetadata[TransformerMetadataKeyAnthropicResponseContent] = cloneAnthropicResponseContentBlocks(anthropicResp.Content)
+				needRawContent = true
+			default:
+				// Unknown/future response blocks have no common representation.
+				// Retain the original ordered content on the existing Anthropic-only
+				// response sidecar for same-protocol replay.
+				needRawContent = true
 			}
 		}
 	}
@@ -1346,13 +1460,17 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		FinishReason: finishReason,
 	}
 
-	// Carry the original Anthropic stop_reason when it would otherwise be
-	// lost in the canonical finish_reason mapping. Only stop_sequence
-	// collapses ambiguously to "stop" (same as end_turn), so persist it to
-	// let an Anthropic->canonical->Anthropic round-trip restore it.
-	if anthropicResp.StopReason != nil && *anthropicResp.StopReason == "stop_sequence" {
-		choice.TransformerMetadata = map[string]any{
-			TransformerMetadataKeyAnthropicStopReason: *anthropicResp.StopReason,
+	// Carry the original Anthropic stop_reason because several native values
+	// collapse in the common finish_reason model (for example stop_sequence and
+	// pause_turn both become stop, while refusal becomes content_filter).
+	// Anthropic outbound replay consumes this adapter-local metadata; other
+	// protocol adapters continue to use the common finish reason.
+	if anthropicResp.StopReason != nil {
+		switch *anthropicResp.StopReason {
+		case "stop_sequence", "pause_turn", "refusal":
+			choice.TransformerMetadata = map[string]any{
+				TransformerMetadataKeyAnthropicStopReason: *anthropicResp.StopReason,
+			}
 		}
 	}
 
@@ -1365,8 +1483,24 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 	if anthropicResp.Usage != nil {
 		resp.ServiceTier = anthropicResp.Usage.ServiceTier
 	}
-	if transformerMetadata != nil {
-		resp.TransformerMetadata = transformerMetadata
+	// Preserve Anthropic-only non-stream response fields on their named owner.
+	if anthropicResp.StopSequence != nil || len(anthropicResp.StopDetails) > 0 ||
+		(anthropicResp.Usage != nil && len(anthropicResp.Usage.Raw) > 0) ||
+		needRawContent {
+		ext := llm.EnsureAnthropicResponseExtensions(resp)
+		if anthropicResp.StopSequence != nil {
+			ext.StopSequence = lo.ToPtr(*anthropicResp.StopSequence)
+		}
+		ext.StopDetails = append(json.RawMessage(nil), anthropicResp.StopDetails...)
+		if anthropicResp.Usage != nil {
+			ext.RawUsage = append(json.RawMessage(nil), anthropicResp.Usage.Raw...)
+		}
+		if needRawContent {
+			// Full ordered Anthropic content[] for same-protocol replay when common
+			// llm.Response cannot own every block (unknown future blocks, citation
+			// native details, special tool blocks). Only Anthropic inbound reads it.
+			ext.RawContent = marshalAnthropicResponseContentRaw(anthropicResp.Content)
+		}
 	}
 
 	return resp

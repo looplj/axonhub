@@ -217,13 +217,14 @@ const TransformerMetadataKeyInferenceGeo = "anthropic_inference_geo"
 const TransformerMetadataKeyMCPServers = "anthropic_mcp_servers"
 
 // TransformerMetadataKeyRawTools stores ordered Anthropic adapter-specific tool
-// wire fragments (currently mcp_toolset) that must not be flattened into llm.Tool.
+// wire fragments (mcp_toolset, non-web-search native tools, and same-protocol
+// function-tool declarations with Anthropic-only children) that must not be
+// flattened into llm.Tool.
 const TransformerMetadataKeyRawTools = "anthropic_raw_tools"
 
-// TransformerMetadataKeyAnthropicResponseContent stores provider-native Anthropic response content blocks
-// so outbound->unified->inbound round-trip can restore Anthropic-only blocks such as
-// server_tool_use and web_search_tool_result without expanding the unified llm schema.
-const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_content"
+// TransformerMetadataKeyAnthropicStopSequence stores the matched response
+// stop_sequence string for same-protocol replay.
+const TransformerMetadataKeyAnthropicStopSequence = "anthropic_stop_sequence"
 
 // TransformerMetadataKeyAnthropicStopReason stores the original Anthropic
 // stop_reason (e.g. "stop_sequence") so an Anthropic->canonical->Anthropic
@@ -428,6 +429,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 // MessageContentBlock represents different types of content blocks.
 type MessageContentBlock struct {
 	// Any of "text", "image", "thinking", "redacted_thinking", "tool_use", "server_tool_use", "tool_result".
+	// Unknown/future block types are preserved via Raw for same-protocol replay.
 	Type string `json:"type"`
 
 	// Text will be present if type is "text".
@@ -472,6 +474,11 @@ type MessageContentBlock struct {
 	// *_tool_result). It is kept as json.RawMessage to avoid version-matrix
 	// churn (direct / code_execution_20250825 / code_execution_20260120 / ...).
 	Caller json.RawMessage `json:"caller,omitempty"`
+
+	// Raw holds the original content-block JSON for unknown/future variants or
+	// when typed fields cannot losslessly represent the wire shape. When set for
+	// an unknown block type, MarshalJSON emits Raw verbatim.
+	Raw json.RawMessage `json:"-"`
 }
 
 // TextCitation represents a citation attached to an Anthropic text block.
@@ -482,9 +489,47 @@ type TextCitation struct {
 
 	EncryptedIndex *string `json:"encrypted_index,omitempty"`
 	CitedText      *string `json:"cited_text,omitempty"`
+
+	// Raw retains Anthropic-native and future citation children for same-family
+	// response replay. Generated cross-protocol citations leave Raw empty.
+	Raw json.RawMessage `json:"-"`
+}
+
+func (c *TextCitation) UnmarshalJSON(data []byte) error {
+	type citationAlias TextCitation
+	var decoded citationAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*c = TextCitation(decoded)
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err == nil {
+		for key := range fields {
+			switch key {
+			case "type", "url", "title", "encrypted_index", "cited_text":
+			default:
+				c.Raw = append(json.RawMessage(nil), data...)
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
+func (c TextCitation) MarshalJSON() ([]byte, error) {
+	if len(c.Raw) > 0 {
+		return c.Raw, nil
+	}
+	type citationAlias TextCitation
+	return json.Marshal(citationAlias(c))
 }
 
 func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
+	if len(b.Raw) > 0 && !isKnownAnthropicContentBlockType(b.Type) {
+		return b.Raw, nil
+	}
+
 	type blockAlias MessageContentBlock
 
 	if b.Type == "thinking" {
@@ -503,6 +548,96 @@ func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(blockAlias(b))
+}
+
+// UnmarshalJSON tolerates unknown block shapes (e.g. search_result with a string
+// "source") while still decoding known typed fields best-effort. The original
+// bytes are retained in Raw for unknown/future block types.
+func (b *MessageContentBlock) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		return nil
+	}
+
+	var probe struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return err
+	}
+
+	// Flexible intermediate: Source may be an ImageSource object or a non-object
+	// value on unknown blocks. Nested Content still uses MessageContent.
+	var aux struct {
+		Text             *string         `json:"text"`
+		Citations        []TextCitation  `json:"citations"`
+		Thinking         *string         `json:"thinking"`
+		Signature        *string         `json:"signature"`
+		Data             string          `json:"data"`
+		Source           json.RawMessage `json:"source"`
+		ID               string          `json:"id"`
+		Name             *string         `json:"name"`
+		Input            json.RawMessage `json:"input"`
+		CacheControl     *CacheControl   `json:"cache_control"`
+		ToolUseID        *string         `json:"tool_use_id"`
+		Content          *MessageContent `json:"content"`
+		IsError          *bool           `json:"is_error"`
+		URL              string          `json:"url"`
+		Title            string          `json:"title"`
+		EncryptedContent *string         `json:"encrypted_content"`
+		PageAge          *string         `json:"page_age"`
+		Caller           json.RawMessage `json:"caller"`
+	}
+	// Best-effort typed decode; never fail the whole request for unknown shapes.
+	_ = json.Unmarshal(data, &aux)
+
+	b.Type = probe.Type
+	b.Text = aux.Text
+	b.Citations = aux.Citations
+	b.Thinking = aux.Thinking
+	b.Signature = aux.Signature
+	b.Data = aux.Data
+	b.ID = aux.ID
+	b.Name = aux.Name
+	b.Input = aux.Input
+	b.CacheControl = aux.CacheControl
+	b.ToolUseID = aux.ToolUseID
+	b.Content = aux.Content
+	b.IsError = aux.IsError
+	b.URL = aux.URL
+	b.Title = aux.Title
+	b.EncryptedContent = aux.EncryptedContent
+	b.PageAge = aux.PageAge
+	b.Caller = aux.Caller
+
+	if len(aux.Source) > 0 && string(aux.Source) != "null" {
+		var src ImageSource
+		if err := json.Unmarshal(aux.Source, &src); err == nil {
+			if src.Type != "" || src.URL != "" || src.Data != "" || src.MediaType != "" {
+				b.Source = &src
+			}
+		}
+	}
+
+	// Keep raw bytes for unknown/future blocks so MarshalJSON can emit them
+	// verbatim. Known blocks use typed fields.
+	if !isKnownAnthropicContentBlockType(b.Type) {
+		b.Raw = append(json.RawMessage(nil), data...)
+	}
+
+	return nil
+}
+
+func isKnownAnthropicContentBlockType(blockType string) bool {
+	switch blockType {
+	case "text", "image", "document", "thinking", "redacted_thinking",
+		"tool_use", "tool_result", "server_tool_use":
+		return true
+	default:
+		if isAnthropicSpecialToolUseBlock(blockType) || isAnthropicSpecialToolResultBlock(blockType) {
+			return true
+		}
+		return false
+	}
 }
 
 // ImageSource represents image source for Anthropic.
@@ -618,7 +753,10 @@ type Message struct {
 	// This value will be a non-null string if one of your custom stop sequences was
 	// generated.
 	StopSequence *string `json:"stop_sequence,omitempty"`
-	Usage        *Usage  `json:"usage,omitempty"`
+	// StopDetails is an Anthropic-native structured stop detail object. Kept as
+	// opaque JSON so same-protocol replay preserves unknown nested keys.
+	StopDetails json.RawMessage `json:"stop_details,omitempty"`
+	Usage       *Usage          `json:"usage,omitempty"`
 }
 
 type ErrorDetail struct {

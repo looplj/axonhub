@@ -355,8 +355,8 @@ func TestAnthropicTransformResponse_CitationRoundTripIntegration(t *testing.T) {
 	require.Equal(t, "url_citation", citation.Type)
 	require.Equal(t, "https://example.com/anthropic", citation.URL)
 	require.Equal(t, "Anthropic Source", citation.Title)
-	require.Nil(t, citation.EncryptedIndex)
-	require.Nil(t, citation.CitedText)
+	require.Equal(t, "secret-index", lo.FromPtr(citation.EncryptedIndex))
+	require.Equal(t, "quoted text", lo.FromPtr(citation.CitedText))
 }
 
 func TestAnthropicTransformResponse_WebSearchBlocks_RoundTripIntegration(t *testing.T) {

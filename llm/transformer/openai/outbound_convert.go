@@ -94,11 +94,17 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		}
 	}
 
-	// Convert Tools – only include function tools; other types
-	// (image_generation, responses_custom_tool, etc.) are not supported
-	// by the Chat Completions API and must be filtered out.
+	// Convert Chat-supported tools. Responses custom tools intentionally remain
+	// excluded: Chat custom declarations use their own `custom` wire shape and
+	// are carried only by OpenAIChatCustomTool.
 	req.Tools = lo.FilterMap(r.Tools, func(t llm.Tool, _ int) (Tool, bool) {
-		return ToolFromLLM(t), t.Type == llm.ToolTypeFunction
+		if t.Type == llm.ToolTypeFunction {
+			return ToolFromLLM(t), true
+		}
+		if t.Type == "custom" && t.OpenAIChatCustomTool != nil {
+			return ToolFromLLM(t), true
+		}
+		return Tool{}, false
 	})
 
 	// Convert ToolChoice
@@ -112,6 +118,17 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 				Function: ToolFunction{
 					Name: r.ToolChoice.NamedToolChoice.Function.Name,
 				},
+			}
+		}
+		if r.ToolChoice.OpenAIChatCustomToolChoice != nil {
+			req.ToolChoice.Custom = &CustomToolChoice{
+				Name: r.ToolChoice.OpenAIChatCustomToolChoice.Name,
+			}
+		}
+		if r.ToolChoice.OpenAIChatAllowedTools != nil {
+			req.ToolChoice.AllowedTools = &AllowedToolsToolChoice{
+				Mode:  r.ToolChoice.OpenAIChatAllowedTools.Mode,
+				Tools: append([]json.RawMessage(nil), r.ToolChoice.OpenAIChatAllowedTools.Tools...),
 			}
 		}
 	}
@@ -254,7 +271,10 @@ func MessageContentFromLLM(c llm.MessageContent) MessageContent {
 	if c.MultipleContent != nil {
 		content.MultipleContent = lo.FilterMap(c.MultipleContent, func(p llm.MessageContentPart, _ int) (MessageContentPart, bool) {
 			switch p.Type {
-			case "compaction", "compaction_summary", "document":
+			case "compaction", "compaction_summary", "document", "anthropic_raw_block":
+				// anthropic_raw_block is an Anthropic-native placeholder. Its raw
+				// bytes live in ProviderExtensions and are only hydrated by the
+				// Anthropic outbound adapter, so it must never become a Chat part.
 				return MessageContentPart{}, false
 			default:
 				return MessageContentPartFromLLM(p), true
@@ -292,12 +312,23 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 		}
 	}
 
+	if p.OpenAIChatFile != nil {
+		part.File = &FileContent{
+			FileData: p.OpenAIChatFile.FileData,
+			FileID:   p.OpenAIChatFile.FileID,
+			Filename: p.OpenAIChatFile.Filename,
+		}
+	}
+	if p.OpenAIChatRefusal != nil {
+		part.Refusal = p.OpenAIChatRefusal
+	}
+
 	return part
 }
 
 // ToolFromLLM creates OpenAI Tool from unified llm.Tool.
 func ToolFromLLM(t llm.Tool) Tool {
-	return Tool{
+	result := Tool{
 		Type: t.Type,
 		Function: Function{
 			Name:        t.Function.Name,
@@ -306,6 +337,14 @@ func ToolFromLLM(t llm.Tool) Tool {
 			Strict:      t.Function.Strict,
 		},
 	}
+	if t.Type == "custom" && t.OpenAIChatCustomTool != nil {
+		result.Custom = &CustomTool{
+			Name:        t.OpenAIChatCustomTool.Name,
+			Description: t.OpenAIChatCustomTool.Description,
+			Format:      append(json.RawMessage(nil), t.OpenAIChatCustomTool.Format...),
+		}
+	}
+	return result
 }
 
 // ToolCallFromLLM creates OpenAI ToolCall from unified llm.ToolCall.
@@ -325,6 +364,14 @@ func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
 			Google: &ToolCallGoogleExtraContent{
 				ThoughtSignature: raw,
 			},
+		}
+	}
+
+	if tc.Type == "custom" && tc.OpenAIChatCustomToolCall != nil {
+		toolCall.Custom = &CustomToolCall{
+			Name:  tc.OpenAIChatCustomToolCall.Name,
+			Input: tc.OpenAIChatCustomToolCall.Input,
+			Index: tc.OpenAIChatCustomToolCall.Index,
 		}
 	}
 
