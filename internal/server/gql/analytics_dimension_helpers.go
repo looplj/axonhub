@@ -59,6 +59,7 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 
 	return results, nil
 }
+
 func (r *queryResolver) queryModelStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
 	var results []dimStats
 
@@ -86,6 +87,7 @@ func (r *queryResolver) queryModelStats(ctx context.Context, filter *AnalyticsFi
 
 	return results, nil
 }
+
 func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
 	type apiKeyStatsRaw struct {
 		APIKeyID     int     `json:"api_key_id"`
@@ -151,6 +153,7 @@ func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsF
 
 	return results, nil
 }
+
 func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
 	type userStatsRaw struct {
 		UserID       int     `json:"user_id"`
@@ -232,6 +235,7 @@ func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFil
 
 	return results, nil
 }
+
 func dimStatsToDimensionStats(items []dimStats) []*AnalyticsDimensionStat {
 	return lo.Map(items, func(item dimStats, _ int) *AnalyticsDimensionStat {
 		return &AnalyticsDimensionStat{

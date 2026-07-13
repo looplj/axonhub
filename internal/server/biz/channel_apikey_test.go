@@ -376,9 +376,9 @@ func TestTraceStickyKeyProvider_DoesNotFallbackToExcludedKeys(t *testing.T) {
 		},
 		cachedEnabledAPIKeys: []string{},
 	}
-	ctx := context.Background()
-	for _, key := range keys {
-		ctx = contexts.ExcludeChannelAPIKey(ctx, ch.ID, key)
+	ctx := contexts.ExcludeChannelAPIKey(context.Background(), ch.ID, keys[0])
+	for _, key := range keys[1:] {
+		contexts.ExcludeChannelAPIKey(ctx, ch.ID, key)
 	}
 
 	require.Empty(t, NewTraceStickyKeyProvider(ch).Get(ctx))
