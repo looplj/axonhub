@@ -598,47 +598,6 @@ func TestChannelService_BulkImportChannels_RollsBackOnlyFailingItem(t *testing.T
 	}
 }
 
-func TestChannelService_BulkImportChannels_RejectsCallerOwnedTransaction(t *testing.T) {
-	tests := []struct {
-		name    string
-		makeCtx func(context.Context, *ent.Tx) context.Context
-	}{
-		{
-			name: "transaction from context",
-			makeCtx: func(ctx context.Context, tx *ent.Tx) context.Context {
-				return ent.NewTxContext(ctx, tx)
-			},
-		},
-		{
-			name: "transactional client from context",
-			makeCtx: func(ctx context.Context, tx *ent.Tx) context.Context {
-				return ent.NewContext(ctx, tx.Client())
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc, client := setupTestChannelService(t)
-			defer client.Close()
-
-			ctx := channelAutoPriceTestContext(client)
-			tx, err := client.Tx(ctx)
-			require.NoError(t, err)
-
-			result, err := svc.BulkImportChannels(tt.makeCtx(ctx, tx), []*BulkImportChannelItem{
-				newBulkImportAutoPriceTestItem("Rejected Import", "priced-model"),
-			})
-			require.ErrorIs(t, err, errServiceOwnedTransactionRequired)
-			require.Nil(t, result)
-			require.NoError(t, tx.Commit())
-			require.Equal(t, 0, countAllChannels(t, ctx, client))
-			require.Equal(t, 0, countAllChannelModelPrices(t, ctx, client))
-			require.Equal(t, 0, countAllChannelModelPriceVersions(t, ctx, client))
-		})
-	}
-}
-
 func TestChannelService_AutoPricingSupportsWriteOnlyChannelMutations(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()

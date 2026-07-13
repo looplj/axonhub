@@ -16,7 +16,7 @@ import (
 func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, input ent.CreateChannelInput) (*ent.Channel, error) {
 	var duplicated *ent.Channel
 
-	owned, err := svc.runInTransaction(ctx, func(ctx context.Context) error {
+	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
 
 		if _, err := db.Channel.Get(ctx, sourceID); err != nil {
@@ -66,11 +66,11 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 	if err != nil {
 		return nil, err
 	}
-	if owned {
+	if ent.TxFromContext(ctx) == nil {
 		duplicated.Unwrap()
 	}
 
-	svc.reloadChannelsAfterCommit(ctx, owned)
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return duplicated, nil
 }

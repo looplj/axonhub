@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -92,7 +91,7 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 		tagsToUse = []string{input.Name} // Use base name as tag (backward compatible)
 	}
 
-	owned, err := svc.runInTransaction(ctx, func(ctx context.Context) error {
+	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		priceTemplates, err := svc.resolveChannelModelPriceTemplates(ctx, input.SupportedModels)
 		if err != nil {
 			return err
@@ -143,14 +142,14 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 	if err != nil {
 		return nil, err
 	}
-	if owned {
+	if ent.TxFromContext(ctx) == nil {
 		for _, ch := range createdChannels {
 			ch.Unwrap()
 		}
 	}
 
 	// Reload channels once after all successful creations
-	svc.reloadChannelsAfterCommit(ctx, owned)
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return createdChannels, nil
 }
@@ -251,13 +250,11 @@ type BulkImportChannelsResult struct {
 	Channels []*ent.Channel
 }
 
-// BulkImportChannels imports multiple channels at once. Every item owns its
-// transaction so a failed item can roll back independently. Callers that own
-// an outer transaction must not use this partial-success operation.
+// BulkImportChannels imports multiple channels at once.
 func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []*BulkImportChannelItem) (*BulkImportChannelsResult, error) {
 	var (
 		createdChannels []*ent.Channel
-		rowErrors       []string
+		errors          []string
 	)
 
 	created := 0
@@ -267,7 +264,7 @@ func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []*Bulk
 		// Validate channel type
 		channelType := channel.Type(item.Type)
 		if err := channel.TypeValidator(channelType); err != nil {
-			rowErrors = append(rowErrors, fmt.Sprintf("Row %d: Invalid channel type '%s'", i+1, item.Type))
+			errors = append(errors, fmt.Sprintf("Row %d: Invalid channel type '%s'", i+1, item.Type))
 			failed++
 
 			continue
@@ -275,25 +272,21 @@ func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []*Bulk
 
 		// Validate required fields
 		if item.BaseURL == nil || *item.BaseURL == "" {
-			rowErrors = append(rowErrors, fmt.Sprintf("Row %d (%s): Base URL is required", i+1, item.Name))
+			errors = append(errors, fmt.Sprintf("Row %d (%s): Base URL is required", i+1, item.Name))
 			failed++
 
 			continue
 		}
 
 		if item.APIKey == nil || *item.APIKey == "" {
-			rowErrors = append(rowErrors, fmt.Sprintf("Row %d (%s): API Key is required", i+1, item.Name))
+			errors = append(errors, fmt.Sprintf("Row %d (%s): API Key is required", i+1, item.Name))
 			failed++
 
 			continue
 		}
 
 		var ch *ent.Channel
-		owned, err := svc.runInTransactionWithOwnership(ctx, func(ctx context.Context, owned bool) error {
-			if !owned {
-				return errServiceOwnedTransactionRequired
-			}
-
+		err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
 			createdChannel, err := svc.entFromContext(ctx).Channel.Create().
 				SetType(channelType).
 				SetName(item.Name).
@@ -315,16 +308,12 @@ func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []*Bulk
 			return nil
 		})
 		if err != nil {
-			if errors.Is(err, errServiceOwnedTransactionRequired) {
-				return nil, fmt.Errorf("bulk import channels cannot run in a caller-owned transaction: %w", err)
-			}
-
-			rowErrors = append(rowErrors, fmt.Sprintf("Row %d (%s): %s", i+1, item.Name, err.Error()))
+			errors = append(errors, fmt.Sprintf("Row %d (%s): %s", i+1, item.Name, err.Error()))
 			failed++
 
 			continue
 		}
-		if owned {
+		if ent.TxFromContext(ctx) == nil {
 			ch.Unwrap()
 		}
 
@@ -341,7 +330,7 @@ func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []*Bulk
 		Success:  success,
 		Created:  created,
 		Failed:   failed,
-		Errors:   rowErrors,
+		Errors:   errors,
 		Channels: createdChannels,
 	}
 

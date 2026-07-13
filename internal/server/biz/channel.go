@@ -583,7 +583,7 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	var created *ent.Channel
-	owned, err := svc.runInTransaction(ctx, func(ctx context.Context) error {
+	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		channel, err := svc.createChannel(ctx, input)
 		if err != nil {
 			return err
@@ -600,11 +600,11 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	if err != nil {
 		return nil, err
 	}
-	if owned {
+	if ent.TxFromContext(ctx) == nil {
 		created.Unwrap()
 	}
 
-	svc.reloadChannelsAfterCommit(ctx, owned)
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return created, nil
 }
@@ -720,7 +720,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	var updated *ent.Channel
-	owned, err := svc.runInTransaction(ctx, func(ctx context.Context) error {
+	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
 		mut := db.Channel.UpdateOneID(id).
 			SetNillableType(input.Type).
@@ -794,7 +794,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	if err != nil {
 		return nil, err
 	}
-	if owned {
+	if ent.TxFromContext(ctx) == nil {
 		updated.Unwrap()
 	}
 
@@ -803,7 +803,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	// next request. Calling Forget on every update (including unrelated
 	// settings) would orphan in-flight slots and let the next batch of
 	// requests transiently exceed MaxConcurrent.
-	svc.reloadChannelsAfterCommit(ctx, owned)
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return updated, nil
 }
@@ -835,20 +835,13 @@ func (svc *ChannelService) asyncReloadChannels() {
 	}
 }
 
-// reloadChannelsAfterCommit publishes immediately for transactions owned by
-// this service and registers an after-commit hook for caller-owned Ent
-// transactions (including the GraphQL Transactioner). A caller that supplies
-// only tx.Client() has no commit hook surface and remains responsible for its
-// own post-commit notification.
-func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context, owned bool) {
-	if owned {
-		svc.asyncReloadChannels()
-
-		return
-	}
-
+// reloadChannelsAfterCommit waits for a caller-owned Ent transaction, including
+// the GraphQL Transactioner, before publishing the channel cache refresh.
+func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context) {
 	tx := ent.TxFromContext(ctx)
 	if tx == nil {
+		svc.asyncReloadChannels()
+
 		return
 	}
 
