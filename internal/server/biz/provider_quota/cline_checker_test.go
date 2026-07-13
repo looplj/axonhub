@@ -17,6 +17,43 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+func TestParseClineUsageLimits_MapsFieldsIndependentlyAndKeepsFirstValidValue(t *testing.T) {
+	firstPercent := 25.0
+	duplicatePercent := 90.0
+	negativePercent := -5.0
+	overPercent := 150.0
+
+	limits, meta := parseClineUsageLimits([]clineUsageLimit{
+		{Type: "unknown", PercentUsed: &firstPercent, ResetsAt: "2026-07-14T13:00:00Z"},
+		{Type: "five_hour", PercentUsed: &firstPercent},
+		{Type: "five_hour", PercentUsed: &duplicatePercent, ResetsAt: "2026-07-14T15:00:00Z"},
+		{Type: "weekly", PercentUsed: &negativePercent, ResetsAt: "not-a-time"},
+		{Type: "monthly", PercentUsed: &overPercent, ResetsAt: "2026-08-01T11:13:17Z"},
+	})
+
+	require.Equal(t, clineUsageLimitsFetchStatusPartial, meta.Status)
+	require.Equal(t, 5, meta.EntriesSeen)
+	require.Equal(t, 4, meta.RecognizedEntries)
+	require.Equal(t, 3, meta.UsableWindows)
+	require.Equal(t, 5, meta.UsableFields)
+
+	fiveHour := limits["last5h"]
+	require.NotNil(t, fiveHour.UsageRatio)
+	require.InDelta(t, 0.25, *fiveHour.UsageRatio, 0.000001)
+	require.NotNil(t, fiveHour.NextResetAt)
+	require.Equal(t, "2026-07-14T15:00:00Z", fiveHour.NextResetAt.Format(time.RFC3339))
+
+	weekly := limits["last7d"]
+	require.NotNil(t, weekly.UsageRatio)
+	require.Zero(t, *weekly.UsageRatio)
+	require.Nil(t, weekly.NextResetAt)
+
+	monthly := limits["last30d"]
+	require.NotNil(t, monthly.UsageRatio)
+	require.Equal(t, 1.0, *monthly.UsageRatio)
+	require.NotNil(t, monthly.NextResetAt)
+}
+
 func TestCline_CheckQuota_HappyPathPassOnly(t *testing.T) {
 	now := time.Date(2026, 7, 7, 10, 30, 0, 0, time.UTC)
 	requestCount := 0
