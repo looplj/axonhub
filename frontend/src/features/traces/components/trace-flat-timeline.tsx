@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatDuration } from '../../../utils/format-duration';
 import type { Segment, RequestMetadata, Span } from '../data/schema';
-import { getSpanDisplayLabels, normalizeSpanType } from '../utils/span-display';
+import { getSpanDisplayLabels, getSpanTypeTranslationKey, normalizeSpanType } from '../utils/span-display';
 import { getSpanIcon } from './constant';
 
 type SpanKind = 'request' | 'response';
@@ -498,13 +498,13 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
 
     const flatSegments = flattenSegments(rootNode, earliestStart);
 
-    // Collect all unique span types
-    const allSpanTypes = new Set<string>();
+    // Collect all unique span types with counts
+    const spanTypeCounts = new Map<string, number>();
     flatSegments.forEach((seg) => {
       seg.spans.forEach((span) => {
         if (span.source.type === 'span') {
           const normalizedType = normalizeSpanType(span.source.span.type);
-          allSpanTypes.add(normalizedType);
+          spanTypeCounts.set(normalizedType, (spanTypeCounts.get(normalizedType) ?? 0) + 1);
         }
       });
     });
@@ -541,7 +541,8 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
       totalItems,
       totalTokens,
       totalCachedTokens,
-      allSpanTypes: Array.from(allSpanTypes).sort(),
+      spanTypeCounts,
+      allSpanTypes: Array.from(spanTypeCounts.keys()).sort(),
     };
   }, [trace]);
 
@@ -674,7 +675,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     );
   }
 
-  const { totalDuration, totalItems, totalTokens, totalCachedTokens, allSpanTypes } = timelineData;
+  const { totalDuration, totalItems, totalTokens, totalCachedTokens, spanTypeCounts, allSpanTypes } = timelineData;
   const activeFilterCount = selectedSpanTypes.size;
 
   return (
@@ -762,8 +763,9 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
                             />
                             <SpanIcon className='text-muted-foreground h-4 w-4 flex-shrink-0' />
                             <span className='flex-1 text-sm'>
-                              {t(`traces.timeline.spanTypes.${spanType}`, spanType)}
+                              {t(`traces.timeline.spanTypes.${getSpanTypeTranslationKey(spanType)}`, spanType)}
                             </span>
+                            <span className='text-muted-foreground text-xs tabular-nums'>{spanTypeCounts.get(spanType) ?? 0}</span>
                           </label>
                         );
                       })}
