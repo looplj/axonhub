@@ -281,6 +281,100 @@ func TestCline_CheckQuota_UsageLimitsFailureFallsBackWithoutLosingCostData(t *te
 	assertClineErrorOmitsSensitiveValues(t, fmt.Sprint(quota.RawData))
 }
 
+func TestCline_CheckQuota_PartialUsageLimitsFallbackIsPerFieldAndPerWindow(t *testing.T) {
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	requestCount := 0
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			switch requestCount {
+			case 1:
+				return jsonResponse(http.StatusOK, `{"data":{"id":"user_test"}}`), nil
+			case 2:
+				return jsonResponse(http.StatusOK, `{"data":[{"type":"individual","interval":"Monthly","isActive":true,"entitlements":{"cline_pass":{"enabled":true,"inferenceCapThreshold":{"last5HoursUsageCostUSDPerUser":100,"last7daysUsageCostUSDPerUser":200,"last30daysUsageCostUSDPerUser":400}}}}]}`), nil
+			case 3:
+				return jsonResponse(http.StatusOK, `{"data":{"balance":1000}}`), nil
+			case 4:
+				return jsonResponse(http.StatusOK, `{"data":{"limits":[{"type":"five_hour","percentUsed":80},{"type":"weekly","resetsAt":"2026-07-17T02:56:47Z"},{"type":"unrecognized","percentUsed":99}]}}`), nil
+			case 5:
+				return jsonResponse(http.StatusOK, `{"data":{"items":[{"createdAt":"2026-07-14T11:00:00Z","costUsd":50,"creditsUsed":3}]}}`), nil
+			default:
+				t.Fatalf("unexpected request %d", requestCount)
+				return nil, nil
+			}
+		}),
+	})
+
+	checker := NewClineQuotaChecker(httpClient)
+	checker.now = func() time.Time { return now }
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type:            channel.TypeCline,
+		BaseURL:         "https://api.cline.bot/v1",
+		SupportedModels: []string{"cline-pass/test"},
+		Credentials:     objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+
+	require.NoError(t, err)
+	windows := quota.RawData["windows"].(map[string]any)
+	fiveHour := windows["last5h"].(map[string]any)
+	weekly := windows["last7d"].(map[string]any)
+	monthly := windows["last30d"].(map[string]any)
+
+	require.InDelta(t, 0.80, fiveHour["usage_ratio"].(float64), 0.000001)
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, fiveHour["usage_source"])
+	require.Equal(t, clineWindowSourceEstimatedUsage, fiveHour["reset_source"])
+	require.Equal(t, "2026-07-14T16:00:00Z", fiveHour["next_reset_at"])
+
+	require.InDelta(t, 0.25, weekly["usage_ratio"].(float64), 0.000001)
+	require.Equal(t, clineWindowSourceEstimatedCost, weekly["usage_source"])
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, weekly["reset_source"])
+	require.Equal(t, "2026-07-17T02:56:47Z", weekly["next_reset_at"])
+
+	require.InDelta(t, 0.125, monthly["usage_ratio"].(float64), 0.000001)
+	require.Equal(t, clineWindowSourceEstimatedCost, monthly["usage_source"])
+	require.Equal(t, clineWindowSourceEstimatedUsage, monthly["reset_source"])
+
+	fetch := quota.RawData["usage_limits_fetch"].(map[string]any)
+	require.Equal(t, clineUsageLimitsFetchStatusPartial, fetch["status"])
+	require.Equal(t, 2, fetch["recognized_entries"])
+	require.Equal(t, 2, fetch["usable_windows"])
+	require.Equal(t, 2, fetch["usable_fields"])
+}
+
+func TestCline_CheckQuota_DirectOnlySkipsPassUsageLimitsAndHistory(t *testing.T) {
+	requestCount := 0
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			switch requestCount {
+			case 1:
+				return jsonResponse(http.StatusOK, `{"data":{"id":"user_test"}}`), nil
+			case 2:
+				return jsonResponse(http.StatusOK, `{"data":[{"type":"individual","interval":"Monthly","isActive":true,"entitlements":{}}]}`), nil
+			case 3:
+				return jsonResponse(http.StatusOK, `{"data":{"balance":497582}}`), nil
+			default:
+				t.Fatalf("direct-only quota made unexpected request %d to %s", requestCount, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	})
+
+	checker := NewClineQuotaChecker(httpClient)
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type:            channel.TypeCline,
+		BaseURL:         "https://api.cline.bot/v1",
+		SupportedModels: []string{"anthropic/claude-sonnet-5"},
+		Credentials:     objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, requestCount)
+	require.Equal(t, "direct_only", quota.RawData["model_scope"])
+	require.NotContains(t, quota.RawData, "usage_limits_fetch")
+	require.Empty(t, quota.Limits)
+}
+
 func TestCline_CheckQuota_WarningAtEightyPercent(t *testing.T) {
 	quota := buildClineQuotaData(
 		time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC),
@@ -317,16 +411,29 @@ func TestCline_CheckQuota_ExhaustedWhenPassOnly(t *testing.T) {
 }
 
 func TestCline_CheckQuota_MixedScopeDoesNotExhaustWholeChannelFromPassPool(t *testing.T) {
+	officialRatio := 1.0
 	quota := buildClineQuotaData(
 		time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC),
 		clineModelScopeMixed,
-		clineInferenceCapThreshold{Last5HoursUsageCostUSDPerUser: 100, Last7DaysUsageCostUSDPerUser: 1000, Last30DaysUsageCostUSDPerUser: 2000},
+		clineInferenceCapThreshold{
+			Last5HoursUsageCostUSDPerUser: 100,
+			Last7DaysUsageCostUSDPerUser:  1000,
+			Last30DaysUsageCostUSDPerUser: 2000,
+		},
 		nil,
 		nil,
-		[]clineUsageItem{{CreatedAt: "2026-07-07T11:00:00Z", CostUSD: 100}},
+		[]clineUsageItem{{CreatedAt: "2026-07-07T11:00:00Z", CostUSD: 1}},
 		clineUsageFetchMeta{Pages: 1, ItemsSeen: 1},
-		nil,
-		clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable},
+		map[string]clineOfficialWindowLimit{
+			"last5h": {UsageRatio: &officialRatio},
+		},
+		clineUsageLimitsFetchMeta{
+			Status:            clineUsageLimitsFetchStatusPartial,
+			EntriesSeen:       1,
+			RecognizedEntries: 1,
+			UsableWindows:     1,
+			UsableFields:      1,
+		},
 	)
 
 	require.Equal(t, "warning", quota.Status)
@@ -340,6 +447,11 @@ func TestCline_CheckQuota_MixedScopeDoesNotExhaustWholeChannelFromPassPool(t *te
 		require.NotEqual(t, "exhausted", limit.Status)
 		require.True(t, limit.Ready)
 	}
+
+	windows := quota.RawData["windows"].(map[string]any)
+	fiveHour := windows["last5h"].(map[string]any)
+	require.InDelta(t, 1.0, fiveHour["usage_ratio"].(float64), 0.000001)
+	require.InDelta(t, 0.01, fiveHour["cost_usage_ratio"].(float64), 0.000001)
 }
 
 func TestCline_CheckQuota_DirectOnlyUsesBalanceInformationally(t *testing.T) {
