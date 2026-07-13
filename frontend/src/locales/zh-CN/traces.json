@@ -90,5 +90,6 @@
   "traces.detail.viewMode.flat": "平铺",
   "traces.detail.viewMode.flow": "流程",
   "traces.detail.viewMode.tree": "树形",
-  "traces.detail.spanDetail": "片段详情"
+  "traces.detail.spanDetail": "片段详情",
+  "traces.detail.spanStats.toolDetails": "工具详情"
 }

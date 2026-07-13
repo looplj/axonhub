@@ -2,13 +2,15 @@ import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeft, FileText, Activity, RefreshCw, List, GitBranch, Waypoints, Maximize2, X } from 'lucide-react';
+import { ArrowLeft, FileText, Activity, RefreshCw, List, GitBranch, Waypoints, Maximize2, X, Wrench, MessageSquare, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn, extractNumberID } from '@/lib/utils';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Header } from '@/components/layout/header';
@@ -43,6 +45,35 @@ export default function TraceDetailPage() {
     if (!trace?.rawRootSegment) return null;
     return parseRawRootSegment(trace.rawRootSegment);
   }, [trace]);
+
+  // Compute span statistics for overview cards
+  const spanStats = useMemo(() => {
+    if (!effectiveRootSegment) return { userQueryCount: 0, toolCallCount: 0, toolDetails: {} as Record<string, number> };
+
+    let userQueryCount = 0;
+    let toolCallCount = 0;
+    const toolDetails: Record<string, number> = {};
+
+    const traverse = (segment: Segment) => {
+      for (const span of [...(segment.requestSpans ?? []), ...(segment.responseSpans ?? [])]) {
+        if (span.type === 'user_query') {
+          userQueryCount++;
+        } else if (span.type === 'tool_use') {
+          toolCallCount++;
+          const toolName = span.value?.toolUse?.name;
+          if (toolName) {
+            toolDetails[toolName] = (toolDetails[toolName] ?? 0) + 1;
+          }
+        }
+      }
+      for (const child of segment.children ?? []) {
+        traverse(child);
+      }
+    };
+
+    traverse(effectiveRootSegment);
+    return { userQueryCount, toolCallCount, toolDetails };
+  }, [effectiveRootSegment]);
 
   // Auto-select first span when trace loads
   useEffect(() => {
@@ -201,6 +232,54 @@ export default function TraceDetailPage() {
                       <p className='text-muted-foreground text-base sm:text-lg font-semibold'>-</p>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Top: Span Statistics */}
+            {!isFullscreen && (spanStats.userQueryCount > 0 || spanStats.toolCallCount > 0) && (
+              <div className='px-4 sm:px-6 py-3 border-b bg-background'>
+                <div className='grid grid-cols-2 gap-3 sm:gap-4'>
+                  {spanStats.userQueryCount > 0 && (
+                    <div className='bg-muted/30 rounded-lg px-3 py-2'>
+                      <div className='flex items-center gap-2'>
+                        <MessageSquare className='text-muted-foreground h-4 w-4' />
+                        <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.timeline.spanTypes.userQuery')}</p>
+                      </div>
+                      <p className='text-base sm:text-lg font-semibold mt-1'>{spanStats.userQueryCount}</p>
+                    </div>
+                  )}
+                  {spanStats.toolCallCount > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <div className='bg-muted/30 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors'>
+                          <div className='flex items-center gap-2'>
+                            <Wrench className='text-muted-foreground h-4 w-4' />
+                            <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.timeline.spanTypes.toolUse')}</p>
+                            {Object.keys(spanStats.toolDetails).length > 0 && (
+                              <ChevronDown className='text-muted-foreground h-3 w-3' />
+                            )}
+                          </div>
+                          <p className='text-base sm:text-lg font-semibold mt-1'>{spanStats.toolCallCount}</p>
+                        </div>
+                      </PopoverTrigger>
+                      {Object.keys(spanStats.toolDetails).length > 0 && (
+                        <PopoverContent className='w-64 p-3' align='start'>
+                          <p className='text-sm font-medium mb-2'>{t('traces.detail.spanStats.toolDetails')}</p>
+                          <div className='space-y-1.5'>
+                            {Object.entries(spanStats.toolDetails)
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([name, count]) => (
+                                <div key={name} className='flex items-center justify-between'>
+                                  <span className='text-sm truncate mr-2'>{name}</span>
+                                  <Badge variant='secondary' className='text-xs tabular-nums shrink-0'>{count}</Badge>
+                                </div>
+                              ))}
+                          </div>
+                        </PopoverContent>
+                      )}
+                    </Popover>
+                  )}
                 </div>
               </div>
             )}
