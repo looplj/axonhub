@@ -219,6 +219,26 @@ export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
+export type KimiCodeUsageRow = {
+  label: string;
+  used: number;
+  limit: number;
+  resetAt?: string;
+  resetAfterSeconds?: number;
+};
+
+export type ProviderKimiCodeQuotaData = ProviderQuotaDataCommon & {
+  rows?: KimiCodeUsageRow[];
+  boosterWallet?: {
+    balanceCents: number;
+    totalCents: number;
+    monthlyChargeLimitEnabled: boolean;
+    monthlyChargeLimitCents: number;
+    monthlyUsedCents: number;
+    currency: string;
+  };
+};
+
 export type ClineQuotaWindow = {
   items_count: number;
   used_cost_units: number;
@@ -333,6 +353,12 @@ export type ProviderQuotaChannel = {
       workspaceId?: string | null;
       quotaStatus: {
         quotaData: ProviderOpenCodeGoQuotaData;
+      };
+    }
+  | {
+      type: 'moonshot_coding';
+      quotaStatus: {
+        quotaData: ProviderKimiCodeQuotaData;
       };
     }
   | {
@@ -472,6 +498,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       type: node.type as 'opencode_go' | 'opencode_go_anthropic',
       workspaceId: node.settings?.providerQuota?.opencodeGo?.workspaceId ?? null,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderOpenCodeGoQuotaData },
+    };
+  }
+  if (node.type === 'moonshot_coding') {
+    return {
+      ...base,
+      type: 'moonshot_coding' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderKimiCodeQuotaData },
     };
   }
   if (node.type === 'openai' || node.type === 'openai_responses') {
