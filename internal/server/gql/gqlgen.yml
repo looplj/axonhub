@@ -145,6 +145,12 @@ models:
   RetryableErrorPatternInput:
     model:
       - github.com/looplj/axonhub/internal/objects.RetryableErrorPattern
+  ChannelAPIKeyFailover:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelAPIKeyFailover
+  ChannelAPIKeyFailoverInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelAPIKeyFailover
   OpenCodeGoQuotaSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.OpenCodeGoQuotaSettings

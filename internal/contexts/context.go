@@ -110,6 +110,9 @@ func GetRequestID(ctx context.Context) (string, bool) {
 // WithChannelAPIKey stores the channel API key in the context.
 func WithChannelAPIKey(ctx context.Context, apiKey string) context.Context {
 	container := getContainer(ctx)
+	container.mu.Lock()
+	defer container.mu.Unlock()
+
 	container.ChannelAPIKey = &apiKey
 
 	return withContainer(ctx, container)
@@ -118,11 +121,43 @@ func WithChannelAPIKey(ctx context.Context, apiKey string) context.Context {
 // GetChannelAPIKey retrieves the channel API key from the context.
 func GetChannelAPIKey(ctx context.Context) (string, bool) {
 	container := getContainer(ctx)
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+
 	if container.ChannelAPIKey != nil {
 		return *container.ChannelAPIKey, true
 	}
 
 	return "", false
+}
+
+// ExcludeChannelAPIKey prevents an API key from being selected again for the
+// given channel during the current request.
+func ExcludeChannelAPIKey(ctx context.Context, channelID int, apiKey string) context.Context {
+	container := getContainer(ctx)
+	container.mu.Lock()
+	defer container.mu.Unlock()
+
+	if container.ExcludedChannelAPIKeys == nil {
+		container.ExcludedChannelAPIKeys = make(map[int]map[string]struct{})
+	}
+	if container.ExcludedChannelAPIKeys[channelID] == nil {
+		container.ExcludedChannelAPIKeys[channelID] = make(map[string]struct{})
+	}
+	container.ExcludedChannelAPIKeys[channelID][apiKey] = struct{}{}
+
+	return withContainer(ctx, container)
+}
+
+// IsChannelAPIKeyExcluded reports whether a key has already failed for this
+// channel during the current request.
+func IsChannelAPIKeyExcluded(ctx context.Context, channelID int, apiKey string) bool {
+	container := getContainer(ctx)
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+
+	_, excluded := container.ExcludedChannelAPIKeys[channelID][apiKey]
+	return excluded
 }
 
 // WithProjectID stores the project ID in the context.

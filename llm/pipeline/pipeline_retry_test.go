@@ -62,6 +62,7 @@ type mockOutbound struct {
 	nextChannel           func(context.Context) error
 	canRetry              func(error) bool
 	prepareForRetry       func(context.Context) error
+	prepareErrorFailover  func(context.Context, error) (bool, error)
 	transformRequest      func(context.Context, *llm.Request) (*httpclient.Request, error)
 	transformResponse     func(context.Context, *httpclient.Response) (*llm.Response, error)
 	transformStream       func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error)
@@ -132,6 +133,14 @@ func (m *mockOutbound) PrepareForRetry(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (m *mockOutbound) PrepareErrorFailover(ctx context.Context, err error) (bool, error) {
+	if m.prepareErrorFailover != nil {
+		return m.prepareErrorFailover(ctx, err)
+	}
+
+	return false, nil
 }
 
 type mockExecutor struct {
@@ -305,6 +314,42 @@ func TestPipeline_Process_RetryLogic(t *testing.T) {
 		require.NotNil(t, res)
 		require.Equal(t, 2, execCalls)
 		require.Equal(t, 1, switchCalls)
+	})
+
+	t.Run("ErrorFailoverDoesNotConsumeSameChannelRetryBudget", func(t *testing.T) {
+		execCalls := 0
+		executor := &mockExecutor{
+			do: func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+				execCalls++
+				if execCalls <= 3 {
+					return nil, errors.New("failed key")
+				}
+
+				return &httpclient.Response{}, nil
+			},
+		}
+
+		failoverCalls := 0
+		outbound := &mockOutbound{
+			prepareErrorFailover: func(ctx context.Context, err error) (bool, error) {
+				failoverCalls++
+				return failoverCalls <= 3, nil
+			},
+		}
+
+		p := &pipeline{
+			Executor:              executor,
+			Inbound:               inbound,
+			Outbound:              outbound,
+			maxSameChannelRetries: 0,
+			maxChannelRetries:     0,
+		}
+
+		res, err := p.Process(ctx, &httpclient.Request{})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, 4, execCalls)
+		require.Equal(t, 3, failoverCalls)
 	})
 
 	t.Run("MixedRetrySuccess", func(t *testing.T) {

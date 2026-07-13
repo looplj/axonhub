@@ -876,6 +876,14 @@ const QUERY_CHANNELS_QUERY = `
               pattern
               regex
             }
+            apiKeyFailover {
+              enabled
+              statusCodes
+              errorPatterns {
+                pattern
+                regex
+              }
+            }
             providerQuota {
               opencodeGo {
                 workspaceId

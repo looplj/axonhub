@@ -35,6 +35,13 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// ErrorFailover handles request-scoped failover that should run before the
+// normal same-channel and cross-channel retry budgets. Implementations must
+// bound their own retries, for example by excluding each failed credential.
+type ErrorFailover interface {
+	PrepareErrorFailover(ctx context.Context, err error) (bool, error)
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -296,8 +303,22 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		canRetry := false
 		timeoutRetry := isResponseTimeoutError(lastErr)
 
-		// 1. Try same-channel retry first if supported
+		// 1. Give the outbound a chance to perform bounded request-scoped
+		// failover, such as switching to another API key in the same channel.
 		if !timeoutRetry {
+			if failover, ok := p.Outbound.(ErrorFailover); ok {
+				prepared, prepareErr := failover.PrepareErrorFailover(ctx, lastErr)
+				if prepareErr != nil {
+					slog.WarnContext(ctx, "failed to prepare error failover", slog.Any("error", prepareErr))
+				} else if prepared {
+					canRetry = true
+					slog.DebugContext(ctx, "prepared request-scoped error failover")
+				}
+			}
+		}
+
+		// 2. Try same-channel retry if request-scoped failover did not apply.
+		if !canRetry && !timeoutRetry {
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
 				if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
 					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
@@ -315,7 +336,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 			}
 		}
 
-		// 2. If same-channel retry not possible/exhausted, try channel switching
+		// 3. If same-channel retry not possible/exhausted, try channel switching
 		if !canRetry {
 			if retryable, ok := p.Outbound.(Retryable); ok {
 				if channelSwitches < p.maxChannelRetries && retryable.HasMoreChannels() {

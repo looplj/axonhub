@@ -232,6 +232,13 @@ export const retryableErrorPatternSchema = z.object({
 });
 export type RetryableErrorPattern = z.infer<typeof retryableErrorPatternSchema>;
 
+export const channelAPIKeyFailoverSchema = z.object({
+  enabled: z.boolean(),
+  statusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
+  errorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+});
+export type ChannelAPIKeyFailover = z.infer<typeof channelAPIKeyFailoverSchema>;
+
 export const openCodeGoQuotaSettingsSchema = z.object({
   workspaceId: z.string().optional().nullable(),
   authCookie: z.string().optional().nullable(),
@@ -260,6 +267,7 @@ export const channelSettingsSchema = z.object({
   rateLimit: channelRateLimitSchema.optional().nullable(),
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  apiKeyFailover: channelAPIKeyFailoverSchema.optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
 });
 

@@ -67,7 +67,24 @@ sk-key-3
 
 - Same Trace ID always uses the same Key (session consistency)
 - Different requests randomly select from available Keys
-- If one Key fails, the system automatically switches to another
+- Disabled Keys are excluded from subsequent requests
+
+### API Key Failover Rules
+
+Enable **API Key Failover** in the channel settings when the upstream provider
+returns a recognizable balance or quota error. You can configure:
+
+- HTTP status codes, such as `402` or `403`
+- Plain response-body text, such as `insufficient balance`
+- Regular expressions prefixed with `regex:`, such as `regex:(?i)quota.*exhausted`
+
+When a rule matches, AxonHub synchronously disables the selected Key and retries
+the same request with another enabled Key in the channel. Each failed Key is
+tried at most once for that request. After all Keys are unavailable, normal
+cross-channel retry behavior applies.
+
+Use response patterns carefully: a broad expression can disable healthy Keys.
+Full API Keys are never exposed to the matching rules.
 
 ## Model Renaming
 

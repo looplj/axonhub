@@ -8,6 +8,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -313,8 +314,9 @@ var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit bre
 
 // PersistentOutboundTransformer wraps an outbound transformer with shared persistence state.
 type PersistentOutboundTransformer struct {
-	wrapped transformer.Outbound
-	state   *PersistenceState
+	wrapped                 transformer.Outbound
+	state                   *PersistenceState
+	apiKeyFailoverExhausted bool
 }
 
 func shouldForceStreamingForCandidate(candidate *ChannelModelsCandidate, req *llm.Request) bool {
@@ -529,6 +531,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.resetPassThroughStreamState()
 
 	p.state.CurrentCandidateIndex++
+	p.apiKeyFailoverExhausted = false
 
 	p.state.CurrentModelIndex = 0
 	if p.state.CurrentCandidateIndex >= len(p.state.ChannelModelsCandidates) {
@@ -556,11 +559,76 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	return nil
 }
 
+// PrepareErrorFailover disables a key that matched the channel's failover
+// rules and prepares the same request to use another key in the channel.
+func (p *PersistentOutboundTransformer) PrepareErrorFailover(ctx context.Context, err error) (bool, error) {
+	candidate := p.state.CurrentCandidate
+	if candidate == nil || candidate.Channel == nil || candidate.Channel.Settings == nil {
+		return false, nil
+	}
+
+	channel := candidate.Channel
+	if !matchesAPIKeyFailoverError(err, channel.Settings.APIKeyFailover) {
+		return false, nil
+	}
+
+	apiKey, ok := contexts.GetChannelAPIKey(ctx)
+	if !ok || apiKey == "" || contexts.IsChannelAPIKeyExcluded(ctx, channel.ID, apiKey) {
+		return false, nil
+	}
+
+	available := channel.GetAvailableAPIKeysForRequest(ctx)
+	hasAlternative := false
+	for _, key := range available {
+		if key != apiKey {
+			hasAlternative = true
+			break
+		}
+	}
+
+	statusCode := ExtractStatusCodeFromError(err)
+	reason := fmt.Sprintf("Matched channel API key failover rule (status %d)", statusCode)
+	if disableErr := p.state.ChannelService.DisableAPIKey(ctx, channel.ID, apiKey, statusCode, reason); disableErr != nil {
+		return false, fmt.Errorf("disable failed API key: %w", disableErr)
+	}
+
+	contexts.ExcludeChannelAPIKey(ctx, channel.ID, apiKey)
+	if !hasAlternative {
+		p.apiKeyFailoverExhausted = true
+		return false, nil
+	}
+
+	p.apiKeyFailoverExhausted = false
+	p.state.RequestExec = nil
+	p.state.PassThroughApplied = false
+	p.resetPassThroughStreamState()
+
+	log.Warn(ctx, "API key failover prepared",
+		log.Int("channel_id", channel.ID),
+		log.String("key_prefix", safeAPIKeyForLog(apiKey)),
+		log.Int("status_code", statusCode),
+	)
+
+	return true, nil
+}
+
+func safeAPIKeyForLog(key string) string {
+	if len(key) <= 4 {
+		return "****"
+	}
+
+	return "****" + key[len(key)-4:]
+}
+
 // CanRetry returns true if the current channel can be retried.
 // It implements the pipeline.ChannelRetryable interface, it just check the error is retryable, the
 // pipeline will ensure the maxSameChannelRetries is not exceeded.
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
+		return false
+	}
+
+	if p.apiKeyFailoverExhausted {
 		return false
 	}
 

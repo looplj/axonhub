@@ -356,6 +356,12 @@ type ComplexityRoot struct {
 		UsageLogs               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
 	}
 
+	ChannelAPIKeyFailover struct {
+		Enabled       func(childComplexity int) int
+		ErrorPatterns func(childComplexity int) int
+		StatusCodes   func(childComplexity int) int
+	}
+
 	ChannelConnection struct {
 		Edges      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
@@ -537,6 +543,7 @@ type ComplexityRoot struct {
 	}
 
 	ChannelSettings struct {
+		APIKeyFailover           func(childComplexity int) int
 		AutoTrimedModelPrefixes  func(childComplexity int) int
 		BodyOverrideOperations   func(childComplexity int) int
 		ExtraModelPrefix         func(childComplexity int) int
@@ -3436,6 +3443,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Channel.UsageLogs(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.UsageLogOrder), args["where"].(*ent.UsageLogWhereInput)), true
 
+	case "ChannelAPIKeyFailover.enabled":
+		if e.complexity.ChannelAPIKeyFailover.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ChannelAPIKeyFailover.Enabled(childComplexity), true
+	case "ChannelAPIKeyFailover.errorPatterns":
+		if e.complexity.ChannelAPIKeyFailover.ErrorPatterns == nil {
+			break
+		}
+
+		return e.complexity.ChannelAPIKeyFailover.ErrorPatterns(childComplexity), true
+	case "ChannelAPIKeyFailover.statusCodes":
+		if e.complexity.ChannelAPIKeyFailover.StatusCodes == nil {
+			break
+		}
+
+		return e.complexity.ChannelAPIKeyFailover.StatusCodes(childComplexity), true
+
 	case "ChannelConnection.edges":
 		if e.complexity.ChannelConnection.Edges == nil {
 			break
@@ -4074,6 +4100,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelRegexAssociation.Pattern(childComplexity), true
 
+	case "ChannelSettings.apiKeyFailover":
+		if e.complexity.ChannelSettings.APIKeyFailover == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.APIKeyFailover(childComplexity), true
 	case "ChannelSettings.autoTrimedModelPrefixes":
 		if e.complexity.ChannelSettings.AutoTrimedModelPrefixes == nil {
 			break
@@ -10998,6 +11030,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBulkImportChannelItem,
 		ec.unmarshalInputBulkImportChannelsInput,
 		ec.unmarshalInputBulkUpdateChannelOrderingInput,
+		ec.unmarshalInputChannelAPIKeyFailoverInput,
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelEndpointInput,
 		ec.unmarshalInputChannelModelAssociationInput,
@@ -19387,6 +19420,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_retryableStatusCodes(ctx, field)
 			case "retryableErrorPatterns":
 				return ec.fieldContext_ChannelSettings_retryableErrorPatterns(ctx, field)
+			case "apiKeyFailover":
+				return ec.fieldContext_ChannelSettings_apiKeyFailover(ctx, field)
 			case "providerQuota":
 				return ec.fieldContext_ChannelSettings_providerQuota(ctx, field)
 			}
@@ -20006,6 +20041,99 @@ func (ec *executionContext) fieldContext_Channel_liveLimiterStats(_ context.Cont
 				return ec.fieldContext_ChannelLimiterStats_queueSize(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelLimiterStats", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelAPIKeyFailover_enabled(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelAPIKeyFailover) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelAPIKeyFailover_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelAPIKeyFailover_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelAPIKeyFailover",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelAPIKeyFailover_statusCodes(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelAPIKeyFailover) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelAPIKeyFailover_statusCodes,
+		func(ctx context.Context) (any, error) {
+			return obj.StatusCodes, nil
+		},
+		nil,
+		ec.marshalNInt2ᚕintᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelAPIKeyFailover_statusCodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelAPIKeyFailover",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelAPIKeyFailover_errorPatterns(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelAPIKeyFailover) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelAPIKeyFailover_errorPatterns,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorPatterns, nil
+		},
+		nil,
+		ec.marshalNRetryableErrorPattern2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelAPIKeyFailover_errorPatterns(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelAPIKeyFailover",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "pattern":
+				return ec.fieldContext_RetryableErrorPattern_pattern(ctx, field)
+			case "regex":
+				return ec.fieldContext_RetryableErrorPattern_regex(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RetryableErrorPattern", field.Name)
 		},
 	}
 	return fc, nil
@@ -23981,6 +24109,43 @@ func (ec *executionContext) fieldContext_ChannelSettings_retryableErrorPatterns(
 				return ec.fieldContext_RetryableErrorPattern_regex(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RetryableErrorPattern", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_apiKeyFailover(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_apiKeyFailover,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyFailover, nil
+		},
+		nil,
+		ec.marshalOChannelAPIKeyFailover2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelAPIKeyFailover,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_apiKeyFailover(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_ChannelAPIKeyFailover_enabled(ctx, field)
+			case "statusCodes":
+				return ec.fieldContext_ChannelAPIKeyFailover_statusCodes(ctx, field)
+			case "errorPatterns":
+				return ec.fieldContext_ChannelAPIKeyFailover_errorPatterns(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelAPIKeyFailover", field.Name)
 		},
 	}
 	return fc, nil
@@ -62342,6 +62507,47 @@ func (ec *executionContext) unmarshalInputBulkUpdateChannelOrderingInput(ctx con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelAPIKeyFailoverInput(ctx context.Context, obj any) (objects.ChannelAPIKeyFailover, error) {
+	var it objects.ChannelAPIKeyFailover
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "statusCodes", "errorPatterns"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "statusCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusCodes"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusCodes = data
+		case "errorPatterns":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorPatterns"))
+			data, err := ec.unmarshalORetryableErrorPatternInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorPatterns = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Context, obj any) (objects.ChannelCredentials, error) {
 	var it objects.ChannelCredentials
 	asMap := map[string]any{}
@@ -65093,7 +65299,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "providerQuota"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "apiKeyFailover", "providerQuota"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65205,6 +65411,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.RetryableErrorPatterns = data
+		case "apiKeyFailover":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyFailover"))
+			data, err := ec.unmarshalOChannelAPIKeyFailoverInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelAPIKeyFailover(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyFailover = data
 		case "providerQuota":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerQuota"))
 			data, err := ec.unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx, v)
@@ -88656,6 +88869,55 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var channelAPIKeyFailoverImplementors = []string{"ChannelAPIKeyFailover"}
+
+func (ec *executionContext) _ChannelAPIKeyFailover(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelAPIKeyFailover) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelAPIKeyFailoverImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelAPIKeyFailover")
+		case "enabled":
+			out.Values[i] = ec._ChannelAPIKeyFailover_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusCodes":
+			out.Values[i] = ec._ChannelAPIKeyFailover_statusCodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "errorPatterns":
+			out.Values[i] = ec._ChannelAPIKeyFailover_errorPatterns(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelConnectionImplementors = []string{"ChannelConnection"}
 
 func (ec *executionContext) _ChannelConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelConnection) graphql.Marshaler {
@@ -90550,6 +90812,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_retryableStatusCodes(ctx, field, obj)
 		case "retryableErrorPatterns":
 			out.Values[i] = ec._ChannelSettings_retryableErrorPatterns(ctx, field, obj)
+		case "apiKeyFailover":
+			out.Values[i] = ec._ChannelSettings_apiKeyFailover(ctx, field, obj)
 		case "providerQuota":
 			out.Values[i] = ec._ChannelSettings_providerQuota(ctx, field, obj)
 		default:
@@ -108288,6 +108552,36 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v any) ([]int, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
 	var res objects.JSONRawMessage
 	err := res.UnmarshalGQL(v)
@@ -110201,6 +110495,50 @@ func (ec *executionContext) marshalNRetryPolicy2ᚖgithubᚗcomᚋloopljᚋaxonh
 
 func (ec *executionContext) marshalNRetryableErrorPattern2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPattern(ctx context.Context, sel ast.SelectionSet, v objects.RetryableErrorPattern) graphql.Marshaler {
 	return ec._RetryableErrorPattern(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRetryableErrorPattern2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.RetryableErrorPattern) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRetryableErrorPattern2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPattern(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNRetryableErrorPatternInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPattern(ctx context.Context, v any) (objects.RetryableErrorPattern, error) {
@@ -112569,6 +112907,21 @@ func (ec *executionContext) marshalOChannel2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 		return graphql.Null
 	}
 	return ec._Channel(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOChannelAPIKeyFailover2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelAPIKeyFailover(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelAPIKeyFailover) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelAPIKeyFailover(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelAPIKeyFailoverInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelAPIKeyFailover(ctx context.Context, v any) (*objects.ChannelAPIKeyFailover, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelAPIKeyFailoverInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOChannelCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelCredentials) graphql.Marshaler {

@@ -473,6 +473,21 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(nonRetryableErr))
 	})
 
+	t.Run("exhausted API key failover skips same-channel retry", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped:                 &mockTransformer{},
+			apiKeyFailoverExhausted: true,
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+			},
+		}
+
+		require.False(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusForbidden}))
+	})
+
 	t.Run("skip-by-circuit-breaker should not trigger same-channel retry", func(t *testing.T) {
 		outbound := &PersistentOutboundTransformer{
 			wrapped: &mockTransformer{},

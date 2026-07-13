@@ -24,6 +24,11 @@ type contextContainer struct {
 
 	// ChannelAPIKey stores the API key used for the channel request (not the user's API key)
 	ChannelAPIKey *string
+
+	// ExcludedChannelAPIKeys tracks keys that failed during the current request.
+	// The outer key is the channel ID so identical credentials on different
+	// channels do not affect each other.
+	ExcludedChannelAPIKeys map[int]map[string]struct{}
 }
 
 // getContainer retrieves the existing container from context, or creates a new one and stores it in the context if it doesn't exist.

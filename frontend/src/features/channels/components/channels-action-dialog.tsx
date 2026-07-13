@@ -393,6 +393,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
   );
+  const [apiKeyFailoverEnabled, setApiKeyFailoverEnabled] = useState(() => initialRow?.settings?.apiKeyFailover?.enabled ?? false);
+  const [apiKeyFailoverStatusCodesText, setApiKeyFailoverStatusCodesText] = useState(() =>
+    formatRetryableStatusCodes(initialRow?.settings?.apiKeyFailover?.statusCodes)
+  );
+  const [apiKeyFailoverErrorPatternsText, setApiKeyFailoverErrorPatternsText] = useState(() =>
+    formatRetryableErrorPatterns(initialRow?.settings?.apiKeyFailover?.errorPatterns)
+  );
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -1174,6 +1181,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         return;
       }
 
+      const apiKeyFailoverStatusCodes = parseRetryableStatusCodesInput(apiKeyFailoverStatusCodesText);
+      if (apiKeyFailoverStatusCodes === null) {
+        toast.error(t('channels.dialogs.apiKeyFailover.statusCodes.validation'));
+        return;
+      }
+
+      const apiKeyFailoverErrorPatterns = parseRetryableErrorPatternsInput(apiKeyFailoverErrorPatternsText);
+      if (apiKeyFailoverErrorPatterns === null) {
+        toast.error(t('channels.dialogs.apiKeyFailover.errorPatterns.validation'));
+        return;
+      }
+
+      const apiKeyFailover = {
+        enabled: apiKeyFailoverEnabled,
+        statusCodes: apiKeyFailoverStatusCodes,
+        errorPatterns: apiKeyFailoverErrorPatterns,
+      };
+
       const valuesForSubmit = isEdit
         ? values
         : {
@@ -1220,6 +1245,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          apiKeyFailover,
         });
 
         const updateInput = {
@@ -1264,6 +1290,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          apiKeyFailover,
         });
 
         const createInput = {
@@ -1695,6 +1722,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setApiKeyFailoverEnabled(initialRow?.settings?.apiKeyFailover?.enabled ?? false);
+            setApiKeyFailoverStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.apiKeyFailover?.statusCodes));
+            setApiKeyFailoverErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.apiKeyFailover?.errorPatterns));
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -2163,7 +2193,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 aria-invalid={!!fieldState.error}
                                 data-testid='channel-base-url-input'
                                 disabled={
-                                  (isCodexType && authMode !== 'third-party') || (isClaudeCodeType && authMode === 'official') || selectedProvider === 'antigravity'
+                                  (isCodexType && authMode !== 'third-party') ||
+                                  (isClaudeCodeType && authMode === 'official') ||
+                                  selectedProvider === 'antigravity'
                                 }
                                 {...field}
                               />
@@ -2756,6 +2788,50 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
                       </FormItem>
 
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                          {t('channels.dialogs.apiKeyFailover.label')}
+                        </FormLabel>
+                        <div className='space-y-3 md:col-span-6'>
+                          <label className='flex items-center gap-2 text-sm'>
+                            <Checkbox
+                              checked={apiKeyFailoverEnabled}
+                              onCheckedChange={(checked) => setApiKeyFailoverEnabled(checked === true)}
+                            />
+                            <span>{t('channels.dialogs.apiKeyFailover.enabled')}</span>
+                          </label>
+                          <p className='text-muted-foreground text-xs'>{t('channels.dialogs.apiKeyFailover.description')}</p>
+                          {apiKeyFailoverEnabled && (
+                            <div className='space-y-3 rounded-md border p-3'>
+                              <div className='space-y-1'>
+                                <FormLabel>{t('channels.dialogs.apiKeyFailover.statusCodes.label')}</FormLabel>
+                                <Input
+                                  value={apiKeyFailoverStatusCodesText}
+                                  onChange={(event) => setApiKeyFailoverStatusCodesText(event.target.value)}
+                                  placeholder={t('channels.dialogs.apiKeyFailover.statusCodes.placeholder')}
+                                  className='font-mono text-sm'
+                                />
+                                <p className='text-muted-foreground text-xs'>
+                                  {t('channels.dialogs.apiKeyFailover.statusCodes.description')}
+                                </p>
+                              </div>
+                              <div className='space-y-1'>
+                                <FormLabel>{t('channels.dialogs.apiKeyFailover.errorPatterns.label')}</FormLabel>
+                                <Textarea
+                                  value={apiKeyFailoverErrorPatternsText}
+                                  onChange={(event) => setApiKeyFailoverErrorPatternsText(event.target.value)}
+                                  placeholder={t('channels.dialogs.apiKeyFailover.errorPatterns.placeholder')}
+                                  className='min-h-[88px] resize-y font-mono text-sm'
+                                />
+                                <p className='text-muted-foreground text-xs'>
+                                  {t('channels.dialogs.apiKeyFailover.errorPatterns.description')}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </FormItem>
+
                       <FormField
                         control={form.control}
                         name='tags'
@@ -3048,7 +3124,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <span className='inline-flex'>
-                                          <Button type='button' variant='ghost' size='sm' className='text-muted-foreground h-7 w-7 p-0' disabled>
+                                          <Button
+                                            type='button'
+                                            variant='ghost'
+                                            size='sm'
+                                            className='text-muted-foreground h-7 w-7 p-0'
+                                            disabled
+                                          >
                                             <Ban className='h-4 w-4' />
                                           </Button>
                                         </span>
@@ -3063,7 +3145,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       onOpenChange={(isOpen) => setConfirmDisableKey(isOpen ? key : null)}
                                     >
                                       <PopoverTrigger asChild>
-                                        <Button type='button' variant='ghost' size='sm' className='text-orange-500 h-7 w-7 p-0' disabled={disableAPIKey.isPending || isFetchingDisabledKeys}>
+                                        <Button
+                                          type='button'
+                                          variant='ghost'
+                                          size='sm'
+                                          className='h-7 w-7 p-0 text-orange-500'
+                                          disabled={disableAPIKey.isPending || isFetchingDisabledKeys}
+                                        >
                                           <Ban className='h-4 w-4' />
                                         </Button>
                                       </PopoverTrigger>

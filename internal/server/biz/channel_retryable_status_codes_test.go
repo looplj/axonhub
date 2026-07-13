@@ -74,3 +74,44 @@ func TestNormalizeRetryableErrorPatterns(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid retryable error regex")
 	})
 }
+
+func TestNormalizeAPIKeyFailover(t *testing.T) {
+	settings := &objects.ChannelSettings{
+		APIKeyFailover: &objects.ChannelAPIKeyFailover{
+			Enabled:     true,
+			StatusCodes: []int{403, 402, 403},
+			ErrorPatterns: []objects.RetryableErrorPattern{
+				{Pattern: " insufficient balance "},
+				{Pattern: "insufficient balance"},
+				{Pattern: `quota\s+exhausted`, Regex: true},
+			},
+		},
+	}
+
+	err := NormalizeAPIKeyFailover(settings)
+
+	require.NoError(t, err)
+	require.Equal(t, []int{402, 403}, settings.APIKeyFailover.StatusCodes)
+	require.Equal(t, []objects.RetryableErrorPattern{
+		{Pattern: "insufficient balance"},
+		{Pattern: `quota\s+exhausted`, Regex: true},
+	}, settings.APIKeyFailover.ErrorPatterns)
+}
+
+func TestNormalizeAPIKeyFailoverRejectsInvalidValues(t *testing.T) {
+	t.Run("status code", func(t *testing.T) {
+		settings := &objects.ChannelSettings{
+			APIKeyFailover: &objects.ChannelAPIKeyFailover{StatusCodes: []int{200}},
+		}
+		require.Error(t, NormalizeAPIKeyFailover(settings))
+	})
+
+	t.Run("regex", func(t *testing.T) {
+		settings := &objects.ChannelSettings{
+			APIKeyFailover: &objects.ChannelAPIKeyFailover{
+				ErrorPatterns: []objects.RetryableErrorPattern{{Pattern: "[", Regex: true}},
+			},
+		}
+		require.Error(t, NormalizeAPIKeyFailover(settings))
+	})
+}

@@ -208,6 +208,11 @@ type ChannelSettings struct {
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
 
+	// APIKeyFailover configures immediate per-key failover within this channel.
+	// When an upstream error matches, the selected API key is disabled and the
+	// same request is retried with another enabled key before switching channels.
+	APIKeyFailover *ChannelAPIKeyFailover `json:"apiKeyFailover,omitempty"`
+
 	// ProviderQuota stores provider-specific credentials used only for quota
 	// polling. Keep upstream request credentials in ChannelCredentials.
 	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
@@ -216,6 +221,12 @@ type ChannelSettings struct {
 type RetryableErrorPattern struct {
 	Pattern string `json:"pattern"`
 	Regex   bool   `json:"regex,omitempty"`
+}
+
+type ChannelAPIKeyFailover struct {
+	Enabled       bool                    `json:"enabled"`
+	StatusCodes   []int                   `json:"statusCodes,omitempty"`
+	ErrorPatterns []RetryableErrorPattern `json:"errorPatterns,omitempty"`
 }
 
 type ChannelProviderQuotaSettings struct {

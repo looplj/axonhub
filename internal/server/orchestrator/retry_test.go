@@ -325,3 +325,22 @@ func TestIsRetryableErrorForChannel(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchesAPIKeyFailoverError(t *testing.T) {
+	config := &objects.ChannelAPIKeyFailover{
+		Enabled:     true,
+		StatusCodes: []int{402},
+		ErrorPatterns: []objects.RetryableErrorPattern{
+			{Pattern: "insufficient balance"},
+			{Pattern: `(?i)quota\s+exhausted`, Regex: true},
+		},
+	}
+
+	assert.True(t, matchesAPIKeyFailoverError(&httpclient.Error{StatusCode: 402}, config))
+	assert.True(t, matchesAPIKeyFailoverError(&httpclient.Error{
+		StatusCode: 400,
+		Body:       []byte(`{"error":"insufficient balance"}`),
+	}, config))
+	assert.True(t, matchesAPIKeyFailoverError(errors.New("Quota exhausted for this key"), config))
+	assert.False(t, matchesAPIKeyFailoverError(&httpclient.Error{StatusCode: 401, Body: []byte("invalid key")}, config))
+}

@@ -71,6 +71,42 @@ func matchesRetryableErrorPattern(err error, patterns []objects.RetryableErrorPa
 	return false
 }
 
+func matchesAPIKeyFailoverError(err error, config *objects.ChannelAPIKeyFailover) bool {
+	if err == nil || config == nil || !config.Enabled {
+		return false
+	}
+
+	if slices.Contains(config.StatusCodes, ExtractStatusCodeFromError(err)) {
+		return true
+	}
+
+	texts := []string{err.Error()}
+	var httpErr *httpclient.Error
+	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
+		texts = append(texts, string(httpErr.Body))
+	}
+
+	for _, text := range texts {
+		for _, pattern := range config.ErrorPatterns {
+			if pattern.Pattern == "" {
+				continue
+			}
+			if pattern.Regex {
+				matched, regexErr := regexp.MatchString(pattern.Pattern, text)
+				if regexErr == nil && matched {
+					return true
+				}
+				continue
+			}
+			if strings.Contains(text, pattern.Pattern) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // ExtractStatusCodeFromError attempts to extract HTTP status code from various error types.
 func ExtractStatusCodeFromError(err error) int {
 	if err == nil {

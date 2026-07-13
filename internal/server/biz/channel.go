@@ -527,6 +527,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
 		}
+
+		if err := NormalizeAPIKeyFailover(input.Settings); err != nil {
+			return nil, err
+		}
 	}
 
 	if input.Endpoints != nil {
@@ -648,6 +652,48 @@ func NormalizeRetryableErrorPatterns(settings *objects.ChannelSettings) error {
 	return nil
 }
 
+// NormalizeAPIKeyFailover validates and normalizes per-channel API key
+// failover rules while preserving nil for channels that do not use the feature.
+func NormalizeAPIKeyFailover(settings *objects.ChannelSettings) error {
+	if settings == nil || settings.APIKeyFailover == nil {
+		return nil
+	}
+
+	config := settings.APIKeyFailover
+	codes := slices.Clone(config.StatusCodes)
+	for _, code := range codes {
+		if code < 400 || code > 599 {
+			return fmt.Errorf("invalid API key failover status code %d: must be between 400 and 599", code)
+		}
+	}
+	slices.Sort(codes)
+	config.StatusCodes = slices.Compact(codes)
+
+	patterns := make([]objects.RetryableErrorPattern, 0, len(config.ErrorPatterns))
+	seen := make(map[string]struct{}, len(config.ErrorPatterns))
+	for _, pattern := range config.ErrorPatterns {
+		pattern.Pattern = strings.TrimSpace(pattern.Pattern)
+		if pattern.Pattern == "" {
+			continue
+		}
+		if pattern.Regex {
+			if _, err := regexp.Compile(pattern.Pattern); err != nil {
+				return fmt.Errorf("invalid API key failover error regex %q: %w", pattern.Pattern, err)
+			}
+		}
+
+		key := fmt.Sprintf("%t\x00%s", pattern.Regex, pattern.Pattern)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		patterns = append(patterns, pattern)
+	}
+	config.ErrorPatterns = patterns
+
+	return nil
+}
+
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
@@ -712,6 +758,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
+			return nil, err
+		}
+
+		if err := NormalizeAPIKeyFailover(input.Settings); err != nil {
 			return nil, err
 		}
 

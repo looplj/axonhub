@@ -4,6 +4,7 @@ import (
 	"context"
 	"hash/fnv"
 	"math/rand/v2"
+	"slices"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
@@ -38,19 +39,28 @@ func NewTraceStickyKeyProvider(channel *Channel) *TraceStickyKeyProvider {
 }
 
 func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
-	enabled := p.channel.cachedEnabledAPIKeys
+	enabled := availableAPIKeysForRequest(ctx, p.channel)
 	if len(enabled) == 0 {
-		return p.channel.Credentials.APIKeys[0]
+		for _, key := range p.channel.Credentials.GetAllAPIKeys() {
+			if contexts.IsChannelAPIKeyExcluded(ctx, p.channel.ID, key) {
+				continue
+			}
+			contexts.WithChannelAPIKey(ctx, key)
+			return key
+		}
+
+		return ""
 	}
 
 	if len(enabled) == 1 {
+		contexts.WithChannelAPIKey(ctx, enabled[0])
 		return enabled[0]
 	}
 
 	var selectedKey string
 
 	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
-		if cached, ok := p.cache.Get(trace.TraceID); ok {
+		if cached, ok := p.cache.Get(trace.TraceID); ok && slices.Contains(enabled, cached) {
 			selectedKey = cached
 		} else {
 			selectedKey = rendezvousSelect(enabled, trace.TraceID)
@@ -76,6 +86,29 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 	contexts.WithChannelAPIKey(ctx, selectedKey)
 
 	return selectedKey
+}
+
+func availableAPIKeysForRequest(ctx context.Context, channel *Channel) []string {
+	enabled := channel.cachedEnabledAPIKeys
+	if len(enabled) == 0 {
+		return nil
+	}
+
+	available := make([]string, 0, len(enabled))
+	for _, key := range enabled {
+		if contexts.IsChannelAPIKeyExcluded(ctx, channel.ID, key) {
+			continue
+		}
+		available = append(available, key)
+	}
+
+	return available
+}
+
+// GetAvailableAPIKeysForRequest returns enabled keys that have not failed
+// during the current request.
+func (c *Channel) GetAvailableAPIKeysForRequest(ctx context.Context) []string {
+	return availableAPIKeysForRequest(ctx, c)
 }
 
 // rendezvousSelect picks a key using Highest Random Weight (Rendezvous) hashing.

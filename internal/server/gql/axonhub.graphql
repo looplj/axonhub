@@ -130,6 +130,18 @@ input RetryableErrorPatternInput {
   regex: Boolean
 }
 
+type ChannelAPIKeyFailover {
+  enabled: Boolean!
+  statusCodes: [Int!]!
+  errorPatterns: [RetryableErrorPattern!]!
+}
+
+input ChannelAPIKeyFailoverInput {
+  enabled: Boolean!
+  statusCodes: [Int!]
+  errorPatterns: [RetryableErrorPatternInput!]
+}
+
 type OpenCodeGoQuotaSettings {
   workspaceId: String
   authCookie: String
@@ -164,6 +176,7 @@ type ChannelSettings {
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
+  apiKeyFailover: ChannelAPIKeyFailover
   providerQuota: ChannelProviderQuotaSettings
 }
 
@@ -202,6 +215,7 @@ input ChannelSettingsInput {
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
+  apiKeyFailover: ChannelAPIKeyFailoverInput
   providerQuota: ChannelProviderQuotaSettingsInput
 }
 

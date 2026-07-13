@@ -340,7 +340,48 @@ func TestTraceStickyKeyProvider_AllKeysDisabled_FallbackToFirst(t *testing.T) {
 	ctx := context.Background()
 
 	key := provider.Get(ctx)
-	require.Equal(t, "key-1", key, "should fallback to first key when all disabled")
+	require.Equal(t, "key-1", key, "should preserve the legacy fallback when the enabled-key cache is empty")
+}
+
+func TestTraceStickyKeyProvider_ExcludesFailedKeyForCurrentRequest(t *testing.T) {
+	keys := []string{"key-1", "key-2", "key-3"}
+	ch := &Channel{
+		Channel: &ent.Channel{
+			ID: 42,
+			Credentials: objects.ChannelCredentials{
+				APIKeys: keys,
+			},
+		},
+		cachedEnabledAPIKeys: keys,
+	}
+
+	provider := NewTraceStickyKeyProvider(ch)
+	trace := &ent.Trace{TraceID: "trace-key-failover"}
+	ctx := contexts.WithTrace(context.Background(), trace)
+
+	first := provider.Get(ctx)
+	contexts.ExcludeChannelAPIKey(ctx, ch.ID, first)
+	second := provider.Get(ctx)
+
+	require.NotEqual(t, first, second)
+	require.Contains(t, keys, second)
+}
+
+func TestTraceStickyKeyProvider_DoesNotFallbackToExcludedKeys(t *testing.T) {
+	keys := []string{"key-1", "key-2"}
+	ch := &Channel{
+		Channel: &ent.Channel{
+			ID:          42,
+			Credentials: objects.ChannelCredentials{APIKeys: keys},
+		},
+		cachedEnabledAPIKeys: []string{},
+	}
+	ctx := context.Background()
+	for _, key := range keys {
+		ctx = contexts.ExcludeChannelAPIKey(ctx, ch.ID, key)
+	}
+
+	require.Empty(t, NewTraceStickyKeyProvider(ch).Get(ctx))
 }
 
 func TestRendezvousSelect_Deterministic(t *testing.T) {
