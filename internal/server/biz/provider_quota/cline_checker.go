@@ -98,9 +98,33 @@ type clineUsageLimitsData struct {
 }
 
 type clineUsageLimit struct {
-	Type        string   `json:"type,omitempty"`
-	PercentUsed *float64 `json:"percentUsed,omitempty"`
-	ResetsAt    string   `json:"resetsAt,omitempty"`
+	Type        string
+	PercentUsed *float64
+	ResetsAt    string
+}
+
+func (l *clineUsageLimit) UnmarshalJSON(data []byte) error {
+	*l = clineUsageLimit{}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil
+	}
+
+	if raw, ok := fields["type"]; ok {
+		_ = json.Unmarshal(raw, &l.Type)
+	}
+	if raw, ok := fields["percentUsed"]; ok {
+		var value *float64
+		if err := json.Unmarshal(raw, &value); err == nil {
+			l.PercentUsed = value
+		}
+	}
+	if raw, ok := fields["resetsAt"]; ok {
+		_ = json.Unmarshal(raw, &l.ResetsAt)
+	}
+
+	return nil
 }
 
 type clineOfficialWindowLimit struct {

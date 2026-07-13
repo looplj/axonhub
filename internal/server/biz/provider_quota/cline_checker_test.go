@@ -341,6 +341,68 @@ func TestCline_CheckQuota_PartialUsageLimitsFallbackIsPerFieldAndPerWindow(t *te
 	require.Equal(t, 2, fetch["usable_fields"])
 }
 
+func TestCline_CheckQuota_MalformedUsageLimitFieldsPreserveOtherOfficialValues(t *testing.T) {
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	requestCount := 0
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			switch requestCount {
+			case 1:
+				return jsonResponse(http.StatusOK, `{"data":{"id":"user_test"}}`), nil
+			case 2:
+				return jsonResponse(http.StatusOK, `{"data":[{"type":"individual","interval":"Monthly","isActive":true,"entitlements":{"cline_pass":{"enabled":true,"inferenceCapThreshold":{"last5HoursUsageCostUSDPerUser":100,"last7daysUsageCostUSDPerUser":200,"last30daysUsageCostUSDPerUser":400}}}}]}`), nil
+			case 3:
+				return jsonResponse(http.StatusOK, `{"data":{"balance":1000}}`), nil
+			case 4:
+				return jsonResponse(http.StatusOK, `{"data":{"limits":[{"type":"five_hour","percentUsed":"unknown","resetsAt":"2026-07-14T15:00:00Z"},{"type":"weekly","percentUsed":90,"resetsAt":123},{"type":"monthly","percentUsed":40,"resetsAt":"2026-08-01T11:13:17Z"},false]}}`), nil
+			case 5:
+				return jsonResponse(http.StatusOK, `{"data":{"items":[{"createdAt":"2026-07-14T11:00:00Z","costUsd":50,"creditsUsed":3}]}}`), nil
+			default:
+				t.Fatalf("unexpected request %d", requestCount)
+				return nil, nil
+			}
+		}),
+	})
+
+	checker := NewClineQuotaChecker(httpClient)
+	checker.now = func() time.Time { return now }
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type:            channel.TypeCline,
+		BaseURL:         "https://api.cline.bot/v1",
+		SupportedModels: []string{"cline-pass/test"},
+		Credentials:     objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+
+	require.NoError(t, err)
+	windows := quota.RawData["windows"].(map[string]any)
+	fiveHour := windows["last5h"].(map[string]any)
+	weekly := windows["last7d"].(map[string]any)
+	monthly := windows["last30d"].(map[string]any)
+
+	require.InDelta(t, 0.5, fiveHour["usage_ratio"].(float64), 0.000001)
+	require.Equal(t, clineWindowSourceEstimatedCost, fiveHour["usage_source"])
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, fiveHour["reset_source"])
+	require.Equal(t, "2026-07-14T15:00:00Z", fiveHour["next_reset_at"])
+
+	require.InDelta(t, 0.9, weekly["usage_ratio"].(float64), 0.000001)
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, weekly["usage_source"])
+	require.Equal(t, clineWindowSourceEstimatedUsage, weekly["reset_source"])
+	require.Equal(t, "2026-07-21T11:00:00Z", weekly["next_reset_at"])
+
+	require.InDelta(t, 0.4, monthly["usage_ratio"].(float64), 0.000001)
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, monthly["usage_source"])
+	require.Equal(t, clineWindowSourceOfficialUsageLimits, monthly["reset_source"])
+	require.Equal(t, "2026-08-01T11:13:17Z", monthly["next_reset_at"])
+
+	fetch := quota.RawData["usage_limits_fetch"].(map[string]any)
+	require.Equal(t, clineUsageLimitsFetchStatusPartial, fetch["status"])
+	require.Equal(t, 4, fetch["entries_seen"])
+	require.Equal(t, 3, fetch["recognized_entries"])
+	require.Equal(t, 3, fetch["usable_windows"])
+	require.Equal(t, 4, fetch["usable_fields"])
+}
+
 func TestCline_CheckQuota_DirectOnlySkipsPassUsageLimitsAndHistory(t *testing.T) {
 	requestCount := 0
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
