@@ -195,6 +195,8 @@ func (c *ClineQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		return QuotaData{}, fmt.Errorf("Cline plans response does not include an active ClinePass threshold")
 	}
 
+	officialLimits, officialMeta := c.fetchUsageLimits(ctx, hc, ch.BaseURL, apiKey)
+
 	items, fetchMeta, err := c.fetchUsageItems(ctx, hc, ch.BaseURL, me.Data.ID, apiKey)
 	if err != nil {
 		return QuotaData{}, err
@@ -208,8 +210,8 @@ func (c *ClineQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		balance.Data.Balance,
 		items,
 		fetchMeta,
-		nil,
-		clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable},
+		officialLimits,
+		officialMeta,
 	), nil
 }
 
@@ -365,6 +367,19 @@ func selectClinePassThreshold(plans []clinePlan) (clineInferenceCapThreshold, []
 	}
 
 	return selected, summaries, found
+}
+
+func (c *ClineQuotaChecker) fetchUsageLimits(
+	ctx context.Context,
+	hc *httpclient.HttpClient,
+	baseURL string,
+	apiKey string,
+) (map[string]clineOfficialWindowLimit, clineUsageLimitsFetchMeta) {
+	var response clineEnvelope[clineUsageLimitsData]
+	if err := c.getJSON(ctx, hc, baseURL, clineUsageLimitsPath, nil, apiKey, &response); err != nil {
+		return nil, clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable}
+	}
+	return parseClineUsageLimits(response.Data.Limits)
 }
 
 func (c *ClineQuotaChecker) fetchUsageItems(ctx context.Context, hc *httpclient.HttpClient, baseURL, userID, apiKey string) ([]clineUsageItem, clineUsageFetchMeta, error) {
