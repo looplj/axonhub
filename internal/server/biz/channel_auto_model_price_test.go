@@ -388,7 +388,6 @@ func TestChannelService_UpdateChannel_RetriesSupportedModelsAndPreservesExisting
 	require.Equal(t, existingPrice.ReferenceID, preserved.ReferenceID)
 	require.Equal(t, existingPrice.Price, preserved.Price)
 	require.Equal(t, existingVersionCount, countChannelModelPriceVersions(t, ctx, client, preserved.ID))
-
 }
 
 func TestChannelService_DuplicateChannel_PreservesSourcePriceAndFillsGaps(t *testing.T) {
