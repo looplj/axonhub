@@ -517,6 +517,41 @@ func TestCodexOutbound_ForcesArrayInputsForSingleMessage(t *testing.T) {
 	assert.Equal(t, "user", first["role"])
 }
 
+func TestCodexOutbound_PreservesResponsesLiteReasoningContext(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+	inboundRequest := &httpclient.Request{
+		Headers: http.Header{
+			"Content-Type":                           []string{"application/json"},
+			"X-Openai-Internal-Codex-Responses-Lite": []string{"true"},
+		},
+		Body: []byte(`{
+			"model": "gpt-5.6-sol",
+			"input": "Hello",
+			"stream": true,
+			"reasoning": {
+				"effort": "xhigh",
+				"context": "all_turns"
+			}
+		}`),
+	}
+
+	llmRequest, err := responses.NewInboundTransformer().TransformRequest(ctx, inboundRequest)
+	require.NoError(t, err)
+	llmRequest.RawRequest = inboundRequest
+
+	outboundRequest, err := outbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+	outboundRequest = httpclient.MergeInboundRequest(outboundRequest, inboundRequest)
+
+	assert.Equal(t, "true", outboundRequest.Headers.Get("X-Openai-Internal-Codex-Responses-Lite"))
+
+	body := decodeCodexRequestBody(t, outboundRequest)
+	reasoning, ok := body["reasoning"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "all_turns", reasoning["context"])
+}
+
 func newTestCodexOutbound(t *testing.T) *OutboundTransformer {
 	t.Helper()
 
