@@ -185,7 +185,7 @@ func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 				return fmt.Errorf("body operation at index %d (%s) has an empty path", i, op.Op)
 			}
 
-			if op.Op == objects.OverrideOpSetIfAbsent && op.Value == "" {
+			if op.Op == objects.OverrideOpSetIfAbsent && strings.TrimSpace(op.Value) == "" {
 				return fmt.Errorf("body operation at index %d (set_if_absent) has an empty value", i)
 			}
 

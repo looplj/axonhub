@@ -48,7 +48,7 @@ AxonHub 支持以下重写操作：
 | `path` | string | 条件 | 目标字段路径（`set`、`set_if_absent`、`delete` 以及所有数组操作必需） |
 | `from` | string | 条件 | 源字段路径（`rename` 和 `copy` 必需） |
 | `to` | string | 条件 | 目标字段路径（`rename` 和 `copy` 必需） |
-| `value` | string | 条件 | 字段值（`set`、`array_append`、`array_prepend`、`array_insert` 必需；`set_if_absent` 必须为非空值），支持模板 |
+| `value` | string | 条件 | 字段值（`set`、`array_append`、`array_prepend`、`array_insert` 必需；`set_if_absent` 不能是空值或仅包含空白字符），支持模板 |
 | `condition` | string | 否 | 条件表达式，结果为 `"true"` 时执行 |
 | `match` | object | 条件 | 匹配规则（`array_remove` 必需），格式为 `{"path":"function.name","eq":"web_search"}` |
 | `index` | number | 条件 | 插入位置（`array_insert` 必需），支持负数表示从末尾倒数；越界会被夹紧到 `[0, len]` |

@@ -163,7 +163,7 @@ function isArrayInsertOp(op: OpType | undefined): boolean {
 }
 
 function isValidBodyOp(b: OverrideOperation): boolean {
-  if (b.op === 'set_if_absent') return !!b.path?.trim() && parseValueForDisplay(b.value) !== '';
+  if (b.op === 'set_if_absent') return !!b.path?.trim() && parseValueForDisplay(b.value).trim() !== '';
   if (b.op === 'set' || b.op === 'delete') return !!b.path?.trim();
   if (b.op === 'rename' || b.op === 'copy') return !!b.from?.trim() && !!b.to?.trim();
   if (b.op === 'array_append' || b.op === 'array_prepend') return !!b.path?.trim();
@@ -625,7 +625,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
           return;
         }
       }
-      if (op.op === 'set_if_absent' && parseValueForDisplay(op.value) === '') {
+      if (op.op === 'set_if_absent' && parseValueForDisplay(op.value).trim() === '') {
         toast.error(t('channels.dialogs.settings.overrides.validation.missingValue', { index: i + 1, op: op.op }));
         return;
       }

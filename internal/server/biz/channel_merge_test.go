@@ -375,6 +375,11 @@ func TestValidateBodyOverrideOperations(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name:        "set if absent rejects whitespace value",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "   "}},
+			expectError: true,
+		},
+		{
 			name:        "set if absent cannot target stream",
 			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Path: "stream", Value: "true"}},
 			expectError: true,

@@ -76,7 +76,7 @@ test('set_if_absent is exposed as a localized body-only operation', () => {
   assert.match(schema, /'set_if_absent'/);
   assert.match(bodyTypes, /'set_if_absent'/);
   assert.doesNotMatch(headerTypes, /set_if_absent/);
-  assert.match(dialog, /op\.op === 'set_if_absent' && parseValueForDisplay\(op\.value\) === ''/);
+  assert.match(dialog, /op\.op === 'set_if_absent' && parseValueForDisplay\(op\.value\)\.trim\(\) === ''/);
 
   for (const locale of ['en', 'zh-CN']) {
     const messages = JSON.parse(read(`locales/${locale}/channels.json`));
