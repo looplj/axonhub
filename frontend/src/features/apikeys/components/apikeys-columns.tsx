@@ -2,8 +2,8 @@ import { format } from 'date-fns';
 import { ColumnDef, Table, Row } from '@tanstack/react-table';
 import { Copy, Eye } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { cn, extractNumberID } from '@/lib/utils';
+import { extractNumberID } from '@/lib/utils';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
@@ -19,10 +19,10 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   // 显示前8个字符和后4个字符，中间用省略号
   const maskedKey = apiKey.replace(/./g, '*').slice(0, -4) + apiKey.slice(-4);
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(apiKey);
-    toast.success(t('apikeys.messages.copied'));
-  };
+  const { handleCopy: copyToClipboard } = useCopyToClipboard({
+    text: apiKey,
+    copyMessage: t('apikeys.messages.copied'),
+  });
 
   const handleViewKey = () => {
     openDialog('view', fullApiKey);
