@@ -1849,6 +1849,109 @@ func TestOverrideLegacyFormatCompatibility(t *testing.T) {
 	require.Equal(t, "yes", gjson.Get(bodyStr, "keep").String())
 }
 
+func TestOverrideBodySetIfAbsent(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		body     string
+		op       objects.OverrideOperation
+		metadata map[string]string
+		expected string
+	}{
+		{
+			name:     "sets top-level default when path is absent",
+			body:     `{"model":"gpt-5.5"}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "32000"},
+			expected: `{"model":"gpt-5.5","max_output_tokens":32000}`,
+		},
+		{
+			name:     "preserves existing number",
+			body:     `{"max_output_tokens":8000}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "32000"},
+			expected: `{"max_output_tokens":8000}`,
+		},
+		{
+			name:     "preserves zero",
+			body:     `{"max_output_tokens":0}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "32000"},
+			expected: `{"max_output_tokens":0}`,
+		},
+		{
+			name:     "preserves false",
+			body:     `{"feature":{"enabled":false}}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "feature.enabled", Value: "true"},
+			expected: `{"feature":{"enabled":false}}`,
+		},
+		{
+			name:     "preserves empty string",
+			body:     `{"label":""}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "label", Value: "fallback"},
+			expected: `{"label":""}`,
+		},
+		{
+			name:     "preserves explicit null",
+			body:     `{"max_output_tokens":null}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "32000"},
+			expected: `{"max_output_tokens":null}`,
+		},
+		{
+			name:     "sets nested default when path is absent",
+			body:     `{"generation":{}}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "generation.max_output_tokens", Value: "32000"},
+			expected: `{"generation":{"max_output_tokens":32000}}`,
+		},
+		{
+			name:     "preserves existing nested value",
+			body:     `{"generation":{"max_output_tokens":16000}}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "generation.max_output_tokens", Value: "32000"},
+			expected: `{"generation":{"max_output_tokens":16000}}`,
+		},
+		{
+			name:     "renders template when path is absent",
+			body:     `{}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: `{{index .Metadata "default_max"}}`},
+			metadata: map[string]string{"default_max": "64000"},
+			expected: `{"max_output_tokens":64000}`,
+		},
+		{
+			name:     "respects false condition",
+			body:     `{}`,
+			op:       objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "32000", Condition: `{{eq .Model "other-model"}}`},
+			expected: `{}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			llmRequest := &llm.Request{Model: "gpt-5.5", Metadata: tt.metadata}
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: "set-if-absent-test",
+					Settings: &objects.ChannelSettings{
+						BodyOverrideOperations: []objects.OverrideOperation{tt.op},
+					},
+				},
+				Outbound: &mockTransformer{},
+			}
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest:       llmRequest,
+					OriginalModel:    llmRequest.Model,
+				},
+			}
+
+			middleware := applyOverrideRequestBody(outbound)
+			result, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{Body: []byte(tt.body)})
+			require.NoError(t, err)
+			require.JSONEq(t, tt.expected, string(result.Body))
+		})
+	}
+}
+
 func TestParseOverrideOperations(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {
 		ops, err := objects.ParseOverrideOperations("")

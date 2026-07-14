@@ -330,7 +330,7 @@ func getBodyOverrideOperations(settings *objects.ChannelSettings) []objects.Over
 }
 
 // MergeOverrideOperations merges existing body operations with template operations.
-// - For set/delete ops, matching is by Path. Template overrides existing.
+// - For set/set_if_absent/delete ops, matching is by Path. Template overrides existing.
 // - For rename/copy and array_* ops, they are always appended (multiple of the same path are meaningful).
 // - Existing ops not mentioned in the template are preserved.
 func MergeOverrideOperations(existing, template []objects.OverrideOperation) []objects.OverrideOperation {
@@ -338,9 +338,7 @@ func MergeOverrideOperations(existing, template []objects.OverrideOperation) []o
 	result = append(result, existing...)
 
 	for _, op := range template {
-		switch op.Op {
-		case objects.OverrideOpRename, objects.OverrideOpCopy,
-			objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
+		if !isReplacingBodyOverrideOperation(op.Op) {
 			result = append(result, op)
 			continue
 		}
@@ -348,8 +346,7 @@ func MergeOverrideOperations(existing, template []objects.OverrideOperation) []o
 		found := false
 
 		for i := range result {
-			if (result[i].Op == objects.OverrideOpSet || result[i].Op == objects.OverrideOpDelete) &&
-				result[i].Path == op.Path {
+			if isReplacingBodyOverrideOperation(result[i].Op) && result[i].Path == op.Path {
 				result[i] = op
 				found = true
 
@@ -363,6 +360,10 @@ func MergeOverrideOperations(existing, template []objects.OverrideOperation) []o
 	}
 
 	return result
+}
+
+func isReplacingBodyOverrideOperation(op string) bool {
+	return op == objects.OverrideOpSet || op == objects.OverrideOpSetIfAbsent || op == objects.OverrideOpDelete
 }
 
 // QueryChannelOverrideTemplatesInput represents the input for querying templates.

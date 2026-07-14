@@ -440,6 +440,7 @@
   "channels.dialogs.settings.overrides.body.description": "覆盖发送到渠道的请求体，您可以更改请求体内容、添加、删除、重命名字段，或移除匹配的数组项。",
   "channels.dialogs.settings.overrides.body.op": "操作类型",
   "channels.dialogs.settings.overrides.body.opSet": "设置",
+  "channels.dialogs.settings.overrides.body.opSetIfAbsent": "不存在时设置",
   "channels.dialogs.settings.overrides.body.opDelete": "删除",
   "channels.dialogs.settings.overrides.body.opRename": "重命名",
   "channels.dialogs.settings.overrides.body.opCopy": "复制",

@@ -443,6 +443,7 @@
   "channels.dialogs.settings.overrides.body.description": "Override the request body sent to the channel, including changing body content, adding, deleting, renaming fields, or removing matching array items.",
   "channels.dialogs.settings.overrides.body.op": "Operation",
   "channels.dialogs.settings.overrides.body.opSet": "Set",
+  "channels.dialogs.settings.overrides.body.opSetIfAbsent": "Set If Absent",
   "channels.dialogs.settings.overrides.body.opDelete": "Delete",
   "channels.dialogs.settings.overrides.body.opRename": "Rename",
   "channels.dialogs.settings.overrides.body.opCopy": "Copy",
