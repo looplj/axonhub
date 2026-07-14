@@ -479,6 +479,7 @@
   "channels.dialogs.settings.overrides.headers.toPlaceholder": "例如 X-New-Header",
   "channels.dialogs.settings.overrides.headers.sensitiveWarning": "该请求头可能包含认证凭据，请谨慎设置。",
   "channels.dialogs.settings.overrides.validation.emptyPath": "第 {{index}} 个操作 ({{op}}): 路径不能为空",
+  "channels.dialogs.settings.overrides.validation.missingValue": "第 {{index}} 个操作 ({{op}}): 值不能为空",
   "channels.dialogs.settings.overrides.validation.emptyFromTo": "第 {{index}} 个操作 ({{op}}): 源路径和目标路径都不能为空",
   "channels.dialogs.settings.overrides.validation.emptyHeaderPath": "第 {{index}} 个请求头操作 ({{op}}): 键名不能为空",
   "channels.dialogs.settings.overrides.validation.emptyHeaderFromTo": "第 {{index}} 个请求头操作 ({{op}}): 源键名和目标键名都不能为空",

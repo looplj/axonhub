@@ -343,20 +343,34 @@ func MergeOverrideOperations(existing, template []objects.OverrideOperation) []o
 			continue
 		}
 
-		found := false
+		result = replaceBodyOverrideOperation(result, op)
+	}
 
-		for i := range result {
-			if isReplacingBodyOverrideOperation(result[i].Op) && result[i].Path == op.Path {
-				result[i] = op
+	return result
+}
+
+func replaceBodyOverrideOperation(result []objects.OverrideOperation, replacement objects.OverrideOperation) []objects.OverrideOperation {
+	found := false
+	writeIndex := 0
+
+	for _, op := range result {
+		if isReplacingBodyOverrideOperation(op.Op) && op.Path == replacement.Path {
+			if !found {
+				result[writeIndex] = replacement
+				writeIndex++
 				found = true
-
-				break
 			}
+
+			continue
 		}
 
-		if !found {
-			result = append(result, op)
-		}
+		result[writeIndex] = op
+		writeIndex++
+	}
+
+	result = result[:writeIndex]
+	if !found {
+		result = append(result, replacement)
 	}
 
 	return result

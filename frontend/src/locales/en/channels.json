@@ -482,6 +482,7 @@
   "channels.dialogs.settings.overrides.headers.toPlaceholder": "e.g. X-New-Header",
   "channels.dialogs.settings.overrides.headers.sensitiveWarning": "This header may contain authentication credentials. Double-check before saving.",
   "channels.dialogs.settings.overrides.validation.emptyPath": "Operation {{index}} ({{op}}): Path cannot be empty",
+  "channels.dialogs.settings.overrides.validation.missingValue": "Operation {{index}} ({{op}}): Value is required",
   "channels.dialogs.settings.overrides.validation.emptyFromTo": "Operation {{index}} ({{op}}): Both source and target paths are required",
   "channels.dialogs.settings.overrides.validation.emptyHeaderPath": "Header operation {{index}} ({{op}}): Key cannot be empty",
   "channels.dialogs.settings.overrides.validation.emptyHeaderFromTo": "Header operation {{index}} ({{op}}): Both source and target keys are required",

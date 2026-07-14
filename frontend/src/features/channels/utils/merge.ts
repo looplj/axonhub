@@ -67,6 +67,11 @@ export function mergeOverrideOperations(existing: OverrideOperation[], template:
     const existingIndex = result.findIndex((op) => isReplacingBodyOverrideOperation(op) && op.path === templateOp.path);
     if (existingIndex >= 0) {
       result[existingIndex] = templateOp;
+      for (let i = result.length - 1; i > existingIndex; i--) {
+        if (isReplacingBodyOverrideOperation(result[i]) && result[i].path === templateOp.path) {
+          result.splice(i, 1);
+        }
+      }
     } else {
       result.push(templateOp);
     }

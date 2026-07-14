@@ -180,6 +180,26 @@ func TestMergeOverrideOperations(t *testing.T) {
 			template: []objects.OverrideOperation{renameOp("max_tokens", "max_output_tokens")},
 			expected: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000"), renameOp("max_tokens", "max_output_tokens")},
 		},
+		{
+			name: "template removes duplicate scalar operations at the same path",
+			existing: []objects.OverrideOperation{
+				setOp("max_output_tokens", "8000"),
+				setOp("temperature", "0.5"),
+				setIfAbsentOp("max_output_tokens", "32000"),
+				deleteOp("max_output_tokens"),
+			},
+			template: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "16000")},
+			expected: []objects.OverrideOperation{
+				setIfAbsentOp("max_output_tokens", "16000"),
+				setOp("temperature", "0.5"),
+			},
+		},
+		{
+			name:     "last template scalar operation at the same path wins",
+			existing: []objects.OverrideOperation{setOp("temperature", "0.5")},
+			template: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000"), setOp("max_output_tokens", "16000")},
+			expected: []objects.OverrideOperation{setOp("temperature", "0.5"), setOp("max_output_tokens", "16000")},
+		},
 	}
 
 	for _, tt := range tests {
@@ -347,6 +367,11 @@ func TestValidateBodyOverrideOperations(t *testing.T) {
 		{
 			name:        "set if absent requires path",
 			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Value: "32000"}},
+			expectError: true,
+		},
+		{
+			name:        "set if absent requires value",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens"}},
 			expectError: true,
 		},
 		{

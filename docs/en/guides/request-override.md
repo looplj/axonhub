@@ -48,7 +48,7 @@ Override parameters are defined as an array of operations, each containing the f
 | `path` | string | Conditional | Target field path (required for `set`, `set_if_absent`, `delete`, and all array ops) |
 | `from` | string | Conditional | Source field path (required for `rename` and `copy`) |
 | `to` | string | Conditional | Target field path (required for `rename` and `copy`) |
-| `value` | string | Conditional | Field value (required for `set`, `set_if_absent`, `array_append`, `array_prepend`, and `array_insert`), supports templates |
+| `value` | string | Conditional | Field value (required for `set`, `array_append`, `array_prepend`, and `array_insert`; must be non-empty for `set_if_absent`), supports templates |
 | `condition` | string | No | Condition expression, executes when result is `"true"` |
 | `match` | object | Conditional | Match rule (required for `array_remove`), formatted as `{"path":"function.name","eq":"web_search"}` |
 | `index` | number | Conditional | Insertion position (required for `array_insert`); negative values count from the end, out-of-range values are clamped to `[0, len]` |

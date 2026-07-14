@@ -34,6 +34,39 @@ test('set_if_absent participates in scalar body override replacement', () => {
   ]);
 });
 
+test('scalar body override replacement removes existing duplicates', () => {
+  const temperature = { op: 'set', path: 'temperature', value: '0.5' };
+
+  assert.deepEqual(
+    mergeOverrideOperations(
+      [
+        { op: 'set', path: 'max_output_tokens', value: '8000' },
+        temperature,
+        { op: 'set_if_absent', path: 'max_output_tokens', value: '32000' },
+        { op: 'delete', path: 'max_output_tokens' },
+      ],
+      [{ op: 'set_if_absent', path: 'max_output_tokens', value: '16000' }]
+    ),
+    [{ op: 'set_if_absent', path: 'max_output_tokens', value: '16000' }, temperature]
+  );
+});
+
+test('last template scalar body override at the same path wins', () => {
+  assert.deepEqual(
+    mergeOverrideOperations(
+      [{ op: 'set', path: 'temperature', value: '0.5' }],
+      [
+        { op: 'set_if_absent', path: 'max_output_tokens', value: '32000' },
+        { op: 'set', path: 'max_output_tokens', value: '16000' },
+      ]
+    ),
+    [
+      { op: 'set', path: 'temperature', value: '0.5' },
+      { op: 'set', path: 'max_output_tokens', value: '16000' },
+    ]
+  );
+});
+
 test('set_if_absent is exposed as a localized body-only operation', () => {
   const schema = read('features/channels/data/schema.ts');
   const dialog = read('features/channels/components/channels-override-dialog.tsx');
@@ -43,9 +76,11 @@ test('set_if_absent is exposed as a localized body-only operation', () => {
   assert.match(schema, /'set_if_absent'/);
   assert.match(bodyTypes, /'set_if_absent'/);
   assert.doesNotMatch(headerTypes, /set_if_absent/);
+  assert.match(dialog, /op\.op === 'set_if_absent' && parseValueForDisplay\(op\.value\) === ''/);
 
   for (const locale of ['en', 'zh-CN']) {
     const messages = JSON.parse(read(`locales/${locale}/channels.json`));
     assert.ok(messages['channels.dialogs.settings.overrides.body.opSetIfAbsent']);
+    assert.ok(messages['channels.dialogs.settings.overrides.validation.missingValue']);
   }
 });
