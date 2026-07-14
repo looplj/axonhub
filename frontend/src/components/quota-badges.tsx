@@ -144,8 +144,8 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       qd?.windows?.monthly?.usage_percent ?? 0
     );
   } else if (channel.type === 'moonshot_coding') {
-    const qd = channel.quotaStatus.quotaData as ProviderKimiCodeQuotaData;
-    percentage = Math.max(0, ...(qd.rows ?? []).map((row) => (row.limit > 0 ? (row.used / row.limit) * 100 : 0)));
+    const qd = channel.quotaStatus.quotaData as ProviderKimiCodeQuotaData | undefined;
+    percentage = Math.max(0, ...(qd?.rows ?? []).map((row) => (row.limit > 0 ? (row.used / row.limit) * 100 : 0)));
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
