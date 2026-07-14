@@ -517,18 +517,19 @@ func TestCodexOutbound_ForcesArrayInputsForSingleMessage(t *testing.T) {
 	assert.Equal(t, "user", first["role"])
 }
 
-func TestCodexOutbound_PreservesResponsesLiteReasoningContext(t *testing.T) {
+func TestCodexOutbound_PreservesResponsesLiteRequirements(t *testing.T) {
 	ctx := context.Background()
 	outbound := newTestCodexOutbound(t)
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set(responses.ResponsesLiteHeader, "true")
 	inboundRequest := &httpclient.Request{
-		Headers: http.Header{
-			"Content-Type":                           []string{"application/json"},
-			"X-Openai-Internal-Codex-Responses-Lite": []string{"true"},
-		},
+		Headers: headers,
 		Body: []byte(`{
 			"model": "gpt-5.6-sol",
 			"input": "Hello",
 			"stream": true,
+			"parallel_tool_calls": false,
 			"reasoning": {
 				"effort": "xhigh",
 				"context": "all_turns"
@@ -544,9 +545,10 @@ func TestCodexOutbound_PreservesResponsesLiteReasoningContext(t *testing.T) {
 	require.NoError(t, err)
 	outboundRequest = httpclient.MergeInboundRequest(outboundRequest, inboundRequest)
 
-	assert.Equal(t, "true", outboundRequest.Headers.Get("X-Openai-Internal-Codex-Responses-Lite"))
+	assert.Equal(t, "true", outboundRequest.Headers.Get(responses.ResponsesLiteHeader))
 
 	body := decodeCodexRequestBody(t, outboundRequest)
+	assert.Equal(t, false, body["parallel_tool_calls"])
 	reasoning, ok := body["reasoning"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "all_turns", reasoning["context"])
