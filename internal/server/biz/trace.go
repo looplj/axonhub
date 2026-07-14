@@ -1495,6 +1495,22 @@ func deduplicateSpansWithParent(current, parent []Span) []Span {
 	return result
 }
 
+// normalizeJSON re-parses and re-serializes JSON to produce a canonical form,
+// eliminating whitespace differences between compact and pretty-printed JSON.
+func normalizeJSON(s string) string {
+	var v any
+	if err := json.Unmarshal([]byte(s), &v); err != nil {
+		return s
+	}
+
+	b, err := json.Marshal(v)
+	if err != nil {
+		return s
+	}
+
+	return string(b)
+}
+
 // spanToKey generates a unique key for a span based on its content.
 func spanToKey(span Span) string {
 	if span.Value == nil {
@@ -1550,7 +1566,7 @@ func spanToKey(span Span) string {
 		if span.Value.ToolUse != nil {
 			args := ""
 			if span.Value.ToolUse.Arguments != nil {
-				args = *span.Value.ToolUse.Arguments
+				args = normalizeJSON(*span.Value.ToolUse.Arguments)
 			}
 
 			return fmt.Sprintf("%s:%s:%s:%s", span.Type, span.Value.ToolUse.ID, span.Value.ToolUse.Name, args)
