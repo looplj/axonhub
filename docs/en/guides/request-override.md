@@ -19,6 +19,7 @@ AxonHub uses Go templates for dynamic value rendering. You can access the follow
 | `.ReasoningEffort` | The `reasoning_effort` value (none, low, medium, high). | `{{.ReasoningEffort}}` |
 | `.Metadata` | Custom metadata map passed in the request. | `{{index .Metadata "user_id"}}` |
 | `.RequestHeader` | Filtered inbound client headers. Supports canonical/lowercase lookup and returns the first value. | `{{index .RequestHeader "X-Trace-Id"}}` |
+| `.PromptCacheKey` | The `prompt_cache_key` from the inbound request. It is an empty string when omitted. | `{{.PromptCacheKey}}` |
 
 ## Override Operation Types
 
@@ -288,6 +289,12 @@ Override headers use the same operation format as override parameters:
     "op": "set",
     "path": "X-Trace-Id",
     "value": "{{index .RequestHeader \"x-trace-id\"}}"
+  },
+  {
+    "op": "set",
+    "path": "Extra",
+    "value": "{\"session_id\":\"{{.PromptCacheKey}}\"}",
+    "condition": "{{if .PromptCacheKey}}true{{end}}"
   },
   {
     "op": "delete",

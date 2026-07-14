@@ -29,6 +29,8 @@ type RenderContext struct {
 	Metadata map[string]string `json:"metadata"`
 	// RequestHeader is the filtered request headers used in the current request.
 	RequestHeader map[string]string `json:"request_header"`
+	// PromptCacheKey is the prompt cache key provided by the original request.
+	PromptCacheKey string `json:"prompt_cache_key"`
 	// ReasoningEffort is the reasoning effort used in the current request.
 	ReasoningEffort string `json:"reasoning_effort"`
 }
@@ -58,13 +60,18 @@ func buildRequestHeaderMap(llmReq *llm.Request) map[string]string {
 }
 
 func buildRenderContext(llmReq *llm.Request, requestModel string) RenderContext {
-	return RenderContext{
+	renderCtx := RenderContext{
 		RequestModel:    requestModel,
 		Model:           llmReq.Model,
 		Metadata:        llmReq.Metadata,
 		RequestHeader:   buildRequestHeaderMap(llmReq),
 		ReasoningEffort: llmReq.ReasoningEffort,
 	}
+	if llmReq.PromptCacheKey != nil {
+		renderCtx.PromptCacheKey = *llmReq.PromptCacheKey
+	}
+
+	return renderCtx
 }
 
 // renderTemplate renders a Go template string against RenderContext. Returns the original value on error.

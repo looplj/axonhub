@@ -19,6 +19,7 @@ AxonHub 使用 Go 模板 (Go templates) 进行动态值渲染。你可以在模�
 | `.ReasoningEffort` | `reasoning_effort` 的值 (none, low, medium, high)。 | `{{.ReasoningEffort}}` |
 | `.Metadata` | 请求中传递的自定义元数据 Map。 | `{{index .Metadata "user_id"}}` |
 | `.RequestHeader` | 过滤后的客户端入站请求头。支持规范写法/小写查找，并返回第一个值。 | `{{index .RequestHeader "X-Trace-Id"}}` |
+| `.PromptCacheKey` | 入站请求中的 `prompt_cache_key`；未提供时为空字符串。 | `{{.PromptCacheKey}}` |
 
 ## 重写操作类型
 
@@ -288,6 +289,12 @@ AxonHub 支持以下重写操作：
     "op": "set",
     "path": "X-Trace-Id",
     "value": "{{index .RequestHeader \"x-trace-id\"}}"
+  },
+  {
+    "op": "set",
+    "path": "Extra",
+    "value": "{\"session_id\":\"{{.PromptCacheKey}}\"}",
+    "condition": "{{if .PromptCacheKey}}true{{end}}"
   },
   {
     "op": "delete",

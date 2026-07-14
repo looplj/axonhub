@@ -393,6 +393,66 @@ func TestOverrideHeadersKeepJSONLikeString(t *testing.T) {
 	require.Equal(t, expectedValue, processedRequest.Headers.Get("Extra"))
 }
 
+func TestOverrideHeadersWithPromptCacheKeyTemplate(t *testing.T) {
+	ctx := context.Background()
+	promptCacheKey := "cache-key-123"
+
+	tests := []struct {
+		name           string
+		promptCacheKey *string
+		expectedHeader string
+	}{
+		{
+			name:           "sets header when prompt cache key is present",
+			promptCacheKey: &promptCacheKey,
+			expectedHeader: `{"session_id":"cache-key-123"}`,
+		},
+		{
+			name:           "skips header when prompt cache key is absent",
+			promptCacheKey: nil,
+			expectedHeader: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			llmRequest := &llm.Request{
+				Model:          "gpt-5.5",
+				PromptCacheKey: tt.promptCacheKey,
+			}
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: "prompt-cache-key-template-test",
+					Settings: &objects.ChannelSettings{
+						HeaderOverrideOperations: []objects.OverrideOperation{
+							{
+								Op:        objects.OverrideOpSet,
+								Path:      "Extra",
+								Value:     `{"session_id":"{{.PromptCacheKey}}"}`,
+								Condition: `{{if .PromptCacheKey}}true{{end}}`,
+							},
+						},
+					},
+				},
+				Outbound: &mockTransformer{},
+			}
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest:       llmRequest,
+				},
+			}
+
+			headerMiddleware := applyOverrideRequestHeaders(outbound)
+			processedRequest, err := headerMiddleware.OnOutboundRawRequest(ctx, &httpclient.Request{Headers: make(http.Header)})
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedHeader, processedRequest.Headers.Get("Extra"))
+		})
+	}
+}
+
 func TestOverrideParametersWithRequestHeaderTemplate_NoRawRequest(t *testing.T) {
 	ctx := context.Background()
 
