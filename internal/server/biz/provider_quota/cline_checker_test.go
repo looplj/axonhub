@@ -112,6 +112,23 @@ func TestBuildClineQuotaData_OfficialValuesDriveStatusAndResetWhileCostRemainsEx
 	require.Equal(t, weeklyReset.Format(time.RFC3339), weekly["next_reset_at"])
 }
 
+func TestBuildClineWindow_StaleOfficialResetPreservesEstimate(t *testing.T) {
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	staleReset := now.Add(-2 * time.Hour)
+
+	window := buildClineWindow(
+		now,
+		"last5h",
+		5*time.Hour,
+		100,
+		[]clineUsageItem{{CreatedAt: now.Add(-time.Hour).Format(time.RFC3339)}},
+		clineOfficialWindowLimit{NextResetAt: &staleReset},
+	)
+
+	require.Equal(t, now.Add(4*time.Hour), *window.nextResetAt)
+	require.Equal(t, clineWindowSourceEstimatedUsage, window.resetSource)
+}
+
 func TestCline_CheckQuota_HappyPathPassOnly(t *testing.T) {
 	now := time.Date(2026, 7, 7, 10, 30, 0, 0, time.UTC)
 	requestCount := 0

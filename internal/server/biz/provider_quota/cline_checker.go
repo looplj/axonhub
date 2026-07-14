@@ -1,6 +1,7 @@
 package provider_quota
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -106,9 +107,17 @@ type clineUsageLimit struct {
 func (l *clineUsageLimit) UnmarshalJSON(data []byte) error {
 	*l = clineUsageLimit{}
 
+	data = bytes.TrimSpace(data)
+	if !json.Valid(data) {
+		return fmt.Errorf("invalid Cline usage limit JSON")
+	}
+	if len(data) == 0 || data[0] != '{' {
+		return nil
+	}
+
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(data, &fields); err != nil {
-		return nil
+		return fmt.Errorf("failed to parse Cline usage limit: %w", err)
 	}
 
 	if raw, ok := fields["type"]; ok {
@@ -534,6 +543,7 @@ func clineUsageLimitWindowKey(value string) (string, bool) {
 		return "", false
 	}
 }
+
 func buildClineQuotaData(
 	now time.Time,
 	scope clineModelScope,
@@ -648,7 +658,7 @@ func buildClineWindow(
 		window.usageRatio = &ratio
 		window.usageSource = clineWindowSourceOfficialUsageLimits
 	}
-	if official.NextResetAt != nil {
+	if official.NextResetAt != nil && official.NextResetAt.After(now) {
 		resetAt := *official.NextResetAt
 		window.nextResetAt = &resetAt
 		window.resetSource = clineWindowSourceOfficialUsageLimits
