@@ -35,6 +35,16 @@ type RenderContext struct {
 	ReasoningEffort string `json:"reasoning_effort"`
 }
 
+var overrideTemplateFuncs = template.FuncMap{
+	"toJSON": func(value any) (string, error) {
+		data, err := json.Marshal(value)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	},
+}
+
 func buildRequestHeaderMap(llmReq *llm.Request) map[string]string {
 	requestHeaders := make(map[string]string)
 	if llmReq == nil || llmReq.RawRequest == nil || llmReq.RawRequest.Headers == nil {
@@ -69,6 +79,8 @@ func buildRenderContext(llmReq *llm.Request, requestModel string) RenderContext 
 	}
 	if llmReq.PromptCacheKey != nil {
 		renderCtx.PromptCacheKey = *llmReq.PromptCacheKey
+	} else if llmReq.Compact != nil {
+		renderCtx.PromptCacheKey = llmReq.Compact.PromptCacheKey
 	}
 
 	return renderCtx
@@ -80,7 +92,7 @@ func renderTemplate(ctx context.Context, value string, renderCtx RenderContext) 
 		return value
 	}
 
-	tmpl, err := template.New("override").Funcs(template.FuncMap{}).Parse(value)
+	tmpl, err := template.New("override").Funcs(overrideTemplateFuncs).Parse(value)
 	if err != nil {
 		log.Warn(ctx, "failed to parse override template",
 			log.String("template", value),

@@ -395,31 +395,48 @@ func TestOverrideHeadersKeepJSONLikeString(t *testing.T) {
 
 func TestOverrideHeadersWithPromptCacheKeyTemplate(t *testing.T) {
 	ctx := context.Background()
-	promptCacheKey := "cache-key-123"
+	promptCacheKey := `cache-key-123","admin":true`
+	topLevelPromptCacheKey := "top-level-cache-key"
 
 	tests := []struct {
 		name           string
-		promptCacheKey *string
+		request        *llm.Request
 		expectedHeader string
 	}{
 		{
-			name:           "sets header when prompt cache key is present",
-			promptCacheKey: &promptCacheKey,
-			expectedHeader: `{"session_id":"cache-key-123"}`,
+			name: "JSON-escapes prompt cache key",
+			request: &llm.Request{
+				Model:          "gpt-5.5",
+				PromptCacheKey: &promptCacheKey,
+			},
+			expectedHeader: `{"session_id":"cache-key-123\",\"admin\":true"}`,
 		},
 		{
 			name:           "skips header when prompt cache key is absent",
-			promptCacheKey: nil,
+			request:        &llm.Request{Model: "gpt-5.5"},
 			expectedHeader: "",
+		},
+		{
+			name: "uses prompt cache key from compact request",
+			request: &llm.Request{
+				Model:   "gpt-5.5",
+				Compact: &llm.CompactRequest{PromptCacheKey: "compact-cache-key"},
+			},
+			expectedHeader: `{"session_id":"compact-cache-key"}`,
+		},
+		{
+			name: "prefers top-level prompt cache key",
+			request: &llm.Request{
+				Model:          "gpt-5.5",
+				PromptCacheKey: &topLevelPromptCacheKey,
+				Compact:        &llm.CompactRequest{PromptCacheKey: "compact-cache-key"},
+			},
+			expectedHeader: `{"session_id":"top-level-cache-key"}`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			llmRequest := &llm.Request{
-				Model:          "gpt-5.5",
-				PromptCacheKey: tt.promptCacheKey,
-			}
 			channel := &biz.Channel{
 				Channel: &ent.Channel{
 					ID:   1,
@@ -429,7 +446,7 @@ func TestOverrideHeadersWithPromptCacheKeyTemplate(t *testing.T) {
 							{
 								Op:        objects.OverrideOpSet,
 								Path:      "Extra",
-								Value:     `{"session_id":"{{.PromptCacheKey}}"}`,
+								Value:     `{"session_id":{{toJSON .PromptCacheKey}}}`,
 								Condition: `{{if .PromptCacheKey}}true{{end}}`,
 							},
 						},
@@ -441,14 +458,20 @@ func TestOverrideHeadersWithPromptCacheKeyTemplate(t *testing.T) {
 				wrapped: &mockTransformer{},
 				state: &PersistenceState{
 					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
-					LlmRequest:       llmRequest,
+					LlmRequest:       tt.request,
 				},
 			}
 
 			headerMiddleware := applyOverrideRequestHeaders(outbound)
 			processedRequest, err := headerMiddleware.OnOutboundRawRequest(ctx, &httpclient.Request{Headers: make(http.Header)})
 			require.NoError(t, err)
-			require.Equal(t, tt.expectedHeader, processedRequest.Headers.Get("Extra"))
+			actualHeader := processedRequest.Headers.Get("Extra")
+			require.Equal(t, tt.expectedHeader, actualHeader)
+			if tt.expectedHeader != "" {
+				var headerValue map[string]any
+				require.NoError(t, json.Unmarshal([]byte(actualHeader), &headerValue))
+				require.Len(t, headerValue, 1)
+			}
 		})
 	}
 }
