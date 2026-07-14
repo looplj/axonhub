@@ -993,7 +993,9 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
       {channel.type === 'moonshot_coding' && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const qd = channel.quotaStatus.quotaData as ProviderKimiCodeQuotaData;
+            const qd = channel.quotaStatus.quotaData as ProviderKimiCodeQuotaData | undefined;
+            if (!qd) return null;
+
             const rows = qd.rows ?? [];
             const wallet = qd.boosterWallet;
 
