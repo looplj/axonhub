@@ -3752,6 +3752,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   neuralwatt
   apertis
   opencode_go
+  kimi_code
 }
 """
 ProviderQuotaStatusStatus is enum for the field status

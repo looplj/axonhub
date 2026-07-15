@@ -345,6 +345,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerNeuralWattSupport()
 	svc.registerApertisSupport()
 	svc.registerOpenCodeGoSupport()
+	svc.registerKimiCodeSupport()
 
 	go svc.loadQuotaCache(context.Background())
 
@@ -399,6 +400,10 @@ func (svc *ProviderQuotaService) registerApertisSupport() {
 
 func (svc *ProviderQuotaService) registerOpenCodeGoSupport() {
 	svc.checkers["opencode_go"] = provider_quota.NewOpenCodeGoQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerKimiCodeSupport() {
+	svc.checkers["kimi_code"] = provider_quota.NewKimiCodeQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) string {
@@ -566,7 +571,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeCline, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic),
+			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeCline, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic, channel.TypeMoonshotCoding),
 		)
 
 	if !force {
@@ -777,6 +782,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return provider_quota.DetectProviderFromURL(ch.BaseURL)
 	case channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic:
 		return "opencode_go"
+	case channel.TypeMoonshotCoding:
+		return "kimi_code"
 	default:
 		return ""
 	}
