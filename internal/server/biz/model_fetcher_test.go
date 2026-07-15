@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
@@ -509,6 +511,36 @@ func TestFetchModelsGeminiPagination(t *testing.T) {
 			t.Fatalf("missing model id %q in result: %#v", want, result.Models)
 		}
 	}
+}
+
+func TestFetchModelsInsecureSkipVerify(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"self-signed-model"}]}`))
+	}))
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClient(), nil)
+	apiKey := "test-key"
+
+	secureResult, err := fetcher.FetchModels(t.Context(), FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     server.URL,
+		APIKey:      &apiKey,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, secureResult.Error)
+
+	insecure := true
+	insecureResult, err := fetcher.FetchModels(t.Context(), FetchModelsInput{
+		ChannelType:        channel.TypeOpenai.String(),
+		BaseURL:            server.URL,
+		APIKey:             &apiKey,
+		InsecureSkipVerify: &insecure,
+	})
+	require.NoError(t, err)
+	require.Nil(t, insecureResult.Error)
+	require.Equal(t, []ModelIdentify{{ID: "self-signed-model"}}, insecureResult.Models)
 }
 
 func TestFetchModelsWithChannelIDUsesStoredCredentialsOnlyForStoredEndpoint(t *testing.T) {

@@ -300,6 +300,8 @@
   "channels.dialogs.fields.baseURL.placeholder": "https://api.openai.com/v1",
   "channels.dialogs.fields.baseURL.errors.httpScheme": "HTTP 传输要求 Base URL 使用 http:// 或 https://",
   "channels.dialogs.fields.baseURL.errors.websocketScheme": "WebSocket 传输要求 Base URL 使用 ws:// 或 wss://",
+  "channels.dialogs.fields.insecureSkipVerify.label": "忽略 HTTPS 证书",
+  "channels.dialogs.fields.insecureSkipVerify.warning": "仅用于可信的自签名 HTTPS 端点。启用后此渠道不再校验证书，可能遭受中间人攻击。",
   "channels.dialogs.fields.streamPolicy.label": "流式策略",
   "channels.dialogs.fields.streamPolicy.placeholder": "选择策略",
   "channels.dialogs.fields.streamPolicy.options.unlimited": "没有限制 (遵循请求)",

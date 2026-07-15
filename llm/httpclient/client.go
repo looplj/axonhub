@@ -17,12 +17,12 @@ import (
 
 	"github.com/looplj/axonhub/llm/streams"
 )
+
 // MaxErrorBodySize is the maximum number of bytes read from an upstream error
 // response body. Error bodies beyond this size are truncated to prevent OOM
 // from pathological upstream responses that echo large request payloads in
 // validation error messages, producing response bodies of 1+ GB.
 const MaxErrorBodySize = 1 << 20 // 1 MB
-
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
@@ -84,6 +84,51 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 // while preserving all other options (e.g., InsecureSkipVerify) from the original client.
 func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
 	return NewHttpClientWithProxy(proxyConfig, hc.opts...)
+}
+
+func cloneHTTPTransport(roundTripper http.RoundTripper, proxy func(*http.Request) (*url.URL, error)) *http.Transport {
+	if transport, ok := roundTripper.(*http.Transport); ok {
+		return transport.Clone()
+	}
+	if roundTripper == nil {
+		if transport, ok := http.DefaultTransport.(*http.Transport); ok {
+			return transport.Clone()
+		}
+	}
+
+	return &http.Transport{
+		Proxy:                 proxy,
+		DialContext:           (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+}
+
+// WithInsecureSkipVerify returns an isolated client with the requested TLS setting.
+// The underlying client and transport are cloned so the setting cannot leak to other channels.
+func (hc *HttpClient) WithInsecureSkipVerify(skip bool) *HttpClient {
+	client := *hc.client
+	transport := cloneHTTPTransport(client.Transport, getProxyFunc(hc.proxyConfig))
+
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	} else {
+		transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+	}
+	transport.TLSClientConfig.InsecureSkipVerify = skip //nolint:gosec // Explicit per-channel setting for self-signed certificates
+	client.Transport = transport
+
+	opts := append([]ClientOption(nil), hc.opts...)
+	opts = append(opts, WithInsecureSkipVerify(skip))
+
+	return &HttpClient{
+		client:      &client,
+		proxyConfig: hc.proxyConfig,
+		opts:        opts,
+	}
 }
 
 // GetNativeClient returns the underlying *http.Client for advanced use cases.

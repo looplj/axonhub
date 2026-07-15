@@ -99,6 +99,7 @@ const CREATE_CHANNEL_MUTATION = `
           username
           password
         }
+        insecureSkipVerify
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
@@ -172,6 +173,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
           username
           password
         }
+        insecureSkipVerify
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
@@ -245,6 +247,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           username
           password
         }
+        insecureSkipVerify
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
@@ -318,6 +321,7 @@ const UPDATE_CHANNEL_MUTATION = `
           username
           password
         }
+        insecureSkipVerify
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
@@ -508,6 +512,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           hideOriginalModels
           hideMappedModels
           lowercaseModelId
+          insecureSkipVerify
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -706,6 +711,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           hideOriginalModels
           hideMappedModels
           lowercaseModelId
+          insecureSkipVerify
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -856,6 +862,7 @@ const QUERY_CHANNELS_QUERY = `
               username
               password
             }
+            insecureSkipVerify
             transformOptions {
               forceArrayInstructions
               forceArrayInputs
@@ -1617,7 +1624,13 @@ export function useFetchModels() {
   const { handleError } = useErrorHandler();
 
   return useMutation({
-    mutationFn: async (input: { channelType: string; baseURL: string; apiKey?: string; channelID?: string }) => {
+    mutationFn: async (input: {
+      channelType: string;
+      baseURL: string;
+      apiKey?: string;
+      channelID?: string;
+      insecureSkipVerify?: boolean;
+    }) => {
       try {
         const data = await graphqlRequest<{
           fetchModels: {

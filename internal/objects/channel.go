@@ -179,6 +179,10 @@ type ChannelSettings struct {
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
 	Proxy *httpclient.ProxyConfig `json:"proxy,omitempty"`
 
+	// InsecureSkipVerify disables TLS certificate verification for this channel.
+	// Keep this disabled unless the upstream uses a trusted self-signed certificate.
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
 

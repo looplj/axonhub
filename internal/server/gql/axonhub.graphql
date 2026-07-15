@@ -156,6 +156,7 @@ type ChannelSettings {
   hideMappedModels: Boolean
   lowercaseModelId: Boolean
   proxy: ProxyConfig
+  insecureSkipVerify: Boolean
   transformOptions: TransformOptions
   headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
@@ -194,6 +195,7 @@ input ChannelSettingsInput {
   hideMappedModels: Boolean
   lowercaseModelId: Boolean
   proxy: ProxyConfigInput
+  insecureSkipVerify: Boolean
   transformOptions: TransformOptionsInput
   headerOverrideOperations: [OverrideOperationInput!]
   bodyOverrideOperations: [OverrideOperationInput!]
@@ -522,6 +524,7 @@ input FetchModelsInput {
   baseURL: String!
   apiKey: String
   channelID: ID
+  insecureSkipVerify: Boolean
 }
 
 type FetchModelsPayload {

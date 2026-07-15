@@ -543,6 +543,7 @@ type ComplexityRoot struct {
 		HeaderOverrideOperations func(childComplexity int) int
 		HideMappedModels         func(childComplexity int) int
 		HideOriginalModels       func(childComplexity int) int
+		InsecureSkipVerify       func(childComplexity int) int
 		LowercaseModelID         func(childComplexity int) int
 		ModelMappings            func(childComplexity int) int
 		PassThroughBody          func(childComplexity int) int
@@ -4110,6 +4111,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.HideOriginalModels(childComplexity), true
+	case "ChannelSettings.insecureSkipVerify":
+		if e.complexity.ChannelSettings.InsecureSkipVerify == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.InsecureSkipVerify(childComplexity), true
 	case "ChannelSettings.lowercaseModelId":
 		if e.complexity.ChannelSettings.LowercaseModelID == nil {
 			break
@@ -19371,6 +19378,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_lowercaseModelId(ctx, field)
 			case "proxy":
 				return ec.fieldContext_ChannelSettings_proxy(ctx, field)
+			case "insecureSkipVerify":
+				return ec.fieldContext_ChannelSettings_insecureSkipVerify(ctx, field)
 			case "transformOptions":
 				return ec.fieldContext_ChannelSettings_transformOptions(ctx, field)
 			case "headerOverrideOperations":
@@ -23681,6 +23690,35 @@ func (ec *executionContext) fieldContext_ChannelSettings_proxy(_ context.Context
 				return ec.fieldContext_ProxyConfig_password(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProxyConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_insecureSkipVerify(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_insecureSkipVerify,
+		func(ctx context.Context) (any, error) {
+			return obj.InsecureSkipVerify, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_insecureSkipVerify(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65093,7 +65131,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "providerQuota"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "insecureSkipVerify", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "providerQuota"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65149,6 +65187,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.Proxy = data
+		case "insecureSkipVerify":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("insecureSkipVerify"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InsecureSkipVerify = data
 		case "transformOptions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transformOptions"))
 			data, err := ec.unmarshalOTransformOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTransformOptions(ctx, v)
@@ -68650,7 +68695,7 @@ func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"channelType", "baseURL", "apiKey", "channelID"}
+	fieldsInOrder := [...]string{"channelType", "baseURL", "apiKey", "channelID", "insecureSkipVerify"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68689,6 +68734,13 @@ func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, 
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.ChannelID = converted
+		case "insecureSkipVerify":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("insecureSkipVerify"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InsecureSkipVerify = data
 		}
 	}
 
@@ -90466,6 +90518,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_lowercaseModelId(ctx, field, obj)
 		case "proxy":
 			out.Values[i] = ec._ChannelSettings_proxy(ctx, field, obj)
+		case "insecureSkipVerify":
+			out.Values[i] = ec._ChannelSettings_insecureSkipVerify(ctx, field, obj)
 		case "transformOptions":
 			out.Values[i] = ec._ChannelSettings_transformOptions(ctx, field, obj)
 		case "headerOverrideOperations":

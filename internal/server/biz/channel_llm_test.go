@@ -1,13 +1,47 @@
 package biz
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+func TestChannelServiceGetHTTPClient_PerChannelTLSIsolation(t *testing.T) {
+	defaultClient := httpclient.NewHttpClient()
+	svc := &ChannelService{httpClient: defaultClient}
+
+	secureClient := svc.getHttpClient(&objects.ChannelSettings{})
+	require.Same(t, defaultClient, secureClient)
+	require.Nil(t, secureClient.GetNativeClient().Transport)
+
+	insecureClient := svc.getHttpClient(&objects.ChannelSettings{InsecureSkipVerify: true})
+	transport, ok := insecureClient.GetNativeClient().Transport.(*http.Transport)
+	require.True(t, ok)
+	require.True(t, transport.TLSClientConfig.InsecureSkipVerify)
+	require.Nil(t, defaultClient.GetNativeClient().Transport)
+}
+
+func TestChannelServiceGetHTTPClient_PreservesProxyAndGlobalTLS(t *testing.T) {
+	defaultClient := httpclient.NewHttpClient(httpclient.WithInsecureSkipVerify(true))
+	svc := &ChannelService{httpClient: defaultClient}
+	settings := &objects.ChannelSettings{
+		Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled},
+	}
+
+	channelClient := svc.getHttpClient(settings)
+	transport, ok := channelClient.GetNativeClient().Transport.(*http.Transport)
+	require.True(t, ok)
+	require.True(t, transport.TLSClientConfig.InsecureSkipVerify)
+
+	proxyURL, err := transport.Proxy(&http.Request{})
+	require.NoError(t, err)
+	require.Nil(t, proxyURL)
+}
 
 func TestChannel_IsModelSupported_WithExtraModelPrefix(t *testing.T) {
 	tests := []struct {
