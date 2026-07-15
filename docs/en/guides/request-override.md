@@ -27,6 +27,7 @@ AxonHub supports the following override operations:
 | Operation Type | Description | Use Case |
 | :--- | :--- | :--- |
 | `set` | Set field value, create if field doesn't exist | Modify or add parameters |
+| `set_if_absent` | Set field value only when the target path does not exist | Provide a default that clients can override |
 | `delete` | Delete specified field | Remove unwanted parameters |
 | `rename` | Rename field (move from `from` to `to`) | Field name mapping conversion |
 | `copy` | Copy field value (copy from `from` to `to`) | Parameter reuse |
@@ -35,7 +36,7 @@ AxonHub supports the following override operations:
 | `array_insert` | Insert value(s) at a specific position in the array at `path` | Insert items at an arbitrary position |
 | `array_remove` | Remove matching items from the array at `path` | Filter tools or messages by a field inside each array item |
 
-> Array operations only apply to the body. Headers only support `set`, `delete`, `rename`, and `copy`.
+> `set_if_absent` and array operations only apply to the body. Headers only support `set`, `delete`, `rename`, and `copy`.
 
 ## Override Parameters
 
@@ -43,11 +44,11 @@ Override parameters are defined as an array of operations, each containing the f
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `op` | string | Yes | Operation type: `set`, `delete`, `rename`, `copy`, `array_append`, `array_prepend`, `array_insert`, `array_remove` |
-| `path` | string | Conditional | Target field path (required for `set`, `delete`, and all array ops) |
+| `op` | string | Yes | Operation type: `set`, `set_if_absent`, `delete`, `rename`, `copy`, `array_append`, `array_prepend`, `array_insert`, `array_remove` |
+| `path` | string | Conditional | Target field path (required for `set`, `set_if_absent`, `delete`, and all array ops) |
 | `from` | string | Conditional | Source field path (required for `rename` and `copy`) |
 | `to` | string | Conditional | Target field path (required for `rename` and `copy`) |
-| `value` | string | Conditional | Field value (required for `set`, `array_append`, `array_prepend`, and `array_insert`), supports templates |
+| `value` | string | Conditional | Field value (required for `set`, `array_append`, `array_prepend`, and `array_insert`; must not be empty or whitespace-only for `set_if_absent`), supports templates |
 | `condition` | string | No | Condition expression, executes when result is `"true"` |
 | `match` | object | Conditional | Match rule (required for `array_remove`), formatted as `{"path":"function.name","eq":"web_search"}` |
 | `index` | number | Conditional | Insertion position (required for `array_insert`); negative values count from the end, out-of-range values are clamped to `[0, len]` |
@@ -73,6 +74,22 @@ Override parameters are defined as an array of operations, each containing the f
   }
 ]
 ```
+
+### Providing Client-Overridable Defaults
+
+Use `set_if_absent` when the channel should provide a default without replacing a value supplied by the client:
+
+```json
+[
+  {
+    "op": "set_if_absent",
+    "path": "max_output_tokens",
+    "value": "32000"
+  }
+]
+```
+
+For a request without `max_output_tokens`, AxonHub adds `"max_output_tokens": 32000`. If the client supplies the field, its value is preserved. Presence is determined by the JSON path, so `0`, `false`, an empty string, and explicit `null` all count as present.
 
 ### Using Templates
 

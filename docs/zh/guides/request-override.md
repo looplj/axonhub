@@ -27,6 +27,7 @@ AxonHub 支持以下重写操作：
 | 操作类型 | 描述 | 适用场景 |
 | :--- | :--- | :--- |
 | `set` | 设置字段值，如果字段不存在则创建 | 修改或添加参数 |
+| `set_if_absent` | 仅当目标路径不存在时设置字段值 | 提供可由客户端覆盖的默认值 |
 | `delete` | 删除指定字段 | 移除不需要的参数 |
 | `rename` | 重命名字段（从 `from` 移动到 `to`） | 字段名映射转换 |
 | `copy` | 复制字段值（从 `from` 复制到 `to`） | 参数复用 |
@@ -35,7 +36,7 @@ AxonHub 支持以下重写操作：
 | `array_insert` | 把值插入到 `path` 数组的指定位置 | 在任意位置插入元素 |
 | `array_remove` | 从 `path` 数组中移除匹配项 | 按数组项内的字段值过滤工具或消息 |
 
-> 数组操作仅适用于请求体。请求头只支持 `set`、`delete`、`rename`、`copy`。
+> `set_if_absent` 和数组操作仅适用于请求体。请求头只支持 `set`、`delete`、`rename`、`copy`。
 
 ## 重写参数 (Override Parameters)
 
@@ -43,11 +44,11 @@ AxonHub 支持以下重写操作：
 
 | 字段 | 类型 | 必需 | 描述 |
 | :--- | :--- | :--- | :--- |
-| `op` | string | 是 | 操作类型：`set`、`delete`、`rename`、`copy`、`array_append`、`array_prepend`、`array_insert`、`array_remove` |
-| `path` | string | 条件 | 目标字段路径（`set`、`delete` 以及所有数组操作必需） |
+| `op` | string | 是 | 操作类型：`set`、`set_if_absent`、`delete`、`rename`、`copy`、`array_append`、`array_prepend`、`array_insert`、`array_remove` |
+| `path` | string | 条件 | 目标字段路径（`set`、`set_if_absent`、`delete` 以及所有数组操作必需） |
 | `from` | string | 条件 | 源字段路径（`rename` 和 `copy` 必需） |
 | `to` | string | 条件 | 目标字段路径（`rename` 和 `copy` 必需） |
-| `value` | string | 条件 | 字段值（`set`、`array_append`、`array_prepend`、`array_insert` 必需），支持模板 |
+| `value` | string | 条件 | 字段值（`set`、`array_append`、`array_prepend`、`array_insert` 必需；`set_if_absent` 不能是空值或仅包含空白字符），支持模板 |
 | `condition` | string | 否 | 条件表达式，结果为 `"true"` 时执行 |
 | `match` | object | 条件 | 匹配规则（`array_remove` 必需），格式为 `{"path":"function.name","eq":"web_search"}` |
 | `index` | number | 条件 | 插入位置（`array_insert` 必需），支持负数表示从末尾倒数；越界会被夹紧到 `[0, len]` |
@@ -73,6 +74,22 @@ AxonHub 支持以下重写操作：
   }
 ]
 ```
+
+### 提供可由客户端覆盖的默认值
+
+当渠道需要提供默认值，同时保留下游客户端的覆盖权时，使用 `set_if_absent`：
+
+```json
+[
+  {
+    "op": "set_if_absent",
+    "path": "max_output_tokens",
+    "value": "32000"
+  }
+]
+```
+
+当请求未携带 `max_output_tokens` 时，AxonHub 会追加 `"max_output_tokens": 32000`；客户端已提供该字段时则保留原值。是否存在按 JSON path 判断，因此 `0`、`false`、空字符串和显式 `null` 都视为已存在。
 
 ### 使用模板
 

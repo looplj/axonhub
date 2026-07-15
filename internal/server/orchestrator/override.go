@@ -192,6 +192,8 @@ func applyBodyOperation(
 	switch op.Op {
 	case objects.OverrideOpSet:
 		return applyBodySet(ctx, body, op, renderCtx)
+	case objects.OverrideOpSetIfAbsent:
+		return applyBodySetIfAbsent(ctx, body, op, renderCtx)
 	case objects.OverrideOpDelete:
 		return applyBodyDelete(body, op)
 	case objects.OverrideOpRename:
@@ -228,6 +230,20 @@ func applyBodySet(
 	}
 
 	return sjson.SetBytes(body, op.Path, renderedValue)
+}
+
+func applyBodySetIfAbsent(
+	ctx context.Context,
+	body []byte,
+	op objects.OverrideOperation,
+	renderCtx RenderContext,
+) ([]byte, error) {
+	existing := gjson.GetBytes(body, op.Path)
+	if existing.Exists() || existing.Raw == "null" {
+		return body, nil
+	}
+
+	return applyBodySet(ctx, body, op, renderCtx)
 }
 
 func applyBodyDelete(body []byte, op objects.OverrideOperation) ([]byte, error) {
