@@ -406,7 +406,23 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
-	return p.wrapped.TransformRequest(ctx, llmRequest)
+	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
+	p.state.ChannelAPIKey = channelAPIKeyFromRequest(channelRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return channelRequest, nil
+}
+
+func channelAPIKeyFromRequest(request *httpclient.Request) string {
+	if request == nil || request.Auth == nil {
+		var apiKey string
+
+		return apiKey
+	}
+
+	return request.Auth.APIKey
 }
 
 func filterResponseCustomToolMessagesForNonResponsesOutbound(
@@ -572,7 +588,8 @@ func (p *PersistentOutboundTransformer) PrepareErrorFailover(ctx context.Context
 		return false, nil
 	}
 
-	apiKey, ok := contexts.GetChannelAPIKey(ctx)
+	apiKey := p.state.ChannelAPIKey
+	ok := len(apiKey) > 0
 	if !ok || apiKey == "" || contexts.IsChannelAPIKeyExcluded(ctx, channel.ID, apiKey) {
 		return false, nil
 	}

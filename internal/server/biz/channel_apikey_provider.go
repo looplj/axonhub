@@ -45,7 +45,6 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 			if contexts.IsChannelAPIKeyExcluded(ctx, p.channel.ID, key) {
 				continue
 			}
-			contexts.WithChannelAPIKey(ctx, key)
 			return key
 		}
 
@@ -53,7 +52,6 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 	}
 
 	if len(enabled) == 1 {
-		contexts.WithChannelAPIKey(ctx, enabled[0])
 		return enabled[0]
 	}
 
@@ -82,8 +80,6 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 			)
 		}
 	}
-
-	contexts.WithChannelAPIKey(ctx, selectedKey)
 
 	return selectedKey
 }

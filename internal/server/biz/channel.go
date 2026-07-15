@@ -761,8 +761,6 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		if err := NormalizeAPIKeyFailover(input.Settings); err != nil {
 			return nil, err
 		}
-
-		mut.SetSettings(input.Settings)
 	}
 
 	if input.Endpoints != nil {

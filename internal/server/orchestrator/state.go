@@ -49,6 +49,8 @@ type PersistenceState struct {
 	CurrentCandidate *ChannelModelsCandidate
 	// CurrentModelIndex is the current model index in CurrentCandidate.Models
 	CurrentModelIndex int
+	// ChannelAPIKey is the credential used by the current outbound attempt.
+	ChannelAPIKey string
 
 	// Perf is the performance record for the current request.
 	Perf *biz.PerformanceRecord

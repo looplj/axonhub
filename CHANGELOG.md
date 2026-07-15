@@ -1,3 +1,9 @@
+## [Unreleased]
+
+### Fixed
+
+- Fixed per-channel API key failover tracking when the request context has no pre-initialized shared container.
+
 v0.4.0
 
 - Introduced thread-aware tracing with zero-SDK integration and configurable trace headers

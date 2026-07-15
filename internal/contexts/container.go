@@ -31,6 +31,11 @@ type contextContainer struct {
 	ExcludedChannelAPIKeys map[int]map[string]struct{}
 }
 
+// Initialize ensures the shared request-scoped container is attached to ctx.
+func Initialize(ctx context.Context) context.Context {
+	return withContainer(ctx, getContainer(ctx))
+}
+
 // getContainer retrieves the existing container from context, or creates a new one and stores it in the context if it doesn't exist.
 func getContainer(ctx context.Context) *contextContainer {
 	if container, ok := ctx.Value(containerContextKey).(*contextContainer); ok {
