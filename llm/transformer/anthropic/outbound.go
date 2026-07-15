@@ -62,10 +62,6 @@ type Config struct {
 	// Must start with "/". Skips default version normalization when set.
 	EndpointPath string `json:"endpoint_path,omitempty"`
 
-	// Thinking configuration
-	// Maps ReasoningEffort values to Anthropic thinking budget tokens
-	ReasoningEffortToBudget map[string]int64 `json:"reasoning_effort_to_budget,omitempty"`
-
 	// ThinkingCapabilityOverride declares the actual thinking wire capability of
 	// an Anthropic-compatible upstream. It overrides the official Claude model
 	// policy for this channel, except for DeepSeek which has its own adapter

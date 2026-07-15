@@ -26,6 +26,7 @@
   "requests.columns.totalTokens": "Total: ",
   "requests.columns.input": "Input",
   "requests.columns.output": "Output",
+  "requests.columns.reasoning": "Reasoning",
   "requests.columns.readCache": "Read Cache",
   "requests.columns.writeCache": "Write Cache",
   "requests.columns.cacheHitRate": "{{rate}}% hit",

@@ -667,6 +667,32 @@ func TestProviderConfFetcher_Caching(t *testing.T) {
 	}
 }
 
+func TestModelFetcher_ClineReturnsDefaultModels(t *testing.T) {
+	fetcher := NewModelFetcher(nil, nil)
+
+	models := fetcher.getDefaultModelsByType(context.Background(), channel.TypeCline)
+
+	if len(models) == 0 {
+		t.Fatal("expected Cline default models, got none")
+	}
+
+	modelIDs := make(map[string]struct{}, len(models))
+	for _, m := range models {
+		modelIDs[m.ID] = struct{}{}
+	}
+
+	for _, expected := range []string{
+		"cline-pass/deepseek-v4-flash",
+		"cline-pass/deepseek-v4-pro",
+		"cline-pass/qwen3.7-plus",
+		"cline-pass/kimi-k2.7-code",
+	} {
+		if _, ok := modelIDs[expected]; !ok {
+			t.Fatalf("expected model %s not found in %#v", expected, models)
+		}
+	}
+}
+
 func TestFetchModelsGeminiVertex(t *testing.T) {
 	var callCount atomic.Int32
 

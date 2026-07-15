@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -63,6 +64,55 @@ func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NotNil(t, videoOutbound)
 	_, ok = videoOutbound.(*openai.OutboundTransformer)
 	require.True(t, ok)
+}
+
+func TestOpenAICompatibleEndpointOverride_InheritsReasoningEffortMapping(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	entChannel := client.Channel.Create().
+		SetName("OpenAI-Compatible Endpoint Override").
+		SetType(channel.TypeVercel).
+		SetBaseURL("https://ai-gateway.vercel.sh/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4o-mini"}).
+		SetDefaultTestModel("gpt-4o-mini").
+		SetSettings(&objects.ChannelSettings{
+			TransformOptions: objects.TransformOptions{
+				ReasoningEffortMapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}},
+			},
+		}).
+		SetEndpoints([]objects.ChannelEndpoint{{
+			APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+			Path:      "/custom/chat/completions",
+		}}).
+		SaveX(ctx)
+
+	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+
+	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIChatCompletion.String())
+	require.NoError(t, err)
+
+	content := "hello"
+	req, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:           "gpt-4o-mini",
+		ReasoningEffort: "xhigh",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: &content},
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://ai-gateway.vercel.sh/v1/custom/chat/completions", req.URL)
+
+	var body struct {
+		ReasoningEffort string `json:"reasoning_effort"`
+	}
+	require.NoError(t, json.Unmarshal(req.Body, &body))
+	require.Equal(t, "max", body.ReasoningEffort)
 }
 
 func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {

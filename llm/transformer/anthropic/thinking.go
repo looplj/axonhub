@@ -54,7 +54,8 @@ func resolveThinkingRequestPlan(chatReq *llm.Request, config *Config) thinkingRe
 			return plan
 		}
 
-		return manualThinkingPlan(getThinkingBudgetTokensWithConfig(effort, config), false, resolveMaxTokens(chatReq))
+		plan.unsupportedReasoningEffort = true
+		return plan
 	}
 
 	capability := resolveThinkingCapability(chatReq.Model, config)
@@ -65,7 +66,7 @@ func resolveThinkingRequestPlan(chatReq *llm.Request, config *Config) thinkingRe
 			return plan
 		}
 
-		return manualThinkingPlan(*chatReq.ReasoningBudget, true, resolveMaxTokens(chatReq))
+		return manualThinkingPlan(*chatReq.ReasoningBudget, resolveMaxTokens(chatReq))
 	}
 
 	if chatReq.ReasoningEffort == "" {
@@ -84,13 +85,8 @@ func resolveThinkingRequestPlan(chatReq *llm.Request, config *Config) thinkingRe
 		plan.outputConfig = &OutputConfig{Effort: effort}
 		return plan
 	case ThinkingCapabilityManualSupported:
-		effort, ok := normalizeManualReasoningEffort(chatReq.ReasoningEffort)
-		if !ok {
-			plan.unsupportedReasoningEffort = true
-			return plan
-		}
-
-		return manualThinkingPlan(getThinkingBudgetTokensWithConfig(effort, config), false, resolveMaxTokens(chatReq))
+		plan.unsupportedReasoningEffort = true
+		return plan
 	default:
 		plan.unsupportedReasoningEffort = true
 		return plan
@@ -141,27 +137,18 @@ func outputConfigEffortFromMetadata(chatReq *llm.Request) string {
 	return effort
 }
 
-func manualThinkingPlan(budgetTokens int64, explicitBudget bool, maxTokens int64) thinkingRequestPlan {
+func manualThinkingPlan(budgetTokens, maxTokens int64) thinkingRequestPlan {
 	plan := thinkingRequestPlan{}
 	if maxTokens <= minimumManualThinkingBudget {
 		plan.validationErr = fmt.Errorf("max_tokens must be greater than %d when manual thinking is enabled", minimumManualThinkingBudget)
 		return plan
 	}
-
-	if explicitBudget {
-		if budgetTokens < minimumManualThinkingBudget {
-			plan.validationErr = fmt.Errorf("budget_tokens must be at least %d when manual thinking is enabled", minimumManualThinkingBudget)
-			return plan
-		}
-		if budgetTokens >= maxTokens {
-			plan.validationErr = fmt.Errorf("budget_tokens must be less than max_tokens when manual thinking is enabled")
-			return plan
-		}
-	} else if budgetTokens >= maxTokens {
-		budgetTokens = maxTokens - 1
-	}
 	if budgetTokens < minimumManualThinkingBudget {
 		plan.validationErr = fmt.Errorf("budget_tokens must be at least %d when manual thinking is enabled", minimumManualThinkingBudget)
+		return plan
+	}
+	if budgetTokens >= maxTokens {
+		plan.validationErr = fmt.Errorf("budget_tokens must be less than max_tokens when manual thinking is enabled")
 		return plan
 	}
 
@@ -279,17 +266,6 @@ func normalizeDeepSeekOutputConfigEffort(reasoningEffort string) (string, bool) 
 	}
 }
 
-func normalizeManualReasoningEffort(reasoningEffort string) (string, bool) {
-	switch reasoningEffort {
-	case "minimal":
-		return "low", true
-	case "low", "medium", "high", "xhigh", "max":
-		return reasoningEffort, true
-	default:
-		return "", false
-	}
-}
-
 func recordAnthropicThinkingLossyDowngrade(req *llm.Request, plan thinkingRequestPlan) {
 	if req == nil || !plan.unsupportedReasoningEffort || req.APIFormat == "" {
 		return
@@ -300,40 +276,4 @@ func recordAnthropicThinkingLossyDowngrade(req *llm.Request, plan thinkingReques
 		sourceField = "reasoning.effort"
 	}
 	llm.AddLossyDowngradeIfPresent(req, req.APIFormat, sourceField, llm.APIFormatAnthropicMessage, true)
-}
-
-// thinkingBudgetToReasoningEffort converts thinking budget tokens to reasoning effort string.
-func thinkingBudgetToReasoningEffort(budgetTokens int64) string {
-	// Map budget tokens to reasoning effort based on the same logic used in outbound
-	if budgetTokens <= 5000 {
-		return "low"
-	} else if budgetTokens <= 15000 {
-		return "medium"
-	} else {
-		return "high"
-	}
-}
-
-// getDefaultReasoningEffortMapping returns the default mapping from ReasoningEffort to thinking budget tokens.
-var defaultReasoningEffortMapping = map[string]int64{
-	"low":    5000,
-	"medium": 15000,
-	"high":   30000,
-	"xhigh":  30000,
-	"max":    30000,
-}
-
-// getThinkingBudgetTokensWithConfig returns the thinking budget tokens for a given reasoning effort with config.
-func getThinkingBudgetTokensWithConfig(reasoningEffort string, config *Config) int64 {
-	if config != nil && config.ReasoningEffortToBudget != nil {
-		if budget, exists := config.ReasoningEffortToBudget[reasoningEffort]; exists {
-			return budget
-		}
-	}
-
-	if budget, exists := defaultReasoningEffortMapping[reasoningEffort]; exists {
-		return budget
-	}
-
-	return defaultReasoningEffortMapping["medium"]
 }

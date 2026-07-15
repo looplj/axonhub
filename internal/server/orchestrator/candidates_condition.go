@@ -38,6 +38,7 @@ func filterResolvedCandidatesForRequest(
 	stream := reqStream(req)
 	requestFormat := reqAPIFormat(req)
 	contentFeatures := detectRequestContentFeatures(req)
+	requestHeaders := buildRequestHeaderMap(req)
 	now := time.Now()
 	filtered := make([]*resolvedAssociationCandidate, 0, len(resolvedCandidates))
 
@@ -46,7 +47,7 @@ func filterResolvedCandidatesForRequest(
 			continue
 		}
 
-		if !matchesAssociationWhen(promptTokens, stream, requestFormat, contentFeatures, now, candidate.when) {
+		if !matchesAssociationWhen(promptTokens, stream, requestFormat, contentFeatures, requestHeaders, now, candidate.when) {
 			continue
 		}
 
@@ -110,6 +111,7 @@ func matchesAssociationWhen(
 	stream bool,
 	requestFormat string,
 	contentFeatures requestContentFeatures,
+	requestHeaders map[string]string,
 	now time.Time,
 	when *objects.ModelAssociationWhen,
 ) bool {
@@ -129,6 +131,7 @@ func matchesAssociationWhen(
 		objects.ModelAssociationConditionFieldHasVideo:      contentFeatures.hasVideo,
 		objects.ModelAssociationConditionFieldHasDocument:   contentFeatures.hasDocument,
 		objects.ModelAssociationConditionFieldHasAudio:      contentFeatures.hasAudio,
+		objects.ModelAssociationConditionFieldRequestHeader: requestHeaders,
 		"now": now,
 	}) {
 		return false

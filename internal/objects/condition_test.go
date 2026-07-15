@@ -99,6 +99,56 @@ func TestToExpr(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, `(!dailyTimeWithin(now, "09:00-17:00"))`, expr)
 	})
+
+	t.Run("request header operators", func(t *testing.T) {
+		cases := []struct {
+			operator string
+			want     string
+		}{
+			{"eq", `request_header["X-Model"] == "gpt-4o"`},
+			{"ne", `request_header["X-Model"] != "gpt-4o"`},
+			{"contains", `request_header["X-Model"] contains "gpt-4o"`},
+			{"not_contains", `!(request_header["X-Model"] contains "gpt-4o")`},
+			{"start_with", `request_header["X-Model"] startsWith "gpt-4o"`},
+			{"end_with", `request_header["X-Model"] endsWith "gpt-4o"`},
+		}
+
+		for _, tc := range cases {
+			expr, err := ToExpr(Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.X-Model",
+					Operator: tc.operator,
+					Value:    "gpt-4o",
+				}},
+			})
+			require.NoError(t, err)
+			require.Equal(t, "("+tc.want+")", expr, tc.operator)
+		}
+	})
+
+	t.Run("request header canonicalizes name", func(t *testing.T) {
+		expr, err := ToExpr(Condition{
+			Conditions: []Condition{{
+				Field:    "request_header.x-model",
+				Operator: "eq",
+				Value:    "gpt-4o",
+			}},
+		})
+		require.NoError(t, err)
+		require.Equal(t, `(request_header["X-Model"] == "gpt-4o")`, expr)
+	})
+
+	t.Run("request header unsupported operator", func(t *testing.T) {
+		_, err := ToExpr(Condition{
+			Conditions: []Condition{{
+				Field:    "request_header.X-Model",
+				Operator: "gt",
+				Value:    "gpt-4o",
+			}},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `unsupported operator "gt" for request_header`)
+	})
 }
 
 func TestEvaluate(t *testing.T) {
@@ -291,6 +341,90 @@ func TestEvaluate(t *testing.T) {
 			},
 			data: map[string]any{},
 			want: false,
+		},
+		{
+			name: "request header eq matches",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.X-Model",
+					Operator: "eq",
+					Value:    "gpt-4o",
+				}},
+			},
+			data: map[string]any{"request_header": map[string]string{"X-Model": "gpt-4o"}},
+			want: true,
+		},
+		{
+			name: "request header eq does not match",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.X-Model",
+					Operator: "eq",
+					Value:    "gpt-4o",
+				}},
+			},
+			data: map[string]any{"request_header": map[string]string{"X-Model": "claude"}},
+			want: false,
+		},
+		{
+			name: "request header missing key returns empty string",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.X-Model",
+					Operator: "ne",
+					Value:    "gpt-4o",
+				}},
+			},
+			data: map[string]any{"request_header": map[string]string{}},
+			want: true,
+		},
+		{
+			name: "request header contains matches",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.User-Agent",
+					Operator: "contains",
+					Value:    "cli",
+				}},
+			},
+			data: map[string]any{"request_header": map[string]string{"User-Agent": "axonhub-cli/1.2"}},
+			want: true,
+		},
+		{
+			name: "request header not_contains matches",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.User-Agent",
+					Operator: "not_contains",
+					Value:    "browser",
+				}},
+			},
+			data: map[string]any{"request_header": map[string]string{"User-Agent": "axonhub-cli/1.2"}},
+			want: true,
+		},
+		{
+			name: "request header start_with matches",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.User-Agent",
+					Operator: "start_with",
+					Value:    "axonhub",
+				}},
+			},
+			data: map[string]any{"request_header": map[string]string{"User-Agent": "axonhub-cli/1.2"}},
+			want: true,
+		},
+		{
+			name: "request header end_with matches",
+			group: Condition{
+				Conditions: []Condition{{
+					Field:    "request_header.User-Agent",
+					Operator: "end_with",
+					Value:    "1.2",
+				}},
+			},
+			data: map[string]any{"request_header": map[string]string{"User-Agent": "axonhub-cli/1.2"}},
+			want: true,
 		},
 	}
 

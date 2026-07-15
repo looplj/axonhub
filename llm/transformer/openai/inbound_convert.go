@@ -195,6 +195,11 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		}
 	}
 
+	// Convert Thinking to ReasoningEffort
+	if r.Thinking != nil && r.Thinking.Type == "disabled" {
+		req.ReasoningEffort = "none"
+	}
+
 	return req
 }
 

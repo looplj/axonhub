@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 )
@@ -109,6 +110,15 @@ type TransformOptions struct {
 
 	// ReplaceDeveloperRoleWithSystem replaces developer role with system in messages for Bailian compatibility.
 	ReplaceDeveloperRoleWithSystem bool `json:"replaceDeveloperRoleWithSystem"`
+
+	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound ones for
+	// non-standard OpenAI-compatible providers. The first entry whose From matches the
+	// effort value wins; values not in the list pass through unchanged.
+	// e.g. [{"from":"xhigh","to":"max"}] converts Anthropic's internal "xhigh" (mapped
+	// from "max") back to "max" for providers that only recognize "max".
+	// Consumed by the OpenAI-shared outbound transformer. Other transformers ignore it
+	// for now. Strong-typed to mirror ModelMapping; see llm.ReasoningEffortMapping.
+	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoningEffortMapping,omitempty"`
 }
 
 type ChannelSettings struct {

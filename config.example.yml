@@ -52,6 +52,16 @@ server:
                                  # Default: "ah"
                                  # Examples: "sk" generates "sk-<64hex>", "myapp" generates "myapp-<64hex>"
 
+  # IP Access Control - Whitelist mode
+  # When enabled, only requests from allowed IPs/CIDRs can access the server.
+  # Non-allowed requests are redirected to the configured URL.
+  ip_access_control:
+    enabled: false                    # Enable IP whitelist (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_ENABLED)
+    allowed_ips:                      # Allowed IPs or CIDR ranges (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_ALLOWED_IPS)
+      - "192.168.1.0/24"
+      - "10.0.0.1"
+    redirect_url: "https://example.com/unauthorized"  # Redirect target for non-allowed IPs (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_REDIRECT_URL)
+
 # Database configuration
 db:
   dialect: "sqlite3"            # Database dialect: sqlite3, postgres, mysql (env: AXONHUB_DB_DIALECT)

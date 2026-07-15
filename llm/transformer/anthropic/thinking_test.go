@@ -151,55 +151,71 @@ func TestConvertToChatCompletionResponse_WithThinkingAndRedactedThinking(t *test
 	require.Equal(t, textContent, *result.Choices[0].Message.Content.Content)
 }
 
-func TestReasoningEffortToThinking(t *testing.T) {
+func TestOutboundTransformer_ManualThinkingTargetDoesNotGuessBudgetFromReasoningEffort(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		Model:           "claude-3-7-sonnet-20250219",
+		MaxTokens:       lo.ToPtr(int64(64000)),
+		ReasoningEffort: "high",
+		APIFormat:       llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{
+				Content: lo.ToPtr("hello"),
+			},
+		}},
+	}
+
+	result, err := transformer.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.Nil(t, anthropicReq.Thinking)
+	require.Equal(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "reasoning.effort",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(request))
+}
+
+func TestInboundTransformer_EnabledThinkingSetsBudgetWithoutInferringEffort(t *testing.T) {
+	transformer := NewInboundTransformer()
+	httpReq := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "https://api.anthropic.com/v1/messages",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{
+			"model": "claude-3-sonnet-20240229",
+			"max_tokens": 4096,
+			"messages": [{"role": "user", "content": "hello"}],
+			"thinking": {"type": "enabled", "budget_tokens": 5000}
+		}`),
+	}
+
+	request, err := transformer.TransformRequest(t.Context(), httpReq)
+	require.NoError(t, err)
+	require.Empty(t, request.ReasoningEffort)
+	require.Equal(t, int64(5000), *request.ReasoningBudget)
+}
+
+func TestManualThinkingTargetDoesNotUseReasoningEffortMappings(t *testing.T) {
 	tests := []struct {
 		name            string
 		reasoningEffort string
-		expectedType    string
-		expectedBudget  int64
 		config          *Config
 	}{
-		{
-			name:            "low reasoning effort",
-			reasoningEffort: "low",
-			expectedType:    "enabled",
-			expectedBudget:  5000,
-			config:          nil,
-		},
-		{
-			name:            "medium reasoning effort",
-			reasoningEffort: "medium",
-			expectedType:    "enabled",
-			expectedBudget:  15000,
-			config:          nil,
-		},
-		{
-			name:            "high reasoning effort",
-			reasoningEffort: "high",
-			expectedType:    "enabled",
-			expectedBudget:  30000,
-			config:          nil,
-		},
-		{
-			name:            "custom mapping",
-			reasoningEffort: "high",
-			expectedType:    "enabled",
-			expectedBudget:  50000,
-			config: &Config{
-				ReasoningEffortToBudget: map[string]int64{
-					"low":    3000,
-					"medium": 10000,
-					"high":   50000,
-				},
-			},
-		},
-		{
-			name:            "unknown reasoning effort is not guessed",
-			reasoningEffort: "unknown",
-			expectedType:    "",
-			expectedBudget:  0,
-			config:          nil,
-		},
+		{name: "low reasoning effort", reasoningEffort: "low"},
+		{name: "medium reasoning effort", reasoningEffort: "medium"},
+		{name: "high reasoning effort", reasoningEffort: "high"},
 	}
 
 	for _, tt := range tests {
@@ -211,24 +227,7 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			}
 
 			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
-
-			if tt.expectedType == "" {
-				require.Nil(t, anthropicReq.Thinking)
-				return
-			}
-
-			if anthropicReq.Thinking == nil {
-				t.Errorf("Expected Thinking to be non-nil")
-				return
-			}
-
-			if anthropicReq.Thinking.Type != tt.expectedType {
-				t.Errorf("Expected Thinking.Type to be %s, got %s", tt.expectedType, anthropicReq.Thinking.Type)
-			}
-
-			if anthropicReq.Thinking.BudgetTokens != tt.expectedBudget {
-				t.Errorf("Expected Thinking.BudgetTokens to be %d, got %d", tt.expectedBudget, anthropicReq.Thinking.BudgetTokens)
-			}
+			require.Nil(t, anthropicReq.Thinking)
 		})
 	}
 }
@@ -362,7 +361,7 @@ func TestReasoningEffortNoneDisablesAdaptiveThinkingModel(t *testing.T) {
 	require.Nil(t, anthropicReq.OutputConfig)
 }
 
-func TestManualThinkingBudgetClampedBelowMaxTokens(t *testing.T) {
+func TestManualThinkingTargetDoesNotSynthesizeBudgetNearMaxTokens(t *testing.T) {
 	chatReq := &llm.Request{
 		Model:           "claude-3-7-sonnet-20250219",
 		ReasoningEffort: "high",
@@ -371,10 +370,7 @@ func TestManualThinkingBudgetClampedBelowMaxTokens(t *testing.T) {
 
 	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
 
-	require.NotNil(t, anthropicReq.Thinking)
-	require.Equal(t, "enabled", anthropicReq.Thinking.Type)
-	require.Equal(t, int64(8191), anthropicReq.Thinking.BudgetTokens)
-	require.Less(t, anthropicReq.Thinking.BudgetTokens, anthropicReq.MaxTokens)
+	require.Nil(t, anthropicReq.Thinking)
 	require.Nil(t, anthropicReq.OutputConfig)
 }
 
@@ -390,49 +386,21 @@ func TestNoReasoningEffort(t *testing.T) {
 	}
 }
 
-func TestReasoningBudgetPriority(t *testing.T) {
+func TestExplicitReasoningBudgetEnablesManualThinking(t *testing.T) {
 	tests := []struct {
 		name            string
 		reasoningEffort string
-		reasoningBudget *int64
+		reasoningBudget int64
 		config          *Config
-		expectedBudget  int64
 	}{
 		{
-			name:            "reasoning budget takes priority over config mapping",
+			name:            "explicit budget is preserved alongside effort",
 			reasoningEffort: "medium",
-			reasoningBudget: lo.ToPtr(int64(25000)),
-			config: &Config{
-				ReasoningEffortToBudget: map[string]int64{
-					"medium": 15000,
-				},
-			},
-			expectedBudget: 25000,
+			reasoningBudget: 25000,
 		},
 		{
-			name:            "reasoning budget takes priority over default mapping",
-			reasoningEffort: "high",
-			reasoningBudget: lo.ToPtr(int64(35000)),
-			config:          nil,
-			expectedBudget:  35000,
-		},
-		{
-			name:            "fallback to config mapping when reasoning budget is nil",
-			reasoningEffort: "low",
-			reasoningBudget: nil,
-			config: &Config{
-				ReasoningEffortToBudget: map[string]int64{
-					"low": 3000,
-				},
-			},
-			expectedBudget: 3000,
-		},
-		{
-			name:            "fallback to default mapping when reasoning budget is nil and no config",
-			reasoningEffort: "medium",
-			reasoningBudget: nil,
-			config:          nil,
-			expectedBudget:  15000,
+			name:            "explicit budget works without effort",
+			reasoningBudget: 35000,
 		},
 	}
 
@@ -442,23 +410,14 @@ func TestReasoningBudgetPriority(t *testing.T) {
 				Model:           "claude-3-sonnet-20240229",
 				ReasoningEffort: tt.reasoningEffort,
 				MaxTokens:       lo.ToPtr(int64(64000)),
-				ReasoningBudget: tt.reasoningBudget,
+				ReasoningBudget: lo.ToPtr(tt.reasoningBudget),
 			}
 
 			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
 
-			if anthropicReq.Thinking == nil {
-				t.Errorf("Expected Thinking to be non-nil")
-				return
-			}
-
-			if anthropicReq.Thinking.Type != "enabled" {
-				t.Errorf("Expected Thinking.Type to be enabled, got %s", anthropicReq.Thinking.Type)
-			}
-
-			if anthropicReq.Thinking.BudgetTokens != tt.expectedBudget {
-				t.Errorf("Expected Thinking.BudgetTokens to be %d, got %d", tt.expectedBudget, anthropicReq.Thinking.BudgetTokens)
-			}
+			require.NotNil(t, anthropicReq.Thinking)
+			require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+			require.Equal(t, tt.reasoningBudget, anthropicReq.Thinking.BudgetTokens)
 		})
 	}
 }
@@ -487,7 +446,7 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 					BudgetTokens: 5000,
 				},
 			},
-			expectedEffort: "low",
+			expectedEffort: "",
 		},
 		{
 			name: "thinking enabled with medium budget",
@@ -507,7 +466,7 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 					BudgetTokens: 15000,
 				},
 			},
-			expectedEffort: "medium",
+			expectedEffort: "",
 		},
 		{
 			name: "thinking enabled with high budget",
@@ -527,7 +486,7 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 					BudgetTokens: 30000,
 				},
 			},
-			expectedEffort: "high",
+			expectedEffort: "",
 		},
 		{
 			name: "thinking disabled",
@@ -582,7 +541,7 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 					BudgetTokens: 3000,
 				},
 			},
-			expectedEffort: "low",
+			expectedEffort: "",
 		},
 		{
 			name: "thinking enabled with custom budget (high range)",
@@ -602,7 +561,7 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 					BudgetTokens: 20000,
 				},
 			},
-			expectedEffort: "high",
+			expectedEffort: "",
 		},
 	}
 
@@ -656,31 +615,6 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 
 			if *chatReq.MaxTokens != tt.anthropicReq.MaxTokens {
 				t.Errorf("Expected MaxTokens to be %d, got %d", tt.anthropicReq.MaxTokens, *chatReq.MaxTokens)
-			}
-		})
-	}
-}
-
-func TestThinkingBudgetToReasoningEffort(t *testing.T) {
-	tests := []struct {
-		name           string
-		budgetTokens   int64
-		expectedEffort string
-	}{
-		{"zero budget", 0, "low"},
-		{"low budget", 5000, "low"},
-		{"low budget boundary", 5001, "medium"},
-		{"medium budget", 15000, "medium"},
-		{"medium budget boundary", 15001, "high"},
-		{"high budget", 30000, "high"},
-		{"very high budget", 100000, "high"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := thinkingBudgetToReasoningEffort(tt.budgetTokens)
-			if result != tt.expectedEffort {
-				t.Errorf("Expected %s, got %s for budget %d", tt.expectedEffort, result, tt.budgetTokens)
 			}
 		})
 	}
@@ -1301,9 +1235,8 @@ func TestInboundTransformer_ThinkingWithOtherFields(t *testing.T) {
 		t.Errorf("TopP mismatch: expected %f, got %f", *anthropicReq.TopP, *chatReq.TopP)
 	}
 
-	if chatReq.ReasoningEffort != "medium" {
-		t.Errorf("ReasoningEffort mismatch: expected medium, got %s", chatReq.ReasoningEffort)
-	}
+	// Manual thinking budget has no protocol-equivalent reasoning effort.
+	require.Empty(t, chatReq.ReasoningEffort)
 
 	if len(chatReq.Messages) != 1 {
 		t.Errorf("Expected 1 message, got %d", len(chatReq.Messages))

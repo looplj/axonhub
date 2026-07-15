@@ -339,6 +339,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerCodexSupport()
 	svc.registerGithubCopilotSupport()
 	svc.registerNanoGPTSupport()
+	svc.registerClineSupport()
 	svc.registerWaferSupport()
 	svc.registerSyntheticSupport()
 	svc.registerNeuralWattSupport()
@@ -374,6 +375,10 @@ func (svc *ProviderQuotaService) registerGithubCopilotSupport() {
 
 func (svc *ProviderQuotaService) registerNanoGPTSupport() {
 	svc.checkers["nanogpt"] = provider_quota.NewNanoGPTQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerClineSupport() {
+	svc.checkers["cline"] = provider_quota.NewClineQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerWaferSupport() {
@@ -561,7 +566,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic),
+			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeCline, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic),
 		)
 
 	if !force {
@@ -766,6 +771,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "github_copilot"
 	case channel.TypeNanogpt, channel.TypeNanogptResponses:
 		return "nanogpt"
+	case channel.TypeCline:
+		return "cline"
 	case channel.TypeOpenai, channel.TypeOpenaiResponses:
 		return provider_quota.DetectProviderFromURL(ch.BaseURL)
 	case channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic:
@@ -785,6 +792,18 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 
 	if ch.Type == channel.TypeCodex || ch.Type == channel.TypeClaudecode {
 		return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey)
+	}
+
+	if ch.Type == channel.TypeCline {
+		if strings.TrimSpace(ch.Credentials.APIKey) != "" {
+			return true
+		}
+		for _, apiKey := range ch.Credentials.APIKeys {
+			if strings.TrimSpace(apiKey) != "" {
+				return true
+			}
+		}
+		return false
 	}
 
 	if ch.Type == channel.TypeOpencodeGo || ch.Type == channel.TypeOpencodeGoAnthropic {

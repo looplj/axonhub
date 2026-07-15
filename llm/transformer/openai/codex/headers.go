@@ -8,6 +8,7 @@ import (
 
 const (
 	SessionHeader         = "Session_id"
+	SessionHeaderHyphen   = "Session-Id"
 	TurnMetadataHeader    = "X-Codex-Turn-Metadata"
 	WindowIDHeader        = "X-Codex-Window-Id"
 	ClientRequestIDHeader = "X-Client-Request-Id"
@@ -44,6 +45,9 @@ func GetSessionIDFromHeaders(headers http.Header) string {
 	}
 
 	sessionID := strings.TrimSpace(headers.Get(SessionHeader))
+	if sessionID == "" {
+		sessionID = strings.TrimSpace(headers.Get(SessionHeaderHyphen))
+	}
 	if sessionID != "" {
 		return sessionID
 	}

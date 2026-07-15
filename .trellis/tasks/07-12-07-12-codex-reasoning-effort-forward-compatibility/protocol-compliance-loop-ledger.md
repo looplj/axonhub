@@ -177,3 +177,10 @@ Rules retained: no Codex default injection; no model-capability gate; no item-id
 - Final parent-review contract: goal coverage PASS for identified implementation gaps; non-goals respected; accepted findings closed; required allowed checks PASS; remaining non-goals/blocked policies remain explicitly stated.
 - Final known disposition: no known P0/P1/P2 implementation or fixture gap in the scoped closure. `PARTIAL`/`UNCHECKED` FDR rows, hosted/MCP family expansion, cross-protocol raw diagnostic policy, `temperature > 1`→Anthropic, `service_tier`, and client-only controls remain deliberately outside this closure.
 - Next route: final four-package regression, diff check, scoped local commit only; do not stage user-owned `.agent/`, `.agents/`, `.codex/`, Docker, or compose files.
+
+### beta5 merge / reasoning-semantics closure — 2026-07-15
+
+- Merged upstream `v1.0.0-beta5` (`d061ac7d`) with no remaining conflict paths. The OpenAI-compatible `ReasoningEffortMapping` is retained as a channel-local effort-string rename only; it neither reads nor writes `ReasoningBudget`.
+- Anthropic manual thinking now requires an explicit `ReasoningBudget` for `thinking.type="enabled"` / `budget_tokens`; a standalone `ReasoningEffort` records an unsupported/lossy boundary instead of inventing a token budget. Anthropic inbound `thinking.enabled` records only the budget and does not infer an effort level.
+- Independent merge review found one P1 scope gap: a user-defined `openai_chat_completion` endpoint override rebuilt an OpenAI outbound without the channel mapping. TDD fixture `TestOpenAICompatibleEndpointOverride_InheritsReasoningEffortMapping` first failed with `xhigh`, then passed after the override inherited the mapping and emitted `max` in the serialized body. P1 re-review PASS confirmed Cline and non-Chat endpoint paths remain isolated.
+- Allowed verification PASS: targeted OpenAI, Anthropic, Ollama, Responses, and biz tests; `git diff --check`; no lint, build, server restart, or unrelated user-file changes.

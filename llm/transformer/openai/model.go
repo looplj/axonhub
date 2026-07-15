@@ -127,6 +127,15 @@ type Request struct {
 
 	// Verbosity constrains response verbosity.
 	Verbosity *string `json:"verbosity,omitempty"`
+
+	// Thinking controls reasoning/thinking behavior (used by DeepSeek and compatible providers).
+	Thinking *Thinking `json:"thinking,omitempty"`
+}
+
+// Thinking represents the thinking configuration for reasoning models.
+type Thinking struct {
+	// Type is "enabled" or "disabled".
+	Type string `json:"type"`
 }
 
 // ChatReasoningConfig mirrors the OpenRouter ChatRequest.reasoning object {effort, summary}.

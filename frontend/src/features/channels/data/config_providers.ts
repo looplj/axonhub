@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   OpenAI,
   Anthropic,
+  Cline,
   Google,
   DeepSeek,
   Doubao,
@@ -265,6 +266,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: EvolinkIcon,
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     channelTypes: ['evolink', 'evolink_anthropic'],
+  },
+  cline: {
+    provider: 'cline',
+    icon: Cline,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    channelTypes: ['cline'],
   },
 };
 

@@ -13,7 +13,8 @@ axonhub:
   image:
     repository: looplj/axonhub
     pullPolicy: IfNotPresent
-    tag: "latest"
+    # Overrides the image tag. Defaults to the chart appVersion when empty.
+    tag: ""
   
   # Environment variables for AxonHub
   env:

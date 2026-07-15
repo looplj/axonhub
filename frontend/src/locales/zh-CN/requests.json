@@ -26,6 +26,7 @@
   "requests.columns.totalTokens": "总计：",
   "requests.columns.input": "输入",
   "requests.columns.output": "输出",
+  "requests.columns.reasoning": "推理",
   "requests.columns.readCache": "读缓存",
   "requests.columns.writeCache": "写缓存",
   "requests.columns.cacheHitRate": "{{rate}}% 命中",

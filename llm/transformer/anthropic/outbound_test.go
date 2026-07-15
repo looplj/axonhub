@@ -1896,8 +1896,9 @@ func TestOutboundTransformer_TransformRequest_ManualThinkingRejectsIllegalBudget
 		expectedErrorMsg string
 	}{
 		{
-			name:             "max tokens has no legal manual-thinking budget",
+			name:             "max tokens has no legal explicit manual-thinking budget",
 			maxTokens:        1024,
+			reasoningBudget:  lo.ToPtr(int64(1024)),
 			expectedErrorMsg: "max_tokens must be greater than 1024",
 		},
 		{
@@ -2311,18 +2312,15 @@ func TestOutboundTransformer_TransformRequest_ManualThinkingBudgetSafety(t *test
 		require.Equal(t, int64(2048), anthropicReq.Thinking.BudgetTokens)
 	})
 
-	t.Run("invalid configured budget is rejected instead of serialized", func(t *testing.T) {
+	t.Run("reasoning effort alone does not synthesize a manual budget", func(t *testing.T) {
 		configured, err := NewOutboundTransformerWithConfig(&Config{
 			Type:           PlatformDirect,
 			BaseURL:        "https://api.anthropic.com",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
-			ReasoningEffortToBudget: map[string]int64{
-				"high": 0,
-			},
 		})
 		require.NoError(t, err)
 
-		_, err = configured.TransformRequest(t.Context(), &llm.Request{
+		result, err := configured.TransformRequest(t.Context(), &llm.Request{
 			Model:           "claude-3-7-sonnet-20250219",
 			MaxTokens:       lo.ToPtr(int64(8192)),
 			ReasoningEffort: "high",
@@ -2330,8 +2328,11 @@ func TestOutboundTransformer_TransformRequest_ManualThinkingBudgetSafety(t *test
 				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
 			},
 		})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "budget_tokens must be at least 1024")
+		require.NoError(t, err)
+
+		var anthropicReq MessageRequest
+		require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+		require.Nil(t, anthropicReq.Thinking)
 	})
 }
 

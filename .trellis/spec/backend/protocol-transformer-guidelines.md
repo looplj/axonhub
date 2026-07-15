@@ -109,6 +109,12 @@ Before accepting a transformer change, verify:
 - Same-protocol behavior is tested before cross-protocol downgrade behavior.
 - Unsupported cross-protocol fields are diagnosed rather than silently dropped.
 - Shared builders such as OpenAI-compatible Chat emission are not widened without provider blast-radius review.
+- A channel-level OpenAI-compatible `ReasoningEffortMapping` must reach every
+  OpenAI Chat outbound constructed for that channel, including a user-defined
+  `openai_chat_completion` endpoint override. It remains an effort-string
+  mapping only; do not route it to Responses, Anthropic, Ollama, Cline, or an
+  Anthropic `budget_tokens` path. Cover an override with a serialized-body
+  regression test whenever this constructor path changes.
 
 ## Parent Task Vertical Slice Workflow
 
