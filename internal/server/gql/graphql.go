@@ -134,13 +134,16 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Cache: lru.New[string](1024),
 	})
 	gqlSrv.Use(&loggingTracer{})
+	skipTestChannelTransaction := entgql.SkipOperations("TestChannel", "TestChannelAPIKeys")
+	skipBulkImportTransaction := entgql.SkipIfHasFields("bulkImportChannels")
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,
-		// Skip transaction for TestChannel mutation to avoid transaction conflicts
-		// when multiple test requests are sent in parallel from the frontend.
-		// TestChannel performs LLM API calls which can be long-running, and the
-		// database operations within don't require transactional consistency.
-		SkipTxFunc: entgql.SkipOperations("TestChannel", "TestChannelAPIKeys"),
+		// TestChannel performs long-running parallel provider requests whose database
+		// operations do not require one transaction. BulkImportChannels manages one
+		// transaction per row to preserve its partial-success behavior.
+		SkipTxFunc: func(op *ast.OperationDefinition) bool {
+			return skipTestChannelTransaction(op) || skipBulkImportTransaction(op)
+		},
 	})
 
 	// Set error presenter to handle CodedError and add extensions.code

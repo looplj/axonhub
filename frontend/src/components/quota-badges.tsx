@@ -19,6 +19,7 @@ import {
   ProviderApertisQuotaData,
   ProviderOpenCodeGoQuotaData,
   OpenCodeGoQuotaWindow,
+  ProviderKimiCodeQuotaData,
   ClineQuotaWindow,
   isClinePassPoolQuotaData,
   resetChannelQuotaNow,
@@ -142,6 +143,9 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       qd?.windows?.weekly?.usage_percent ?? 0,
       qd?.windows?.monthly?.usage_percent ?? 0
     );
+  } else if (channel.type === 'moonshot_coding') {
+    const qd = channel.quotaStatus.quotaData as ProviderKimiCodeQuotaData | undefined;
+    percentage = Math.max(0, ...(qd?.rows ?? []).map((row) => (row.limit > 0 ? (row.used / row.limit) * 100 : 0)));
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
@@ -982,6 +986,82 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                 );
               })
               .filter(Boolean);
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'moonshot_coding' && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderKimiCodeQuotaData | undefined;
+            if (!qd) return null;
+
+            const rows = qd.rows ?? [];
+            const wallet = qd.boosterWallet;
+
+            return (
+              <>
+                {rows.map((row, index) => {
+                  const percentage = row.limit > 0 ? Math.min(100, (row.used / row.limit) * 100) : 0;
+                  return (
+                    <div key={`${row.label}-${index}`} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                      <div className='flex items-center justify-between text-xs'>
+                        <span className='text-muted-foreground font-medium'>
+                          {row.label}{' '}
+                          <span className='font-normal opacity-70'>
+                            ({row.used.toLocaleString()}/{row.limit.toLocaleString()})
+                          </span>
+                        </span>
+                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</span>
+                      </div>
+                      <ProgressBar percentage={percentage} />
+                      {(row.resetAt || row.resetAfterSeconds) && (
+                        <div className='text-muted-foreground text-right text-[11px]'>
+                          {formatTimeToReset(row.resetAt ?? row.resetAfterSeconds)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {wallet && (
+                  <div className='border-border/60 space-y-1.5 border-t border-dashed pt-3 text-xs'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-muted-foreground font-medium'>{t('quota.label.booster_balance')}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('currencies.format', {
+                          val: wallet.balanceCents / 100,
+                          currency: wallet.currency,
+                          locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                    {wallet.monthlyChargeLimitEnabled && (
+                      <div className='flex items-center justify-between'>
+                        <span className='text-muted-foreground'>{t('quota.label.monthly_spend')}</span>
+                        <span className='text-foreground'>
+                          {t('currencies.format', {
+                            val: wallet.monthlyUsedCents / 100,
+                            currency: wallet.currency,
+                            locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                            minimumFractionDigits: 2,
+                          })}
+                          {' / '}
+                          {wallet.monthlyChargeLimitCents > 0
+                            ? t('currencies.format', {
+                                val: wallet.monthlyChargeLimitCents / 100,
+                                currency: wallet.currency,
+                                locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                                minimumFractionDigits: 2,
+                              })
+                            : t('quota.label.unlimited')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
           })()}
         </div>
       )}

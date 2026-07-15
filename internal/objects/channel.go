@@ -47,6 +47,7 @@ type HeaderEntry struct {
 // Override operation types.
 const (
 	OverrideOpSet          = "set"
+	OverrideOpSetIfAbsent  = "set_if_absent"
 	OverrideOpDelete       = "delete"
 	OverrideOpRename       = "rename"
 	OverrideOpCopy         = "copy"

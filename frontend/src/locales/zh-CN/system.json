@@ -416,5 +416,7 @@
   "quota.label.cline_balance": "Cline credits 余额",
   "quota.label.cline_mixed_pool_note": "此渠道同时包含 ClinePass 与 Cline (usage-billing) 模型。这里显示 ClinePass 用量，Cline credits 余额是独立资源。",
   "quota.label.cline_direct_pool_note": "此渠道使用 Cline (usage-billing) 模型。Cline credits 余额仅作为参考显示。",
+  "quota.label.booster_balance": "Booster 余额",
+  "quota.label.monthly_spend": "本月消费",
   "quota.provider.apertis": "Apertis"
 }

@@ -29,8 +29,20 @@ type RenderContext struct {
 	Metadata map[string]string `json:"metadata"`
 	// RequestHeader is the filtered request headers used in the current request.
 	RequestHeader map[string]string `json:"request_header"`
+	// PromptCacheKey is the prompt cache key provided by the original request.
+	PromptCacheKey string `json:"prompt_cache_key"`
 	// ReasoningEffort is the reasoning effort used in the current request.
 	ReasoningEffort string `json:"reasoning_effort"`
+}
+
+var overrideTemplateFuncs = template.FuncMap{
+	"toJSON": func(value any) (string, error) {
+		data, err := json.Marshal(value)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	},
 }
 
 func buildRequestHeaderMap(llmReq *llm.Request) map[string]string {
@@ -58,13 +70,20 @@ func buildRequestHeaderMap(llmReq *llm.Request) map[string]string {
 }
 
 func buildRenderContext(llmReq *llm.Request, requestModel string) RenderContext {
-	return RenderContext{
+	renderCtx := RenderContext{
 		RequestModel:    requestModel,
 		Model:           llmReq.Model,
 		Metadata:        llmReq.Metadata,
 		RequestHeader:   buildRequestHeaderMap(llmReq),
 		ReasoningEffort: llmReq.ReasoningEffort,
 	}
+	if llmReq.PromptCacheKey != nil {
+		renderCtx.PromptCacheKey = *llmReq.PromptCacheKey
+	} else if llmReq.Compact != nil {
+		renderCtx.PromptCacheKey = llmReq.Compact.PromptCacheKey
+	}
+
+	return renderCtx
 }
 
 // renderTemplate renders a Go template string against RenderContext. Returns the original value on error.
@@ -73,7 +92,7 @@ func renderTemplate(ctx context.Context, value string, renderCtx RenderContext) 
 		return value
 	}
 
-	tmpl, err := template.New("override").Funcs(template.FuncMap{}).Parse(value)
+	tmpl, err := template.New("override").Funcs(overrideTemplateFuncs).Parse(value)
 	if err != nil {
 		log.Warn(ctx, "failed to parse override template",
 			log.String("template", value),
@@ -192,6 +211,8 @@ func applyBodyOperation(
 	switch op.Op {
 	case objects.OverrideOpSet:
 		return applyBodySet(ctx, body, op, renderCtx)
+	case objects.OverrideOpSetIfAbsent:
+		return applyBodySetIfAbsent(ctx, body, op, renderCtx)
 	case objects.OverrideOpDelete:
 		return applyBodyDelete(body, op)
 	case objects.OverrideOpRename:
@@ -228,6 +249,20 @@ func applyBodySet(
 	}
 
 	return sjson.SetBytes(body, op.Path, renderedValue)
+}
+
+func applyBodySetIfAbsent(
+	ctx context.Context,
+	body []byte,
+	op objects.OverrideOperation,
+	renderCtx RenderContext,
+) ([]byte, error) {
+	existing := gjson.GetBytes(body, op.Path)
+	if existing.Exists() || existing.Raw == "null" {
+		return body, nil
+	}
+
+	return applyBodySet(ctx, body, op, renderCtx)
 }
 
 func applyBodyDelete(body []byte, op objects.OverrideOperation) ([]byte, error) {

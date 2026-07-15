@@ -127,6 +127,7 @@ type OverrideFormValues = z.infer<typeof overrideFormSchema>;
 
 const OP_LABELS: Record<OpType, string> = {
   set: 'channels.dialogs.settings.overrides.body.opSet',
+  set_if_absent: 'channels.dialogs.settings.overrides.body.opSetIfAbsent',
   delete: 'channels.dialogs.settings.overrides.body.opDelete',
   rename: 'channels.dialogs.settings.overrides.body.opRename',
   copy: 'channels.dialogs.settings.overrides.body.opCopy',
@@ -137,7 +138,17 @@ const OP_LABELS: Record<OpType, string> = {
 };
 
 // Body operations support array manipulation; headers only support scalar set/delete/rename/copy.
-const BODY_OP_TYPES: OpType[] = ['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert', 'array_remove'];
+const BODY_OP_TYPES: OpType[] = [
+  'set',
+  'set_if_absent',
+  'delete',
+  'rename',
+  'copy',
+  'array_append',
+  'array_prepend',
+  'array_insert',
+  'array_remove',
+];
 const HEADER_OP_TYPES: OpType[] = ['set', 'delete', 'rename', 'copy'];
 
 const ARRAY_OPS: OpType[] = ['array_append', 'array_prepend', 'array_insert', 'array_remove'];
@@ -152,6 +163,7 @@ function isArrayInsertOp(op: OpType | undefined): boolean {
 }
 
 function isValidBodyOp(b: OverrideOperation): boolean {
+  if (b.op === 'set_if_absent') return !!b.path?.trim() && parseValueForDisplay(b.value).trim() !== '';
   if (b.op === 'set' || b.op === 'delete') return !!b.path?.trim();
   if (b.op === 'rename' || b.op === 'copy') return !!b.from?.trim() && !!b.to?.trim();
   if (b.op === 'array_append' || b.op === 'array_prepend') return !!b.path?.trim();
@@ -177,9 +189,9 @@ function OperationRow({ index, control, fieldName, onUpdate, onRemove }: Operati
 
   const arrayOp = isArrayOp(field.op);
   const arrayInsertOp = isArrayInsertOp(field.op);
-  const needsPathOnly = field.op === 'set' || field.op === 'delete' || arrayOp;
+  const needsPathOnly = field.op === 'set' || field.op === 'set_if_absent' || field.op === 'delete' || arrayOp;
   const needsFromTo = field.op === 'rename' || field.op === 'copy';
-  const needsValue = field.op === 'set' || arrayInsertOp;
+  const needsValue = field.op === 'set' || field.op === 'set_if_absent' || arrayInsertOp;
   const needsIndex = field.op === 'array_insert';
   const needsMatch = field.op === 'array_remove';
 
@@ -607,11 +619,15 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     // Validate body operations
     for (let i = 0; i < bodyOps.length; i++) {
       const op = bodyOps[i];
-      if (op.op === 'set' || op.op === 'delete' || isArrayOp(op.op)) {
+      if (op.op === 'set' || op.op === 'set_if_absent' || op.op === 'delete' || isArrayOp(op.op)) {
         if (!op.path?.trim()) {
           toast.error(t('channels.dialogs.settings.overrides.validation.emptyPath', { index: i + 1, op: op.op }));
           return;
         }
+      }
+      if (op.op === 'set_if_absent' && parseValueForDisplay(op.value).trim() === '') {
+        toast.error(t('channels.dialogs.settings.overrides.validation.missingValue', { index: i + 1, op: op.op }));
+        return;
       }
       if (op.op === 'rename' || op.op === 'copy') {
         if (!op.from?.trim() || !op.to?.trim()) {
