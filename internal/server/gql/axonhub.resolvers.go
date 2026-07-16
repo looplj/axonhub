@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -670,6 +671,78 @@ func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input 
 	return r.apiKeyProfileTemplateService.LoadTemplate(ctx, input.TemplateID.ID, input.APIKeyID.ID)
 }
 
+// ArchiveTrace is the resolver for the archiveTrace field.
+func (r *mutationResolver) ArchiveTrace(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.traceService.Archive(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// UnarchiveTrace is the resolver for the unarchiveTrace field.
+func (r *mutationResolver) UnarchiveTrace(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.traceService.Unarchive(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// RetainTrace is the resolver for the retainTrace field.
+func (r *mutationResolver) RetainTrace(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.traceService.Retain(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// UnretainTrace is the resolver for the unretainTrace field.
+func (r *mutationResolver) UnretainTrace(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.traceService.Unretain(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// ArchiveThread is the resolver for the archiveThread field.
+func (r *mutationResolver) ArchiveThread(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.threadService.Archive(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// UnarchiveThread is the resolver for the unarchiveThread field.
+func (r *mutationResolver) UnarchiveThread(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.threadService.Unarchive(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// RetainThread is the resolver for the retainThread field.
+func (r *mutationResolver) RetainThread(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.threadService.Retain(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// UnretainThread is the resolver for the unretainThread field.
+func (r *mutationResolver) UnretainThread(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.threadService.Unretain(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // AllChannelSummarys is the resolver for the allChannelSummarys field.
 func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived *bool) ([]*ent.Channel, error) {
 	statusFilter := []channel.Status{channel.StatusEnabled, channel.StatusDisabled}
@@ -823,6 +896,19 @@ func (r *threadResolver) FirstUserQuery(ctx context.Context, obj *ent.Thread) (*
 // UsageMetadata is the resolver for the usageMetadata field.
 func (r *threadResolver) UsageMetadata(ctx context.Context, obj *ent.Thread) (*biz.UsageMetadata, error) {
 	return r.threadService.UsageMetadata(ctx, obj.ID)
+}
+
+// ArchivedTracesCount is the resolver for the archivedTracesCount field.
+func (r *threadResolver) ArchivedTracesCount(ctx context.Context, obj *ent.Thread) (int, error) {
+	count, err := r.client.Trace.Query().Where(
+		trace.ThreadIDEQ(obj.ID),
+		trace.StatusEQ(trace.StatusArchived),
+	).Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count archived traces: %w", err)
+	}
+
+	return count, nil
 }
 
 // RootSegment is the resolver for the rootSegment field.

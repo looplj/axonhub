@@ -700,6 +700,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "thread_id", Type: field.TypeString, Unique: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived", "retained"}, Default: "active"},
 		{Name: "project_id", Type: field.TypeInt},
 	}
 	// ThreadsTable holds the schema information for the "threads" table.
@@ -710,7 +711,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "threads_projects_threads",
-				Columns:    []*schema.Column{ThreadsColumns[4]},
+				Columns:    []*schema.Column{ThreadsColumns[5]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -719,12 +720,17 @@ var (
 			{
 				Name:    "threads_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{ThreadsColumns[4]},
+				Columns: []*schema.Column{ThreadsColumns[5]},
 			},
 			{
 				Name:    "threads_by_thread_id",
 				Unique:  true,
 				Columns: []*schema.Column{ThreadsColumns[3]},
+			},
+			{
+				Name:    "threads_by_project_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{ThreadsColumns[5], ThreadsColumns[4]},
 			},
 		},
 	}
@@ -734,6 +740,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "trace_id", Type: field.TypeString, Unique: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived", "retained"}, Default: "active"},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "thread_id", Type: field.TypeInt, Nullable: true},
 	}
@@ -745,13 +752,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "traces_projects_traces",
-				Columns:    []*schema.Column{TracesColumns[4]},
+				Columns:    []*schema.Column{TracesColumns[5]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "traces_threads_traces",
-				Columns:    []*schema.Column{TracesColumns[5]},
+				Columns:    []*schema.Column{TracesColumns[6]},
 				RefColumns: []*schema.Column{ThreadsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -760,7 +767,7 @@ var (
 			{
 				Name:    "traces_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[4]},
+				Columns: []*schema.Column{TracesColumns[5]},
 			},
 			{
 				Name:    "traces_by_trace_id",
@@ -770,7 +777,12 @@ var (
 			{
 				Name:    "traces_by_thread_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[5]},
+				Columns: []*schema.Column{TracesColumns[6]},
+			},
+			{
+				Name:    "traces_by_project_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{TracesColumns[5], TracesColumns[4]},
 			},
 		},
 	}

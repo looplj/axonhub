@@ -13,5 +13,16 @@
   "threads.detail.notFound": "未找到线程",
   "threads.detail.noTraces": "暂无追踪记录",
   "threads.detail.viewTrace": "查看追踪",
-  "threads.errors.notFound": "未找到线程"
+  "threads.errors.notFound": "未找到线程",
+  "threads.detail.showArchived": "显示已归档 ({{count}})",
+  "threads.detail.hideArchived": "隐藏已归档",
+  "threads.dialogs.archiveTitle": "归档线程？",
+  "threads.dialogs.archiveDescription": "该线程及其所有追踪将从默认视图中隐藏。你可以通过筛选已归档线程来恢复它。",
+  "threads.messages.archiveSuccess": "线程已归档",
+  "threads.messages.unarchiveSuccess": "线程已恢复",
+  "threads.messages.retainSuccess": "线程已保留",
+  "threads.messages.unretainSuccess": "已取消保留",
+  "threads.status.active": "正常",
+  "threads.status.archived": "已归档",
+  "threads.status.retained": "已保留"
 }
