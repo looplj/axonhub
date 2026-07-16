@@ -863,6 +863,12 @@ func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t 
 func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 	baseRequest := &llm.Request{
 		APIFormat: llm.APIFormatOpenAIResponse,
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeResponsesCustomTool,
+			ResponseCustomTool: &llm.ResponseCustomTool{
+				Name: "apply_patch",
+			},
+		}},
 		Messages: []llm.Message{
 			{
 				Role: "assistant",
@@ -903,14 +909,30 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 		},
 	}
 
-	t.Run("filters when inbound is responses and outbound is not", func(t *testing.T) {
-		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion)
+	t.Run("filters when inbound is responses and outbound cannot represent custom tools", func(t *testing.T) {
+		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatAnthropicMessage)
 		require.NotSame(t, baseRequest, got)
 		require.Len(t, got.Messages, 2)
 		require.Len(t, got.Messages[0].ToolCalls, 1)
 		require.Equal(t, llm.ToolTypeFunction, got.Messages[0].ToolCalls[0].Type)
 		require.NotNil(t, got.Messages[1].ToolCallID)
 		require.Equal(t, "call_function_1", *got.Messages[1].ToolCallID)
+		require.Equal(t, []llm.LossyDowngrade{
+			{
+				SourceProtocol: llm.APIFormatOpenAIResponse,
+				SourceField:    "tools[].type=custom",
+				TargetProtocol: llm.APIFormatAnthropicMessage,
+				Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+				Severity:       llm.LossyDowngradeSeverityWarning,
+			},
+			{
+				SourceProtocol: llm.APIFormatOpenAIResponse,
+				SourceField:    "input[].type=custom_tool_call",
+				TargetProtocol: llm.APIFormatAnthropicMessage,
+				Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+				Severity:       llm.LossyDowngradeSeverityWarning,
+			},
+		}, llm.LossyDowngrades(baseRequest))
 	})
 
 	t.Run("does not filter when outbound is responses", func(t *testing.T) {
@@ -924,6 +946,27 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 		got := filterResponseCustomToolMessagesForNonResponsesOutbound(&nonResponsesReq, llm.APIFormatOpenAIChatCompletion)
 		require.Same(t, &nonResponsesReq, got)
 	})
+}
+
+func TestFilterResponseCustomToolMessagesForNonResponsesOutbound_KeepsOpenAIChatBridge(t *testing.T) {
+	request := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{{
+				ID:   "call_patch_1",
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+					CallID: "call_patch_1",
+					Name:   "apply_patch",
+					Input:  "*** Begin Patch\n*** End Patch",
+				},
+			}},
+		}},
+	}
+
+	got := filterResponseCustomToolMessagesForNonResponsesOutbound(request, llm.APIFormatOpenAIChatCompletion)
+	require.Same(t, request, got)
 }
 
 // ========== 429 Retry-After Tests ==========

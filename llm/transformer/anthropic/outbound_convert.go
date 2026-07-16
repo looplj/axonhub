@@ -2,22 +2,24 @@ package anthropic
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // convertToAnthropicRequest converts ChatCompletionRequest to Anthropic MessageRequest.
 // Deprecated: Use convertToAnthropicRequestWithConfig instead.
-func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
+func convertToAnthropicRequest(chatReq *llm.Request) (*MessageRequest, error) {
 	return convertToAnthropicRequestWithConfig(chatReq, nil)
 }
 
-func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
+func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) (*MessageRequest, error) {
 	return convertToAnthropicRequestWithThinkingPlan(chatReq, config, resolveThinkingRequestPlan(chatReq, config))
 }
 
@@ -25,7 +27,7 @@ func convertToAnthropicRequestWithThinkingPlan(
 	chatReq *llm.Request,
 	config *Config,
 	thinkingPlan thinkingRequestPlan,
-) *MessageRequest {
+) (*MessageRequest, error) {
 	req := buildBaseRequest(chatReq, thinkingPlan)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
 	req.Tools = appendAnthropicRawTools(req.Tools, chatReq)
@@ -44,7 +46,11 @@ func convertToAnthropicRequestWithThinkingPlan(
 			req.ToolChoice.DisableParallelToolUse = lo.ToPtr(!*chatReq.ParallelToolCalls)
 		}
 	}
-	req.Messages = convertMessages(hydrateAnthropicRawContent(chatReq), config)
+	messages, err := convertMessages(hydrateAnthropicRawContent(chatReq), config)
+	if err != nil {
+		return nil, err
+	}
+	req.Messages = messages
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
 	// DeepSeek requires assistant messages in history to include a thinking block
@@ -62,7 +68,7 @@ func convertToAnthropicRequestWithThinkingPlan(
 		}
 	}
 
-	return req
+	return req, nil
 }
 
 // hydrateAnthropicRawContent materializes request-side raw fragments only in a
@@ -526,7 +532,9 @@ func convertStopSequences(stop *llm.Stop) []string {
 }
 
 // convertMessages converts all messages to Anthropic format.
-func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
+// Tool results are only paired with the immediately adjacent contiguous tool-result
+// batch after an assistant tool_use turn. Non-local matching/hoisting is rejected.
+func convertMessages(chatReq *llm.Request, config *Config) ([]MessageParam, error) {
 	messages := make([]MessageParam, 0, len(chatReq.Messages))
 	// First, filter out system and developer messages as they are handled separately.
 	nonSystemMsgs := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
@@ -536,6 +544,21 @@ func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 	// Track which message indexes have been processed (for user messages with MessageIndex and tool messages)
 	processedMessageIndexes := make(map[int]bool)
 	processedToolCallIDs := make(map[string]bool)
+	// OpenAI freeform custom call IDs are dropped (no Anthropic tool_use). Mark
+	// them processed so matching tool results are not re-emitted as orphans.
+	for _, msg := range nonSystemMsgs {
+		for _, tc := range msg.ToolCalls {
+			if !isOpenAICustomToolCall(tc) {
+				continue
+			}
+			if tc.ID != "" {
+				processedToolCallIDs[tc.ID] = true
+			}
+			if tc.ResponseCustomToolCall != nil && tc.ResponseCustomToolCall.CallID != "" {
+				processedToolCallIDs[tc.ResponseCustomToolCall.CallID] = true
+			}
+		}
+	}
 
 	for i := 0; i < len(nonSystemMsgs); i++ {
 		msg := nonSystemMsgs[i]
@@ -546,6 +569,11 @@ func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 
 		switch msg.Role {
 		case "tool":
+			// Drop tool results that only belonged to unsupported OpenAI custom calls.
+			if msg.ToolCallID != nil && processedToolCallIDs[*msg.ToolCallID] {
+				processedMessageIndexes[i] = true
+				continue
+			}
 			// Handle standalone tool messages (not following an assistant with tool calls)
 			// Group consecutive tool messages into a single user message with tool_results
 			if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i, processedMessageIndexes, processedToolCallIDs); created {
@@ -568,65 +596,175 @@ func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 				messages = append(messages, assistantMsg...)
 			}
 
-			// After an assistant message with tool calls, the next message might be tool results.
-			if len(msg.ToolCalls) > 0 {
-				// Try to find corresponding tool results, even if not immediately following.
-				if toolMsg, ok := findToolResultsForAssistant(nonSystemMsgs, msg.ToolCalls, processedToolCallIDs, processedMessageIndexes); ok {
+			// After an assistant message with convertible tool calls, only the
+			// immediately following contiguous tool-result batch may attach.
+			lifecycleCalls := anthropicLifecycleToolCalls(msg.ToolCalls)
+			if len(lifecycleCalls) > 0 {
+				toolMsg, ok, err := collectAdjacentToolResultsForAssistant(
+					nonSystemMsgs,
+					i,
+					lifecycleCalls,
+					processedToolCallIDs,
+					processedMessageIndexes,
+				)
+				if err != nil {
+					return nil, err
+				}
+				if ok {
 					messages = append(messages, toolMsg)
-				} else if i+1 < len(nonSystemMsgs) {
-					// Fallback to grouping consecutive tool messages if no explicit match found (legacy behavior)
-					if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i+1, processedMessageIndexes, processedToolCallIDs); created {
-						messages = append(messages, toolMsg)
-						i = newIndex
-					}
 				}
 			}
 		}
 	}
 
-	return messages
+	return messages, nil
 }
 
-// findToolResultsForAssistant looks for tool results matching the given tool calls.
-func findToolResultsForAssistant(
+// anthropicLifecycleToolCalls returns tool calls that participate in Anthropic
+// client tool_use/tool_result pairing. OpenAI freeform custom calls are excluded
+// because they have no Anthropic JSON tool-use equivalent.
+func anthropicLifecycleToolCalls(toolCalls []llm.ToolCall) []llm.ToolCall {
+	if len(toolCalls) == 0 {
+		return nil
+	}
+	out := make([]llm.ToolCall, 0, len(toolCalls))
+	for _, tc := range toolCalls {
+		if isOpenAICustomToolCall(tc) {
+			continue
+		}
+		out = append(out, tc)
+	}
+	return out
+}
+
+func isOpenAICustomToolCall(tc llm.ToolCall) bool {
+	if tc.OpenAIChatCustomToolCall != nil || tc.ResponseCustomToolCall != nil {
+		return true
+	}
+	switch tc.Type {
+	case "custom", llm.ToolTypeResponsesCustomTool:
+		return true
+	default:
+		return false
+	}
+}
+
+func isOpenAICustomToolDecl(tool llm.Tool) bool {
+	if tool.OpenAIChatCustomTool != nil || tool.ResponseCustomTool != nil {
+		return true
+	}
+	switch tool.Type {
+	case "custom", llm.ToolTypeResponsesCustomTool:
+		return true
+	default:
+		return false
+	}
+}
+
+// collectAdjacentToolResultsForAssistant consumes only the contiguous tool-result
+// batch immediately after assistantIdx. It rejects incomplete coverage and
+// non-adjacent late results. It never synthesizes missing results.
+func collectAdjacentToolResultsForAssistant(
 	messages []llm.Message,
+	assistantIdx int,
 	toolCalls []llm.ToolCall,
 	processedToolCallIDs map[string]bool,
 	processedMessageIndexes map[int]bool,
-) (MessageParam, bool) {
+) (MessageParam, bool, error) {
+	expected := make([]string, 0, len(toolCalls))
+	expectedSet := make(map[string]struct{}, len(toolCalls))
+	for _, tc := range toolCalls {
+		if tc.ID == "" || processedToolCallIDs[tc.ID] {
+			continue
+		}
+		if _, dup := expectedSet[tc.ID]; dup {
+			return MessageParam{}, false, fmt.Errorf("%w: duplicate tool_use id %q", transformer.ErrInvalidRequest, tc.ID)
+		}
+		expectedSet[tc.ID] = struct{}{}
+		expected = append(expected, tc.ID)
+	}
+	if len(expected) == 0 {
+		return MessageParam{}, false, nil
+	}
+
+	// Gather contiguous tool messages immediately after the assistant turn.
 	var (
 		toolResultBlocks []MessageContentBlock
 		toolMsgIndexes   = make(map[int]struct{})
+		seenResultIDs    = make(map[string]struct{})
+		start            = assistantIdx + 1
+		idx              = start
 	)
 
-	for _, tc := range toolCalls {
-		if processedToolCallIDs[tc.ID] {
-			continue
+	for idx < len(messages) && messages[idx].Role == "tool" {
+		toolMsg := messages[idx]
+		if toolMsg.ToolCallID == nil || *toolMsg.ToolCallID == "" {
+			return MessageParam{}, false, fmt.Errorf("%w: tool result missing tool_call_id", transformer.ErrInvalidRequest)
 		}
-
-		// Look for this tool call ID in all messages
-		for i, msg := range messages {
-			if msg.Role == "tool" && msg.ToolCallID != nil && *msg.ToolCallID == tc.ID {
-				toolResultBlocks = append(toolResultBlocks, convertToToolResultBlock(msg))
-				processedToolCallIDs[tc.ID] = true
-				processedMessageIndexes[i] = true
-
-				if msg.MessageIndex != nil {
-					toolMsgIndexes[*msg.MessageIndex] = struct{}{}
-				}
-
-				break
+		id := *toolMsg.ToolCallID
+		if _, ok := expectedSet[id]; !ok {
+			// Contiguous tool batch includes an unknown id for this assistant turn.
+			// Skip only if this id was already consumed by a prior turn; otherwise reject.
+			if processedToolCallIDs[id] {
+				idx++
+				continue
 			}
+			return MessageParam{}, false, fmt.Errorf("%w: tool_result %q does not match adjacent tool_use batch", transformer.ErrInvalidRequest, id)
 		}
+		if _, dup := seenResultIDs[id]; dup || processedToolCallIDs[id] {
+			return MessageParam{}, false, fmt.Errorf("%w: duplicate tool_result for %q", transformer.ErrInvalidRequest, id)
+		}
+		seenResultIDs[id] = struct{}{}
+		toolResultBlocks = append(toolResultBlocks, convertToToolResultBlock(toolMsg))
+		processedToolCallIDs[id] = true
+		processedMessageIndexes[idx] = true
+		if toolMsg.MessageIndex != nil {
+			toolMsgIndexes[*toolMsg.MessageIndex] = struct{}{}
+		}
+		idx++
 	}
 
-	// Look for related user message with the same MessageIndex
+	if len(toolResultBlocks) == 0 {
+		// No adjacent results. If a matching result exists later across another
+		// turn, reject rather than hoist (Anthropic requires immediate follow-up).
+		if lateID, found := findNonAdjacentToolResultID(messages, idx, expectedSet, processedToolCallIDs); found {
+			return MessageParam{}, false, fmt.Errorf(
+				"%w: tool_result for %q is not immediately adjacent to its tool_use turn",
+				transformer.ErrInvalidRequest,
+				lateID,
+			)
+		}
+		// Anthropic requires every tool_use to be followed by a user tool_result
+		// message. Emitting bare tool_use without results is invalid.
+		return MessageParam{}, false, fmt.Errorf(
+			"%w: incomplete adjacent tool_result batch; missing results for %v",
+			transformer.ErrInvalidRequest,
+			expected,
+		)
+	}
+
+	// Partial adjacent coverage is invalid for Anthropic parallel tool use.
+	if len(seenResultIDs) != len(expectedSet) {
+		missing := make([]string, 0)
+		for _, id := range expected {
+			if _, ok := seenResultIDs[id]; !ok {
+				missing = append(missing, id)
+			}
+		}
+		return MessageParam{}, false, fmt.Errorf(
+			"%w: incomplete adjacent tool_result batch; missing results for %v",
+			transformer.ErrInvalidRequest,
+			missing,
+		)
+	}
+
+	// Look for related user message with the same MessageIndex (Anthropic same-
+	// user-message tool_result + text). Only merge still-unprocessed user rows.
 	if len(toolMsgIndexes) > 0 {
 		for j := range messages {
 			if processedMessageIndexes[j] {
 				continue
 			}
-
 			userMsg := messages[j]
 			if userMsg.Role == "user" && userMsg.MessageIndex != nil {
 				if _, ok := toolMsgIndexes[*userMsg.MessageIndex]; ok {
@@ -638,16 +776,34 @@ func findToolResultsForAssistant(
 		}
 	}
 
-	if len(toolResultBlocks) > 0 {
-		return MessageParam{
-			Role: "user",
-			Content: MessageContent{
-				MultipleContent: toolResultBlocks,
-			},
-		}, true
-	}
+	return MessageParam{
+		Role: "user",
+		Content: MessageContent{
+			MultipleContent: toolResultBlocks,
+		},
+	}, true, nil
+}
 
-	return MessageParam{}, false
+func findNonAdjacentToolResultID(
+	messages []llm.Message,
+	start int,
+	expectedSet map[string]struct{},
+	processedToolCallIDs map[string]bool,
+) (string, bool) {
+	for i := start; i < len(messages); i++ {
+		msg := messages[i]
+		if msg.Role != "tool" || msg.ToolCallID == nil {
+			continue
+		}
+		id := *msg.ToolCallID
+		if processedToolCallIDs[id] {
+			continue
+		}
+		if _, ok := expectedSet[id]; ok {
+			return id, true
+		}
+	}
+	return "", false
 }
 
 // groupToolResultMessages groups consecutive tool messages and finds related user message content.
@@ -741,7 +897,7 @@ func extractUserContentBlocks(msg llm.Message) []MessageContentBlock {
 				}
 			case "anthropic_raw_block":
 				// Preserve top-level future/unknown blocks that ride next to
-				// tool_result through groupToolResultMessages / findToolResultsForAssistant.
+				// tool_result through groupToolResultMessages / collectAdjacentToolResultsForAssistant.
 				if raw := getAnthropicRawBlock(part.TransformerMetadata); len(raw) > 0 {
 					blocks = append(blocks, MessageContentBlock{
 						Type: "anthropic_raw_block",
@@ -1231,6 +1387,11 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	}
 
 	for _, toolCall := range msg.ToolCalls {
+		if isOpenAICustomToolCall(toolCall) {
+			// Freeform OpenAI custom tools have no Anthropic JSON tool_use mapping.
+			// Skipping prevents empty name/input tool_use blocks; callers record LossyDowngrade.
+			continue
+		}
 		appendOrdered(toolCall.TransformerMetadata, toolUseBlockFromLLM(toolCall))
 	}
 

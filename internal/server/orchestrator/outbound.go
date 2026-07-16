@@ -415,7 +415,32 @@ func filterResponseCustomToolMessagesForNonResponsesOutbound(
 		return nil
 	}
 
-	if !isResponsesFormat(llmRequest.APIFormat) || isResponsesFormat(outboundFormat) || !containsResponseCustomToolMessages(llmRequest.Messages) {
+	if !isResponsesFormat(llmRequest.APIFormat) || isResponsesFormat(outboundFormat) || outboundFormat == llm.APIFormatOpenAIChatCompletion {
+		return llmRequest
+	}
+
+	hasCustomToolDeclarations := containsResponseCustomTools(llmRequest.Tools)
+	hasCustomToolMessages := containsResponseCustomToolMessages(llmRequest.Messages)
+	if !hasCustomToolDeclarations && !hasCustomToolMessages {
+		return llmRequest
+	}
+
+	llm.AddLossyDowngradeIfPresent(
+		llmRequest,
+		llmRequest.APIFormat,
+		"tools[].type=custom",
+		outboundFormat,
+		hasCustomToolDeclarations,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmRequest,
+		llmRequest.APIFormat,
+		"input[].type=custom_tool_call",
+		outboundFormat,
+		hasCustomToolMessages,
+	)
+
+	if !hasCustomToolMessages {
 		return llmRequest
 	}
 
@@ -423,6 +448,16 @@ func filterResponseCustomToolMessagesForNonResponsesOutbound(
 	cloned.Messages = shared.FilterOutResponseCustomToolMessages(llmRequest.Messages)
 
 	return &cloned
+}
+
+func containsResponseCustomTools(tools []llm.Tool) bool {
+	for _, tool := range tools {
+		if tool.Type == llm.ToolTypeResponsesCustomTool || tool.ResponseCustomTool != nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 func isResponsesFormat(format llm.APIFormat) bool {

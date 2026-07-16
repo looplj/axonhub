@@ -20,24 +20,6 @@
         {
           "type": "text",
           "text": "The answer is 1175.\n\nI calculated this by breaking down 47 into 40 + 7, then:\n- 25 × 40 = 1000\n- 25 × 7 = 175\n- 1000 + 175 = 1175"
-        },
-        {
-          "type": "tool_use",
-          "id": "call_function_6916702296_1",
-          "name": "Bash",
-          "input": {
-            "command": "find . -type f -name \"*.go\" | head -20",
-            "description": "查看Go文件列表"
-          }
-        },
-        {
-          "type": "tool_use",
-          "id": "call_function_6916702296_2",
-          "name": "Bash",
-          "input": {
-            "command": "find ./frontend -name \"*.ts\" -o -name \"*.tsx\" | head -20",
-            "description": "查看TypeScript文件列表"
-          }
         }
       ]
     },

@@ -118,7 +118,7 @@ func TestRequestFromLLM(t *testing.T) {
 	}
 }
 
-func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
+func TestRequestFromLLM_BridgesResponsesCustomTools(t *testing.T) {
 	req := RequestFromLLM(&llm.Request{
 		Model:    "gpt-4o",
 		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
@@ -140,8 +140,11 @@ func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
 	}, ReasoningFieldNone)
 
 	require.NotNil(t, req)
-	require.Len(t, req.Tools, 1)
-	require.Equal(t, llm.ToolTypeFunction, req.Tools[0].Type)
+	require.Len(t, req.Tools, 2)
+	require.Equal(t, "custom", req.Tools[0].Type)
+	require.NotNil(t, req.Tools[0].Custom)
+	require.Equal(t, "apply_patch", req.Tools[0].Custom.Name)
+	require.Equal(t, llm.ToolTypeFunction, req.Tools[1].Type)
 }
 
 func TestMessageContentPartAudioRoundTrip(t *testing.T) {

@@ -173,7 +173,10 @@ func (t *OutboundTransformer) TransformRequest(
 	recordAnthropicChatNativeLossyDowngrades(llmReq)
 
 	// Convert to Anthropic request format
-	anthropicReq := convertToAnthropicRequestWithThinkingPlan(llmReq, t.config, thinkingPlan)
+	anthropicReq, err := convertToAnthropicRequestWithThinkingPlan(llmReq, t.config, thinkingPlan)
+	if err != nil {
+		return nil, err
+	}
 
 	// Anthropic supports two prompt-caching modes (see
 	// https://docs.claude.com/en/docs/build-with-claude/prompt-caching):
@@ -488,6 +491,8 @@ func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
 		)
 	}
 
+	recordAnthropicOpenAICustomToolLossyDowngrades(llmReq)
+
 	if llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
 		return
 	}
@@ -511,6 +516,79 @@ func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
 			continue
 		}
 		llm.AddLossyDowngradeIfPresent(llmReq, llm.APIFormatOpenAIChatCompletion, field, llm.APIFormatAnthropicMessage, true)
+	}
+}
+
+
+// recordAnthropicOpenAICustomToolLossyDowngrades records explicit loss for OpenAI
+// freeform custom tool declarations/calls that have no Anthropic JSON input_schema
+// equivalent. It does not invent Anthropic tools or tool_use blocks.
+func recordAnthropicOpenAICustomToolLossyDowngrades(llmReq *llm.Request) {
+	if llmReq == nil {
+		return
+	}
+
+	hasCustomDecl := false
+	for _, tool := range llmReq.Tools {
+		if isOpenAICustomToolDecl(tool) {
+			hasCustomDecl = true
+			break
+		}
+	}
+
+	hasCustomCall := false
+	for _, msg := range llmReq.Messages {
+		for _, tc := range msg.ToolCalls {
+			if isOpenAICustomToolCall(tc) {
+				hasCustomCall = true
+				break
+			}
+		}
+		if hasCustomCall {
+			break
+		}
+	}
+
+	if !hasCustomDecl && !hasCustomCall {
+		return
+	}
+
+	sourceProtocol := llmReq.APIFormat
+	if sourceProtocol == "" {
+		sourceProtocol = llm.APIFormatOpenAIChatCompletion
+	}
+
+	switch sourceProtocol {
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			sourceProtocol,
+			"tools[].type=custom",
+			llm.APIFormatAnthropicMessage,
+			hasCustomDecl,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			sourceProtocol,
+			"input[].type=custom_tool_call",
+			llm.APIFormatAnthropicMessage,
+			hasCustomCall,
+		)
+	default:
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			sourceProtocol,
+			"tools[].type=custom",
+			llm.APIFormatAnthropicMessage,
+			hasCustomDecl,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			sourceProtocol,
+			"messages[].tool_calls[].type=custom",
+			llm.APIFormatAnthropicMessage,
+			hasCustomCall,
+		)
 	}
 }
 

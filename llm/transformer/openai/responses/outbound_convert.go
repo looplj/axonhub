@@ -256,6 +256,18 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 				Namespace: tc.ResponseCustomToolCall.Namespace,
 				Input:     lo.ToPtr(tc.ResponseCustomToolCall.Input),
 			})
+		} else if tc.OpenAIChatCustomToolCall != nil {
+			// Explicit Chat→Responses custom bridge. Chat custom calls live on
+			// OpenAIChatCustomToolCall with an empty Function carrier; do not
+			// misclassify them as function_call.
+			callID := tc.ID
+			toolCallItems = append(toolCallItems, Item{
+				ID:     tc.ResponseItemID,
+				Type:   "custom_tool_call",
+				CallID: callID,
+				Name:   tc.OpenAIChatCustomToolCall.Name,
+				Input:  lo.ToPtr(tc.OpenAIChatCustomToolCall.Input),
+			})
 		} else {
 			// Restore namespace group identity. If the ToolCall already carries
 			// a Namespace (e.g. from a Responses function_call input item),
@@ -459,6 +471,61 @@ func convertCustomToTool(src llm.Tool) Tool {
 	}
 
 	return tool
+}
+
+// convertChatCustomToTool bridges Chat Completions custom-tool declarations
+// (OpenAIChatCustomTool) into the Responses flat custom tool shape.
+// Format JSON is Chat-native (nested grammar object or text); map only known
+// fields and do not forward unrelated metadata.
+func convertChatCustomToTool(src llm.Tool) Tool {
+	tool := Tool{Type: "custom"}
+	if src.OpenAIChatCustomTool == nil {
+		return tool
+	}
+	chat := src.OpenAIChatCustomTool
+	tool.Name = chat.Name
+	if chat.Description != nil {
+		tool.Description = *chat.Description
+	}
+	if len(chat.Format) > 0 {
+		tool.Format = convertChatCustomToolFormat(chat.Format)
+	}
+	return tool
+}
+
+func convertChatCustomToolFormat(raw json.RawMessage) *CustomToolFormat {
+	if len(raw) == 0 {
+		return nil
+	}
+
+	// Chat grammar wire: {"type":"grammar","grammar":{"syntax":"...","definition":"..."}}
+	var nested struct {
+		Type    string `json:"type"`
+		Grammar *struct {
+			Syntax     string `json:"syntax"`
+			Definition string `json:"definition"`
+		} `json:"grammar"`
+		// Also accept already-flat Responses-like shape for resilience.
+		Syntax     string `json:"syntax"`
+		Definition string `json:"definition"`
+	}
+	if err := json.Unmarshal(raw, &nested); err != nil {
+		return nil
+	}
+	if nested.Type == "" {
+		return nil
+	}
+	format := &CustomToolFormat{Type: nested.Type}
+	if nested.Type == "grammar" {
+		if nested.Grammar != nil {
+			format.Syntax = nested.Grammar.Syntax
+			format.Definition = nested.Grammar.Definition
+		} else {
+			format.Syntax = nested.Syntax
+			format.Definition = nested.Definition
+		}
+	}
+	return format
 }
 
 // convertFunctionToTool converts an llm.Tool function to Responses API Tool format.

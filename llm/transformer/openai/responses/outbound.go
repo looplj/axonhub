@@ -234,6 +234,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		case llm.ToolTypeResponsesCustomTool:
 			tool := convertCustomToTool(item)
 			tools = append(tools, tool)
+		case "custom":
+			// Explicit Chat→Responses custom tool declaration bridge.
+			if item.OpenAIChatCustomTool == nil {
+				continue
+			}
+			tool := convertChatCustomToTool(item)
+			tools = append(tools, tool)
 		case "function":
 			tool := convertFunctionToTool(item)
 			tools = append(tools, tool)

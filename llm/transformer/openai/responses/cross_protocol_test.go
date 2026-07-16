@@ -157,6 +157,47 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForClientMetada
 	require.Equal(t, 0, diagnostics.AdditionalToolsCount)
 }
 
+func TestCrossProtocol_ResponsesCustomToolHistoryBridgesToOpenAIChat(t *testing.T) {
+	responsesInbound := NewInboundTransformer()
+	llmReq, err := responsesInbound.TransformRequest(context.Background(), &httpclient.Request{
+		Body: mustMarshal(t, map[string]any{
+			"model": "gpt-5",
+			"input": []map[string]any{
+				{"type": "message", "role": "user", "content": []map[string]any{{"type": "input_text", "text": "apply the patch"}}},
+				{"type": "custom_tool_call", "id": "item_call_1", "call_id": "call_patch_1", "name": "apply_patch", "input": "*** Begin Patch\n*** End Patch"},
+				{"type": "custom_tool_call_output", "id": "item_output_1", "call_id": "call_patch_1", "output": "Done"},
+			},
+			"tools": []map[string]any{{
+				"type":        "custom",
+				"name":        "apply_patch",
+				"description": "Apply a patch",
+				"format": map[string]any{
+					"type":       "grammar",
+					"syntax":     "lark",
+					"definition": "start: patch",
+				},
+			}},
+		}),
+	})
+	require.NoError(t, err)
+
+	chatOutbound, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	httpReq, err := chatOutbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	require.JSONEq(t, `[{"type":"custom","custom":{"name":"apply_patch","description":"Apply a patch","format":{"type":"grammar","grammar":{"syntax":"lark","definition":"start: patch"}}}}]`, string(payload["tools"]))
+
+	var messages []map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(payload["messages"], &messages))
+	require.Len(t, messages, 3)
+	require.JSONEq(t, `[{"id":"call_patch_1","type":"custom","custom":{"name":"apply_patch","input":"*** Begin Patch\n*** End Patch"}}]`, string(messages[1]["tool_calls"]))
+	require.JSONEq(t, `"call_patch_1"`, string(messages[2]["tool_call_id"]))
+	require.JSONEq(t, `"Done"`, string(messages[2]["content"]))
+}
+
 func TestCrossProtocol_NamespaceMapSurvivesRoundTrip(t *testing.T) {
 	// --- Step 1: responses inbound (request) — namespace map is recorded ---
 	responsesInbound := NewInboundTransformer()

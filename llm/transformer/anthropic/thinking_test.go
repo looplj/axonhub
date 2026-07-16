@@ -73,8 +73,9 @@ func TestOutboundConvert_GeminiThoughtSignatureBecomesAnthropicRedactedThinking(
 		},
 	}
 
-	anthropicReq := convertToAnthropicRequest(chatReq)
+	anthropicReq, err := convertToAnthropicRequest(chatReq)
 
+	require.NoError(t, err)
 	require.NotNil(t, anthropicReq)
 	require.Len(t, anthropicReq.Messages, 3)
 
@@ -226,7 +227,9 @@ func TestManualThinkingTargetDoesNotUseReasoningEffortMappings(t *testing.T) {
 				MaxTokens:       lo.ToPtr(int64(64000)),
 			}
 
-			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
+			anthropicReq, err := convertToAnthropicRequestWithConfig(chatReq, tt.config)
+
+			require.NoError(t, err)
 			require.Nil(t, anthropicReq.Thinking)
 		})
 	}
@@ -279,8 +282,9 @@ func TestReasoningEffortToAdaptiveThinkingForEffortModels(t *testing.T) {
 				MaxTokens:       lo.ToPtr(int64(8192)),
 			}
 
-			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
+			anthropicReq, err := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
 
+			require.NoError(t, err)
 			require.NotNil(t, anthropicReq.Thinking)
 			require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
 			require.Zero(t, anthropicReq.Thinking.BudgetTokens)
@@ -354,8 +358,9 @@ func TestReasoningEffortNoneDisablesAdaptiveThinkingModel(t *testing.T) {
 		MaxTokens:       lo.ToPtr(int64(8192)),
 	}
 
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
+	anthropicReq, err := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
 
+	require.NoError(t, err)
 	require.NotNil(t, anthropicReq.Thinking)
 	require.Equal(t, "disabled", anthropicReq.Thinking.Type)
 	require.Nil(t, anthropicReq.OutputConfig)
@@ -368,8 +373,9 @@ func TestManualThinkingTargetDoesNotSynthesizeBudgetNearMaxTokens(t *testing.T) 
 		MaxTokens:       lo.ToPtr(int64(8192)),
 	}
 
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
+	anthropicReq, err := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDirect})
 
+	require.NoError(t, err)
 	require.Nil(t, anthropicReq.Thinking)
 	require.Nil(t, anthropicReq.OutputConfig)
 }
@@ -379,8 +385,9 @@ func TestNoReasoningEffort(t *testing.T) {
 		Model: "claude-3-sonnet-20240229",
 	}
 
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil)
+	anthropicReq, err := convertToAnthropicRequestWithConfig(chatReq, nil)
 
+	require.NoError(t, err)
 	if anthropicReq.Thinking != nil {
 		t.Errorf("Expected Thinking to be nil when ReasoningEffort is not set")
 	}
@@ -413,8 +420,9 @@ func TestExplicitReasoningBudgetEnablesManualThinking(t *testing.T) {
 				ReasoningBudget: lo.ToPtr(tt.reasoningBudget),
 			}
 
-			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
+			anthropicReq, err := convertToAnthropicRequestWithConfig(chatReq, tt.config)
 
+			require.NoError(t, err)
 			require.NotNil(t, anthropicReq.Thinking)
 			require.Equal(t, "enabled", anthropicReq.Thinking.Type)
 			require.Equal(t, tt.reasoningBudget, anthropicReq.Thinking.BudgetTokens)
@@ -712,7 +720,8 @@ func TestThinking_AdaptiveOutbound(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			anthropicReq := convertToAnthropicRequest(tt.chatReq)
+			anthropicReq, err := convertToAnthropicRequest(tt.chatReq)
+			require.NoError(t, err)
 			tt.validate(t, anthropicReq)
 		})
 	}
@@ -943,9 +952,13 @@ func TestOutputConfig_Outbound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var anthropicReq *MessageRequest
 			if tt.config != nil {
-				anthropicReq = convertToAnthropicRequestWithConfig(tt.chatReq, tt.config)
+				var err error
+				anthropicReq, err = convertToAnthropicRequestWithConfig(tt.chatReq, tt.config)
+				require.NoError(t, err)
 			} else {
-				anthropicReq = convertToAnthropicRequest(tt.chatReq)
+				var err error
+				anthropicReq, err = convertToAnthropicRequest(tt.chatReq)
+				require.NoError(t, err)
 			}
 
 			tt.validate(t, anthropicReq)
@@ -1287,8 +1300,9 @@ func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 		},
 	}
 
-	anthropicReq := convertToAnthropicRequest(chatReq)
+	anthropicReq, err := convertToAnthropicRequest(chatReq)
 
+	require.NoError(t, err)
 	require.NotNil(t, anthropicReq)
 	require.Len(t, anthropicReq.Messages, 3)
 
@@ -1349,8 +1363,9 @@ func TestOutboundConvert_RedactedThinkingOnlyToAnthropic(t *testing.T) {
 		},
 	}
 
-	anthropicReq := convertToAnthropicRequest(chatReq)
+	anthropicReq, err := convertToAnthropicRequest(chatReq)
 
+	require.NoError(t, err)
 	require.NotNil(t, anthropicReq)
 	require.Len(t, anthropicReq.Messages, 3)
 
@@ -1568,7 +1583,8 @@ func TestDeepSeek_EnsureThinkingBlocksInAssistantMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			anthropicReq := convertToAnthropicRequestWithConfig(tt.chatReq, tt.config)
+			anthropicReq, err := convertToAnthropicRequestWithConfig(tt.chatReq, tt.config)
+			require.NoError(t, err)
 			require.NotNil(t, anthropicReq)
 			tt.validate(t, anthropicReq)
 		})
@@ -1606,8 +1622,9 @@ func TestOutboundConvert_RedactedThinkingToAnthropicCompatiblePlatformKeepsEncod
 		},
 	}
 
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDeepSeek})
+	anthropicReq, err := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDeepSeek})
 
+	require.NoError(t, err)
 	require.NotNil(t, anthropicReq)
 	require.Len(t, anthropicReq.Messages, 2)
 	require.Len(t, anthropicReq.Messages[1].Content.MultipleContent, 2)

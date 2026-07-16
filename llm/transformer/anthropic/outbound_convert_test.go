@@ -156,6 +156,11 @@ func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
 						},
 					},
 				},
+				{
+					Role:       "tool",
+					ToolCallID: lo.ToPtr("call_repair"),
+					Content:    llm.MessageContent{Content: lo.ToPtr("ok")},
+				},
 			},
 		}
 
@@ -210,6 +215,11 @@ func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
 							},
 						},
 					},
+				},
+				{
+					Role:       "tool",
+					ToolCallID: lo.ToPtr("call_empty"),
+					Content:    llm.MessageContent{Content: lo.ToPtr("ok")},
 				},
 			},
 		}
@@ -904,6 +914,11 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							},
 						},
 					},
+					{
+						Role:       "tool",
+						ToolCallID: lo.ToPtr("call_123"),
+						Content:    llm.MessageContent{Content: lo.ToPtr("50")},
+					},
 				},
 			},
 			expected: &MessageRequest{
@@ -932,6 +947,20 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 									Type: "tool_use",
 									ID:   "call_123",
 									Name: lo.ToPtr("calculator"),
+								},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: MessageContent{
+							MultipleContent: []MessageContentBlock{
+								{
+									Type:      "tool_result",
+									ToolUseID: lo.ToPtr("call_123"),
+									Content: &MessageContent{
+										Content: lo.ToPtr("50"),
+									},
 								},
 							},
 						},
@@ -1107,7 +1136,8 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToAnthropicRequest(tt.chatReq)
+			result, err := convertToAnthropicRequest(tt.chatReq)
+			require.NoError(t, err)
 			require.Equal(t, tt.expected.Model, result.Model)
 			require.Equal(t, tt.expected.MaxTokens, result.MaxTokens)
 			require.Equal(t, tt.expected.System, result.System)

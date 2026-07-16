@@ -70,7 +70,8 @@ type responsesInboundStream struct {
 	toolCalls           map[int]*llm.ToolCall
 	currentToolCallIdx  int
 	toolCallItemStarted map[int]bool
-	toolCallOutputIndex map[int]int // Maps tool call index to output index
+	toolCallOutputIndex map[int]int    // Maps tool call index to output index
+	toolCallItemIDs     map[int]string // Stable Responses output item ids per tool-call index
 
 	// Response accumulation using streamAggregator
 	usage               *llm.Usage
@@ -657,9 +658,10 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 			}
 		}
 
-		// Process delta based on tool type
+		// Process delta based on tool type. Chat custom calls use
+		// OpenAIChatCustomToolCall; bridge them onto the Responses custom path.
 		switch {
-		case tc.ResponseCustomToolCall != nil:
+		case tc.ResponseCustomToolCall != nil || tc.OpenAIChatCustomToolCall != nil:
 			if err := s.handleCustomToolCallDelta(tc); err != nil {
 				return err
 			}
@@ -684,11 +686,24 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		return err
 	}
 
+	// Bridge Chat-native custom calls into the Responses custom carrier used by
+	// stream state. Preserve ResponseCustomToolCall when already present.
+	customCall := tc.ResponseCustomToolCall
+	if customCall == nil && tc.OpenAIChatCustomToolCall != nil {
+		customCall = &llm.ResponseCustomToolCall{
+			CallID: tc.ID,
+			Name:   tc.OpenAIChatCustomToolCall.Name,
+			Input:  "",
+		}
+	}
+
 	s.toolCalls[toolCallIndex] = &llm.ToolCall{
-		Index:                  toolCallIndex,
-		ID:                     tc.ID,
-		Type:                   tc.Type,
-		ResponseCustomToolCall: tc.ResponseCustomToolCall,
+		Index:                    toolCallIndex,
+		ID:                       tc.ID,
+		Type:                     tc.Type,
+		ResponseItemID:           tc.ResponseItemID,
+		ResponseCustomToolCall:   customCall,
+		OpenAIChatCustomToolCall: tc.OpenAIChatCustomToolCall,
 		Function: llm.FunctionCall{
 			Name:      tc.Function.Name,
 			Namespace: tc.Function.Namespace,
@@ -696,23 +711,17 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		},
 	}
 
-	itemID := tc.ResponseItemID
-	if itemID == "" {
-		itemID = tc.ID
-	}
-	if itemID == "" {
-		itemID = generateItemID()
-	}
+	itemID := s.resolveToolCallItemID(toolCallIndex, tc)
 
 	switch {
-	case tc.ResponseCustomToolCall != nil:
+	case customCall != nil:
 		item := &Item{
 			ID:        itemID,
 			Type:      "custom_tool_call",
 			Status:    lo.ToPtr("in_progress"),
-			CallID:    tc.ResponseCustomToolCall.CallID,
-			Name:      tc.ResponseCustomToolCall.Name,
-			Namespace: tc.ResponseCustomToolCall.Namespace,
+			CallID:    customCall.CallID,
+			Name:      customCall.Name,
+			Namespace: customCall.Namespace,
 			Input:     lo.ToPtr(""),
 		}
 
@@ -756,15 +765,46 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 	return nil
 }
 
+// resolveToolCallItemID returns the stable Responses output item id for a tool
+// call. When the source has no ResponseItemID, allocate once via generateItemID
+// and reuse it for later delta/done events. Never alias item id to call_id.
+func (s *responsesInboundStream) resolveToolCallItemID(toolCallIndex int, tc llm.ToolCall) string {
+	if s.toolCallItemIDs == nil {
+		s.toolCallItemIDs = make(map[int]string)
+	}
+	if itemID, ok := s.toolCallItemIDs[toolCallIndex]; ok && itemID != "" {
+		return itemID
+	}
+	itemID := tc.ResponseItemID
+	if itemID == "" {
+		itemID = generateItemID()
+	}
+	s.toolCallItemIDs[toolCallIndex] = itemID
+	return itemID
+}
+
+// toolCallItemID looks up the stable item id for an already-initialized tool call.
+func (s *responsesInboundStream) toolCallItemID(toolCallIndex int, tc *llm.ToolCall) string {
+	if s.toolCallItemIDs != nil {
+		if itemID, ok := s.toolCallItemIDs[toolCallIndex]; ok && itemID != "" {
+			return itemID
+		}
+	}
+	if tc != nil && tc.ResponseItemID != "" {
+		return tc.ResponseItemID
+	}
+	if s.currentItemID != "" {
+		return s.currentItemID
+	}
+	return generateItemID()
+}
+
 func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error {
 	toolCallIndex := tc.Index
 	s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
 
 	if tc.Function.Arguments != "" {
-		itemID := s.toolCalls[toolCallIndex].ID
-		if itemID == "" {
-			itemID = s.currentItemID
-		}
+		itemID := s.toolCallItemID(toolCallIndex, s.toolCalls[toolCallIndex])
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeFunctionCallArgumentsDelta,
@@ -783,19 +823,37 @@ func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error 
 
 func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) error {
 	toolCallIndex := tc.Index
-	s.toolCalls[toolCallIndex].ResponseCustomToolCall.Input += tc.ResponseCustomToolCall.Input
-
-	if tc.ResponseCustomToolCall.Input != "" {
-		itemID := s.toolCalls[toolCallIndex].ID
-		if itemID == "" {
-			itemID = s.currentItemID
+	tracked := s.toolCalls[toolCallIndex]
+	if tracked.ResponseCustomToolCall == nil {
+		// Defensive: initToolCall should have bridged Chat custom calls already.
+		callID := tracked.ID
+		name := ""
+		if tc.OpenAIChatCustomToolCall != nil {
+			name = tc.OpenAIChatCustomToolCall.Name
 		}
+		tracked.ResponseCustomToolCall = &llm.ResponseCustomToolCall{
+			CallID: callID,
+			Name:   name,
+		}
+	}
+
+	deltaInput := ""
+	switch {
+	case tc.ResponseCustomToolCall != nil:
+		deltaInput = tc.ResponseCustomToolCall.Input
+	case tc.OpenAIChatCustomToolCall != nil:
+		deltaInput = tc.OpenAIChatCustomToolCall.Input
+	}
+	tracked.ResponseCustomToolCall.Input += deltaInput
+
+	if deltaInput != "" {
+		itemID := s.toolCallItemID(toolCallIndex, tracked)
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:        StreamEventTypeCustomToolCallInputDelta,
 			ItemID:      &itemID,
 			OutputIndex: s.toolCallOutputIndex[toolCallIndex],
-			Delta:       tc.ResponseCustomToolCall.Input,
+			Delta:       deltaInput,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to enqueue custom_tool_call_input.delta event: %w", err)
@@ -1022,13 +1080,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			continue
 		}
 
-		itemID := tc.ResponseItemID
-		if itemID == "" {
-			itemID = tc.ID
-		}
-		if itemID == "" {
-			itemID = s.currentItemID
-		}
+		itemID := s.toolCallItemID(idx, tc)
 
 		switch {
 		case tc.ResponseCustomToolCall != nil:

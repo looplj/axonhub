@@ -317,12 +317,18 @@ func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 				// First tool call
 				output0 := resp.Output[0]
 				require.Equal(t, "function_call", output0.Type)
-				require.Equal(t, "call_eda8722c71944fe394a8893c0de8146a", output0.ID)
+				require.Equal(t, "call_eda8722c71944fe394a8893c0de8146a", output0.CallID)
+				require.NotEmpty(t, output0.ID)
+				require.NotEqual(t, output0.CallID, output0.ID, "item id must not alias call_id")
+				require.Equal(t, "get_current_weather", output0.Name)
 
 				// Second tool call
 				output1 := resp.Output[1]
 				require.Equal(t, "function_call", output1.Type)
-				require.Equal(t, "call_bd313747960f44af8bef50dc27f0f07e", output1.ID)
+				require.Equal(t, "call_bd313747960f44af8bef50dc27f0f07e", output1.CallID)
+				require.NotEmpty(t, output1.ID)
+				require.NotEqual(t, output1.CallID, output1.ID, "item id must not alias call_id")
+				require.Equal(t, "calculate", output1.Name)
 			},
 		},
 		{

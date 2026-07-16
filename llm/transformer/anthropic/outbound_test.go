@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
+	transformerpkg "github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -954,6 +955,7 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 		name         string
 		requestFile  string
 		expectedFile string
+		expectError  bool
 		validate     func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request)
 	}{
 		{
@@ -1026,10 +1028,12 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			validate:     func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request) {},
 		},
 		{
-			name:         "llm-parallel2_multiple_tool.request, from the Responses API",
-			requestFile:  "llm-parallel2_multiple_tool.request.json",
-			expectedFile: "anthropic-parallel2_multiple_tool.request.json",
-			validate:     func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request) {},
+			// Split Responses-style tool_use turns followed by deferred results are
+			// not Anthropic-legal; previously the adapter hoisted results non-locally.
+			name:        "llm-parallel2_multiple_tool.request, from the Responses API",
+			requestFile: "llm-parallel2_multiple_tool.request.json",
+			expectError: true,
+			validate:    func(t *testing.T, result *httpclient.Request, llmRequest *llm.Request) {},
 		},
 	}
 
@@ -1047,6 +1051,11 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 			// Transform the request
 			result, err := transformer.TransformRequest(t.Context(), &llmReqquest)
+			if tt.expectError {
+				require.Error(t, err)
+				require.ErrorIs(t, err, transformerpkg.ErrInvalidRequest)
+				return
+			}
 			require.NoError(t, err)
 			require.NotNil(t, result)
 

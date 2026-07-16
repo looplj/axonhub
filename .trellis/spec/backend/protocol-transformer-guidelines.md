@@ -329,3 +329,94 @@ Normative process for acceptance (do not treat as “all fields complete”):
 | Responses request input item identity (G15) | `llm/transformer/openai/responses` | `g15a_input_item_identity_test.go`, `g15b_input_item_identity_test.go`, `g15c_reasoning_item_identity_test.go` |
 
 Rules unchanged: same-protocol first; no fake MCP bridges; LossyDowngrade for documented cross-protocol loss; stream fidelity stays in stream code; request input item identity is presence-aware and non-synthesizing.
+
+## Scenario: Cross-Protocol Tool Lifecycle Conversion
+
+### 1. Scope / Trigger
+
+Apply this contract whenever a transformer converts tool declarations, calls,
+results, or stream events between OpenAI Responses, OpenAI Chat Completions,
+and Anthropic Messages. Field-presence tests alone are insufficient: the
+ordered call/result lifecycle is part of the protocol contract.
+
+### 2. Signatures
+
+- Anthropic request conversion may reject an invalid lifecycle and therefore
+  returns `(*MessageRequest, error)` through `convertToAnthropicRequest*`.
+- Responses response construction keeps `Item.ID` (output item identity)
+  independent from `Item.CallID` (tool result correlation identity).
+- Stream conversion must allocate a missing Responses output item ID once per
+  tool-call index and reuse it for start, delta, done, and final item events.
+
+### 3. Contracts
+
+| Direction | Required behavior |
+|---|---|
+| Responses → Chat | Consecutive parallel call items become one assistant message with multiple `tool_calls`; matching outputs remain ordered `tool` messages. |
+| Chat custom → Responses | `type="custom"` declarations/calls map to Responses `custom` / `custom_tool_call`; matching results map to `custom_tool_call_output`. Preserve name, freeform input, and `call_id`. |
+| Responses custom → Chat | Use Chat's native custom declaration/call shape; do not downgrade to an empty function carrier. |
+| OpenAI custom → Anthropic | No automatic bridge. Do not invent a JSON `input_schema` or emit empty `tool_use`; omit the incompatible declaration/call and record `LossyDowngrade`. |
+| Chat provider response → Responses | When the source has no Responses-native output item ID, generate a target item ID. Never reuse `call_id` as `id`. |
+| OpenAI → Anthropic function history | Every assistant `tool_use` batch must be followed immediately by one contiguous user result batch with exactly one result per call ID. Preserve the source result order. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+|---|---|
+| Anthropic target has a result after an intervening turn | `transformer.ErrInvalidRequest`; never hoist the result. |
+| Parallel Anthropic target batch misses one or all results | `transformer.ErrInvalidRequest`; never synthesize success/error output. |
+| Adjacent result references an unknown call ID | `transformer.ErrInvalidRequest`. |
+| Duplicate call ID or duplicate result for one call ID | `transformer.ErrInvalidRequest`. |
+| Responses output item lacks native item ID | Generate one target item ID; keep source call ID unchanged. |
+| OpenAI custom tool targets Anthropic | Omit incompatible custom lifecycle and append `LossyDowngrade`; do not emit malformed empty tool blocks. |
+
+### 5. Good / Base / Bad Cases
+
+- Good: `assistant(tool_calls=[A,B]) → tool(A) → tool(B)` converts to one
+  Anthropic assistant turn with two `tool_use` blocks followed immediately by
+  one user turn containing both `tool_result` blocks.
+- Base: a Chat custom call and its output convert to Responses
+  `custom_tool_call` and `custom_tool_call_output` sharing `call_id`, while the
+  generated output item `id` remains different.
+- Bad: `assistant(call A) → user text → tool(A)` must not be reordered into a
+  valid-looking Anthropic history; reject it.
+- Bad: `assistant(calls A,B) → tool(A)` must not be serialized as a partial
+  Anthropic result batch.
+
+### 6. Tests Required
+
+- Public HTTP transformer fixture for Responses parallel calls → Chat message
+  grouping and output ordering.
+- Public request and response fixtures for Chat custom ↔ Responses custom
+  declaration/call/output mapping.
+- Non-stream and stream fixtures asserting Responses `id != call_id`, stable
+  stream item ID reuse, and custom-vs-function event type.
+- Public Anthropic outbound fixtures for complete adjacent batches, missing
+  partial/all results, non-adjacent results, unknown result IDs, and duplicate
+  result IDs.
+- Lossy diagnostic fixture for OpenAI custom → Anthropic proving that no empty
+  `tool_use` or malformed tool declaration is emitted.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```text
+Responses: function_call(A), function_call(B), output(A), output(B)
+Chat:      assistant(call A), assistant(call B), tool(A), tool(B)
+```
+
+```text
+Responses output item: id="call_A", call_id="call_A"
+```
+
+#### Correct
+
+```text
+Responses: function_call(A), function_call(B), output(A), output(B)
+Chat:      assistant(tool_calls=[A,B]), tool(A), tool(B)
+```
+
+```text
+Responses output item: id="item_<generated>", call_id="call_A"
+```

@@ -101,6 +101,9 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		if t.Type == llm.ToolTypeFunction {
 			return ToolFromLLM(t), true
 		}
+		if t.Type == llm.ToolTypeResponsesCustomTool && t.ResponseCustomTool != nil {
+			return ToolFromLLM(responsesCustomToolToOpenAIChatTool(t)), true
+		}
 		if t.Type == "custom" && t.OpenAIChatCustomTool != nil {
 			return ToolFromLLM(t), true
 		}
@@ -384,7 +387,15 @@ func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
 		}
 	}
 
-	if tc.Type == "custom" && tc.OpenAIChatCustomToolCall != nil {
+	if tc.Type == llm.ToolTypeResponsesCustomTool && tc.ResponseCustomToolCall != nil {
+		toolCall.Type = "custom"
+		toolCall.Function = FunctionCall{}
+		toolCall.Custom = &CustomToolCall{
+			Name:  tc.ResponseCustomToolCall.Name,
+			Input: tc.ResponseCustomToolCall.Input,
+		}
+		return toolCall
+	} else if tc.Type == "custom" && tc.OpenAIChatCustomToolCall != nil {
 		toolCall.Custom = &CustomToolCall{
 			Name:  tc.OpenAIChatCustomToolCall.Name,
 			Input: tc.OpenAIChatCustomToolCall.Input,
@@ -393,6 +404,44 @@ func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
 	}
 
 	return toolCall
+}
+
+func responsesCustomToolToOpenAIChatTool(src llm.Tool) llm.Tool {
+	converted := src
+	converted.Type = "custom"
+	converted.OpenAIChatCustomTool = &llm.OpenAIChatCustomTool{
+		Name:        src.ResponseCustomTool.Name,
+		Description: lo.ToPtr(src.ResponseCustomTool.Description),
+		Format:      openAIChatCustomToolFormat(src.ResponseCustomTool.Format),
+	}
+	return converted
+}
+
+func openAIChatCustomToolFormat(src *llm.ResponseCustomToolFormat) json.RawMessage {
+	if src == nil {
+		return nil
+	}
+
+	var raw any
+	if src.Type == "grammar" {
+		raw = map[string]any{
+			"type": "grammar",
+			"grammar": map[string]string{
+				"syntax":     src.Syntax,
+				"definition": src.Definition,
+			},
+		}
+	} else {
+		raw = struct {
+			Type string `json:"type"`
+		}{Type: src.Type}
+	}
+
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		return nil
+	}
+	return encoded
 }
 
 // ToLLMResponse converts OpenAI Response to unified llm.Response.

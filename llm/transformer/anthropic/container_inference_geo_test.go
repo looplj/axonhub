@@ -79,7 +79,8 @@ func TestAnthropicContainerAndInferenceGeoOmittedWhenAbsent(t *testing.T) {
 			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
 		}},
 	}
-	anthropicReq := convertToAnthropicRequest(chatReq)
+	anthropicReq, err := convertToAnthropicRequest(chatReq)
+	require.NoError(t, err)
 	require.Empty(t, anthropicReq.Container)
 	require.Empty(t, anthropicReq.InferenceGeo)
 }

@@ -1748,6 +1748,38 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 	}
 }
 
+func TestConvertInputToMessages_GroupsConsecutiveParallelFunctionCalls(t *testing.T) {
+	items := []Item{
+		{Type: "function_call", ID: "item_call_1", CallID: "call_1", Name: "first", Arguments: `{}`},
+		{Type: "function_call", ID: "item_call_2", CallID: "call_2", Name: "second", Arguments: `{}`},
+		{Type: "function_call", ID: "item_call_3", CallID: "call_3", Name: "third", Arguments: `{}`},
+		{Type: "function_call", ID: "item_call_4", CallID: "call_4", Name: "fourth", Arguments: `{}`},
+		{Type: "function_call_output", CallID: "call_1", Output: &Input{Text: lo.ToPtr("output 1")}},
+		{Type: "function_call_output", CallID: "call_2", Output: &Input{Text: lo.ToPtr("output 2")}},
+		{Type: "function_call_output", CallID: "call_3", Output: &Input{Text: lo.ToPtr("output 3")}},
+		{Type: "function_call_output", CallID: "call_4", Output: &Input{Text: lo.ToPtr("output 4")}},
+	}
+
+	messages, err := convertInputToMessages(&Input{Items: items})
+	require.NoError(t, err)
+	require.Len(t, messages, 5)
+	require.Equal(t, "assistant", messages[0].Role)
+	require.Len(t, messages[0].ToolCalls, 4)
+	require.Equal(t, []string{"call_1", "call_2", "call_3", "call_4"}, []string{
+		messages[0].ToolCalls[0].ID,
+		messages[0].ToolCalls[1].ID,
+		messages[0].ToolCalls[2].ID,
+		messages[0].ToolCalls[3].ID,
+	})
+
+	for index, callID := range []string{"call_1", "call_2", "call_3", "call_4"} {
+		message := messages[index+1]
+		require.Equal(t, "tool", message.Role)
+		require.NotNil(t, message.ToolCallID)
+		require.Equal(t, callID, *message.ToolCallID)
+	}
+}
+
 func TestInboundTransformer_TransformRequest_WithReasoningInput(t *testing.T) {
 	trans := NewInboundTransformer()
 

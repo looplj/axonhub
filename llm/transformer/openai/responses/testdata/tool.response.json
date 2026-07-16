@@ -5,7 +5,6 @@
   "model": "deepseek-chat",
   "output": [
     {
-      "id": "call_eda8722c71944fe394a8893c0de8146a",
       "type": "function_call",
       "call_id": "call_eda8722c71944fe394a8893c0de8146a",
       "name": "get_current_weather",
@@ -13,7 +12,6 @@
       "status": "completed"
     },
     {
-      "id": "call_bd313747960f44af8bef50dc27f0f07e",
       "type": "function_call",
       "call_id": "call_bd313747960f44af8bef50dc27f0f07e",
       "name": "calculate",

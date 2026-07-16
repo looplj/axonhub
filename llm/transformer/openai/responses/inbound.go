@@ -472,6 +472,20 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 			continue
 		}
 
+		// Chat Completions requires parallel tool calls to be represented in one
+		// assistant message with multiple tool_calls entries. Responses represents
+		// those calls as consecutive input items, so preserve that grouping before
+		// the following function_call_output items become individual tool messages.
+		if item.Type == "function_call" || item.Type == "custom_tool_call" {
+			msg, consumed, err := convertConsecutiveToolCalls(input.Items, i)
+			if err != nil {
+				return nil, err
+			}
+			messages = append(messages, *msg)
+			i += consumed
+			continue
+		}
+
 		// Handle regular items
 		msg, err := convertItemToMessage(item)
 		if err != nil {
@@ -486,6 +500,32 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	}
 
 	return messages, nil
+}
+
+// convertConsecutiveToolCalls merges adjacent Responses tool-call input items
+// into one canonical assistant message. The next output item deliberately ends
+// the group, so it is emitted as its own role="tool" message by the caller.
+func convertConsecutiveToolCalls(items []Item, startIdx int) (*llm.Message, int, error) {
+	msg := &llm.Message{Role: "assistant"}
+	consumed := 0
+
+	for index := startIdx; index < len(items); index++ {
+		item := &items[index]
+		if item.Type != "function_call" && item.Type != "custom_tool_call" {
+			break
+		}
+
+		toolCallMessage, err := convertItemToMessage(item)
+		if err != nil {
+			return nil, 0, err
+		}
+		if toolCallMessage != nil {
+			msg.ToolCalls = append(msg.ToolCalls, toolCallMessage.ToolCalls...)
+		}
+		consumed++
+	}
+
+	return msg, consumed, nil
 }
 
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent
@@ -1155,7 +1195,8 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				if toolCall.ResponseCustomToolCall != nil {
 					ctcItemID := toolCall.ResponseItemID
 					if ctcItemID == "" {
-						ctcItemID = toolCall.ID
+						// Target envelope construction: never alias item id to call_id.
+						ctcItemID = generateItemID()
 					}
 					ctcStatus := toolCall.Status
 					if ctcStatus == "" {
@@ -1170,10 +1211,29 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						Input:     lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
 						Status:    lo.ToPtr(ctcStatus),
 					})
+				} else if toolCall.OpenAIChatCustomToolCall != nil {
+					// Explicit Chat→Responses custom bridge for provider responses.
+					ctcItemID := toolCall.ResponseItemID
+					if ctcItemID == "" {
+						ctcItemID = generateItemID()
+					}
+					ctcStatus := toolCall.Status
+					if ctcStatus == "" {
+						ctcStatus = "completed"
+					}
+					resp.Output = append(resp.Output, Item{
+						ID:     ctcItemID,
+						Type:   "custom_tool_call",
+						CallID: toolCall.ID,
+						Name:   toolCall.OpenAIChatCustomToolCall.Name,
+						Input:  lo.ToPtr(toolCall.OpenAIChatCustomToolCall.Input),
+						Status: lo.ToPtr(ctcStatus),
+					})
 				} else {
 					fcItemID := toolCall.ResponseItemID
 					if fcItemID == "" {
-						fcItemID = toolCall.ID
+						// Target envelope construction: never alias item id to call_id.
+						fcItemID = generateItemID()
 					}
 					fcStatus := toolCall.Status
 					if fcStatus == "" {

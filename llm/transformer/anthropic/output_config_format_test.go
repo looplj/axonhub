@@ -86,7 +86,9 @@ func TestOutputConfig_FormatTaskBudgetRoundTrip(t *testing.T) {
 			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
 		}
 
-		anthropicReq := convertToAnthropicRequest(chatReq)
+		anthropicReq, err := convertToAnthropicRequest(chatReq)
+
+		require.NoError(t, err)
 		require.NotNil(t, anthropicReq.OutputConfig)
 		require.Equal(t, "high", anthropicReq.OutputConfig.Effort)
 		require.JSONEq(t, string(format), string(anthropicReq.OutputConfig.Format))
@@ -105,7 +107,9 @@ func TestOutputConfig_FormatTaskBudgetRoundTrip(t *testing.T) {
 			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
 		}
 
-		anthropicReq := convertToAnthropicRequest(chatReq)
+		anthropicReq, err := convertToAnthropicRequest(chatReq)
+
+		require.NoError(t, err)
 		require.NotNil(t, anthropicReq.OutputConfig)
 		require.JSONEq(t, string(format), string(anthropicReq.OutputConfig.Format))
 		require.Empty(t, anthropicReq.OutputConfig.Effort)
@@ -121,7 +125,9 @@ func TestOutputConfig_FormatTaskBudgetRoundTrip(t *testing.T) {
 			Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
 		}
 
-		anthropicReq := convertToAnthropicRequest(chatReq)
+		anthropicReq, err := convertToAnthropicRequest(chatReq)
+
+		require.NoError(t, err)
 		require.NotNil(t, anthropicReq.OutputConfig)
 		require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
 	})
