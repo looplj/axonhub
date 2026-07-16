@@ -81,6 +81,66 @@ func countSpansByType(spans []Span, spanType string) int {
 	return count
 }
 
+func TestSegment_FirstUserQueryPrefersLatestQueryInCurrentSegment(t *testing.T) {
+	segment := &Segment{
+		RequestSpans: []Span{
+			{
+				Type: "user_query",
+				Value: &SpanValue{
+					UserQuery: &SpanUserQuery{Text: "What is Go?"},
+				},
+			},
+			{
+				Type: "text",
+				Value: &SpanValue{
+					Text: &SpanText{Text: "Go is a programming language."},
+				},
+			},
+			{
+				Type: "user_query",
+				Value: &SpanValue{
+					UserQuery: &SpanUserQuery{Text: "Tell me about goroutines."},
+				},
+			},
+		},
+	}
+
+	require.NotNil(t, segment.FirstUserQuery())
+	require.Equal(t, "Tell me about goroutines.", *segment.FirstUserQuery())
+}
+
+func TestSegment_FirstUserQueryFallsBackToChildrenLatestQuery(t *testing.T) {
+	segment := &Segment{
+		Children: []*Segment{
+			{
+				RequestSpans: []Span{
+					{
+						Type: "user_query",
+						Value: &SpanValue{
+							UserQuery: &SpanUserQuery{Text: "What is Go?"},
+						},
+					},
+					{
+						Type: "text",
+						Value: &SpanValue{
+							Text: &SpanText{Text: "Go is a programming language."},
+						},
+					},
+					{
+						Type: "user_query",
+						Value: &SpanValue{
+							UserQuery: &SpanUserQuery{Text: "Tell me about goroutines."},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	require.NotNil(t, segment.FirstUserQuery())
+	require.Equal(t, "Tell me about goroutines.", *segment.FirstUserQuery())
+}
+
 func TestRequestService_LoadersReturnEmptyJSONAndSlices(t *testing.T) {
 	traceService, client := setupTestTraceService(t, nil)
 	defer client.Close()

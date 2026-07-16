@@ -51,11 +51,11 @@ export function TraceCard({ trace, onViewTrace, index }: TraceCardProps) {
           {/* Chat Messages */}
           <div className='space-y-4 pt-1'>
             {/* User Query */}
-            {trace.firstUserQuery && (
+            {trace.userQuery && (
               <div className='flex items-start justify-end gap-2.5'>
                 <div className='flex max-w-[85%] flex-col items-end gap-1'>
                   <div className='relative rounded-2xl rounded-tr-sm bg-gradient-to-br from-primary to-primary/90 px-4 py-2.5 text-primary-foreground shadow-sm'>
-                    <p className='text-sm leading-relaxed'>{trace.firstUserQuery}</p>
+                    <p className='text-sm leading-relaxed'>{trace.userQuery}</p>
                   </div>
                 </div>
                 <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted ring-2 ring-background'>

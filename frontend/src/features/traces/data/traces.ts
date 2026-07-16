@@ -19,7 +19,7 @@ function buildTracesQuery() {
           node {
             id
             traceID
-            firstUserQuery
+            userQuery: firstUserQuery
             createdAt
             updatedAt
             thread {

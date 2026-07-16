@@ -24,7 +24,7 @@ export const threadSchema = z.object({
   updatedAt: z.coerce.date(),
   project: projectSchema,
   tracesSummary: threadTracesSummarySchema,
-  firstUserQuery: z.string().nullable().optional(),
+  userQuery: z.string().nullable().optional(),
   usageMetadata: usageMetadataSchema,
 });
 

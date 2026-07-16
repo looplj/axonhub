@@ -53,10 +53,10 @@ export function useThreadsColumns(): ColumnDef<Thread>[] {
       enableSorting: false,
     },
     {
-      accessorKey: 'firstUserQuery',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('threads.columns.firstUserQuery')} />,
+      accessorKey: 'userQuery',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('threads.columns.userQuery')} />,
       cell: ({ row }) => {
-        const query = row.getValue('firstUserQuery') as string | null | undefined;
+        const query = row.getValue('userQuery') as string | null | undefined;
         return (
           <div className='max-w-96 truncate text-xs' title={query || ''}>
             {query || '-'}
