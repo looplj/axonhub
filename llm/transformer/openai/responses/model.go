@@ -164,6 +164,8 @@ type Prompt struct {
 
 // Reasoning represents configuration options for reasoning models.
 type Reasoning struct {
+	// The reasoning context scope requested by internal Responses features.
+	Context string `json:"context,omitempty"`
 	// The effort level for reasoning. Any of "low", "medium", "high".
 	Effort string `json:"effort,omitempty"`
 	// Whether to generate a summary of the reasoning. Any of "auto", "concise", "detailed".
