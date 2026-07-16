@@ -606,7 +606,11 @@ func (p *PersistentOutboundTransformer) PrepareErrorFailover(ctx context.Context
 	statusCode := ExtractStatusCodeFromError(err)
 	reason := fmt.Sprintf("Matched channel API key failover rule (status %d)", statusCode)
 	if disableErr := p.state.ChannelService.DisableAPIKey(ctx, channel.ID, apiKey, statusCode, reason); disableErr != nil {
-		return false, fmt.Errorf("disable failed API key: %w", disableErr)
+		log.Warn(ctx, "failed to disable API key during failover; excluding for current request",
+			log.Int("channel_id", channel.ID),
+			log.Int("status_code", statusCode),
+			log.Cause(disableErr),
+		)
 	}
 
 	contexts.ExcludeChannelAPIKey(ctx, channel.ID, apiKey)

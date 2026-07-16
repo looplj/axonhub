@@ -3,6 +3,8 @@
 ### Fixed
 
 - Fixed per-channel API key failover tracking when the request context has no pre-initialized shared container.
+- Kept failed channel API keys excluded for the current request when persisting their disabled state fails.
+- Removed duplicate analytics dimension helper definitions introduced during branch integration.
 
 v0.4.0
 
