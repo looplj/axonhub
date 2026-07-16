@@ -38,7 +38,9 @@ func convertToAnthropicRequestWithThinkingPlan(
 	// Synthesize {type:"auto"} when the client expressed a parallel preference
 	// without setting tool_choice; skip when there are no tools (Anthropic
 	// requires tools for disable_parallel_tool_use) or tool_choice is "none".
-	if len(chatReq.Tools) > 0 && chatReq.ParallelToolCalls != nil {
+	// Use the final req.Tools (common + raw exclusive like mcp_toolset), not only
+	// chatReq.Tools, so raw-only tool declarations still preserve parallel control.
+	if len(req.Tools) > 0 && chatReq.ParallelToolCalls != nil {
 		if req.ToolChoice == nil {
 			req.ToolChoice = &ToolChoice{Type: "auto"}
 		}

@@ -515,6 +515,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		switch anthropicReq.Thinking.Type {
 		case "enabled":
 			chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
+			// Keep native type so outbound can distinguish author-enabled manual
+			// thinking from cross-protocol budget-only synthesis.
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "enabled"
 
 			if anthropicReq.Thinking.Display != "" {
 				chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay] = anthropicReq.Thinking.Display

@@ -61,12 +61,23 @@ func resolveThinkingRequestPlan(chatReq *llm.Request, config *Config) thinkingRe
 	capability := resolveThinkingCapability(chatReq.Model, config)
 
 	if chatReq.ReasoningBudget != nil {
-		if capability != ThinkingCapabilityManualSupported {
+		// Explicit manual budget is author-intent and must survive same-protocol
+		// Anthropic replay. AdaptivePreferred means "prefer adaptive for effort
+		// mapping", not "reject client-provided enabled+budget".
+		// AdaptiveOnly / unknown still reject explicit manual budgets on
+		// cross-protocol paths; same-protocol Anthropic keeps author shape.
+		sameProtocolAnthropic := chatReq.APIFormat == llm.APIFormatAnthropicMessage
+		explicitEnabled := thinkingTypeFromMetadata(chatReq) == "enabled"
+		switch {
+		case capability == ThinkingCapabilityManualSupported,
+			capability == ThinkingCapabilityAdaptivePreferred,
+			sameProtocolAnthropic,
+			explicitEnabled:
+			return manualThinkingPlan(*chatReq.ReasoningBudget, resolveMaxTokens(chatReq))
+		default:
 			plan.validationErr = fmt.Errorf("manual thinking is not supported for this target capability")
 			return plan
 		}
-
-		return manualThinkingPlan(*chatReq.ReasoningBudget, resolveMaxTokens(chatReq))
 	}
 
 	if chatReq.ReasoningEffort == "" {

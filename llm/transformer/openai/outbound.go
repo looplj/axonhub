@@ -249,7 +249,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		Metadata:  nil,
 	}
-	recordOpenAIChatUnsupportedNativeToolLossyDowngrades(llmReq)
+	shared.RecordOpenAIChatUnsupportedNativeToolLossyDowngrades(llmReq)
 	shared.RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq, llm.APIFormatOpenAIChatCompletion)
 	shared.PropagateRequestMetadata(httpReq, llmReq)
 	return httpReq, nil
@@ -577,77 +577,3 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 		},
 	}
 }
-
-
-// recordOpenAIChatUnsupportedNativeToolLossyDowngrades records non-Chat tool
-// declarations that ConvertToOutboundRequest intentionally omits from tools[].
-// Chat keeps function/custom tools only; image/google/web_search native tools are
-// not faked into Chat function tools.
-func recordOpenAIChatUnsupportedNativeToolLossyDowngrades(llmReq *llm.Request) {
-	if llmReq == nil || len(llmReq.Tools) == 0 {
-		return
-	}
-
-	sourceProtocol := llmReq.APIFormat
-	if sourceProtocol == "" {
-		sourceProtocol = llm.APIFormatOpenAIChatCompletion
-	}
-
-	hasImageGeneration := false
-	hasWebSearch := false
-	hasGoogleSearch := false
-	hasGoogleCodeExecution := false
-	hasGoogleURLContext := false
-
-	for _, tool := range llmReq.Tools {
-		switch tool.Type {
-		case llm.ToolTypeImageGeneration:
-			hasImageGeneration = true
-		case llm.ToolTypeWebSearch:
-			hasWebSearch = true
-		case llm.ToolTypeGoogleSearch:
-			hasGoogleSearch = true
-		case llm.ToolTypeGoogleCodeExecution:
-			hasGoogleCodeExecution = true
-		case llm.ToolTypeGoogleUrlContext:
-			hasGoogleURLContext = true
-		}
-	}
-
-	llm.AddLossyDowngradeIfPresent(
-		llmReq,
-		sourceProtocol,
-		"tools[].type=image_generation",
-		llm.APIFormatOpenAIChatCompletion,
-		hasImageGeneration,
-	)
-	llm.AddLossyDowngradeIfPresent(
-		llmReq,
-		sourceProtocol,
-		"tools[].type=web_search",
-		llm.APIFormatOpenAIChatCompletion,
-		hasWebSearch,
-	)
-	llm.AddLossyDowngradeIfPresent(
-		llmReq,
-		sourceProtocol,
-		"tools[].type=google_search",
-		llm.APIFormatOpenAIChatCompletion,
-		hasGoogleSearch,
-	)
-	llm.AddLossyDowngradeIfPresent(
-		llmReq,
-		sourceProtocol,
-		"tools[].type=google_code_execution",
-		llm.APIFormatOpenAIChatCompletion,
-		hasGoogleCodeExecution,
-	)
-	llm.AddLossyDowngradeIfPresent(
-		llmReq,
-		sourceProtocol,
-		"tools[].type=google_url_context",
-		llm.APIFormatOpenAIChatCompletion,
-		hasGoogleURLContext,
-	)
-}
-

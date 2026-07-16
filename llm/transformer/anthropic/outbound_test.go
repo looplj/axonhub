@@ -3005,3 +3005,71 @@ func TestOutboundTransformer_TransformRequest_DiagnosesResponsesNativeToolLoss(t
 	require.GreaterOrEqual(t, diagnostics.RawOnlyToolCount, 1)
 	require.Equal(t, 1, diagnostics.ClientMetadataCount)
 }
+
+
+func TestOutboundTransformer_TransformRequest_AdaptivePreferredPreservesExplicitManualBudget(t *testing.T) {
+	// claude-sonnet-4-6 is AdaptivePreferred: effort maps to adaptive, but an
+	// author-provided enabled+budget (same-protocol or explicit) must still emit
+	// thinking.type=enabled instead of hard-failing.
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-sonnet-4-6",
+		APIFormat:       llm.APIFormatAnthropicMessage,
+		MaxTokens:       lo.ToPtr(int64(8192)),
+		ReasoningBudget: lo.ToPtr(int64(2048)),
+		TransformerMetadata: map[string]any{
+			TransformerMetadataKeyThinkingType: "enabled",
+		},
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	})
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+	require.Equal(t, int64(2048), anthropicReq.Thinking.BudgetTokens)
+}
+
+func TestOutboundTransformer_TransformRequest_AdaptivePreferredAllowsBudgetWithoutMetadataOnSameProtocol(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-sonnet-4-6",
+		APIFormat:       llm.APIFormatAnthropicMessage,
+		MaxTokens:       lo.ToPtr(int64(8192)),
+		ReasoningBudget: lo.ToPtr(int64(4096)),
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	})
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+	require.Equal(t, int64(4096), anthropicReq.Thinking.BudgetTokens)
+}
+
+func TestOutboundTransformer_TransformRequest_AdaptiveOnlyStillRejectsCrossProtocolManualBudget(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	_, err = transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:           "claude-opus-4-8",
+		APIFormat:       llm.APIFormatOpenAIChatCompletion,
+		MaxTokens:       lo.ToPtr(int64(8192)),
+		ReasoningBudget: lo.ToPtr(int64(2048)),
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "manual thinking is not supported")
+}
