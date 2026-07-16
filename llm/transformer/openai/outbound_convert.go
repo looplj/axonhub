@@ -94,9 +94,10 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		}
 	}
 
-	// Convert Chat-supported tools. Responses custom tools intentionally remain
-	// excluded: Chat custom declarations use their own `custom` wire shape and
-	// are carried only by OpenAIChatCustomTool.
+	// Convert Chat-supported tools. Keep function/custom only.
+	// image_generation/web_search/google_* are omitted here and diagnosed by
+	// recordOpenAIChatUnsupportedNativeToolLossyDowngrades. Responses custom tools
+	// bridge into Chat custom via ResponseCustomTool/OpenAIChatCustomTool.
 	req.Tools = lo.FilterMap(r.Tools, func(t llm.Tool, _ int) (Tool, bool) {
 		if t.Type == llm.ToolTypeFunction {
 			return ToolFromLLM(t), true

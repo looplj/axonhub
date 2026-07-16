@@ -10,6 +10,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -1022,4 +1023,99 @@ func TestMessageFromLLMWithConfig_ReasoningFieldNone_StripsDetails(t *testing.T)
 	assert.Nil(t, result.ReasoningContent)
 	assert.Nil(t, result.Reasoning)
 	assert.Nil(t, result.ReasoningDetails)
+}
+
+
+func TestOutboundTransformer_TransformRequest_DiagnosesUnsupportedNativeTools(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "gpt-5.5",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("generate")},
+		}},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeImageGeneration},
+			{Type: llm.ToolTypeWebSearch},
+			{Type: llm.ToolTypeGoogleSearch},
+			{Type: llm.ToolTypeGoogleCodeExecution},
+			{Type: llm.ToolTypeGoogleUrlContext},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{Name: "calculator", Description: "calc"},
+			},
+		},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(result.Body, &body))
+	var tools []map[string]any
+	require.NoError(t, json.Unmarshal(body["tools"], &tools))
+	require.Len(t, tools, 1)
+	require.Equal(t, "function", tools[0]["type"])
+	require.Equal(t, "calculator", tools[0]["function"].(map[string]any)["name"])
+
+	require.ElementsMatch(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=image_generation",
+			TargetProtocol: llm.APIFormatOpenAIChatCompletion,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=web_search",
+			TargetProtocol: llm.APIFormatOpenAIChatCompletion,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=google_search",
+			TargetProtocol: llm.APIFormatOpenAIChatCompletion,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=google_code_execution",
+			TargetProtocol: llm.APIFormatOpenAIChatCompletion,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=google_url_context",
+			TargetProtocol: llm.APIFormatOpenAIChatCompletion,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(llmReq))
+}
+
+func TestOutboundTransformer_TransformRequest_NoNativeToolLossWhenOnlyFunctionTools(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "gpt-5.5",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+		}},
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeFunction,
+			Function: llm.Function{Name: "calculator", Description: "calc"},
+		}},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+	_, err = transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+	require.Empty(t, llm.LossyDowngrades(llmReq))
 }

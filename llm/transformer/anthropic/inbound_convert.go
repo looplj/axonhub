@@ -946,7 +946,8 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 			CacheControl: convertToLLMCacheControl(tool.CacheControl),
 		}, true
 	default:
-		// Ignore other native tools (image_generation, google_*, etc.)
+		// Non-Anthropic-common tools do not flatten into llm.Tool.
+		// Exclusive Anthropic raw variants are preserved earlier via tool.Raw.
 		return llm.Tool{}, false
 	}
 }

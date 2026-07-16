@@ -2274,3 +2274,69 @@ func TestOutboundTransformer_TransformRequest_OmitsSeedDiagnosticWhenAbsent(t *t
 	require.NoError(t, err)
 	require.Empty(t, llm.LossyDowngrades(llmReq))
 }
+
+
+func TestOutboundTransformer_TransformRequest_DiagnosesUnsupportedGoogleTools(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "gpt-5.5",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+		}},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeGoogleCodeExecution},
+			{Type: llm.ToolTypeGoogleUrlContext},
+			{Type: "custom"},
+			{Type: "future_tool"},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{Name: "calculator", Description: "calc"},
+			},
+		},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(result.Body, &body))
+	var tools []map[string]any
+	require.NoError(t, json.Unmarshal(body["tools"], &tools))
+	require.Len(t, tools, 1)
+	require.Equal(t, "function", tools[0]["type"])
+	require.Equal(t, "calculator", tools[0]["name"])
+
+	require.ElementsMatch(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "tools[].type=google_code_execution",
+			TargetProtocol: llm.APIFormatOpenAIResponse,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "tools[].type=google_url_context",
+			TargetProtocol: llm.APIFormatOpenAIResponse,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "tools[].type=custom",
+			TargetProtocol: llm.APIFormatOpenAIResponse,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+			SourceField:    "tools[] unsupported type",
+			TargetProtocol: llm.APIFormatOpenAIResponse,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(llmReq))
+}

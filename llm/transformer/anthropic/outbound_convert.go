@@ -428,7 +428,8 @@ func anthropicRawToolFragments(chatReq *llm.Request) []anthropicRawToolFragment 
 
 // convertToolsAnthropic converts LLM tools to Anthropic tools.
 // If the platform is not direct Anthropic API or Bedrock, anthropic native tools (like web_search) are filtered out.
-// Only web_search tool is supported as native tool, other native tools (image_generation, google_*, etc.) are ignored.
+// Only web_search tool is supported as native tool; other native tools (image_generation, google_*, etc.)
+// are omitted here and must be diagnosed by recordAnthropicUnsupportedNativeToolLossyDowngrades.
 func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	if len(tools) == 0 {
 		return nil
@@ -475,7 +476,8 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 
 			anthropicTools = append(anthropicTools, anthropicTool)
 		default:
-			// Ignore other native tools (image_generation, google_*, etc.)
+			// Omit other native tools (image_generation, google_*, etc.).
+			// Loss is recorded by recordAnthropicUnsupportedNativeToolLossyDowngrades.
 			continue
 		}
 	}

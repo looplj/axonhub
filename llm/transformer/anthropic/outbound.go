@@ -171,6 +171,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	recordAnthropicThinkingLossyDowngrade(llmReq, thinkingPlan)
 	recordAnthropicChatNativeLossyDowngrades(llmReq)
+	recordAnthropicUnsupportedNativeToolLossyDowngrades(llmReq, t.config)
 
 	// Convert to Anthropic request format
 	anthropicReq, err := convertToAnthropicRequestWithThinkingPlan(llmReq, t.config, thinkingPlan)
@@ -263,6 +264,7 @@ func (t *OutboundTransformer) TransformRequest(
 		APIFormat: string(llm.APIFormatAnthropicMessage),
 		Metadata:  nil,
 	}
+	shared.RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq, llm.APIFormatAnthropicMessage)
 	shared.PropagateRequestMetadata(httpReq, llmReq)
 	return httpReq, nil
 }
@@ -590,6 +592,80 @@ func recordAnthropicOpenAICustomToolLossyDowngrades(llmReq *llm.Request) {
 			hasCustomCall,
 		)
 	}
+}
+
+// recordAnthropicUnsupportedNativeToolLossyDowngrades records non-Anthropic native
+// tool declarations that convertToolsAnthropic intentionally omits. This keeps the
+// no-fake-bridge behavior while making the loss observable.
+func recordAnthropicUnsupportedNativeToolLossyDowngrades(llmReq *llm.Request, config *Config) {
+	if llmReq == nil || len(llmReq.Tools) == 0 {
+		return
+	}
+
+	sourceProtocol := llmReq.APIFormat
+	if sourceProtocol == "" {
+		sourceProtocol = llm.APIFormatOpenAIChatCompletion
+	}
+
+	hasImageGeneration := false
+	hasGoogleSearch := false
+	hasGoogleCodeExecution := false
+	hasGoogleURLContext := false
+	hasUnsupportedWebSearch := false
+	supportsNativeTools := supportsAnthropicNativeTools(config)
+
+	for _, tool := range llmReq.Tools {
+		switch tool.Type {
+		case llm.ToolTypeImageGeneration:
+			hasImageGeneration = true
+		case llm.ToolTypeGoogleSearch:
+			hasGoogleSearch = true
+		case llm.ToolTypeGoogleCodeExecution:
+			hasGoogleCodeExecution = true
+		case llm.ToolTypeGoogleUrlContext:
+			hasGoogleURLContext = true
+		case llm.ToolTypeWebSearch:
+			if !supportsNativeTools {
+				hasUnsupportedWebSearch = true
+			}
+		}
+	}
+
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=image_generation",
+		llm.APIFormatAnthropicMessage,
+		hasImageGeneration,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=google_search",
+		llm.APIFormatAnthropicMessage,
+		hasGoogleSearch,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=google_code_execution",
+		llm.APIFormatAnthropicMessage,
+		hasGoogleCodeExecution,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=google_url_context",
+		llm.APIFormatAnthropicMessage,
+		hasGoogleURLContext,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=web_search",
+		llm.APIFormatAnthropicMessage,
+		hasUnsupportedWebSearch,
+	)
 }
 
 func hasOpenAIMetadataRemainder(metadata map[string]string) bool {

@@ -40,7 +40,7 @@ func BuildChatCompletionHTTPRequest(
 		},
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}
-	RecordResponsesLossyDowngradeDiagnostics(llmReq)
+	RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq, llm.APIFormatOpenAIChatCompletion)
 	PropagateRequestMetadata(httpReq, llmReq)
 	return httpReq
 }

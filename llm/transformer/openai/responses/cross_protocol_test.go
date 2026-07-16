@@ -68,6 +68,18 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnostics(t *testing.T) 
 	require.Equal(t, 1, diagnostics.ToolSearchToolCount)
 	require.Equal(t, 1, diagnostics.UnknownToolCount)
 	require.Equal(t, 1, diagnostics.AdditionalToolsCount)
+
+	downgrades := llm.LossyDowngrades(llmReq)
+	require.NotEmpty(t, downgrades)
+	fields := map[string]bool{}
+	for _, d := range downgrades {
+		fields[d.SourceField] = true
+		require.Equal(t, llm.APIFormatOpenAIChatCompletion, d.TargetProtocol)
+	}
+	require.True(t, fields["tools[].type=namespace"])
+	require.True(t, fields["tools[].type=tool_search"])
+	require.True(t, fields["input[].type=additional_tools"])
+	require.True(t, fields["tools[] raw-only native tool"])
 }
 
 func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForUnknownTopLevelOnly(t *testing.T) {
@@ -125,6 +137,17 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForKnownRawOnly
 	require.True(t, diagnostics.LossyDowngrade)
 	require.Equal(t, 1, diagnostics.RawOnlyToolCount)
 	require.Equal(t, 0, diagnostics.UnknownToolCount)
+
+	downgrades := llm.LossyDowngrades(llmReq)
+	require.NotEmpty(t, downgrades)
+	found := false
+	for _, d := range downgrades {
+		if d.SourceField == "tools[] raw-only native tool" {
+			found = true
+			require.Equal(t, llm.APIFormatOpenAIChatCompletion, d.TargetProtocol)
+		}
+	}
+	require.True(t, found)
 }
 
 func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForClientMetadataOnly(t *testing.T) {

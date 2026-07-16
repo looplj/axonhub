@@ -780,7 +780,8 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		return compactionMessageFromItem(item, item.Type), nil
 
 	default:
-		// Skip unknown types
+		// Unknown/raw-only input items are preserved via request extensions when the
+		// original body is available. Do not invent a canonical message shape here.
 		return nil, nil
 	}
 }
@@ -1027,7 +1028,9 @@ func convertToolsToLLM(tools []Tool, metadata map[string]any) ([]llm.Tool, error
 			}
 
 		default:
-			// Skip unsupported tool types
+			// Non-structural tools (tool_search/mcp/file_search/...) are preserved on
+			// ProviderExtensions.OpenAIResponses.Request for same-protocol replay and
+			// diagnosed on non-Responses outbounds. Do not invent llm.Tool shapes here.
 			continue
 		}
 	}

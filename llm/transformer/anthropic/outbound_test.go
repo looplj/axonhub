@@ -16,6 +16,8 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	transformerpkg "github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -2791,4 +2793,215 @@ func TestOutboundTransformer_TransformRequest_DiagnosesOpenAIMetadataOnlyLosses(
 			}, llm.LossyDowngrades(llmReq))
 		})
 	}
+}
+
+
+func TestOutboundTransformer_TransformRequest_DiagnosesUnsupportedNativeTools(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "claude-3-sonnet-20240229",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("generate and search")},
+		}},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeImageGeneration},
+			{Type: llm.ToolTypeGoogleSearch},
+			{Type: llm.ToolTypeGoogleCodeExecution},
+			{Type: llm.ToolTypeGoogleUrlContext},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:        "calculator",
+					Description: "Perform calculations",
+				},
+			},
+		},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.Len(t, anthropicReq.Tools, 1)
+	require.Equal(t, "calculator", anthropicReq.Tools[0].Name)
+
+	require.ElementsMatch(t, []llm.LossyDowngrade{
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=image_generation",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=google_search",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=google_code_execution",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+		{
+			SourceProtocol: llm.APIFormatOpenAIResponse,
+			SourceField:    "tools[].type=google_url_context",
+			TargetProtocol: llm.APIFormatAnthropicMessage,
+			Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+			Severity:       llm.LossyDowngradeSeverityWarning,
+		},
+	}, llm.LossyDowngrades(llmReq))
+}
+
+func TestOutboundTransformer_TransformRequest_DiagnosesWebSearchWhenPlatformLacksNativeTools(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "claude-compatible",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("search something")},
+		}},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeWebSearch},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:        "calculator",
+					Description: "Perform calculations",
+				},
+			},
+		},
+	}
+
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		Type:           PlatformDeepSeek,
+		BaseURL:        "https://api.deepseek.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.Len(t, anthropicReq.Tools, 1)
+	require.Equal(t, "calculator", anthropicReq.Tools[0].Name)
+
+	require.Equal(t, []llm.LossyDowngrade{{
+		SourceProtocol: llm.APIFormatOpenAIChatCompletion,
+		SourceField:    "tools[].type=web_search",
+		TargetProtocol: llm.APIFormatAnthropicMessage,
+		Reason:         llm.LossyDowngradeReasonNoEquivalentSemantics,
+		Severity:       llm.LossyDowngradeSeverityWarning,
+	}}, llm.LossyDowngrades(llmReq))
+}
+
+func TestOutboundTransformer_TransformRequest_KeepsWebSearchWithoutLossOnDirectPlatform(t *testing.T) {
+	llmReq := &llm.Request{
+		Model:     "claude-3-sonnet-20240229",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("search something")},
+		}},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeWebSearch},
+		},
+	}
+
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.Len(t, anthropicReq.Tools, 1)
+	require.Equal(t, "web_search", anthropicReq.Tools[0].Name)
+	require.Empty(t, llm.LossyDowngrades(llmReq))
+}
+
+
+func mustMarshalJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return b
+}
+
+
+func TestOutboundTransformer_TransformRequest_DiagnosesResponsesNativeToolLoss(t *testing.T) {
+	responsesInbound := responses.NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: mustMarshalJSON(t, map[string]any{
+			"model": "gpt-5.5",
+			"input": []map[string]any{
+				{"type": "additional_tools", "tools": []map[string]any{{"type": "tool_search", "name": "search_docs"}}},
+				{"role": "user", "content": "use tools"},
+			},
+			"tools": []map[string]any{
+				{
+					"type": "namespace",
+					"name": "mcp__node_repl",
+					"tools": []map[string]any{{"type": "function", "name": "run", "parameters": map[string]any{"type": "object"}}},
+				},
+				{"type": "tool_search", "name": "search_docs", "namespace": "docs"},
+				{"type": "code_interpreter", "container": map[string]any{"type": "auto"}},
+			},
+			"client_metadata": map[string]any{"codex_version": "1.2.3"},
+		}),
+	}
+
+	llmReq, err := responsesInbound.TransformRequest(t.Context(), inboundReq)
+	require.NoError(t, err)
+	llmReq.Model = "claude-3-sonnet-20240229"
+	llmReq.MaxTokens = lo.ToPtr(int64(1024))
+
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	result, err := transformer.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	downgrades := llm.LossyDowngrades(llmReq)
+	require.NotEmpty(t, downgrades)
+
+	expectedFields := map[string]bool{
+		"tools[].type=namespace":        false,
+		"tools[].type=tool_search":      false,
+		"input[].type=additional_tools": false,
+		"tools[] raw-only native tool":  false,
+		"client_metadata":               false,
+	}
+	for _, d := range downgrades {
+		if _, ok := expectedFields[d.SourceField]; ok {
+			require.Equal(t, llm.APIFormatOpenAIResponse, d.SourceProtocol)
+			require.Equal(t, llm.APIFormatAnthropicMessage, d.TargetProtocol)
+			require.Equal(t, llm.LossyDowngradeReasonNoEquivalentSemantics, d.Reason)
+			expectedFields[d.SourceField] = true
+		}
+	}
+	for field, found := range expectedFields {
+		require.True(t, found, "missing LossyDowngrade for %s in %#v", field, downgrades)
+	}
+
+	diagnostics, ok := result.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	require.True(t, ok)
+	require.True(t, diagnostics.LossyDowngrade)
+	require.Equal(t, 1, diagnostics.NamespaceToolCount)
+	require.Equal(t, 1, diagnostics.ToolSearchToolCount)
+	require.Equal(t, 1, diagnostics.AdditionalToolsCount)
+	require.GreaterOrEqual(t, diagnostics.RawOnlyToolCount, 1)
+	require.Equal(t, 1, diagnostics.ClientMetadataCount)
 }

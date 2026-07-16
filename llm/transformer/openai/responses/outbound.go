@@ -217,6 +217,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	apiKey := t.config.APIKeyProvider.Get(ctx)
 
 	var tools []Tool
+	hasUnsupportedGoogleCodeExecution := false
+	hasUnsupportedGoogleURLContext := false
+	hasUnsupportedCustomWithoutShape := false
+	hasUnsupportedUnknownTool := false
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
 		switch item.Type {
@@ -237,6 +241,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		case "custom":
 			// Explicit Chat→Responses custom tool declaration bridge.
 			if item.OpenAIChatCustomTool == nil {
+				hasUnsupportedCustomWithoutShape = true
 				continue
 			}
 			tool := convertChatCustomToTool(item)
@@ -244,11 +249,23 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		case "function":
 			tool := convertFunctionToTool(item)
 			tools = append(tools, tool)
+		case llm.ToolTypeGoogleCodeExecution:
+			hasUnsupportedGoogleCodeExecution = true
+		case llm.ToolTypeGoogleUrlContext:
+			hasUnsupportedGoogleURLContext = true
 		default:
-			// Skip unsupported tool types
+			// Omit tool types with no Responses declaration mapping.
+			hasUnsupportedUnknownTool = true
 			continue
 		}
 	}
+	recordResponsesUnsupportedToolLossyDowngrades(
+		llmReq,
+		hasUnsupportedGoogleCodeExecution,
+		hasUnsupportedGoogleURLContext,
+		hasUnsupportedCustomWithoutShape,
+		hasUnsupportedUnknownTool,
+	)
 
 	payload := Request{
 		Model:                llmReq.Model,
@@ -331,6 +348,54 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	recordResponsesChatNativeLossyDowngrades(llmReq)
 	shared.PropagateRequestMetadata(httpReq, llmReq)
 	return httpReq, nil
+}
+
+
+
+// recordResponsesUnsupportedToolLossyDowngrades records tool declarations that the
+// Responses outbound intentionally omits instead of faking an unsupported wire shape.
+func recordResponsesUnsupportedToolLossyDowngrades(
+	llmReq *llm.Request,
+	hasGoogleCodeExecution bool,
+	hasGoogleURLContext bool,
+	hasCustomWithoutShape bool,
+	hasUnknownTool bool,
+) {
+	if llmReq == nil {
+		return
+	}
+	sourceProtocol := llmReq.APIFormat
+	if sourceProtocol == "" {
+		sourceProtocol = llm.APIFormatOpenAIChatCompletion
+	}
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=google_code_execution",
+		llm.APIFormatOpenAIResponse,
+		hasGoogleCodeExecution,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=google_url_context",
+		llm.APIFormatOpenAIResponse,
+		hasGoogleURLContext,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[].type=custom",
+		llm.APIFormatOpenAIResponse,
+		hasCustomWithoutShape,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		sourceProtocol,
+		"tools[] unsupported type",
+		llm.APIFormatOpenAIResponse,
+		hasUnknownTool,
+	)
 }
 
 // recordResponsesChatNativeLossyDowngrades records explicit Chat→Responses field

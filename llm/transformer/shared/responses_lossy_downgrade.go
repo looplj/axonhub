@@ -22,6 +22,14 @@ type ResponsesLossyDowngradeDiagnostics struct {
 }
 
 func RecordResponsesLossyDowngradeDiagnostics(llmReq *llm.Request) {
+	RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq, "")
+}
+
+// RecordResponsesLossyDowngradeDiagnosticsForTarget records both the shared
+// Responses lossy summary and formal LossyDowngrade entries for known
+// Responses-native fields that the target protocol cannot express.
+// targetProtocol empty means summary-only metadata diagnostics.
+func RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq *llm.Request, targetProtocol llm.APIFormat) {
 	requestExt := openAIResponsesRequestExtensions(llmReq)
 	if requestExt == nil {
 		return
@@ -55,6 +63,23 @@ func RecordResponsesLossyDowngradeDiagnostics(llmReq *llm.Request) {
 	if diagnostics.LossyDowngrade {
 		llmReq.TransformerMetadata[ResponsesLossyDowngradeDiagnosticsKey] = diagnostics
 	}
+
+	if targetProtocol == "" || !diagnostics.LossyDowngrade {
+		return
+	}
+
+	sourceProtocol := llmReq.APIFormat
+	if sourceProtocol == "" {
+		sourceProtocol = llm.APIFormatOpenAIResponse
+	}
+
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "tools[].type=namespace", targetProtocol, diagnostics.NamespaceToolCount > 0)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "tools[].type=tool_search", targetProtocol, diagnostics.ToolSearchToolCount > 0)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "input[].type=additional_tools", targetProtocol, diagnostics.AdditionalToolsCount > 0)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "tools[] raw-only native tool", targetProtocol, diagnostics.RawOnlyToolCount > 0)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "client_metadata", targetProtocol, diagnostics.ClientMetadataCount > 0)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "request raw top-level field", targetProtocol, diagnostics.UnknownTopLevelFieldCount > 0)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "input[] raw-only item", targetProtocol, diagnostics.RawInputItemCount > 0 && diagnostics.AdditionalToolsCount == 0)
 }
 
 func openAIResponsesRequestExtensions(llmReq *llm.Request) *llm.OpenAIResponsesRequestExtensions {
