@@ -548,8 +548,10 @@ type MessageContentPart struct {
 	// InputAudio is the input audio content, required when type is "input_audio"
 	InputAudio *InputAudio `json:"input_audio,omitempty"`
 
-	// OpenAIChatFile preserves the native Chat file content-part payload. It is
-	// adapter-specific and consumed only by the OpenAI Chat adapter.
+	// OpenAIChatFile preserves the file fields shared by OpenAI Chat file parts
+	// and OpenAI Responses input_file parts. The Responses adapter keeps its
+	// file_url and detail fields in per-part TransformerMetadata because Chat
+	// has no equivalents for them.
 	OpenAIChatFile *OpenAIChatFileContentPart `json:"openai_chat_file,omitempty"`
 
 	// OpenAIChatRefusal preserves a native Chat content-array refusal payload.

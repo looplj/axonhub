@@ -31,7 +31,7 @@ type OpenAIResponsesProviderExtensions struct {
 type OpenAIResponsesResponseExtensions struct {
 	// Status preserves a Responses-native lifecycle value that has no shared
 	// Chat finish_reason equivalent (for example queued or in_progress).
-	Status *string `json:"-"`
+	Status            *string                    `json:"-"`
 	RawTopLevelFields map[string]json.RawMessage `json:"-"`
 	// RawOutputItems preserves Responses-native output items that have no
 	// canonical llm.Response representation. They are replayed only by the
@@ -79,13 +79,13 @@ type AnthropicRawContentFragment struct {
 }
 
 type AnthropicResponseExtensions struct {
-	StopSequence    *string                   `json:"-"`
-	StopDetails     json.RawMessage           `json:"-"`
-	RawUsage        json.RawMessage           `json:"-"`
+	StopSequence *string         `json:"-"`
+	StopDetails  json.RawMessage `json:"-"`
+	RawUsage     json.RawMessage `json:"-"`
 	// RawContent preserves the complete Anthropic response content[] array for
 	// same-protocol non-stream replay when common llm.Response cannot own every
 	// block. Only the Anthropic inbound adapter may consume it.
-	RawContent      []json.RawMessage          `json:"-"`
+	RawContent      []json.RawMessage         `json:"-"`
 	RawStreamEvents []AnthropicRawStreamEvent `json:"-"`
 }
 
@@ -95,8 +95,17 @@ type AnthropicRawStreamEvent struct {
 }
 
 type OpenAIResponsesRequestExtensions struct {
-	ClientMetadata    map[string]string          `json:"-"`
-	RawTopLevelFields map[string]json.RawMessage `json:"-"`
+	// Include carries the Responses-native top-level include directive. It is
+	// intentionally not part of TransformerMetadata because Chat and Anthropic
+	// do not share its wire semantics.
+	Include              []string                   `json:"-"`
+	MaxToolCalls         *int64                     `json:"-"`
+	PromptCacheRetention *string                    `json:"-"`
+	Truncation           *string                    `json:"-"`
+	Background           *bool                      `json:"-"`
+	ClientMetadata       map[string]string          `json:"-"`
+	RawPrompt            json.RawMessage            `json:"-"`
+	RawTopLevelFields    map[string]json.RawMessage `json:"-"`
 	// RawStreamOptions preserves Responses-native stream_options exactly,
 	// including nested extension fields. It is intentionally separate from
 	// RawTopLevelFields so known stream_options never inflate
@@ -108,10 +117,29 @@ type OpenAIResponsesRequestExtensions struct {
 	// They are replayed from this field, not RawInputItems, so diagnostics can
 	// distinguish lazy tool declarations from other raw-only input items.
 	AdditionalTools []OpenAIResponsesRawFragment `json:"-"`
-	RawTools        []OpenAIResponsesRawFragment `json:"-"`
-	ToolSignatures  []string                     `json:"-"`
-	RawToolChoice   json.RawMessage              `json:"-"`
-	RawInputItems   []OpenAIResponsesRawFragment `json:"-"`
+
+	// AdditionalToolsCanonicalTools contains declarations from additional_tools
+	// that have a stable cross-protocol llm.Tool representation. Responses
+	// same-protocol replay continues to use AdditionalTools raw fragments.
+	AdditionalToolsCanonicalTools []Tool `json:"-"`
+
+	// AdditionalToolsUnrepresentableCount records declarations that cannot be
+	// projected into a canonical tool and remain lossy cross-protocol.
+	AdditionalToolsUnrepresentableCount int `json:"-"`
+
+	// ToolSearchOutputCanonicalTools contains the tools dynamically loaded by
+	// a client-executed tool_search_output item that have a stable
+	// cross-protocol llm.Tool representation. The original input item remains
+	// in RawInputItems for Responses same-protocol replay.
+	ToolSearchOutputCanonicalTools []Tool `json:"-"`
+
+	// ToolSearchOutputUnrepresentableCount records loaded declarations that
+	// cannot be projected into a canonical tool for a non-Responses target.
+	ToolSearchOutputUnrepresentableCount int                          `json:"-"`
+	RawTools                             []OpenAIResponsesRawFragment `json:"-"`
+	ToolSignatures                       []string                     `json:"-"`
+	RawToolChoice                        json.RawMessage              `json:"-"`
+	RawInputItems                        []OpenAIResponsesRawFragment `json:"-"`
 
 	// PrependCount records how many messages were prepended to the canonical
 	// request by the prompt pipeline between inbound and outbound. The
@@ -149,6 +177,15 @@ func EnsureOpenAIResponsesProviderExtensions(req *Request) *OpenAIResponsesProvi
 	}
 
 	return req.ProviderExtensions.OpenAIResponses
+}
+
+// OpenAIResponsesRequestExtension returns the source-owned Responses request
+// sidecar without creating provider extensions.
+func OpenAIResponsesRequestExtension(req *Request) *OpenAIResponsesRequestExtensions {
+	if req == nil || req.ProviderExtensions == nil || req.ProviderExtensions.OpenAIResponses == nil {
+		return nil
+	}
+	return req.ProviderExtensions.OpenAIResponses.Request
 }
 
 func EnsureOpenAIResponsesResponseExtensions(resp *Response) *OpenAIResponsesResponseExtensions {
@@ -233,16 +270,26 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 		cloned.OpenAIResponses = &OpenAIResponsesProviderExtensions{}
 		if src.OpenAIResponses.Request != nil {
 			cloned.OpenAIResponses.Request = &OpenAIResponsesRequestExtensions{
-				ClientMetadata:    cloneStringMap(src.OpenAIResponses.Request.ClientMetadata),
-				RawTopLevelFields: cloneRawMessageMap(src.OpenAIResponses.Request.RawTopLevelFields),
-				RawStreamOptions:  cloneRawMessage(src.OpenAIResponses.Request.RawStreamOptions),
-				NativeTools:       cloneOpenAIResponsesNativeTools(src.OpenAIResponses.Request.NativeTools),
-				AdditionalTools:   cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.AdditionalTools),
-				RawTools:          cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
-				ToolSignatures:    append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
-				RawToolChoice:     cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
-				RawInputItems:     cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
-				PrependCount:      src.OpenAIResponses.Request.PrependCount,
+				Include:                              append([]string(nil), src.OpenAIResponses.Request.Include...),
+				MaxToolCalls:                         cloneInt64Ptr(src.OpenAIResponses.Request.MaxToolCalls),
+				PromptCacheRetention:                 cloneStringPtr(src.OpenAIResponses.Request.PromptCacheRetention),
+				Truncation:                           cloneStringPtr(src.OpenAIResponses.Request.Truncation),
+				Background:                           cloneBoolPtr(src.OpenAIResponses.Request.Background),
+				ClientMetadata:                       cloneStringMap(src.OpenAIResponses.Request.ClientMetadata),
+				RawPrompt:                            cloneRawMessage(src.OpenAIResponses.Request.RawPrompt),
+				RawTopLevelFields:                    cloneRawMessageMap(src.OpenAIResponses.Request.RawTopLevelFields),
+				RawStreamOptions:                     cloneRawMessage(src.OpenAIResponses.Request.RawStreamOptions),
+				NativeTools:                          cloneOpenAIResponsesNativeTools(src.OpenAIResponses.Request.NativeTools),
+				AdditionalTools:                      cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.AdditionalTools),
+				AdditionalToolsCanonicalTools:        append([]Tool(nil), src.OpenAIResponses.Request.AdditionalToolsCanonicalTools...),
+				AdditionalToolsUnrepresentableCount:  src.OpenAIResponses.Request.AdditionalToolsUnrepresentableCount,
+				ToolSearchOutputCanonicalTools:       append([]Tool(nil), src.OpenAIResponses.Request.ToolSearchOutputCanonicalTools...),
+				ToolSearchOutputUnrepresentableCount: src.OpenAIResponses.Request.ToolSearchOutputUnrepresentableCount,
+				RawTools:                             cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
+				ToolSignatures:                       append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
+				RawToolChoice:                        cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
+				RawInputItems:                        cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
+				PrependCount:                         src.OpenAIResponses.Request.PrependCount,
 			}
 		}
 		if src.OpenAIResponses.Response != nil {
@@ -371,6 +418,33 @@ func cloneStringMap(src map[string]string) map[string]string {
 	}
 
 	return lo.Assign(map[string]string{}, src)
+}
+
+func cloneInt64Ptr(src *int64) *int64 {
+	if src == nil {
+		return nil
+	}
+
+	value := *src
+	return &value
+}
+
+func cloneStringPtr(src *string) *string {
+	if src == nil {
+		return nil
+	}
+
+	value := *src
+	return &value
+}
+
+func cloneBoolPtr(src *bool) *bool {
+	if src == nil {
+		return nil
+	}
+
+	value := *src
+	return &value
 }
 
 func cloneRawMessageMap(src map[string]json.RawMessage) map[string]json.RawMessage {

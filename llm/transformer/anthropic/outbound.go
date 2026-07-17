@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	// Import bedrock package to register its decoder.
@@ -169,8 +170,10 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: %w", transformer.ErrInvalidRequest, thinkingPlan.validationErr)
 	}
 
+	chatResponseFormat := chatJSONSchemaResponseFormatForAnthropic(llmReq, t.config)
 	recordAnthropicThinkingLossyDowngrade(llmReq, thinkingPlan)
-	recordAnthropicChatNativeLossyDowngrades(llmReq)
+	recordAnthropicChatNativeLossyDowngrades(llmReq, chatResponseFormat.isRepresented())
+	recordAnthropicResponsesNativeLossyDowngrades(llmReq)
 	recordAnthropicUnsupportedNativeToolLossyDowngrades(llmReq, t.config)
 
 	// Convert to Anthropic request format
@@ -178,6 +181,7 @@ func (t *OutboundTransformer) TransformRequest(
 	if err != nil {
 		return nil, err
 	}
+	applyChatJSONSchemaResponseFormatForAnthropic(anthropicReq, llmReq, chatResponseFormat)
 
 	// Anthropic supports two prompt-caching modes (see
 	// https://docs.claude.com/en/docs/build-with-claude/prompt-caching):
@@ -435,7 +439,7 @@ func containsNativeWebSearchTool(tools []Tool) bool {
 	return false
 }
 
-func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
+func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request, responseFormatBridged bool) {
 	if llmReq == nil {
 		return
 	}
@@ -491,36 +495,243 @@ func recordAnthropicChatNativeLossyDowngrades(llmReq *llm.Request) {
 			llm.APIFormatAnthropicMessage,
 			llmReq.Seed != nil,
 		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"tool_choice.type=allowed_tools",
+			llm.APIFormatAnthropicMessage,
+			llmReq.ToolChoice != nil && llmReq.ToolChoice.OpenAIChatAllowedTools != nil,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"logprobs",
+			llm.APIFormatAnthropicMessage,
+			llmReq.Logprobs != nil && *llmReq.Logprobs,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"top_logprobs",
+			llm.APIFormatAnthropicMessage,
+			llmReq.TopLogprobs != nil,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"logit_bias",
+			llm.APIFormatAnthropicMessage,
+			len(llmReq.LogitBias) > 0,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"store",
+			llm.APIFormatAnthropicMessage,
+			llmReq.Store != nil,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"stream_options.include_usage",
+			llm.APIFormatAnthropicMessage,
+			llmReq.StreamOptions != nil && llmReq.StreamOptions.IncludeUsage,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"response_format",
+			llm.APIFormatAnthropicMessage,
+			llmReq.ResponseFormat != nil && llmReq.ResponseFormat.Type != "text" && !responseFormatBridged,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"verbosity",
+			llm.APIFormatAnthropicMessage,
+			llmReq.Verbosity != nil,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"modalities",
+			llm.APIFormatAnthropicMessage,
+			hasNonTextModalities(llmReq.Modalities),
+		)
 	}
 
 	recordAnthropicOpenAICustomToolLossyDowngrades(llmReq)
 
-	if llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
-		return
+	shared.RecordOpenAIChatRawRequestLossyDowngrades(llmReq, llm.APIFormatAnthropicMessage, nil)
+}
+
+type chatJSONSchemaResponseFormatBridge struct {
+	format         json.RawMessage
+	residualFields []string
+}
+
+func (bridge chatJSONSchemaResponseFormatBridge) isRepresented() bool {
+	return len(bridge.format) > 0
+}
+
+func chatJSONSchemaResponseFormatForAnthropic(llmReq *llm.Request, config *Config) chatJSONSchemaResponseFormatBridge {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion ||
+		llmReq.ResponseFormat == nil || llmReq.ResponseFormat.Type != "json_schema" ||
+		!supportsOutputConfig(config) {
+		return chatJSONSchemaResponseFormatBridge{}
 	}
 
 	var source map[string]json.RawMessage
-	if err := json.Unmarshal(llmReq.RawRequest.Body, &source); err != nil {
-		return
+	if json.Unmarshal(llmReq.ResponseFormat.JSONSchema, &source) != nil || source == nil {
+		return chatJSONSchemaResponseFormatBridge{}
+	}
+	schema, ok := source["schema"]
+	if !ok {
+		return chatJSONSchemaResponseFormatBridge{}
+	}
+	var schemaObject map[string]json.RawMessage
+	if json.Unmarshal(schema, &schemaObject) != nil || schemaObject == nil {
+		return chatJSONSchemaResponseFormatBridge{}
 	}
 
-	for _, field := range []string{
-		"prompt_cache_retention",
-		"n",
-		"audio",
-		"prediction",
-		"moderation",
-		"web_search_options",
-		"functions",
-		"function_call",
-	} {
-		if len(source[field]) == 0 {
-			continue
+	format, err := json.Marshal(struct {
+		Type   string          `json:"type"`
+		Schema json.RawMessage `json:"schema"`
+	}{
+		Type:   "json_schema",
+		Schema: schema,
+	})
+	if err != nil {
+		return chatJSONSchemaResponseFormatBridge{}
+	}
+
+	residualFields := make([]string, 0, len(source)-1)
+	for field := range source {
+		if field != "schema" {
+			residualFields = append(residualFields, "response_format.json_schema."+field)
 		}
-		llm.AddLossyDowngradeIfPresent(llmReq, llm.APIFormatOpenAIChatCompletion, field, llm.APIFormatAnthropicMessage, true)
+	}
+	sort.Strings(residualFields)
+	return chatJSONSchemaResponseFormatBridge{
+		format:         format,
+		residualFields: residualFields,
 	}
 }
 
+func applyChatJSONSchemaResponseFormatForAnthropic(
+	request *MessageRequest,
+	llmReq *llm.Request,
+	bridge chatJSONSchemaResponseFormatBridge,
+) {
+	if request == nil || !bridge.isRepresented() {
+		return
+	}
+	if request.OutputConfig == nil {
+		request.OutputConfig = &OutputConfig{}
+	}
+	request.OutputConfig.Format = append(json.RawMessage(nil), bridge.format...)
+	for _, field := range bridge.residualFields {
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			field,
+			llm.APIFormatAnthropicMessage,
+			true,
+		)
+	}
+}
+
+func recordAnthropicResponsesNativeLossyDowngrades(llmReq *llm.Request) {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIResponse {
+		return
+	}
+
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		llm.APIFormatOpenAIResponse,
+		"previous_response_id",
+		llm.APIFormatAnthropicMessage,
+		llmReq.PreviousResponseID != nil,
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		llm.APIFormatOpenAIResponse,
+		"input[].type=input_file",
+		llm.APIFormatAnthropicMessage,
+		hasResponsesInputFileParts(llmReq),
+	)
+	llm.AddLossyDowngradeIfPresent(
+		llmReq,
+		llm.APIFormatOpenAIResponse,
+		"input[].type=input_audio",
+		llm.APIFormatAnthropicMessage,
+		hasResponsesInputAudioParts(llmReq),
+	)
+
+	if llmReq.ProviderExtensions == nil || llmReq.ProviderExtensions.OpenAIResponses == nil || llmReq.ProviderExtensions.OpenAIResponses.Request == nil {
+		return
+	}
+
+	requestExt := llmReq.ProviderExtensions.OpenAIResponses.Request
+	for _, field := range []struct {
+		name    string
+		present bool
+	}{
+		{name: "include", present: len(requestExt.Include) > 0},
+		{name: "max_tool_calls", present: requestExt.MaxToolCalls != nil},
+		{name: "prompt_cache_retention", present: requestExt.PromptCacheRetention != nil},
+		{name: "truncation", present: requestExt.Truncation != nil},
+		{name: "background", present: requestExt.Background != nil},
+		{name: "prompt", present: len(requestExt.RawPrompt) > 0},
+		{name: "stream_options", present: len(requestExt.RawStreamOptions) > 0},
+		{name: "tool_choice", present: len(requestExt.RawToolChoice) > 0 && llmReq.ToolChoice == nil},
+	} {
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIResponse,
+			field.name,
+			llm.APIFormatAnthropicMessage,
+			field.present,
+		)
+	}
+}
+
+func hasResponsesInputFileParts(llmReq *llm.Request) bool {
+	if llmReq == nil {
+		return false
+	}
+	for _, message := range llmReq.Messages {
+		for _, part := range message.Content.MultipleContent {
+			if part.Type == "file" && part.OpenAIChatFile != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasResponsesInputAudioParts(llmReq *llm.Request) bool {
+	if llmReq == nil {
+		return false
+	}
+	for _, message := range llmReq.Messages {
+		for _, part := range message.Content.MultipleContent {
+			if part.Type == "input_audio" && part.InputAudio != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasNonTextModalities(modalities []string) bool {
+	for _, modality := range modalities {
+		if modality != "text" {
+			return true
+		}
+	}
+	return false
+}
 
 // recordAnthropicOpenAICustomToolLossyDowngrades records explicit loss for OpenAI
 // freeform custom tool declarations/calls that have no Anthropic JSON input_schema

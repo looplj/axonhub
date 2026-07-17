@@ -218,7 +218,6 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		Store:               req.Store,
 		TopLogprobs:         req.TopLogprobs,
 		TopP:                req.TopP,
-		Modalities:          req.Modalities,
 		SafetyIdentifier:    req.SafetyIdentifier,
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
@@ -226,35 +225,6 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		PreviousResponseID:  req.PreviousResponseID,
 		TransformerMetadata: map[string]any{},
 		TransformOptions:    llm.TransformOptions{},
-	}
-
-	// Store help fields in TransformerMetadata
-	if len(req.Include) > 0 {
-		chatReq.TransformerMetadata[shared.MetadataKeyInclude] = req.Include
-	}
-
-	if req.MaxToolCalls != nil {
-		chatReq.TransformerMetadata[responsesMaxToolCallsTransformerMetadataKey] = req.MaxToolCalls
-	}
-
-	if req.PromptCacheRetention != nil {
-		chatReq.TransformerMetadata[responsesPromptCacheRetentionTransformerMetadataKey] = req.PromptCacheRetention
-	}
-
-	if req.Truncation != nil {
-		chatReq.TransformerMetadata[responsesTruncationTransformerMetadataKey] = req.Truncation
-	}
-
-	// Preserve the top-level background flag (background mode) so it survives
-	// non-pass-through format conversion.
-	if req.Background != nil {
-		chatReq.TransformerMetadata[responsesBackgroundTransformerMetadataKey] = *req.Background
-	}
-
-	// Preserve the stored prompt template reference (F19); canonical has no
-	// Prompt slot, so it rides TransformerMetadata like background/include.
-	if req.Prompt != nil {
-		chatReq.TransformerMetadata[responsesPromptTransformerMetadataKey] = req.Prompt
 	}
 
 	// Preserve top_k through TransformerMetadata; canonical llm.Request has no
@@ -322,9 +292,6 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	// Convert stream options
 	if req.StreamOptions != nil {
 		chatReq.StreamOptions = &llm.StreamOptions{}
-		if req.StreamOptions.IncludeObfuscation != nil {
-			chatReq.TransformerMetadata[responsesIncludeObfuscationTransformerMetadataKey] = req.StreamOptions.IncludeObfuscation
-		}
 	}
 
 	// Convert instructions to system message
@@ -386,9 +353,13 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		chatReq.Verbosity = req.Text.Verbosity
 	}
 
+	var rawRequestBody []byte
 	if len(rawBody) > 0 {
-		attachOpenAIResponsesRequestExtensions(chatReq, req, rawBody[0])
-		if rawReasoning := extractRawReasoningObject(rawBody[0]); len(rawReasoning) > 0 {
+		rawRequestBody = rawBody[0]
+	}
+	attachOpenAIResponsesRequestExtensions(chatReq, req, rawRequestBody)
+	if len(rawRequestBody) > 0 {
+		if rawReasoning := extractRawReasoningObject(rawRequestBody); len(rawReasoning) > 0 {
 			chatReq.TransformerMetadata[responsesReasoningRawObjectTransformerMetadataKey] = rawReasoning
 		}
 	}
@@ -418,13 +389,26 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 
 	if src.Mode != nil {
 		result.ToolChoice = src.Mode
-	} else if src.Type != nil && src.Name != nil {
+		return result
+	}
+	if src.Type == nil || src.Name == nil {
+		return nil
+	}
+
+	switch *src.Type {
+	case "custom":
+		result.OpenAIChatCustomToolChoice = &llm.OpenAIChatCustomToolChoice{
+			Name: *src.Name,
+		}
+	case "function":
 		result.NamedToolChoice = &llm.NamedToolChoice{
 			Type: *src.Type,
 			Function: llm.ToolFunction{
 				Name: *src.Name,
 			},
 		}
+	default:
+		return nil
 	}
 
 	return result
@@ -505,26 +489,73 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 // convertConsecutiveToolCalls merges adjacent Responses tool-call input items
 // into one canonical assistant message. The next output item deliberately ends
 // the group, so it is emitted as its own role="tool" message by the caller.
+//
+// Reasoning items that appear between a tool call and its tool output are also
+// attached to this assistant message. Chat providers validate tool history as
+// assistant(tool_calls) immediately followed by role=tool; an intervening
+// assistant-only reasoning message is rejected as a missing tool output.
 func convertConsecutiveToolCalls(items []Item, startIdx int) (*llm.Message, int, error) {
 	msg := &llm.Message{Role: "assistant"}
 	consumed := 0
+	var reasoningText strings.Builder
 
 	for index := startIdx; index < len(items); index++ {
 		item := &items[index]
-		if item.Type != "function_call" && item.Type != "custom_tool_call" {
-			break
+		switch item.Type {
+		case "function_call", "custom_tool_call":
+			toolCallMessage, err := convertItemToMessage(item)
+			if err != nil {
+				return nil, 0, err
+			}
+			if toolCallMessage != nil {
+				msg.ToolCalls = append(msg.ToolCalls, toolCallMessage.ToolCalls...)
+			}
+			consumed++
+		case "reasoning":
+			// Only fold mid-call reasoning once at least one tool call has been
+			// collected. Leading reasoning is handled by convertReasoningWithFollowing.
+			if len(msg.ToolCalls) == 0 {
+				if reasoningText.Len() > 0 {
+					msg.ReasoningContent = lo.ToPtr(reasoningText.String())
+				}
+				return msg, consumed, nil
+			}
+			if msg.ResponseReasoningItemID == nil {
+				reasoningItemID := item.ID
+				msg.ResponseReasoningItemID = &reasoningItemID
+			}
+			if msg.ReasoningSignature == nil && item.EncryptedContent != nil {
+				msg.ReasoningSignature = item.EncryptedContent
+			}
+			// Prefer raw reasoning_text content[] over summary when both exist.
+			itemText := strings.Builder{}
+			for _, part := range item.ReasoningContent {
+				if part.Text != "" {
+					itemText.WriteString(part.Text)
+				}
+			}
+			if itemText.Len() == 0 {
+				for _, summary := range item.Summary {
+					itemText.WriteString(summary.Text)
+				}
+			}
+			if itemText.Len() > 0 {
+				reasoningText.WriteString(itemText.String())
+			}
+			consumed++
+		default:
+			// function_call_output / custom_tool_call_output / other items end
+			// the assistant tool-call group so outputs stay adjacent.
+			if reasoningText.Len() > 0 {
+				msg.ReasoningContent = lo.ToPtr(reasoningText.String())
+			}
+			return msg, consumed, nil
 		}
-
-		toolCallMessage, err := convertItemToMessage(item)
-		if err != nil {
-			return nil, 0, err
-		}
-		if toolCallMessage != nil {
-			msg.ToolCalls = append(msg.ToolCalls, toolCallMessage.ToolCalls...)
-		}
-		consumed++
 	}
 
+	if reasoningText.Len() > 0 {
+		msg.ReasoningContent = lo.ToPtr(reasoningText.String())
+	}
 	return msg, consumed, nil
 }
 
@@ -692,6 +723,19 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 
 		return nil, nil
+
+	case "input_file":
+		part, err := convertContentItemToPart(item)
+		if err != nil || part == nil {
+			return nil, err
+		}
+
+		return &llm.Message{
+			Role: lo.Ternary(item.Role != "", item.Role, "user"),
+			Content: llm.MessageContent{
+				MultipleContent: []llm.MessageContentPart{*part},
+			},
+		}, nil
 
 	case "function_call":
 		// Function call from assistant - convert to tool call.
@@ -893,6 +937,29 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 		}
 
 		return nil, nil
+
+	case "input_file":
+		metadata := map[string]any{}
+		if item.FileURL != nil {
+			metadata[responsesInputFileURLPartTransformerMetadataKey] = item.FileURL
+		}
+		if item.Detail != nil {
+			metadata[responsesInputFileDetailPartTransformerMetadataKey] = item.Detail
+		}
+		if len(metadata) == 0 {
+			metadata = nil
+		}
+
+		return &llm.MessageContentPart{
+			ID:   item.ID,
+			Type: "file",
+			OpenAIChatFile: &llm.OpenAIChatFileContentPart{
+				FileData: item.FileData,
+				FileID:   item.FileID,
+				Filename: item.Filename,
+			},
+			TransformerMetadata: metadata,
+		}, nil
 
 	case "compaction", "compaction_summary":
 		return compactionContentPartFromItem(item, item.Type), nil

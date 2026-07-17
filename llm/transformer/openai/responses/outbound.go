@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 
@@ -266,7 +267,27 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hasUnsupportedCustomWithoutShape,
 		hasUnsupportedUnknownTool,
 	)
-
+	chatRawRepresentedFields := map[string]bool{}
+	if webSearchTool, unknownFields := chatWebSearchOptionsForResponses(llmReq); webSearchTool != nil {
+		tools = mergeChatWebSearchOptionsIntoResponsesTools(tools, *webSearchTool)
+		chatRawRepresentedFields["web_search_options"] = true
+		for _, field := range unknownFields {
+			llm.AddLossyDowngradeIfPresent(
+				llmReq,
+				llm.APIFormatOpenAIChatCompletion,
+				field,
+				llm.APIFormatOpenAIResponse,
+				true,
+			)
+		}
+	}
+	promptCacheRetention := openAIResponsesRequestPromptCacheRetention(llmReq)
+	if promptCacheRetention == nil {
+		if bridged, ok := chatPromptCacheRetentionForResponses(llmReq); ok {
+			promptCacheRetention = bridged
+			chatRawRepresentedFields["prompt_cache_retention"] = true
+		}
+	}
 	payload := Request{
 		Model:                llmReq.Model,
 		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, llmReq.TransformerMetadata),
@@ -288,18 +309,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		TopP:                 llmReq.TopP,
 		TopK:                 xmap.GetInt64Ptr(llmReq.TransformerMetadata, shared.TransformerMetadataKeyTopK),
 		CacheControl:         restoreCacheControl(llmReq.TransformerMetadata),
-		Modalities:           llmReq.Modalities,
 		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
-		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
+		StreamOptions:        convertStreamOptions(openAIResponsesRequestRawStreamOptions(llmReq)),
 		Reasoning:            convertReasoning(llmReq),
 		PromptCacheKey:       llmReq.PromptCacheKey,
 		PreviousResponseID:   llmReq.PreviousResponseID,
-		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, shared.MetadataKeyInclude),
-		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, responsesMaxToolCallsTransformerMetadataKey),
-		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, responsesPromptCacheRetentionTransformerMetadataKey),
-		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, responsesTruncationTransformerMetadataKey),
-		Background:           xmap.GetBoolPtr(llmReq.TransformerMetadata, responsesBackgroundTransformerMetadataKey),
-		Prompt:               xmap.GetPtr[Prompt](llmReq.TransformerMetadata, responsesPromptTransformerMetadataKey),
+		Include:              includeForResponsesOutbound(llmReq),
+		MaxToolCalls:         openAIResponsesRequestMaxToolCalls(llmReq),
+		PromptCacheRetention: promptCacheRetention,
+		Truncation:           openAIResponsesRequestTruncation(llmReq),
+		Background:           openAIResponsesRequestBackground(llmReq),
 	}
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {
@@ -345,12 +364,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		SkipInboundQueryMerge: true,
 		Metadata:              nil,
 	}
-	recordResponsesChatNativeLossyDowngrades(llmReq)
+	recordResponsesChatNativeLossyDowngrades(llmReq, chatRawRepresentedFields)
+	shared.RecordAnthropicNativeLossyDowngradesForTarget(llmReq, llm.APIFormatOpenAIResponse)
 	shared.PropagateRequestMetadata(httpReq, llmReq)
 	return httpReq, nil
 }
-
-
 
 // recordResponsesUnsupportedToolLossyDowngrades records tool declarations that the
 // Responses outbound intentionally omits instead of faking an unsupported wire shape.
@@ -400,7 +418,7 @@ func recordResponsesUnsupportedToolLossyDowngrades(
 
 // recordResponsesChatNativeLossyDowngrades records explicit Chat→Responses field
 // losses that the Responses payload cannot represent. Allowlisted only.
-func recordResponsesChatNativeLossyDowngrades(llmReq *llm.Request) {
+func recordResponsesChatNativeLossyDowngrades(llmReq *llm.Request, chatRawRepresentedFields map[string]bool) {
 	if llmReq == nil {
 		return
 	}
@@ -413,7 +431,223 @@ func recordResponsesChatNativeLossyDowngrades(llmReq *llm.Request) {
 			llm.APIFormatOpenAIResponse,
 			llmReq.Seed != nil,
 		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"stop",
+			llm.APIFormatOpenAIResponse,
+			llmReq.Stop != nil && (llmReq.Stop.Stop != nil || len(llmReq.Stop.MultipleStop) > 0),
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"logit_bias",
+			llm.APIFormatOpenAIResponse,
+			len(llmReq.LogitBias) > 0,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"stream_options.include_usage",
+			llm.APIFormatOpenAIResponse,
+			llmReq.StreamOptions != nil && llmReq.StreamOptions.IncludeUsage,
+		)
+		llm.AddLossyDowngradeIfPresent(
+			llmReq,
+			llm.APIFormatOpenAIChatCompletion,
+			"modalities",
+			llm.APIFormatOpenAIResponse,
+			hasNonTextModalities(llmReq.Modalities),
+		)
 	}
+	shared.RecordOpenAIChatRawRequestLossyDowngrades(llmReq, llm.APIFormatOpenAIResponse, chatRawRepresentedFields)
+}
+
+func hasNonTextModalities(modalities []string) bool {
+	for _, modality := range modalities {
+		if modality != "text" {
+			return true
+		}
+	}
+	return false
+}
+
+func includeForResponsesOutbound(llmReq *llm.Request) []string {
+	include := append([]string(nil), openAIResponsesRequestInclude(llmReq)...)
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.Logprobs == nil || !*llmReq.Logprobs {
+		return include
+	}
+	for _, value := range include {
+		if value == "message.output_text.logprobs" {
+			return include
+		}
+	}
+	return append(include, "message.output_text.logprobs")
+}
+
+func chatPromptCacheRetentionForResponses(llmReq *llm.Request) (*string, bool) {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+		return nil, false
+	}
+	var source struct {
+		PromptCacheRetention *string `json:"prompt_cache_retention"`
+	}
+	if json.Unmarshal(llmReq.RawRequest.Body, &source) != nil || source.PromptCacheRetention == nil {
+		return nil, false
+	}
+	switch *source.PromptCacheRetention {
+	case "in_memory", "24h":
+		return source.PromptCacheRetention, true
+	default:
+		return nil, false
+	}
+}
+
+// chatWebSearchOptionsForResponses adapts the Chat-only web-search wrapper to
+// the equivalent Responses web_search tool. It keeps unknown source members
+// separate so the target boundary can report only the residual loss.
+func chatWebSearchOptionsForResponses(llmReq *llm.Request) (*Tool, []string) {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+		return nil, nil
+	}
+
+	var source map[string]json.RawMessage
+	if json.Unmarshal(llmReq.RawRequest.Body, &source) != nil {
+		return nil, nil
+	}
+	rawOptions, ok := source["web_search_options"]
+	if !ok || string(rawOptions) == "null" {
+		return nil, nil
+	}
+
+	var optionFields map[string]json.RawMessage
+	if json.Unmarshal(rawOptions, &optionFields) != nil || optionFields == nil {
+		return nil, nil
+	}
+
+	tool := &Tool{Type: "web_search"}
+	unknownFields := make([]string, 0)
+	for field, rawValue := range optionFields {
+		switch field {
+		case "search_context_size":
+			var searchContextSize string
+			if json.Unmarshal(rawValue, &searchContextSize) != nil || !isSupportedWebSearchContextSize(searchContextSize) {
+				unknownFields = append(unknownFields, "web_search_options.search_context_size")
+				continue
+			}
+			tool.SearchContextSize = searchContextSize
+		case "user_location":
+			location, locationUnknownFields, ok := chatWebSearchLocationForResponses(rawValue)
+			if !ok {
+				unknownFields = append(unknownFields, "web_search_options.user_location")
+				continue
+			}
+			tool.UserLocation = location
+			unknownFields = append(unknownFields, locationUnknownFields...)
+		default:
+			unknownFields = append(unknownFields, "web_search_options."+field)
+		}
+	}
+	sort.Strings(unknownFields)
+	return tool, unknownFields
+}
+
+func isSupportedWebSearchContextSize(value string) bool {
+	switch value {
+	case "low", "medium", "high":
+		return true
+	default:
+		return false
+	}
+}
+
+func chatWebSearchLocationForResponses(rawLocation json.RawMessage) (*WebSearchUserLocation, []string, bool) {
+	if string(rawLocation) == "null" {
+		return nil, nil, true
+	}
+
+	var locationFields map[string]json.RawMessage
+	if json.Unmarshal(rawLocation, &locationFields) != nil || locationFields == nil {
+		return nil, nil, false
+	}
+
+	rawType, ok := locationFields["type"]
+	if !ok {
+		return nil, []string{"web_search_options.user_location.type"}, true
+	}
+	var locationType string
+	if json.Unmarshal(rawType, &locationType) != nil || locationType != "approximate" {
+		return nil, []string{"web_search_options.user_location.type"}, true
+	}
+
+	location := &WebSearchUserLocation{Type: locationType}
+	unknownFields := make([]string, 0)
+	for field, rawValue := range locationFields {
+		switch field {
+		case "type":
+			continue
+		case "approximate":
+			approximateUnknownFields, ok := populateChatWebSearchApproximateLocation(location, rawValue)
+			if !ok {
+				unknownFields = append(unknownFields, "web_search_options.user_location.approximate")
+				continue
+			}
+			unknownFields = append(unknownFields, approximateUnknownFields...)
+		default:
+			unknownFields = append(unknownFields, "web_search_options.user_location."+field)
+		}
+	}
+	return location, unknownFields, true
+}
+
+func populateChatWebSearchApproximateLocation(location *WebSearchUserLocation, rawApproximate json.RawMessage) ([]string, bool) {
+	if string(rawApproximate) == "null" {
+		return nil, true
+	}
+
+	var approximateFields map[string]json.RawMessage
+	if json.Unmarshal(rawApproximate, &approximateFields) != nil || approximateFields == nil {
+		return nil, false
+	}
+
+	unknownFields := make([]string, 0)
+	for field, rawValue := range approximateFields {
+		var target *string
+		switch field {
+		case "city":
+			target = &location.City
+		case "country":
+			target = &location.Country
+		case "region":
+			target = &location.Region
+		case "timezone":
+			target = &location.Timezone
+		default:
+			unknownFields = append(unknownFields, "web_search_options.user_location.approximate."+field)
+			continue
+		}
+		if json.Unmarshal(rawValue, target) != nil {
+			unknownFields = append(unknownFields, "web_search_options.user_location.approximate."+field)
+		}
+	}
+	return unknownFields, true
+}
+
+func mergeChatWebSearchOptionsIntoResponsesTools(tools []Tool, source Tool) []Tool {
+	for index := range tools {
+		if tools[index].Type != "web_search" {
+			continue
+		}
+		if tools[index].SearchContextSize == "" {
+			tools[index].SearchContextSize = source.SearchContextSize
+		}
+		if tools[index].UserLocation == nil && source.UserLocation != nil {
+			location := *source.UserLocation
+			tools[index].UserLocation = &location
+		}
+		return tools
+	}
+	return append(tools, source)
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
@@ -532,7 +766,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 			choice.FinishReason = lo.ToPtr("length")
 		case "canceled", "cancelled":
 			choice.FinishReason = lo.ToPtr("cancelled")
-			}
+		}
 	}
 
 	llmResp.Choices = append(llmResp.Choices, choice)

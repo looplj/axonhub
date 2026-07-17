@@ -182,6 +182,10 @@ func convertUserMessage(msg llm.Message) Item {
 						InputAudio: p.InputAudio,
 					})
 				}
+			case "file":
+				if file, ok := inputFileItemFromContentPart(p); ok {
+					contentItems = append(contentItems, file)
+				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {
 					contentItems = append(contentItems, compactionItemFromPart(p, p.Type))
@@ -196,6 +200,27 @@ func convertUserMessage(msg llm.Message) Item {
 		Role:    msg.Role,
 		Content: &Input{Items: contentItems},
 	}
+}
+
+func inputFileItemFromContentPart(part llm.MessageContentPart) (Item, bool) {
+	if part.OpenAIChatFile == nil {
+		return Item{}, false
+	}
+
+	file := Item{
+		Type:     "input_file",
+		FileData: part.OpenAIChatFile.FileData,
+		FileID:   part.OpenAIChatFile.FileID,
+		Filename: part.OpenAIChatFile.Filename,
+	}
+	if fileURL, ok := part.TransformerMetadata[responsesInputFileURLPartTransformerMetadataKey].(*string); ok {
+		file.FileURL = fileURL
+	}
+	if detail, ok := part.TransformerMetadata[responsesInputFileDetailPartTransformerMetadataKey].(*string); ok {
+		file.Detail = detail
+	}
+
+	return file, true
 }
 
 // convertAssistantMessage converts an assistant message to Responses API Item(s) format.
@@ -381,6 +406,10 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 						Type:       "input_audio",
 						InputAudio: p.InputAudio,
 					})
+				}
+			case "file":
+				if file, ok := inputFileItemFromContentPart(p); ok {
+					output.Items = append(output.Items, file)
 				}
 			}
 		}
@@ -601,35 +630,69 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 		return nil
 	}
 
-	result := &ToolChoice{}
-
 	if src.ToolChoice != nil {
 		// String mode like "none", "auto", "required"
-		result.Mode = src.ToolChoice
-	} else if src.NamedToolChoice != nil {
+		return &ToolChoice{Mode: src.ToolChoice}
+	}
+	if src.NamedToolChoice != nil {
 		// Specific tool choice
-		result.Type = &src.NamedToolChoice.Type
-		result.Name = &src.NamedToolChoice.Function.Name
+		return &ToolChoice{
+			Type: &src.NamedToolChoice.Type,
+			Name: &src.NamedToolChoice.Function.Name,
+		}
+	}
+	if src.OpenAIChatCustomToolChoice != nil {
+		toolType := "custom"
+		return &ToolChoice{
+			Type: &toolType,
+			Name: &src.OpenAIChatCustomToolChoice.Name,
+		}
+	}
+	if src.OpenAIChatAllowedTools != nil {
+		tools := convertOpenAIChatAllowedTools(src.OpenAIChatAllowedTools.Tools)
+		if len(tools) == 0 {
+			return nil
+		}
+		toolType := "allowed_tools"
+		mode := src.OpenAIChatAllowedTools.Mode
+		return &ToolChoice{
+			Mode:  &mode,
+			Type:  &toolType,
+			Tools: tools,
+		}
 	}
 
-	return result
+	return nil
 }
 
-// convertStreamOptions converts llm.StreamOptions to Responses API StreamOptions.
-// IncludeObfuscation is read from TransformerMetadata since it's a Responses API specific field.
-func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *StreamOptions {
-	if src == nil {
+func convertOpenAIChatAllowedTools(rawTools []json.RawMessage) []ToolOption {
+	tools := make([]ToolOption, 0, len(rawTools))
+	for _, rawTool := range rawTools {
+		var tool struct {
+			Type     string `json:"type"`
+			Function *struct {
+				Name string `json:"name"`
+			} `json:"function"`
+		}
+		if json.Unmarshal(rawTool, &tool) != nil || tool.Type != "function" || tool.Function == nil || tool.Function.Name == "" {
+			continue
+		}
+		tools = append(tools, ToolOption{Type: "function", Name: tool.Function.Name})
+	}
+	return tools
+}
+
+func convertStreamOptions(raw json.RawMessage) *StreamOptions {
+	if len(raw) == 0 {
 		return nil
 	}
 
-	includeObfuscation := xmap.GetBoolPtr(metadata, responsesIncludeObfuscationTransformerMetadataKey)
-	if includeObfuscation == nil {
+	var result StreamOptions
+	if err := json.Unmarshal(raw, &result); err != nil || result.IncludeObfuscation == nil {
 		return nil
 	}
 
-	return &StreamOptions{
-		IncludeObfuscation: includeObfuscation,
-	}
+	return &result
 }
 
 // convertReasoning converts llm.Request reasoning fields to Responses API Reasoning.

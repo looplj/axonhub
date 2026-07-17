@@ -133,6 +133,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
+	reqCopy.ProviderExtensions = llm.CloneProviderExtensions(llmReq.ProviderExtensions)
 	originalRequestType := reqCopy.RequestType
 	originalAPIFormat := reqCopy.APIFormat
 	isImageRequest := originalRequestType == llm.RequestTypeImage
@@ -163,8 +164,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
 	if !isImageRequest {
-		if _, ok := reqCopy.TransformerMetadata[shared.MetadataKeyInclude]; !ok {
-			reqCopy.TransformerMetadata[shared.MetadataKeyInclude] = []string{"reasoning.encrypted_content"}
+		responsesExt := llm.EnsureOpenAIResponsesProviderExtensions(&reqCopy)
+		if responsesExt.Request == nil {
+			responsesExt.Request = &llm.OpenAIResponsesRequestExtensions{}
+		}
+		if len(responsesExt.Request.Include) == 0 {
+			responsesExt.Request.Include = []string{"reasoning.encrypted_content"}
 		}
 
 		if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {

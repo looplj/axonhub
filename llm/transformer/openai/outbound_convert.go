@@ -239,7 +239,7 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 	}
 
 	// Convert Content
-	msg.Content = MessageContentFromLLM(m.Content)
+	msg.Content = messageContentFromLLMForRole(m.Content, m.Role)
 
 	// Convert ToolCalls. Deprecated function_call origins must round-trip as
 	// legacy function_call, not modern tool_calls, for multi-turn Chat history.
@@ -297,13 +297,53 @@ func MessageContentFromLLM(c llm.MessageContent) MessageContent {
 				// bytes live in ProviderExtensions and are only hydrated by the
 				// Anthropic outbound adapter, so it must never become a Chat part.
 				return MessageContentPart{}, false
+			case "file":
+				// Chat's file payload can represent file_data, file_id, or filename.
+				// A Responses-only file_url with none of those fields has no Chat
+				// equivalent and must not become an empty file object.
+				if p.OpenAIChatFile == nil || (p.OpenAIChatFile.FileData == nil && p.OpenAIChatFile.FileID == nil && p.OpenAIChatFile.Filename == nil) {
+					return MessageContentPart{}, false
+				}
+				return MessageContentPartFromLLM(p), true
 			default:
 				return MessageContentPartFromLLM(p), true
 			}
 		})
+		if len(content.MultipleContent) == 0 {
+			return MessageContent{Content: lo.ToPtr("")}
+		}
 	}
 
 	return content
+}
+
+func messageContentFromLLMForRole(content llm.MessageContent, role string) MessageContent {
+	if role != "system" && role != "developer" && role != "assistant" && role != "tool" {
+		return MessageContentFromLLM(content)
+	}
+	if content.Content != nil {
+		return MessageContent{Content: content.Content}
+	}
+
+	allowedParts := lo.FilterMap(content.MultipleContent, func(part llm.MessageContentPart, _ int) (MessageContentPart, bool) {
+		switch part.Type {
+		case "text", "input_text":
+			if part.Text != nil {
+				return MessageContentPart{Type: "text", Text: part.Text}, true
+			}
+		case "refusal":
+			if role == "assistant" && part.OpenAIChatRefusal != nil {
+				return MessageContentPart{Type: "refusal", Refusal: part.OpenAIChatRefusal}, true
+			}
+		}
+
+		return MessageContentPart{}, false
+	})
+	if len(allowedParts) == 0 {
+		return MessageContent{Content: lo.ToPtr("")}
+	}
+
+	return MessageContent{MultipleContent: allowedParts}
 }
 
 // MessageContentPartFromLLM creates OpenAI MessageContentPart from unified llm.MessageContentPart.

@@ -1,5 +1,7 @@
 package llm
 
+import "encoding/json"
+
 // IsKnownOpenAIResponsesNativeToolType reports whether a Responses tool type is
 // a known OpenAI/Codex native tool shape, even if the common llm.Request model
 // cannot structurally represent it yet.
@@ -80,4 +82,48 @@ func IsKnownOpenAIResponsesInputItemType(itemType string) bool {
 	default:
 		return false
 	}
+}
+
+// CountOpenAIResponsesNativeToolsByType counts raw native tool declarations
+// with the requested type.
+func CountOpenAIResponsesNativeToolsByType(rawTools []json.RawMessage, toolType string) int {
+	count := 0
+	for _, raw := range rawTools {
+		var tool struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(raw, &tool) != nil {
+			continue
+		}
+		if tool.Type == toolType {
+			count++
+		}
+	}
+	return count
+}
+
+// CountUnknownOpenAIResponsesToolFragments counts raw tool fragments whose
+// type is not in the known Responses native-tool inventory.
+func CountUnknownOpenAIResponsesToolFragments(fragments []OpenAIResponsesRawFragment) int {
+	count := 0
+	for _, fragment := range fragments {
+		if IsKnownOpenAIResponsesNativeToolType(fragment.Type) {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+// CountUnknownOpenAIResponsesInputFragments counts raw input fragments whose
+// type is neither additional_tools nor a known Responses input-item type.
+func CountUnknownOpenAIResponsesInputFragments(fragments []OpenAIResponsesRawFragment) int {
+	count := 0
+	for _, fragment := range fragments {
+		if fragment.Type == "additional_tools" || IsKnownOpenAIResponsesInputItemType(fragment.Type) {
+			continue
+		}
+		count++
+	}
+	return count
 }

@@ -1,7 +1,7 @@
 package shared
 
 import (
-	"encoding/json"
+	"sort"
 
 	"github.com/looplj/axonhub/llm"
 )
@@ -9,16 +9,18 @@ import (
 const ResponsesLossyDowngradeDiagnosticsKey = "responses_lossy_downgrade_diagnostics"
 
 type ResponsesLossyDowngradeDiagnostics struct {
-	LossyDowngrade            bool
-	UnknownTopLevelFieldCount int
-	ClientMetadataCount       int
-	NamespaceToolCount        int
-	ToolSearchToolCount       int
-	UnknownToolCount          int
-	RawOnlyToolCount          int
-	AdditionalToolsCount      int
-	RawInputItemCount         int
-	UnknownInputItemCount     int
+	LossyDowngrade                       bool
+	UnknownTopLevelFieldCount            int
+	ClientMetadataCount                  int
+	NamespaceToolCount                   int
+	ToolSearchToolCount                  int
+	UnknownToolCount                     int
+	RawOnlyToolCount                     int
+	AdditionalToolsCount                 int
+	AdditionalToolsUnrepresentableCount  int
+	ToolSearchOutputUnrepresentableCount int
+	RawInputItemCount                    int
+	UnknownInputItemCount                int
 }
 
 func RecordResponsesLossyDowngradeDiagnostics(llmReq *llm.Request) {
@@ -30,7 +32,7 @@ func RecordResponsesLossyDowngradeDiagnostics(llmReq *llm.Request) {
 // Responses-native fields that the target protocol cannot express.
 // targetProtocol empty means summary-only metadata diagnostics.
 func RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq *llm.Request, targetProtocol llm.APIFormat) {
-	requestExt := openAIResponsesRequestExtensions(llmReq)
+	requestExt := llm.OpenAIResponsesRequestExtension(llmReq)
 	if requestExt == nil {
 		return
 	}
@@ -39,25 +41,32 @@ func RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq *llm.Request, targ
 	}
 
 	diagnostics := ResponsesLossyDowngradeDiagnostics{
-		UnknownTopLevelFieldCount: len(requestExt.RawTopLevelFields),
-		ClientMetadataCount:       len(requestExt.ClientMetadata),
-		AdditionalToolsCount:      len(requestExt.AdditionalTools),
-		RawInputItemCount:         len(requestExt.RawInputItems),
+		UnknownTopLevelFieldCount:            len(requestExt.RawTopLevelFields),
+		ClientMetadataCount:                  len(requestExt.ClientMetadata),
+		AdditionalToolsCount:                 len(requestExt.AdditionalTools),
+		AdditionalToolsUnrepresentableCount:  requestExt.AdditionalToolsUnrepresentableCount,
+		ToolSearchOutputUnrepresentableCount: requestExt.ToolSearchOutputUnrepresentableCount,
+		RawInputItemCount:                    len(requestExt.RawInputItems),
 	}
 	if requestExt.NativeTools != nil {
-		diagnostics.NamespaceToolCount = countNativeToolsByType(requestExt.NativeTools.Raw, "namespace")
-		diagnostics.ToolSearchToolCount = countNativeToolsByType(requestExt.NativeTools.Raw, "tool_search")
+		diagnostics.NamespaceToolCount = llm.CountOpenAIResponsesNativeToolsByType(requestExt.NativeTools.Raw, "namespace")
+		diagnostics.ToolSearchToolCount = llm.CountOpenAIResponsesNativeToolsByType(requestExt.NativeTools.Raw, "tool_search")
 	}
-	diagnostics.UnknownToolCount = countUnknownToolFragments(requestExt.RawTools)
+	diagnostics.UnknownToolCount = llm.CountUnknownOpenAIResponsesToolFragments(requestExt.RawTools)
 	diagnostics.RawOnlyToolCount = len(requestExt.RawTools)
-	diagnostics.UnknownInputItemCount = countUnknownInputFragments(requestExt.RawInputItems)
+	diagnostics.UnknownInputItemCount = llm.CountUnknownOpenAIResponsesInputFragments(requestExt.RawInputItems)
+	additionalToolsLossy := diagnostics.AdditionalToolsCount > 0
+	if targetProtocol == llm.APIFormatOpenAIChatCompletion {
+		additionalToolsLossy = diagnostics.AdditionalToolsUnrepresentableCount > 0
+	}
 	diagnostics.LossyDowngrade = diagnostics.UnknownTopLevelFieldCount > 0 ||
 		diagnostics.ClientMetadataCount > 0 ||
 		diagnostics.NamespaceToolCount > 0 ||
 		diagnostics.ToolSearchToolCount > 0 ||
 		diagnostics.UnknownToolCount > 0 ||
 		diagnostics.RawOnlyToolCount > 0 ||
-		diagnostics.AdditionalToolsCount > 0 ||
+		additionalToolsLossy ||
+		diagnostics.ToolSearchOutputUnrepresentableCount > 0 ||
 		diagnostics.RawInputItemCount > 0
 
 	if diagnostics.LossyDowngrade {
@@ -75,54 +84,24 @@ func RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq *llm.Request, targ
 
 	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "tools[].type=namespace", targetProtocol, diagnostics.NamespaceToolCount > 0)
 	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "tools[].type=tool_search", targetProtocol, diagnostics.ToolSearchToolCount > 0)
-	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "input[].type=additional_tools", targetProtocol, diagnostics.AdditionalToolsCount > 0)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "input[].type=additional_tools", targetProtocol, additionalToolsLossy)
+	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "input[].type=tool_search_output.tools[]", targetProtocol, diagnostics.ToolSearchOutputUnrepresentableCount > 0)
+	for _, rawItem := range requestExt.RawInputItems {
+		llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "input[].type="+rawItem.Type, targetProtocol, rawItem.Type != "")
+	}
+	for _, rawTool := range requestExt.RawTools {
+		llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "tools[].type="+rawTool.Type, targetProtocol, rawTool.Type != "")
+	}
 	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "tools[] raw-only native tool", targetProtocol, diagnostics.RawOnlyToolCount > 0)
 	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "client_metadata", targetProtocol, diagnostics.ClientMetadataCount > 0)
 	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "request raw top-level field", targetProtocol, diagnostics.UnknownTopLevelFieldCount > 0)
+	rawTopLevelFields := make([]string, 0, len(requestExt.RawTopLevelFields))
+	for field := range requestExt.RawTopLevelFields {
+		rawTopLevelFields = append(rawTopLevelFields, field)
+	}
+	sort.Strings(rawTopLevelFields)
+	for _, field := range rawTopLevelFields {
+		llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, field, targetProtocol, true)
+	}
 	llm.AddLossyDowngradeIfPresent(llmReq, sourceProtocol, "input[] raw-only item", targetProtocol, diagnostics.RawInputItemCount > 0 && diagnostics.AdditionalToolsCount == 0)
-}
-
-func openAIResponsesRequestExtensions(llmReq *llm.Request) *llm.OpenAIResponsesRequestExtensions {
-	if llmReq == nil || llmReq.ProviderExtensions == nil || llmReq.ProviderExtensions.OpenAIResponses == nil {
-		return nil
-	}
-	return llmReq.ProviderExtensions.OpenAIResponses.Request
-}
-
-func countNativeToolsByType(rawTools []json.RawMessage, toolType string) int {
-	count := 0
-	for _, raw := range rawTools {
-		var tool struct {
-			Type string `json:"type"`
-		}
-		if json.Unmarshal(raw, &tool) != nil {
-			continue
-		}
-		if tool.Type == toolType {
-			count++
-		}
-	}
-	return count
-}
-
-func countUnknownToolFragments(fragments []llm.OpenAIResponsesRawFragment) int {
-	count := 0
-	for _, fragment := range fragments {
-		if llm.IsKnownOpenAIResponsesNativeToolType(fragment.Type) {
-			continue
-		}
-		count++
-	}
-	return count
-}
-
-func countUnknownInputFragments(fragments []llm.OpenAIResponsesRawFragment) int {
-	count := 0
-	for _, fragment := range fragments {
-		if fragment.Type == "additional_tools" || llm.IsKnownOpenAIResponsesInputItemType(fragment.Type) {
-			continue
-		}
-		count++
-	}
-	return count
 }
