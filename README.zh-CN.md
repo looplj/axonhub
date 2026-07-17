@@ -54,7 +54,7 @@
   <tbody>
     <tr>
       <td align="center" valign="middle">
-        <a href="https://bloome.im/" target="_blank">
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
           <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
           <br/>
           <strong>Bloome</strong>
@@ -62,7 +62,7 @@
       </td>
       <td valign="middle">
         想试用 AxonHub，但不想在本地配置环境？可以在 Bloome 上运行：
-        <a href="https://bloome.im/agent/join/WchosTFN?ref=MjgMzmCY" target="_blank">快速使用</a>，
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">快速使用</a>，
         通过浏览器或手机一键启动，也可以轻松分享给你的团队。
       </td>
     </tr>
