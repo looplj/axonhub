@@ -2182,7 +2182,7 @@ func (_m *Thread) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Thread",
-		Fields: make([]*Field, 4),
+		Fields: make([]*Field, 5),
 		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
@@ -2218,6 +2218,14 @@ func (_m *Thread) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "thread_id",
 		Value: string(buf),
 	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "thread.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
 	node.Edges[0] = &Edge{
 		Type: "Project",
 		Name: "project",
@@ -2246,7 +2254,7 @@ func (_m *Trace) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Trace",
-		Fields: make([]*Field, 5),
+		Fields: make([]*Field, 6),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -2288,6 +2296,14 @@ func (_m *Trace) Node(ctx context.Context) (node *Node, err error) {
 	node.Fields[4] = &Field{
 		Type:  "int",
 		Name:  "thread_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "trace.Status",
+		Name:  "status",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

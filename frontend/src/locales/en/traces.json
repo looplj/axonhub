@@ -91,5 +91,14 @@
   "traces.detail.viewMode.flow": "Flow",
   "traces.detail.viewMode.tree": "Tree",
   "traces.detail.spanDetail": "Span Detail",
-  "traces.detail.spanStats.toolDetails": "Tool Details"
+  "traces.detail.spanStats.toolDetails": "Tool Details",
+  "traces.dialogs.archiveTitle": "Archive trace?",
+  "traces.dialogs.archiveDescription": "This trace will be hidden from the default view. You can restore it later by filtering for archived traces.",
+  "traces.messages.archiveSuccess": "Trace archived",
+  "traces.messages.unarchiveSuccess": "Trace restored",
+  "traces.messages.retainSuccess": "Trace retained",
+  "traces.messages.unretainSuccess": "Trace no longer retained",
+  "traces.status.active": "Active",
+  "traces.status.archived": "Archived",
+  "traces.status.retained": "Retained"
 }

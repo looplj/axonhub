@@ -174,6 +174,70 @@ func (s *TraceService) GetFirstText(ctx context.Context, traceID int) (*string, 
 	return segment.FirstText(), nil
 }
 
+// Archive sets the trace status to archived. Current status must be active.
+func (s *TraceService) Archive(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusActive)).
+		SetStatus(trace.StatusArchived).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot archive trace: current status is not active or trace not found")
+		}
+		return fmt.Errorf("failed to archive trace: %w", err)
+	}
+	return nil
+}
+
+// Unarchive sets the trace status to active. Current status must be archived.
+func (s *TraceService) Unarchive(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusArchived)).
+		SetStatus(trace.StatusActive).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot unarchive trace: current status is not archived or trace not found")
+		}
+		return fmt.Errorf("failed to unarchive trace: %w", err)
+	}
+	return nil
+}
+
+// Retain sets the trace status to retained. Current status must be active.
+func (s *TraceService) Retain(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusActive)).
+		SetStatus(trace.StatusRetained).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot retain trace: current status is not active or trace not found")
+		}
+		return fmt.Errorf("failed to retain trace: %w", err)
+	}
+	return nil
+}
+
+// Unretain sets the trace status to active. Current status must be retained.
+func (s *TraceService) Unretain(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusRetained)).
+		SetStatus(trace.StatusActive).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot unretain trace: current status is not retained or trace not found")
+		}
+		return fmt.Errorf("failed to unretain trace: %w", err)
+	}
+	return nil
+}
+
 func (s *TraceService) UsageMetadata(ctx context.Context, traceID int) (*UsageMetadata, error) {
 	client := s.entFromContext(ctx)
 	if client == nil {

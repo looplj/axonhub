@@ -13,5 +13,16 @@
   "threads.detail.notFound": "Thread not found",
   "threads.detail.noTraces": "No traces found",
   "threads.detail.viewTrace": "View trace",
-  "threads.errors.notFound": "Thread not found"
+  "threads.errors.notFound": "Thread not found",
+  "threads.detail.showArchived": "Show archived ({{count}})",
+  "threads.detail.hideArchived": "Hide archived",
+  "threads.dialogs.archiveTitle": "Archive thread?",
+  "threads.dialogs.archiveDescription": "This thread and all its traces will be hidden from the default view. You can restore it later by filtering for archived threads.",
+  "threads.messages.archiveSuccess": "Thread archived",
+  "threads.messages.unarchiveSuccess": "Thread restored",
+  "threads.messages.retainSuccess": "Thread retained",
+  "threads.messages.unretainSuccess": "Thread no longer retained",
+  "threads.status.active": "Active",
+  "threads.status.archived": "Archived",
+  "threads.status.retained": "Retained"
 }

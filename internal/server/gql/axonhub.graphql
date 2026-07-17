@@ -649,6 +649,7 @@ extend type Trace {
 extend type Thread {
   firstUserQuery: String @goField(forceResolver: true)
   usageMetadata: UsageMetadata @goField(forceResolver: true)
+  archivedTracesCount: Int! @goField(forceResolver: true)
 }
 
 extend type Channel {
@@ -908,6 +909,18 @@ type Mutation {
   loadApiKeyProfileTemplate(
     input: LoadApiKeyProfileTemplateInput!
   ): APIKey!
+
+  # Trace Status Management
+  archiveTrace(id: ID!): Boolean!
+  unarchiveTrace(id: ID!): Boolean!
+  retainTrace(id: ID!): Boolean!
+  unretainTrace(id: ID!): Boolean!
+
+  # Thread Status Management
+  archiveThread(id: ID!): Boolean!
+  unarchiveThread(id: ID!): Boolean!
+  retainThread(id: ID!): Boolean!
+  unretainThread(id: ID!): Boolean!
 }
 
 input QueryChannelInput {

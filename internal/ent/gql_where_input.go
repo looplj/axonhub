@@ -9064,6 +9064,12 @@ type ThreadWhereInput struct {
 	ThreadIDEqualFold    *string  `json:"threadIDEqualFold,omitempty"`
 	ThreadIDContainsFold *string  `json:"threadIDContainsFold,omitempty"`
 
+	// "status" field predicates.
+	Status      *thread.Status  `json:"status,omitempty"`
+	StatusNEQ   *thread.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []thread.Status `json:"statusIn,omitempty"`
+	StatusNotIn []thread.Status `json:"statusNotIn,omitempty"`
+
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
 	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
@@ -9267,6 +9273,18 @@ func (i *ThreadWhereInput) P() (predicate.Thread, error) {
 	if i.ThreadIDContainsFold != nil {
 		predicates = append(predicates, thread.ThreadIDContainsFold(*i.ThreadIDContainsFold))
 	}
+	if i.Status != nil {
+		predicates = append(predicates, thread.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, thread.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, thread.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, thread.StatusNotIn(i.StatusNotIn...))
+	}
 
 	if i.HasProject != nil {
 		p := thread.HasProject()
@@ -9379,6 +9397,12 @@ type TraceWhereInput struct {
 	ThreadIDNotIn  []int `json:"threadIDNotIn,omitempty"`
 	ThreadIDIsNil  bool  `json:"threadIDIsNil,omitempty"`
 	ThreadIDNotNil bool  `json:"threadIDNotNil,omitempty"`
+
+	// "status" field predicates.
+	Status      *trace.Status  `json:"status,omitempty"`
+	StatusNEQ   *trace.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []trace.Status `json:"statusIn,omitempty"`
+	StatusNotIn []trace.Status `json:"statusNotIn,omitempty"`
 
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
@@ -9604,6 +9628,18 @@ func (i *TraceWhereInput) P() (predicate.Trace, error) {
 	}
 	if i.ThreadIDNotNil {
 		predicates = append(predicates, trace.ThreadIDNotNil())
+	}
+	if i.Status != nil {
+		predicates = append(predicates, trace.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, trace.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, trace.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, trace.StatusNotIn(i.StatusNotIn...))
 	}
 
 	if i.HasProject != nil {

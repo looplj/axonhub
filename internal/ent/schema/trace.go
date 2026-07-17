@@ -31,6 +31,8 @@ func (Trace) Indexes() []ent.Index {
 			Unique(),
 		index.Fields("thread_id").
 			StorageKey("traces_by_thread_id"),
+		index.Fields("project_id", "status").
+			StorageKey("traces_by_project_id_status"),
 	}
 }
 
@@ -47,6 +49,10 @@ func (Trace) Fields() []ent.Field {
 			Optional().
 			Immutable().
 			Comment("Thread ID that this trace belongs to"),
+		field.Enum("status").
+			Values("active", "archived", "retained").
+			Default("active").
+			Comment("Record status: active (default), archived (hidden), retained (protected from GC)"),
 	}
 }
 

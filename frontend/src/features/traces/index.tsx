@@ -17,6 +17,7 @@ function TracesContent() {
   });
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
   const [traceIdFilter, setTraceIdFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const debouncedTraceIdFilter = useDebounce(traceIdFilter, 300);
 
@@ -30,7 +31,14 @@ function TracesContent() {
       where.traceIDContains = debouncedTraceIdFilter.trim();
     }
 
-    return Object.keys(where).length > 0 ? where : undefined;
+    // Status filter: if specific statuses selected, use statusIn; otherwise default to non-archived
+    if (statusFilter.length > 0) {
+      where.statusIn = statusFilter;
+    } else {
+      where.statusNEQ = 'archived';
+    }
+
+    return where;
   })();
 
   const { data, isLoading, refetch } = useTraces({
@@ -88,6 +96,15 @@ function TracesContent() {
     []
   );
 
+  const handleStatusFilterChange = useCallback(
+    (statuses: string[]) => {
+      setStatusFilter(statuses);
+      resetCursor();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <TracesTable
@@ -98,11 +115,13 @@ function TracesContent() {
         totalCount={data?.totalCount}
         dateRange={dateRange}
         traceIdFilter={traceIdFilter}
+        statusFilter={statusFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onDateRangeChange={handleDateRangeChange}
         onTraceIdFilterChange={handleTraceIdFilterChange}
+        onStatusFilterChange={handleStatusFilterChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
         autoRefresh={autoRefresh}
