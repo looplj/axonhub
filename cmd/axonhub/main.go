@@ -16,6 +16,8 @@ import (
 	"go.uber.org/fx/fxevent"
 	"gopkg.in/yaml.v3"
 
+	_ "time/tzdata"
+
 	sdk "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/looplj/axonhub/conf"
