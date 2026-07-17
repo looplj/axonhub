@@ -393,7 +393,18 @@ type passThroughChannelStream struct {
 }
 
 func (s *passThroughChannelStream) Next() bool {
-	if s.ctx != nil {
+	if s.ctx == nil {
+		ev, ok := <-s.ch
+		if !ok {
+			return false
+		}
+
+		s.current = ev
+
+		return true
+	}
+
+	for {
 		select {
 		case ev, ok := <-s.ch:
 			if !ok {
@@ -404,20 +415,29 @@ func (s *passThroughChannelStream) Next() bool {
 
 			return true
 		case <-s.ctx.Done():
-			_ = s.Close()
+			// Client disconnect often races with the terminal event still sitting in
+			// the channel (especially the pipeline drain path under pass-through).
+			// Prefer draining already-buffered events over aborting, matching the
+			// inbound/outbound Close() rule: cancel after a complete stream is still
+			// completed. Only stop once the buffer is empty.
+			select {
+			case ev, ok := <-s.ch:
+				if !ok {
+					_ = s.Close()
 
-			return false
+					return false
+				}
+
+				s.current = ev
+
+				return true
+			default:
+				_ = s.Close()
+
+				return false
+			}
 		}
 	}
-
-	ev, ok := <-s.ch
-	if !ok {
-		return false
-	}
-
-	s.current = ev
-
-	return true
 }
 
 func (s *passThroughChannelStream) Current() *httpclient.StreamEvent { return s.current }

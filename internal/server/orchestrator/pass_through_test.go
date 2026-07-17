@@ -880,6 +880,30 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 	}
 }
 
+func TestPassThroughChannelStream_DrainsBufferedEventsAfterCancel(t *testing.T) {
+	// Reproduce the production race: client disconnect cancels the request context
+	// while the terminal event is already buffered for the pipeline drain path.
+	// Next() must prefer draining the buffer so InboundPersistentStream can see [DONE]
+	// and mark the request completed instead of canceled.
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan *httpclient.StreamEvent, 2)
+	ch <- &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	ch <- &httpclient.StreamEvent{Data: []byte("[DONE]")}
+	close(ch)
+	cancel()
+
+	stream := &passThroughChannelStream{ctx: ctx, ch: ch}
+
+	var events []*httpclient.StreamEvent
+	for stream.Next() {
+		events = append(events, stream.Current())
+	}
+
+	require.Len(t, events, 2)
+	assert.Equal(t, []byte("[DONE]"), events[1].Data)
+	assert.True(t, isTerminalStreamEvent(events[1]))
+}
+
 type doneStream struct {
 	stream streams.Stream[*httpclient.StreamEvent]
 	done   chan struct{}

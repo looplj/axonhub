@@ -144,31 +144,33 @@ func WriteSSEStreamWithErrorFormatter(c *gin.Context, stream streams.Stream[*htt
 	c.Header("Connection", "keep-alive")
 	c.Writer.Flush()
 
+	// Do not pre-check ctx.Done() before Next(). If the client disconnects right
+	// after receiving the terminal event, a preferential ctx.Done() check can abort
+	// before Next() drains EOF / the last buffered chunk, causing Close() to mark the
+	// request canceled even though the stream completed. Next() still returns false
+	// promptly when cancellation arrives while waiting for the next event.
 	for {
-		select {
-		case <-ctx.Done():
-			clientDisconnected = true
+		if !stream.Next() {
+			if err := stream.Err(); err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+					clientDisconnected = true
+				} else {
+					log.Error(ctx, "Error in stream", log.Cause(err))
+					c.SSEvent("error", formatErr(ctx, err))
+				}
+			} else if errors.Is(ctx.Err(), context.Canceled) {
+				clientDisconnected = true
+			}
 
-			log.Warn(ctx, "Context done, stopping stream")
+			c.Writer.Flush()
 
 			return
-		default:
-			if stream.Next() {
-				cur := stream.Current()
-				c.SSEvent(cur.Type, cur.Data)
-				log.Debug(ctx, "write stream event", log.Any("event", cur))
-				c.Writer.Flush()
-			} else {
-				if stream.Err() != nil {
-					log.Error(ctx, "Error in stream", log.Cause(stream.Err()))
-					c.SSEvent("error", formatErr(ctx, stream.Err()))
-				}
-
-				c.Writer.Flush()
-
-				return
-			}
 		}
+
+		cur := stream.Current()
+		c.SSEvent(cur.Type, cur.Data)
+		log.Debug(ctx, "write stream event", log.Any("event", cur))
+		c.Writer.Flush()
 	}
 }
 
@@ -186,55 +188,58 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 		}
 	}()
 
+	// Same as WriteSSEStream: do not pre-check ctx.Done() before Next(), so a
+	// disconnect right after the terminal chunk does not skip drain / completion.
 	for {
-		select {
-		case <-ctx.Done():
-			clientDisconnected = true
-			log.Warn(ctx, "Context done, stopping binary stream")
-			return
-		default:
-			if !stream.Next() {
-				if stream.Err() != nil {
-					log.Error(ctx, "Error in binary stream", log.Cause(stream.Err()))
+		if !stream.Next() {
+			if err := stream.Err(); err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+					clientDisconnected = true
+				} else {
+					log.Error(ctx, "Error in binary stream", log.Cause(err))
 					if !headersWritten {
-						c.JSON(streamErrorStatus(stream.Err()), FormatStreamError(ctx, stream.Err()))
+						c.JSON(streamErrorStatus(err), FormatStreamError(ctx, err))
 						return
 					}
 				}
-
-				c.Writer.Flush()
-				return
-			}
-
-			cur := stream.Current()
-			if cur != nil && cur.Type == httpclient.BinaryStreamDoneEventType {
-				continue
-			}
-
-			if cur == nil || len(cur.Data) == 0 {
-				continue
-			}
-
-			if !headersWritten {
-				if ct := strings.TrimSpace(cur.Type); ct != "" {
-					contentType = ct
-				}
-
-				c.Header("Content-Type", contentType)
-				c.Header("Cache-Control", "no-cache")
-				c.Header("Connection", "keep-alive")
-				c.Header("Access-Control-Allow-Origin", "*")
-				headersWritten = true
-			}
-
-			if _, err := c.Writer.Write(cur.Data); err != nil {
+			} else if errors.Is(ctx.Err(), context.Canceled) {
 				clientDisconnected = true
-				log.Warn(ctx, "Failed to write binary stream chunk", log.Cause(err))
-				return
 			}
 
 			c.Writer.Flush()
+
+			return
 		}
+
+		cur := stream.Current()
+		if cur != nil && cur.Type == httpclient.BinaryStreamDoneEventType {
+			continue
+		}
+
+		if cur == nil || len(cur.Data) == 0 {
+			continue
+		}
+
+		if !headersWritten {
+			if ct := strings.TrimSpace(cur.Type); ct != "" {
+				contentType = ct
+			}
+
+			c.Header("Content-Type", contentType)
+			c.Header("Cache-Control", "no-cache")
+			c.Header("Connection", "keep-alive")
+			c.Header("Access-Control-Allow-Origin", "*")
+			headersWritten = true
+		}
+
+		if _, err := c.Writer.Write(cur.Data); err != nil {
+			clientDisconnected = true
+			log.Warn(ctx, "Failed to write binary stream chunk", log.Cause(err))
+
+			return
+		}
+
+		c.Writer.Flush()
 	}
 }
 
