@@ -346,6 +346,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerApertisSupport()
 	svc.registerOpenCodeGoSupport()
 	svc.registerKimiCodeSupport()
+	svc.registerMinimaxSupport()
 
 	go svc.loadQuotaCache(context.Background())
 
@@ -404,6 +405,10 @@ func (svc *ProviderQuotaService) registerOpenCodeGoSupport() {
 
 func (svc *ProviderQuotaService) registerKimiCodeSupport() {
 	svc.checkers["kimi_code"] = provider_quota.NewKimiCodeQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerMinimaxSupport() {
+	svc.checkers["minimax"] = provider_quota.NewMinimaxQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) string {
@@ -571,7 +576,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeCline, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic, channel.TypeMoonshotCoding),
+			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeCline, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic, channel.TypeMoonshotCoding, channel.TypeMinimax, channel.TypeMinimaxAnthropic),
 		)
 
 	if !force {
@@ -784,6 +789,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "opencode_go"
 	case channel.TypeMoonshotCoding:
 		return "kimi_code"
+	case channel.TypeMinimax, channel.TypeMinimaxAnthropic:
+		return "minimax"
 	default:
 		return ""
 	}

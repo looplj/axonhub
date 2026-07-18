@@ -3761,6 +3761,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   apertis
   opencode_go
   kimi_code
+  minimax
 }
 """
 ProviderQuotaStatusStatus is enum for the field status

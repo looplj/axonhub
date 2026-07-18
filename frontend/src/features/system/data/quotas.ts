@@ -239,6 +239,25 @@ export type ProviderKimiCodeQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
+export type MinimaxModelRow = {
+  modelName: string;
+  intervalUsedPercent: number;
+  intervalTotalPercent: number;
+  intervalPercent: number;
+  intervalStatus: string;
+  intervalResetAt?: string;
+  weeklyUsedPercent: number;
+  weeklyTotalPercent: number;
+  weeklyPercent: number;
+  weeklyStatus: string;
+  weeklyResetAt?: string;
+  weeklyBoostPermille?: number;
+};
+
+export type ProviderMinimaxQuotaData = ProviderQuotaDataCommon & {
+  rows?: MinimaxModelRow[];
+};
+
 export type ClineQuotaWindow = {
   items_count: number;
   used_cost_units: number;
@@ -359,6 +378,12 @@ export type ProviderQuotaChannel = {
       type: 'moonshot_coding';
       quotaStatus: {
         quotaData: ProviderKimiCodeQuotaData;
+      };
+    }
+  | {
+      type: 'minimax' | 'minimax_anthropic';
+      quotaStatus: {
+        quotaData: ProviderMinimaxQuotaData;
       };
     }
   | {
@@ -505,6 +530,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       ...base,
       type: 'moonshot_coding' as const,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderKimiCodeQuotaData },
+    };
+  }
+  if (node.type === 'minimax' || node.type === 'minimax_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'minimax' | 'minimax_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderMinimaxQuotaData },
     };
   }
   if (node.type === 'openai' || node.type === 'openai_responses') {
