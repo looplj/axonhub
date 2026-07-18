@@ -1096,6 +1096,41 @@ func TestOutboundTransformer_TransformRequest_PromptCacheKeyScopedPerConversatio
 	explicit := newReq("task A")
 	explicit.PromptCacheKey = lo.ToPtr("client-key")
 	require.Equal(t, "client-key", cacheKey(explicit))
+
+	// A large shared instruction prefix must not starve the first user
+	// message out of the fingerprint: sibling conversations still get
+	// distinct keys.
+	largeSystem := strings.Repeat("shared instructions. ", 2048)
+	largeReq := func(firstUser string) *llm.Request {
+		return &llm.Request{
+			Model: "gpt-5.4",
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr(largeSystem)}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(firstUser)}},
+			},
+		}
+	}
+	require.NotEqual(t, cacheKey(largeReq("task A")), cacheKey(largeReq("task B")))
+
+	// Non-text content contributes to the fingerprint: first user messages
+	// that differ only by an image part get distinct keys.
+	imageReq := func(imageURL string) *llm.Request {
+		return &llm.Request{
+			Model: "gpt-5.4",
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("describe this image")},
+						{Type: "image_url", ImageURL: &llm.ImageURL{URL: imageURL}},
+					},
+				}},
+			},
+		}
+	}
+	require.NotEqual(t,
+		cacheKey(imageReq("https://example.com/a.png")),
+		cacheKey(imageReq("https://example.com/b.png")),
+	)
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {

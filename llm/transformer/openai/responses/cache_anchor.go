@@ -3,12 +3,16 @@ package responses
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"strconv"
 
 	"github.com/looplj/axonhub/llm"
 )
 
-// anchorMaxBytes bounds how much of the conversation head is hashed.
-const anchorMaxBytes = 8192
+// anchorMaxBytesPerUnit bounds how much each content unit (a message's plain
+// string content, or a single field of a content part) contributes to the
+// hash. The budget is per unit rather than global so that a large instruction
+// prefix can never starve the first user message out of the fingerprint.
+const anchorMaxBytesPerUnit = 4096
 
 // conversationAnchor derives a stable fingerprint for the conversation a
 // request belongs to: the contiguous leading system/developer messages plus
@@ -19,19 +23,19 @@ const anchorMaxBytes = 8192
 // per-conversation prompt_cache_key instead of a per-session one.
 func conversationAnchor(messages []llm.Message) string {
 	h := sha256.New()
-	written := 0
 
-	write := func(s string) {
-		if written >= anchorMaxBytes {
-			return
-		}
+	// Each unit is hashed as <len>:<capped bytes>. The length prefix keeps
+	// concatenated units unambiguous and still distinguishes oversized units
+	// (e.g. two base64 images sharing their first 4 KiB) by their size.
+	writeUnit := func(s string) {
+		h.Write([]byte(strconv.Itoa(len(s))))
+		h.Write([]byte{':'})
 
-		if remaining := anchorMaxBytes - written; len(s) > remaining {
-			s = s[:remaining]
+		if len(s) > anchorMaxBytesPerUnit {
+			s = s[:anchorMaxBytesPerUnit]
 		}
 
 		h.Write([]byte(s))
-		written += len(s)
 	}
 
 	hashed := false
@@ -41,25 +45,44 @@ func conversationAnchor(messages []llm.Message) string {
 			break
 		}
 
-		write(msg.Role)
-		write("\x00")
+		h.Write([]byte(msg.Role))
+		h.Write([]byte{0x00})
 
 		if msg.Content.Content != nil {
-			write(*msg.Content.Content)
+			writeUnit(*msg.Content.Content)
 		}
 
 		for _, part := range msg.Content.MultipleContent {
-			if part.Text != nil {
-				write(*part.Text)
+			h.Write([]byte(part.Type))
+			h.Write([]byte{0x1f})
+
+			switch {
+			case part.Text != nil:
+				writeUnit(*part.Text)
+			case part.ImageURL != nil:
+				writeUnit(part.ImageURL.URL)
+			case part.VideoURL != nil:
+				writeUnit(part.VideoURL.URL)
+			case part.Document != nil:
+				writeUnit(part.Document.MIMEType)
+				writeUnit(part.Document.URL)
+			case part.InputAudio != nil:
+				writeUnit(part.InputAudio.Format)
+				writeUnit(part.InputAudio.Data)
+			case part.Compact != nil:
+				writeUnit(part.Compact.ID)
+				writeUnit(part.Compact.EncryptedContent)
 			}
+
+			h.Write([]byte{0x1f})
 		}
 
-		write("\x1e")
+		h.Write([]byte{0x1e})
 
 		hashed = true
 
 		// The first user message ends the stable conversation head.
-		if msg.Role == "user" || written >= anchorMaxBytes {
+		if msg.Role == "user" {
 			break
 		}
 	}
