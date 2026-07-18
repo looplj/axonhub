@@ -904,6 +904,25 @@ func TestPassThroughChannelStream_DrainsBufferedEventsAfterCancel(t *testing.T) 
 	assert.True(t, isTerminalStreamEvent(events[1]))
 }
 
+func TestPassThroughChannelStream_StopsAtEmptyBufferAfterCancel(t *testing.T) {
+	// After cancellation Next() must never block waiting for the producer: it drains
+	// buffered events, then ends the stream (canceling upstream via Close) at the
+	// first empty-buffer moment even though the channel is still open.
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan *httpclient.StreamEvent, 2)
+	ch <- &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	cancel()
+
+	upstreamCanceled := false
+	stream := &passThroughChannelStream{ctx: ctx, ch: ch, cancel: func() { upstreamCanceled = true }}
+
+	require.True(t, stream.Next())
+	assert.Equal(t, []byte(`{"id":"chunk"}`), stream.Current().Data)
+
+	require.False(t, stream.Next())
+	assert.True(t, upstreamCanceled)
+}
+
 type doneStream struct {
 	stream streams.Stream[*httpclient.StreamEvent]
 	done   chan struct{}

@@ -390,6 +390,7 @@ type passThroughChannelStream struct {
 	errRef  *error
 	cancel  context.CancelFunc
 	once    sync.Once
+	ctxDone bool
 }
 
 func (s *passThroughChannelStream) Next() bool {
@@ -404,39 +405,52 @@ func (s *passThroughChannelStream) Next() bool {
 		return true
 	}
 
-	for {
-		select {
-		case ev, ok := <-s.ch:
-			if !ok {
-				return false
-			}
+	if s.ctxDone || s.ctx.Err() != nil {
+		s.ctxDone = true
 
-			s.current = ev
+		return s.nextBuffered()
+	}
 
-			return true
-		case <-s.ctx.Done():
-			// Client disconnect often races with the terminal event still sitting in
-			// the channel (especially the pipeline drain path under pass-through).
-			// Prefer draining already-buffered events over aborting, matching the
-			// inbound/outbound Close() rule: cancel after a complete stream is still
-			// completed. Only stop once the buffer is empty.
-			select {
-			case ev, ok := <-s.ch:
-				if !ok {
-					_ = s.Close()
-
-					return false
-				}
-
-				s.current = ev
-
-				return true
-			default:
-				_ = s.Close()
-
-				return false
-			}
+	select {
+	case ev, ok := <-s.ch:
+		if !ok {
+			return false
 		}
+
+		s.current = ev
+
+		return true
+	case <-s.ctx.Done():
+		// Client disconnect often races with the terminal event still sitting in
+		// the channel (especially the pipeline drain path under pass-through).
+		// Prefer draining already-buffered events over aborting, matching the
+		// inbound/outbound Close() rule: cancel after a complete stream is still
+		// completed.
+		s.ctxDone = true
+
+		return s.nextBuffered()
+	}
+}
+
+// nextBuffered consumes buffered events after cancellation has been observed.
+// It never blocks on the producer: the stream ends (and cancels upstream via
+// Close) at the first moment the buffer is empty or the channel is closed.
+func (s *passThroughChannelStream) nextBuffered() bool {
+	select {
+	case ev, ok := <-s.ch:
+		if !ok {
+			_ = s.Close()
+
+			return false
+		}
+
+		s.current = ev
+
+		return true
+	default:
+		_ = s.Close()
+
+		return false
 	}
 }
 
