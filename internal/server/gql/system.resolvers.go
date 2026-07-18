@@ -140,16 +140,27 @@ func (r *mutationResolver) CompleteAutoDisableChannelOnboarding(ctx context.Cont
 }
 
 // UpdateSystemChannelSettings is the resolver for the updateSystemChannelSettings field.
-func (r *mutationResolver) UpdateSystemChannelSettings(ctx context.Context, input biz.SystemChannelSettings) (bool, error) {
-	setting := *r.systemService.ChannelSettingOrDefault(ctx)
-	if input.Probe.Frequency != "" {
-		setting.Probe = input.Probe
-	}
-	if input.AutoSync.Frequency != "" {
-		setting.AutoSync = input.AutoSync
+func (r *mutationResolver) UpdateSystemChannelSettings(ctx context.Context, input biz.UpdateSystemChannelSettings) (bool, error) {
+	current, err := r.systemService.ChannelSetting(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get channel setting: %w", err)
 	}
 
-	err := r.systemService.SetChannelSetting(ctx, setting)
+	setting := *current
+	if input.Probe != nil {
+		setting.Probe = *input.Probe
+	}
+	if input.AutoSync != nil {
+		setting.AutoSync = *input.AutoSync
+	}
+	if input.TestSystemPrompt != nil {
+		setting.TestSystemPrompt = *input.TestSystemPrompt
+	}
+	if input.TestUserPrompt != nil {
+		setting.TestUserPrompt = *input.TestUserPrompt
+	}
+
+	err = r.systemService.SetChannelSetting(ctx, setting)
 	if err != nil {
 		return false, fmt.Errorf("failed to update channel setting: %w", err)
 	}
