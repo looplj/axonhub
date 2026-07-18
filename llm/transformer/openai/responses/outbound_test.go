@@ -1050,7 +1050,52 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 	err = json.Unmarshal(httpReq.Body, &payload)
 	require.NoError(t, err)
 	require.NotNil(t, payload.PromptCacheKey)
-	require.Equal(t, "shared-session-123", *payload.PromptCacheKey)
+	require.Equal(t, "shared-session-123-"+conversationAnchor(req.Messages), *payload.PromptCacheKey)
+}
+
+func TestOutboundTransformer_TransformRequest_PromptCacheKeyScopedPerConversation(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	ctx := shared.WithSessionID(context.Background(), "shared-session-123")
+
+	newReq := func(firstUser string, extraTurns ...llm.Message) *llm.Request {
+		messages := []llm.Message{
+			{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("You are an agent.")}},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(firstUser)}},
+		}
+		messages = append(messages, extraTurns...)
+
+		return &llm.Request{Model: "gpt-5.4", Messages: messages}
+	}
+
+	cacheKey := func(req *llm.Request) string {
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		var payload Request
+
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.NotNil(t, payload.PromptCacheKey)
+
+		return *payload.PromptCacheKey
+	}
+
+	// Later turns of the same conversation keep the same cache key.
+	turn1 := cacheKey(newReq("task A"))
+	turn2 := cacheKey(newReq("task A",
+		llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("working")}},
+		llm.Message{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("continue")}},
+	))
+	require.Equal(t, turn1, turn2)
+
+	// Sibling conversations in the same session get distinct cache keys.
+	require.NotEqual(t, turn1, cacheKey(newReq("task B")))
+
+	// Client-provided keys are preserved untouched.
+	explicit := newReq("task A")
+	explicit.PromptCacheKey = lo.ToPtr("client-key")
+	require.Equal(t, "client-key", cacheKey(explicit))
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
