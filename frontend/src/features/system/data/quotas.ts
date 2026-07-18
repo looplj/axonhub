@@ -258,6 +258,18 @@ export type ProviderMinimaxQuotaData = ProviderQuotaDataCommon & {
   rows?: MinimaxModelRow[];
 };
 
+export type ZhipuWindowRow = {
+  window: string;
+  usedPercent: number;
+  status: string;
+  resetAt?: string;
+};
+
+export type ProviderZhipuQuotaData = ProviderQuotaDataCommon & {
+  rows?: ZhipuWindowRow[];
+  level?: string;
+};
+
 export type ClineQuotaWindow = {
   items_count: number;
   used_cost_units: number;
@@ -384,6 +396,12 @@ export type ProviderQuotaChannel = {
       type: 'minimax' | 'minimax_anthropic';
       quotaStatus: {
         quotaData: ProviderMinimaxQuotaData;
+      };
+    }
+  | {
+      type: 'zhipu' | 'zhipu_anthropic';
+      quotaStatus: {
+        quotaData: ProviderZhipuQuotaData;
       };
     }
   | {
@@ -537,6 +555,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       ...base,
       type: node.type as 'minimax' | 'minimax_anthropic',
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderMinimaxQuotaData },
+    };
+  }
+  if (node.type === 'zhipu' || node.type === 'zhipu_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'zhipu' | 'zhipu_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderZhipuQuotaData },
     };
   }
   if (node.type === 'openai' || node.type === 'openai_responses') {
