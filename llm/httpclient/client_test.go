@@ -271,6 +271,27 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 	}
 }
 
+func TestHttpClientImpl_DoStream_ExposesResponseHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("X-Reasoning-Included", "true")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	client := NewHttpClient()
+	stream, err := client.DoStream(t.Context(), &Request{
+		Method: http.MethodPost,
+		URL:    server.URL,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, stream)
+	defer stream.Close()
+
+	headers := GetUpstreamResponseHeaders(stream)
+	require.Equal(t, "true", headers.Get("X-Reasoning-Included"))
+}
+
 func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(t *testing.T) {
 	hc := NewHttpClient(WithInsecureSkipVerify(true))
 

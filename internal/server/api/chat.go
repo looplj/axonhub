@@ -81,6 +81,8 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		return
 	}
 
+	writeForwardResponseHeaders(c, result.ResponseHeaders)
+
 	if result.ChatCompletion != nil {
 		resp := result.ChatCompletion
 
@@ -112,6 +114,12 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		}
 
 		streamWriter(c, newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService))
+	}
+}
+
+func writeForwardResponseHeaders(c *gin.Context, headers http.Header) {
+	for name, values := range httpclient.ForwardResponseHeaders(headers) {
+		c.Writer.Header()[name] = append([]string(nil), values...)
 	}
 }
 

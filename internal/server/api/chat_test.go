@@ -135,6 +135,46 @@ func TestWriteSSEStream_Success(t *testing.T) {
 	assert.Contains(t, body, `[DONE]`)
 }
 
+func TestWriteForwardResponseHeaders(t *testing.T) {
+	tests := []struct {
+		name       string
+		headers    http.Header
+		wantHeader string
+	}{
+		{
+			name: "writes allowlisted header",
+			headers: http.Header{
+				httpclient.ReasoningIncludedHeader: []string{"true"},
+			},
+			wantHeader: "true",
+		},
+		{
+			name: "does not write false value",
+			headers: http.Header{
+				httpclient.ReasoningIncludedHeader: []string{"false"},
+			},
+		},
+		{
+			name: "does not write unrelated upstream header",
+			headers: http.Header{
+				"Set-Cookie": []string{"secret=1"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			writeForwardResponseHeaders(c, tt.headers)
+
+			require.Equal(t, tt.wantHeader, w.Header().Get(httpclient.ReasoningIncludedHeader))
+			require.Empty(t, w.Header().Get("Set-Cookie"))
+		})
+	}
+}
+
 func TestWriteSSEStream_ErrorFormatsAsJSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

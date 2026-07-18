@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -166,6 +167,7 @@ func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyCo
 type ChatCompletionResult struct {
 	ChatCompletion       *httpclient.Response
 	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
+	ResponseHeaders      http.Header
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
@@ -343,11 +345,13 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		return ChatCompletionResult{
 			ChatCompletion:       nil,
 			ChatCompletionStream: result.EventStream,
+			ResponseHeaders:      result.ResponseHeaders,
 		}, nil
 	}
 
 	return ChatCompletionResult{
 		ChatCompletion:       result.Response,
 		ChatCompletionStream: nil,
+		ResponseHeaders:      result.ResponseHeaders,
 	}, nil
 }

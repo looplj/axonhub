@@ -182,6 +182,7 @@ func getCandidateNameByID(result []*ChannelModelsCandidate, channelID int) strin
 type mockExecutor struct {
 	response      *httpclient.Response
 	streamEvents  []*httpclient.StreamEvent
+	streamHeaders http.Header
 	err           error
 	requestCalled bool
 	requestCalls  atomic.Int64
@@ -209,7 +210,24 @@ func (m *mockExecutor) DoStream(ctx context.Context, request *httpclient.Request
 		return nil, m.err
 	}
 
-	return streams.SliceStream(m.streamEvents), nil
+	stream := streams.SliceStream(m.streamEvents)
+	if m.streamHeaders != nil {
+		return &mockStreamWithResponseHeaders{
+			Stream:  stream,
+			headers: m.streamHeaders,
+		}, nil
+	}
+
+	return stream, nil
+}
+
+type mockStreamWithResponseHeaders struct {
+	streams.Stream[*httpclient.StreamEvent]
+	headers http.Header
+}
+
+func (s *mockStreamWithResponseHeaders) UpstreamResponseHeaders() http.Header {
+	return s.headers
 }
 
 // setupTestServices creates all necessary services for integration testing.

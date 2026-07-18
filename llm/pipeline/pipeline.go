@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/looplj/axonhub/llm"
@@ -130,6 +131,10 @@ type pipeline struct {
 type Result struct {
 	// Stream indicates whether the response is a stream
 	Stream bool
+
+	// ResponseHeaders contains the explicitly allowlisted headers from the
+	// successful upstream response.
+	ResponseHeaders http.Header
 
 	// Response is the final HTTP response, if Stream is false
 	Response *httpclient.Response
@@ -392,19 +397,20 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: true,
 		}
 
-		stream, err := p.stream(ctx, executor, httpReq, p.streamFirstEventTimeout)
+		stream, responseHeaders, err := p.stream(ctx, executor, httpReq, p.streamFirstEventTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed to stream request: %w", err)
 		}
 
 		result.EventStream = stream
+		result.ResponseHeaders = responseHeaders
 	case effectiveWantStream:
 		result = &Result{
 			Stream: false,
 		}
 
 		timeoutCtx, cancel := p.withNonStreamTimeout(ctx)
-		response, err := p.autoAggregateStream(timeoutCtx, executor, httpReq)
+		response, responseHeaders, err := p.autoAggregateStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
 			if p.isNonStreamTimeout(timeoutCtx) {
@@ -415,13 +421,14 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 		}
 
 		result.Response = response
+		result.ResponseHeaders = responseHeaders
 	default:
 		result = &Result{
 			Stream: false,
 		}
 
 		timeoutCtx, cancel := p.withNonStreamTimeout(ctx)
-		response, err := p.notStream(timeoutCtx, executor, httpReq)
+		response, responseHeaders, err := p.notStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
 			if p.isNonStreamTimeout(timeoutCtx) {
@@ -432,6 +439,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 		}
 
 		result.Response = response
+		result.ResponseHeaders = responseHeaders
 	}
 
 	return result, nil

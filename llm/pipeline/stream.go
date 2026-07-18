@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -291,7 +292,7 @@ func (p *pipeline) stream(
 	executor Executor,
 	request *httpclient.Request,
 	firstEventTimeout time.Duration,
-) (streams.Stream[*httpclient.StreamEvent], error) {
+) (streams.Stream[*httpclient.StreamEvent], http.Header, error) {
 	streamCtx, firstEventGuard := newFirstEventTimeoutGuard(ctx, firstEventTimeout)
 
 	outboundStream, err := executor.DoStream(streamCtx, request)
@@ -303,7 +304,7 @@ func (p *pipeline) stream(
 		timeoutErr := firstEventGuard.finishBeforeFirstEvent(ErrStreamFirstEventTimeout)
 		p.applyRawErrorResponseMiddlewares(ctx, timeoutErr)
 
-		return nil, timeoutErr
+		return nil, nil, timeoutErr
 	}
 	if err != nil {
 		err = firstEventGuard.finishBeforeFirstEvent(err)
@@ -312,15 +313,16 @@ func (p *pipeline) stream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		if errors.Is(err, ErrStreamFirstEventTimeout) {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
-			return nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
+			return nil, nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
 		}
 
-		return nil, WrapUpstreamError(err)
+		return nil, nil, WrapUpstreamError(err)
 	}
+	responseHeaders := forwardStreamResponseHeaders(outboundStream)
 
 	// Apply raw stream middlewares
 	rawStream := outboundStream
@@ -332,10 +334,10 @@ func (p *pipeline) stream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		if errors.Is(err, ErrStreamFirstEventTimeout) {
-			return nil, err
+			return nil, nil, err
 		}
 
-		return nil, fmt.Errorf("failed to apply raw stream middlewares: %w", err)
+		return nil, nil, fmt.Errorf("failed to apply raw stream middlewares: %w", err)
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
@@ -356,10 +358,10 @@ func (p *pipeline) stream(
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
 
 		if errors.Is(err, ErrStreamFirstEventTimeout) {
-			return nil, err
+			return nil, nil, err
 		}
 
-		return nil, WrapUpstreamError(err)
+		return nil, nil, WrapUpstreamError(err)
 	}
 
 	rawLlmStream := llmStream
@@ -372,10 +374,10 @@ func (p *pipeline) stream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		if errors.Is(err, ErrStreamFirstEventTimeout) {
-			return nil, err
+			return nil, nil, err
 		}
 
-		return nil, fmt.Errorf("failed to apply llm stream middlewares: %w", err)
+		return nil, nil, fmt.Errorf("failed to apply llm stream middlewares: %w", err)
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
@@ -397,10 +399,10 @@ func (p *pipeline) stream(
 			p.applyRawErrorResponseMiddlewares(ctx, err)
 
 			if !shouldWrapPreReadStreamError(err) {
-				return nil, err
+				return nil, nil, err
 			}
 
-			return nil, WrapUpstreamError(err)
+			return nil, nil, WrapUpstreamError(err)
 		}
 	} else if firstEventGuard != nil {
 		firstEventGuard.stop()
@@ -414,7 +416,7 @@ func (p *pipeline) stream(
 
 		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
 
-		return nil, err
+		return nil, nil, err
 	}
 
 	rawInboundStream := inboundStream
@@ -425,7 +427,7 @@ func (p *pipeline) stream(
 		firstEventGuard.cancelStream()
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
-		return nil, fmt.Errorf("failed to apply inbound raw stream middlewares: %w", err)
+		return nil, nil, fmt.Errorf("failed to apply inbound raw stream middlewares: %w", err)
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
@@ -445,5 +447,5 @@ func (p *pipeline) stream(
 		}
 	}
 
-	return inboundStream, nil
+	return inboundStream, responseHeaders, nil
 }

@@ -374,13 +374,20 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 		return nil, err
 	}
 
+	// This adapter turns an upstream stream into a non-stream response. Preserve
+	// only the response metadata approved for AxonHub clients while replacing
+	// the stream content type with the aggregated JSON content type.
+	responseHeaders := httpclient.ForwardResponseHeaders(httpclient.GetUpstreamResponseHeaders(stream))
+	if responseHeaders == nil {
+		responseHeaders = make(http.Header)
+	}
+	responseHeaders.Set("Content-Type", "application/json")
+
 	return &httpclient.Response{
 		StatusCode: http.StatusOK,
-		Headers: http.Header{
-			"Content-Type": []string{"application/json"},
-		},
-		Body:    body,
-		Request: request,
+		Headers:    responseHeaders,
+		Body:       body,
+		Request:    request,
 	}, nil
 }
 

@@ -17,18 +17,29 @@ import (
 
 	"github.com/looplj/axonhub/llm/streams"
 )
+
 // MaxErrorBodySize is the maximum number of bytes read from an upstream error
 // response body. Error bodies beyond this size are truncated to prevent OOM
 // from pathological upstream responses that echo large request payloads in
 // validation error messages, producing response bodies of 1+ GB.
 const MaxErrorBodySize = 1 << 20 // 1 MB
 
-
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
 	client      *http.Client
 	proxyConfig *ProxyConfig
 	opts        []ClientOption
+}
+
+// responseHeadersStream keeps the HTTP handshake headers available to the
+// pipeline without widening the generic streams.Stream interface.
+type responseHeadersStream struct {
+	streams.Stream[*StreamEvent]
+	headers http.Header
+}
+
+func (s *responseHeadersStream) UpstreamResponseHeaders() http.Header {
+	return s.headers.Clone()
 }
 
 // ClientOption configures an HttpClient.
@@ -362,7 +373,10 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 	stream := decoderFactory(ctx, rawResp.Body)
 
-	return stream, nil
+	return &responseHeadersStream{
+		Stream:  stream,
+		headers: rawResp.Header.Clone(),
+	}, nil
 }
 
 // BuildHttpRequest builds an HTTP request from Request.

@@ -16,17 +16,17 @@ func (p *pipeline) notStream(
 	ctx context.Context,
 	executor Executor,
 	request *httpclient.Request,
-) (*httpclient.Response, error) {
+) (*httpclient.Response, http.Header, error) {
 	httpResp, err := executor.Do(ctx, request)
 	if err != nil {
 		// Apply error response middlewares
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
-			return nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
+			return nil, nil, WrapUpstreamError(p.Outbound.TransformError(ctx, httpErr))
 		}
 
-		return nil, WrapUpstreamError(fmt.Errorf("failed to do request: %w", err))
+		return nil, nil, WrapUpstreamError(fmt.Errorf("failed to do request: %w", err))
 	}
 
 	// Apply raw response middlewares
@@ -34,14 +34,15 @@ func (p *pipeline) notStream(
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
-		return nil, fmt.Errorf("failed to apply raw response middlewares: %w", err)
+		return nil, nil, fmt.Errorf("failed to apply raw response middlewares: %w", err)
 	}
+	responseHeaders := httpclient.ForwardResponseHeaders(httpResp.Headers)
 
 	llmResp, err := p.Outbound.TransformResponse(ctx, httpResp)
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
-		return nil, WrapUpstreamError(fmt.Errorf("failed to transform response: %w", err))
+		return nil, nil, WrapUpstreamError(fmt.Errorf("failed to transform response: %w", err))
 	}
 
 	// Apply LLM response middlewares
@@ -49,13 +50,13 @@ func (p *pipeline) notStream(
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
-		return nil, fmt.Errorf("failed to apply llm response middlewares: %w", err)
+		return nil, nil, fmt.Errorf("failed to apply llm response middlewares: %w", err)
 	}
 
 	if p.emptyResponseDetection && !hasResponseContent(llmResp) {
 		p.applyRawErrorResponseMiddlewares(ctx, ErrEmptyResponse)
 
-		return nil, ErrEmptyResponse
+		return nil, nil, ErrEmptyResponse
 	}
 
 	slog.DebugContext(ctx, "LLM response", slog.Any("response", llmResp))
@@ -64,7 +65,7 @@ func (p *pipeline) notStream(
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
-		return nil, fmt.Errorf("failed to transform final response: %w", err)
+		return nil, nil, fmt.Errorf("failed to transform final response: %w", err)
 	}
 
 	// Apply inbound raw response middlewares after final response transformation
@@ -72,20 +73,20 @@ func (p *pipeline) notStream(
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 
-		return nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
+		return nil, nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
 	}
 
-	return finalResp, nil
+	return finalResp, responseHeaders, nil
 }
 
 func (p *pipeline) autoAggregateStream(
 	ctx context.Context,
 	executor Executor,
 	request *httpclient.Request,
-) (*httpclient.Response, error) {
-	inboundStream, err := p.stream(ctx, executor, request, 0)
+) (*httpclient.Response, http.Header, error) {
+	inboundStream, responseHeaders, err := p.stream(ctx, executor, request, 0)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer inboundStream.Close()
 
@@ -99,23 +100,23 @@ func (p *pipeline) autoAggregateStream(
 
 	if err := inboundStream.Err(); err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(chunks) == 0 {
 		p.applyRawErrorResponseMiddlewares(ctx, ErrEmptyStreamChunks)
-		return nil, ErrEmptyStreamChunks
+		return nil, nil, ErrEmptyStreamChunks
 	}
 
 	body, _, err := p.Inbound.AggregateStreamChunks(ctx, chunks)
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(body) == 0 {
 		p.applyRawErrorResponseMiddlewares(ctx, ErrEmptyAggregatedBody)
-		return nil, ErrEmptyAggregatedBody
+		return nil, nil, ErrEmptyAggregatedBody
 	}
 
 	resp := &httpclient.Response{
@@ -130,8 +131,8 @@ func (p *pipeline) autoAggregateStream(
 	resp, err = p.applyInboundRawResponseMiddlewares(ctx, resp)
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
-		return nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
+		return nil, nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
 	}
 
-	return resp, nil
+	return resp, responseHeaders, nil
 }

@@ -426,6 +426,10 @@ func TestChatCompletionOrchestrator_Process_Streaming(t *testing.T) {
 
 	executor := &mockExecutor{
 		streamEvents: streamEvents,
+		streamHeaders: http.Header{
+			httpclient.ReasoningIncludedHeader: []string{"true"},
+			"Set-Cookie":                       []string{"secret=1"},
+		},
 	}
 
 	// Create outbound transformer
@@ -469,6 +473,8 @@ func TestChatCompletionOrchestrator_Process_Streaming(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, result.ChatCompletion)
 	assert.NotNil(t, result.ChatCompletionStream)
+	assert.Equal(t, "true", result.ResponseHeaders.Get(httpclient.ReasoningIncludedHeader))
+	assert.Empty(t, result.ResponseHeaders.Get("Set-Cookie"))
 
 	// Consume the stream
 	var chunks []*httpclient.StreamEvent

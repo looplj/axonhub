@@ -293,7 +293,11 @@ func TestChatCompletionOrchestrator_Process_NonStreaming(t *testing.T) {
 		response: &httpclient.Response{
 			StatusCode: 200,
 			Body:       mockResp,
-			Headers:    http.Header{"Content-Type": []string{"application/json"}},
+			Headers: http.Header{
+				"Content-Type":                     []string{"application/json"},
+				httpclient.ReasoningIncludedHeader: []string{"true"},
+				"Set-Cookie":                       []string{"secret=1"},
+			},
 		},
 	}
 
@@ -338,6 +342,8 @@ func TestChatCompletionOrchestrator_Process_NonStreaming(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, result.ChatCompletion)
 	assert.Nil(t, result.ChatCompletionStream)
+	assert.Equal(t, "true", result.ResponseHeaders.Get(httpclient.ReasoningIncludedHeader))
+	assert.Empty(t, result.ResponseHeaders.Get("Set-Cookie"))
 
 	// Verify executor was called
 	assert.True(t, executor.requestCalled)
