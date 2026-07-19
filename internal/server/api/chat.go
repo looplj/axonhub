@@ -118,12 +118,15 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 }
 
 func writeForwardResponseHeaders(c *gin.Context, result orchestrator.ChatCompletionResult) {
-	headers := httpclient.GetResponseHeaders(result.ChatCompletionStream)
+	var headers http.Header
 	if result.ChatCompletion != nil {
 		headers = result.ChatCompletion.Headers
+	} else {
+		headers = httpclient.GetResponseHeaders(result.ChatCompletionStream)
 	}
 
-	httpclient.MergeForwardResponseHeaders(c.Writer.Header(), headers)
+	// c.Writer.Header() is non-nil, so the merge updates it in place.
+	_ = httpclient.MergeForwardResponseHeaders(c.Writer.Header(), headers)
 }
 
 // StreamErrorFormatter formats a stream error into a JSON-serializable object for SSE error events.
