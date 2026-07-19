@@ -920,7 +920,7 @@ func TestAggregateStreamChunks_FinalOnlyCompletedSnapshotPreservesCustomTool(t *
 	require.Equal(t, "patch", *resp.Output[0].Input)
 }
 
-func TestAggregateStreamChunks_EmptyFinalCustomInputDoesNotEraseStreamedInput(t *testing.T) {
+func TestAggregateStreamChunks_EmptyFinalCustomInputClearsStreamedInput(t *testing.T) {
 	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_aggregate_empty_final","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
 		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ctc_aggregate_empty_final","type":"custom_tool_call","status":"in_progress","call_id":"call_aggregate_empty_final","name":"apply_patch","input":""}}`)},
@@ -934,5 +934,99 @@ func TestAggregateStreamChunks_EmptyFinalCustomInputDoesNotEraseStreamedInput(t 
 	require.NoError(t, json.Unmarshal(resultBytes, &resp))
 	require.Len(t, resp.Output, 1)
 	require.NotNil(t, resp.Output[0].Input)
-	require.Equal(t, "patch", *resp.Output[0].Input)
+	require.Empty(t, *resp.Output[0].Input)
+}
+
+func TestAggregateStreamChunks_EmptyCustomInputDoneClearsStreamedInput(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_aggregate_empty_done","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ctc_aggregate_empty_done","type":"custom_tool_call","status":"in_progress","call_id":"call_aggregate_empty_done","name":"apply_patch","input":""}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_aggregate_empty_done","output_index":0,"delta":"patch"}`)},
+		{Type: "response.custom_tool_call_input.done", Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ctc_aggregate_empty_done","output_index":0,"input":""}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_aggregate_empty_done","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	var resp Response
+	require.NoError(t, json.Unmarshal(resultBytes, &resp))
+	require.Len(t, resp.Output, 1)
+	require.NotNil(t, resp.Output[0].Input)
+	require.Empty(t, *resp.Output[0].Input)
+}
+
+func TestAggregateStreamChunks_OutputItemDoneRemainsAuthoritative(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_aggregate_terminal_priority","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_aggregate_terminal_priority","type":"function_call","status":"in_progress","call_id":"call_aggregate_terminal_priority","name":"search","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_aggregate_terminal_priority","output_index":0,"delta":"{}"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"fc_aggregate_terminal_priority","type":"function_call","status":"completed","call_id":"call_aggregate_terminal_priority","name":"search","arguments":"{\"source\":\"output-item\"}"}}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_aggregate_terminal_priority","output_index":0,"arguments":"{\"source\":\"late-done\"}"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_aggregate_terminal_priority","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"fc_aggregate_terminal_priority","type":"function_call","status":"completed","call_id":"call_aggregate_terminal_priority","name":"search","arguments":"{\"source\":\"completed\"}"}]}}`)},
+	})
+	require.NoError(t, err)
+
+	var resp Response
+	require.NoError(t, json.Unmarshal(resultBytes, &resp))
+	require.Len(t, resp.Output, 1)
+	require.Equal(t, `{"source":"output-item"}`, resp.Output[0].Arguments)
+}
+
+func TestAggregateStreamChunks_DoesNotGuessAcrossAmbiguousOutputIndex(t *testing.T) {
+	_, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_aggregate_ambiguous_index","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_aggregate_first","type":"function_call","status":"in_progress","call_id":"call_aggregate_first","name":"first","arguments":""}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_aggregate_second","type":"function_call","status":"in_progress","call_id":"call_aggregate_second","name":"second","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_unknown","output_index":0,"delta":"misrouted"}`)},
+	})
+	require.ErrorContains(t, err, "ambiguous tool call output_index 0")
+}
+
+func TestAggregateStreamChunks_DoesNotPersistToolsFromUnsuccessfulResponses(t *testing.T) {
+	tests := []struct {
+		name         string
+		terminalType string
+		status       string
+	}{
+		{name: "failed", terminalType: "response.failed", status: "failed"},
+		{name: "incomplete", terminalType: "response.incomplete", status: "incomplete"},
+		{name: "cancelled", terminalType: "response.cancelled", status: "cancelled"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_unsuccessful","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+				{Type: tt.terminalType, Data: []byte(`{"type":"` + tt.terminalType + `","response":{"id":"resp_unsuccessful","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"` + tt.status + `","output":[{"id":"fc_unsuccessful","type":"function_call","status":"completed","call_id":"call_unsuccessful","name":"search","arguments":"{}"}]}}`)},
+			})
+			require.NoError(t, err)
+
+			var resp Response
+			require.NoError(t, json.Unmarshal(resultBytes, &resp))
+			require.Empty(t, resp.Output)
+		})
+	}
+}
+
+func TestAggregateStreamChunks_DropsInvalidTerminalToolPayloads(t *testing.T) {
+	tests := []struct {
+		name string
+		item string
+	}{
+		{name: "invalid function JSON", item: `{"id":"fc_invalid","type":"function_call","status":"completed","call_id":"call_invalid","name":"search","arguments":"not-json"}`},
+		{name: "missing custom input", item: `{"id":"ctc_invalid","type":"custom_tool_call","status":"completed","call_id":"call_invalid","name":"apply_patch"}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_invalid_tool","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+				{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_invalid_tool","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[` + tt.item + `]}}`)},
+			})
+			require.NoError(t, err)
+
+			var resp Response
+			require.NoError(t, json.Unmarshal(resultBytes, &resp))
+			require.Empty(t, resp.Output)
+		})
+	}
 }

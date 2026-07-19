@@ -377,6 +377,43 @@ func TestResponsesStreamRoundTrip_AcceptsConflictingFinalCustomToolInput(t *test
 	require.Equal(t, "output-item-final", *completed.Output[0].Input)
 }
 
+func TestResponsesStreamRoundTrip_OutputItemDoneOverridesLateFunctionEvents(t *testing.T) {
+	const finalArguments = `{"source":"output-item"}`
+
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_late_function_events","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_late_function_events","type":"function_call","status":"in_progress","call_id":"call_late_function_events","name":"search","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_late_function_events","output_index":0,"delta":"{}"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"fc_late_function_events","type":"function_call","status":"completed","call_id":"call_late_function_events","name":"search","arguments":` + strconv.Quote(finalArguments) + `}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_late_function_events","output_index":0,"delta":"late"}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_late_function_events","output_index":0,"name":"search","arguments":"{\"source\":\"late-done\"}"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_late_function_events","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"fc_late_function_events","type":"function_call","status":"completed","call_id":"call_late_function_events","name":"search","arguments":"{\"source\":\"completed\"}"}]}}`)},
+	}
+
+	completed := roundTripCompletedResponse(t, upstreamEvents)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, finalArguments, completed.Output[0].Arguments)
+}
+
+func TestResponsesStreamRoundTrip_OutputItemDoneOverridesLateCustomToolEvents(t *testing.T) {
+	const finalInput = "output-item"
+
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_late_custom_events","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ctc_late_custom_events","type":"custom_tool_call","status":"in_progress","call_id":"call_late_custom_events","name":"apply_patch","input":""}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_late_custom_events","output_index":0,"delta":"draft"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ctc_late_custom_events","type":"custom_tool_call","status":"completed","call_id":"call_late_custom_events","name":"apply_patch","input":"output-item"}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_late_custom_events","output_index":0,"delta":"late"}`)},
+		{Type: "response.custom_tool_call_input.done", Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ctc_late_custom_events","output_index":0,"input":"late-done"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_late_custom_events","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"ctc_late_custom_events","type":"custom_tool_call","status":"completed","call_id":"call_late_custom_events","name":"apply_patch","input":"completed"}]}}`)},
+	}
+
+	completed := roundTripCompletedResponse(t, upstreamEvents)
+	require.Len(t, completed.Output, 1)
+	require.NotNil(t, completed.Output[0].Input)
+	require.Equal(t, finalInput, *completed.Output[0].Input)
+}
+
 func TestResponsesStreamRoundTrip_ExplicitEmptyFinalCustomToolInputClearsStreamedInput(t *testing.T) {
 	upstreamEvents := []*httpclient.StreamEvent{
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_custom_empty_final","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/samber/lo"
@@ -33,19 +34,23 @@ type streamAggregator struct {
 	// Terminal response details
 	responseError     *Error
 	incompleteDetails *ResponseIncompleteDetails
+	err               error
 }
 
 // aggregatedItem holds the accumulated state for an output item.
 type aggregatedItem struct {
-	ID               string
-	Type             string
-	Status           string
-	Role             string
-	CallID           string
-	Name             string
-	Namespace        string
-	Arguments        *strings.Builder
-	EncryptedContent *string
+	ID                string
+	Type              string
+	Status            string
+	OutputItemDone    bool
+	ToolPayloadDone   bool
+	ToolPayloadDeltas []string
+	Role              string
+	CallID            string
+	Name              string
+	Namespace         string
+	Arguments         *strings.Builder
+	EncryptedContent  *string
 
 	// For custom_tool_call type
 	Input *string
@@ -152,20 +157,31 @@ func (a *streamAggregator) lastItemByOutputIndex(outputIndex int) *aggregatedIte
 func (a *streamAggregator) getItemForEvent(outputIndex int, itemID *string) *aggregatedItem {
 	if itemID != nil && *itemID != "" {
 		if item, ok := a.outputItemsByID[*itemID]; ok {
+			if item.OutputItemDone {
+				return nil
+			}
 			return item
 		}
 
 		// Some upstream implementations might use call_id as item_id in delta events.
-		for _, items := range a.outputItems {
-			for _, it := range items {
-				if it.CallID == *itemID {
-					return it
-				}
+		if item := a.findItemByCallID(*itemID); item != nil {
+			if item.OutputItemDone {
+				return nil
 			}
+			return item
 		}
 	}
 
-	return a.lastItemByOutputIndex(outputIndex)
+	items := a.outputItems[outputIndex]
+	if len(items) > 1 {
+		a.rejectAmbiguousOutputIndex(outputIndex)
+		return nil
+	}
+	if len(items) == 0 || items[0].OutputItemDone {
+		return nil
+	}
+
+	return items[0]
 }
 
 func (a *streamAggregator) findItemByCallID(callID string) *aggregatedItem {
@@ -184,7 +200,7 @@ func (a *streamAggregator) findItemByCallID(callID string) *aggregatedItem {
 	return nil
 }
 
-func (a *streamAggregator) finalItem(outputIndex int, src *Item) *aggregatedItem {
+func (a *streamAggregator) finalItem(outputIndex int, src *Item, fromCompletedResponse bool) *aggregatedItem {
 	if src == nil {
 		return nil
 	}
@@ -197,6 +213,11 @@ func (a *streamAggregator) finalItem(outputIndex int, src *Item) *aggregatedItem
 		item = a.findItemByCallID(src.CallID)
 	}
 	if item == nil {
+		candidates := a.outputItems[outputIndex]
+		if len(candidates) > 1 {
+			a.rejectAmbiguousOutputIndex(outputIndex)
+			return nil
+		}
 		candidate := a.lastItemByOutputIndex(outputIndex)
 		if candidate != nil &&
 			(src.ID == "" || candidate.ID == "" || candidate.ID == src.ID) &&
@@ -208,6 +229,8 @@ func (a *streamAggregator) finalItem(outputIndex int, src *Item) *aggregatedItem
 	if item == nil {
 		item = newAggregatedItem()
 		a.outputItems[outputIndex] = append(a.outputItems[outputIndex], item)
+	} else if item.OutputItemDone {
+		return item
 	}
 
 	if src.ID != "" {
@@ -239,7 +262,7 @@ func (a *streamAggregator) finalItem(outputIndex int, src *Item) *aggregatedItem
 		item.Arguments.Reset()
 		item.Arguments.WriteString(src.Arguments)
 	}
-	if src.Input != nil && (*src.Input != "" || item.Input == nil) {
+	if src.Input != nil {
 		item.Input = lo.ToPtr(*src.Input)
 	}
 
@@ -276,8 +299,20 @@ func (a *streamAggregator) finalItem(outputIndex int, src *Item) *aggregatedItem
 	if src.Result != nil {
 		item.Result = src.Result
 	}
+	if src.Type == "function_call" || src.Type == "custom_tool_call" {
+		item.ToolPayloadDone = true
+	}
+	if !fromCompletedResponse {
+		item.OutputItemDone = true
+	}
 
 	return item
+}
+
+func (a *streamAggregator) rejectAmbiguousOutputIndex(outputIndex int) {
+	if a.err == nil {
+		a.err = fmt.Errorf("ambiguous tool call output_index %d", outputIndex)
+	}
 }
 
 func applyDoneText(dst *strings.Builder, doneText string) {
@@ -319,6 +354,9 @@ func AggregateStreamChunks(_ context.Context, chunks []*httpclient.StreamEvent) 
 		}
 
 		agg.processEvent(&ev)
+		if agg.err != nil {
+			return nil, llm.ResponseMeta{}, agg.err
+		}
 	}
 
 	resp := agg.buildResponse()
@@ -376,8 +414,14 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			item.Name = ev.Item.Name
 			item.Namespace = ev.Item.Namespace
 			item.Arguments.WriteString(ev.Item.Arguments)
+			if ev.Item.Arguments != "" {
+				item.ToolPayloadDeltas = append(item.ToolPayloadDeltas, ev.Item.Arguments)
+			}
 			item.EncryptedContent = ev.Item.EncryptedContent
 			item.Input = ev.Item.Input
+			if ev.Item.Input != nil && *ev.Item.Input != "" {
+				item.ToolPayloadDeltas = append(item.ToolPayloadDeltas, *ev.Item.Input)
+			}
 
 			if len(ev.Item.Summary) > 0 {
 				for idx, s := range ev.Item.Summary {
@@ -430,6 +474,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		if ev.ItemID != nil {
 			if item := a.getItemForEvent(ev.OutputIndex, ev.ItemID); item != nil {
 				item.Arguments.WriteString(ev.Delta)
+				item.ToolPayloadDeltas = append(item.ToolPayloadDeltas, ev.Delta)
 			}
 		}
 
@@ -450,6 +495,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					item.Arguments.Reset()
 					item.Arguments.WriteString(ev.Arguments)
 				}
+				item.ToolPayloadDone = true
 			}
 		}
 
@@ -459,6 +505,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			if item := a.getItemForEvent(ev.OutputIndex, ev.ItemID); item != nil {
 				current := lo.FromPtr(item.Input)
 				item.Input = lo.ToPtr(current + ev.Delta)
+				item.ToolPayloadDeltas = append(item.ToolPayloadDeltas, ev.Delta)
 			}
 		}
 
@@ -466,9 +513,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		// Finalize custom tool call input
 		if ev.ItemID != nil {
 			if item := a.getItemForEvent(ev.OutputIndex, ev.ItemID); item != nil {
-				if ev.Input != "" {
-					item.Input = lo.ToPtr(ev.Input)
-				}
+				item.Input = lo.ToPtr(ev.Input)
+				item.ToolPayloadDone = true
 			}
 		}
 
@@ -570,7 +616,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		part.Final = true
 
 	case StreamEventTypeOutputItemDone:
-		a.finalItem(ev.OutputIndex, ev.Item)
+		a.finalItem(ev.OutputIndex, ev.Item, false)
 
 	case StreamEventTypeResponseCompleted:
 		a.applyResponseSnapshot(ev.Response)
@@ -604,7 +650,7 @@ func (a *streamAggregator) applyResponseSnapshot(response *Response) {
 	}
 
 	for outputIndex := range response.Output {
-		a.finalItem(outputIndex, &response.Output[outputIndex])
+		a.finalItem(outputIndex, &response.Output[outputIndex], true)
 	}
 
 	if response.ID != "" {
@@ -633,134 +679,179 @@ func (a *streamAggregator) applyResponseSnapshot(response *Response) {
 	}
 }
 
-// buildResponse builds the final Response object from aggregated state.
-// This is used by responsesInboundStream to build the response.completed event.
-func (a *streamAggregator) buildResponse() *Response {
-	// Build output items
-	output := make([]Item, 0, len(a.outputItems))
+type aggregatedToolCall struct {
+	Item   Item
+	Deltas []string
+}
 
-	// Sort by output index
-	maxIndex := 0
+func (a *streamAggregator) orderedItems() []*aggregatedItem {
+	maxIndex := -1
 	for idx := range a.outputItems {
 		if idx > maxIndex {
 			maxIndex = idx
 		}
 	}
 
-	for i := 0; i <= maxIndex; i++ {
-		items, ok := a.outputItems[i]
-		if !ok || len(items) == 0 {
+	items := make([]*aggregatedItem, 0, len(a.outputItems))
+	for outputIndex := 0; outputIndex <= maxIndex; outputIndex++ {
+		items = append(items, a.outputItems[outputIndex]...)
+	}
+	return items
+}
+
+func (item *aggregatedItem) toolItem() (Item, bool) {
+	if !item.ToolPayloadDone || item.CallID == "" || item.Name == "" {
+		return Item{}, false
+	}
+
+	switch item.Type {
+	case "function_call":
+		if item.Arguments.Len() == 0 || !json.Valid([]byte(item.Arguments.String())) {
+			return Item{}, false
+		}
+		return Item{
+			ID:        item.ID,
+			Type:      item.Type,
+			Status:    lo.ToPtr(item.Status),
+			CallID:    item.CallID,
+			Name:      item.Name,
+			Namespace: item.Namespace,
+			Arguments: item.Arguments.String(),
+		}, true
+	case "custom_tool_call":
+		if item.Input == nil {
+			return Item{}, false
+		}
+		return Item{
+			ID:        item.ID,
+			Type:      item.Type,
+			Status:    lo.ToPtr(item.Status),
+			CallID:    item.CallID,
+			Name:      item.Name,
+			Namespace: item.Namespace,
+			Input:     item.Input,
+		}, true
+	default:
+		return Item{}, false
+	}
+}
+
+func (a *streamAggregator) completedToolCalls() []aggregatedToolCall {
+	if a.status != "completed" {
+		return nil
+	}
+
+	toolCalls := make([]aggregatedToolCall, 0)
+	for _, item := range a.orderedItems() {
+		toolItem, ok := item.toolItem()
+		if !ok {
 			continue
 		}
+		toolCalls = append(toolCalls, aggregatedToolCall{
+			Item:   toolItem,
+			Deltas: append([]string(nil), item.ToolPayloadDeltas...),
+		})
+	}
+	return toolCalls
+}
 
-		for _, item := range items {
-			switch item.Type {
-			case "message":
-				// Convert aggregated content parts to []Item for Content.Items
-				contentItems := make([]Item, 0, len(item.Content))
-				for _, cp := range item.Content {
-					text := cp.Text.String()
-					contentItems = append(contentItems, Item{
-						Type:        cp.Type,
-						Text:        &text,
-						Annotations: append([]Annotation(nil), cp.Annotations...),
-					})
-				}
+// buildResponse builds the final Response object from aggregated state.
+// This is used by responsesInboundStream to build the response.completed event.
+func (a *streamAggregator) buildResponse() *Response {
+	// Build output items
+	output := make([]Item, 0, len(a.outputItems))
 
-				output = append(output, Item{
-					ID:     item.ID,
-					Type:   item.Type,
-					Role:   item.Role,
-					Status: lo.ToPtr(item.Status),
-					Content: &Input{
-						Items: contentItems,
-					},
-				})
-
-			case "function_call":
-				output = append(output, Item{
-					ID:        item.ID,
-					Type:      item.Type,
-					Status:    lo.ToPtr(item.Status),
-					CallID:    item.CallID,
-					Name:      item.Name,
-					Namespace: item.Namespace,
-					Arguments: item.Arguments.String(),
-				})
-
-			case "custom_tool_call":
-				output = append(output, Item{
-					ID:        item.ID,
-					Type:      item.Type,
-					Status:    lo.ToPtr(item.Status),
-					CallID:    item.CallID,
-					Name:      item.Name,
-					Namespace: item.Namespace,
-					Input:     item.Input,
-				})
-
-			case "reasoning":
-				// ...existing reasoning handling...
-				{
-					var summary []ReasoningSummary
-
-					if len(item.SummaryParts) > 0 {
-						maxSummaryIndex := -1
-						for idx := range item.SummaryParts {
-							if idx > maxSummaryIndex {
-								maxSummaryIndex = idx
-							}
-						}
-
-						summary = make([]ReasoningSummary, 0, maxSummaryIndex+1)
-						for idx := 0; idx <= maxSummaryIndex; idx++ {
-							sp, ok := item.SummaryParts[idx]
-							if !ok || sp == nil {
-								summary = append(summary, ReasoningSummary{Type: "summary_text", Text: ""})
-								continue
-							}
-
-							summaryType := sp.Type
-							if summaryType == "" {
-								summaryType = "summary_text"
-							}
-
-							var text string
-							if sp.Text != nil {
-								text = sp.Text.String()
-							}
-
-							summary = append(summary, ReasoningSummary{Type: summaryType, Text: text})
-						}
-					}
-
-					output = append(output, Item{
-						ID:               item.ID,
-						Type:             item.Type,
-						Status:           lo.ToPtr(item.Status),
-						Summary:          summary,
-						EncryptedContent: item.EncryptedContent,
-					})
-				}
-
-			case "image_generation_call":
-				output = append(output, Item{
-					ID:     item.ID,
-					Type:   item.Type,
-					Status: lo.ToPtr(item.Status),
-					CallID: item.CallID,
-					Result: item.Result,
-				})
-
-			default:
-				// Generic item
-				output = append(output, Item{
-					ID:     item.ID,
-					Type:   item.Type,
-					Status: lo.ToPtr(item.Status),
-					Role:   item.Role,
+	for _, item := range a.orderedItems() {
+		switch item.Type {
+		case "message":
+			// Convert aggregated content parts to []Item for Content.Items
+			contentItems := make([]Item, 0, len(item.Content))
+			for _, cp := range item.Content {
+				text := cp.Text.String()
+				contentItems = append(contentItems, Item{
+					Type:        cp.Type,
+					Text:        &text,
+					Annotations: append([]Annotation(nil), cp.Annotations...),
 				})
 			}
+
+			output = append(output, Item{
+				ID:     item.ID,
+				Type:   item.Type,
+				Role:   item.Role,
+				Status: lo.ToPtr(item.Status),
+				Content: &Input{
+					Items: contentItems,
+				},
+			})
+
+		case "function_call", "custom_tool_call":
+			if a.status != "completed" {
+				continue
+			}
+			toolItem, ok := item.toolItem()
+			if !ok {
+				continue
+			}
+			output = append(output, toolItem)
+
+		case "reasoning":
+			var summary []ReasoningSummary
+			if len(item.SummaryParts) > 0 {
+				maxSummaryIndex := -1
+				for idx := range item.SummaryParts {
+					if idx > maxSummaryIndex {
+						maxSummaryIndex = idx
+					}
+				}
+
+				summary = make([]ReasoningSummary, 0, maxSummaryIndex+1)
+				for idx := 0; idx <= maxSummaryIndex; idx++ {
+					sp, ok := item.SummaryParts[idx]
+					if !ok || sp == nil {
+						summary = append(summary, ReasoningSummary{Type: "summary_text", Text: ""})
+						continue
+					}
+
+					summaryType := sp.Type
+					if summaryType == "" {
+						summaryType = "summary_text"
+					}
+
+					var text string
+					if sp.Text != nil {
+						text = sp.Text.String()
+					}
+
+					summary = append(summary, ReasoningSummary{Type: summaryType, Text: text})
+				}
+			}
+
+			output = append(output, Item{
+				ID:               item.ID,
+				Type:             item.Type,
+				Status:           lo.ToPtr(item.Status),
+				Summary:          summary,
+				EncryptedContent: item.EncryptedContent,
+			})
+
+		case "image_generation_call":
+			output = append(output, Item{
+				ID:     item.ID,
+				Type:   item.Type,
+				Status: lo.ToPtr(item.Status),
+				CallID: item.CallID,
+				Result: item.Result,
+			})
+
+		default:
+			// Generic item
+			output = append(output, Item{
+				ID:     item.ID,
+				Type:   item.Type,
+				Status: lo.ToPtr(item.Status),
+				Role:   item.Role,
+			})
 		}
 	}
 

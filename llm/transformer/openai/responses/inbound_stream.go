@@ -108,6 +108,9 @@ func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
 	}
 
 	s.aggregator.processEvent(ev)
+	if s.aggregator.err != nil {
+		return s.aggregator.err
+	}
 
 	return nil
 }
