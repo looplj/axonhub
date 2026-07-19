@@ -883,3 +883,56 @@ func TestAggregateStreamChunks_ImageGenerationCall(t *testing.T) {
 	require.NotNil(t, resp.Output[0].Result)
 	require.Equal(t, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", *resp.Output[0].Result)
 }
+
+func TestAggregateStreamChunks_FinalOnlyOutputItemDonePreservesFunctionCall(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_aggregate_done","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"fc_aggregate_done","type":"function_call","status":"completed","call_id":"call_aggregate_done","name":"spawn_agent","namespace":"collaboration","arguments":"{\"description\":\"persist me\"}"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_aggregate_done","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	var resp Response
+	require.NoError(t, json.Unmarshal(resultBytes, &resp))
+	require.Len(t, resp.Output, 1)
+	require.Equal(t, "fc_aggregate_done", resp.Output[0].ID)
+	require.Equal(t, "call_aggregate_done", resp.Output[0].CallID)
+	require.Equal(t, "spawn_agent", resp.Output[0].Name)
+	require.Equal(t, "collaboration", resp.Output[0].Namespace)
+	require.Equal(t, `{"description":"persist me"}`, resp.Output[0].Arguments)
+}
+
+func TestAggregateStreamChunks_FinalOnlyCompletedSnapshotPreservesCustomTool(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_aggregate_completed","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_aggregate_completed","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"ctc_aggregate_completed","type":"custom_tool_call","status":"completed","call_id":"call_aggregate_completed","name":"apply_patch","namespace":"mcp__codex","input":"patch"}]}}`)},
+	})
+	require.NoError(t, err)
+
+	var resp Response
+	require.NoError(t, json.Unmarshal(resultBytes, &resp))
+	require.Len(t, resp.Output, 1)
+	require.Equal(t, "ctc_aggregate_completed", resp.Output[0].ID)
+	require.Equal(t, "call_aggregate_completed", resp.Output[0].CallID)
+	require.Equal(t, "apply_patch", resp.Output[0].Name)
+	require.Equal(t, "mcp__codex", resp.Output[0].Namespace)
+	require.NotNil(t, resp.Output[0].Input)
+	require.Equal(t, "patch", *resp.Output[0].Input)
+}
+
+func TestAggregateStreamChunks_EmptyFinalCustomInputDoesNotEraseStreamedInput(t *testing.T) {
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_aggregate_empty_final","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ctc_aggregate_empty_final","type":"custom_tool_call","status":"in_progress","call_id":"call_aggregate_empty_final","name":"apply_patch","input":""}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_aggregate_empty_final","output_index":0,"delta":"patch"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ctc_aggregate_empty_final","type":"custom_tool_call","status":"completed","call_id":"call_aggregate_empty_final","name":"apply_patch","input":""}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_aggregate_empty_final","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	var resp Response
+	require.NoError(t, json.Unmarshal(resultBytes, &resp))
+	require.Len(t, resp.Output, 1)
+	require.NotNil(t, resp.Output[0].Input)
+	require.Equal(t, "patch", *resp.Output[0].Input)
+}

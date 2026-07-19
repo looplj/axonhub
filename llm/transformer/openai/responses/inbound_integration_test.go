@@ -3,6 +3,7 @@ package responses
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -313,12 +314,14 @@ func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 				// First tool call
 				output0 := resp.Output[0]
 				require.Equal(t, "function_call", output0.Type)
-				require.Equal(t, "call_eda8722c71944fe394a8893c0de8146a", output0.ID)
+				require.True(t, strings.HasPrefix(output0.ID, "fc_"))
+				require.NotEqual(t, output0.CallID, output0.ID)
 
 				// Second tool call
 				output1 := resp.Output[1]
 				require.Equal(t, "function_call", output1.Type)
-				require.Equal(t, "call_bd313747960f44af8bef50dc27f0f07e", output1.ID)
+				require.True(t, strings.HasPrefix(output1.ID, "fc_"))
+				require.NotEqual(t, output1.CallID, output1.ID)
 			},
 		},
 		{

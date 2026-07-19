@@ -417,8 +417,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "function_call":
 			// Merge function_call into the same assistant message
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: "function",
+				ID:             nextItem.CallID,
+				ResponseItemID: nextItem.ID,
+				Type:           "function",
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
@@ -435,12 +436,14 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			}
 
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:             nextItem.CallID,
+				ResponseItemID: nextItem.ID,
+				Type:           llm.ToolTypeResponsesCustomTool,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: nextItem.CallID,
-					Name:   nextItem.Name,
-					Input:  inputStr,
+					CallID:    nextItem.CallID,
+					Name:      nextItem.Name,
+					Namespace: nextItem.Namespace,
+					Input:     inputStr,
 				},
 			})
 			consumed++
@@ -522,8 +525,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: "function",
+					ID:             item.CallID,
+					ResponseItemID: item.ID,
+					Type:           "function",
 					Function: llm.FunctionCall{
 						Name:      item.Name,
 						Namespace: item.Namespace,
@@ -544,12 +548,14 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: llm.ToolTypeResponsesCustomTool,
+					ID:             item.CallID,
+					ResponseItemID: item.ID,
+					Type:           llm.ToolTypeResponsesCustomTool,
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-						CallID: item.CallID,
-						Name:   item.Name,
-						Input:  inputStr,
+						CallID:    item.CallID,
+						Name:      item.Name,
+						Namespace: item.Namespace,
+						Input:     inputStr,
 					},
 				},
 			},
@@ -561,6 +567,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Function call output - convert to tool message
 		msg := &llm.Message{
+			ID:         item.ID,
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),
@@ -577,6 +584,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Custom tool call output - convert to tool message
 		msg := &llm.Message{
+			ID:         item.ID,
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),
@@ -909,7 +917,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 
 		messageItemID := message.ID
 		if messageItemID == "" {
-			messageItemID = generateItemID()
+			messageItemID = generateItemID("msg")
 		}
 
 		// Handle reasoning content
@@ -921,17 +929,26 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		if len(message.ToolCalls) > 0 {
 			for _, toolCall := range message.ToolCalls {
 				if toolCall.ResponseCustomToolCall != nil {
+					itemID := toolCall.ResponseItemID
+					if itemID == "" {
+						itemID = generateItemID("ctc")
+					}
 					resp.Output = append(resp.Output, Item{
-						ID:     toolCall.ID,
-						Type:   "custom_tool_call",
-						CallID: toolCall.ResponseCustomToolCall.CallID,
-						Name:   toolCall.ResponseCustomToolCall.Name,
-						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
-						Status: lo.ToPtr("completed"),
+						ID:        itemID,
+						Type:      "custom_tool_call",
+						CallID:    toolCall.ResponseCustomToolCall.CallID,
+						Name:      toolCall.ResponseCustomToolCall.Name,
+						Namespace: toolCall.ResponseCustomToolCall.Namespace,
+						Input:     lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
+						Status:    lo.ToPtr("completed"),
 					})
 				} else {
+					itemID := toolCall.ResponseItemID
+					if itemID == "" {
+						itemID = generateItemID("fc")
+					}
 					resp.Output = append(resp.Output, Item{
-						ID:        toolCall.ID,
+						ID:        itemID,
 						Type:      "function_call",
 						CallID:    toolCall.ID,
 						Name:      toolCall.Function.Name,
@@ -978,7 +995,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 					// Handle image output
 					if part.ImageURL != nil {
 						imageItem := Item{
-							ID:           generateItemID(),
+							ID:           generateItemID("ig"),
 							Type:         "image_generation_call",
 							Role:         "assistant",
 							Result:       lo.ToPtr(xurl.ExtractBase64FromDataURL(part.ImageURL.URL)),
@@ -1029,7 +1046,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		emptyText := ""
 		resp.Output = []Item{
 			{
-				ID:   generateItemID(),
+				ID:   generateItemID("msg"),
 				Type: "message",
 				Role: "assistant",
 				Content: &Input{
@@ -1050,8 +1067,8 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 }
 
 // generateItemID generates a unique item ID for output items.
-func generateItemID() string {
-	return fmt.Sprintf("item_%s", lo.RandomString(16, lo.AlphanumericCharset))
+func generateItemID(prefix string) string {
+	return fmt.Sprintf("%s_%s", prefix, lo.RandomString(16, lo.AlphanumericCharset))
 }
 
 // buildReasoningItem creates a reasoning Item from a message's reasoning content and signature.
@@ -1073,7 +1090,7 @@ func buildReasoningItem(msg llm.Message) (Item, bool) {
 	}
 
 	return Item{
-		ID:               generateItemID(),
+		ID:               generateItemID("rs"),
 		Type:             "reasoning",
 		Status:           lo.ToPtr("completed"),
 		Summary:          summary,

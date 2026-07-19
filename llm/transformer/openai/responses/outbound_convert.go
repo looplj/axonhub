@@ -226,13 +226,16 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	for _, tc := range msg.ToolCalls {
 		if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
-				Type:   "custom_tool_call",
-				CallID: tc.ResponseCustomToolCall.CallID,
-				Name:   tc.ResponseCustomToolCall.Name,
-				Input:  lo.ToPtr(tc.ResponseCustomToolCall.Input),
+				ID:        tc.ResponseItemID,
+				Type:      "custom_tool_call",
+				CallID:    tc.ResponseCustomToolCall.CallID,
+				Name:      tc.ResponseCustomToolCall.Name,
+				Namespace: tc.ResponseCustomToolCall.Namespace,
+				Input:     lo.ToPtr(tc.ResponseCustomToolCall.Input),
 			})
 		} else {
 			toolCallItems = append(toolCallItems, Item{
+				ID:        tc.ResponseItemID,
 				Type:      "function_call",
 				CallID:    tc.ID,
 				Name:      tc.Function.Name,
@@ -316,6 +319,7 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 	}
 
 	return Item{
+		ID:     msg.ID,
 		Type:   itemType,
 		CallID: lo.FromPtr(msg.ToolCallID),
 		Output: &output,
@@ -654,8 +658,9 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			annotations = appendOutputText(&textContent, &visibleTextRuneCount, annotations, outputItem)
 		case "function_call":
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: "function",
+				ID:             outputItem.CallID,
+				ResponseItemID: outputItem.ID,
+				Type:           "function",
 				Function: llm.FunctionCall{
 					Name:      outputItem.Name,
 					Namespace: outputItem.Namespace,
@@ -669,12 +674,14 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			}
 
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:             outputItem.CallID,
+				ResponseItemID: outputItem.ID,
+				Type:           llm.ToolTypeResponsesCustomTool,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: outputItem.CallID,
-					Name:   outputItem.Name,
-					Input:  inputStr,
+					CallID:    outputItem.CallID,
+					Name:      outputItem.Name,
+					Namespace: outputItem.Namespace,
+					Input:     inputStr,
 				},
 			})
 		case "reasoning":

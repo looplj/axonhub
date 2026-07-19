@@ -61,9 +61,13 @@ type outboundStreamState struct {
 	reasoningContent strings.Builder
 
 	// Tool call tracking
-	toolCalls     map[string]*llm.ToolCall // callID -> tool call
-	itemToCallID  map[string]string        // item.id -> call_id mapping
-	toolCallIndex map[string]int           // callID -> index in the output
+	toolCalls                map[string]*llm.ToolCall // internal key -> tool call
+	itemToToolCallKey        map[string]string        // item.id -> internal key
+	callToToolCallKey        map[string]string        // call_id -> internal key
+	outputIndexToToolCallKey map[int]string           // output_index -> internal key
+	ambiguousToolCallIndexes map[int]bool             // output_index reused by multiple tool calls
+	toolCallIdentityEmitted  map[string]bool          // internal key -> whether identity was emitted
+	nextToolCallIndex        int
 
 	// Reasoning signature tracking
 	pendingReasoningEncryptedContent map[string]*string
@@ -78,12 +82,152 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 		stream: stream,
 		state: &outboundStreamState{
 			toolCalls:                        make(map[string]*llm.ToolCall),
-			itemToCallID:                     make(map[string]string),
-			toolCallIndex:                    make(map[string]int),
+			itemToToolCallKey:                make(map[string]string),
+			callToToolCallKey:                make(map[string]string),
+			outputIndexToToolCallKey:         make(map[int]string),
+			ambiguousToolCallIndexes:         make(map[int]bool),
+			toolCallIdentityEmitted:          make(map[string]bool),
 			pendingReasoningEncryptedContent: make(map[string]*string),
 			transformerMetadata:              make(map[string]any),
 		},
 	}
+}
+
+func toolCallStateKey(callID, itemID string) string {
+	if callID != "" {
+		return "call:" + callID
+	}
+	if itemID != "" {
+		return "item:" + itemID
+	}
+	return ""
+}
+
+func toolCallMatchesItemType(tc *llm.ToolCall, itemType string) bool {
+	if tc == nil || itemType == "" {
+		return tc != nil
+	}
+
+	switch itemType {
+	case "function_call":
+		return tc.ResponseCustomToolCall == nil
+	case "custom_tool_call":
+		return tc.ResponseCustomToolCall != nil
+	default:
+		return false
+	}
+}
+
+func (s *responsesOutboundStream) bindToolCallOutputIndex(outputIndex int, key string) {
+	if key == "" || s.state.ambiguousToolCallIndexes[outputIndex] {
+		return
+	}
+
+	existingKey := s.state.outputIndexToToolCallKey[outputIndex]
+	if existingKey == "" {
+		s.state.outputIndexToToolCallKey[outputIndex] = key
+		return
+	}
+	if existingKey != key {
+		delete(s.state.outputIndexToToolCallKey, outputIndex)
+		s.state.ambiguousToolCallIndexes[outputIndex] = true
+	}
+}
+
+func (s *responsesOutboundStream) uniqueToolCallKeyForOutputIndex(outputIndex int) (string, error) {
+	if s.state.ambiguousToolCallIndexes[outputIndex] {
+		return "", fmt.Errorf("ambiguous tool call output_index %d", outputIndex)
+	}
+	return s.state.outputIndexToToolCallKey[outputIndex], nil
+}
+
+func (s *responsesOutboundStream) ensureToolCallState(
+	item *Item,
+	outputIndex int,
+	fromAddedEvent bool,
+) (string, *llm.ToolCall, error) {
+	if item == nil {
+		return "", nil, nil
+	}
+
+	key := ""
+	if item.CallID != "" {
+		key = s.state.callToToolCallKey[item.CallID]
+	}
+	if key == "" && item.ID != "" {
+		key = s.state.itemToToolCallKey[item.ID]
+	}
+	if key == "" && !fromAddedEvent {
+		candidateKey, err := s.uniqueToolCallKeyForOutputIndex(outputIndex)
+		if err != nil {
+			return "", nil, err
+		}
+		candidate := s.state.toolCalls[candidateKey]
+		if toolCallMatchesItemType(candidate, item.Type) &&
+			(item.CallID == "" || candidate.ID == "" || candidate.ID == item.CallID) &&
+			(item.ID == "" || candidate.ResponseItemID == "" || candidate.ResponseItemID == item.ID) {
+			key = candidateKey
+		}
+	}
+	if key == "" {
+		key = toolCallStateKey(item.CallID, item.ID)
+	}
+	if key == "" {
+		return "", nil, nil
+	}
+
+	tc, exists := s.state.toolCalls[key]
+	if !exists {
+		tc = &llm.ToolCall{
+			Index: s.state.nextToolCallIndex,
+			Type:  "function",
+		}
+		s.state.nextToolCallIndex++
+		s.state.toolCalls[key] = tc
+	}
+	s.bindToolCallOutputIndex(outputIndex, key)
+
+	if item.CallID != "" {
+		tc.ID = item.CallID
+		s.state.callToToolCallKey[item.CallID] = key
+	}
+	if item.ID != "" {
+		// A Responses stream can omit the item id in output_item.added and
+		// provide it only in a later terminal snapshot. Once the canonical
+		// tool identity has been emitted, changing the item id would split
+		// one tool call into two identities for downstream stream consumers.
+		if !s.state.toolCallIdentityEmitted[key] {
+			tc.ResponseItemID = item.ID
+		}
+		s.state.itemToToolCallKey[item.ID] = key
+	}
+
+	if item.Type == "custom_tool_call" {
+		tc.Type = llm.ToolTypeResponsesCustomTool
+		if tc.ResponseCustomToolCall == nil {
+			tc.ResponseCustomToolCall = &llm.ResponseCustomToolCall{}
+		}
+		if item.CallID != "" {
+			tc.ResponseCustomToolCall.CallID = item.CallID
+		}
+	}
+
+	if fromAddedEvent && !exists {
+		switch item.Type {
+		case "function_call":
+			tc.Function.Name = item.Name
+			tc.Function.Namespace = item.Namespace
+			tc.Function.Arguments = item.Arguments
+		case "custom_tool_call":
+			tc.ResponseCustomToolCall.Name = item.Name
+			tc.ResponseCustomToolCall.Namespace = item.Namespace
+			if item.Input != nil {
+				tc.ResponseCustomToolCall.Input = *item.Input
+			}
+		}
+	}
+
+	return key, tc, nil
 }
 
 func (s *responsesOutboundStream) enqueue(resp *llm.Response) {
@@ -226,20 +370,14 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil
 
 		case "function_call":
-			// Initialize tool call tracking
-			toolCallIdx := len(s.state.toolCalls)
-			s.state.toolCalls[item.CallID] = &llm.ToolCall{
-				ID:   item.CallID,
-				Type: "function",
-				Function: llm.FunctionCall{
-					Name:      item.Name,
-					Namespace: item.Namespace,
-					Arguments: "",
-				},
+			key, tc, err := s.ensureToolCallState(item, streamEvent.OutputIndex, true)
+			if err != nil {
+				return err
 			}
-			// Map item.id to call_id for later lookup
-			s.state.itemToCallID[item.ID] = item.CallID
-			s.state.toolCallIndex[item.CallID] = toolCallIdx
+			if key == "" || tc.ID == "" || s.state.toolCallIdentityEmitted[key] {
+				return nil
+			}
+			s.state.toolCallIdentityEmitted[key] = true
 
 			resp.Choices = []llm.Choice{
 				{
@@ -247,13 +385,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 					Delta: &llm.Message{
 						ToolCalls: []llm.ToolCall{
 							{
-								ID:    item.CallID,
-								Type:  "function",
-								Index: toolCallIdx,
-								Function: llm.FunctionCall{
-									Name:      item.Name,
-									Namespace: item.Namespace,
-								},
+								ID:             tc.ID,
+								ResponseItemID: tc.ResponseItemID,
+								Type:           "function",
+								Index:          tc.Index,
+								Function:       tc.Function,
 							},
 						},
 					},
@@ -261,19 +397,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 
 		case "custom_tool_call":
-			// Custom tool call - initialize tracking, input will be streamed via delta events
-			toolCallIdx := len(s.state.toolCalls)
-			s.state.toolCalls[item.CallID] = &llm.ToolCall{
-				ID:   item.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
-				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: item.CallID,
-					Name:   item.Name,
-					Input:  "",
-				},
+			key, tc, err := s.ensureToolCallState(item, streamEvent.OutputIndex, true)
+			if err != nil {
+				return err
 			}
-			s.state.itemToCallID[item.ID] = item.CallID
-			s.state.toolCallIndex[item.CallID] = toolCallIdx
+			if key == "" || tc.ID == "" || s.state.toolCallIdentityEmitted[key] {
+				return nil
+			}
+			s.state.toolCallIdentityEmitted[key] = true
+			customToolCall := *tc.ResponseCustomToolCall
 
 			resp.Choices = []llm.Choice{
 				{
@@ -281,13 +413,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 					Delta: &llm.Message{
 						ToolCalls: []llm.ToolCall{
 							{
-								ID:    item.CallID,
-								Type:  llm.ToolTypeResponsesCustomTool,
-								Index: toolCallIdx,
-								ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-									CallID: item.CallID,
-									Name:   item.Name,
-								},
+								ID:                     tc.ID,
+								ResponseItemID:         tc.ResponseItemID,
+								Type:                   llm.ToolTypeResponsesCustomTool,
+								Index:                  tc.Index,
+								ResponseCustomToolCall: &customToolCall,
 							},
 						},
 					},
@@ -301,99 +431,91 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeFunctionCallArgumentsDelta:
 		// Function call arguments delta
-		if streamEvent.ItemID != nil {
-			// Look up call_id from item_id mapping
-			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
-			if !ok {
-				// Fallback: item_id might be the call_id itself
-				callID = *streamEvent.ItemID
+		key, err := s.toolCallKeyForStreamEvent(streamEvent)
+		if err != nil {
+			return err
+		}
+		if tc, ok := s.state.toolCalls[key]; ok {
+			tc.Function.Arguments += streamEvent.Delta
+			if !s.state.toolCallIdentityEmitted[key] {
+				return nil
 			}
 
-			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.Function.Arguments += streamEvent.Delta
-				toolCallIdx := s.state.toolCallIndex[callID]
-
-				resp.Choices = []llm.Choice{
-					{
-						Index: 0,
-						Delta: &llm.Message{
-							ToolCalls: []llm.ToolCall{
-								{
-									Index: toolCallIdx,
-									Function: llm.FunctionCall{
-										Arguments: streamEvent.Delta,
-									},
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								Index: tc.Index,
+								Function: llm.FunctionCall{
+									Arguments: streamEvent.Delta,
 								},
 							},
 						},
 					},
-				}
+				},
 			}
 		}
 
 	case StreamEventTypeFunctionCallArgumentsDone:
-		// Function call completed - update state but don't emit an event
-		if streamEvent.CallID != "" {
-			if tc, ok := s.state.toolCalls[streamEvent.CallID]; ok {
-				if streamEvent.Name != "" {
-					tc.Function.Name = streamEvent.Name
-				}
-				if streamEvent.Namespace != "" {
-					tc.Function.Namespace = streamEvent.Namespace
-				}
-				tc.Function.Arguments = streamEvent.Arguments
-			}
+		key, err := s.toolCallKeyForStreamEvent(streamEvent)
+		if err != nil {
+			return err
 		}
-
-		return nil // Intentionally skip this event
+		emitted, err := s.reconcileFunctionCall(resp, key, streamEvent.Name, streamEvent.Namespace, streamEvent.Arguments, false)
+		if err != nil {
+			return err
+		}
+		if !emitted {
+			return nil
+		}
 
 	case StreamEventTypeCustomToolCallInputDelta:
 		// Custom tool call input delta - accumulate and emit as tool call delta
-		if streamEvent.ItemID != nil {
-			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
-			if !ok {
-				callID = *streamEvent.ItemID
+		key, err := s.toolCallKeyForStreamEvent(streamEvent)
+		if err != nil {
+			return err
+		}
+		if tc, ok := s.state.toolCalls[key]; ok && tc.ResponseCustomToolCall != nil {
+			tc.ResponseCustomToolCall.Input += streamEvent.Delta
+			if !s.state.toolCallIdentityEmitted[key] {
+				return nil
 			}
 
-			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.ResponseCustomToolCall.Input += streamEvent.Delta
-				toolCallIdx := s.state.toolCallIndex[callID]
-
-				resp.Choices = []llm.Choice{
-					{
-						Index: 0,
-						Delta: &llm.Message{
-							ToolCalls: []llm.ToolCall{
-								{
-									Index: toolCallIdx,
-									Type:  llm.ToolTypeResponsesCustomTool,
-									ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-										CallID: callID,
-										Name:   tc.ResponseCustomToolCall.Name,
-										Input:  streamEvent.Delta,
-									},
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								Index: tc.Index,
+								Type:  llm.ToolTypeResponsesCustomTool,
+								ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+									CallID:    tc.ID,
+									Name:      tc.ResponseCustomToolCall.Name,
+									Namespace: tc.ResponseCustomToolCall.Namespace,
+									Input:     streamEvent.Delta,
 								},
 							},
 						},
 					},
-				}
+				},
 			}
 		}
 
 	case StreamEventTypeCustomToolCallInputDone:
-		// Custom tool call input completed - update state but don't emit an event
-		if streamEvent.ItemID != nil {
-			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
-			if !ok {
-				callID = *streamEvent.ItemID
-			}
-
-			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.ResponseCustomToolCall.Input = streamEvent.Input
-			}
+		key, err := s.toolCallKeyForStreamEvent(streamEvent)
+		if err != nil {
+			return err
 		}
-
-		return nil // Intentionally skip this event
+		emitted, err := s.reconcileCustomToolCall(resp, key, "", "", streamEvent.Input, false)
+		if err != nil {
+			return err
+		}
+		if !emitted {
+			return nil
+		}
 
 	case StreamEventTypeContentPartAdded:
 		// Content part added - skip, no meaningful content to emit
@@ -438,6 +560,16 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	case StreamEventTypeOutputItemDone:
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "function_call" || streamEvent.Item.Type == "custom_tool_call" {
+			emitted, err := s.reconcileFinalToolItem(resp, streamEvent.OutputIndex, streamEvent.Item)
+			if err != nil {
+				return err
+			}
+			if !emitted {
+				return nil
+			}
+			break
 		}
 		if streamEvent.Item.Type == "web_search_call" {
 			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
@@ -502,8 +634,24 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseCompleted:
 		// Response completed - emit two events: one with finish_reason, one with usage
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		if streamEvent.Response != nil {
+			for i := range streamEvent.Response.Output {
+				item := &streamEvent.Response.Output[i]
+				if item.Type != "function_call" && item.Type != "custom_tool_call" {
+					continue
+				}
+				deltaResp := s.newResponseChunk()
+				emitted, err := s.reconcileFinalToolItem(deltaResp, i, item)
+				if err != nil {
+					return err
+				}
+				if emitted {
+					s.enqueue(deltaResp)
+				}
+			}
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
 		}
@@ -513,7 +661,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		finishReason := "stop"
-		if len(s.state.toolCalls) > 0 {
+		if s.hasEmittedToolCall() {
 			finishReason = "tool_calls"
 		}
 
@@ -547,7 +695,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseFailed:
 		// Response failed
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		finishReason := "error"
 		resp.Choices = []llm.Choice{
 			{
@@ -558,7 +708,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseIncomplete:
 		// Response incomplete (e.g., max tokens)
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		finishReason := "length"
 		resp.Choices = []llm.Choice{
 			{
@@ -569,7 +721,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseCancelled:
 		// Response cancelled
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		finishReason := "cancelled"
 		resp.Choices = []llm.Choice{
 			{
@@ -628,6 +782,246 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	s.enqueue(resp)
 
 	return nil
+}
+
+func (s *responsesOutboundStream) toolCallKeyForStreamEvent(event StreamEvent) (string, error) {
+	key := ""
+	if event.CallID != "" {
+		key = s.state.callToToolCallKey[event.CallID]
+	}
+	if key == "" && event.ItemID != nil {
+		key = s.state.itemToToolCallKey[*event.ItemID]
+		if key == "" {
+			key = s.state.callToToolCallKey[*event.ItemID]
+		}
+	}
+	if key == "" {
+		var err error
+		key, err = s.uniqueToolCallKeyForOutputIndex(event.OutputIndex)
+		if err != nil {
+			return "", err
+		}
+	}
+	if key == "" {
+		return "", nil
+	}
+
+	if event.CallID != "" {
+		s.state.callToToolCallKey[event.CallID] = key
+	}
+	if event.ItemID != nil && *event.ItemID != "" {
+		s.state.itemToToolCallKey[*event.ItemID] = key
+	}
+
+	return key, nil
+}
+
+func (s *responsesOutboundStream) hasEmittedToolCall() bool {
+	for _, emitted := range s.state.toolCallIdentityEmitted {
+		if emitted {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *responsesOutboundStream) beginTerminalEvent() bool {
+	if s.responseCompleted {
+		return false
+	}
+	s.responseCompleted = true
+	return true
+}
+
+func finalStreamDelta(current, final string) (string, error) {
+	if final == "" || final == current {
+		return "", nil
+	}
+	if strings.HasPrefix(final, current) {
+		return final[len(current):], nil
+	}
+	return "", fmt.Errorf("final value does not extend streamed value")
+}
+
+func (s *responsesOutboundStream) reconcileFinalToolItem(
+	resp *llm.Response,
+	outputIndex int,
+	item *Item,
+) (bool, error) {
+	key, tc, err := s.ensureToolCallState(item, outputIndex, false)
+	if err != nil {
+		return false, err
+	}
+	if key == "" || tc == nil {
+		return false, nil
+	}
+	if tc.ID == "" {
+		return false, fmt.Errorf("final %s item %q is missing call_id", item.Type, item.ID)
+	}
+	includeIdentity := !s.state.toolCallIdentityEmitted[key]
+
+	switch item.Type {
+	case "function_call":
+		return s.reconcileFunctionCall(resp, key, item.Name, item.Namespace, item.Arguments, includeIdentity)
+	case "custom_tool_call":
+		finalInput := ""
+		if item.Input != nil {
+			finalInput = *item.Input
+		}
+		return s.reconcileCustomToolCall(resp, key, item.Name, item.Namespace, finalInput, includeIdentity)
+	default:
+		return false, nil
+	}
+}
+
+func (s *responsesOutboundStream) reconcileFunctionCall(
+	resp *llm.Response,
+	key, name, namespace, finalArguments string,
+	includeIdentity bool,
+) (bool, error) {
+	tc, ok := s.state.toolCalls[key]
+	if !ok {
+		return false, nil
+	}
+
+	nameChanged := name != "" && name != tc.Function.Name
+	namespaceChanged := namespace != "" && namespace != tc.Function.Namespace
+	if nameChanged {
+		tc.Function.Name = name
+	}
+	if namespaceChanged {
+		tc.Function.Namespace = namespace
+	}
+
+	delta, err := finalStreamDelta(tc.Function.Arguments, finalArguments)
+	if err != nil {
+		return false, fmt.Errorf("invalid final arguments for function call %q: %w", tc.ID, err)
+	}
+	if finalArguments != "" {
+		tc.Function.Arguments = finalArguments
+	}
+	if !s.state.toolCallIdentityEmitted[key] && !includeIdentity {
+		return false, nil
+	}
+	if delta == "" && !nameChanged && !namespaceChanged && !includeIdentity {
+		return false, nil
+	}
+
+	arguments := delta
+	if includeIdentity {
+		arguments = tc.Function.Arguments
+	}
+	functionDelta := llm.FunctionCall{Arguments: arguments}
+	if includeIdentity || nameChanged {
+		functionDelta.Name = tc.Function.Name
+	}
+	if includeIdentity || namespaceChanged {
+		functionDelta.Namespace = tc.Function.Namespace
+	}
+
+	toolCallDelta := llm.ToolCall{
+		Index:    tc.Index,
+		Function: functionDelta,
+	}
+	if includeIdentity {
+		toolCallDelta.ID = tc.ID
+		toolCallDelta.ResponseItemID = tc.ResponseItemID
+		toolCallDelta.Type = "function"
+	}
+
+	resp.Choices = []llm.Choice{
+		{
+			Index: 0,
+			Delta: &llm.Message{
+				ToolCalls: []llm.ToolCall{toolCallDelta},
+			},
+		},
+	}
+	if includeIdentity {
+		s.state.toolCallIdentityEmitted[key] = true
+	}
+	return true, nil
+}
+
+func (s *responsesOutboundStream) reconcileCustomToolCall(
+	resp *llm.Response,
+	key, name, namespace, finalInput string,
+	includeIdentity bool,
+) (bool, error) {
+	tc, ok := s.state.toolCalls[key]
+	if !ok || tc.ResponseCustomToolCall == nil {
+		return false, nil
+	}
+
+	nameChanged := name != "" && name != tc.ResponseCustomToolCall.Name
+	namespaceChanged := namespace != "" && namespace != tc.ResponseCustomToolCall.Namespace
+	if nameChanged {
+		tc.ResponseCustomToolCall.Name = name
+	}
+	if namespaceChanged {
+		tc.ResponseCustomToolCall.Namespace = namespace
+	}
+	delta, err := finalStreamDelta(tc.ResponseCustomToolCall.Input, finalInput)
+	if err != nil {
+		return false, fmt.Errorf("invalid final input for custom tool call %q: %w", tc.ID, err)
+	}
+	if finalInput != "" {
+		tc.ResponseCustomToolCall.Input = finalInput
+	}
+	if !s.state.toolCallIdentityEmitted[key] && !includeIdentity {
+		return false, nil
+	}
+	if delta == "" && !nameChanged && !namespaceChanged && !includeIdentity {
+		return false, nil
+	}
+
+	input := delta
+	if includeIdentity {
+		input = tc.ResponseCustomToolCall.Input
+	}
+	customToolDelta := &llm.ResponseCustomToolCall{
+		CallID: tc.ID,
+		Input:  input,
+	}
+	if includeIdentity || nameChanged {
+		customToolDelta.Name = tc.ResponseCustomToolCall.Name
+	}
+	if includeIdentity || namespaceChanged {
+		customToolDelta.Namespace = tc.ResponseCustomToolCall.Namespace
+	}
+
+	toolCallDelta := llm.ToolCall{
+		Index:                  tc.Index,
+		Type:                   llm.ToolTypeResponsesCustomTool,
+		ResponseCustomToolCall: customToolDelta,
+	}
+	if includeIdentity {
+		toolCallDelta.ID = tc.ID
+		toolCallDelta.ResponseItemID = tc.ResponseItemID
+	}
+
+	resp.Choices = []llm.Choice{
+		{
+			Index: 0,
+			Delta: &llm.Message{
+				ToolCalls: []llm.ToolCall{toolCallDelta},
+			},
+		},
+	}
+	if includeIdentity {
+		s.state.toolCallIdentityEmitted[key] = true
+	}
+	return true, nil
+}
+
+func (s *responsesOutboundStream) newResponseChunk() *llm.Response {
+	return &llm.Response{
+		Object:             "chat.completion.chunk",
+		ID:                 s.state.responseID,
+		Model:              s.state.responseModel,
+		Created:            s.state.created,
+		PreviousResponseID: s.state.previousResponseID,
+	}
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {

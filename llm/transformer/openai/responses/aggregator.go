@@ -168,6 +168,118 @@ func (a *streamAggregator) getItemForEvent(outputIndex int, itemID *string) *agg
 	return a.lastItemByOutputIndex(outputIndex)
 }
 
+func (a *streamAggregator) findItemByCallID(callID string) *aggregatedItem {
+	if callID == "" {
+		return nil
+	}
+
+	for _, items := range a.outputItems {
+		for _, item := range items {
+			if item.CallID == callID {
+				return item
+			}
+		}
+	}
+
+	return nil
+}
+
+func (a *streamAggregator) finalItem(outputIndex int, src *Item) *aggregatedItem {
+	if src == nil {
+		return nil
+	}
+
+	var item *aggregatedItem
+	if src.ID != "" {
+		item = a.outputItemsByID[src.ID]
+	}
+	if item == nil {
+		item = a.findItemByCallID(src.CallID)
+	}
+	if item == nil {
+		candidate := a.lastItemByOutputIndex(outputIndex)
+		if candidate != nil &&
+			(src.ID == "" || candidate.ID == "" || candidate.ID == src.ID) &&
+			(src.CallID == "" || candidate.CallID == "" || candidate.CallID == src.CallID) &&
+			(src.Type == "" || candidate.Type == "" || candidate.Type == src.Type) {
+			item = candidate
+		}
+	}
+	if item == nil {
+		item = newAggregatedItem()
+		a.outputItems[outputIndex] = append(a.outputItems[outputIndex], item)
+	}
+
+	if src.ID != "" {
+		item.ID = src.ID
+		a.outputItemsByID[src.ID] = item
+	}
+	if src.Type != "" {
+		item.Type = src.Type
+	}
+	if src.Role != "" {
+		item.Role = src.Role
+	}
+	if src.Status != nil {
+		item.Status = *src.Status
+	}
+	if item.Status == "" {
+		item.Status = "completed"
+	}
+	if src.CallID != "" {
+		item.CallID = src.CallID
+	}
+	if src.Name != "" {
+		item.Name = src.Name
+	}
+	if src.Namespace != "" {
+		item.Namespace = src.Namespace
+	}
+	if src.Arguments != "" {
+		item.Arguments.Reset()
+		item.Arguments.WriteString(src.Arguments)
+	}
+	if src.Input != nil && (*src.Input != "" || item.Input == nil) {
+		item.Input = lo.ToPtr(*src.Input)
+	}
+
+	if src.Content != nil {
+		for idx, contentItem := range src.Content.Items {
+			part := ensureContentPart(item, idx)
+			if part == nil {
+				continue
+			}
+			if contentItem.Type != "" {
+				part.Type = contentItem.Type
+			}
+			if contentItem.Text != nil {
+				applyDoneText(part.Text, *contentItem.Text)
+			}
+			if contentItem.Annotations != nil {
+				part.Annotations = append([]Annotation(nil), contentItem.Annotations...)
+			}
+		}
+	}
+
+	if len(src.Summary) > 0 {
+		for idx, summary := range src.Summary {
+			part := ensureSummaryPart(item, idx)
+			part.Type = summary.Type
+			applyDoneText(part.Text, summary.Text)
+			part.Final = true
+		}
+	}
+
+	if src.EncryptedContent != nil {
+		item.EncryptedContent = src.EncryptedContent
+	}
+	if src.Result != nil {
+		item.Result = src.Result
+	}
+
+	return item
+}
+
 func applyDoneText(dst *strings.Builder, doneText string) {
 	if doneText == "" {
 		return
@@ -458,72 +570,12 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		part.Final = true
 
 	case StreamEventTypeOutputItemDone:
-		// Mark item as completed and update with final data
-		if ev.Item != nil {
-			item := a.outputItemsByID[ev.Item.ID]
-			if item == nil {
-				item = a.lastItemByOutputIndex(ev.OutputIndex)
-			}
-
-			if item != nil {
-				if ev.Item.Status != nil {
-					item.Status = *ev.Item.Status
-				}
-
-				if item.Status == "" {
-					item.Status = "completed"
-				}
-
-				// Update with final data if provided
-				if ev.Item.Arguments != "" {
-					item.Arguments.Reset()
-					item.Arguments.WriteString(ev.Item.Arguments)
-				}
-
-				if ev.Item.Content != nil {
-					for idx, contentItem := range ev.Item.Content.Items {
-						part := ensureContentPart(item, idx)
-						if part == nil {
-							continue
-						}
-						if contentItem.Type != "" {
-							part.Type = contentItem.Type
-						}
-						if contentItem.Text != nil {
-							applyDoneText(part.Text, *contentItem.Text)
-						}
-						if contentItem.Annotations != nil {
-							part.Annotations = append([]Annotation(nil), contentItem.Annotations...)
-						}
-					}
-				}
-
-				if len(ev.Item.Summary) > 0 {
-					for idx, s := range ev.Item.Summary {
-						part := ensureSummaryPart(item, idx)
-						part.Type = s.Type
-						applyDoneText(part.Text, s.Text)
-						part.Final = true
-					}
-				}
-
-				if ev.Item.EncryptedContent != nil {
-					item.EncryptedContent = ev.Item.EncryptedContent
-				}
-
-				if ev.Item.Result != nil {
-					item.Result = ev.Item.Result
-				}
-			}
-		}
+		a.finalItem(ev.OutputIndex, ev.Item)
 
 	case StreamEventTypeResponseCompleted:
-		a.status = "completed"
-		if ev.Response != nil {
-			a.previousResponseID = ev.Response.PreviousResponseID
-			if ev.Response.Usage != nil {
-				a.usage = ev.Response.Usage
-			}
+		a.applyResponseSnapshot(ev.Response)
+		if ev.Response == nil || ev.Response.Status == nil {
+			a.status = "completed"
 		}
 
 	case StreamEventTypeResponseFailed:
@@ -549,6 +601,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 func (a *streamAggregator) applyResponseSnapshot(response *Response) {
 	if response == nil {
 		return
+	}
+
+	for outputIndex := range response.Output {
+		a.finalItem(outputIndex, &response.Output[outputIndex])
 	}
 
 	if response.ID != "" {
@@ -634,12 +690,13 @@ func (a *streamAggregator) buildResponse() *Response {
 
 			case "custom_tool_call":
 				output = append(output, Item{
-					ID:     item.ID,
-					Type:   item.Type,
-					Status: lo.ToPtr(item.Status),
-					CallID: item.CallID,
-					Name:   item.Name,
-					Input:  item.Input,
+					ID:        item.ID,
+					Type:      item.Type,
+					Status:    lo.ToPtr(item.Status),
+					CallID:    item.CallID,
+					Name:      item.Name,
+					Namespace: item.Namespace,
+					Input:     item.Input,
 				})
 
 			case "reasoning":
