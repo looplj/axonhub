@@ -780,6 +780,21 @@ func TestConvertReasoning(t *testing.T) {
 				Summary: "concise",
 			},
 		},
+		{
+			name: "with only responses reasoning context",
+			req: &llm.Request{
+				ProviderExtensions: &llm.ProviderExtensions{
+					OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+						Request: &llm.OpenAIResponsesRequestExtensions{
+							ReasoningContext: "all_turns",
+						},
+					},
+				},
+			},
+			expected: &Reasoning{
+				Context: "all_turns",
+			},
+		},
 	}
 
 	for _, tt := range tests {

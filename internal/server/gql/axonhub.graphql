@@ -52,10 +52,16 @@ input OverrideMatchInput {
   eq: String!
 }
 
+type ReasoningEffortMapping {
+  from: String!
+  to: String!
+}
+
 type TransformOptions {
   forceArrayInstructions: Boolean!
   forceArrayInputs: Boolean!
   replaceDeveloperRoleWithSystem: Boolean!
+  reasoningEffortMapping: [ReasoningEffortMapping!]
 }
 
 type SyncChannelModelsPayload {
@@ -63,10 +69,16 @@ type SyncChannelModelsPayload {
   supportedModels: [String!]!
 }
 
+input ReasoningEffortMappingInput {
+  from: String!
+  to: String!
+}
+
 input TransformOptionsInput {
   forceArrayInstructions: Boolean
   forceArrayInputs: Boolean
   replaceDeveloperRoleWithSystem: Boolean
+  reasoningEffortMapping: [ReasoningEffortMappingInput!]
 }
 
 enum ProxyType {
@@ -118,6 +130,24 @@ input RetryableErrorPatternInput {
   regex: Boolean
 }
 
+type OpenCodeGoQuotaSettings {
+  workspaceId: String
+  authCookie: String
+}
+
+input OpenCodeGoQuotaSettingsInput {
+  workspaceId: String
+  authCookie: String
+}
+
+type ChannelProviderQuotaSettings {
+  opencodeGo: OpenCodeGoQuotaSettings
+}
+
+input ChannelProviderQuotaSettingsInput {
+  opencodeGo: OpenCodeGoQuotaSettingsInput
+}
+
 type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
@@ -134,6 +164,7 @@ type ChannelSettings {
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
+  providerQuota: ChannelProviderQuotaSettings
 }
 
 enum CapabilityPolicy {
@@ -171,6 +202,7 @@ input ChannelSettingsInput {
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
+  providerQuota: ChannelProviderQuotaSettingsInput
 }
 
 input ChannelRateLimitInput {
@@ -617,6 +649,7 @@ extend type Trace {
 extend type Thread {
   firstUserQuery: String @goField(forceResolver: true)
   usageMetadata: UsageMetadata @goField(forceResolver: true)
+  archivedTracesCount: Int! @goField(forceResolver: true)
 }
 
 extend type Channel {
@@ -876,6 +909,18 @@ type Mutation {
   loadApiKeyProfileTemplate(
     input: LoadApiKeyProfileTemplateInput!
   ): APIKey!
+
+  # Trace Status Management
+  archiveTrace(id: ID!): Boolean!
+  unarchiveTrace(id: ID!): Boolean!
+  retainTrace(id: ID!): Boolean!
+  unretainTrace(id: ID!): Boolean!
+
+  # Thread Status Management
+  archiveThread(id: ID!): Boolean!
+  unarchiveThread(id: ID!): Boolean!
+  retainThread(id: ID!): Boolean!
+  unretainThread(id: ID!): Boolean!
 }
 
 input QueryChannelInput {

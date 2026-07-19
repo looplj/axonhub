@@ -8,7 +8,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
-	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
@@ -51,30 +50,13 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 
 		now := time.Now()
 		for _, price := range prices {
-			refID := generateReferenceID()
-
-			copiedPrice, err := db.ChannelModelPrice.Create().
-				SetChannelID(ch.ID).
-				SetModelID(price.ModelID).
-				SetPrice(price.Price).
-				SetReferenceID(refID).
-				Save(ctx)
-			if err != nil {
+			if _, err := svc.createChannelModelPrice(ctx, ch.ID, price.ModelID, price.Price, now); err != nil {
 				return fmt.Errorf("failed to copy channel model price: %w", err)
 			}
+		}
 
-			_, err = db.ChannelModelPriceVersion.Create().
-				SetChannelID(ch.ID).
-				SetModelID(price.ModelID).
-				SetChannelModelPriceID(copiedPrice.ID).
-				SetPrice(price.Price).
-				SetStatus(channelmodelpriceversion.StatusActive).
-				SetEffectiveStartAt(now).
-				SetReferenceID(refID).
-				Save(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to copy channel model price version: %w", err)
-			}
+		if _, err := svc.ensureChannelModelPrices(ctx, ch.ID, ch.SupportedModels); err != nil {
+			return err
 		}
 
 		duplicated = ch
@@ -84,8 +66,11 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 	if err != nil {
 		return nil, err
 	}
+	if ent.TxFromContext(ctx) == nil {
+		duplicated.Unwrap()
+	}
 
-	svc.asyncReloadChannels()
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return duplicated, nil
 }

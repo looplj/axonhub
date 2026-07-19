@@ -904,8 +904,112 @@ func TestComputeAllChannelProbeStats_MultipleChannels(t *testing.T) {
 	assert.InDelta(t, 600.0, *stats2.avgTimeToFirstTokenMs, 0.01)
 }
 
-// TestComputeAllChannelProbeStats_FailedExecutions tests that failed executions are excluded
-func TestComputeAllChannelProbeStats_FailedExecutions(t *testing.T) {
+func TestComputeAllChannelProbeStats_CrossChannelRetryCountsFailedOriginalChannel(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := ent.NewContext(t.Context(), client)
+	ctx = authz.WithTestBypass(ctx)
+
+	failedChannel, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("failed-original-channel").
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	successChannel, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("retry-success-channel").
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	endTime := time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC)
+	startTime := endTime.Add(-time.Minute)
+	now := startTime.Add(30 * time.Second)
+
+	req, err := client.Request.Create().
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(request.StatusCompleted).
+		SetChannelID(successChannel.ID).
+		SetStream(false).
+		SetMetricsLatencyMs(2000).
+		SetCreatedAt(now).
+		SetUpdatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.RequestExecution.Create().
+		SetRequestID(req.ID).
+		SetChannelID(failedChannel.ID).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusFailed).
+		SetStream(false).
+		SetMetricsLatencyMs(1000).
+		SetCreatedAt(now.Add(-time.Second)).
+		SetUpdatedAt(now.Add(-time.Second)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.RequestExecution.Create().
+		SetRequestID(req.ID).
+		SetChannelID(successChannel.ID).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetStream(false).
+		SetMetricsLatencyMs(2000).
+		SetCreatedAt(now).
+		SetUpdatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetChannelID(successChannel.ID).
+		SetModelID("gpt-4").
+		SetCompletionTokens(100).
+		SetTotalTokens(100).
+		SetCreatedAt(now).
+		SetUpdatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc := &ChannelProbeService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	stats, err := svc.computeAllChannelProbeStats(ctx, []int{failedChannel.ID, successChannel.ID}, startTime, endTime)
+	require.NoError(t, err)
+	require.Contains(t, stats, failedChannel.ID)
+	require.Contains(t, stats, successChannel.ID)
+
+	failedStats := stats[failedChannel.ID]
+	assert.Equal(t, 1, failedStats.total)
+	assert.Equal(t, 0, failedStats.success)
+	assert.Nil(t, failedStats.avgTokensPerSecond)
+
+	successStats := stats[successChannel.ID]
+	assert.Equal(t, 1, successStats.total)
+	assert.Equal(t, 1, successStats.success)
+	require.NotNil(t, successStats.avgTokensPerSecond)
+	assert.InDelta(t, 50.0, *successStats.avgTokensPerSecond, 0.01)
+}
+
+// TestComputeAllChannelProbeStats_FailedExecutionsCountTowardTotalOnly tests that failed executions
+// count toward health totals, but not success counts or throughput metrics.
+func TestComputeAllChannelProbeStats_FailedExecutionsCountTowardTotalOnly(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -940,7 +1044,7 @@ func TestComputeAllChannelProbeStats_FailedExecutions(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create a failed execution (should be excluded)
+	// Create a failed execution (should count toward total only)
 	_, err = client.RequestExecution.Create().
 		SetRequestID(req.ID).
 		SetChannelID(ch.ID).
@@ -950,12 +1054,12 @@ func TestComputeAllChannelProbeStats_FailedExecutions(t *testing.T) {
 		SetStream(true).
 		SetMetricsLatencyMs(1000).
 		SetMetricsFirstTokenLatencyMs(200).
-		SetCreatedAt(now.Add(-1 * time.Minute)).
-		SetUpdatedAt(now.Add(-1 * time.Minute)).
+		SetCreatedAt(now.Add(-10 * time.Second)).
+		SetUpdatedAt(now.Add(-10 * time.Second)).
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create a successful execution (should be included)
+	// Create a successful execution (should count toward total, success, and throughput)
 	_, err = client.RequestExecution.Create().
 		SetRequestID(req.ID).
 		SetChannelID(ch.ID).
@@ -994,8 +1098,7 @@ func TestComputeAllChannelProbeStats_FailedExecutions(t *testing.T) {
 	require.Contains(t, stats, ch.ID)
 
 	channelStats := stats[ch.ID]
-	// Should only count the successful execution
-	assert.Equal(t, 1, channelStats.total)
+	assert.Equal(t, 2, channelStats.total)
 	assert.Equal(t, 1, channelStats.success)
 
 	// TPS: 100 tokens / ((3000-500)/1000) = 100 / 2.5 = 40 tokens/s

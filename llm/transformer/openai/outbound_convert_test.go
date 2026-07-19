@@ -588,3 +588,44 @@ func TestMessageFromLLM_GeminiReasoningSignatureDoesNotInjectThoughtSignature(t 
 	require.Len(t, msg.ToolCalls, 1)
 	require.Nil(t, msg.ToolCalls[0].ExtraContent)
 }
+
+func TestApplyReasoningEffortMapping(t *testing.T) {
+	tests := []struct {
+		name    string
+		effort  string
+		mapping []llm.ReasoningEffortMapping
+		want    string
+	}{
+		{name: "xhigh mapped to max", effort: "xhigh", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: "max"},
+		{name: "high mapped to medium", effort: "high", mapping: []llm.ReasoningEffortMapping{{From: "high", To: "medium"}}, want: "medium"},
+		{name: "max passes through (not in list)", effort: "max", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: "max"},
+		{name: "low passes through (not in list)", effort: "low", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: "low"},
+		{name: "empty effort passes through", effort: "", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}}, want: ""},
+		{name: "nil mapping passes through", effort: "xhigh", mapping: nil, want: "xhigh"},
+		{name: "empty mapping passes through", effort: "xhigh", mapping: []llm.ReasoningEffortMapping{}, want: "xhigh"},
+		{name: "multiple entries hit", effort: "high", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}, {From: "high", To: "medium"}}, want: "medium"},
+		{name: "multiple entries miss", effort: "low", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}, {From: "high", To: "medium"}}, want: "low"},
+		{name: "first matching entry wins", effort: "xhigh", mapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}, {From: "xhigh", To: "high"}}, want: "max"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, applyReasoningEffortMapping(tt.effort, tt.mapping))
+		})
+	}
+}
+
+// TestRequestFromLLM_PreservesReasoningEffort ensures RequestFromLLM does NOT map
+// reasoning_effort: mapping is the OutboundTransformer's responsibility (driven by
+// Config.ReasoningEffortMapping), not the package-level converter's.
+func TestRequestFromLLM_PreservesReasoningEffort(t *testing.T) {
+	req := RequestFromLLM(&llm.Request{
+		Model:           "gpt-4",
+		ReasoningEffort: "xhigh",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		},
+	}, ReasoningFieldNone)
+
+	require.NotNil(t, req)
+	require.Equal(t, "xhigh", req.ReasoningEffort, "RequestFromLLM must keep reasoning_effort unchanged; mapping happens in TransformRequest")
+}

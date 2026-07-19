@@ -4,7 +4,7 @@ import DataStoragesManagement from '@/features/data-storages';
 
 function ProtectedDataStorages() {
   return (
-    <RouteGuard requiredScopes={['write_data_storages']}>
+    <RouteGuard requiredScopes={['read_data_storages']} scopeLevel="system">
       <DataStoragesManagement />
     </RouteGuard>
   );

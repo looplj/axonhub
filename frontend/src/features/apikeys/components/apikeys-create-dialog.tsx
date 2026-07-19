@@ -25,7 +25,7 @@ export function ApiKeysCreateDialog() {
     defaultValues: {
       name: '',
       type: 'user',
-      scopes: undefined, // Don't set scopes for user type
+      scopes: undefined,
     },
   });
 
@@ -34,8 +34,7 @@ export function ApiKeysCreateDialog() {
   const onSubmit = async (data: CreateApiKeyInput) => {
     setIsSubmitting(true);
     try {
-      // Remove scopes if type is user (use backend default)
-      const submitData = data.type === 'user' ? { ...data, scopes: undefined } : data;
+      const submitData = data.type === 'user' || data.type === 'personal' ? { ...data, scopes: undefined } : data;
       const result = await createApiKey.mutateAsync(submitData);
       form.reset();
       closeDialog('create');
@@ -93,6 +92,12 @@ export function ApiKeysCreateDialog() {
                       </FormItem>
                       <FormItem className='flex items-center space-y-0 space-x-3'>
                         <FormControl>
+                          <RadioGroupItem value='personal' />
+                        </FormControl>
+                        <FormLabel className='font-normal'>{t('apikeys.dialogs.fields.type.personal')}</FormLabel>
+                      </FormItem>
+                      <FormItem className='flex items-center space-y-0 space-x-3'>
+                        <FormControl>
                           <RadioGroupItem value='service_account' />
                         </FormControl>
                         <FormLabel className='font-normal'>{t('apikeys.dialogs.fields.type.serviceAccount')}</FormLabel>
@@ -100,9 +105,9 @@ export function ApiKeysCreateDialog() {
                     </RadioGroup>
                   </FormControl>
                   <FormDescription>
-                    {apiKeyType === 'user'
-                      ? t('apikeys.dialogs.fields.type.userDescription')
-                      : t('apikeys.dialogs.fields.type.serviceAccountDescription')}
+                    {apiKeyType === 'user' && t('apikeys.dialogs.fields.type.userDescription')}
+                    {apiKeyType === 'personal' && t('apikeys.dialogs.fields.type.personalDescription')}
+                    {apiKeyType === 'service_account' && t('apikeys.dialogs.fields.type.serviceAccountDescription')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

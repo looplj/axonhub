@@ -100,6 +100,151 @@ func TestLoadBalancer_Sort_NoStrategies(t *testing.T) {
 	// Without strategies, order should remain unchanged (all score 0)
 }
 
+func TestLoadBalancer_Sort_WithoutWeightTieBreaker_PreservesInputOrderWhenScoresTie(t *testing.T) {
+	ctx := context.Background()
+	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}).WithoutWeightTieBreaker()
+
+	candidates := []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1", OrderingWeight: 10}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2", OrderingWeight: 100}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3", OrderingWeight: 50}}},
+	}
+
+	result := lb.Sort(ctx, candidates, "", false)
+	require.Len(t, result, 3)
+	assert.Equal(t, 1, result[0].Channel.ID)
+	assert.Equal(t, 2, result[1].Channel.ID)
+	assert.Equal(t, 3, result[2].Channel.ID)
+}
+
+func TestLoadBalancer_Sort_RoundRobinHealthMovesUnhealthyChannelsLast(t *testing.T) {
+	ctx := context.Background()
+	recentFailure := time.Now().Add(-time.Minute)
+
+	unhealthy := &biz.AggregatedMetrics{}
+	unhealthy.ConsecutiveFailures = roundRobinFailureThreshold
+	unhealthy.LastFailureAt = &recentFailure
+
+	healthyLowUsage := &biz.AggregatedMetrics{}
+	healthyLowUsage.RequestCount = 10
+
+	healthyHighUsage := &biz.AggregatedMetrics{}
+	healthyHighUsage.RequestCount = 100
+
+	metricsProvider := &mockMetricsProvider{
+		metrics: map[int]*biz.AggregatedMetrics{
+			1: unhealthy,
+			2: healthyLowUsage,
+			3: healthyHighUsage,
+		},
+	}
+	lb := newTestLoadBalancer(
+		t,
+		&biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3},
+		NewRoundRobinStrategy(metricsProvider),
+	).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(NewRoundRobinHealthStrategy(metricsProvider))
+
+	candidates := []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "unhealthy"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "healthy-low-usage"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "healthy-high-usage"}}},
+	}
+
+	result := lb.Sort(ctx, candidates, "", false)
+	require.Len(t, result, 3)
+	assert.Equal(t, 2, result[0].Channel.ID)
+	assert.Equal(t, 3, result[1].Channel.ID)
+	assert.Equal(t, 1, result[2].Channel.ID)
+}
+
+func TestLoadBalancer_Sort_RoundRobinHealthSkipsUnhealthyBeforeTopK(t *testing.T) {
+	ctx := context.Background()
+	recentFailure := time.Now().Add(-time.Minute)
+
+	unhealthy := &biz.AggregatedMetrics{}
+	unhealthy.RequestCount = 0
+	unhealthy.ConsecutiveFailures = roundRobinFailureThreshold
+	unhealthy.LastFailureAt = &recentFailure
+
+	healthyLowUsage := &biz.AggregatedMetrics{}
+	healthyLowUsage.RequestCount = 10
+
+	healthyHighUsage := &biz.AggregatedMetrics{}
+	healthyHighUsage.RequestCount = 100
+
+	metricsProvider := &mockMetricsProvider{
+		metrics: map[int]*biz.AggregatedMetrics{
+			1: unhealthy,
+			2: healthyLowUsage,
+			3: healthyHighUsage,
+		},
+	}
+	lb := newTestLoadBalancer(
+		t,
+		&biz.RetryPolicy{Enabled: true, MaxChannelRetries: 1},
+		NewRoundRobinStrategy(metricsProvider),
+	).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(NewRoundRobinHealthStrategy(metricsProvider))
+
+	candidates := []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "unhealthy"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "healthy-low-usage"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "healthy-high-usage"}}},
+	}
+
+	result := lb.Sort(ctx, candidates, "", false)
+	require.Len(t, result, 2)
+	assert.Equal(t, 2, result[0].Channel.ID)
+	assert.Equal(t, 3, result[1].Channel.ID)
+}
+
+func TestLoadBalancer_Sort_RoundRobinHealthKeepsHardUnavailableLast(t *testing.T) {
+	ctx := context.Background()
+	recentFailure := time.Now().Add(-time.Minute)
+
+	unhealthy := &biz.AggregatedMetrics{}
+	unhealthy.RequestCount = 10
+	unhealthy.ConsecutiveFailures = roundRobinFailureThreshold
+	unhealthy.LastFailureAt = &recentFailure
+
+	hardUnavailable := &biz.AggregatedMetrics{}
+	hardUnavailable.RequestCount = 0
+
+	healthy := &biz.AggregatedMetrics{}
+	healthy.RequestCount = 100
+
+	metricsProvider := &mockMetricsProvider{
+		metrics: map[int]*biz.AggregatedMetrics{
+			1: unhealthy,
+			2: hardUnavailable,
+			3: healthy,
+		},
+	}
+	hardUnavailableStrategy := &channelBasedStrategy{
+		name: "hard-unavailable",
+		scores: map[int]float64{
+			2: rateLimitExhaustedScore,
+		},
+	}
+	lb := newTestLoadBalancer(
+		t,
+		&biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3},
+		NewRoundRobinStrategy(metricsProvider),
+		hardUnavailableStrategy,
+	).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(NewRoundRobinHealthStrategy(metricsProvider))
+
+	candidates := []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "unhealthy"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "hard-unavailable"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "healthy"}}},
+	}
+
+	result := lb.Sort(ctx, candidates, "", false)
+	require.Len(t, result, 3)
+	assert.Equal(t, 3, result[0].Channel.ID)
+	assert.Equal(t, 1, result[1].Channel.ID)
+	assert.Equal(t, 2, result[2].Channel.ID)
+}
+
 func TestLoadBalancer_Sort_SingleStrategy(t *testing.T) {
 	ctx := context.Background()
 
@@ -289,12 +434,12 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 	// Record consecutive failures for ch2
 	for range 3 {
 		perf := &biz.PerformanceRecord{
-			ChannelID:        ch2.ID,
-			StartTime:        time.Now().Add(-time.Minute),
-			EndTime:          time.Now(),
-			Success:          false,
-			RequestCompleted: true,
-			ResponseStatusCode:  500,
+			ChannelID:          ch2.ID,
+			StartTime:          time.Now().Add(-time.Minute),
+			EndTime:            time.Now(),
+			Success:            false,
+			RequestCompleted:   true,
+			ResponseStatusCode: 500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}
@@ -368,12 +513,12 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 
 	// Record a recent failure for ch1 (within cooldown period)
 	perf := &biz.PerformanceRecord{
-		ChannelID:        ch1.ID,
-		StartTime:        time.Now().Add(-30 * time.Second),
-		EndTime:          time.Now(),
-		Success:          false,
-		RequestCompleted: true,
-		ResponseStatusCode:  500,
+		ChannelID:          ch1.ID,
+		StartTime:          time.Now().Add(-30 * time.Second),
+		EndTime:            time.Now(),
+		Success:            false,
+		RequestCompleted:   true,
+		ResponseStatusCode: 500,
 	}
 	channelService.RecordPerformance(ctx, perf)
 
@@ -543,12 +688,12 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 	// Record consecutive failures for ch2
 	for range 2 {
 		perf := &biz.PerformanceRecord{
-			ChannelID:        ch2.ID,
-			StartTime:        time.Now().Add(-time.Minute),
-			EndTime:          time.Now(),
-			Success:          false,
-			RequestCompleted: true,
-			ResponseStatusCode:  500,
+			ChannelID:          ch2.ID,
+			StartTime:          time.Now().Add(-time.Minute),
+			EndTime:            time.Now(),
+			Success:            false,
+			RequestCompleted:   true,
+			ResponseStatusCode: 500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}

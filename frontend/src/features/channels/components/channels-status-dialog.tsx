@@ -72,7 +72,7 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
     const baseDescription = t('channels.dialogs.status.enable.description', { name: currentRow.name });
     const warningText = t('channels.dialogs.status.enable.warning');
     return (
-      <div className='space-y-3'>
+      <div className='min-w-0 space-y-3'>
         <p>{baseDescription}</p>
         <div className='rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20'>
           <div className='flex items-start space-x-2'>
@@ -121,8 +121,12 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
                   {testResult.error && !testResult.success && (
                     <div className='text-xs'>
                       <span className='font-medium'>{t('channels.dialogs.status.enable.errorDetails')}:</span>
-                      <div className='mt-1 rounded border-l-2 border-red-400 bg-red-100 p-2 dark:border-red-600 dark:bg-red-900/30'>
-                        <ErrorDisplay error={testResult.error} messageClassName='text-xs font-medium text-red-800 dark:text-red-200' />
+                      <div className='mt-1 min-w-0 max-w-full overflow-hidden rounded border-l-2 border-red-400 bg-red-100 p-2 dark:border-red-600 dark:bg-red-900/30'>
+                        <ErrorDisplay
+                          error={testResult.error}
+                          className='min-w-0 max-w-full'
+                          messageClassName='block max-w-full break-all whitespace-pre-wrap text-xs font-medium text-red-800 dark:text-red-200'
+                        />
                       </div>
                     </div>
                   )}

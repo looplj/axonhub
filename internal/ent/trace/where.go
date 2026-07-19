@@ -275,6 +275,26 @@ func ThreadIDNotNil() predicate.Trace {
 	return predicate.Trace(sql.FieldNotNull(FieldThreadID))
 }
 
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v Status) predicate.Trace {
+	return predicate.Trace(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v Status) predicate.Trace {
+	return predicate.Trace(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...Status) predicate.Trace {
+	return predicate.Trace(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...Status) predicate.Trace {
+	return predicate.Trace(sql.FieldNotIn(FieldStatus, vs...))
+}
+
 // HasProject applies the HasEdge predicate on the "project" edge.
 func HasProject() predicate.Trace {
 	return predicate.Trace(func(s *sql.Selector) {

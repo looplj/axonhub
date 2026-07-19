@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -178,6 +179,10 @@ func conditionToExpr(condition Condition) (string, error) {
 		}
 	}
 
+	if strings.HasPrefix(field, ModelAssociationConditionFieldRequestHeaderPrefix) {
+		return requestHeaderToExpr(condition, field)
+	}
+
 	operator := normalizeOperator(condition.Operator)
 	if operator == "" {
 		return "", fmt.Errorf("unsupported operator %q", condition.Operator)
@@ -207,6 +212,39 @@ func normalizeOperator(operator string) string {
 		return "!="
 	default:
 		return ""
+	}
+}
+
+func requestHeaderToExpr(condition Condition, field string) (string, error) {
+	headerName := strings.TrimSpace(strings.TrimPrefix(field, ModelAssociationConditionFieldRequestHeaderPrefix))
+	if headerName == "" {
+		return "", fmt.Errorf("request header name is required")
+	}
+
+	headerName = http.CanonicalHeaderKey(headerName)
+
+	valueExpr, err := literalExpr(condition.Value)
+	if err != nil {
+		return "", err
+	}
+
+	access := fmt.Sprintf("request_header[%q]", headerName)
+
+	switch strings.TrimSpace(strings.ToLower(condition.Operator)) {
+	case "eq", "=", "==":
+		return access + " == " + valueExpr, nil
+	case "ne", "!=", "<>":
+		return access + " != " + valueExpr, nil
+	case "contains":
+		return access + " contains " + valueExpr, nil
+	case "not_contains":
+		return "!(" + access + " contains " + valueExpr + ")", nil
+	case "start_with":
+		return access + " startsWith " + valueExpr, nil
+	case "end_with":
+		return access + " endsWith " + valueExpr, nil
+	default:
+		return "", fmt.Errorf("unsupported operator %q for request_header", condition.Operator)
 	}
 }
 

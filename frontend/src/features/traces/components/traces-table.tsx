@@ -41,11 +41,13 @@ interface TracesTableProps {
   totalCount?: number;
   dateRange?: DateTimeRangeValue;
   traceIdFilter: string;
+  statusFilter?: string[];
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
   onTraceIdFilterChange: (traceId: string) => void;
+  onStatusFilterChange?: (statuses: string[]) => void;
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefresh?: boolean;
@@ -60,11 +62,13 @@ export function TracesTable({
   pageSize,
   dateRange,
   traceIdFilter,
+  statusFilter = [],
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onDateRangeChange,
   onTraceIdFilterChange,
+  onStatusFilterChange,
   onRefresh,
   showRefresh,
   autoRefresh = false,
@@ -111,6 +115,8 @@ export function TracesTable({
         onDateRangeChange={onDateRangeChange}
         traceIdFilter={traceIdFilter}
         onTraceIdFilterChange={onTraceIdFilterChange}
+        statusFilter={statusFilter}
+        onStatusFilterChange={onStatusFilterChange}
         onRefresh={onRefresh}
         showRefresh={showRefresh}
         autoRefresh={autoRefresh}

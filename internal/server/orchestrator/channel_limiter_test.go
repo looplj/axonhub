@@ -12,24 +12,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestChannelLimiter_SoftMode_NeverBlocks(t *testing.T) {
+func TestChannelLimiter_NoQueue_BlocksBeyondCapacity(t *testing.T) {
 	t.Parallel()
 
-	lim := NewChannelLimiter(5, 0, 0) // capacity 5, soft mode
+	lim := NewChannelLimiter(2, 0, 0) // capacity 2, no configured queue == unbounded blocking
 
-	const n = 100
-
-	for range n {
-		require.NoError(t, lim.Acquire(t.Context()))
-	}
+	// Fill capacity — these return immediately.
+	require.NoError(t, lim.Acquire(t.Context()))
+	require.NoError(t, lim.Acquire(t.Context()))
 
 	inFlight, waiting := lim.Stats()
-	assert.Equal(t, n, inFlight, "soft mode counts every Acquire")
-	assert.Equal(t, 0, waiting, "soft mode never queues")
+	require.Equal(t, 2, inFlight)
+	require.Equal(t, 0, waiting, "in-flight must never exceed capacity")
 
-	for range n {
-		lim.Release()
+	// A third acquire must BLOCK (no soft pass) until a slot frees.
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- lim.Acquire(ctx) }()
+
+	require.Eventually(t, func() bool {
+		inFlight, waiting := lim.Stats()
+		return inFlight == 2 && waiting == 1
+	}, time.Second, 5*time.Millisecond, "third acquire must queue, not be admitted")
+
+	select {
+	case <-errCh:
+		t.Fatal("third Acquire returned while at capacity; MaxConcurrent must hard-block without a queue")
+	case <-time.After(50 * time.Millisecond):
+		// Still blocked — correct.
 	}
+
+	// Free a slot -> the waiter is admitted (slot transferred, in-flight stays 2).
+	lim.Release()
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("waiter was not admitted after a slot freed")
+	}
+
+	inFlight, _ = lim.Stats()
+	assert.Equal(t, 2, inFlight, "in-flight stays at capacity after hand-off")
+
+	// Drain.
+	lim.Release()
+	lim.Release()
 
 	inFlight, waiting = lim.Stats()
 	assert.Equal(t, 0, inFlight)

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
+import { useSelectedProjectId } from '@/stores/projectStore';
 
 // Schema definitions
 export const requestStatsSchema = z.object({
@@ -320,6 +321,48 @@ const CHANNEL_SUCCESS_RATES_QUERY = `
     }
   }
 `;
+
+export const usageStatsByUserSchema = z.object({
+  userId: z.string(),
+  userName: z.string(),
+  requestCount: z.number(),
+  totalTokens: z.number(),
+  totalCost: z.number(),
+});
+
+export type UsageStatsByUser = z.infer<typeof usageStatsByUserSchema>;
+
+const USAGE_STATS_BY_USER_QUERY = `
+  query GetUsageStatsByUser($timeWindow: String) {
+    usageStatsByUser(timeWindow: $timeWindow) {
+      userId
+      userName
+      requestCount
+      totalTokens
+      totalCost
+    }
+  }
+`;
+
+export function useUsageStatsByUser(timeWindow?: string) {
+  const selectedProjectId = useSelectedProjectId();
+
+  return useQuery({
+    queryKey: ['usageStatsByUser', timeWindow, selectedProjectId],
+    queryFn: async () => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const data = await graphqlRequest<{ usageStatsByUser: UsageStatsByUser[] }>(
+        USAGE_STATS_BY_USER_QUERY,
+        { timeWindow },
+        headers
+      );
+      return data.usageStatsByUser.map((item) => usageStatsByUserSchema.parse(item));
+    },
+    enabled: !!selectedProjectId,
+    refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
+  });
+}
 
 const MODEL_PERFORMANCE_STATS_QUERY = `
   query ModelPerformanceStats {

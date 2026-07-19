@@ -524,6 +524,33 @@ func TestOutboundTransformer_TransformStreamChunk_StreamErrorEvent(t *testing.T)
 	assert.Equal(t, "2026031122524215033670187648af", respErr.Detail.RequestID)
 }
 
+func TestOutboundTransformer_TransformStream_FiltersEmptyChoicesWithoutDroppingUsageChunk(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
+
+	usageChunk, err := transformer.TransformStreamChunk(context.Background(), &httpclient.StreamEvent{
+		Data: []byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_tokens_details":{"cached_tokens":3}}}`),
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, usageChunk)
+	assert.Len(t, usageChunk.Choices, 0)
+	assert.NotNil(t, usageChunk.Usage)
+	assert.Equal(t, int64(10), usageChunk.Usage.PromptTokens)
+	assert.Equal(t, int64(5), usageChunk.Usage.CompletionTokens)
+	assert.NotNil(t, usageChunk.Usage.PromptTokensDetails)
+	assert.Equal(t, int64(3), usageChunk.Usage.PromptTokensDetails.CachedTokens)
+
+	nonStandardChunk, err := transformer.TransformStreamChunk(context.Background(), &httpclient.StreamEvent{
+		Data: []byte(`{"choices":[],"x-opencode-type":"inference-cost","usage":null}`),
+	})
+	assert.NoError(t, err)
+	assert.Nil(t, nonStandardChunk)
+}
+
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	if err != nil {

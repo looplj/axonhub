@@ -121,12 +121,15 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       const typeText =
         {
           user: t('apikeys.type.user'),
+          personal: t('apikeys.type.personal'),
           service_account: t('apikeys.type.service_account'),
+          noauth: t('apikeys.type.noauth'),
         }[type] || type;
 
       const typeColor =
         {
           user: 'text-blue-600',
+          personal: 'text-emerald-600',
           service_account: 'text-purple-600',
         }[type] || 'text-muted-foreground';
 

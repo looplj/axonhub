@@ -50,6 +50,20 @@ func (_u *ThreadUpdate) SetNillableThreadID(v *string) *ThreadUpdate {
 	return _u
 }
 
+// SetStatus sets the "status" field.
+func (_u *ThreadUpdate) SetStatus(v thread.Status) *ThreadUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *ThreadUpdate) SetNillableStatus(v *thread.Status) *ThreadUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
 // AddTraceIDs adds the "traces" edge to the Trace entity by IDs.
 func (_u *ThreadUpdate) AddTraceIDs(ids ...int) *ThreadUpdate {
 	_u.mutation.AddTraceIDs(ids...)
@@ -135,6 +149,11 @@ func (_u *ThreadUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ThreadUpdate) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := thread.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Thread.status": %w`, err)}
+		}
+	}
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Thread.project"`)
 	}
@@ -164,6 +183,9 @@ func (_u *ThreadUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.ThreadID(); ok {
 		_spec.SetField(thread.FieldThreadID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(thread.FieldStatus, field.TypeEnum, value)
 	}
 	if _u.mutation.TracesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -248,6 +270,20 @@ func (_u *ThreadUpdateOne) SetThreadID(v string) *ThreadUpdateOne {
 func (_u *ThreadUpdateOne) SetNillableThreadID(v *string) *ThreadUpdateOne {
 	if v != nil {
 		_u.SetThreadID(*v)
+	}
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *ThreadUpdateOne) SetStatus(v thread.Status) *ThreadUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *ThreadUpdateOne) SetNillableStatus(v *thread.Status) *ThreadUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
 	return _u
 }
@@ -350,6 +386,11 @@ func (_u *ThreadUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ThreadUpdateOne) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := thread.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Thread.status": %w`, err)}
+		}
+	}
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Thread.project"`)
 	}
@@ -396,6 +437,9 @@ func (_u *ThreadUpdateOne) sqlSave(ctx context.Context) (_node *Thread, err erro
 	}
 	if value, ok := _u.mutation.ThreadID(); ok {
 		_spec.SetField(thread.FieldThreadID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(thread.FieldStatus, field.TypeEnum, value)
 	}
 	if _u.mutation.TracesCleared() {
 		edge := &sqlgraph.EdgeSpec{

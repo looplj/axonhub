@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -203,6 +204,19 @@ func TestOpenAPIResolver_CreateLLMAPIKey_HappyPath(t *testing.T) {
 	)
 }
 
+// Names are identifiers on the OpenAPI surface (apiKey/updateAPIKeyProfiles by
+// name), so creating a second key with an existing name in the same project
+// must be rejected — mirroring the admin-path CreateAPIKey behavior.
+func TestOpenAPIResolver_CreateLLMAPIKey_DuplicateNameRejected(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	_, err := mr.CreateLLMAPIKey(ctx, fx.targetKey.Name)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), fx.targetKey.Name)
+}
+
 func TestOpenAPIResolver_CreateLLMAPIKey_MissingScopeDenied(t *testing.T) {
 	mr, _, ctx, _ := setupOpenAPI(t, []string{
 		string(scopes.ScopeReadAPIKeys), // 缺 write
@@ -231,7 +245,7 @@ func TestOpenAPIResolver_UpdateAPIKeyProfiles_HappyPath(t *testing.T) {
 		},
 	}
 
-	got, err := mr.UpdateAPIKeyProfiles(ctx, objects.GUID{ID: fx.targetKey.ID}, input)
+	got, err := mr.UpdateAPIKeyProfiles(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, input)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	require.NotNil(t, got.Profiles)
@@ -259,7 +273,7 @@ func TestOpenAPIResolver_UpdateAPIKeyProfiles_NormalizesNilModelMappings(t *test
 		},
 	}
 
-	got, err := mr.UpdateAPIKeyProfiles(ctx, objects.GUID{ID: fx.targetKey.ID}, input)
+	got, err := mr.UpdateAPIKeyProfiles(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, input)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	require.NotNil(t, got.Profiles)
@@ -276,7 +290,7 @@ func TestOpenAPIResolver_UpdateAPIKeyProfiles_CrossProjectDenied(t *testing.T) {
 	})
 
 	// 用其他项目的 key id：privacy 层的 read filter 应让 Get 找不到。
-	_, err := mr.UpdateAPIKeyProfiles(ctx, objects.GUID{ID: fx.otherKey.ID}, objects.APIKeyProfiles{
+	_, err := mr.UpdateAPIKeyProfiles(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.otherKey.ID}, nil, objects.APIKeyProfiles{
 		ActiveProfile: "X",
 		Profiles:      []objects.APIKeyProfile{{Name: "X"}},
 	})
@@ -288,7 +302,7 @@ func TestOpenAPIResolver_UpdateAPIKeyProfiles_MissingWriteScopeDenied(t *testing
 		string(scopes.ScopeReadAPIKeys), // 缺 write
 	})
 
-	_, err := mr.UpdateAPIKeyProfiles(ctx, objects.GUID{ID: fx.targetKey.ID}, objects.APIKeyProfiles{
+	_, err := mr.UpdateAPIKeyProfiles(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, objects.APIKeyProfiles{
 		ActiveProfile: "Default",
 		Profiles:      []objects.APIKeyProfile{{Name: "Default"}},
 	})
@@ -302,8 +316,8 @@ func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_HappyPath(t *testing.T) {
 	})
 
 	got, err := mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
-		TemplateID: objects.GUID{ID: fx.template.ID},
-		APIKeyID:   objects.GUID{ID: fx.targetKey.ID},
+		TemplateID: &objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: fx.template.ID},
+		APIKeyID:   &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, got)
@@ -326,8 +340,8 @@ func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_CrossProjectDenied(t *testing
 	})
 
 	_, err := mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
-		TemplateID: objects.GUID{ID: fx.otherTemplate.ID},
-		APIKeyID:   objects.GUID{ID: fx.targetKey.ID},
+		TemplateID: &objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: fx.otherTemplate.ID},
+		APIKeyID:   &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID},
 	})
 	require.Error(t, err)
 }
@@ -338,8 +352,8 @@ func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_MissingReadScopeDenied(t *tes
 	})
 
 	_, err := mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
-		TemplateID: objects.GUID{ID: fx.template.ID},
-		APIKeyID:   objects.GUID{ID: fx.targetKey.ID},
+		TemplateID: &objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: fx.template.ID},
+		APIKeyID:   &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID},
 	})
 	require.Error(t, err)
 }
@@ -384,7 +398,7 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_ByID(t *testing.T) {
 
 	qr := &queryResolver{mr.Resolver}
 
-	got, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil)
+	got, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, nil)
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, "Default", got[0].ProfileName)
@@ -410,7 +424,7 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_ByKey(t *testing.T) {
 
 	keyVal := fx.targetKey.Key
 
-	got, err := qr.APIKeyQuotaUsages(ctx, nil, &keyVal)
+	got, err := qr.APIKeyQuotaUsages(ctx, nil, &keyVal, nil)
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, "Default", got[0].ProfileName)
@@ -425,7 +439,7 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_NoQuotaReturnsEmpty(t *testing.T) {
 	qr := &queryResolver{mr.Resolver}
 
 	// targetKey fixture has a "Default" profile without quota.
-	got, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil)
+	got, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	require.Empty(t, got)
@@ -439,7 +453,7 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_CrossProjectDenied_ByID(t *testing.T)
 	qr := &queryResolver{mr.Resolver}
 
 	// Foreign-project key id is filtered out by the privacy project boundary.
-	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.otherKey.ID}, nil)
+	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.otherKey.ID}, nil, nil)
 	require.Error(t, err)
 }
 
@@ -454,7 +468,7 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_CrossProjectDenied_ByKey(t *testing.T
 	// so existence is not leaked (uniform NotFound).
 	otherVal := fx.otherKey.Key
 
-	_, err := qr.APIKeyQuotaUsages(ctx, nil, &otherVal)
+	_, err := qr.APIKeyQuotaUsages(ctx, nil, &otherVal, nil)
 	require.Error(t, err)
 }
 
@@ -465,7 +479,7 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_MissingReadScopeDenied(t *testing.T) 
 
 	qr := &queryResolver{mr.Resolver}
 
-	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil)
+	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, nil)
 	require.Error(t, err)
 }
 
@@ -477,12 +491,12 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_RequiresExactlyOneArg(t *testing.T) {
 	qr := &queryResolver{mr.Resolver}
 
 	// Neither provided.
-	_, err := qr.APIKeyQuotaUsages(ctx, nil, nil)
+	_, err := qr.APIKeyQuotaUsages(ctx, nil, nil, nil)
 	require.Error(t, err)
 
 	// Both provided.
 	keyVal := fx.targetKey.Key
-	_, err = qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, &keyVal)
+	_, err = qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, &keyVal, nil)
 	require.Error(t, err)
 }
 
@@ -494,7 +508,280 @@ func TestOpenAPIResolver_APIKeyQuotaUsages_InvalidGUIDType(t *testing.T) {
 	qr := &queryResolver{mr.Resolver}
 
 	// A GUID of the wrong type must be rejected before any DB lookup.
-	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: "Channel", ID: fx.targetKey.ID}, nil)
+	_, err := qr.APIKeyQuotaUsages(ctx, &objects.GUID{Type: "Channel", ID: fx.targetKey.ID}, nil, nil)
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_UpdateAPIKeyProfiles_ByName(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	input := objects.APIKeyProfiles{
+		ActiveProfile: "Default",
+		Profiles:      []objects.APIKeyProfile{{Name: "Default"}},
+	}
+
+	got, err := mr.UpdateAPIKeyProfiles(ctx, nil, lo.ToPtr(fx.targetKey.Name), input)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, fx.targetKey.Name, got.Name)
+	require.Equal(t, fx.targetKey.ID, got.ID.ID, "name must resolve to the same key as its id")
+	require.NotNil(t, got.Profiles)
+	require.Equal(t, "Default", got.Profiles.ActiveProfile)
+}
+
+func TestOpenAPIResolver_UpdateAPIKeyProfiles_RequiresExactlyOneIdentifier(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	input := objects.APIKeyProfiles{
+		ActiveProfile: "Default",
+		Profiles:      []objects.APIKeyProfile{{Name: "Default"}},
+	}
+
+	// Neither provided.
+	_, err := mr.UpdateAPIKeyProfiles(ctx, nil, nil, input)
+	require.Error(t, err)
+
+	// Both provided.
+	_, err = mr.UpdateAPIKeyProfiles(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, lo.ToPtr(fx.targetKey.Name), input)
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_UpdateAPIKeyProfiles_ByName_CrossProjectDenied(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	// 外项目的 key name 在 privacy 项目过滤下不可见 → NotFound，不泄露存在性。
+	_, err := mr.UpdateAPIKeyProfiles(ctx, nil, lo.ToPtr(fx.otherKey.Name), objects.APIKeyProfiles{
+		ActiveProfile: "X",
+		Profiles:      []objects.APIKeyProfile{{Name: "X"}},
+	})
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_UpdateAPIKeyProfiles_InvalidGUIDType(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	_, err := mr.UpdateAPIKeyProfiles(ctx, &objects.GUID{Type: "Channel", ID: fx.targetKey.ID}, nil, objects.APIKeyProfiles{
+		ActiveProfile: "Default",
+		Profiles:      []objects.APIKeyProfile{{Name: "Default"}},
+	})
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_ByNames(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	got, err := mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		TemplateName: lo.ToPtr(fx.template.Name),
+		APIKeyName:   lo.ToPtr(fx.targetKey.Name),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.NotNil(t, got.Profiles)
+
+	// Same append-only semantics as the by-id path.
+	require.Equal(t, "Default", got.Profiles.ActiveProfile)
+	require.Len(t, got.Profiles.Profiles, 2)
+	require.Equal(t, "Production", got.Profiles.Profiles[1].Name)
+}
+
+// Mixed identifiers: id for one target, name for the other — both directions.
+func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_MixedIdentifiers(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	got, err := mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		TemplateID: &objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: fx.template.ID},
+		APIKeyName: lo.ToPtr(fx.targetKey.Name),
+	})
+	require.NoError(t, err)
+	require.Len(t, got.Profiles.Profiles, 2)
+
+	got, err = mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		TemplateName: lo.ToPtr(fx.template.Name),
+		APIKeyID:     &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID},
+	})
+	require.NoError(t, err)
+	// Second load appends another copy with a deduplicated profile name.
+	require.Len(t, got.Profiles.Profiles, 3)
+}
+
+func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_RequiresExactlyOneIdentifierPerTarget(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	// Template identifier missing.
+	_, err := mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		APIKeyID: &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID},
+	})
+	require.Error(t, err)
+
+	// Template identified twice.
+	_, err = mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		TemplateID:   &objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: fx.template.ID},
+		TemplateName: lo.ToPtr(fx.template.Name),
+		APIKeyID:     &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID},
+	})
+	require.Error(t, err)
+
+	// API key identifier missing.
+	_, err = mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		TemplateID: &objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: fx.template.ID},
+	})
+	require.Error(t, err)
+
+	// API key identified twice.
+	_, err = mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		TemplateID: &objects.GUID{Type: ent.TypeAPIKeyProfileTemplate, ID: fx.template.ID},
+		APIKeyID:   &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID},
+		APIKeyName: lo.ToPtr(fx.targetKey.Name),
+	})
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_LoadAPIKeyProfileTemplate_ByName_CrossProjectDenied(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+	})
+
+	// 外项目的模板 name 同样被 privacy 项目过滤挡下。
+	_, err := mr.LoadAPIKeyProfileTemplate(ctx, LoadAPIKeyProfileTemplateInput{
+		TemplateName: lo.ToPtr(fx.otherTemplate.Name),
+		APIKeyName:   lo.ToPtr(fx.targetKey.Name),
+	})
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKeyQuotaUsages_ByName(t *testing.T) {
+	mr, fx, ctx, client := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+	setKeyQuotaProfile(t, client, fx.targetKey.ID)
+
+	qr := &queryResolver{mr.Resolver}
+
+	got, err := qr.APIKeyQuotaUsages(ctx, nil, nil, lo.ToPtr(fx.targetKey.Name))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "Default", got[0].ProfileName)
+}
+
+func TestOpenAPIResolver_APIKey_ByID(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	got, err := qr.APIKey(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, fx.targetKey.ID, got.ID.ID)
+	require.Equal(t, fx.targetKey.Key, got.Key)
+	require.Equal(t, fx.targetKey.Name, got.Name)
+	require.NotNil(t, got.Profiles)
+}
+
+func TestOpenAPIResolver_APIKey_ByKey(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	got, err := qr.APIKey(ctx, nil, lo.ToPtr(fx.targetKey.Key), nil)
+	require.NoError(t, err)
+	require.Equal(t, fx.targetKey.ID, got.ID.ID)
+	require.Equal(t, fx.targetKey.Name, got.Name)
+}
+
+// The headline use case: resolve a key's id/key/profiles from its name alone.
+func TestOpenAPIResolver_APIKey_ByName(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	got, err := qr.APIKey(ctx, nil, nil, lo.ToPtr(fx.targetKey.Name))
+	require.NoError(t, err)
+	require.Equal(t, fx.targetKey.ID, got.ID.ID)
+	require.Equal(t, fx.targetKey.Key, got.Key)
+	require.Equal(t, fx.targetKey.Name, got.Name)
+	require.NotNil(t, got.Profiles)
+}
+
+func TestOpenAPIResolver_APIKey_RequiresExactlyOneArg(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	// None provided.
+	_, err := qr.APIKey(ctx, nil, nil, nil)
+	require.Error(t, err)
+
+	// Two provided.
+	_, err = qr.APIKey(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, lo.ToPtr(fx.targetKey.Key), nil)
+	require.Error(t, err)
+
+	_, err = qr.APIKey(ctx, nil, lo.ToPtr(fx.targetKey.Key), lo.ToPtr(fx.targetKey.Name))
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKey_CrossProjectDenied(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	// Foreign-project key stays invisible no matter which identifier is used.
+	_, err := qr.APIKey(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.otherKey.ID}, nil, nil)
+	require.Error(t, err)
+
+	_, err = qr.APIKey(ctx, nil, nil, lo.ToPtr(fx.otherKey.Name))
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKey_MissingReadScopeDenied(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeWriteAPIKeys), // 缺 read
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	_, err := qr.APIKey(ctx, nil, nil, lo.ToPtr(fx.targetKey.Name))
+	require.Error(t, err)
+}
+
+func TestOpenAPIResolver_APIKey_InvalidGUIDType(t *testing.T) {
+	mr, fx, ctx, _ := setupOpenAPI(t, []string{
+		string(scopes.ScopeReadAPIKeys),
+	})
+
+	qr := &queryResolver{mr.Resolver}
+
+	_, err := qr.APIKey(ctx, &objects.GUID{Type: "Channel", ID: fx.targetKey.ID}, nil, nil)
 	require.Error(t, err)
 }
 

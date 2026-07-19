@@ -139,7 +139,7 @@ func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
 	assert.Equal(t, 50.0, strategy.Score(ctx, channel))
 }
 
-func TestRateLimitAwareStrategy_Score_SoftMode_ConcurrencyContributes(t *testing.T) {
+func TestRateLimitAwareStrategy_Score_UnboundedQueue_ConcurrencyContributes(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	mgr := NewChannelLimiterManager()
 	strategy := NewRateLimitAwareStrategy(tracker, mgr)
@@ -150,7 +150,7 @@ func TestRateLimitAwareStrategy_Score_SoftMode_ConcurrencyContributes(t *testing
 			Name: "test",
 			Settings: &objects.ChannelSettings{
 				RateLimit: &objects.ChannelRateLimit{
-					MaxConcurrent: lo.ToPtr(int64(10)),
+					MaxConcurrent: lo.ToPtr(int64(10)), // no QueueSize -> unbounded blocking queue
 				},
 			},
 		},
@@ -159,19 +159,24 @@ func TestRateLimitAwareStrategy_Score_SoftMode_ConcurrencyContributes(t *testing
 	lim := mgr.GetOrCreate(channel)
 	require.NotNil(t, lim)
 
-	// 8 / 10 in flight -> ratio 0.8 -> concurrency score 20
+	ctx := context.Background()
+
+	// 8 / 10 in flight (below capacity): queueCeiling 30 + 70*(1-0.8) = 44.
 	for range 8 {
 		require.NoError(t, lim.Acquire(t.Context()))
 	}
 
-	ctx := context.Background()
-	assert.InDelta(t, 20.0, strategy.Score(ctx, channel), 0.0001)
+	assert.InDelta(t, 44.0, strategy.Score(ctx, channel), 0.0001)
 
-	// Saturate to capacity -> exhausted (PR #1322 soft-mode parity)
+	// Saturate to capacity (10/10, no waiters): an unbounded queue is NEVER
+	// exhausted — the channel sits at the queueing ceiling (30) and stays a candidate.
 	for range 2 {
 		require.NoError(t, lim.Acquire(t.Context()))
 	}
-	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+
+	score := strategy.Score(ctx, channel)
+	assert.InDelta(t, 30.0, score, 0.0001)
+	assert.NotEqual(t, float64(rateLimitExhaustedScore), score, "unbounded queue must never be exhausted by concurrency")
 
 	for range 10 {
 		lim.Release()
@@ -335,7 +340,8 @@ func TestRateLimitAwareStrategy_Score_MinOfRPMAndConcurrency(t *testing.T) {
 		},
 	}
 
-	// 30% RPM (score 70) and 80% inFlight (score 20) -> min = 20.
+	// 30% RPM (score 70) and 80% inFlight below capacity (score 30 + 70*0.2 = 44)
+	// -> min = 44.
 	for range 30 {
 		tracker.TryAcquireRequest(channel.ID, rpm)
 	}
@@ -347,7 +353,7 @@ func TestRateLimitAwareStrategy_Score_MinOfRPMAndConcurrency(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	assert.InDelta(t, 20.0, strategy.Score(ctx, channel), 0.0001)
+	assert.InDelta(t, 44.0, strategy.Score(ctx, channel), 0.0001)
 
 	for range 8 {
 		lim.Release()

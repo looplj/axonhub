@@ -12,14 +12,19 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	}
 
 	raw := parseRawRequestFragments(rawBody)
+	reasoningContext := ""
+	if req.Reasoning != nil {
+		reasoningContext = req.Reasoning.Context
+	}
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
-		RawTools:       buildRawOnlyToolFragments(req.Tools, raw.Tools),
-		ToolSignatures: buildRepresentedToolSignatures(req.Tools),
-		RawToolChoice:  rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
-		RawInputItems:  buildRawOnlyInputFragments(req.Input, raw.InputItems),
+		ReasoningContext: reasoningContext,
+		RawTools:         buildRawOnlyToolFragments(req.Tools, raw.Tools),
+		ToolSignatures:   buildRepresentedToolSignatures(req.Tools),
+		RawToolChoice:    rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
+		RawInputItems:    buildRawOnlyInputFragments(req.Input, raw.InputItems),
 	}
 
-	if len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
+	if requestExt.ReasoningContext == "" && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
 		return
 	}
 

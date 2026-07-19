@@ -103,6 +103,7 @@ const CREATE_CHANNEL_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -110,6 +111,12 @@ const CREATE_CHANNEL_MUTATION = `
         retryableErrorPatterns {
           pattern
           regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -169,6 +176,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -176,6 +184,12 @@ const DUPLICATE_CHANNEL_MUTATION = `
         retryableErrorPatterns {
           pattern
           regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -235,6 +249,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -242,6 +257,12 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         retryableErrorPatterns {
           pattern
           regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -301,6 +322,7 @@ const UPDATE_CHANNEL_MUTATION = `
           forceArrayInstructions
           forceArrayInputs
           replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
         }
         passThroughUserAgent
         passThroughBody
@@ -308,6 +330,12 @@ const UPDATE_CHANNEL_MUTATION = `
         retryableErrorPatterns {
           pattern
           regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -484,6 +512,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             forceArrayInstructions
             forceArrayInputs
             replaceDeveloperRoleWithSystem
+            reasoningEffortMapping { from to }
           }
           passThroughUserAgent
           passThroughBody
@@ -491,6 +520,12 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           retryableErrorPatterns {
             pattern
             regex
+          }
+          providerQuota {
+            opencodeGo {
+              workspaceId
+              authCookie
+            }
           }
         }
       }
@@ -675,6 +710,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             forceArrayInstructions
             forceArrayInputs
             replaceDeveloperRoleWithSystem
+            reasoningEffortMapping { from to }
           }
           passThroughUserAgent
           passThroughBody
@@ -682,6 +718,12 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           retryableErrorPatterns {
             pattern
             regex
+          }
+          providerQuota {
+            opencodeGo {
+              workspaceId
+              authCookie
+            }
           }
         }
       }
@@ -818,6 +860,7 @@ const QUERY_CHANNELS_QUERY = `
               forceArrayInstructions
               forceArrayInputs
               replaceDeveloperRoleWithSystem
+              reasoningEffortMapping { from to }
             }
             passThroughUserAgent
             passThroughBody
@@ -832,6 +875,12 @@ const QUERY_CHANNELS_QUERY = `
             retryableErrorPatterns {
               pattern
               regex
+            }
+            providerQuota {
+              opencodeGo {
+                workspaceId
+                authCookie
+              }
             }
           }
           orderingWeight

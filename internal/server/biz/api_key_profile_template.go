@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 type APIKeyProfileTemplateServiceParams struct {
@@ -42,6 +44,12 @@ func (s *APIKeyProfileTemplateService) CreateTemplate(ctx context.Context, input
 
 	template, err := create.Save(ctx)
 	if err != nil {
+		// Name uniqueness is enforced by the (project_id, name, deleted_at) unique
+		// index; surface a friendly error instead of a raw constraint violation.
+		if ent.IsConstraintError(err) {
+			return nil, xerrors.DuplicateNameError("Template", input.Name)
+		}
+
 		return nil, fmt.Errorf("failed to create template: %w", err)
 	}
 
@@ -54,6 +62,37 @@ func (s *APIKeyProfileTemplateService) GetTemplate(ctx context.Context, id int) 
 	template, err := client.APIKeyProfileTemplate.Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get template: %w", err)
+	}
+
+	return template, nil
+}
+
+// GetForRead loads a template by id or name for read-only access. Exactly one
+// of id or name must be non-nil.
+//
+// Like APIKeyService.GetForRead, it goes through the context-bound ent client
+// so the APIKeyProfileTemplate privacy policy runs: an API key principal must
+// hold read_api_keys and is filtered to templates inside its own project, where
+// names are unique (DB index on project_id+name) — so a name identifies at most
+// one template and foreign templates surface as NotFound.
+func (s *APIKeyProfileTemplateService) GetForRead(ctx context.Context, id *int, name *string) (*ent.APIKeyProfileTemplate, error) {
+	if (id == nil) == (name == nil) {
+		return nil, fmt.Errorf("exactly one of template id or name must be provided")
+	}
+
+	client := s.entFromContext(ctx)
+	q := client.APIKeyProfileTemplate.Query()
+
+	switch {
+	case id != nil:
+		q = q.Where(apikeyprofiletemplate.IDEQ(*id))
+	case name != nil:
+		q = q.Where(apikeyprofiletemplate.NameEQ(*name))
+	}
+
+	template, err := q.Only(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return template, nil
@@ -96,6 +135,12 @@ func (s *APIKeyProfileTemplateService) UpdateTemplate(ctx context.Context, id in
 		var saveErr error
 		template, saveErr = update.Save(ctx)
 		if saveErr != nil {
+			// The unique index on (project_id, name, deleted_at) is the source of
+			// truth for name uniqueness; map it to a friendly error.
+			if ent.IsConstraintError(saveErr) {
+				return xerrors.DuplicateNameError("Template", lo.FromPtr(input.Name))
+			}
+
 			return fmt.Errorf("failed to update template: %w", saveErr)
 		}
 

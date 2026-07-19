@@ -64,6 +64,13 @@ func NewChatCompletionOrchestrator(
 	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy, quotaStrategy)
 
+	roundRobinHealthFilter := NewRoundRobinHealthStrategy(channelService)
+	roundRobinLoadBalancer := NewLoadBalancer(systemService, channelService,
+		NewRoundRobinStrategy(channelService),
+		rateLimitStrategy,
+		quotaStrategy,
+	).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(roundRobinHealthFilter)
+
 	return &ChatCompletionOrchestrator{
 		Inbound:            inbound,
 		RequestService:     requestService,
@@ -87,6 +94,7 @@ func NewChatCompletionOrchestrator(
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
 		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
+		roundRobinLoadBalancer:     roundRobinLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
 		quotaProvider:              quotaProvider,
 		proxy:                      nil,
@@ -115,6 +123,7 @@ type ChatCompletionOrchestrator struct {
 	adaptiveLoadBalancer       *LoadBalancer
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
+	roundRobinLoadBalancer     *LoadBalancer
 	// channelLimiterManager owns per-channel concurrency admission control and
 	// supplies in-flight / queue stats to the rate-limit-aware load-balancer strategy.
 	channelLimiterManager *ChannelLimiterManager
@@ -188,6 +197,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		loadBalancer = processor.failoverLoadBalancer
 	case biz.LoadBalancerStrategyCircuitBreaker:
 		loadBalancer = processor.circuitBreakerLoadBalancer
+	case biz.LoadBalancerStrategyRoundRobin:
+		loadBalancer = processor.roundRobinLoadBalancer
 	default:
 		// Default to adaptive load balancer
 	}

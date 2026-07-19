@@ -2,7 +2,6 @@ package anthropic
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/samber/lo"
 
@@ -31,8 +30,10 @@ func convertImageSourceToLLMImageURLPart(source *ImageSource, cacheControl *Cach
 			mediaType = "application/octet-stream"
 		}
 
-		// Convert Anthropic image format to OpenAI format
-		imageURL := fmt.Sprintf("data:%s;base64,%s", mediaType, source.Data)
+		// Convert Anthropic image format to OpenAI format.
+		// Use xurl.BuildDataURL (single exact-size concat) instead of fmt.Sprintf
+		// to avoid the printer's doubling-growth buffer churn on large base64 data.
+		imageURL := xurl.BuildDataURL(mediaType, source.Data, true)
 		part.ImageURL = &llm.ImageURL{URL: imageURL}
 
 		return part, true
@@ -690,6 +691,14 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			default:
 				resp.StopReason = choice.FinishReason
 			}
+		} else {
+			stopReason := "end_turn"
+			if lo.ContainsBy(resp.Content, func(block MessageContentBlock) bool {
+				return block.Type == "tool_use"
+			}) {
+				stopReason = "tool_use"
+			}
+			resp.StopReason = &stopReason
 		}
 	}
 

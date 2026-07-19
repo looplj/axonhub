@@ -65,6 +65,14 @@ type Config struct {
 	// Use ReasoningFieldContent (default) for DeepSeek/Mimo/Gemini, ReasoningFieldReasoning for NanoGPT/OpenRouter,
 	// or ReasoningFieldNone to strip all reasoning fields.
 	ReasoningField ReasoningField `json:"reasoning_field,omitempty"`
+
+	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound ones for
+	// non-standard OpenAI-compatible providers. The first entry whose From matches the
+	// effort value wins; values not in the list pass through unchanged.
+	// e.g. [{"from":"xhigh","to":"max"}] converts Anthropic's internal "xhigh" (mapped
+	// from "max") back to "max" for providers that only recognize "max". Consumed in
+	// TransformRequest.
+	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoning_effort_mapping,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
@@ -187,6 +195,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(llmReq, reasoningField)
+	// Apply per-channel reasoning_effort mapping for non-standard OpenAI-compatible providers.
+	// Entries in the map replace the effort value; values not in the map pass through unchanged.
+	// e.g. ollama channel with {"xhigh": "max"} converts Anthropic's internal "xhigh" back to "max".
+	oaiReq.ReasoningEffort = applyReasoningEffortMapping(oaiReq.ReasoningEffort, t.config.ReasoningEffortMapping)
 	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformOpenAI:
@@ -293,9 +305,14 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 		}
 	}
 
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	// Wrap with NoNil to filter out non-standard events (e.g. inference-cost, cost)
+	// that TransformStreamChunk skips by returning nil.
+	//
+	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
+	// in the raw JSON. Events without a choices key (nil slice) are passed through.
+	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	})), nil
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(
@@ -318,7 +335,24 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		Body: event.Data,
 	}
 
-	return t.TransformResponse(ctx, httpResp)
+	resp, err := t.TransformResponse(ctx, httpResp)
+	if err != nil {
+		return nil, err
+	}
+
+	// Skip non-standard events with explicit empty choices array and no usage
+	// (e.g. inference-cost, cost) that some providers emit alongside standard chat
+	// completion chunks. Keep the standard OpenAI include_usage terminal chunk,
+	// which is encoded as choices:[] with a non-null usage object.
+	// Returning nil causes NoNil to filter skipped events from the client stream.
+	if choicesVal := gjson.GetBytes(event.Data, "choices"); choicesVal.Exists() && choicesVal.IsArray() && len(choicesVal.Array()) == 0 {
+		usageVal := gjson.GetBytes(event.Data, "usage")
+		if !usageVal.Exists() || usageVal.Raw == "null" {
+			return nil, nil
+		}
+	}
+
+	return resp, nil
 }
 
 func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {

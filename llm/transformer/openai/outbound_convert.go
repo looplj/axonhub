@@ -94,6 +94,23 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 	return req
 }
 
+// applyReasoningEffortMapping replaces reasoning_effort according to a per-channel mapping.
+// The first entry whose From matches the effort value wins; values not in the list (or an
+// empty/nil list) pass through unchanged. This lets non-standard OpenAI-compatible providers
+// (ollama, opencode, evolink, self-hosted gateways) opt in to conversions like xhigh→max
+// without affecting standard OpenAI channels. Applied in OutboundTransformer.TransformRequest.
+func applyReasoningEffortMapping(effort string, mappings []llm.ReasoningEffortMapping) string {
+	if len(mappings) == 0 || effort == "" {
+		return effort
+	}
+	for _, m := range mappings {
+		if m.From == effort {
+			return m.To
+		}
+	}
+	return effort
+}
+
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
 // Defaults to ReasoningFieldAll to preserve both reasoning fields.
 func MessageFromLLM(m llm.Message) Message {

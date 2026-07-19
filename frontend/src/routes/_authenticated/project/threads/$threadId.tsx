@@ -1,11 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ProjectGuard } from '@/components/project-guard';
+import { RouteGuard } from '@/components/route-guard';
 import { ThreadDetailPage } from '@/features/threads/components';
 
 function ProtectedThreadDetail() {
   return (
     <ProjectGuard>
-      <ThreadDetailPage />
+      <RouteGuard requiredScopes={['read_requests']} scopeLevel="any">
+        <ThreadDetailPage />
+      </RouteGuard>
     </ProjectGuard>
   );
 }

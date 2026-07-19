@@ -8,6 +8,7 @@ server:
   port: 8090                    # Server port (env: AXONHUB_SERVER_PORT)
   name: "AxonHub"               # Server name (env: AXONHUB_SERVER_NAME)
   base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
+  # pid_file: "~/.config/axonhub/axonhub.pid"  # PID file for axonhub reload (env: AXONHUB_SERVER_PID_FILE)
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
   llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
   trace:
@@ -51,6 +52,17 @@ server:
       key_prefix: "ah"           # API key prefix (env: AXONHUB_SERVER_API_AUTH_KEY_PREFIX)
                                  # Default: "ah"
                                  # Examples: "sk" generates "sk-<64hex>", "myapp" generates "myapp-<64hex>"
+
+  # IP Access Control - Whitelist mode
+  # When enabled, only requests from allowed IPs/CIDRs can access the server.
+  # Non-allowed requests are redirected to the configured URL.
+  # Edit this section, then send SIGHUP to apply it without restarting.
+  ip_access_control:
+    enabled: false                    # Enable IP whitelist (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_ENABLED)
+    allowed_ips:                      # Allowed IPs or CIDR ranges (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_ALLOWED_IPS)
+      - "192.168.1.0/24"
+      - "10.0.0.1"
+    redirect_url: "https://example.com/unauthorized"  # Redirect target for non-allowed IPs (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_REDIRECT_URL)
 
 # Database configuration
 db:

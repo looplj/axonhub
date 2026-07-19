@@ -3,6 +3,9 @@
 package thread
 
 import (
+	"fmt"
+	"io"
+	"strconv"
 	"time"
 
 	"entgo.io/ent"
@@ -23,6 +26,8 @@ const (
 	FieldProjectID = "project_id"
 	// FieldThreadID holds the string denoting the thread_id field in the database.
 	FieldThreadID = "thread_id"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
 	// EdgeProject holds the string denoting the project edge name in mutations.
 	EdgeProject = "project"
 	// EdgeTraces holds the string denoting the traces edge name in mutations.
@@ -52,6 +57,7 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldProjectID,
 	FieldThreadID,
+	FieldStatus,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -80,6 +86,33 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 )
 
+// Status defines the type for the "status" enum field.
+type Status string
+
+// StatusActive is the default value of the Status enum.
+const DefaultStatus = StatusActive
+
+// Status values.
+const (
+	StatusActive   Status = "active"
+	StatusArchived Status = "archived"
+	StatusRetained Status = "retained"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s Status) error {
+	switch s {
+	case StatusActive, StatusArchived, StatusRetained:
+		return nil
+	default:
+		return fmt.Errorf("thread: invalid enum value for status field: %q", s)
+	}
+}
+
 // OrderOption defines the ordering options for the Thread queries.
 type OrderOption func(*sql.Selector)
 
@@ -106,6 +139,11 @@ func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
 // ByThreadID orders the results by the thread_id field.
 func ByThreadID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldThreadID, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
 // ByProjectField orders the results by project field.
@@ -141,4 +179,22 @@ func newTracesStep() *sqlgraph.Step {
 		sqlgraph.To(TracesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TracesTable, TracesColumn),
 	)
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Status) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Status) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Status(str)
+	if err := StatusValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Status", str)
+	}
+	return nil
 }

@@ -113,6 +113,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
 		rawHeaders = llmReq.RawRequest.Headers
 		rawSessionID = llmReq.RawRequest.Headers.Get(SessionHeader)
+		if rawSessionID == "" {
+			rawSessionID = llmReq.RawRequest.Headers.Get(SessionHeaderHyphen)
+		}
+		// Remove underscore variant to prevent it from leaking upstream via MergeInboundRequest.
+		llmReq.RawRequest.Headers.Del(SessionHeader)
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
@@ -214,19 +219,29 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	if rawSessionID != "" {
-		hreq.Headers.Set(SessionHeader, rawSessionID)
+		hreq.Headers.Set(SessionHeaderHyphen, rawSessionID)
 	} else if sessionID := ExtractSessionIDFromTurnMetadata(rawTurnMetadata); sessionID != "" {
-		hreq.Headers.Set(SessionHeader, sessionID)
-	} else if hreq.Headers.Get(SessionHeader) == "" {
+		hreq.Headers.Set(SessionHeaderHyphen, sessionID)
+	} else if hreq.Headers.Get(SessionHeaderHyphen) == "" {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
-			hreq.Headers.Set(SessionHeader, sessionID)
+			hreq.Headers.Set(SessionHeaderHyphen, sessionID)
 		} else {
-			hreq.Headers.Set(SessionHeader, uuid.NewString())
+			hreq.Headers.Set(SessionHeaderHyphen, uuid.NewString())
 		}
 	}
 
 	if accountID != "" {
 		hreq.Headers.Set("Chatgpt-Account-Id", accountID)
+	}
+
+	if hreq.Headers.Get("Conversation_id") == "" {
+		if sessionID := hreq.Headers.Get(SessionHeaderHyphen); sessionID != "" {
+			hreq.Headers.Set("Conversation_id", sessionID)
+		}
+	}
+
+	if hreq.Headers.Get("Version") == "" {
+		hreq.Headers.Set("Version", codexDefaultVersion)
 	}
 
 	return hreq, nil

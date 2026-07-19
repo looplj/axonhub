@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatDuration } from '../../../utils/format-duration';
 import type { Segment, Span } from '../data/schema';
-import { normalizeSpanType, getSpanDisplayLabels } from '../utils/span-display';
+import { normalizeSpanType, getSpanTypeTranslationKey, getSpanDisplayLabels } from '../utils/span-display';
 import { getSpanIcon } from './constant';
 
 type SpanKind = 'request' | 'response';
@@ -419,10 +419,11 @@ function collectAllNodes(node: TreeNode, result: TreeNode[] = []) {
   return result;
 }
 
-// Collect all span types from the tree
-function collectSpanTypes(node: TreeNode, result: Set<string> = new Set()) {
+// Collect all span types from the tree with counts
+function collectSpanTypes(node: TreeNode, result: Map<string, number> = new Map()): Map<string, number> {
   node.spans.forEach(({ span }) => {
-    result.add(normalizeSpanType(span.type));
+    const key = normalizeSpanType(span.type);
+    result.set(key, (result.get(key) ?? 0) + 1);
   });
   node.children.forEach((child) => collectSpanTypes(child, result));
   return result;
@@ -466,7 +467,8 @@ export function TraceTreeTimeline(props: TraceTreeTimelineProps) {
     return Math.max(timeRange.end - timeRange.start, 1);
   }, [timeRange]);
 
-  const allSpanTypes = useMemo(() => Array.from(collectSpanTypes(treeData)).sort(), [treeData]);
+  const spanTypeCounts = useMemo(() => collectSpanTypes(treeData), [treeData]);
+  const allSpanTypes = useMemo(() => Array.from(spanTypeCounts.keys()).sort(), [spanTypeCounts]);
 
   const filteredTree = useMemo(() => {
     if (selectedSpanTypes.size === 0) return treeData;
@@ -667,7 +669,8 @@ export function TraceTreeTimeline(props: TraceTreeTimelineProps) {
                           >
                             <Checkbox checked={isChecked} onCheckedChange={() => handleToggleSpanType(spanType)} />
                             <SpanIcon className='text-muted-foreground h-4 w-4 flex-shrink-0' />
-                            <span className='flex-1 text-sm'>{t(`traces.timeline.spanTypes.${spanType}`, spanType)}</span>
+                            <span className='flex-1 text-sm'>{t(`traces.timeline.spanTypes.${getSpanTypeTranslationKey(spanType)}`, spanType)}</span>
+                            <span className='text-muted-foreground text-xs tabular-nums'>{spanTypeCounts.get(spanType) ?? 0}</span>
                           </label>
                         );
                       })}

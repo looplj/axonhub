@@ -116,7 +116,40 @@ const whenFilterFields: FilterBuilderField[] = [
       { value: 'not_within', label: 'Not within' },
     ],
   },
+  {
+    value: 'request_header',
+    label: 'Request header',
+    type: 'string',
+    placeholder: 'Header value',
+    operators: [
+      { value: 'eq', label: '= Equals' },
+      { value: 'ne', label: '!= Not equal' },
+      { value: 'contains', label: 'Contains' },
+      { value: 'not_contains', label: 'Does not contain' },
+      { value: 'start_with', label: 'Starts with' },
+      { value: 'end_with', label: 'Ends with' },
+    ],
+    subField: {
+      label: 'Header name',
+      placeholder: 'e.g. X-Model',
+      separator: '.',
+      allowCustom: true,
+      suggestions: [
+        { value: 'User-Agent', label: 'User-Agent' },
+        { value: 'X-Model', label: 'X-Model' },
+        { value: 'X-Request-Id', label: 'X-Request-Id' },
+        { value: 'X-Trace-Id', label: 'X-Trace-Id' },
+        { value: 'Accept', label: 'Accept' },
+        { value: 'Accept-Language', label: 'Accept-Language' },
+        { value: 'Content-Type', label: 'Content-Type' },
+        { value: 'Origin', label: 'Origin' },
+        { value: 'Referer', label: 'Referer' },
+      ],
+    },
+  },
 ];
+
+const REQUEST_HEADER_FIELD_PREFIX = 'request_header.';
 
 const dailyTimeRangePattern = /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -126,9 +159,22 @@ function dailyTimeRangeHasDifferentEndpoints(value: string): boolean {
 }
 
 function isValidConditionOperator(field: string, operator: string): boolean {
-  const fieldConfig = whenFilterFields.find((f) => f.value === field);
+  const fieldConfig = resolveWhenFilterField(field);
   if (!fieldConfig) return false;
   return Boolean(fieldConfig.operators?.some((op) => op.value === operator));
+}
+
+function resolveWhenFilterField(field?: string) {
+  if (!field) {
+    return undefined;
+  }
+
+  const exact = whenFilterFields.find((f) => f.value === field);
+  if (exact) {
+    return exact;
+  }
+
+  return whenFilterFields.find((f) => f.subField && field.startsWith(f.value + f.subField.separator));
 }
 
 function isBooleanConditionField(field?: string): boolean {
@@ -263,6 +309,23 @@ function validateWhenConditionNode(
       message: 'Start and end time must be different',
       path: [...path, 'value'],
     });
+  }
+  if (condition.field?.startsWith(REQUEST_HEADER_FIELD_PREFIX)) {
+    const headerName = condition.field.slice(REQUEST_HEADER_FIELD_PREFIX.length);
+    if (!headerName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Header name is required',
+        path: [...path, 'field'],
+      });
+    }
+    if (typeof condition.value !== 'string' || condition.value === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Value must be text',
+        path: [...path, 'value'],
+      });
+    }
   }
 }
 
@@ -1079,6 +1142,10 @@ function sanitizeWhenCondition(condition?: FilterBuilderCondition): FilterBuilde
     return null;
   }
 
+  if (condition.field.startsWith(REQUEST_HEADER_FIELD_PREFIX) && condition.field.slice(REQUEST_HEADER_FIELD_PREFIX.length) === '') {
+    return null;
+  }
+
   return {
     type: 'condition',
     field: condition.field,
@@ -1519,6 +1586,13 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                           ...option,
                           label: t(`models.dialogs.association.conditions.formatOptions.${option.value}`, { defaultValue: option.label }),
                         })),
+                        subField: item.subField
+                          ? {
+                              ...item.subField,
+                              label: t(`models.dialogs.association.conditions.subFields.${item.value}.label`, { defaultValue: item.subField.label }),
+                              placeholder: t(`models.dialogs.association.conditions.subFields.${item.value}.placeholder`, { defaultValue: item.subField.placeholder }),
+                            }
+                          : undefined,
                       }))}
                       fieldLabel={t('models.dialogs.association.conditions.fieldLabel')}
                       operatorLabel={t('models.dialogs.association.conditions.operatorLabel')}

@@ -27,7 +27,7 @@ interface ProjectProfilesDialogProps {
 
 export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = false, initialData }: ProjectProfilesDialogProps) {
   const { t } = useTranslation();
-  const { data: channelsData } = useAllChannelSummarys();
+  const { data: channelsData } = useAllChannelSummarys(undefined, { enabled: open });
 
   const allTags = useMemo(() => {
     if (!channelsData?.edges) return [];

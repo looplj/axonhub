@@ -6,7 +6,7 @@ import ApiKeys from '@/features/apikeys';
 function ProtectedProjectApiKeys() {
   return (
     <ProjectGuard>
-      <RouteGuard requiredScopes={['read_api_keys']}>
+      <RouteGuard requiredScopes={['read_api_keys']} scopeLevel="any">
         <ApiKeys />
       </RouteGuard>
     </ProjectGuard>

@@ -78,7 +78,7 @@ func projectMemberQueryFilter(requiredScope ScopeSlug) func(ctx context.Context,
 		switch q := q.(type) {
 		case ProjectOwnedFilter:
 			// Check if user has global scope permission or project scope permission.
-			if !userHasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
+			if !HasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
 				return privacy.Skipf("User %d can not query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 			}
 
@@ -86,7 +86,7 @@ func projectMemberQueryFilter(requiredScope ScopeSlug) func(ctx context.Context,
 
 			return privacy.Allowf("User %d can query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 		case *ent.ProjectFilter:
-			if !userHasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
+			if !HasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
 				return privacy.Skipf("User %d can not query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 			}
 
@@ -120,6 +120,10 @@ func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutat
 		return privacy.Skipf("User not found in context")
 	}
 
+	if HasSystemScope(user, r.requiredScope) {
+		return privacy.Allowf("User %d has system scope %s, allowing mutation", user.ID, r.requiredScope)
+	}
+
 	// For mutations, check project membership
 	switch mutation := m.(type) {
 	case ProjectOwnedMutation:
@@ -128,7 +132,7 @@ func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutat
 			return privacy.Skipf("Project ID not found in context")
 		}
 
-		if !userHasSystemScope(user, r.requiredScope) && !userHasProjectScope(user, projectID, r.requiredScope) {
+		if !HasSystemScope(user, r.requiredScope) && !userHasProjectScope(user, projectID, r.requiredScope) {
 			return privacy.Skipf("User %d can not modify resources in project %d with scope %s", user.ID, projectID, r.requiredScope)
 		}
 
@@ -161,7 +165,7 @@ func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutat
 		}
 	case *ent.ProjectMutation:
 		// Check if user has global scope permission
-		if userHasSystemScope(user, r.requiredScope) {
+		if HasSystemScope(user, r.requiredScope) {
 			return privacy.Allowf("User %d can create project", user.ID)
 		}
 

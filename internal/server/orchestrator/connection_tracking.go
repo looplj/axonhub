@@ -72,14 +72,9 @@ func (m *channelLimiterMiddleware) OnOutboundRawRequest(ctx context.Context, req
 		return request, nil
 	}
 
-	// Only time the acquire when it can actually wait — soft mode (queueSize == 0)
-	// always returns immediately so the histogram observation would be pure noise.
-	hardMode := lim.queueSize > 0
-
-	var acquireStart time.Time
-	if hardMode {
-		acquireStart = time.Now()
-	}
+	// The limiter is always a hard blocking semaphore, so any Acquire may wait.
+	// Time every acquire; fast-path (slot immediately free) acquires record ~0.
+	acquireStart := time.Now()
 
 	if err := lim.Acquire(ctx); err != nil {
 		if queueErr := asChannelQueueError(channel, err); queueErr != nil {
@@ -102,9 +97,7 @@ func (m *channelLimiterMiddleware) OnOutboundRawRequest(ctx context.Context, req
 		return nil, err
 	}
 
-	if hardMode {
-		m.metrics.ObserveQueueWait(ctx, channel, time.Since(acquireStart))
-	}
+	m.metrics.ObserveQueueWait(ctx, channel, time.Since(acquireStart))
 
 	m.current.Store(&limiterSlot{lim: lim})
 
@@ -182,6 +175,10 @@ type channelLimiterStream struct {
 }
 
 func (s *channelLimiterStream) Close() error {
-	s.release()
+	// Close the upstream stream/connection BEFORE releasing the limiter slot, so a
+	// queued waiter cannot be granted the slot (and dial a new upstream connection)
+	// while this request's connection is still open. defer guards the release so the
+	// slot is freed even if Stream.Close panics.
+	defer s.release()
 	return s.Stream.Close()
 }

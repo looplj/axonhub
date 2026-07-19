@@ -120,23 +120,45 @@ input ModelMappingInput {
 }
 
 input LoadApiKeyProfileTemplateInput {
-  templateID: ID!
-  apiKeyID: ID!
+  """
+  Template to load. Provide exactly one of templateID or templateName;
+  templateName resolves within the caller's own project.
+  """
+  templateID: ID
+  templateName: String
+  """
+  Target API key. Provide exactly one of apiKeyID or apiKeyName;
+  apiKeyName resolves within the caller's own project.
+  """
+  apiKeyID: ID
+  apiKeyName: String
 }
 
 extend type Mutation {
   createLLMAPIKey(name: String!): APIKey!
-  updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
+  """
+  Updates the profiles of an API key. Provide exactly one of id or name;
+  name resolves within the caller's own project, where API key names are unique.
+  """
+  updateAPIKeyProfiles(id: ID, name: String, input: UpdateAPIKeyProfilesInput!): APIKey!
   loadApiKeyProfileTemplate(input: LoadApiKeyProfileTemplateInput!): APIKey!
 }
 
 extend type Query {
   """
-  Returns quota usage for the profiles that have quota enabled on an API key.
-  Provide exactly one of apiKeyId or key; both identify a key, and only keys
+  Returns an API key's details (id, key, name, scopes, profiles).
+  Provide exactly one of id, key, or name; all identify a key, and only keys
   inside the caller's own project are visible (requires the read_api_keys scope).
   """
-  apiKeyQuotaUsages(apiKeyId: ID, key: String): [APIKeyProfileQuotaUsage!]!
+  apiKey(id: ID, key: String, name: String): APIKey!
+
+  """
+  Returns quota usage for the profiles that have quota enabled on an API key.
+  Provide exactly one of apiKeyId, key, or name; all identify a key, and only
+  keys inside the caller's own project are visible (requires the read_api_keys
+  scope).
+  """
+  apiKeyQuotaUsages(apiKeyId: ID, key: String, name: String): [APIKeyProfileQuotaUsage!]!
 }
 
 type APIKeyProfileQuotaUsage {

@@ -174,6 +174,70 @@ func (s *TraceService) GetFirstText(ctx context.Context, traceID int) (*string, 
 	return segment.FirstText(), nil
 }
 
+// Archive sets the trace status to archived. Current status must be active.
+func (s *TraceService) Archive(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusActive)).
+		SetStatus(trace.StatusArchived).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot archive trace: current status is not active or trace not found")
+		}
+		return fmt.Errorf("failed to archive trace: %w", err)
+	}
+	return nil
+}
+
+// Unarchive sets the trace status to active. Current status must be archived.
+func (s *TraceService) Unarchive(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusArchived)).
+		SetStatus(trace.StatusActive).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot unarchive trace: current status is not archived or trace not found")
+		}
+		return fmt.Errorf("failed to unarchive trace: %w", err)
+	}
+	return nil
+}
+
+// Retain sets the trace status to retained. Current status must be active.
+func (s *TraceService) Retain(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusActive)).
+		SetStatus(trace.StatusRetained).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot retain trace: current status is not active or trace not found")
+		}
+		return fmt.Errorf("failed to retain trace: %w", err)
+	}
+	return nil
+}
+
+// Unretain sets the trace status to active. Current status must be retained.
+func (s *TraceService) Unretain(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+	_, err := client.Trace.UpdateOneID(id).
+		Where(trace.StatusEQ(trace.StatusRetained)).
+		SetStatus(trace.StatusActive).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("cannot unretain trace: current status is not retained or trace not found")
+		}
+		return fmt.Errorf("failed to unretain trace: %w", err)
+	}
+	return nil
+}
+
 func (s *TraceService) UsageMetadata(ctx context.Context, traceID int) (*UsageMetadata, error) {
 	client := s.entFromContext(ctx)
 	if client == nil {
@@ -1495,6 +1559,22 @@ func deduplicateSpansWithParent(current, parent []Span) []Span {
 	return result
 }
 
+// normalizeJSON re-parses and re-serializes JSON to produce a canonical form,
+// eliminating whitespace differences between compact and pretty-printed JSON.
+func normalizeJSON(s string) string {
+	var v any
+	if err := json.Unmarshal([]byte(s), &v); err != nil {
+		return s
+	}
+
+	b, err := json.Marshal(v)
+	if err != nil {
+		return s
+	}
+
+	return string(b)
+}
+
 // spanToKey generates a unique key for a span based on its content.
 func spanToKey(span Span) string {
 	if span.Value == nil {
@@ -1502,6 +1582,10 @@ func spanToKey(span Span) string {
 	}
 
 	switch span.Type {
+	case "system_instruction":
+		if span.Value.SystemInstruction != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.SystemInstruction.Instruction)
+		}
 	case "user_query":
 		if span.Value.UserQuery != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.UserQuery.Text)
@@ -1546,7 +1630,7 @@ func spanToKey(span Span) string {
 		if span.Value.ToolUse != nil {
 			args := ""
 			if span.Value.ToolUse.Arguments != nil {
-				args = *span.Value.ToolUse.Arguments
+				args = normalizeJSON(*span.Value.ToolUse.Arguments)
 			}
 
 			return fmt.Sprintf("%s:%s:%s:%s", span.Type, span.Value.ToolUse.ID, span.Value.ToolUse.Name, args)

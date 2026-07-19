@@ -18,6 +18,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -233,7 +234,9 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 }
 
 func buildImageDataURL(contentType string, data []byte) string {
-	return fmt.Sprintf("data:%s;base64,%s", contentType, base64.StdEncoding.EncodeToString(data))
+	// Use xurl.BuildDataURL (single exact-size concat) instead of fmt.Sprintf to
+	// avoid the printer's doubling-growth buffer churn on large base64 data.
+	return xurl.BuildDataURL(contentType, base64.StdEncoding.EncodeToString(data), true)
 }
 
 type OpenAIVideoError struct {

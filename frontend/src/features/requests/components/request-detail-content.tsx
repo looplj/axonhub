@@ -386,6 +386,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
           const promptTokens = usage.promptTokens || 0;
           const cachedTokens = usage.promptCachedTokens || 0;
           const writeCachedTokens = usage.promptWriteCachedTokens || 0;
+          const reasoningTokens = usage.completionReasoningTokens || 0;
           const hasReadCache = cachedTokens > 0;
           const hasWriteCache = writeCachedTokens > 0;
           const cacheHitRate = hasReadCache ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0';
@@ -427,7 +428,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5'>
+                <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
                   <div className='bg-muted/30 flex flex-col justify-center rounded-lg border px-2.5 py-2'>
                     <span className='text-muted-foreground text-xs font-medium'>{t('usageLogs.columns.inputLabel')}</span>
                     <div className='mt-1'>
@@ -439,35 +440,36 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                     <span className='text-muted-foreground text-xs font-medium'>{t('usageLogs.columns.outputLabel')}</span>
                     <div className='mt-1'>
                       <p className='text-sm font-semibold'>{usage.completionTokens.toLocaleString()}</p>
+                      {reasoningTokens > 0 && (
+                        <p className='text-muted-foreground text-xs'>
+                          {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
+                        </p>
+                      )}
                       <p className='text-muted-foreground text-xs'>{renderCost(completionCost)}</p>
                     </div>
                   </div>
                   <div className='bg-muted/30 flex flex-col justify-center rounded-lg border px-2.5 py-2'>
                     <span className='text-muted-foreground text-xs font-medium'>{t('usageLogs.columns.promptCachedTokens')}</span>
                     <div className='mt-1'>
-                      <div className='flex items-center justify-between'>
+                      <div className='flex flex-wrap items-center gap-1'>
                         <p className='text-sm font-semibold'>{cachedTokens.toLocaleString()}</p>
                         {hasReadCache && (
                           <Badge variant='outline' className='h-4 border-green-200 bg-green-50 px-1 text-[10px] text-green-600'>
                             {cacheHitRate}%
                           </Badge>
                         )}
-                      </div>
-                      <p className='text-muted-foreground text-xs'>{renderCost(cacheReadCost)}</p>
-                    </div>
-                  </div>
-                  <div className='bg-muted/30 flex flex-col justify-center rounded-lg border px-2.5 py-2'>
-                    <span className='text-muted-foreground text-xs font-medium'>{t('usageLogs.columns.writeCacheTokens')}</span>
-                    <div className='mt-1'>
-                      <div className='flex items-center justify-between'>
-                        <p className='text-sm font-semibold'>{writeCachedTokens.toLocaleString()}</p>
                         {hasWriteCache && (
                           <Badge variant='outline' className='h-4 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-600'>
-                            {writeCacheRate}%
+                            {t('usageLogs.columns.writeCacheTokens')} {writeCacheRate}%
                           </Badge>
                         )}
                       </div>
-                      <p className='text-muted-foreground text-xs'>{renderCost(cacheWriteCost)}</p>
+                      {writeCachedTokens > 0 && (
+                        <p className='text-muted-foreground text-xs'>
+                          {t('requests.columns.writeCache')}: {writeCachedTokens.toLocaleString()}
+                        </p>
+                      )}
+                      <p className='text-muted-foreground text-xs'>{renderCost(cost > 0 ? (cacheReadCost || 0) + (cacheWriteCost || 0) : null)}</p>
                     </div>
                   </div>
                   <div className='bg-muted/30 flex flex-col justify-center rounded-lg border px-2.5 py-2'>

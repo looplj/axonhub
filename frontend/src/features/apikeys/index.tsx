@@ -124,21 +124,24 @@ function ApiKeysContent() {
   );
 
   return (
-    <div className='flex flex-1 flex-col'>
+    <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
-        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-3 rounded-2xl border'>
+        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-4 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>
             {t('apikeys.tabs.all')}
           </TabsTrigger>
           <TabsTrigger value='user' data-value='user'>
             {t('apikeys.type.user')}
           </TabsTrigger>
+          <TabsTrigger value='personal' data-value='personal'>
+            {t('apikeys.type.personal')}
+          </TabsTrigger>
           <TabsTrigger value='service_account' data-value='service_account'>
             {t('apikeys.type.service_account')}
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <div className='mt-6 flex-1'>
+      <div className='mt-6 flex min-h-0 flex-1 flex-col overflow-hidden'>
         <ApiKeysTable
           data={tableData}
           loading={isLoading}
@@ -181,7 +184,7 @@ export default function ApiKeysManagement() {
         </div>
       </Header>
 
-      <Main>
+      <Main fixed>
         <ApiKeysContent />
       </Main>
       <ApiKeysDialogs />

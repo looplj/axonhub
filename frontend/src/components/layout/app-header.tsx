@@ -80,8 +80,10 @@ export function AppHeader() {
 
         {/* 右侧控件 */}
         <div className='flex items-center gap-2 pr-6'>
-          {/* Quota Badges - always visible */}
-          <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+          {/* Quota Badges - only visible to users with channel read permission */}
+          <PermissionGuard requiredSystemScope='read_channels'>
+            <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+          </PermissionGuard>
 
           {/* Desktop-only controls - hidden on mobile */}
           {!isMobile && (

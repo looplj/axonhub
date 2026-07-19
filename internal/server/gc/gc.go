@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
@@ -249,7 +250,12 @@ func (w *Worker) cleanupOldRequestExecutions(ctx context.Context, cutoffTime tim
 				requestexecution.FieldDataStorageID,
 				requestexecution.FieldRequestID,
 			).
-			Where(requestexecution.CreatedAtLT(cutoffTime)).
+			Where(
+				requestexecution.CreatedAtLT(cutoffTime),
+				requestexecution.Not(requestexecution.HasRequestWith(
+					request.HasTraceWith(trace.StatusEQ(trace.StatusRetained)),
+				)),
+			).
 			Order(ent.Asc(requestexecution.FieldID)).
 			Limit(batchSize).
 			All(ctx)
@@ -297,7 +303,10 @@ func (w *Worker) cleanupOldRequestsRecords(ctx context.Context, cutoffTime time.
 				request.FieldProjectID,
 				request.FieldDataStorageID,
 			).
-			Where(request.CreatedAtLT(cutoffTime)).
+			Where(
+				request.CreatedAtLT(cutoffTime),
+				request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
+			).
 			Order(ent.Asc(request.FieldID)).
 			Limit(batchSize).
 			All(ctx)
@@ -350,7 +359,13 @@ func (w *Worker) cleanupExecutionExternalStorage(ctx context.Context, exec *ent.
 		biz.GenerateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
 		biz.GenerateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
 		biz.GenerateExecutionResponseChunksKey(exec.ProjectID, exec.RequestID, exec.ID),
-		biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID),
+	}
+
+	// Directory-marker keys only exist as real directories on filesystem-like
+	// backends. On object stores (S3/GCS) they were never created, so deleting
+	// them only wastes a ListObjectsV2 (Class A); skip them there.
+	if hasRealDirectories(ds.Type) {
+		keys = append(keys, biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID))
 	}
 
 	for _, key := range keys {
@@ -387,8 +402,15 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 		biz.GenerateRequestBodyKey(req.ProjectID, req.ID),
 		biz.GenerateResponseBodyKey(req.ProjectID, req.ID),
 		biz.GenerateResponseChunksKey(req.ProjectID, req.ID),
-		biz.GenerateRequestExecutionsDirKey(req.ProjectID, req.ID),
-		biz.GenerateRequestDirKey(req.ProjectID, req.ID),
+	}
+
+	// See cleanupExecutionExternalStorage: object stores have no real
+	// directories, so only attempt directory-marker deletes on FS/WebDAV.
+	if hasRealDirectories(ds.Type) {
+		keys = append(keys,
+			biz.GenerateRequestExecutionsDirKey(req.ProjectID, req.ID),
+			biz.GenerateRequestDirKey(req.ProjectID, req.ID),
+		)
 	}
 
 	for _, key := range keys {
@@ -400,6 +422,16 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 			)
 		}
 	}
+}
+
+// hasRealDirectories reports whether the storage backend materializes
+// directories as real entries that must be explicitly removed during cleanup.
+// Object stores (S3/GCS) have no real directories — the "*DirKey" paths are
+// never created, so attempting to delete them only costs a wasted
+// ListObjectsV2 (Class A). Filesystem and WebDAV backends do create real
+// directories that should be removed.
+func hasRealDirectories(t datastorage.Type) bool {
+	return t == datastorage.TypeFs || t == datastorage.TypeWebdav
 }
 
 func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int]*ent.DataStorage) (*ent.DataStorage, error) {
@@ -428,7 +460,12 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		ids, err := w.Ent.UsageLog.Query().
-			Where(usagelog.CreatedAtLT(cutoffTime)).
+			Where(
+				usagelog.CreatedAtLT(cutoffTime),
+				usagelog.Not(usagelog.HasRequestWith(
+					request.HasTraceWith(trace.StatusEQ(trace.StatusRetained)),
+				)),
+			).
 			Order(ent.Asc(usagelog.FieldID)).
 			Limit(batchSize).
 			IDs(ctx)
@@ -464,7 +501,10 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		ids, err := w.Ent.Thread.Query().
-			Where(thread.CreatedAtLT(cutoffTime)).
+			Where(
+				thread.CreatedAtLT(cutoffTime),
+				thread.StatusNEQ(thread.StatusRetained),
+			).
 			Order(ent.Asc(thread.FieldID)).
 			Limit(batchSize).
 			IDs(ctx)
@@ -500,7 +540,10 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		ids, err := w.Ent.Trace.Query().
-			Where(trace.CreatedAtLT(cutoffTime)).
+			Where(
+				trace.CreatedAtLT(cutoffTime),
+				trace.StatusNEQ(trace.StatusRetained),
+			).
 			Order(ent.Asc(trace.FieldID)).
 			Limit(batchSize).
 			IDs(ctx)
@@ -637,7 +680,10 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 
 	if input.RequestsCleanupDays > 0 {
 		cutoff := time.Now().AddDate(0, 0, -input.RequestsCleanupDays)
-		count, err := w.Ent.Request.Query().Where(request.CreatedAtLT(cutoff)).Count(ctx)
+		count, err := w.Ent.Request.Query().Where(
+			request.CreatedAtLT(cutoff),
+			request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
+		).Count(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to count requests for preview: %w", err)
 		}
@@ -651,7 +697,12 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 
 	if input.UsageLogsCleanupDays > 0 {
 		cutoff := time.Now().AddDate(0, 0, -input.UsageLogsCleanupDays)
-		count, err := w.Ent.UsageLog.Query().Where(usagelog.CreatedAtLT(cutoff)).Count(ctx)
+		count, err := w.Ent.UsageLog.Query().Where(
+			usagelog.CreatedAtLT(cutoff),
+			usagelog.Not(usagelog.HasRequestWith(
+				request.HasTraceWith(trace.StatusEQ(trace.StatusRetained)),
+			)),
+		).Count(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to count usage logs for preview: %w", err)
 		}

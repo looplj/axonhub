@@ -26,6 +26,13 @@ export function usePermissions() {
     return project?.scopes || [];
   }, [selectedProjectId, user?.projects]);
 
+  const isProjectOwner = useMemo(() => {
+    if (isOwner) return true;
+    if (!selectedProjectId || !user?.projects) return false;
+    const project = user.projects.find((p) => p.projectID === selectedProjectId);
+    return project?.isOwner || false;
+  }, [isOwner, selectedProjectId, user?.projects]);
+
   // Check if user has a specific scope at system level only
   const hasSystemScope = useCallback(
     (requiredScope: string): boolean => {
@@ -182,6 +189,7 @@ export function usePermissions() {
   return {
     user,
     isOwner,
+    isProjectOwner,
     hasScope,
     hasSystemScope,
     hasProjectScope,

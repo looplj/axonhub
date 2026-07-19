@@ -13,7 +13,8 @@ axonhub:
   
   image:
     repository: looplj/axonhub
-    tag: "latest"  # Consider using specific version in production
+    # Overrides the image tag. Defaults to the chart appVersion when empty.
+    tag: ""
     pullPolicy: IfNotPresent
   
   # Environment variables - customize the database connection string for your environment

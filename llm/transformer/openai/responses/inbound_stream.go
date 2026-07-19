@@ -62,6 +62,7 @@ type responsesInboundStream struct {
 	accumulatedText               strings.Builder
 	accumulatedReasoning          strings.Builder
 	accumulatedReasoningSignature strings.Builder
+	currentReasoningSourceID      string
 
 	// Tool call tracking
 	toolCalls           map[int]*llm.ToolCall
@@ -123,6 +124,28 @@ func (s *responsesInboundStream) Next() bool {
 
 	// Try to get the next chunk from source
 	if !s.source.Next() {
+		if s.err == nil && !s.errorEventEmitted && s.source.Err() == nil && s.hasFinished && !s.responseCompleted {
+			s.responseCompleted = true
+			s.aggregator.status = "completed"
+			response := s.aggregator.buildResponse()
+			if s.usage != nil {
+				response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
+			}
+			if calls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata); len(calls) > 0 {
+				response.Output = append(append([]Item(nil), calls...), response.Output...)
+			}
+
+			if err := s.enqueueEvent(&StreamEvent{
+				Type:     StreamEventTypeResponseCompleted,
+				Response: response,
+			}); err != nil {
+				s.err = fmt.Errorf("failed to enqueue response.completed event: %w", err)
+				return false
+			}
+
+			return s.Next()
+		}
+
 		// Source stream ended - check if we need to emit an error event
 		if s.err == nil && !s.errorEventEmitted && s.source.Err() != nil {
 			sourceErr := s.source.Err()
@@ -230,14 +253,10 @@ func (s *responsesInboundStream) Next() bool {
 
 		// Handle encrypted reasoning content delta (stored in ReasoningSignature)
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
-			// Encrypted reasoning may appear without any summary text. Ensure we still
-			// create a reasoning output item so encrypted_content isn't silently dropped.
-			if err := s.ensureReasoningItemStarted(); err != nil {
+			if err := s.handleReasoningSignature(choice.Delta, chunk.TransformerMetadata); err != nil {
 				s.err = err
 				return false
 			}
-
-			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
 		}
 
 		if choice.Message != nil && len(choice.Message.Annotations) > 0 {
@@ -320,8 +339,35 @@ func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]an
 	}
 }
 
+func getResponsesReasoningItemMetadata(metadata map[string]any) (responsesReasoningItemMetadata, bool) {
+	if len(metadata) == 0 {
+		return responsesReasoningItemMetadata{}, false
+	}
+
+	raw, ok := metadata[responsesReasoningItemTransformerMetadataKey]
+	if !ok || raw == nil {
+		return responsesReasoningItemMetadata{}, false
+	}
+
+	if item, ok := raw.(responsesReasoningItemMetadata); ok {
+		return item, item.ID != ""
+	}
+
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return responsesReasoningItemMetadata{}, false
+	}
+
+	var item responsesReasoningItemMetadata
+	if err := json.Unmarshal(data, &item); err != nil {
+		return responsesReasoningItemMetadata{}, false
+	}
+
+	return item, item.ID != ""
+}
+
 func (s *responsesInboundStream) handleReasoningContent(content *string) error {
-	if err := s.ensureReasoningItemStarted(); err != nil {
+	if err := s.ensureReasoningItemStarted(""); err != nil {
 		return err
 	}
 
@@ -359,10 +405,42 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 	return nil
 }
 
-func (s *responsesInboundStream) ensureReasoningItemStarted() error {
+func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, metadata map[string]any) error {
+	sourceID := delta.ID
+	if item, ok := getResponsesReasoningItemMetadata(metadata); ok {
+		sourceID = item.ID
+	}
+
+	if err := s.ensureReasoningItemStarted(sourceID); err != nil {
+		return err
+	}
+
+	s.accumulatedReasoningSignature.WriteString(*delta.ReasoningSignature)
+
+	if item, ok := getResponsesReasoningItemMetadata(metadata); ok && item.Done {
+		return s.closeReasoningItem()
+	}
+
+	// OpenAI Responses encrypted_content is emitted as an opaque item-level blob,
+	// not as a text-style delta. Close the item immediately so consecutive
+	// reasoning blobs from separate upstream items are not concatenated.
+	if sourceID == "" && delta.ReasoningContent == nil {
+		return s.closeReasoningItem()
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) ensureReasoningItemStarted(sourceID string) error {
 	// Start reasoning output item if not started.
 	if s.hasReasoningItemStarted {
-		return nil
+		if sourceID == "" || s.currentReasoningSourceID == "" || s.currentReasoningSourceID == sourceID {
+			return nil
+		}
+
+		if err := s.closeReasoningItem(); err != nil {
+			return err
+		}
 	}
 
 	// Close any previous output item.
@@ -372,8 +450,12 @@ func (s *responsesInboundStream) ensureReasoningItemStarted() error {
 
 	s.hasReasoningItemStarted = true
 	s.hasReasoningSummaryPart = false
+	s.currentReasoningSourceID = sourceID
 
-	s.currentItemID = generateItemID()
+	s.currentItemID = sourceID
+	if s.currentItemID == "" {
+		s.currentItemID = generateItemID()
+	}
 	item := &Item{
 		ID:      s.currentItemID,
 		Type:    "reasoning",
@@ -719,6 +801,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 	s.outputIndex++
 	s.accumulatedReasoning.Reset()
 	s.accumulatedReasoningSignature.Reset()
+	s.currentReasoningSourceID = ""
 
 	return nil
 }

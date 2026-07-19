@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	entprivacy "github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -83,12 +85,19 @@ func (handlers *AnthropicHandlers) ListModels(c *gin.Context) {
 	models, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
 		requestID, _ := contexts.GetRequestID(ctx)
-		c.JSON(http.StatusInternalServerError, anthropic.AnthropicError{
-			StatusCode: http.StatusInternalServerError,
-			Type:       "internal_server_error",
+		status := http.StatusInternalServerError
+		errorType := "internal_server_error"
+		if errors.Is(err, entprivacy.Deny) {
+			status = http.StatusForbidden
+			errorType = "permission_error"
+		}
+		_ = c.Error(err)
+		c.JSON(status, anthropic.AnthropicError{
+			StatusCode: status,
+			Type:       errorType,
 			RequestID:  requestID,
 			Error: anthropic.ErrorDetail{
-				Type:    "internal_server_error",
+				Type:    errorType,
 				Message: err.Error(),
 			},
 		})

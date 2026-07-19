@@ -230,9 +230,11 @@ func CalculateConfidenceLevel(requestCount int, median float64) string {
 
 // BuildProbeStatsQuery builds a specialized query for channel probe statistics.
 // This query returns additional columns needed for probe metrics:
-//   - total_count: total number of executions
-//   - effective_latency_ms: sum of effective latency (excluding first token for streaming)
-//   - total_first_token_latency: sum of first token latency
+//   - total_count: total number of completed/failed execution attempts
+//   - effective_latency_ms: sum of completed execution effective latency (excluding first token for streaming)
+//   - total_first_token_latency: sum of completed execution first token latency
+//   - token usage from usage_logs bounded by the same start timestamp to avoid
+//     materializing all historical usage rows before joining to executions
 //
 // Unlike BuildThroughputQuery, this does not join with channels table and returns
 // raw metrics needed for probe calculations rather than throughput rankings.
@@ -248,22 +250,22 @@ func CalculateConfidenceLevel(requestCount int, median float64) string {
 //     or validated values only. NEVER pass unsanitized user input directly.
 //     Example safe usage: fmt.Sprintf("AND se.channel_id IN ($%d, $%d)", placeholderIndex+1, placeholderIndex+2)
 //
-//   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
+//   - mode: retained for call-site compatibility; probe stats are attempt-based and do not
+//     use request-level ROW_NUMBER/MAX_ID deduplication.
 //
 // Returns: SQL query string
-func BuildProbeStatsQuery(useDollarPlaceholders bool, channelIDFilter string, mode ThroughputQueryMode) string {
+func BuildProbeStatsQuery(useDollarPlaceholders bool, channelIDFilter string, _ ThroughputQueryMode) string {
 	placeholder1, placeholder2 := "?", "?"
 	if useDollarPlaceholders {
 		placeholder1, placeholder2 = "$1", "$2"
 	}
 
-	if mode == ThroughputModeMaxID {
-		return fmt.Sprintf(`
+	return fmt.Sprintf(`
 SELECT
     se.channel_id,
-    SUM(CASE WHEN se.status IN ('completed', 'failed') THEN 1 ELSE 0 END) as total_count,
+    COUNT(*) as total_count,
     SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
-    SUM(COALESCE(ul.completion_tokens, 0) + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
+    SUM(CASE WHEN se.status = 'completed' THEN COALESCE(ul.total_completion_tokens, 0) ELSE 0 END) as total_tokens,
     SUM(CASE WHEN se.status = 'completed' THEN
         CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
              THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
@@ -275,52 +277,21 @@ SELECT
     COUNT(DISTINCT se.request_id) as request_count,
     SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
 FROM request_executions se
-LEFT JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.created_at >= %s
-    AND se.created_at < %s
-    AND se.id = (
-        SELECT MAX(re2.id)
-        FROM request_executions re2
-        WHERE re2.request_id = se.request_id
-    )
-    %s
-GROUP BY se.channel_id
-ORDER BY se.channel_id`, placeholder1, placeholder2, channelIDFilter)
-	}
-
-	// ROW_NUMBER mode
-	return fmt.Sprintf(`
-WITH latest_execs AS (
+LEFT JOIN (
     SELECT
         request_id,
         channel_id,
-        metrics_latency_ms,
-        metrics_first_token_latency_ms,
-        stream,
-        status,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
-    FROM request_executions
-    WHERE created_at >= %s AND created_at < %s
-)
-SELECT
-    se.channel_id,
-    SUM(CASE WHEN se.status IN ('completed', 'failed') THEN 1 ELSE 0 END) as total_count,
-    SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
-    SUM(COALESCE(ul.completion_tokens, 0) + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
-    SUM(CASE WHEN se.status = 'completed' THEN
-        CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
-                  THEN 0
-                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
-             ELSE se.metrics_latency_ms END
-        ELSE 0 END) as effective_latency_ms,
-    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
-    COUNT(DISTINCT se.request_id) as request_count,
-    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
-FROM latest_execs se
-LEFT JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.rn = 1
+        SUM(COALESCE(completion_tokens, 0) + COALESCE(completion_reasoning_tokens, 0) + COALESCE(completion_audio_tokens, 0)) as total_completion_tokens
+    FROM usage_logs
+    WHERE created_at >= %s
+    GROUP BY request_id, channel_id
+) ul ON se.status = 'completed'
+    AND se.request_id = ul.request_id
+    AND se.channel_id = ul.channel_id
+WHERE se.created_at >= %s
+    AND se.created_at < %s
+    AND se.status IN ('completed', 'failed')
     %s
 GROUP BY se.channel_id
-ORDER BY se.channel_id`, placeholder1, placeholder2, channelIDFilter)
+ORDER BY se.channel_id`, placeholder1, placeholder1, placeholder2, channelIDFilter)
 }

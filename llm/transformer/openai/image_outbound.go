@@ -220,6 +220,14 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
+	if model != "" {
+		if err := writer.WriteField("model", model); err != nil {
+			return nil, fmt.Errorf("failed to write model field: %w", err)
+		}
+
+		jsonBody["model"] = model
+	}
+
 	imageFieldName := "image"
 	if len(formFiles) > 1 {
 		imageFieldName = "image[]"
@@ -261,15 +269,6 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	// Add prompt
 	if err := writer.WriteField("prompt", prompt); err != nil {
 		return nil, fmt.Errorf("failed to write prompt field: %w", err)
-	}
-
-	// Add model if specified
-	if model != "" {
-		if err := writer.WriteField("model", model); err != nil {
-			return nil, fmt.Errorf("failed to write model field: %w", err)
-		}
-
-		jsonBody["model"] = model
 	}
 
 	// Extract image edit parameters from Image field

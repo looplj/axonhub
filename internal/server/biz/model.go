@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -20,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 type ModelServiceParams struct {
@@ -189,6 +191,10 @@ func validateFilterLeaf(condition objects.Condition) error {
 		return fmt.Errorf("condition field is required")
 	}
 
+	if strings.HasPrefix(condition.Field, objects.ModelAssociationConditionFieldRequestHeaderPrefix) {
+		return validateRequestHeaderLeaf(condition)
+	}
+
 	switch condition.Field {
 	case objects.ModelAssociationConditionFieldPromptTokens:
 		return validatePromptTokensLeaf(condition)
@@ -275,6 +281,32 @@ func validateDailyTimeLeaf(condition objects.Condition) error {
 
 	if _, _, err := xtime.ParseDailyTimeRange(value); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func validateRequestHeaderLeaf(condition objects.Condition) error {
+	switch strings.TrimSpace(strings.ToLower(condition.Operator)) {
+	case "eq", "ne", "=", "==", "!=", "<>", "contains", "not_contains", "start_with", "end_with":
+	default:
+		return fmt.Errorf("unsupported condition operator %q for request_header", condition.Operator)
+	}
+
+	headerName := strings.TrimSpace(strings.TrimPrefix(condition.Field, objects.ModelAssociationConditionFieldRequestHeaderPrefix))
+	if headerName == "" {
+		return fmt.Errorf("request header name is required")
+	}
+	if len(headerName) > 256 {
+		return fmt.Errorf("request header name is too long")
+	}
+	if httpclient.IsSensitiveHeader(headerName) {
+		return fmt.Errorf("request header %q is sensitive and cannot be used in conditions", headerName)
+	}
+
+	value, ok := condition.Value.(string)
+	if !ok || value == "" {
+		return fmt.Errorf("condition value for request_header must be a non-empty string")
 	}
 
 	return nil

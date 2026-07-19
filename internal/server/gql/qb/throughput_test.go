@@ -369,66 +369,71 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 	}{
 		// ROW_NUMBER mode tests
 		{
-			name:                  "ROW_NUMBER with dollar placeholders",
+			name:                  "ROW_NUMBER mode uses attempt-based aggregation with dollar placeholders",
 			useDollarPlaceholders: true,
 			channelIDFilter:       "AND se.channel_id IN ($3, $4)",
 			mode:                  ThroughputModeRowNumber,
 			wantContains: []string{
 				"$1", "$2",
 				"AND se.channel_id IN ($3, $4)",
-				"ROW_NUMBER()",
-				"WITH latest_execs AS",
+				"FROM request_executions se",
+				"se.status IN ('completed', 'failed')",
+				"COUNT(*) as total_count",
+				"se.status = 'completed'",
 				"se.channel_id",
-				"total_count",
 				"effective_latency_ms",
 				"total_first_token_latency",
 				"request_count",
 			},
-			wantNotContains: []string{"MAX(re2.id)"},
+			wantNotContains: []string{"ROW_NUMBER()", "WITH latest_execs AS", "MAX(re2.id)"},
 		},
 		{
-			name:                  "ROW_NUMBER with question mark placeholders",
+			name:                  "ROW_NUMBER mode uses attempt-based aggregation with question mark placeholders",
 			useDollarPlaceholders: false,
 			channelIDFilter:       "AND se.channel_id IN (?, ?)",
 			mode:                  ThroughputModeRowNumber,
 			wantContains: []string{
 				"?", "?",
 				"AND se.channel_id IN (?, ?)",
-				"ROW_NUMBER()",
-				"WITH latest_execs AS",
+				"FROM request_executions se",
+				"se.status IN ('completed', 'failed')",
+				"COUNT(*) as total_count",
 			},
-			wantNotContains: []string{"$1", "$2", "MAX(re2.id)"},
+			wantNotContains: []string{"$1", "$2", "ROW_NUMBER()", "WITH latest_execs AS", "MAX(re2.id)"},
 		},
 
 		// MAX_ID mode tests
 		{
-			name:                  "MAX_ID with dollar placeholders",
+			name:                  "MAX_ID mode uses attempt-based aggregation with dollar placeholders",
 			useDollarPlaceholders: true,
 			channelIDFilter:       "AND se.channel_id IN ($3, $4)",
 			mode:                  ThroughputModeMaxID,
 			wantContains: []string{
 				"$1", "$2",
 				"AND se.channel_id IN ($3, $4)",
-				"MAX(re2.id)",
+				"FROM request_executions se",
+				"se.status IN ('completed', 'failed')",
+				"COUNT(*) as total_count",
 				"se.channel_id",
-				"total_count",
 				"effective_latency_ms",
 				"total_first_token_latency",
 				"request_count",
 			},
-			wantNotContains: []string{"ROW_NUMBER()", "WITH latest_execs AS"},
+			wantNotContains: []string{"ROW_NUMBER()", "WITH latest_execs AS", "MAX(re2.id)"},
 		},
 		{
-			name:                  "MAX_ID with question mark placeholders",
+			name:                  "MAX_ID mode uses attempt-based aggregation with question mark placeholders",
 			useDollarPlaceholders: false,
 			channelIDFilter:       "AND se.channel_id IN (?, ?)",
 			mode:                  ThroughputModeMaxID,
 			wantContains: []string{
 				"?", "?",
 				"AND se.channel_id IN (?, ?)",
-				"MAX(re2.id)",
+				"FROM request_executions se",
+				"se.status IN ('completed', 'failed')",
+				"COUNT(*) as total_count",
 			},
-			wantNotContains: []string{"$1", "$2", "ROW_NUMBER()", "WITH latest_execs AS"},
+			wantNotContains: []string{"$1", "$2", "ROW_NUMBER()", "WITH latest_execs AS", "MAX(re2.id)"},
 		},
 
 		// Empty filter test
@@ -476,19 +481,16 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 // TestBuildProbeStatsQuery_SQLStructure tests that the generated SQL has proper structure.
 func TestBuildProbeStatsQuery_SQLStructure(t *testing.T) {
 	tests := []struct {
-		name    string
-		mode    ThroughputQueryMode
-		wantCTE bool
+		name string
+		mode ThroughputQueryMode
 	}{
 		{
-			name:    "ROW_NUMBER mode includes CTE",
-			mode:    ThroughputModeRowNumber,
-			wantCTE: true,
+			name: "ROW_NUMBER mode uses direct request_executions aggregation",
+			mode: ThroughputModeRowNumber,
 		},
 		{
-			name:    "MAX_ID mode does not include CTE",
-			mode:    ThroughputModeMaxID,
-			wantCTE: false,
+			name: "MAX_ID mode uses direct request_executions aggregation",
+			mode: ThroughputModeMaxID,
 		},
 	}
 
@@ -496,17 +498,46 @@ func TestBuildProbeStatsQuery_SQLStructure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := BuildProbeStatsQuery(true, "AND se.channel_id = $1", tt.mode)
 
-			if tt.wantCTE {
-				assert.Contains(t, got, "WITH latest_execs AS", "ROW_NUMBER mode should use CTE")
-			} else {
-				assert.NotContains(t, got, "WITH latest_execs AS", "MAX_ID mode should not use CTE")
-			}
-
 			// Both modes should have these common elements
 			assert.Contains(t, got, "request_executions", "should reference request_executions table")
 			assert.Contains(t, got, "usage_logs", "should reference usage_logs table")
+			assert.Contains(t, got, "se.status IN ('completed', 'failed')", "should count strict dashboard-style attempts")
 			assert.Contains(t, got, "GROUP BY se.channel_id", "should group by channel_id")
 			assert.Contains(t, got, "ORDER BY se.channel_id", "should order by channel_id")
+			assert.NotContains(t, got, "WITH latest_execs AS", "probe stats should not dedupe requests with a CTE")
+			assert.NotContains(t, got, "ROW_NUMBER()", "probe stats should not dedupe requests with ROW_NUMBER")
+			assert.NotContains(t, got, "MAX(re2.id)", "probe stats should not dedupe requests with MAX(id)")
+		})
+	}
+}
+
+func TestBuildProbeStatsQuery_BoundsUsageLogsAggregationByTime(t *testing.T) {
+	tests := []struct {
+		name                  string
+		useDollarPlaceholders bool
+		wantUsageLogWindow    string
+	}{
+		{
+			name:                  "postgres reuses start and end placeholders",
+			useDollarPlaceholders: true,
+			wantUsageLogWindow: "FROM usage_logs\n" +
+				"    WHERE created_at >= $1\n" +
+				"    GROUP BY request_id, channel_id",
+		},
+		{
+			name:                  "question mark dialects bind usage log time window",
+			useDollarPlaceholders: false,
+			wantUsageLogWindow: "FROM usage_logs\n" +
+				"    WHERE created_at >= ?\n" +
+				"    GROUP BY request_id, channel_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildProbeStatsQuery(tt.useDollarPlaceholders, "AND se.channel_id IN (?, ?)", ThroughputModeRowNumber)
+
+			assert.Contains(t, got, tt.wantUsageLogWindow, "usage_logs aggregation should be time-bounded before grouping")
 		})
 	}
 }
@@ -526,7 +557,7 @@ func TestBuildProbeStatsQuery_PlaceholderCount(t *testing.T) {
 			useDollarPlaceholders: true,
 			channelIDFilter:       "AND se.channel_id IN ($3, $4)",
 			mode:                  ThroughputModeRowNumber,
-			expectedDollarCount:   4,
+			expectedDollarCount:   5,
 			expectedQuestionCount: 0,
 		},
 		{
@@ -535,7 +566,7 @@ func TestBuildProbeStatsQuery_PlaceholderCount(t *testing.T) {
 			channelIDFilter:       "AND se.channel_id IN (?, ?)",
 			mode:                  ThroughputModeRowNumber,
 			expectedDollarCount:   0,
-			expectedQuestionCount: 4,
+			expectedQuestionCount: 5,
 		},
 	}
 

@@ -47,11 +47,12 @@ Thread (complete user conversation session)
 ### Configuration
 ```yaml
 # config.yml
-trace:
-  thread_header: "AH-Thread-Id"
-  trace_header: "AH-Trace-Id"
-  extra_trace_headers:
-    - "Sentry-Trace"
+server:
+  trace:
+    thread_header: "AH-Thread-Id"
+    trace_header: "AH-Trace-Id"
+    extra_trace_headers:
+      - "Sentry-Trace"
 ```
 
 - Set `extra_trace_headers` to reuse existing instrumentation headers.
