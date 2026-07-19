@@ -3799,6 +3799,8 @@
             {
               "type": "effort",
               "values": [
+                "low",
+                "high",
                 "max"
               ]
             }
@@ -3808,7 +3810,7 @@
             "field": "reasoning_content"
           },
           "structured_output": true,
-          "temperature": true,
+          "temperature": false,
           "release_date": "2026-07-16",
           "last_updated": "2026-07-16",
           "modalities": {
@@ -3825,6 +3827,11 @@
           "limit": {
             "context": 1048576,
             "output": 131072
+          },
+          "cost": {
+            "input": 3,
+            "output": 15,
+            "cache_read": 0.3
           },
           "display_name": "Kimi K3",
           "extra_capabilities": {
@@ -17382,7 +17389,7 @@
             ],
             "capabilities": [
               "多模态理解",
-              "工具���用",
+              "工具调用",
               "文本生成",
               "深度思考",
               "结构化输出"
