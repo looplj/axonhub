@@ -217,7 +217,7 @@ func TestResponsesStreamRoundTrip_AssociatesCustomDeltaByOutputIndexWhenAddedOmi
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_partial_custom_identity","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
 		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"type":"custom_tool_call","status":"in_progress","call_id":"call_partial_custom_identity","name":"apply_patch","input":""}}`)},
 		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_partial_custom_identity","output_index":0,"delta":"patch"}`)},
-		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ctc_partial_custom_identity","type":"custom_tool_call","status":"completed","call_id":"call_partial_custom_identity","name":"apply_patch","input":""}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ctc_partial_custom_identity","type":"custom_tool_call","status":"completed","call_id":"call_partial_custom_identity","name":"apply_patch"}}`)},
 		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_partial_custom_identity","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[]}}`)},
 	})
 
@@ -333,20 +333,126 @@ func TestResponsesStreamRoundTrip_EmptyFinalArgumentsDoNotEraseStreamedArguments
 	require.Equal(t, arguments, completed.Output[0].Arguments)
 }
 
-func TestResponsesOutboundStream_RejectsConflictingFinalFunctionArguments(t *testing.T) {
+func TestResponsesStreamRoundTrip_AcceptsConflictingFinalFunctionArguments(t *testing.T) {
 	upstreamEvents := []*httpclient.StreamEvent{
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_conflict","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
 		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_conflict","type":"function_call","status":"in_progress","call_id":"call_conflict","name":"spawn_agent","arguments":""}}`)},
 		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_conflict","output_index":0,"delta":"{\"description\":\"first\"}"}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_conflict","output_index":0,"arguments":"{\"description\":\"function-done\"}"}`)},
 		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"fc_conflict","type":"function_call","status":"completed","call_id":"call_conflict","name":"spawn_agent","arguments":"{\"description\":\"different\"}"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_conflict","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"fc_conflict","type":"function_call","status":"completed","call_id":"call_conflict","name":"spawn_agent","arguments":"{\"description\":\"different\"}"}]}}`)},
+	}
+
+	completed := roundTripCompletedResponse(t, upstreamEvents)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, `{"description":"different"}`, completed.Output[0].Arguments)
+}
+
+func TestResponsesStreamRoundTrip_CompletedSnapshotCorrectsStreamedFunctionArguments(t *testing.T) {
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_completed_correction","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_completed_correction","type":"function_call","status":"in_progress","call_id":"call_completed_correction","name":"search","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_completed_correction","output_index":0,"delta":"{}"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_completed_correction","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"fc_completed_correction","type":"function_call","status":"completed","call_id":"call_completed_correction","name":"search","arguments":"{\"query\":\"x\"}"}]}}`)},
+	}
+
+	completed := roundTripCompletedResponse(t, upstreamEvents)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, `{"query":"x"}`, completed.Output[0].Arguments)
+}
+
+func TestResponsesStreamRoundTrip_AcceptsConflictingFinalCustomToolInput(t *testing.T) {
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_custom_conflict","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ctc_conflict","type":"custom_tool_call","status":"in_progress","call_id":"call_custom_conflict","name":"apply_patch","input":""}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_conflict","output_index":0,"delta":"draft"}`)},
+		{Type: "response.custom_tool_call_input.done", Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ctc_conflict","output_index":0,"input":"final"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ctc_conflict","type":"custom_tool_call","status":"completed","call_id":"call_custom_conflict","name":"apply_patch","input":"output-item-final"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_custom_conflict","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"ctc_conflict","type":"custom_tool_call","status":"completed","call_id":"call_custom_conflict","name":"apply_patch","input":"output-item-final"}]}}`)},
+	}
+
+	completed := roundTripCompletedResponse(t, upstreamEvents)
+	require.Len(t, completed.Output, 1)
+	require.NotNil(t, completed.Output[0].Input)
+	require.Equal(t, "output-item-final", *completed.Output[0].Input)
+}
+
+func TestResponsesStreamRoundTrip_ExplicitEmptyFinalCustomToolInputClearsStreamedInput(t *testing.T) {
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_custom_empty_final","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ctc_custom_empty_final","type":"custom_tool_call","status":"in_progress","call_id":"call_custom_empty_final","name":"apply_patch","input":""}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_custom_empty_final","output_index":0,"delta":"draft"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ctc_custom_empty_final","type":"custom_tool_call","status":"completed","call_id":"call_custom_empty_final","name":"apply_patch","input":""}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_custom_empty_final","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"ctc_custom_empty_final","type":"custom_tool_call","status":"completed","call_id":"call_custom_empty_final","name":"apply_patch","input":""}]}}`)},
+	}
+
+	completed := roundTripCompletedResponse(t, upstreamEvents)
+	require.Len(t, completed.Output, 1)
+	require.NotNil(t, completed.Output[0].Input)
+	require.Empty(t, *completed.Output[0].Input)
+}
+
+func TestResponsesStreamRoundTrip_CompletedSnapshotExplicitEmptyCustomInputClearsStreamedInput(t *testing.T) {
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_custom_empty_completed","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ctc_custom_empty_completed","type":"custom_tool_call","status":"in_progress","call_id":"call_custom_empty_completed","name":"apply_patch","input":""}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ctc_custom_empty_completed","output_index":0,"delta":"draft"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_custom_empty_completed","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[{"id":"ctc_custom_empty_completed","type":"custom_tool_call","status":"completed","call_id":"call_custom_empty_completed","name":"apply_patch","input":""}]}}`)},
+	}
+
+	completed := roundTripCompletedResponse(t, upstreamEvents)
+	require.Len(t, completed.Output, 1)
+	require.NotNil(t, completed.Output[0].Input)
+	require.Empty(t, *completed.Output[0].Input)
+}
+
+func TestResponsesOutboundStream_DoesNotEmitProvisionalToolCallOnCompletedResponse(t *testing.T) {
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_provisional_tool","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_provisional_tool","type":"function_call","status":"in_progress","call_id":"call_provisional_tool","name":"search","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_provisional_tool","output_index":0,"delta":"{}"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_provisional_tool","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"completed","output":[]}}`)},
 	}
 
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
 	canonical, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
 	require.NoError(t, err)
-	_, err = streams.All(canonical)
-	require.ErrorContains(t, err, "final value does not extend streamed value")
+	chunks, err := streams.All(canonical)
+	require.NoError(t, err)
+
+	for _, chunk := range chunks {
+		for _, choice := range chunk.Choices {
+			if choice.Delta != nil {
+				require.Empty(t, choice.Delta.ToolCalls)
+			}
+		}
+	}
+}
+
+func TestResponsesOutboundStream_DoesNotEmitToolCallWhenResponseFails(t *testing.T) {
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_failed_tool","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_failed_tool","type":"function_call","status":"in_progress","call_id":"call_failed_tool","name":"search","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_failed_tool","output_index":0,"delta":"{}"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"fc_failed_tool","type":"function_call","status":"completed","call_id":"call_failed_tool","name":"search","arguments":"{}"}}`)},
+		{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{"id":"resp_failed_tool","object":"response","created_at":1700000000,"model":"gpt-5.5","status":"failed","output":[]}}`)},
+	}
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	canonical, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+	chunks, err := streams.All(canonical)
+	require.NoError(t, err)
+
+	for _, chunk := range chunks {
+		for _, choice := range chunk.Choices {
+			if choice.Delta != nil {
+				require.Empty(t, choice.Delta.ToolCalls)
+			}
+		}
+	}
 }
 
 func TestResponsesOutboundStream_DuplicateCompletedIsIdempotent(t *testing.T) {
