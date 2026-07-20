@@ -303,6 +303,14 @@ func TestMigrator_Run_BetaMigration(t *testing.T) {
 
 	require.NoError(t, migrator.Run(ctx))
 	assert.Equal(t, 1, migration.migrateCalls)
+
+	require.NoError(t, systemService.SetVersion(ctx, "v1.0.0-beta5-unstable.20260720"))
+	unstableMigration := &mockMigrator{version: "v1.0.0-beta6"}
+	migrator = datamigrate.NewMigratorWithoutRegistrations(client)
+	migrator.Register(unstableMigration)
+
+	require.NoError(t, migrator.Run(ctx))
+	assert.Equal(t, 1, unstableMigration.migrateCalls)
 }
 
 func TestMigrator_Run_EmptySystemVersion(t *testing.T) {
