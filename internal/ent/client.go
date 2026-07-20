@@ -2264,7 +2264,7 @@ func (c *ProjectClient) QueryPrompts(_m *Project) *PromptQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(project.Table, project.FieldID, id),
 			sqlgraph.To(prompt.Table, prompt.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, project.PromptsTable, project.PromptsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.PromptsTable, project.PromptsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -2439,15 +2439,15 @@ func (c *PromptClient) GetX(ctx context.Context, id int) *Prompt {
 	return obj
 }
 
-// QueryProjects queries the projects edge of a Prompt.
-func (c *PromptClient) QueryProjects(_m *Prompt) *ProjectQuery {
+// QueryProject queries the project edge of a Prompt.
+func (c *PromptClient) QueryProject(_m *Prompt) *ProjectQuery {
 	query := (&ProjectClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(prompt.Table, prompt.FieldID, id),
 			sqlgraph.To(project.Table, project.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, prompt.ProjectsTable, prompt.ProjectsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, prompt.ProjectTable, prompt.ProjectColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

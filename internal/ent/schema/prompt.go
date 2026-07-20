@@ -70,10 +70,14 @@ func (Prompt) Fields() []ent.Field {
 // Edges of the Prompt.
 func (Prompt) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("projects", Project.Type).
+		edge.From("project", Project.Type).
 			Ref("prompts").
+			Field("project_id").
+			Immutable().
+			Required().
+			Unique().
 			Annotations(
-				entgql.RelayConnection(),
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 	}
 }

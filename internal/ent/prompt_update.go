@@ -12,7 +12,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/predicate"
-	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -163,45 +162,9 @@ func (_u *PromptUpdate) SetNillableSettings(v *objects.PromptSettings) *PromptUp
 	return _u
 }
 
-// AddProjectIDs adds the "projects" edge to the Project entity by IDs.
-func (_u *PromptUpdate) AddProjectIDs(ids ...int) *PromptUpdate {
-	_u.mutation.AddProjectIDs(ids...)
-	return _u
-}
-
-// AddProjects adds the "projects" edges to the Project entity.
-func (_u *PromptUpdate) AddProjects(v ...*Project) *PromptUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddProjectIDs(ids...)
-}
-
 // Mutation returns the PromptMutation object of the builder.
 func (_u *PromptUpdate) Mutation() *PromptMutation {
 	return _u.mutation
-}
-
-// ClearProjects clears all "projects" edges to the Project entity.
-func (_u *PromptUpdate) ClearProjects() *PromptUpdate {
-	_u.mutation.ClearProjects()
-	return _u
-}
-
-// RemoveProjectIDs removes the "projects" edge to Project entities by IDs.
-func (_u *PromptUpdate) RemoveProjectIDs(ids ...int) *PromptUpdate {
-	_u.mutation.RemoveProjectIDs(ids...)
-	return _u
-}
-
-// RemoveProjects removes "projects" edges to Project entities.
-func (_u *PromptUpdate) RemoveProjects(v ...*Project) *PromptUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveProjectIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -252,6 +215,9 @@ func (_u *PromptUpdate) check() error {
 		if err := prompt.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Prompt.status": %w`, err)}
 		}
+	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Prompt.project"`)
 	}
 	return nil
 }
@@ -306,51 +272,6 @@ func (_u *PromptUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(prompt.FieldSettings, field.TypeJSON, value)
-	}
-	if _u.mutation.ProjectsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedProjectsIDs(); len(nodes) > 0 && !_u.mutation.ProjectsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.ProjectsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -506,45 +427,9 @@ func (_u *PromptUpdateOne) SetNillableSettings(v *objects.PromptSettings) *Promp
 	return _u
 }
 
-// AddProjectIDs adds the "projects" edge to the Project entity by IDs.
-func (_u *PromptUpdateOne) AddProjectIDs(ids ...int) *PromptUpdateOne {
-	_u.mutation.AddProjectIDs(ids...)
-	return _u
-}
-
-// AddProjects adds the "projects" edges to the Project entity.
-func (_u *PromptUpdateOne) AddProjects(v ...*Project) *PromptUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddProjectIDs(ids...)
-}
-
 // Mutation returns the PromptMutation object of the builder.
 func (_u *PromptUpdateOne) Mutation() *PromptMutation {
 	return _u.mutation
-}
-
-// ClearProjects clears all "projects" edges to the Project entity.
-func (_u *PromptUpdateOne) ClearProjects() *PromptUpdateOne {
-	_u.mutation.ClearProjects()
-	return _u
-}
-
-// RemoveProjectIDs removes the "projects" edge to Project entities by IDs.
-func (_u *PromptUpdateOne) RemoveProjectIDs(ids ...int) *PromptUpdateOne {
-	_u.mutation.RemoveProjectIDs(ids...)
-	return _u
-}
-
-// RemoveProjects removes "projects" edges to Project entities.
-func (_u *PromptUpdateOne) RemoveProjects(v ...*Project) *PromptUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveProjectIDs(ids...)
 }
 
 // Where appends a list predicates to the PromptUpdate builder.
@@ -608,6 +493,9 @@ func (_u *PromptUpdateOne) check() error {
 		if err := prompt.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Prompt.status": %w`, err)}
 		}
+	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Prompt.project"`)
 	}
 	return nil
 }
@@ -679,51 +567,6 @@ func (_u *PromptUpdateOne) sqlSave(ctx context.Context) (_node *Prompt, err erro
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(prompt.FieldSettings, field.TypeJSON, value)
-	}
-	if _u.mutation.ProjectsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedProjectsIDs(); len(nodes) > 0 && !_u.mutation.ProjectsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.ProjectsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Prompt{config: _u.config}

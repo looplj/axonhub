@@ -106,6 +106,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultProjectID holds the default value on creation for the "project_id" field.
+	DefaultProjectID int
 	// DefaultScopes holds the default value on creation for the "scopes" field.
 	DefaultScopes []string
 )

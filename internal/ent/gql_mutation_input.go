@@ -754,7 +754,6 @@ type CreatePromptInput struct {
 	Status      *prompt.Status
 	Order       *int
 	Settings    objects.PromptSettings
-	ProjectIDs  []int
 }
 
 // Mutate applies the CreatePromptInput on the PromptMutation builder.
@@ -772,9 +771,6 @@ func (i *CreatePromptInput) Mutate(m *PromptMutation) {
 		m.SetOrder(*v)
 	}
 	m.SetSettings(i.Settings)
-	if v := i.ProjectIDs; len(v) > 0 {
-		m.AddProjectIDs(v...)
-	}
 }
 
 // SetInput applies the change-set in the CreatePromptInput on the PromptCreate builder.
@@ -785,16 +781,13 @@ func (c *PromptCreate) SetInput(i CreatePromptInput) *PromptCreate {
 
 // UpdatePromptInput represents a mutation input for updating prompts.
 type UpdatePromptInput struct {
-	Name             *string
-	Description      *string
-	Role             *string
-	Content          *string
-	Status           *prompt.Status
-	Order            *int
-	Settings         *objects.PromptSettings
-	ClearProjects    bool
-	AddProjectIDs    []int
-	RemoveProjectIDs []int
+	Name        *string
+	Description *string
+	Role        *string
+	Content     *string
+	Status      *prompt.Status
+	Order       *int
+	Settings    *objects.PromptSettings
 }
 
 // Mutate applies the UpdatePromptInput on the PromptMutation builder.
@@ -819,15 +812,6 @@ func (i *UpdatePromptInput) Mutate(m *PromptMutation) {
 	}
 	if v := i.Settings; v != nil {
 		m.SetSettings(*v)
-	}
-	if i.ClearProjects {
-		m.ClearProjects()
-	}
-	if v := i.AddProjectIDs; len(v) > 0 {
-		m.AddProjectIDs(v...)
-	}
-	if v := i.RemoveProjectIDs; len(v) > 0 {
-		m.RemoveProjectIDs(v...)
 	}
 }
 

@@ -279,6 +279,40 @@ func TestMigrator_Run_PartialMigrations(t *testing.T) {
 	assert.Equal(t, 1, mock3.migrateCalls, "v1.0.0 should run")
 }
 
+func TestMigrator_Run_BetaMigration(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := ent.NewContext(context.Background(), client)
+	ctx = authz.WithTestBypass(ctx)
+
+	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+	require.NoError(t, systemService.SetVersion(ctx, "v1.0.0-beta5"))
+
+	migrator := datamigrate.NewMigratorWithoutRegistrations(client)
+	migration := &mockMigrator{version: "v1.0.0-beta6"}
+	migrator.Register(migration)
+
+	require.NoError(t, migrator.Run(ctx))
+	assert.Equal(t, 1, migration.migrateCalls)
+
+	require.NoError(t, systemService.SetVersion(ctx, "v1.0.0-beta5-unstable.20260720"))
+	unstableMigration := &mockMigrator{version: "v1.0.0-beta6"}
+	migrator = datamigrate.NewMigratorWithoutRegistrations(client)
+	migrator.Register(unstableMigration)
+
+	require.NoError(t, migrator.Run(ctx))
+	assert.Equal(t, 1, unstableMigration.migrateCalls)
+}
+
 func TestMigrator_Run_EmptySystemVersion(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
