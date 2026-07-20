@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -132,4 +133,39 @@ func TestMutationResolver_UpdateSystemChannelSettings_MergesPrompts(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, "You are a helpful assistant.", setting.TestSystemPrompt)
 	require.Equal(t, "updated user", setting.TestUserPrompt)
+}
+
+func TestUpdateSystemChannelSettingsInput_PromptPresence(t *testing.T) {
+	ec := &executionContext{}
+
+	tests := []struct {
+		name           string
+		input          map[string]any
+		expectedSystem *string
+		expectedUser   *string
+	}{
+		{name: "omitted", input: map[string]any{}},
+		{name: "null", input: map[string]any{"testSystemPrompt": nil, "testUserPrompt": nil}},
+		{
+			name:           "empty",
+			input:          map[string]any{"testSystemPrompt": "", "testUserPrompt": " "},
+			expectedSystem: lo.ToPtr(""),
+			expectedUser:   lo.ToPtr(" "),
+		},
+		{
+			name:           "value",
+			input:          map[string]any{"testSystemPrompt": "custom system", "testUserPrompt": "custom user"},
+			expectedSystem: lo.ToPtr("custom system"),
+			expectedUser:   lo.ToPtr("custom user"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input, err := ec.unmarshalInputUpdateSystemChannelSettingsInput(t.Context(), tt.input)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedSystem, input.TestSystemPrompt)
+			require.Equal(t, tt.expectedUser, input.TestUserPrompt)
+		})
+	}
 }
