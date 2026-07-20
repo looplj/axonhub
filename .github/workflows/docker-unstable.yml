@@ -51,7 +51,7 @@ jobs:
           fetch-depth: 1
 
       - name: Write VERSION
-        run: echo "unstable-${{ needs.prepare.outputs.build_date }}" > internal/build/VERSION
+        run: echo "v1.0.0-beta5-unstable.${{ needs.prepare.outputs.build_date }}" > internal/build/VERSION
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
