@@ -8,9 +8,9 @@ export default function SignUp() {
     <AuthLayout>
       <Card className='gap-4'>
         <CardHeader>
-          <CardTitle className='text-lg tracking-tight'>Create an account</CardTitle>
+          <CardTitle className='text-lg tracking-tight'>Join a project</CardTitle>
           <CardDescription>
-            Enter your email and password to create an account. <br />
+            Complete your registration using a project invitation. <br />
             Already have an account?{' '}
             <Link to='/sign-in' className='hover:text-primary underline underline-offset-4'>
               Sign In

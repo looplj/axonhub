@@ -63,6 +63,7 @@ func (Project) Edges() []ent.Edge {
 			Annotations(
 				entgql.RelayConnection(),
 			),
+		edge.To("invitations", Invitation.Type),
 		edge.To("roles", Role.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

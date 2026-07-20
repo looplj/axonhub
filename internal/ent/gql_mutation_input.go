@@ -675,10 +675,11 @@ func (c *OIDCIdentityUpdateOne) SetInput(i UpdateOIDCIdentityInput) *OIDCIdentit
 
 // CreateProjectInput represents a mutation input for creating projects.
 type CreateProjectInput struct {
-	Name        string
-	Description *string
-	Status      *project.Status
-	UserIDs     []int
+	Name          string
+	Description   *string
+	Status        *project.Status
+	UserIDs       []int
+	InvitationIDs []int
 }
 
 // Mutate applies the CreateProjectInput on the ProjectMutation builder.
@@ -693,6 +694,9 @@ func (i *CreateProjectInput) Mutate(m *ProjectMutation) {
 	if v := i.UserIDs; len(v) > 0 {
 		m.AddUserIDs(v...)
 	}
+	if v := i.InvitationIDs; len(v) > 0 {
+		m.AddInvitationIDs(v...)
+	}
 }
 
 // SetInput applies the change-set in the CreateProjectInput on the ProjectCreate builder.
@@ -703,12 +707,15 @@ func (c *ProjectCreate) SetInput(i CreateProjectInput) *ProjectCreate {
 
 // UpdateProjectInput represents a mutation input for updating projects.
 type UpdateProjectInput struct {
-	Name          *string
-	Description   *string
-	Status        *project.Status
-	ClearUsers    bool
-	AddUserIDs    []int
-	RemoveUserIDs []int
+	Name                *string
+	Description         *string
+	Status              *project.Status
+	ClearUsers          bool
+	AddUserIDs          []int
+	RemoveUserIDs       []int
+	ClearInvitations    bool
+	AddInvitationIDs    []int
+	RemoveInvitationIDs []int
 }
 
 // Mutate applies the UpdateProjectInput on the ProjectMutation builder.
@@ -730,6 +737,15 @@ func (i *UpdateProjectInput) Mutate(m *ProjectMutation) {
 	}
 	if v := i.RemoveUserIDs; len(v) > 0 {
 		m.RemoveUserIDs(v...)
+	}
+	if i.ClearInvitations {
+		m.ClearInvitations()
+	}
+	if v := i.AddInvitationIDs; len(v) > 0 {
+		m.AddInvitationIDs(v...)
+	}
+	if v := i.RemoveInvitationIDs; len(v) > 0 {
+		m.RemoveInvitationIDs(v...)
 	}
 }
 
