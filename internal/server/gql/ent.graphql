@@ -1743,7 +1743,6 @@ input CreatePromptInput {
   prompt settings in JSON format
   """
   settings: PromptSettingsInput!
-  projectIDs: [ID!]
 }
 """
 CreatePromptProtectionRuleInput is used for create PromptProtectionRule object.
@@ -3264,7 +3263,7 @@ type Prompt implements Node {
   """
   Project ID that this prompt belongs to
   """
-  projectID: Int!
+  projectID: ID!
   """
   prompt name
   """
@@ -3290,37 +3289,7 @@ type Prompt implements Node {
   prompt settings in JSON format
   """
   settings: PromptSettings!
-  projects(
-    """
-    Returns the elements in the list that come after the specified cursor.
-    """
-    after: Cursor
-
-    """
-    Returns the first _n_ elements from the list.
-    """
-    first: Int
-
-    """
-    Returns the elements in the list that come before the specified cursor.
-    """
-    before: Cursor
-
-    """
-    Returns the last _n_ elements from the list.
-    """
-    last: Int
-
-    """
-    Ordering options for Projects returned from the connection.
-    """
-    orderBy: ProjectOrder
-
-    """
-    Filtering options for Projects returned from the connection.
-    """
-    where: ProjectWhereInput
-  ): ProjectConnection!
+  project: Project!
 }
 """
 A connection to a list of items.
@@ -3602,14 +3571,10 @@ input PromptWhereInput {
   """
   project_id field predicates
   """
-  projectID: Int
-  projectIDNEQ: Int
-  projectIDIn: [Int!]
-  projectIDNotIn: [Int!]
-  projectIDGT: Int
-  projectIDGTE: Int
-  projectIDLT: Int
-  projectIDLTE: Int
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
   """
   name field predicates
   """
@@ -3693,10 +3658,10 @@ input PromptWhereInput {
   orderLT: Int
   orderLTE: Int
   """
-  projects edge predicates
+  project edge predicates
   """
-  hasProjects: Boolean
-  hasProjectsWith: [ProjectWhereInput!]
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
 }
 type ProviderQuotaStatus implements Node {
   id: ID!
@@ -6250,9 +6215,6 @@ input UpdatePromptInput {
   prompt settings in JSON format
   """
   settings: PromptSettingsInput
-  addProjectIDs: [ID!]
-  removeProjectIDs: [ID!]
-  clearProjects: Boolean
 }
 """
 UpdatePromptProtectionRuleInput is used for update PromptProtectionRule object.

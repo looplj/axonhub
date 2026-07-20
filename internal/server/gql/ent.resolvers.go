@@ -252,6 +252,11 @@ func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID
 	}, nil
 }
 
+// ProjectID is the resolver for the projectID field.
+func (r *promptResolver) ProjectID(ctx context.Context, obj *ent.Prompt) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ProjectID - projectID"))
+}
+
 // ID is the resolver for the id field.
 func (r *promptProtectionRuleResolver) ID(ctx context.Context, obj *ent.PromptProtectionRule) (*objects.GUID, error) {
 	return &objects.GUID{

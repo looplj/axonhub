@@ -2704,13 +2704,9 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
-							joinT := sql.Table(project.PromptsTable)
-							s.Join(joinT).On(s.C(prompt.FieldID), joinT.C(project.PromptsPrimaryKey[1]))
-							s.Where(sql.InValues(joinT.C(project.PromptsPrimaryKey[0]), ids...))
-							s.Select(joinT.C(project.PromptsPrimaryKey[0]), sql.Count("*"))
-							s.GroupBy(joinT.C(project.PromptsPrimaryKey[0]))
+							s.Where(sql.InValues(s.C(project.PromptsColumn), ids...))
 						})
-						if err := query.Select().Scan(ctx, &v); err != nil {
+						if err := query.GroupBy(project.PromptsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
 						m := make(map[int]int, len(v))
@@ -2755,7 +2751,7 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				if oneNode {
 					pager.applyOrder(query.Limit(limit))
 				} else {
-					modify := entgql.LimitPerRow(project.PromptsPrimaryKey[0], limit, pager.orderExpr(query))
+					modify := entgql.LimitPerRow(project.PromptsColumn, limit, pager.orderExpr(query))
 					query.modifiers = append(query.modifiers, modify)
 				}
 			} else {
@@ -3057,98 +3053,20 @@ func (_q *PromptQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 
-		case "projects":
+		case "project":
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
 				query = (&ProjectClient{config: _q.config}).Query()
 			)
-			args := newProjectPaginateArgs(fieldArgs(ctx, new(ProjectWhereInput), path...))
-			if err := validateFirstLast(args.first, args.last); err != nil {
-				return fmt.Errorf("validate first and last in path %q: %w", path, err)
-			}
-			pager, err := newProjectPager(args.opts, args.last != nil)
-			if err != nil {
-				return fmt.Errorf("create new pager in path %q: %w", path, err)
-			}
-			if query, err = pager.applyFilter(query); err != nil {
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
 				return err
 			}
-			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
-			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
-				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
-				if hasPagination || ignoredEdges {
-					query := query.Clone()
-					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Prompt) error {
-						ids := make([]driver.Value, len(nodes))
-						for i := range nodes {
-							ids[i] = nodes[i].ID
-						}
-						var v []struct {
-							NodeID int `sql:"prompt_id"`
-							Count  int `sql:"count"`
-						}
-						query.Where(func(s *sql.Selector) {
-							joinT := sql.Table(prompt.ProjectsTable)
-							s.Join(joinT).On(s.C(project.FieldID), joinT.C(prompt.ProjectsPrimaryKey[0]))
-							s.Where(sql.InValues(joinT.C(prompt.ProjectsPrimaryKey[1]), ids...))
-							s.Select(joinT.C(prompt.ProjectsPrimaryKey[1]), sql.Count("*"))
-							s.GroupBy(joinT.C(prompt.ProjectsPrimaryKey[1]))
-						})
-						if err := query.Select().Scan(ctx, &v); err != nil {
-							return err
-						}
-						m := make(map[int]int, len(v))
-						for i := range v {
-							m[v[i].NodeID] = v[i].Count
-						}
-						for i := range nodes {
-							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[0] == nil {
-								nodes[i].Edges.totalCount[0] = make(map[string]int)
-							}
-							nodes[i].Edges.totalCount[0][alias] = n
-						}
-						return nil
-					})
-				} else {
-					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Prompt) error {
-						for i := range nodes {
-							n := len(nodes[i].Edges.Projects)
-							if nodes[i].Edges.totalCount[0] == nil {
-								nodes[i].Edges.totalCount[0] = make(map[string]int)
-							}
-							nodes[i].Edges.totalCount[0][alias] = n
-						}
-						return nil
-					})
-				}
+			_q.withProject = query
+			if _, ok := fieldSeen[prompt.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, prompt.FieldProjectID)
+				fieldSeen[prompt.FieldProjectID] = struct{}{}
 			}
-			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
-				continue
-			}
-			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
-				return err
-			}
-			path = append(path, edgesField, nodeField)
-			if field := collectedField(ctx, path...); field != nil {
-				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
-					return err
-				}
-			}
-			if limit := paginateLimit(args.first, args.last); limit > 0 {
-				if oneNode {
-					pager.applyOrder(query.Limit(limit))
-				} else {
-					modify := entgql.LimitPerRow(prompt.ProjectsPrimaryKey[1], limit, pager.orderExpr(query))
-					query.modifiers = append(query.modifiers, modify)
-				}
-			} else {
-				query = pager.applyOrder(query)
-			}
-			_q.WithNamedProjects(alias, func(wq *ProjectQuery) {
-				*wq = *query
-			})
 		case "createdAt":
 			if _, ok := fieldSeen[prompt.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, prompt.FieldCreatedAt)

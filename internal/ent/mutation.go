@@ -12338,30 +12338,27 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 // PromptMutation represents an operation that mutates the Prompt nodes in the graph.
 type PromptMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int
-	created_at      *time.Time
-	updated_at      *time.Time
-	deleted_at      *int
-	adddeleted_at   *int
-	project_id      *int
-	addproject_id   *int
-	name            *string
-	description     *string
-	role            *string
-	content         *string
-	status          *prompt.Status
-	_order          *int
-	add_order       *int
-	settings        *objects.PromptSettings
-	clearedFields   map[string]struct{}
-	projects        map[int]struct{}
-	removedprojects map[int]struct{}
-	clearedprojects bool
-	done            bool
-	oldValue        func(context.Context) (*Prompt, error)
-	predicates      []predicate.Prompt
+	op             Op
+	typ            string
+	id             *int
+	created_at     *time.Time
+	updated_at     *time.Time
+	deleted_at     *int
+	adddeleted_at  *int
+	name           *string
+	description    *string
+	role           *string
+	content        *string
+	status         *prompt.Status
+	_order         *int
+	add_order      *int
+	settings       *objects.PromptSettings
+	clearedFields  map[string]struct{}
+	project        *int
+	clearedproject bool
+	done           bool
+	oldValue       func(context.Context) (*Prompt, error)
+	predicates     []predicate.Prompt
 }
 
 var _ ent.Mutation = (*PromptMutation)(nil)
@@ -12592,13 +12589,12 @@ func (m *PromptMutation) ResetDeletedAt() {
 
 // SetProjectID sets the "project_id" field.
 func (m *PromptMutation) SetProjectID(i int) {
-	m.project_id = &i
-	m.addproject_id = nil
+	m.project = &i
 }
 
 // ProjectID returns the value of the "project_id" field in the mutation.
 func (m *PromptMutation) ProjectID() (r int, exists bool) {
-	v := m.project_id
+	v := m.project
 	if v == nil {
 		return
 	}
@@ -12622,28 +12618,9 @@ func (m *PromptMutation) OldProjectID(ctx context.Context) (v int, err error) {
 	return oldValue.ProjectID, nil
 }
 
-// AddProjectID adds i to the "project_id" field.
-func (m *PromptMutation) AddProjectID(i int) {
-	if m.addproject_id != nil {
-		*m.addproject_id += i
-	} else {
-		m.addproject_id = &i
-	}
-}
-
-// AddedProjectID returns the value that was added to the "project_id" field in this mutation.
-func (m *PromptMutation) AddedProjectID() (r int, exists bool) {
-	v := m.addproject_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
 // ResetProjectID resets all changes to the "project_id" field.
 func (m *PromptMutation) ResetProjectID() {
-	m.project_id = nil
-	m.addproject_id = nil
+	m.project = nil
 }
 
 // SetName sets the "name" field.
@@ -12918,58 +12895,31 @@ func (m *PromptMutation) ResetSettings() {
 	m.settings = nil
 }
 
-// AddProjectIDs adds the "projects" edge to the Project entity by ids.
-func (m *PromptMutation) AddProjectIDs(ids ...int) {
-	if m.projects == nil {
-		m.projects = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.projects[ids[i]] = struct{}{}
-	}
+// ClearProject clears the "project" edge to the Project entity.
+func (m *PromptMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[prompt.FieldProjectID] = struct{}{}
 }
 
-// ClearProjects clears the "projects" edge to the Project entity.
-func (m *PromptMutation) ClearProjects() {
-	m.clearedprojects = true
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *PromptMutation) ProjectCleared() bool {
+	return m.clearedproject
 }
 
-// ProjectsCleared reports if the "projects" edge to the Project entity was cleared.
-func (m *PromptMutation) ProjectsCleared() bool {
-	return m.clearedprojects
-}
-
-// RemoveProjectIDs removes the "projects" edge to the Project entity by IDs.
-func (m *PromptMutation) RemoveProjectIDs(ids ...int) {
-	if m.removedprojects == nil {
-		m.removedprojects = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.projects, ids[i])
-		m.removedprojects[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedProjects returns the removed IDs of the "projects" edge to the Project entity.
-func (m *PromptMutation) RemovedProjectsIDs() (ids []int) {
-	for id := range m.removedprojects {
-		ids = append(ids, id)
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *PromptMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
 	}
 	return
 }
 
-// ProjectsIDs returns the "projects" edge IDs in the mutation.
-func (m *PromptMutation) ProjectsIDs() (ids []int) {
-	for id := range m.projects {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetProjects resets all changes to the "projects" edge.
-func (m *PromptMutation) ResetProjects() {
-	m.projects = nil
-	m.clearedprojects = false
-	m.removedprojects = nil
+// ResetProject resets all changes to the "project" edge.
+func (m *PromptMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
 }
 
 // Where appends a list predicates to the PromptMutation builder.
@@ -13016,7 +12966,7 @@ func (m *PromptMutation) Fields() []string {
 	if m.deleted_at != nil {
 		fields = append(fields, prompt.FieldDeletedAt)
 	}
-	if m.project_id != nil {
+	if m.project != nil {
 		fields = append(fields, prompt.FieldProjectID)
 	}
 	if m.name != nil {
@@ -13198,9 +13148,6 @@ func (m *PromptMutation) AddedFields() []string {
 	if m.adddeleted_at != nil {
 		fields = append(fields, prompt.FieldDeletedAt)
 	}
-	if m.addproject_id != nil {
-		fields = append(fields, prompt.FieldProjectID)
-	}
 	if m.add_order != nil {
 		fields = append(fields, prompt.FieldOrder)
 	}
@@ -13214,8 +13161,6 @@ func (m *PromptMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case prompt.FieldDeletedAt:
 		return m.AddedDeletedAt()
-	case prompt.FieldProjectID:
-		return m.AddedProjectID()
 	case prompt.FieldOrder:
 		return m.AddedOrder()
 	}
@@ -13233,13 +13178,6 @@ func (m *PromptMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddDeletedAt(v)
-		return nil
-	case prompt.FieldProjectID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddProjectID(v)
 		return nil
 	case prompt.FieldOrder:
 		v, ok := value.(int)
@@ -13315,8 +13253,8 @@ func (m *PromptMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *PromptMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.projects != nil {
-		edges = append(edges, prompt.EdgeProjects)
+	if m.project != nil {
+		edges = append(edges, prompt.EdgeProject)
 	}
 	return edges
 }
@@ -13325,12 +13263,10 @@ func (m *PromptMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *PromptMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case prompt.EdgeProjects:
-		ids := make([]ent.Value, 0, len(m.projects))
-		for id := range m.projects {
-			ids = append(ids, id)
+	case prompt.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
 		}
-		return ids
 	}
 	return nil
 }
@@ -13338,31 +13274,20 @@ func (m *PromptMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *PromptMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.removedprojects != nil {
-		edges = append(edges, prompt.EdgeProjects)
-	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *PromptMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case prompt.EdgeProjects:
-		ids := make([]ent.Value, 0, len(m.removedprojects))
-		for id := range m.removedprojects {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *PromptMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedprojects {
-		edges = append(edges, prompt.EdgeProjects)
+	if m.clearedproject {
+		edges = append(edges, prompt.EdgeProject)
 	}
 	return edges
 }
@@ -13371,8 +13296,8 @@ func (m *PromptMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *PromptMutation) EdgeCleared(name string) bool {
 	switch name {
-	case prompt.EdgeProjects:
-		return m.clearedprojects
+	case prompt.EdgeProject:
+		return m.clearedproject
 	}
 	return false
 }
@@ -13381,6 +13306,9 @@ func (m *PromptMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *PromptMutation) ClearEdge(name string) error {
 	switch name {
+	case prompt.EdgeProject:
+		m.ClearProject()
+		return nil
 	}
 	return fmt.Errorf("unknown Prompt unique edge %s", name)
 }
@@ -13389,8 +13317,8 @@ func (m *PromptMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *PromptMutation) ResetEdge(name string) error {
 	switch name {
-	case prompt.EdgeProjects:
-		m.ResetProjects()
+	case prompt.EdgeProject:
+		m.ResetProject()
 		return nil
 	}
 	return fmt.Errorf("unknown Prompt edge %s", name)

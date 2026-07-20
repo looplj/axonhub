@@ -138,19 +138,9 @@ func (_c *PromptCreate) SetSettings(v objects.PromptSettings) *PromptCreate {
 	return _c
 }
 
-// AddProjectIDs adds the "projects" edge to the Project entity by IDs.
-func (_c *PromptCreate) AddProjectIDs(ids ...int) *PromptCreate {
-	_c.mutation.AddProjectIDs(ids...)
-	return _c
-}
-
-// AddProjects adds the "projects" edges to the Project entity.
-func (_c *PromptCreate) AddProjects(v ...*Project) *PromptCreate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddProjectIDs(ids...)
+// SetProject sets the "project" edge to the Project entity.
+func (_c *PromptCreate) SetProject(v *Project) *PromptCreate {
+	return _c.SetProjectID(v.ID)
 }
 
 // Mutation returns the PromptMutation object of the builder.
@@ -257,6 +247,9 @@ func (_c *PromptCreate) check() error {
 	if _, ok := _c.mutation.Settings(); !ok {
 		return &ValidationError{Name: "settings", err: errors.New(`ent: missing required field "Prompt.settings"`)}
 	}
+	if len(_c.mutation.ProjectIDs()) == 0 {
+		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Prompt.project"`)}
+	}
 	return nil
 }
 
@@ -296,10 +289,6 @@ func (_c *PromptCreate) createSpec() (*Prompt, *sqlgraph.CreateSpec) {
 		_spec.SetField(prompt.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
 	}
-	if value, ok := _c.mutation.ProjectID(); ok {
-		_spec.SetField(prompt.FieldProjectID, field.TypeInt, value)
-		_node.ProjectID = value
-	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(prompt.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -328,12 +317,12 @@ func (_c *PromptCreate) createSpec() (*Prompt, *sqlgraph.CreateSpec) {
 		_spec.SetField(prompt.FieldSettings, field.TypeJSON, value)
 		_node.Settings = value
 	}
-	if nodes := _c.mutation.ProjectsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
+			Table:   prompt.ProjectTable,
+			Columns: []string{prompt.ProjectColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
@@ -342,6 +331,7 @@ func (_c *PromptCreate) createSpec() (*Prompt, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_node.ProjectID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

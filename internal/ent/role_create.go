@@ -201,6 +201,10 @@ func (_c *RoleCreate) defaults() error {
 		v := role.DefaultLevel
 		_c.mutation.SetLevel(v)
 	}
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		v := role.DefaultProjectID
+		_c.mutation.SetProjectID(v)
+	}
 	if _, ok := _c.mutation.Scopes(); !ok {
 		v := role.DefaultScopes
 		_c.mutation.SetScopes(v)
