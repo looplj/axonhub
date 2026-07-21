@@ -124,10 +124,13 @@ func (s *responsesInboundStream) Next() bool {
 	// Clear the queue and reset index for new events
 	s.eventQueue = nil
 	s.queueIndex = 0
+	if s.responseCompleted {
+		return false
+	}
 
 	// Try to get the next chunk from source
 	if !s.source.Next() {
-		if s.err == nil && !s.errorEventEmitted && s.source.Err() == nil && s.hasFinished && !s.responseCompleted {
+		if s.err == nil && !s.errorEventEmitted && s.hasFinished {
 			if err := s.enqueueTerminalResponse(); err != nil {
 				s.err = fmt.Errorf("failed to enqueue terminal response event: %w", err)
 				return false
@@ -1272,6 +1275,10 @@ func (s *responsesInboundStream) Current() *httpclient.StreamEvent {
 }
 
 func (s *responsesInboundStream) Err() error {
+	if s.responseCompleted {
+		return nil
+	}
+
 	// If we've already emitted an error event to the client, return nil
 	// to avoid double error emission by the SSE writer
 	if s.errorEventEmitted {

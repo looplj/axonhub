@@ -3,6 +3,7 @@ package responses
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"testing"
 
 	"github.com/samber/lo"
@@ -132,15 +133,80 @@ func TestR2_InboundStream_CompletedWhenUsagePrecededFinish(t *testing.T) {
 	require.Equal(t, int64(4), completed.Response.Usage.TotalTokens)
 }
 
+// R2: once Chat has emitted finish_reason, that protocol terminal signal wins
+// over a trailing transport error. Some compatible providers close their SSE
+// stream without a clean terminator after the finish chunk; Responses clients
+// must still receive response.completed rather than reconnecting the request.
+func TestR2_InboundStream_FinishReasonWinsOverTrailingStreamError(t *testing.T) {
+	source := &errorResponseStream{
+		items: []*llm.Response{
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_finish_then_eof",
+				Model:   "grok-4.5",
+				Created: 1700000201,
+				Choices: []llm.Choice{{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("completed before disconnect"),
+						},
+					},
+				}},
+			},
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_finish_then_eof",
+				Model:   "grok-4.5",
+				Created: 1700000201,
+				Choices: []llm.Choice{{
+					Index:        0,
+					Delta:        &llm.Message{},
+					FinishReason: lo.ToPtr("stop"),
+				}},
+			},
+		},
+		err: io.ErrUnexpectedEOF,
+	}
+
+	stream, err := NewInboundTransformer().TransformStream(context.Background(), source)
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+	require.NoError(t, stream.Err(), "trailing transport error after finish must be consumed")
+
+	terminalCount := 0
+	for i := range events {
+		require.NotEqual(t, StreamEventTypeResponseFailed, events[i].Type)
+		require.NotEqual(t, StreamEventTypeError, events[i].Type)
+		if events[i].Type == StreamEventTypeResponseCompleted {
+			terminalCount++
+			require.NotNil(t, events[i].Response)
+			require.Equal(t, "completed", lo.FromPtr(events[i].Response.Status))
+			require.Equal(t,
+				"completed before disconnect",
+				lo.FromPtr(events[i].Response.Output[0].Content.Items[0].Text),
+			)
+		}
+	}
+	require.Equal(t, 1, terminalCount, "finish_reason must produce exactly one terminal response")
+}
+
 // R2: terminal Chat finish reasons must retain the corresponding Responses
 // lifecycle event and final response status rather than always becoming
 // response.completed.
 func TestR2_InboundStream_PreservesTerminalStatus(t *testing.T) {
 	tests := []struct {
-		name       string
-		finish     string
-		eventType  StreamEventType
-		status     string
+		name      string
+		finish    string
+		eventType StreamEventType
+		status    string
 	}{
 		{name: "incomplete", finish: "length", eventType: StreamEventTypeResponseIncomplete, status: "incomplete"},
 		{name: "failed", finish: "error", eventType: StreamEventTypeResponseFailed, status: "failed"},
