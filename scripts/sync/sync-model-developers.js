@@ -369,6 +369,20 @@ function filterProviders(data, allowedIds) {
 			"tencent-coding-plan",
 		];
 		const mergedModels = new Map();
+		const baseProvider = filtered.tencent || data.providers.tencent || null;
+
+		// Process the base provider first so its metadata takes precedence
+		if (baseProvider) {
+			for (const model of baseProvider.models || []) {
+				const id = model.id?.toLowerCase() || "";
+				const normalizedId = id.startsWith("tencent/")
+					? id.slice("tencent/".length)
+					: id;
+				if (normalizedId && !mergedModels.has(normalizedId)) {
+					mergedModels.set(normalizedId, deepClone(model));
+				}
+			}
+		}
 
 		for (const key of tencentProviderKeys) {
 			const provider = data.providers[key];
@@ -384,13 +398,14 @@ function filterProviders(data, allowedIds) {
 					normalizedId.startsWith("hy3-") ||
 					normalizedId.startsWith("hunyuan-");
 
-				if (!isTencentModel || mergedModels.has(id)) continue;
-				mergedModels.set(id, deepClone(model));
+				if (!isTencentModel || mergedModels.has(normalizedId)) continue;
+				mergedModels.set(normalizedId, deepClone(model));
 			}
 		}
 
 		if (mergedModels.size > 0) {
 			filtered.tencent = {
+				...(baseProvider || {}),
 				id: "tencent",
 				name: "Tencent",
 				display_name: "Tencent",
