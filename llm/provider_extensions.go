@@ -393,6 +393,9 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 		cloned.Anthropic = &AnthropicProviderExtensions{}
 		if src.Anthropic.Request != nil {
 			cloned.Anthropic.Request = &AnthropicRequestExtensions{
+				Container:           cloneRawMessage(src.Anthropic.Request.Container),
+				InferenceGeo:        cloneRawMessage(src.Anthropic.Request.InferenceGeo),
+				MCPServers:          cloneRawMessage(src.Anthropic.Request.MCPServers),
 				RawContentFragments: cloneAnthropicRawContentFragments(src.Anthropic.Request.RawContentFragments),
 			}
 		}

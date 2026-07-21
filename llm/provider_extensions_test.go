@@ -172,3 +172,23 @@ func TestCloneProviderExtensions_AnthropicRequestRawContentFragmentsDeepCopy(t *
 	require.NotEqual(t, string(src.Anthropic.Request.RawContentFragments[0].Raw), string(cloned.Anthropic.Request.RawContentFragments[0].Raw))
 	require.JSONEq(t, string(srcRaw), string(src.Anthropic.Request.RawContentFragments[0].Raw))
 }
+
+func TestCloneProviderExtensions_AnthropicBodyFieldsDeepCopy(t *testing.T) {
+	src := &ProviderExtensions{
+		Anthropic: &AnthropicProviderExtensions{
+			Request: &AnthropicRequestExtensions{
+				Container:    json.RawMessage(`{"id":"c1"}`),
+				InferenceGeo: json.RawMessage(`"us"`),
+				MCPServers:   json.RawMessage(`[{"name":"m"}]`),
+			},
+		},
+	}
+	cloned := CloneProviderExtensions(src)
+	require.NotNil(t, cloned.Anthropic)
+	require.NotNil(t, cloned.Anthropic.Request)
+	require.JSONEq(t, `{"id":"c1"}`, string(cloned.Anthropic.Request.Container))
+	require.JSONEq(t, `"us"`, string(cloned.Anthropic.Request.InferenceGeo))
+	require.JSONEq(t, `[{"name":"m"}]`, string(cloned.Anthropic.Request.MCPServers))
+	cloned.Anthropic.Request.Container[2] = 'X'
+	require.JSONEq(t, `{"id":"c1"}`, string(src.Anthropic.Request.Container))
+}
