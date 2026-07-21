@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -431,4 +432,38 @@ func findItemByType(t *testing.T, items []Item, itemType string) Item {
 	}
 	t.Fatalf("missing item type %q", itemType)
 	return Item{}
+}
+
+func roundTripCompletedResponse(t *testing.T, upstreamEvents []*httpclient.StreamEvent) *Response {
+	t.Helper()
+
+	var completed *Response
+	for _, event := range roundTripResponseEvents(t, upstreamEvents) {
+		if event.Type == StreamEventTypeResponseCompleted {
+			completed = event.Response
+		}
+	}
+	require.NotNil(t, completed)
+	return completed
+}
+
+func roundTripResponseEvents(t *testing.T, upstreamEvents []*httpclient.StreamEvent) []StreamEvent {
+	t.Helper()
+
+	upstream, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	canonical, err := upstream.TransformStream(context.Background(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+
+	client, err := NewInboundTransformer().TransformStream(context.Background(), canonical)
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for client.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(client.Current().Data, &event))
+		events = append(events, event)
+	}
+	require.NoError(t, client.Err())
+	return events
 }
