@@ -49,3 +49,12 @@ cd .. && go test ./internal/server/orchestrator/ -count=1
 - Chat/Anthropic metadata legacy fallbacks remaining for non-migrated keys (cache_control, top_k, etc.)
 - Anthropic drop vs Chat preserve still local adapters (S3 review note)
 - Branch push unblocked after secret hygiene
+
+## Cherry-pick note
+
+Direct cherry-pick of S1 onto current `origin/unstable` conflicts in `responses/inbound.go` / `model.go` / `outbound_convert.go` (protocol stack on feature branch is already ahead of unstable). Landing requires either:
+
+1. Rebase/merge full protocol branch then extract S1–S7, or
+2. Manual conflict resolution per slice on a clean branch.
+
+Local S1–S7 commits remain the source of truth on `codex/grok-chat-custom-tool-compat`.
