@@ -88,7 +88,7 @@ flowchart TD
     C -->|1. request| IT
     IT -->|2. convert to llm.Request<br/>ReasoningSignature is passed through as-is| LLM
     LLM -->|3. llm.Request| OT
-    OT -->|4. provider request<br/>Decode... filters by heuristic| P
+    OT -->|4. provider request<br/>native provenance first; heuristic only for legacy cross-protocol signatures| P
 
     P -->|5. provider response<br/>may contain private signature field| OT
     OT -->|6. convert to llm.Response<br/>store signature into ReasoningSignature| LLM
@@ -104,22 +104,27 @@ flowchart TD
 ## OpenAI Responses API note (why inbound must not decode)
 
 OpenAI Responses has a `reasoning` output item with `encrypted_content`.
-If AxonHub decodes/removes the value on inbound conversion, the client
-will send the next request without it, and AxonHub can no longer identify
-which provider protocol the signature belongs to.
+The ciphertext is opaque and must remain paired with its native reasoning
+item ID. Its bytes do not define a stable provider-prefix contract.
 
 Therefore:
 
-- **Responses outbound (llm -> OpenAI Responses request)** calls
-  `DecodeOpenAIEncryptedContent` which only forwards the blob if
-  `GuessSignatureProvider` identifies it as OpenAI.
-- **Responses inbound (OpenAI Responses response -> llm)** stores
-  `encrypted_content` in `ReasoningSignature` as-is (Encode is passthrough).
+- **Responses provider response -> client response** preserves the complete
+  native reasoning output item (`id`, `encrypted_content`, shape, and position)
+  on the Responses response sidecar.
+- **Responses client request -> provider request** uses
+  `ResponseReasoningItemID` as request-input provenance and forwards the paired
+  `ReasoningSignature` exactly, without guessing from ciphertext bytes.
+- **Legacy cross-protocol signatures** that have no Responses request-input
+  provenance still use `DecodeOpenAIEncryptedContent` / provider heuristics so
+  Anthropic or Gemini signatures are not invented as Responses state.
 - **Responses inbound-stream (llm stream -> OpenAI Responses SSE)** passes
   through the signature as `encrypted_content` (do not decode).
 
-This keeps the session round-trip stable even if the client only "speaks" OpenAI
-Responses and AxonHub switches the actual upstream provider behind the scenes.
+Normal same-source continuation keeps the original ID/ciphertext pair. A channel
+switch crosses an issuer boundary, so AxonHub removes opaque reasoning identity,
+ciphertext, and compaction state while retaining visible summaries and tool
+lifecycle data. An explicit provider rejection gets the same cleanup once.
 
 ## Evolution note
 
@@ -128,10 +133,10 @@ scheme: Encode/Decode helpers accepted a `footprint` parameter and wrapped raw
 values with a stable marker prefix so the signature could be matched against the
 expected transport scope.
 
-The current version replaces that with the **heuristic-based** approach described
-above (`GuessSignatureProvider`). The Encode/Decode helpers no longer take a
-`footprint` parameter; instead, `Decode...` inspects the raw blob to decide
-whether it is safe to forward to the target provider.
+The current version uses **native request/response provenance** for Responses
+round trips. The Encode/Decode helpers no longer take a `footprint` parameter;
+`GuessSignatureProvider` remains only as a legacy cross-protocol safeguard when
+no protocol-native provenance carrier exists.
 
 ## Practical guidance
 

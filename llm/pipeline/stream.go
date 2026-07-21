@@ -159,6 +159,12 @@ func (p *pipeline) hasStreamRetryBudget() bool {
 	return p.maxSameChannelRetries > 0 || p.maxChannelRetries > 0
 }
 
+func (p *pipeline) hasRecoverableRequestState() bool {
+	recoverable, ok := p.Outbound.(ErrorRecoverable)
+
+	return ok && recoverable.HasRecoverableRequestState()
+}
+
 func shouldWrapPreReadStreamError(err error) bool {
 	return !errors.Is(err, ErrStreamFirstEventTimeout) &&
 		!errors.Is(err, ErrEmptyResponse) &&
@@ -176,7 +182,7 @@ func (p *pipeline) preReadLlmStream(
 	llmStream streams.Stream[*llm.Response],
 	firstEventGuard *firstEventTimeoutGuard,
 ) (streams.Stream[*llm.Response], error) {
-	preReadUntilContent := p.hasStreamRetryBudget()
+	preReadUntilContent := p.hasStreamRetryBudget() || p.hasRecoverableRequestState()
 	probeLimit := maxPreReadEvents
 	if preReadUntilContent {
 		probeLimit = maxPreCommitRetryProbeEvents
@@ -387,7 +393,7 @@ func (p *pipeline) stream(
 
 	// Check stream start before the handler commits the response. This enforces
 	// first-event timeout, empty-response detection, and pre-content retry.
-	if p.emptyResponseDetection || firstEventTimeout > 0 || p.hasStreamRetryBudget() {
+	if p.emptyResponseDetection || firstEventTimeout > 0 || p.hasStreamRetryBudget() || p.hasRecoverableRequestState() {
 		rawLlmStream := llmStream
 
 		llmStream, err = p.preReadLlmStream(ctx, llmStream, firstEventGuard)

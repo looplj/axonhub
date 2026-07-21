@@ -81,4 +81,15 @@ type PersistenceState struct {
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
+
+	// OpaqueReasoningStateDropped records that opaque Responses conversation state was
+	// removed before a retry. Raw request-body pass-through must remain disabled
+	// afterwards or it would restore the original encrypted input on the next attempt;
+	// response pass-through remains safe for the new provider response.
+	OpaqueReasoningStateDropped bool
+
+	// EncryptedReasoningRecoveryUsed prevents repeated cleanup retries for one client
+	// request. A second provider rejection is surfaced or follows normal channel retry
+	// policy after the opaque state has already been removed.
+	EncryptedReasoningRecoveryUsed bool
 }

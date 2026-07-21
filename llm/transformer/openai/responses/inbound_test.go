@@ -1928,10 +1928,19 @@ func TestInboundTransformer_TransformResponse_WithReasoningContent(t *testing.T)
 		{
 			name: "response with reasoning content",
 			chatResp: &llm.Response{
-				ID:      "chatcmpl-reasoning",
-				Object:  "chat.completion",
-				Created: 1677652288,
-				Model:   "o3",
+				ID:        "chatcmpl-reasoning",
+				Object:    "chat.completion",
+				Created:   1677652288,
+				Model:     "o3",
+				APIFormat: llm.APIFormatOpenAIResponse,
+				// Native Responses item provenance is required to re-emit ciphertext.
+				// APIFormat alone must not pair encrypted_content with a synthetic rs_* id.
+				TransformerMetadata: map[string]any{
+					responsesReasoningItemTransformerMetadataKey: responsesReasoningItemMetadata{
+						ID:   "rs_reasoning_from_provider",
+						Done: true,
+					},
+				},
 				Choices: []llm.Choice{
 					{
 						Index: 0,

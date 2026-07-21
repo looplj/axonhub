@@ -133,10 +133,14 @@ func TestCompactInboundTransformer_TransformResponse(t *testing.T) {
 				Object:       "response.compaction",
 				Instructions: "Be concise",
 				Output: []llm.Message{{
-					ID:                 "msg_001",
-					Role:               "assistant",
-					Content:            llm.MessageContent{Content: lo.ToPtr("Hello")},
+					ID:      "msg_001",
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					// Signature without RawOutputItems must not invent Responses
+					// encrypted_content (request ResponseReasoningItemID is not
+					// response provenance). Ciphertext pairs live on the sidecar.
 					ReasoningSignature: lo.ToPtr("gAAAAAB..."),
+					ReasoningContent:   lo.ToPtr("compact thinking summary"),
 				}},
 			},
 			Model: "gpt-4o",
@@ -162,11 +166,12 @@ func TestCompactInboundTransformer_TransformResponse(t *testing.T) {
 		assert.Equal(t, int64(1764967971), compactResp.CreatedAt)
 		assert.Equal(t, "response.compaction", compactResp.Object)
 		assert.Equal(t, "gpt-4o", compactResp.Model)
-		assert.Equal(t, "Be concise", compactResp.Instructions)
 		require.Len(t, compactResp.Output, 2)
 		assert.Equal(t, "reasoning", compactResp.Output[0].Type)
-		require.NotNil(t, compactResp.Output[0].EncryptedContent)
-		assert.Equal(t, "gAAAAAB...", *compactResp.Output[0].EncryptedContent)
+		require.Nil(t, compactResp.Output[0].EncryptedContent,
+			"structured compact fallback must not invent encrypted_content without RawOutputItems")
+		require.Len(t, compactResp.Output[0].Summary, 1)
+		assert.Equal(t, "compact thinking summary", compactResp.Output[0].Summary[0].Text)
 		assert.Equal(t, "message", compactResp.Output[1].Type)
 		assert.Equal(t, "msg_001", compactResp.Output[1].ID)
 		require.NotNil(t, compactResp.Output[1].Content)

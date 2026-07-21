@@ -382,7 +382,7 @@ type Message struct {
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
 
 	// ResponseReasoningItemID marks an OpenAI Responses request input reasoning item
-	// (type=reasoning) for same-protocol identity round-trip only. Distinct from
+	// (type=reasoning) for same-protocol input round-trip only. Distinct from
 	// Message.ID, which belongs to a following message item when reasoning is merged
 	// with assistant content.
 	//
@@ -394,8 +394,8 @@ type Message struct {
 	//     Chat/Anthropic/etc. must not force a Responses reasoning item solely because
 	//     text is present.
 	//
-	// Scope: request input item identity. This field is not a claim that response
-	// output reasoning item id round-trip is complete.
+	// Response output item identity is owned by the OpenAI Responses native response
+	// sidecar, not this request-input carrier.
 	ResponseReasoningItemID *string `json:"response_reasoning_item_id,omitempty"`
 
 	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.

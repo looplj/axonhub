@@ -62,6 +62,9 @@ type mockOutbound struct {
 	nextChannel           func(context.Context) error
 	canRetry              func(error) bool
 	prepareForRetry       func(context.Context) error
+	hasRecoverableState   func() bool
+	canRecover            func(error) bool
+	prepareForRecovery    func(context.Context) error
 	transformRequest      func(context.Context, *llm.Request) (*httpclient.Request, error)
 	transformResponse     func(context.Context, *httpclient.Response) (*llm.Response, error)
 	transformStream       func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error)
@@ -129,6 +132,30 @@ func (m *mockOutbound) CanRetry(err error) bool {
 func (m *mockOutbound) PrepareForRetry(ctx context.Context) error {
 	if m.prepareForRetry != nil {
 		return m.prepareForRetry(ctx)
+	}
+
+	return nil
+}
+
+func (m *mockOutbound) HasRecoverableRequestState() bool {
+	if m.hasRecoverableState != nil {
+		return m.hasRecoverableState()
+	}
+
+	return false
+}
+
+func (m *mockOutbound) CanRecover(err error) bool {
+	if m.canRecover != nil {
+		return m.canRecover(err)
+	}
+
+	return false
+}
+
+func (m *mockOutbound) PrepareForRecovery(ctx context.Context) error {
+	if m.prepareForRecovery != nil {
+		return m.prepareForRecovery(ctx)
 	}
 
 	return nil
@@ -390,6 +417,216 @@ func TestPipeline_Process_RetryLogic(t *testing.T) {
 		require.Nil(t, res)
 		require.Equal(t, 4, execCalls)
 	})
+}
+
+func TestPipeline_Process_ErrorRecoveryIgnoresOrdinaryRetryBudgets(t *testing.T) {
+	ctx := context.Background()
+	recoverableErr := errors.New("recoverable provider state error")
+
+	attempts := 0
+	executor := &mockExecutor{
+		do: func(context.Context, *httpclient.Request) (*httpclient.Response, error) {
+			attempts++
+			if attempts == 1 {
+				return nil, recoverableErr
+			}
+
+			return &httpclient.Response{}, nil
+		},
+	}
+
+	canRecoverCalls := 0
+	prepareRecoveryCalls := 0
+	ordinaryRetryCalls := 0
+	outbound := &mockOutbound{
+		hasRecoverableState: func() bool { return true },
+		canRecover: func(err error) bool {
+			canRecoverCalls++
+			return errors.Is(err, recoverableErr)
+		},
+		prepareForRecovery: func(context.Context) error {
+			prepareRecoveryCalls++
+			return nil
+		},
+		canRetry: func(error) bool {
+			ordinaryRetryCalls++
+			return true
+		},
+	}
+
+	p := NewFactory(executor).Pipeline(&mockInbound{}, outbound, WithRetry(0, 0, 0))
+
+	result, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, canRecoverCalls)
+	require.Equal(t, 1, prepareRecoveryCalls)
+	require.Zero(t, ordinaryRetryCalls, "successful recovery must run before ordinary retry policy")
+}
+
+func TestPipeline_Process_ErrorRecoveryDoesNotConsumeSameChannelRetryBudget(t *testing.T) {
+	ctx := context.Background()
+	recoverableErr := errors.New("recoverable provider state error")
+	ordinaryRetryErr := errors.New("ordinary retry error")
+
+	attempts := 0
+	executor := &mockExecutor{
+		do: func(context.Context, *httpclient.Request) (*httpclient.Response, error) {
+			attempts++
+			switch attempts {
+			case 1:
+				return nil, recoverableErr
+			case 2:
+				return nil, ordinaryRetryErr
+			default:
+				return &httpclient.Response{}, nil
+			}
+		},
+	}
+
+	prepareRecoveryCalls := 0
+	prepareRetryCalls := 0
+	outbound := &mockOutbound{
+		canRecover: func(err error) bool {
+			return errors.Is(err, recoverableErr)
+		},
+		prepareForRecovery: func(context.Context) error {
+			prepareRecoveryCalls++
+			return nil
+		},
+		canRetry: func(err error) bool {
+			return errors.Is(err, ordinaryRetryErr)
+		},
+		prepareForRetry: func(context.Context) error {
+			prepareRetryCalls++
+			return nil
+		},
+	}
+
+	p := NewFactory(executor).Pipeline(&mockInbound{}, outbound, WithRetry(0, 1, 0))
+
+	result, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 3, attempts)
+	require.Equal(t, 1, prepareRecoveryCalls)
+	require.Equal(t, 1, prepareRetryCalls, "recovery must leave the full ordinary retry budget available")
+}
+
+func TestPipeline_Process_StreamErrorRecoveryIgnoresOrdinaryRetryBudgets(t *testing.T) {
+	ctx := context.Background()
+	streamFlag := true
+	recoverableErr := errors.New("recoverable provider stream error")
+
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: &streamFlag}, nil
+		},
+		transformStream: transformLlmContentToEvents,
+	}
+
+	attempts := 0
+	executor := &mockExecutor{
+		doStream: func(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+			if attempts == 1 {
+				return nil, recoverableErr
+			}
+
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("raw")}}), nil
+		},
+	}
+
+	prepareRecoveryCalls := 0
+	outbound := &mockOutbound{
+		hasRecoverableState: func() bool { return true },
+		canRecover: func(err error) bool {
+			return errors.Is(err, recoverableErr)
+		},
+		prepareForRecovery: func(context.Context) error {
+			prepareRecoveryCalls++
+			return nil
+		},
+		transformStream: func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return streams.SliceStream([]*llm.Response{llmContentChunk("ok"), llm.DoneResponse}), nil
+		},
+	}
+
+	p := NewFactory(executor).Pipeline(inbound, outbound, WithRetry(0, 0, 0))
+
+	result, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.True(t, result.Stream)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, prepareRecoveryCalls)
+
+	events, err := streams.All(result.EventStream)
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, "ok", string(events[0].Data))
+	require.Equal(t, "[DONE]", string(events[1].Data))
+}
+
+func TestPipeline_Process_StreamInBandErrorRecoveryIgnoresOrdinaryRetryBudgets(t *testing.T) {
+	ctx := context.Background()
+	streamFlag := true
+	recoverableErr := errors.New("recoverable provider stream error")
+
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: &streamFlag}, nil
+		},
+		transformStream: transformLlmContentToEvents,
+	}
+
+	attempts := 0
+	executor := &mockExecutor{
+		doStream: func(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("raw")}}), nil
+		},
+	}
+
+	prepareRecoveryCalls := 0
+	outbound := &mockOutbound{
+		hasRecoverableState: func() bool { return true },
+		canRecover: func(err error) bool {
+			return errors.Is(err, recoverableErr)
+		},
+		prepareForRecovery: func(context.Context) error {
+			prepareRecoveryCalls++
+
+			return nil
+		},
+		transformStream: func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			if attempts == 1 {
+				return &llmErrorAfterStream{
+					items: []*llm.Response{llmEmptyChunk()},
+					err:   recoverableErr,
+				}, nil
+			}
+
+			return streams.SliceStream([]*llm.Response{llmContentChunk("ok"), llm.DoneResponse}), nil
+		},
+	}
+
+	p := NewFactory(executor).Pipeline(inbound, outbound, WithRetry(0, 0, 0))
+
+	result, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.True(t, result.Stream)
+	require.Equal(t, 2, attempts, "a recoverable SSE error before visible content must be handled before committing the stream")
+	require.Equal(t, 1, prepareRecoveryCalls)
+
+	events, err := streams.All(result.EventStream)
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, "ok", string(events[0].Data))
+	require.Equal(t, "[DONE]", string(events[1].Data))
 }
 
 func TestPipeline_Process_RetryPreservesOriginalStreamIntent(t *testing.T) {

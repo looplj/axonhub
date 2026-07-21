@@ -485,10 +485,14 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 }
 
 func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, metadata map[string]any) error {
-	sourceID := delta.ID
-	if item, ok := getResponsesReasoningItemMetadata(metadata); ok {
-		sourceID = item.ID
+	item, ok := getResponsesReasoningItemMetadata(metadata)
+	if !ok {
+		// ReasoningSignature is a shared transport slot also used by Anthropic and
+		// Gemini. Only Responses-native item metadata proves that the bytes belong
+		// in a Responses encrypted_content field.
+		return nil
 	}
+	sourceID := item.ID
 
 	if err := s.ensureReasoningItemStarted(sourceID); err != nil {
 		return err
@@ -496,7 +500,7 @@ func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, me
 
 	s.accumulatedReasoningSignature.WriteString(*delta.ReasoningSignature)
 
-	if item, ok := getResponsesReasoningItemMetadata(metadata); ok && item.Done {
+	if item.Done {
 		return s.closeReasoningItem()
 	}
 

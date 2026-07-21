@@ -96,6 +96,15 @@ func (t *OutboundTransformer) transformCompactResponse(
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert compact response output: %w", err)
 	}
+	rawOutputItems := responsesOutputItemsRequiringRawReplay(httpResp.Body)
+	if len(rawOutputItems) > 0 {
+		// Response item identity is protocol-native. convertInputToMessages reuses
+		// the request parser, so remove its request-only identity marker here and
+		// let the response sidecar own exact same-protocol replay.
+		for i := range outputMessages {
+			outputMessages[i].ResponseReasoningItemID = nil
+		}
+	}
 
 	for i := range outputMessages {
 		outputMessages[i].ReasoningSignature = shared.EncodeOpenAIEncryptedContent(outputMessages[i].ReasoningSignature)
@@ -119,6 +128,9 @@ func (t *OutboundTransformer) transformCompactResponse(
 
 	if compactResp.Usage != nil {
 		llmResp.Usage = compactResp.Usage.ToUsage()
+	}
+	if len(rawOutputItems) > 0 {
+		llm.EnsureOpenAIResponsesResponseExtensions(llmResp).RawOutputItems = rawOutputItems
 	}
 
 	return llmResp, nil

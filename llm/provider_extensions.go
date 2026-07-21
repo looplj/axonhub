@@ -33,9 +33,10 @@ type OpenAIResponsesResponseExtensions struct {
 	// Chat finish_reason equivalent (for example queued or in_progress).
 	Status            *string                    `json:"-"`
 	RawTopLevelFields map[string]json.RawMessage `json:"-"`
-	// RawOutputItems preserves Responses-native output items that have no
-	// canonical llm.Response representation. They are replayed only by the
-	// Responses inbound adapter at their original output[] positions.
+	// RawOutputItems preserves Responses-native output items that cannot be
+	// represented by the canonical response without losing their original
+	// structure, ordering, or identity. They are replayed only by the Responses
+	// inbound adapter at their original output[] positions.
 	RawOutputItems []OpenAIResponsesRawFragment `json:"-"`
 	// RawStreamEvents preserves Responses SSE events that have no canonical
 	// chunk representation. The Responses stream emitter replays them only to

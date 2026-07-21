@@ -1254,9 +1254,18 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			messageItemID = generateItemID()
 		}
 
-		// Handle reasoning content
-		if reasoningItem, ok := buildReasoningItem(*message, chatResp.TransformerMetadata); ok {
-			resp.Output = append(resp.Output, reasoningItem)
+		// A canonical message carries one reasoning slot. When the upstream
+		// response had multiple native reasoning output items, their complete
+		// sequence is replayed through the Responses raw sidecar below; emitting
+		// a structured item here would duplicate and reorder it.
+		if !hasRawResponsesReasoningOutputItems(chatResp) {
+			if reasoningItem, ok := buildReasoningItem(
+				*message,
+				chatResp.TransformerMetadata,
+				isOpenAIResponsesAPIFormat(chatResp.APIFormat),
+			); ok {
+				resp.Output = append(resp.Output, reasoningItem)
+			}
 		}
 
 		// Handle tool calls (function calls and custom tool calls)
@@ -1467,11 +1476,25 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 	return resp
 }
 
+func isOpenAIResponsesAPIFormat(format llm.APIFormat) bool {
+	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
+}
+
 func hasRawResponsesOutputItems(chatResp *llm.Response) bool {
 	return chatResp != nil && chatResp.ProviderExtensions != nil &&
 		chatResp.ProviderExtensions.OpenAIResponses != nil &&
 		chatResp.ProviderExtensions.OpenAIResponses.Response != nil &&
 		len(chatResp.ProviderExtensions.OpenAIResponses.Response.RawOutputItems) > 0
+}
+
+func hasRawResponsesReasoningOutputItems(chatResp *llm.Response) bool {
+	if chatResp == nil || chatResp.ProviderExtensions == nil || chatResp.ProviderExtensions.OpenAIResponses == nil ||
+		chatResp.ProviderExtensions.OpenAIResponses.Response == nil {
+		return false
+	}
+	return lo.SomeBy(chatResp.ProviderExtensions.OpenAIResponses.Response.RawOutputItems, func(fragment llm.OpenAIResponsesRawFragment) bool {
+		return fragment.Type == "reasoning"
+	})
 }
 
 func mergeRawResponsesOutputItems(structured []Item, chatResp *llm.Response) []Item {
@@ -1530,13 +1553,32 @@ func generateItemID() string {
 // buildReasoningItem creates a reasoning Item from a message's reasoning content and signature.
 // Returns the item and true if the message has reasoning data, otherwise returns zero value and false.
 // When response metadata carries original reasoning_text content[] / summary[], re-emit those shapes.
-func buildReasoningItem(msg llm.Message, responseMetadata map[string]any) (Item, bool) {
+//
+// Encrypted content is only emitted when preserveEncryptedContent is true AND Responses-native
+// reasoning-item provenance supplies a non-empty original item id. Ciphertext is never paired
+// with a synthesized rs_* id (that recreates item_id/ciphertext mismatch on conversation replay).
+func buildReasoningItem(
+	msg llm.Message,
+	responseMetadata map[string]any,
+	preserveEncryptedContent bool,
+) (Item, bool) {
 	hasContent := msg.ReasoningContent != nil && *msg.ReasoningContent != ""
-	hasSignature := msg.ReasoningSignature != nil && *msg.ReasoningSignature != ""
 	rawTextParts := reasoningTextContentFromMetadata(responseMetadata)
 	savedSummary := reasoningSummaryFromMetadata(responseMetadata)
 
-	if !hasContent && !hasSignature && len(rawTextParts) == 0 {
+	nativeItem, hasNativeItemID := getResponsesReasoningItemMetadata(responseMetadata)
+	itemID := ""
+	if hasNativeItemID {
+		itemID = nativeItem.ID
+	}
+
+	var encryptedContent *string
+	if preserveEncryptedContent && hasNativeItemID && itemID != "" &&
+		msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
+		encryptedContent = msg.ReasoningSignature
+	}
+
+	if !hasContent && encryptedContent == nil && len(rawTextParts) == 0 && len(savedSummary) == 0 {
 		return Item{}, false
 	}
 
@@ -1552,12 +1594,19 @@ func buildReasoningItem(msg llm.Message, responseMetadata map[string]any) (Item,
 		})
 	}
 
+	if itemID == "" {
+		// Summary/thinking-only paths may allocate a local envelope id. Ciphertext
+		// never reaches this branch without an original Responses item id.
+		// This branch uses unprefixed generateItemID().
+		itemID = generateItemID()
+	}
+
 	item := Item{
-		ID:               generateItemID(),
+		ID:               itemID,
 		Type:             "reasoning",
 		Status:           lo.ToPtr("completed"),
 		Summary:          summary,
-		EncryptedContent: msg.ReasoningSignature,
+		EncryptedContent: encryptedContent,
 	}
 	// Only emit content[]/reasoning_text when the original Responses item had it.
 	// Common-only ReasoningContent continues to use summary_text for backward

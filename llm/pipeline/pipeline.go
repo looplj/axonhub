@@ -35,6 +35,23 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// ErrorRecoverable is implemented by transformers that can repair request-local
+// state after a provider explicitly rejects it. Recovery is evaluated before
+// ordinary same-channel and cross-channel retry budgets because it does not
+// represent transient retry policy or channel failover.
+type ErrorRecoverable interface {
+	// HasRecoverableRequestState reports whether the current request contains
+	// request-local state whose provider rejection can be repaired. Streaming
+	// pipelines use this signal to keep pre-content errors inside the retry loop.
+	HasRecoverableRequestState() bool
+
+	// CanRecover reports whether the failed request can be repaired in place.
+	CanRecover(err error) bool
+
+	// PrepareForRecovery mutates the request state for one recovery attempt.
+	PrepareForRecovery(ctx context.Context) error
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -296,8 +313,21 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		canRetry := false
 		timeoutRetry := isResponseTimeoutError(lastErr)
 
-		// 1. Try same-channel retry first if supported
-		if !timeoutRetry {
+		// 1. Let the outbound transformer repair provider-rejected request state.
+		// This path is intentionally independent from ordinary retry budgets.
+		if recoverable, ok := p.Outbound.(ErrorRecoverable); ok && recoverable.CanRecover(lastErr) {
+			if err := recoverable.PrepareForRecovery(ctx); err == nil {
+				canRetry = true
+
+				slog.DebugContext(ctx, "retrying after request state recovery")
+			} else {
+				slog.WarnContext(ctx, "failed to prepare request state recovery, will try ordinary retry policy", slog.Any("error", err))
+			}
+		}
+
+		// 2. Try same-channel retry if recovery was not applicable and the ordinary
+		// retry policy allows it.
+		if !canRetry && !timeoutRetry {
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
 				if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
 					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
@@ -315,7 +345,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 			}
 		}
 
-		// 2. If same-channel retry not possible/exhausted, try channel switching
+		// 3. If recovery and same-channel retry are not possible, try channel switching.
 		if !canRetry {
 			if retryable, ok := p.Outbound.(Retryable); ok {
 				if channelSwitches < p.maxChannelRetries && retryable.HasMoreChannels() {

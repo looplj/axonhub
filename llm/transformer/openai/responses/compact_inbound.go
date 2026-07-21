@@ -86,7 +86,12 @@ func (t *CompactInboundTransformer) TransformResponse(ctx context.Context, llmRe
 		return nil, fmt.Errorf("compact response missing compact data")
 	}
 
-	outputItems := convertCompactMessagesToItems(llmResp.Compact.Output)
+	outputItems := convertCompactMessagesToItems(
+		llmResp.Compact.Output,
+		!hasRawResponsesReasoningOutputItems(llmResp),
+		isOpenAIResponsesAPIFormat(llmResp.APIFormat),
+	)
+	outputItems = mergeRawResponsesOutputItems(outputItems, llmResp)
 
 	var usage *Usage
 	if llmResp.Usage != nil {
@@ -116,12 +121,18 @@ func (t *CompactInboundTransformer) TransformResponse(ctx context.Context, llmRe
 	}, nil
 }
 
-func convertCompactMessagesToItems(msgs []llm.Message) []Item {
+func convertCompactMessagesToItems(msgs []llm.Message, includeReasoning, preserveEncryptedContent bool) []Item {
 	items := make([]Item, 0, len(msgs))
 
 	for _, msg := range msgs {
-		if reasoningItem, ok := buildReasoningItem(msg, nil); ok {
-			items = append(items, reasoningItem)
+		if includeReasoning {
+			// ResponseReasoningItemID is request input[] provenance only. Compact
+			// response ciphertext/id pairs must come from RawOutputItems (merged
+			// below). Structured fallback may emit summary/thinking without
+			// inventing encrypted_content from a request-only carrier.
+			if reasoningItem, ok := buildReasoningItem(msg, nil, false); ok {
+				items = append(items, reasoningItem)
+			}
 		}
 
 		items = append(items, convertCompactMessageToItems(msg)...)

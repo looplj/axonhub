@@ -587,6 +587,11 @@ func (p *PersistentOutboundTransformer) resetPassThroughStreamState() {
 // NextChannel moves to the next available candidate for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
+	// A channel switch crosses an opaque-state issuer boundary. Preserve visible
+	// conversation and tool lifecycle data, but never replay provider-bound
+	// reasoning ciphertext or compaction blobs to the next channel.
+	p.dropOpaqueReasoningState()
+
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
@@ -673,6 +678,51 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	return isRetryableErrorForChannel(err, p.state.CurrentCandidate.Channel)
 }
 
+// CanRecover reports whether an explicit provider rejection can be repaired by
+// removing provider-bound reasoning state from the current request. It is
+// intentionally separate from ordinary retry policy and budgets.
+func (p *PersistentOutboundTransformer) HasRecoverableRequestState() bool {
+	return p != nil &&
+		p.state != nil &&
+		!p.state.EncryptedReasoningRecoveryUsed &&
+		hasOpaqueReasoningState(p.state.LlmRequest)
+}
+
+func (p *PersistentOutboundTransformer) CanRecover(err error) bool {
+	return p.HasRecoverableRequestState() &&
+		pipeline.IsUpstreamError(err) &&
+		isEncryptedReasoningProviderError(err)
+}
+
+// PrepareForRecovery removes only opaque reasoning/compaction state and resets
+// per-attempt execution state while keeping the exact current channel and model.
+func (p *PersistentOutboundTransformer) PrepareForRecovery(ctx context.Context) error {
+	if p == nil || p.state == nil || p.state.EncryptedReasoningRecoveryUsed {
+		return errors.New("encrypted reasoning recovery is not available")
+	}
+	if !p.dropOpaqueReasoningState() {
+		return errors.New("no opaque reasoning state available for recovery")
+	}
+
+	p.state.EncryptedReasoningRecoveryUsed = true
+	p.state.RequestExec = nil
+	p.state.PassThroughApplied = false
+	p.resetPassThroughStreamState()
+
+	if log.DebugEnabled(ctx) {
+		channelName := ""
+		if channel := p.GetCurrentChannel(); channel != nil {
+			channelName = channel.Name
+		}
+		log.Debug(ctx, "prepared encrypted reasoning recovery retry",
+			log.String("channel", channelName),
+			log.String("model", p.GetCurrentModelID()),
+		)
+	}
+
+	return nil
+}
+
 // PrepareForRetry implements the pipeline.ChannelRetryable interface.
 // This will reset the request execution for the same channel, so that the same request can be retried.
 // It will try the next model in the same channel if available.
@@ -689,15 +739,22 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 
 	// If there's another model in the list, advance to it.
 	if p.state.CurrentModelIndex+1 < len(candidate.Models) {
+		previousModel := candidate.Models[p.state.CurrentModelIndex].ActualModel
 		// Increase the model index to the next model.
 		p.state.CurrentModelIndex++
+		nextModel := candidate.Models[p.state.CurrentModelIndex].ActualModel
+		// An ActualModel change is an issuer-boundary even on the same channel /
+		// API key. Strip provider-bound reasoning ciphertext and compaction
+		// blobs while keeping visible conversation and tool history.
+		if previousModel != nextModel {
+			p.dropOpaqueReasoningState()
+		}
 		p.wrapped = selectOutboundForCandidate(candidate)
 
 		if log.DebugEnabled(ctx) {
-			model := candidate.Models[p.state.CurrentModelIndex].ActualModel
 			log.Debug(ctx, "prepared same channel retry for next model",
 				log.Any("channel", candidate.Channel.Name),
-				log.Any("model", model),
+				log.Any("model", nextModel),
 				log.String("api_format", candidate.APIFormat),
 				log.Int("current_candidate_index", p.state.CurrentCandidateIndex),
 				log.Int("current_entry_index", p.state.CurrentModelIndex),

@@ -244,7 +244,16 @@ func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 	// reasoning items for Chat/Anthropic cross-protocol text.
 	var encryptedContent *string
 	if msg.ReasoningSignature != nil {
-		encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
+		if msg.ResponseReasoningItemID != nil {
+			// Responses-native identity is authoritative provenance. encrypted_content
+			// is opaque and has no documented prefix contract, so preserve the exact
+			// value paired with its item id instead of guessing from ciphertext bytes.
+			encryptedContent = msg.ReasoningSignature
+		} else {
+			// The common signature slot is also used by Anthropic and Gemini. Only the
+			// legacy cross-protocol path needs format filtering.
+			encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
+		}
 	}
 
 	emitResponsesReasoning := msg.ResponseReasoningItemID != nil || encryptedContent != nil
@@ -1027,7 +1036,6 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 	if reasoningSignature != nil {
 		msg.ReasoningSignature = reasoningSignature
 	}
-
 	if len(contentParts) == 1 && contentParts[0].Type == "text" && len(toolCalls) == 0 {
 		msg.Content = llm.MessageContent{
 			Content: contentParts[0].Text,

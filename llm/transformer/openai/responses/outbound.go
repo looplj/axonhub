@@ -740,7 +740,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 	if resp.Status != nil && (*resp.Status == "queued" || *resp.Status == "in_progress") {
 		llm.EnsureOpenAIResponsesResponseExtensions(llmResp).Status = lo.ToPtr(*resp.Status)
 	}
-	if rawOutputItems := rawOnlyResponsesOutputItems(httpResp.Body); len(rawOutputItems) > 0 {
+	if rawOutputItems := responsesOutputItemsRequiringRawReplay(httpResp.Body); len(rawOutputItems) > 0 {
 		ext := llm.EnsureOpenAIResponsesResponseExtensions(llmResp)
 		ext.RawOutputItems = rawOutputItems
 	}
@@ -822,10 +822,11 @@ func captureOpenAIResponsesResponseTopLevelFields(body []byte, llmResp *llm.Resp
 	}
 }
 
-// rawOnlyResponsesOutputItems extracts output[] members that the canonical
-// response model cannot represent. Raw replay is same-Responses only and
-// preserves original ordering through OriginalIndex.
-func rawOnlyResponsesOutputItems(body []byte) []llm.OpenAIResponsesRawFragment {
+// responsesOutputItemsRequiringRawReplay extracts output[] members that the
+// canonical response model cannot represent without losing identity or ordering.
+// Raw replay is same-Responses only and preserves original ordering through
+// OriginalIndex.
+func responsesOutputItemsRequiringRawReplay(body []byte) []llm.OpenAIResponsesRawFragment {
 	var envelope struct {
 		Output []json.RawMessage `json:"output"`
 	}
@@ -837,9 +838,14 @@ func rawOnlyResponsesOutputItems(body []byte) []llm.OpenAIResponsesRawFragment {
 	for index, raw := range envelope.Output {
 		var probe struct {
 			Type string `json:"type"`
-			ID   string `json:"id"`
 		}
-		if err := json.Unmarshal(raw, &probe); err != nil || isStructurallyRepresentedResponsesOutputType(probe.Type) {
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			continue
+		}
+		// Reasoning output items carry provider-bound identity/ciphertext that the
+		// common response model cannot own. Preserve every native reasoning item in
+		// the Responses response sidecar, including a single item.
+		if probe.Type != "reasoning" && isStructurallyRepresentedResponsesOutputType(probe.Type) {
 			continue
 		}
 		fragments = append(fragments, llm.OpenAIResponsesRawFragment{

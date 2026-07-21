@@ -23,6 +23,10 @@ import (
 // to the global system setting. systemService may be nil; in that case only the channel-level
 // setting is consulted (used by tests that exercise per-channel behavior in isolation).
 func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context, systemService *biz.SystemService) bool {
+	if p == nil || p.state == nil {
+		return false
+	}
+
 	channel := p.GetCurrentChannel()
 	if channel == nil {
 		return false
@@ -77,7 +81,7 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		outbound.state.RawProviderRequest = request
 
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		if outbound.state.OpaqueReasoningStateDropped || !outbound.isPassThroughEnabled(ctx, systemService) {
 			return request, nil
 		}
 
