@@ -1296,7 +1296,7 @@ func (s *SystemService) SetChannelSetting(ctx context.Context, setting SystemCha
 func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSystemChannelSettings) error {
 	client := s.entFromContext(ctx)
 
-	for attempt := 0; attempt < maxChannelSettingUpdateAttempts; attempt++ {
+	for range maxChannelSettingUpdateAttempts {
 		current, err := client.System.Query().Where(system.KeyEQ(SystemKeyChannelSettings)).Only(ctx)
 		if ent.IsNotFound(err) {
 			setting := defaultChannelSetting
