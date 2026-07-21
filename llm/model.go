@@ -271,15 +271,21 @@ type Request struct {
 	// TransformOptions specifies the common transform options for the request.
 	TransformOptions TransformOptions `json:"transform_options,omitzero"`
 
-	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
-	// This is a help field and will not be sent to the llm service.
-	// Keys used:
-	// - "include": []string - additional output data to include in the model response
-	// - "max_tool_calls": *int64 - maximum number of total calls to built-in tools
-	// - "prompt_cache_key": *string - string key used by OpenAI to cache responses
-	// - "prompt_cache_retention": *string - retention policy for the prompt cache ("in-memory", "24h")
-	// - "truncation": *string - truncation strategy ("auto", "disabled")
-	// - "include_obfuscation": *bool - whether to enable stream obfuscation (Responses API specific)
+	// TransformerMetadata stores bridge hints and short-lived staging only
+	// (not protocol-native request/response body ownership).
+	// This field is not sent to the upstream LLM service.
+	//
+	// Protocol-native body fields use ProviderExtensions named owners, e.g.:
+	//   - Responses include / max_tool_calls / prompt_cache_retention / truncation / background
+	//     → ProviderExtensions.OpenAIResponses.Request
+	//   - Responses response RawOutputItems / status / raw stream events
+	//     → ProviderExtensions.OpenAIResponses.Response
+	//   - Cross-protocol LossyDowngrade entries
+	//     → ProviderExtensions.Diagnostics
+	// Allowed metadata examples (bridge/staging, not PE body): prompt_cache_key
+	// bridging, image/stream lifecycle staging, provider-local signatures that
+	// already ride message/tool metadata by design.
+	// See docs/adr/0002 and .trellis/spec/backend/protocol-transformer-guidelines.md.
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
 
 	// ProviderExtensions stores provider/API-format private sidecar data.

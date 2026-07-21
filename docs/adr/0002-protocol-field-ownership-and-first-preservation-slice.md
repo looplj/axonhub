@@ -1,14 +1,49 @@
 # Protocol field ownership and first preservation slice
 
-AxonHub will preserve the author's transformer framework and repair protocol field loss by assigning every field to a clear owner: cross-protocol common fields stay in `llm.Request` / `llm.Response`, protocol-native fields stay in their protocol transformer modules, same-protocol unknowns use raw fallback, and cross-protocol losses are reported as `LossyDowngrade` diagnostics. The first implementation slice is frozen to OpenAI Responses -> OpenAI Responses native preservation, because it directly covers Codex Responses, MCP/lazy-loading identity, and official Responses fields without expanding the blast radius into Chat, Anthropic, or stream-event fidelity.
+**Status:** Accepted (ownership rules durable). **Slice history refreshed:** 2026-07-22.
 
-## Considered Options
+## Decision (durable) — FieldOwnership
 
-- Put every missing field into `llm.Request`: rejected because it turns the common view into a universal protocol AST and makes provider blast radius worse.
-- Use `passThroughBody` as the fix: rejected because it can preserve bytes but does not give structured ownership, diagnostics, accounting, or safe downgrade behavior.
-- Patch each provider adapter independently: rejected because it scatters field-loss decisions and makes later audits unreliable.
-- Preserve the author framework and deepen native preservation seams: accepted because it is the smallest architecture change that gives locality, leverage, and testable preserve-or-diagnose behavior.
+AxonHub preserves the author’s transformer framework. Every protocol field has **one primary owner** before code is written:
+
+| Field kind | Owner |
+|---|---|
+| Stable cross-protocol semantics | `llm.Request` / `llm.Response` (CrossProtocolCanonical) |
+| OpenAI Responses official / Codex usage-profile fields | `llm/transformer/openai/responses` + `ProviderExtensions.OpenAIResponses` |
+| OpenAI Chat official / Chat-only raw fields | Chat transformer + Chat-native PE or same-protocol raw owner (not common `llm.Request` widen) |
+| Anthropic official / companion fields | Anthropic transformer + `ProviderExtensions.Anthropic` (migrate off metadata body dumps) |
+| Provider-specific controls | Named provider extension / adapter |
+| Same-protocol unknowns | Same-protocol raw fallback (re-emit only to that family) |
+| Cross-protocol incompatible | `ProviderExtensions.Diagnostics.LossyDowngrades` |
+| Stream events | Stream fidelity path (not request-body models) |
+
+**Rejected options** (still rejected):
+
+- Put every missing field into `llm.Request` → universal AST, blast radius.
+- Use `PassThroughBody` as the fix → bytes without ownership/diagnostics.
+- Patch each provider adapter independently → scatters field-loss policy.
+- **Accepted:** deepen native preservation seams; one owner per field; preserve-or-diagnose tests at the public transformer seam.
+
+## Historical first slice (do not re-freeze)
+
+The **first** implementation slice was frozen to **OpenAI Responses → OpenAI Responses** so Codex/MCP/lazy-loading and official Responses request fields could land without bundling Chat emission policy, Anthropic native work, and stream fidelity into one unreviewable change.
+
+That freeze was **ordering**, not a permanent prohibition.
+
+## Implementation progress (2026-07-22)
+
+FieldOwnership rules now apply to **all** protocols. Later slices already landed evidence for:
+
+- Chat same-protocol raw preserve (`n`, cache retention, audio, prediction, moderation, `web_search_options`, deprecated functions / function_call) and custom-tool carriers (residuals remain on cross-protocol completeness).
+- Anthropic same-protocol metadata/raw for `container`, `inference_geo`, `mcp_servers`, `mcp_toolset` (cross-protocol still no-synth / Lossy).
+- Responses response/stream carriers (`RawOutputItems`, `RawStreamEvents`) and encrypted-reasoning recovery policy in orchestrator (strip shape still dual-path residual).
+- Shared LossyDowngrade helpers for Chat / Responses / Anthropic targets.
+
+**Remaining work is residual cutover and dual-path deletion**, not “wait until Responses request-only is finished before touching Chat.”
 
 ## Consequences
 
-The first implementation must not fix Chat, Anthropic, or stream fidelity in the same slice. It must first prove same-protocol OpenAI Responses preservation, then later slices can reuse the field-ownership rules for Chat emission policy, Anthropic native preservation, LossyDowngrade diagnostics, and stream event fidelity.
+- New work must name the owner **before** editing code.
+- Same-protocol tests before cross-protocol bridges.
+- Do not reintroduce “first slice freeze” as a reason to reject Chat/Anthropic/stream fixes that already have ownership rules and tests.
+- Completion claims still require the strict verification matrix `CONFIRMED` gate—not ADR progress tables alone.

@@ -1,3 +1,5 @@
+> **Stale-risk (2026-07-22):** P2 notes that store Responses `include` / encrypted include on `TransformerMetadata[shared.MetadataKeyInclude]` are **obsolete**. Authoritative owner is `ProviderExtensions.OpenAIResponses.Request.Include`. Use ADR 0001/0002 + protocols baselines + current `llm/` code; this draft is inventory history only.
+
 # Batch 8/9 Round 1-2 Draft: Reasoning / Thinking / Stream
 
 - Agent: Agent 5 — Reasoning / Thinking / Stream

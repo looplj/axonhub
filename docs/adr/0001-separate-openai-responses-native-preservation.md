@@ -1,15 +1,45 @@
 # Separate OpenAI Responses native preservation from cross-protocol canonical conversion
 
-AxonHub will treat OpenAI Responses as a native protocol surface, not merely as another projection of `llm.Request`. `llm.Request` remains the cross-protocol canonical abstraction for shared model semantics, while OpenAI Responses-specific structures such as `namespace`, `tool_search`, `additional_tools`, `function_call.namespace`, `tool_search_output`, `client_metadata`, and unknown future fields are preserved in a Responses native/raw layer for Responses-to-Responses routing. Cross-protocol routes may still perform lossy downgrade, such as flattening a namespace into a function name, but that downgrade must be explicit and diagnosable rather than the default same-protocol behavior.
+**Status:** Accepted (direction durable). **Implementation progress refreshed:** 2026-07-22.
 
-`passThroughBody` remains useful as an operational mitigation and as a correctness baseline, but it is not the architectural fix. The fix is that the Responses transformer/native layer must parse or carry Responses-only fields without forcing them through `llm.Request`, so same-protocol routes can still inspect, log, account, and re-emit requests without losing Codex/OpenAI Responses semantics.
+## Decision (durable)
 
-The target scope is full OpenAI Responses native round-trip, not a narrow Codex-only patch. Priority buckets such as P0/P1 are implementation ordering only; the final transformer should preserve all standard Responses request fields, tool variants, input/output item variants, stream events, and unknown future fields where same-protocol re-emission is possible.
+AxonHub treats OpenAI Responses as a **native protocol surface**, not merely as another projection of `llm.Request`.
 
-The native layer should be a complete structured AST plus raw fallback, not raw fallback alone. Known OpenAI Responses fields should be represented as first-class structures so AxonHub can inspect, diagnose, test, and intentionally downgrade them; unknown or future fields should remain available as raw JSON and be merged back during same-protocol emission.
+- `llm.Request` / `llm.Response` remain **CrossProtocolCanonical** for shared model semantics only.
+- Responses-only structures (for example `namespace` tools, `tool_search`, `additional_tools`, function-call `namespace`, `tool_search_output`, unknown future fields, and same-protocol raw fragments) live in the Responses transformer package and **`ProviderExtensions.OpenAIResponses`**, for Responses→Responses routing.
+- Cross-protocol routes may still perform **LossyDowngrade** (for example flattening a namespace into a function name), but that downgrade must be **explicit and diagnosable**, never the default same-protocol behavior.
+- **`PassThroughBody`** remains an operational mitigation and correctness baseline. It is **not** the architectural fix. The fix is structured native/raw ownership so same-protocol routes can inspect, log, account, and re-emit without losing OpenAIResponsesNative / CodexResponsesProfile semantics.
+- Target scope is **FullNativeRoundTrip** (request + response + stream) where same-protocol re-emission is possible. P0/P1 labels are ordering only, not a permanent scope cut.
+- The native layer is structured AST **plus** raw fallback—not raw alone. Do not introduce a universal multi-protocol AST. Prefer deepening `llm/transformer/openai/responses` over a new framework.
+- Do not dump Responses-only fields into `llm.Request`. If a field cannot be owned cleanly, document the architecture gap before adding workarounds.
 
-Implementation must stay aligned with the existing AxonHub architecture. The intended change is a small, clear extension around the OpenAI Responses transformer/native extension boundary, not a broad rewrite and not a dumping ground inside `llm.Request`. If a required Responses field cannot be represented cleanly in the current architecture, that architecture gap should be called out explicitly before adding workaround code.
+## Historical staging (do not re-freeze)
 
-Implementation should be staged. The first implementation slice is request native round-trip only: top-level request fields, tools, input items, tool choice, and request unknown-field preservation. Response body and stream event native round-trip remain part of the full target but should be implemented in later slices to keep the first change reviewable.
+Original staging (2026-07) started with **request** native round-trip first, then response body and stream events, to keep the first change reviewable. That was an **ordering choice**, not a permanent ban on later work.
 
-The first implementation should use the existing `llm/transformer/openai/responses` package rather than introducing a new protocol framework. Native AST, raw fallback, and canonical conversion should be separated by files and functions inside that package. If later response/stream work proves that this package boundary is too cramped, that should be raised as a separate architecture decision instead of preemptively adding a new abstraction now.
+## Implementation progress (2026-07-22) — replaces freeze wording
+
+The following already exist in code and tests and must not be treated as “out of scope / not started”:
+
+| Area | Owner (current) | Notes |
+|---|---|---|
+| Request top-level natives (`include`, `prompt_cache_retention`, `max_tool_calls`, `truncation`, `background`, …) | `ProviderExtensions.OpenAIResponses.Request` | Not `TransformerMetadata` body dump |
+| Request raw tools / input fragments / stream_options raw | Same PE request extensions | Same-protocol re-emit only |
+| Response lifecycle + raw top-level / **RawOutputItems** | `ProviderExtensions.OpenAIResponses.Response` | Encrypted reasoning id+ciphertext pairing |
+| Response **RawStreamEvents** | Same PE response extensions | Same-protocol stream replay |
+| Request input item identities | `Message` / `ToolCall` carriers + PE raw | See guidelines § request input identity |
+| Cross-protocol loss | `ProviderExtensions.Diagnostics.LossyDowngrades` | Target outbound owns diagnose decisions |
+| Codex usage profile | Responses native path (not a private protocol) | e.g. encrypted include injection in codex outbound |
+
+**Still residual / incomplete cutovers** (do not pretend finished): dual metadata leftovers, Chat body-as-sidecar, custom-tool multi-path, pass-through vs convert contract, Anthropic natives still partly on `TransformerMetadata`. Track in strict verification matrix + architecture slices—not by re-freezing this ADR to “request only.”
+
+## Public baseline note
+
+`client_metadata` may appear in native/raw carrying for same-protocol clients, but **public OpenAI P0 baselines** in `docs/specs/protocols/` currently do **not** treat it as a confirmed public Responses field. Codex/session metadata survival is a product/usage concern; do not claim public-protocol completion from it alone.
+
+## Consequences
+
+- Same-protocol Responses→Responses uses PE + transformer native/raw, not pass-through-as-architecture.
+- Reviewers must judge new work against **this progress table** and the strict matrix, not against the historical “request-only first slice” sentence.
+- Package boundary remains `llm/transformer/openai/responses` until a separate ADR says otherwise.

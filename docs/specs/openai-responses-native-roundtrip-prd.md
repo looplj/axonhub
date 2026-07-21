@@ -1,3 +1,8 @@
+> **Historical PRD (planning baseline).** Request-only “first phase” wording is **ordering history**, not current freeze.
+> Durable decisions live in `docs/adr/0001-separate-openai-responses-native-preservation.md` and `docs/adr/0002-protocol-field-ownership-and-first-preservation-slice.md` (refreshed 2026-07-22).
+> Implementation progress (response `RawOutputItems` / stream raw / Chat & Anthropic same-protocol evidence) supersedes “phase 1 request only” as a scope ban.
+> For wire facts use `docs/specs/protocols/*-protocol.md`; for completion use the strict verification matrix.
+
 # OpenAI Responses Native Round-Trip PRD
 
 ## Problem Statement

@@ -96,9 +96,17 @@ Rules:
 - Shared JSON helpers under `llm/internal/pkg/xjson` may clone/capture raw JSON bytes only. They must not contain protocol field names, protocol ownership decisions, target protocol capability checks, or downgrade reason/severity policy.
 - LossyDowngrade presence decisions belong in the target outbound adapter. Shared helpers may centralize default diagnostic writing (`present=false` guard, default reason/severity, de-dup delegation) but must not centralize field matrices until a separate reviewed design proves the target-policy boundary stays explicit.
 
-## First Slice Constraint
+## Slice Scope Rules (updated 2026-07-22)
 
-The first implementation slice is frozen to OpenAI Responses -> OpenAI Responses native preservation. It may cover official Responses fields, Codex Responses MCP/lazy-loading identity, raw-only Responses input/tool variants, and same-protocol unknown fallback. It must not bundle Chat emission policy, Anthropic native preservation, or stream event fidelity.
+The historical **first** implementation slice was OpenAI Responses → OpenAI Responses native preservation (request-first staging). That freeze is **complete as an ordering milestone**, not a permanent ban.
+
+Current rules for new slices:
+
+- Reuse FieldOwnership from ADR 0002 for **all** protocols (Responses, Chat, Anthropic, streams).
+- Prefer residuals from `protocol-conversion-strict-verification-matrix.md` over re-opening completed same-protocol evidence (see “Same-protocol evidence status” above).
+- Do not bundle unrelated protocol families into one unreviewable change; one owner boundary per PR/slice is still required.
+- Do **not** reject Chat / Anthropic / response / stream fixes solely because an old doc said “first slice Responses-only.”
+- Do **not** widen `llm.Request` with protocol-private fields; deepen PE / native / raw seams instead.
 
 ## Review Checklist
 

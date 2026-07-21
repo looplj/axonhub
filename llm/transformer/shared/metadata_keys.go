@@ -8,8 +8,9 @@ const (
 	// MetadataKeyModel carries the original request model name so outbound
 	// response builders can backfill it (used by image/video/embedding outbounds).
 	MetadataKeyModel = "model"
-	// MetadataKeyInclude carries the responses API "include" directive
-	// (e.g. "reasoning.encrypted_content"). Shared between responses and codex.
+	// MetadataKeyInclude is deprecated for Responses body ownership.
+	// Responses "include" is stored on ProviderExtensions.OpenAIResponses.Request.Include.
+	// Kept only so old docs/tests that mention the symbol can be grepped; do not write this key.
 	MetadataKeyInclude = "include"
 	// MetadataKeyResponsesWebSearchCalls carries responses API web_search call
 	// results. Shared between responses (writer) and anthropic (reader).
