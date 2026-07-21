@@ -92,7 +92,7 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 // User messages become items with content array containing input_text items.
 // Assistant messages become items with type "message" and content array containing output_text items.
 // Tool calls become function_call items, tool results become function_call_output items.
-func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions) Input {
+func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions, metadata map[string]any) Input {
 	if len(msgs) == 0 {
 		return Input{}
 	}
@@ -114,7 +114,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 		case "user", "developer":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
-			assistantItems := convertAssistantMessage(msg)
+			assistantItems := convertAssistantMessage(msg, metadata)
 			items = append(items, assistantItems...)
 
 			// Record tool call types for later tool result encoding.
@@ -175,6 +175,17 @@ func convertUserMessage(msg llm.Message) Item {
 						Detail:   p.ImageURL.Detail,
 					})
 				}
+			case "input_audio":
+				if p.InputAudio != nil {
+					contentItems = append(contentItems, Item{
+						Type:       "input_audio",
+						InputAudio: p.InputAudio,
+					})
+				}
+			case "file":
+				if file, ok := inputFileItemFromContentPart(p); ok {
+					contentItems = append(contentItems, file)
+				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {
 					contentItems = append(contentItems, compactionItemFromPart(p, p.Type))
@@ -184,15 +195,37 @@ func convertUserMessage(msg llm.Message) Item {
 	}
 
 	return Item{
+		ID:      msg.ID,
 		Type:    "message",
 		Role:    msg.Role,
 		Content: &Input{Items: contentItems},
 	}
 }
 
+func inputFileItemFromContentPart(part llm.MessageContentPart) (Item, bool) {
+	if part.OpenAIChatFile == nil {
+		return Item{}, false
+	}
+
+	file := Item{
+		Type:     "input_file",
+		FileData: part.OpenAIChatFile.FileData,
+		FileID:   part.OpenAIChatFile.FileID,
+		Filename: part.OpenAIChatFile.Filename,
+	}
+	if fileURL, ok := part.TransformerMetadata[responsesInputFileURLPartTransformerMetadataKey].(*string); ok {
+		file.FileURL = fileURL
+	}
+	if detail, ok := part.TransformerMetadata[responsesInputFileDetailPartTransformerMetadataKey].(*string); ok {
+		file.Detail = detail
+	}
+
+	return file, true
+}
+
 // convertAssistantMessage converts an assistant message to Responses API Item(s) format.
 // Returns multiple items if the message contains tool calls.
-func convertAssistantMessage(msg llm.Message) []Item {
+func convertAssistantMessage(msg llm.Message, metadata map[string]any) []Item {
 	var (
 		items         []Item
 		toolCallItems []Item
@@ -201,12 +234,30 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	// Handle reasoning content first.
 	// For Requests, reasoning is represented as an `input` item with type="reasoning".
 	// The Responses API uses the `summary` field to hold the reasoning summary text.
+	//
+	// Emit a reasoning item when:
+	// 1) ResponseReasoningItemID != nil — Responses-native origin (summary-only or with
+	//    encrypted content; empty id means omit id), or
+	// 2) encrypted content is present — legacy/common path that already used signature
+	//    as the gate.
+	// Do NOT emit solely because ReasoningContent is set: that would invent Responses
+	// reasoning items for Chat/Anthropic cross-protocol text.
 	var encryptedContent *string
 	if msg.ReasoningSignature != nil {
-		encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
+		if msg.ResponseReasoningItemID != nil {
+			// Responses-native identity is authoritative provenance. encrypted_content
+			// is opaque and has no documented prefix contract, so preserve the exact
+			// value paired with its item id instead of guessing from ciphertext bytes.
+			encryptedContent = msg.ReasoningSignature
+		} else {
+			// The common signature slot is also used by Anthropic and Gemini. Only the
+			// legacy cross-protocol path needs format filtering.
+			encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
+		}
 	}
 
-	if encryptedContent != nil {
+	emitResponsesReasoning := msg.ResponseReasoningItemID != nil || encryptedContent != nil
+	if emitResponsesReasoning {
 		summary := []ReasoningSummary{}
 		if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
 			summary = append(summary, ReasoningSummary{
@@ -215,7 +266,13 @@ func convertAssistantMessage(msg llm.Message) []Item {
 			})
 		}
 
+		reasoningItemID := ""
+		if msg.ResponseReasoningItemID != nil {
+			reasoningItemID = *msg.ResponseReasoningItemID
+		}
+		// Empty id omits via omitempty. Never fall back to Message.ID.
 		items = append(items, Item{
+			ID:               reasoningItemID,
 			Type:             "reasoning",
 			EncryptedContent: encryptedContent,
 			Summary:          summary,
@@ -226,17 +283,43 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	for _, tc := range msg.ToolCalls {
 		if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
+				ID:        tc.ResponseItemID,
+				Type:      "custom_tool_call",
+				CallID:    tc.ResponseCustomToolCall.CallID,
+				Name:      tc.ResponseCustomToolCall.Name,
+				Namespace: tc.ResponseCustomToolCall.Namespace,
+				Input:     lo.ToPtr(tc.ResponseCustomToolCall.Input),
+			})
+		} else if tc.OpenAIChatCustomToolCall != nil {
+			// Explicit Chat→Responses custom bridge. Chat custom calls live on
+			// OpenAIChatCustomToolCall with an empty Function carrier; do not
+			// misclassify them as function_call.
+			callID := tc.ID
+			toolCallItems = append(toolCallItems, Item{
+				ID:     tc.ResponseItemID,
 				Type:   "custom_tool_call",
-				CallID: tc.ResponseCustomToolCall.CallID,
-				Name:   tc.ResponseCustomToolCall.Name,
-				Input:  lo.ToPtr(tc.ResponseCustomToolCall.Input),
+				CallID: callID,
+				Name:   tc.OpenAIChatCustomToolCall.Name,
+				Input:  lo.ToPtr(tc.OpenAIChatCustomToolCall.Input),
 			})
 		} else {
+			// Restore namespace group identity. If the ToolCall already carries
+			// a Namespace (e.g. from a Responses function_call input item),
+			// use it directly; otherwise fall back to table lookup for
+			// composite names produced by the upstream model.
+			fcName := tc.Function.Name
+			fcNamespace := tc.Function.Namespace
+			if fcNamespace == "" {
+				fcName, fcNamespace = resolveNamespaceFromMetadata(metadata, tc.Function.Name)
+			}
 			toolCallItems = append(toolCallItems, Item{
+				// ResponseItemID is the Responses item id; tc.ID is call_id only.
+				// Do not fall back to call_id when item id is absent.
+				ID:        tc.ResponseItemID,
 				Type:      "function_call",
 				CallID:    tc.ID,
-				Name:      tc.Function.Name,
-				Namespace: tc.Function.Namespace,
+				Name:      fcName,
+				Namespace: fcNamespace,
 				Arguments: tc.Function.Arguments,
 			})
 		}
@@ -250,6 +333,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 		}
 
 		items = append(items, Item{
+			ID:      msg.ID,
 			Type:    "message",
 			Role:    msg.Role,
 			Status:  lo.ToPtr("completed"),
@@ -271,6 +355,14 @@ func convertAssistantMessage(msg llm.Message) []Item {
 					contentItems = append(contentItems, Item{
 						Type: "output_text",
 						Text: p.Text,
+					})
+				}
+			case "image_url":
+				if p.ImageURL != nil {
+					contentItems = append(contentItems, Item{
+						Type:     "input_image",
+						ImageURL: &p.ImageURL.URL,
+						Detail:   p.ImageURL.Detail,
 					})
 				}
 			case "compaction", "compaction_summary":
@@ -301,11 +393,33 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 		output.Text = msg.Content.Content
 	} else if len(msg.Content.MultipleContent) > 0 {
 		for _, p := range msg.Content.MultipleContent {
-			if p.Type == "text" && p.Text != nil {
-				output.Items = append(output.Items, Item{
-					Type: "input_text",
-					Text: p.Text,
-				})
+			switch p.Type {
+			case "text":
+				if p.Text != nil {
+					output.Items = append(output.Items, Item{
+						Type: "input_text",
+						Text: p.Text,
+					})
+				}
+			case "image_url":
+				if p.ImageURL != nil {
+					output.Items = append(output.Items, Item{
+						Type:     "input_image",
+						ImageURL: &p.ImageURL.URL,
+						Detail:   p.ImageURL.Detail,
+					})
+				}
+			case "input_audio":
+				if p.InputAudio != nil {
+					output.Items = append(output.Items, Item{
+						Type:       "input_audio",
+						InputAudio: p.InputAudio,
+					})
+				}
+			case "file":
+				if file, ok := inputFileItemFromContentPart(p); ok {
+					output.Items = append(output.Items, file)
+				}
 			}
 		}
 	}
@@ -316,6 +430,7 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 	}
 
 	return Item{
+		ID:     msg.ID,
 		Type:   itemType,
 		CallID: lo.FromPtr(msg.ToolCallID),
 		Output: &output,
@@ -396,6 +511,61 @@ func convertCustomToTool(src llm.Tool) Tool {
 	return tool
 }
 
+// convertChatCustomToTool bridges Chat Completions custom-tool declarations
+// (OpenAIChatCustomTool) into the Responses flat custom tool shape.
+// Format JSON is Chat-native (nested grammar object or text); map only known
+// fields and do not forward unrelated metadata.
+func convertChatCustomToTool(src llm.Tool) Tool {
+	tool := Tool{Type: "custom"}
+	if src.OpenAIChatCustomTool == nil {
+		return tool
+	}
+	chat := src.OpenAIChatCustomTool
+	tool.Name = chat.Name
+	if chat.Description != nil {
+		tool.Description = *chat.Description
+	}
+	if len(chat.Format) > 0 {
+		tool.Format = convertChatCustomToolFormat(chat.Format)
+	}
+	return tool
+}
+
+func convertChatCustomToolFormat(raw json.RawMessage) *CustomToolFormat {
+	if len(raw) == 0 {
+		return nil
+	}
+
+	// Chat grammar wire: {"type":"grammar","grammar":{"syntax":"...","definition":"..."}}
+	var nested struct {
+		Type    string `json:"type"`
+		Grammar *struct {
+			Syntax     string `json:"syntax"`
+			Definition string `json:"definition"`
+		} `json:"grammar"`
+		// Also accept already-flat Responses-like shape for resilience.
+		Syntax     string `json:"syntax"`
+		Definition string `json:"definition"`
+	}
+	if err := json.Unmarshal(raw, &nested); err != nil {
+		return nil
+	}
+	if nested.Type == "" {
+		return nil
+	}
+	format := &CustomToolFormat{Type: nested.Type}
+	if nested.Type == "grammar" {
+		if nested.Grammar != nil {
+			format.Syntax = nested.Grammar.Syntax
+			format.Definition = nested.Grammar.Definition
+		} else {
+			format.Syntax = nested.Syntax
+			format.Definition = nested.Definition
+		}
+	}
+	return format
+}
+
 // convertFunctionToTool converts an llm.Tool function to Responses API Tool format.
 func convertFunctionToTool(src llm.Tool) Tool {
 	tool := Tool{
@@ -469,72 +639,151 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 		return nil
 	}
 
-	result := &ToolChoice{}
-
 	if src.ToolChoice != nil {
 		// String mode like "none", "auto", "required"
-		result.Mode = src.ToolChoice
-	} else if src.NamedToolChoice != nil {
+		return &ToolChoice{Mode: src.ToolChoice}
+	}
+	if src.NamedToolChoice != nil {
 		// Specific tool choice
-		result.Type = &src.NamedToolChoice.Type
-		result.Name = &src.NamedToolChoice.Function.Name
+		return &ToolChoice{
+			Type: &src.NamedToolChoice.Type,
+			Name: &src.NamedToolChoice.Function.Name,
+		}
+	}
+	if src.OpenAIChatCustomToolChoice != nil {
+		toolType := "custom"
+		return &ToolChoice{
+			Type: &toolType,
+			Name: &src.OpenAIChatCustomToolChoice.Name,
+		}
+	}
+	if src.OpenAIChatAllowedTools != nil {
+		tools := convertOpenAIChatAllowedTools(src.OpenAIChatAllowedTools.Tools)
+		if len(tools) == 0 {
+			return nil
+		}
+		toolType := "allowed_tools"
+		mode := src.OpenAIChatAllowedTools.Mode
+		return &ToolChoice{
+			Mode:  &mode,
+			Type:  &toolType,
+			Tools: tools,
+		}
 	}
 
-	return result
+	return nil
 }
 
-// convertStreamOptions converts llm.StreamOptions to Responses API StreamOptions.
-// IncludeObfuscation is read from TransformerMetadata since it's a Responses API specific field.
-func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *StreamOptions {
-	if src == nil {
+func convertOpenAIChatAllowedTools(rawTools []json.RawMessage) []ToolOption {
+	tools := make([]ToolOption, 0, len(rawTools))
+	for _, rawTool := range rawTools {
+		var tool struct {
+			Type     string `json:"type"`
+			Function *struct {
+				Name string `json:"name"`
+			} `json:"function"`
+		}
+		if json.Unmarshal(rawTool, &tool) != nil || tool.Type != "function" || tool.Function == nil || tool.Function.Name == "" {
+			continue
+		}
+		tools = append(tools, ToolOption{Type: "function", Name: tool.Function.Name})
+	}
+	return tools
+}
+
+func convertStreamOptions(raw json.RawMessage) *StreamOptions {
+	if len(raw) == 0 {
 		return nil
 	}
 
-	includeObfuscation := xmap.GetBoolPtr(metadata, "include_obfuscation")
-	if includeObfuscation == nil {
+	var result StreamOptions
+	if err := json.Unmarshal(raw, &result); err != nil || result.IncludeObfuscation == nil {
 		return nil
 	}
 
-	return &StreamOptions{
-		IncludeObfuscation: includeObfuscation,
-	}
+	return &result
 }
 
 // convertReasoning converts llm.Request reasoning fields to Responses API Reasoning.
 // Only one of "reasoning.effort" and "reasoning.max_tokens" can be specified.
 // Priority is given to effort when both are present.
 func convertReasoning(req *llm.Request) *Reasoning {
-	reasoningContext := ""
-	if requestExt := openAIResponsesRequestExtensions(req); requestExt != nil {
-		reasoningContext = requestExt.ReasoningContext
+	// Restore reasoning.enabled from TransformerMetadata (OpenRouter
+	// ReasoningConfig.enabled has no canonical slot; mirrors top_k handling).
+	enabled := xmap.GetBoolPtr(req.TransformerMetadata, responsesReasoningEnabledTransformerMetadataKey)
+
+	contextMode := ""
+	if req.ProviderExtensions != nil && req.ProviderExtensions.OpenAIResponses != nil && req.ProviderExtensions.OpenAIResponses.Request != nil && req.ProviderExtensions.OpenAIResponses.Request.ReasoningContext != "" {
+		contextMode = req.ProviderExtensions.OpenAIResponses.Request.ReasoningContext
+	} else if req.TransformerMetadata != nil {
+		if v, ok := req.TransformerMetadata[responsesReasoningContextTransformerMetadataKey].(string); ok {
+			contextMode = v
+		}
 	}
 
 	// Check if any reasoning-related fields are present
-	hasReasoningFields := reasoningContext != "" ||
-		req.ReasoningEffort != "" ||
+	generateSummaryMeta := ""
+	if req.TransformerMetadata != nil {
+		if v, ok := req.TransformerMetadata[responsesReasoningGenerateSummaryValueTransformerMetadataKey].(string); ok {
+			generateSummaryMeta = v
+		}
+	}
+	hasReasoningFields := req.ReasoningEffort != "" ||
 		req.ReasoningBudget != nil ||
-		req.ReasoningSummary != nil
+		req.ReasoningSummary != nil ||
+		enabled != nil ||
+		contextMode != "" ||
+		generateSummaryMeta != ""
 	if !hasReasoningFields {
 		return nil
 	}
 
 	reasoning := &Reasoning{
-		Context:   reasoningContext,
 		Effort:    req.ReasoningEffort,
+		Context:   contextMode,
 		MaxTokens: req.ReasoningBudget,
-	}
-
-	// Handle summary field (generate_summary is already merged at inbound)
-	if req.ReasoningSummary != nil {
-		reasoning.Summary = *req.ReasoningSummary
+		Enabled:   enabled,
 	}
 
 	// If both effort and budget are specified, prioritize effort as per requirement
 	if req.ReasoningEffort != "" && req.ReasoningBudget != nil {
 		reasoning.MaxTokens = nil // Ignore max_tokens when effort is specified
 	}
+	// Restore summary / generate_summary as distinct wire fields when possible.
+	generateSummary := ""
+	generateOnly := false
+	if req.TransformerMetadata != nil {
+		if v, ok := req.TransformerMetadata[responsesReasoningGenerateSummaryValueTransformerMetadataKey].(string); ok {
+			generateSummary = v
+		}
+		if origin, ok := req.TransformerMetadata[responsesReasoningGenerateSummaryOriginTransformerMetadataKey].(bool); ok && origin {
+			generateOnly = true
+		}
+	}
+	if generateOnly && req.ReasoningSummary != nil {
+		reasoning.GenerateSummary = *req.ReasoningSummary
+	} else {
+		if req.ReasoningSummary != nil {
+			reasoning.Summary = *req.ReasoningSummary
+		}
+		if generateSummary != "" {
+			reasoning.GenerateSummary = generateSummary
+		}
+	}
 
 	return reasoning
+}
+
+// restoreCacheControl rebuilds the top-level cache_control directive from the
+// opaque json.RawMessage carried in TransformerMetadata (mirrors top_k handling).
+func restoreCacheControl(meta map[string]any) *CacheControl {
+	if raw, ok := meta[shared.TransformerMetadataKeyCacheControl].(json.RawMessage); ok && len(raw) > 0 {
+		var cc CacheControl
+		if err := json.Unmarshal(raw, &cc); err == nil && cc.Type != "" {
+			return &cc
+		}
+	}
+	return nil
 }
 
 func annotationToLLM(a Annotation, textRuneOffset int64) llm.Annotation {
@@ -621,6 +870,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		toolCalls            []llm.ToolCall
 		annotations          []llm.Annotation
 		visibleTextRuneCount int64
+		refusalText          string
 	)
 
 	flushText := func() {
@@ -646,16 +896,23 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				continue
 			}
 			for _, contentItem := range outputItem.Content.Items {
-				if contentItem.Type == "output_text" {
+				switch contentItem.Type {
+				case "output_text":
 					annotations = appendOutputText(&textContent, &visibleTextRuneCount, annotations, contentItem)
+				case "refusal":
+					if contentItem.Refusal != nil && *contentItem.Refusal != "" {
+						refusalText = *contentItem.Refusal
+					}
 				}
 			}
 		case "output_text":
 			annotations = appendOutputText(&textContent, &visibleTextRuneCount, annotations, outputItem)
 		case "function_call":
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: "function",
+				ID:             outputItem.CallID,
+				ResponseItemID: outputItem.ID,
+				Status:         lo.FromPtr(outputItem.Status),
+				Type:           "function",
 				Function: llm.FunctionCall{
 					Name:      outputItem.Name,
 					Namespace: outputItem.Namespace,
@@ -669,17 +926,39 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			}
 
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:             outputItem.CallID,
+				ResponseItemID: outputItem.ID,
+				Status:         lo.FromPtr(outputItem.Status),
+				Type:           llm.ToolTypeResponsesCustomTool,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: outputItem.CallID,
-					Name:   outputItem.Name,
-					Input:  inputStr,
+					CallID:    outputItem.CallID,
+					Name:      outputItem.Name,
+					Namespace: outputItem.Namespace,
+					Input:     inputStr,
 				},
 			})
 		case "reasoning":
-			for _, summary := range outputItem.Summary {
-				reasoningContent.WriteString(summary.Text)
+			// Prefer content[]/reasoning_text; fall back to summary_text.
+			hasReasoningText := false
+			for _, part := range outputItem.ReasoningContent {
+				if part.Text == "" {
+					continue
+				}
+				reasoningContent.WriteString(part.Text)
+				hasReasoningText = true
+			}
+			if !hasReasoningText {
+				for _, summary := range outputItem.Summary {
+					reasoningContent.WriteString(summary.Text)
+				}
+			}
+			if transformerMetadata != nil {
+				if len(outputItem.ReasoningContent) > 0 {
+					transformerMetadata[responsesReasoningTextContentTransformerMetadataKey] = append([]ReasoningContent(nil), outputItem.ReasoningContent...)
+				}
+				if len(outputItem.Summary) > 0 {
+					transformerMetadata[responsesReasoningSummaryContentTransformerMetadataKey] = append([]ReasoningSummary(nil), outputItem.Summary...)
+				}
 			}
 
 			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
@@ -691,7 +970,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			imageOutputFormat := "png"
 
 			if transformerMetadata != nil {
-				if imgFmt, ok := transformerMetadata["image_output_format"].(string); ok && imgFmt != "" {
+				if imgFmt, ok := transformerMetadata[responsesImageOutputFormatTransformerMetadataKey].(string); ok && imgFmt != "" {
 					imageOutputFormat = imgFmt
 				}
 			}
@@ -703,10 +982,10 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 						URL: `data:image/` + imageOutputFormat + `;base64,` + *outputItem.Result,
 					},
 					TransformerMetadata: map[string]any{
-						"background":    outputItem.Background,
-						"output_format": outputItem.OutputFormat,
-						"quality":       outputItem.Quality,
-						"size":          outputItem.Size,
+						responsesBackgroundTransformerMetadataKey:           outputItem.Background,
+						responsesImageGenOutputFormatTransformerMetadataKey: outputItem.OutputFormat,
+						responsesImageGenQualityTransformerMetadataKey:      outputItem.Quality,
+						responsesImageGenSizeTransformerMetadataKey:         outputItem.Size,
 					},
 				})
 			}
@@ -749,6 +1028,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		Role:        "assistant",
 		ToolCalls:   toolCalls,
 		Annotations: annotations,
+		Refusal:     refusalText,
 	}
 
 	if reasoningContent.Len() > 0 {
@@ -758,7 +1038,6 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 	if reasoningSignature != nil {
 		msg.ReasoningSignature = reasoningSignature
 	}
-
 	if len(contentParts) == 1 && contentParts[0].Type == "text" && len(toolCalls) == 0 {
 		msg.Content = llm.MessageContent{
 			Content: contentParts[0].Text,

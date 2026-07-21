@@ -177,13 +177,12 @@ type Prompt struct {
 
 // Reasoning represents configuration options for reasoning models.
 type Reasoning struct {
-	// The reasoning context scope requested by internal Responses features.
+	// Context controls which reasoning items are rendered back on later turns.
+	// Any of "auto", "current_turn", "all_turns". Also used by internal Responses
+	// features (e.g. Responses Lite) as the reasoning context scope.
 	Context string `json:"context,omitempty"`
 	// The effort level for reasoning. Any of "low", "medium", "high".
 	Effort string `json:"effort,omitempty"`
-	// Context controls which reasoning items are rendered back on later turns.
-	// Any of "auto", "current_turn", "all_turns".
-	Context string `json:"context,omitempty"`
 	// Whether to generate a summary of the reasoning. Any of "auto", "concise", "detailed".
 	// Deprecated: use Summary instead. Keep as a separate wire field so
 	// same-protocol clients can still send/receive generate_summary.
