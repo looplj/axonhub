@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // OpenAICustomToolsSelector excludes candidates that can neither preserve an
@@ -50,27 +51,7 @@ func (s *OpenAICustomToolsSelector) Select(ctx context.Context, req *llm.Request
 }
 
 func hasOpenAICustomTools(req *llm.Request) bool {
-	if req == nil {
-		return false
-	}
-
-	for _, tool := range req.Tools {
-		if tool.Type == llm.ToolTypeResponsesCustomTool || tool.ResponseCustomTool != nil ||
-			(tool.Type == "custom" && tool.OpenAIChatCustomTool != nil) {
-			return true
-		}
-	}
-
-	for _, message := range req.Messages {
-		for _, toolCall := range message.ToolCalls {
-			if toolCall.Type == llm.ToolTypeResponsesCustomTool || toolCall.ResponseCustomToolCall != nil ||
-				(toolCall.Type == "custom" && toolCall.OpenAIChatCustomToolCall != nil) {
-				return true
-			}
-		}
-	}
-
-	return false
+	return shared.HasOpenAICustomTools(req)
 }
 
 func candidateSupportsOpenAICustomTools(candidate *ChannelModelsCandidate) bool {

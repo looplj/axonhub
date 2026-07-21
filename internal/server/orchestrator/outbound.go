@@ -498,7 +498,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	if err != nil {
 		return nil, err
 	}
-	if err := p.customToolBridge.rehydrateResponse(llmResponse); err != nil {
+	if err := p.customToolBridge.RehydrateResponse(llmResponse); err != nil {
 		return nil, err
 	}
 	return llmResponse, nil

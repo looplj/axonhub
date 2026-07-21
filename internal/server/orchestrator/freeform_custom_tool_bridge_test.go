@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 	anthropictransformer "github.com/looplj/axonhub/llm/transformer/anthropic"
 	chattransformer "github.com/looplj/axonhub/llm/transformer/openai"
 	responsestransformer "github.com/looplj/axonhub/llm/transformer/openai/responses"
@@ -326,9 +327,9 @@ func TestPersistentOutboundTransformer_BridgedProviderCallsReachResponsesClientA
 }
 
 func TestFreeformCustomToolBridgeStream_RehydratesFunctionArgumentChunks(t *testing.T) {
-	bridge := &freeformCustomToolBridge{byFunctionName: map[string]freeformCustomToolBridgeSpec{
-		"exec": {Name: "exec"},
-	}}
+	bridge := shared.NewFreeformCustomToolBridgeFromFunctionNames(map[string]string{
+		"exec": "exec",
+	})
 	finishReason := "tool_calls"
 	stream := newFreeformCustomToolBridgeStream(streams.SliceStream([]*llm.Response{
 		{
@@ -384,9 +385,9 @@ func TestFreeformCustomToolBridgeStream_RehydratesFunctionArgumentChunks(t *test
 }
 
 func TestFreeformCustomToolBridgeStream_ProducesResponsesCustomToolEvents(t *testing.T) {
-	bridge := &freeformCustomToolBridge{byFunctionName: map[string]freeformCustomToolBridgeSpec{
-		"exec": {Name: "exec"},
-	}}
+	bridge := shared.NewFreeformCustomToolBridgeFromFunctionNames(map[string]string{
+		"exec": "exec",
+	})
 	finishReason := "tool_calls"
 	providerStream := newFreeformCustomToolBridgeStream(streams.SliceStream([]*llm.Response{
 		{
