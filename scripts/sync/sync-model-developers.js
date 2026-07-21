@@ -361,6 +361,62 @@ function filterProviders(data, allowedIds) {
 		}
 	}
 
+	// Merge Tencent plan providers into the Tencent developer
+	if (allowedIds.includes("tencent")) {
+		const tencentProviderKeys = [
+			"tencent-token-plan",
+			"tencent-tokenhub",
+			"tencent-coding-plan",
+		];
+		const mergedModels = new Map();
+		const baseProvider = filtered.tencent || data.providers.tencent || null;
+
+		// Process the base provider first so its metadata takes precedence
+		if (baseProvider) {
+			for (const model of baseProvider.models || []) {
+				const id = model.id?.toLowerCase() || "";
+				const normalizedId = id.startsWith("tencent/")
+					? id.slice("tencent/".length)
+					: id;
+				if (normalizedId && !mergedModels.has(normalizedId)) {
+					mergedModels.set(normalizedId, deepClone(model));
+				}
+			}
+		}
+
+		for (const key of tencentProviderKeys) {
+			const provider = data.providers[key];
+			if (!provider) continue;
+
+			for (const model of provider.models || []) {
+				const id = model.id?.toLowerCase() || "";
+				const normalizedId = id.startsWith("tencent/")
+					? id.slice("tencent/".length)
+					: id;
+				const isTencentModel =
+					normalizedId === "hy3" ||
+					normalizedId.startsWith("hy3-") ||
+					normalizedId.startsWith("hunyuan-");
+
+				if (!isTencentModel || mergedModels.has(normalizedId)) continue;
+				mergedModels.set(normalizedId, deepClone(model));
+			}
+		}
+
+		if (mergedModels.size > 0) {
+			filtered.tencent = {
+				...(baseProvider || {}),
+				id: "tencent",
+				name: "Tencent",
+				display_name: "Tencent",
+				models: Array.from(mergedModels.values()),
+			};
+			console.log(
+				`Merged ${mergedModels.size} Hy3/Hunyuan models into Tencent developer`,
+			);
+		}
+	}
+
 	// Merge xiaomi-token-plan-* providers into xiaomi developer
 	if (allowedIds.includes("xiaomi")) {
 		const xiaomiTokenPlanKeys = [
