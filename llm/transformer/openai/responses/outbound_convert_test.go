@@ -361,53 +361,34 @@ func TestConvertWebSearchToTool(t *testing.T) {
 func TestConvertStreamOptions(t *testing.T) {
 	tests := []struct {
 		name     string
-		src      *llm.StreamOptions
-		metadata map[string]any
+		raw      json.RawMessage
 		expected *StreamOptions
 	}{
 		{
-			name:     "nil stream options",
-			src:      nil,
-			metadata: nil,
+			name:     "empty raw",
+			raw:      nil,
 			expected: nil,
 		},
 		{
-			name: "include obfuscation false",
-			src: &llm.StreamOptions{
-				IncludeUsage: true,
-			},
-			metadata: map[string]any{
-				"include_obfuscation": lo.ToPtr(false),
-			},
-			expected: &StreamOptions{
-				IncludeObfuscation: lo.ToPtr(false),
-			},
+			name:     "include obfuscation false",
+			raw:      json.RawMessage(`{"include_obfuscation":false}`),
+			expected: &StreamOptions{IncludeObfuscation: lo.ToPtr(false)},
 		},
 		{
-			name: "include obfuscation true",
-			src: &llm.StreamOptions{
-				IncludeUsage: false,
-			},
-			metadata: map[string]any{
-				"include_obfuscation": lo.ToPtr(true),
-			},
-			expected: &StreamOptions{
-				IncludeObfuscation: lo.ToPtr(true),
-			},
+			name:     "include obfuscation true",
+			raw:      json.RawMessage(`{"include_obfuscation":true}`),
+			expected: &StreamOptions{IncludeObfuscation: lo.ToPtr(true)},
 		},
 		{
-			name: "no include obfuscation in metadata",
-			src: &llm.StreamOptions{
-				IncludeUsage: true,
-			},
-			metadata: map[string]any{},
+			name:     "no include obfuscation key",
+			raw:      json.RawMessage(`{"include_usage":true}`),
 			expected: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertStreamOptions(tt.src, tt.metadata)
+			result := convertStreamOptions(tt.raw)
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -505,16 +486,14 @@ func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
 		validate func(t *testing.T, chatReq *llm.Request)
 	}{
 		{
-			name: "converts MaxToolCalls to TransformerMetadata",
+			name: "converts MaxToolCalls to PE.Request",
 			req: &Request{
 				Model:        "gpt-4o",
 				MaxToolCalls: lo.ToPtr(int64(10)),
 			},
 			validate: func(t *testing.T, chatReq *llm.Request) {
-				require.NotNil(t, chatReq.TransformerMetadata)
-				v, ok := chatReq.TransformerMetadata["max_tool_calls"]
-				require.True(t, ok)
-				require.Equal(t, int64(10), *v.(*int64))
+				require.NotNil(t, chatReq.ProviderExtensions.OpenAIResponses.Request.MaxToolCalls)
+				require.Equal(t, int64(10), *chatReq.ProviderExtensions.OpenAIResponses.Request.MaxToolCalls)
 			},
 		},
 		{
@@ -529,29 +508,25 @@ func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
 			},
 		},
 		{
-			name: "converts PromptCacheRetention to TransformerMetadata",
+			name: "converts PromptCacheRetention to PE.Request",
 			req: &Request{
 				Model:                "gpt-4o",
 				PromptCacheRetention: lo.ToPtr("24h"),
 			},
 			validate: func(t *testing.T, chatReq *llm.Request) {
-				require.NotNil(t, chatReq.TransformerMetadata)
-				v, ok := chatReq.TransformerMetadata["prompt_cache_retention"]
-				require.True(t, ok)
-				require.Equal(t, "24h", *v.(*string))
+				require.NotNil(t, chatReq.ProviderExtensions.OpenAIResponses.Request.PromptCacheRetention)
+				require.Equal(t, "24h", *chatReq.ProviderExtensions.OpenAIResponses.Request.PromptCacheRetention)
 			},
 		},
 		{
-			name: "converts Truncation to TransformerMetadata",
+			name: "converts Truncation to PE.Request",
 			req: &Request{
 				Model:      "gpt-4o",
 				Truncation: lo.ToPtr("auto"),
 			},
 			validate: func(t *testing.T, chatReq *llm.Request) {
-				require.NotNil(t, chatReq.TransformerMetadata)
-				v, ok := chatReq.TransformerMetadata["truncation"]
-				require.True(t, ok)
-				require.Equal(t, "auto", *v.(*string))
+				require.NotNil(t, chatReq.ProviderExtensions.OpenAIResponses.Request.Truncation)
+				require.Equal(t, "auto", *chatReq.ProviderExtensions.OpenAIResponses.Request.Truncation)
 			},
 		},
 		{
@@ -567,16 +542,21 @@ func TestConvertToLLMRequest_TransformerMetadata(t *testing.T) {
 			},
 		},
 		{
-			name: "converts Include to TransformerMetadata",
+			name: "converts Include to PE.OpenAIResponses.Request",
 			req: &Request{
 				Model:   "gpt-4o",
 				Include: []string{"file_search_call.results", "reasoning.encrypted_content"},
 			},
 			validate: func(t *testing.T, chatReq *llm.Request) {
-				require.NotNil(t, chatReq.TransformerMetadata)
-				v, ok := chatReq.TransformerMetadata["include"]
-				require.True(t, ok)
-				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"}, v.([]string))
+				require.NotNil(t, chatReq.ProviderExtensions)
+				require.NotNil(t, chatReq.ProviderExtensions.OpenAIResponses)
+				require.NotNil(t, chatReq.ProviderExtensions.OpenAIResponses.Request)
+				require.Equal(t, []string{"file_search_call.results", "reasoning.encrypted_content"},
+					chatReq.ProviderExtensions.OpenAIResponses.Request.Include)
+				if chatReq.TransformerMetadata != nil {
+					_, ok := chatReq.TransformerMetadata["include"]
+					require.False(t, ok)
+				}
 			},
 		},
 		{
@@ -1558,7 +1538,7 @@ func TestConvertToLLMRequest_SamplingPenalties(t *testing.T) {
 }
 
 // TestConvertToLLMRequest_Background covers #15: Responses inbound must
-// preserve the top-level background flag (background mode) via TransformerMetadata.
+// preserve the top-level background flag on PE.OpenAIResponses.Request.
 func TestConvertToLLMRequest_Background(t *testing.T) {
 	t.Run("background true preserved", func(t *testing.T) {
 		req := &Request{
@@ -1568,9 +1548,8 @@ func TestConvertToLLMRequest_Background(t *testing.T) {
 
 		result, err := convertToLLMRequest(req)
 		require.NoError(t, err)
-		v, ok := result.TransformerMetadata["background"]
-		require.True(t, ok)
-		require.Equal(t, true, v)
+		require.NotNil(t, result.ProviderExtensions.OpenAIResponses.Request.Background)
+		require.Equal(t, true, *result.ProviderExtensions.OpenAIResponses.Request.Background)
 	})
 
 	t.Run("background absent stays absent", func(t *testing.T) {
@@ -1580,22 +1559,23 @@ func TestConvertToLLMRequest_Background(t *testing.T) {
 
 		result, err := convertToLLMRequest(req)
 		require.NoError(t, err)
-		_, ok := result.TransformerMetadata["background"]
-		require.False(t, ok)
+		if result.ProviderExtensions != nil && result.ProviderExtensions.OpenAIResponses != nil && result.ProviderExtensions.OpenAIResponses.Request != nil {
+			require.Nil(t, result.ProviderExtensions.OpenAIResponses.Request.Background)
+		}
 	})
 }
 
-// TestConvertToLLMRequest_Modalities covers #14: Responses inbound must
-// read modalities from the request body into canonical.
-func TestConvertToLLMRequest_Modalities(t *testing.T) {
+// TestConvertToLLMRequest_Modalities: Responses request model has no modalities
+// field; modalities live on common llm.Request for Chat. Kept as documentation
+// that convertToLLMRequest does not invent Responses.Modalities.
+func TestConvertToLLMRequest_ModalitiesAbsentOnResponsesRequest(t *testing.T) {
 	req := &Request{
-		Model:      "gpt-4o",
-		Modalities: []string{"text", "audio"},
+		Model: "gpt-4o",
+		Input: Input{Text: lo.ToPtr("hi")},
 	}
-
 	result, err := convertToLLMRequest(req)
 	require.NoError(t, err)
-	require.Equal(t, []string{"text", "audio"}, result.Modalities)
+	require.Empty(t, result.Modalities)
 }
 
 // TestCustomToolCall_NamespaceRoundTrip covers #10: custom_tool_call must

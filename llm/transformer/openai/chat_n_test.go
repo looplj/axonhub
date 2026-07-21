@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	responses "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -109,7 +110,7 @@ func TestOpenAIChatRequestPromptCacheRetentionRawRoundTrip(t *testing.T) {
 	}
 }
 
-func TestOpenAIChatRequestPromptCacheRetentionIsNotSynthesizedForResponses(t *testing.T) {
+func TestOpenAIChatRequestPromptCacheRetentionBridgesKnownValuesToResponses(t *testing.T) {
 	body, err := os.ReadFile("testdata/openai-prompt-cache-retention-24h.request.json")
 	require.NoError(t, err)
 
@@ -119,6 +120,9 @@ func TestOpenAIChatRequestPromptCacheRetentionIsNotSynthesizedForResponses(t *te
 		Body:    body,
 	})
 	require.NoError(t, err)
+	// S4: Chat PE owns the raw field after inbound attach.
+	require.NotNil(t, llm.OpenAIChatRequestExtension(llmReq))
+	require.Contains(t, llm.OpenAIChatRequestExtension(llmReq).RawTopLevelFields, "prompt_cache_retention")
 
 	outbound, err := responses.NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
@@ -127,9 +131,8 @@ func TestOpenAIChatRequestPromptCacheRetentionIsNotSynthesizedForResponses(t *te
 
 	var outboundBody map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(upstreamReq.Body, &outboundBody))
-	// Chat raw field is not a Responses-native typed field unless Responses
-	// inbound captured it; do not invent Responses cache retention from Chat raw.
-	require.NotContains(t, outboundBody, "prompt_cache_retention")
+	// Known values (in_memory / 24h) are an explicit tested Chat→Responses bridge.
+	require.JSONEq(t, `"24h"`, string(outboundBody["prompt_cache_retention"]))
 }
 
 func TestOpenAIChatRequestOutputControlsRawRoundTrip(t *testing.T) {

@@ -88,7 +88,7 @@ func TestG14a_DefaultOmission_NoHubInjectionOfSummaryOrSummaryDelivery(t *testin
 // include_obfuscation), Hub must still re-emit the raw object on same-protocol
 // replay instead of dropping the whole key because convertStreamOptions returned nil.
 func TestG14a_RawOnlyStreamOptionsWithoutTypedField(t *testing.T) {
-	payload, llmReq := roundTripResponsesRawPayload(t, `{
+	payload, _ := roundTripResponsesRawPayload(t, `{
 		"model": "o3",
 		"input": "hello",
 		"stream": true,
@@ -98,7 +98,7 @@ func TestG14a_RawOnlyStreamOptionsWithoutTypedField(t *testing.T) {
 		}
 	}`, nil)
 
-	require.Nil(t, convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata))
+	require.Nil(t, convertStreamOptions(nil))
 
 	streamOptionsRaw, ok := payload["stream_options"]
 	require.True(t, ok, "stream_options must be present even without typed field")
@@ -122,10 +122,13 @@ func TestG14a_StreamOptionsRawValuesWinSharedTypedKey(t *testing.T) {
 			"reasoning_summary_delivery": "sequential_cutoff"
 		}
 	}`, func(req *llm.Request) {
-		// This simulates a typed-side update after inbound capture. The raw
-		// Responses sidecar must retain the original wire value on replay.
-		typedValue := true
-		req.TransformerMetadata[responsesIncludeObfuscationTransformerMetadataKey] = &typedValue
+		// Typed stream options no longer live in TransformerMetadata. The raw
+		// Responses PE sidecar must still re-emit original wire values even if
+		// common stream flags are mutated after inbound.
+		if req.StreamOptions == nil {
+			req.StreamOptions = &llm.StreamOptions{}
+		}
+		req.StreamOptions.IncludeUsage = true
 	})
 
 	var streamOptions map[string]json.RawMessage

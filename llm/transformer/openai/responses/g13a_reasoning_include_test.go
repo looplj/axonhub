@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // G13a: public same-protocol seam for actual reasoning object + include values.
@@ -38,13 +36,15 @@ func TestG13a_ReasoningAndEncryptedInclude_SameProtocolPreserved(t *testing.T) {
 
 	payload, llmReq := roundTripResponsesRawPayload(t, string(body), nil)
 
-	// Canonical captures typed reasoning + include metadata without inventing values.
+	// Canonical captures typed reasoning + PE include without inventing values.
 	require.Equal(t, "high", llmReq.ReasoningEffort)
 	require.NotNil(t, llmReq.ReasoningSummary)
 	require.Equal(t, "auto", *llmReq.ReasoningSummary)
-	includeMeta, ok := llmReq.TransformerMetadata[shared.MetadataKeyInclude].([]string)
-	require.True(t, ok, "include must ride TransformerMetadata on the canonical request")
-	require.Equal(t, sourceInclude, includeMeta, "include order and values must be preserved as supplied")
+	require.NotNil(t, llmReq.ProviderExtensions)
+	require.NotNil(t, llmReq.ProviderExtensions.OpenAIResponses)
+	require.NotNil(t, llmReq.ProviderExtensions.OpenAIResponses.Request)
+	require.Equal(t, sourceInclude, llmReq.ProviderExtensions.OpenAIResponses.Request.Include,
+		"include order and values must be preserved on PE.OpenAIResponses.Request")
 
 	// Outbound Responses body re-emits the same reasoning subfields and include values.
 	require.Contains(t, payload, "reasoning")
@@ -72,9 +72,9 @@ func TestG13a_DefaultOmission_NoHubInjectionOfReasoningOrInclude(t *testing.T) {
 	require.Empty(t, llmReq.ReasoningEffort)
 	require.Nil(t, llmReq.ReasoningSummary)
 	require.Nil(t, llmReq.ReasoningBudget)
-	if llmReq.TransformerMetadata != nil {
-		_, hasInclude := llmReq.TransformerMetadata[shared.MetadataKeyInclude]
-		require.False(t, hasInclude, "Hub must not invent include metadata for omitted requests")
+	if llmReq.ProviderExtensions != nil && llmReq.ProviderExtensions.OpenAIResponses != nil && llmReq.ProviderExtensions.OpenAIResponses.Request != nil {
+		require.Empty(t, llmReq.ProviderExtensions.OpenAIResponses.Request.Include,
+			"Hub must not invent include for omitted requests")
 	}
 
 	_, hasReasoning := payload["reasoning"]

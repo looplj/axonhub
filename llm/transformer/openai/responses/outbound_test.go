@@ -1305,7 +1305,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "request with modalities",
+			name: "request with modalities does not invent Responses modalities field",
 			chatReq: &llm.Request{
 				Model:      "gpt-4o",
 				Modalities: []string{"text", "audio"},
@@ -1320,19 +1320,22 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 			expectError: false,
 			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
-				var req Request
-
-				err := json.Unmarshal(result.Body, &req)
-				require.NoError(t, err)
-				require.Equal(t, []string{"text", "audio"}, req.Modalities)
+				var payload map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(result.Body, &payload))
+				// Responses request schema has no modalities; Chat modalities stay on llm.Request.
+				require.NotContains(t, payload, "modalities")
 			},
 		},
 		{
 			name: "request with background mode",
 			chatReq: &llm.Request{
 				Model: "gpt-4o",
-				TransformerMetadata: map[string]any{
-					"background": true,
+				ProviderExtensions: &llm.ProviderExtensions{
+					OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+						Request: &llm.OpenAIResponsesRequestExtensions{
+							Background: lo.ToPtr(true),
+						},
+					},
 				},
 				Messages: []llm.Message{
 					{
@@ -1491,8 +1494,12 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			name: "request with include field",
 			chatReq: &llm.Request{
 				Model: "gpt-4o",
-				TransformerMetadata: map[string]any{
-					"include": []string{"file_search_call.results", "reasoning.encrypted_content"},
+				ProviderExtensions: &llm.ProviderExtensions{
+					OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+						Request: &llm.OpenAIResponsesRequestExtensions{
+							Include: []string{"file_search_call.results", "reasoning.encrypted_content"},
+						},
+					},
 				},
 				Messages: []llm.Message{
 					{
@@ -2010,40 +2017,53 @@ func TestOutboundTransformer_TransformRequest_NamespaceDoesNotStarveRawTools(t *
 // field was commented out (// TODO) and a client's prompt body was silently
 // dropped by lenient unmarshal.
 func TestConvertToLLMRequest_Prompt(t *testing.T) {
-	t.Run("inbound preserves prompt into metadata", func(t *testing.T) {
+	t.Run("inbound preserves prompt on PE RawPrompt", func(t *testing.T) {
 		req := &Request{
 			Model: "gpt-4o",
 			Prompt: &Prompt{
 				ID:        "pmpt_abc",
 				Version:   lo.ToPtr("2"),
-				Variables: map[string]string{"topic": "cats"},
+				Variables: map[string]json.RawMessage{"topic": json.RawMessage(`"cats"`)},
 			},
 		}
 
 		result, err := convertToLLMRequest(req)
 		require.NoError(t, err)
-		v, ok := result.TransformerMetadata["prompt"]
-		require.True(t, ok)
-		p, ok := v.(*Prompt)
-		require.True(t, ok)
+		require.NotNil(t, result.ProviderExtensions)
+		require.NotNil(t, result.ProviderExtensions.OpenAIResponses)
+		require.NotNil(t, result.ProviderExtensions.OpenAIResponses.Request)
+		raw := result.ProviderExtensions.OpenAIResponses.Request.RawPrompt
+		require.NotEmpty(t, raw)
+		var p Prompt
+		require.NoError(t, json.Unmarshal(raw, &p))
 		require.Equal(t, "pmpt_abc", p.ID)
 		require.NotNil(t, p.Version)
 		require.Equal(t, "2", *p.Version)
-		require.Equal(t, "cats", p.Variables["topic"])
+		require.JSONEq(t, `"cats"`, string(p.Variables["topic"]))
+		if result.TransformerMetadata != nil {
+			_, ok := result.TransformerMetadata["prompt"]
+			require.False(t, ok)
+		}
 	})
 
-	t.Run("outbound restores prompt from metadata", func(t *testing.T) {
+	t.Run("outbound restores prompt from PE RawPrompt", func(t *testing.T) {
+		rawPrompt, err := json.Marshal(&Prompt{
+			ID:        "pmpt_xyz",
+			Version:   lo.ToPtr("3"),
+			Variables: map[string]json.RawMessage{"topic": json.RawMessage(`"dogs"`)},
+		})
+		require.NoError(t, err)
 		llmReq := &llm.Request{
 			Model: "gpt-4o",
 			Messages: []llm.Message{{
 				Role:    "user",
 				Content: llm.MessageContent{Content: lo.ToPtr("hi")},
 			}},
-			TransformerMetadata: map[string]any{
-				"prompt": &Prompt{
-					ID:        "pmpt_xyz",
-					Version:   lo.ToPtr("3"),
-					Variables: map[string]string{"topic": "dogs"},
+			ProviderExtensions: &llm.ProviderExtensions{
+				OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+					Request: &llm.OpenAIResponsesRequestExtensions{
+						RawPrompt: rawPrompt,
+					},
 				},
 			},
 		}
@@ -2060,7 +2080,7 @@ func TestConvertToLLMRequest_Prompt(t *testing.T) {
 		require.Equal(t, "pmpt_xyz", got.Prompt.ID)
 		require.NotNil(t, got.Prompt.Version)
 		require.Equal(t, "3", *got.Prompt.Version)
-		require.Equal(t, "dogs", got.Prompt.Variables["topic"])
+		require.JSONEq(t, `"dogs"`, string(got.Prompt.Variables["topic"]))
 	})
 
 	t.Run("prompt absent stays absent", func(t *testing.T) {
@@ -2068,8 +2088,9 @@ func TestConvertToLLMRequest_Prompt(t *testing.T) {
 
 		result, err := convertToLLMRequest(req)
 		require.NoError(t, err)
-		_, ok := result.TransformerMetadata["prompt"]
-		require.False(t, ok)
+		if result.ProviderExtensions != nil && result.ProviderExtensions.OpenAIResponses != nil && result.ProviderExtensions.OpenAIResponses.Request != nil {
+			require.Empty(t, result.ProviderExtensions.OpenAIResponses.Request.RawPrompt)
+		}
 	})
 }
 
