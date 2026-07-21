@@ -724,5 +724,7 @@
   "channels.endpoints.invalidApiFormat": "不支持的 API 格式",
   "channels.endpoints.baseURL": "基础 URL",
   "channels.endpoints.baseURLPlaceholder": "可选的基础 URL 覆盖 (例如 https://api.deepseek.com/v1)",
-  "channels.endpoints.invalidBaseURL": "无效的基础 URL 格式"
+  "channels.endpoints.invalidBaseURL": "无效的基础 URL 格式",
+  "channels.endpoints.customToolsSupport": "支持 custom 工具",
+  "channels.endpoints.customToolsSupportDescription": "仅在已验证此 Chat 端点接受 OpenAI custom 工具声明、调用和调用历史后启用。"
 }

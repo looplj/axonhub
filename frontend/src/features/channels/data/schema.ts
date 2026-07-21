@@ -49,6 +49,7 @@ export const channelEndpointSchema = z.object({
   path: z.string().optional(),
   baseURL: z.url('Invalid URL').optional().or(z.literal('')),
   transport: z.enum(['http', 'websocket']).optional().or(z.literal('')),
+  supportsOpenAIChatCustomTools: z.boolean().optional(),
 });
 export type ChannelEndpoint = z.infer<typeof channelEndpointSchema>;
 

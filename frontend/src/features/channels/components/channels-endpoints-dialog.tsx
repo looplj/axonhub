@@ -5,6 +5,7 @@ import { AlertCircle, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,7 +45,7 @@ function EndpointTable({
         <span>{t('channels.endpoints.apiFormat')}</span>
         {!hideBaseURL && <span>{t('channels.endpoints.baseURL')}</span>}
         <span>{t('channels.endpoints.path')}</span>
-        <span className='w-8' />
+        <span />
       </div>
       <div className='divide-y'>
         {endpoints.map((ep, index) => (
@@ -171,6 +172,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           path: ep.path || undefined,
           baseURL: ep.baseURL || undefined,
           transport: ep.transport || undefined,
+          supportsOpenAIChatCustomTools: ep.supportsOpenAIChatCustomTools === true,
         })),
       });
       onOpenChange(false);
@@ -233,16 +235,37 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
               </div>
             ) : (
               <EndpointTable endpoints={endpoints}>
-                {(ep) => (
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='sm'
-                    className='hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0'
-                    onClick={() => handleRemoveEndpoint(ep.apiFormat)}
-                  >
-                    <X className='h-3.5 w-3.5' />
-                  </Button>
+                {(ep, index) => (
+                  <div className='flex items-center justify-end gap-3'>
+                    {ep.apiFormat === 'openai/chat_completions' && (
+                      <label className='flex cursor-pointer items-center gap-2 text-xs'>
+                        <Checkbox
+                          checked={ep.supportsOpenAIChatCustomTools === true}
+                          onCheckedChange={(checked) => {
+                            setEndpoints((previous) =>
+                              previous.map((endpoint, endpointIndex) =>
+                                endpointIndex === index
+                                  ? { ...endpoint, supportsOpenAIChatCustomTools: checked === true }
+                                  : endpoint
+                              )
+                            );
+                          }}
+                        />
+                        <span title={t('channels.endpoints.customToolsSupportDescription')}>
+                          {t('channels.endpoints.customToolsSupport')}
+                        </span>
+                      </label>
+                    )}
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      className='hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0'
+                      onClick={() => handleRemoveEndpoint(ep.apiFormat)}
+                    >
+                      <X className='h-3.5 w-3.5' />
+                    </Button>
+                  </div>
                 )}
               </EndpointTable>
             )}

@@ -218,6 +218,14 @@ func TestValidateEndpoints(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("custom tool capability only applies to chat endpoints", func(t *testing.T) {
+		err := ValidateEndpoints([]objects.ChannelEndpoint{{
+			APIFormat:                     llm.APIFormatAnthropicMessage.String(),
+			SupportsOpenAIChatCustomTools: true,
+		}})
+		require.ErrorContains(t, err, "only applies to api_format")
+	})
+
 	t.Run("empty endpoints list passes validation", func(t *testing.T) {
 		err := ValidateEndpoints(nil)
 		require.NoError(t, err)
@@ -250,7 +258,11 @@ func TestResolveEndpoints_MergesDefaultsAndUserOverrides(t *testing.T) {
 		Channel: &ent.Channel{
 			Type: channel.TypeOpenai,
 			Endpoints: []objects.ChannelEndpoint{
-				{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Path: "/v1/custom/chat"},
+				{
+					APIFormat:                     llm.APIFormatOpenAIChatCompletion.String(),
+					Path:                          "/v1/custom/chat",
+					SupportsOpenAIChatCustomTools: true,
+				},
 				{APIFormat: llm.APIFormatGeminiContents.String(), Path: "/v1/gemini"},
 			},
 		},
@@ -258,7 +270,11 @@ func TestResolveEndpoints_MergesDefaultsAndUserOverrides(t *testing.T) {
 
 	endpoints := ch.ResolveEndpoints()
 	require.Equal(t, []objects.ChannelEndpoint{
-		{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Path: "/v1/custom/chat"},
+		{
+			APIFormat:                     llm.APIFormatOpenAIChatCompletion.String(),
+			Path:                          "/v1/custom/chat",
+			SupportsOpenAIChatCustomTools: true,
+		},
 		{APIFormat: llm.APIFormatOpenAIEmbedding.String()},
 		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
 		{APIFormat: llm.APIFormatOpenAIImageEdit.String()},

@@ -126,12 +126,14 @@ const CREATE_CHANNEL_MUTATION = `
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
     }
   }
@@ -199,12 +201,14 @@ const DUPLICATE_CHANNEL_MUTATION = `
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
     }
   }
@@ -272,12 +276,14 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
     }
   }
@@ -346,12 +352,14 @@ const UPDATE_CHANNEL_MUTATION = `
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
     }
   }
@@ -413,12 +421,14 @@ const SAVE_CHANNEL_ENDPOINTS_MUTATION = `
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
     }
   }
@@ -491,12 +501,14 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           path
           baseURL
           transport
+          supportsOpenAIChatCustomTools
         }
         endpoints {
           apiFormat
           path
           baseURL
           transport
+          supportsOpenAIChatCustomTools
         }
         settings {
           extraModelPrefix
@@ -689,12 +701,14 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           path
           baseURL
           transport
+          supportsOpenAIChatCustomTools
         }
         endpoints {
           apiFormat
           path
           baseURL
           transport
+          supportsOpenAIChatCustomTools
         }
         settings {
           extraModelPrefix
@@ -746,6 +760,7 @@ const ALL_CHANNEL_SUMMARYS_QUERY = `
         path
         baseURL
         transport
+        supportsOpenAIChatCustomTools
       }
       allModelEntries {
         requestModel
@@ -891,12 +906,14 @@ const QUERY_CHANNELS_QUERY = `
             path
             baseURL
             transport
+            supportsOpenAIChatCustomTools
           }
           endpoints {
             apiFormat
             path
             baseURL
             transport
+            supportsOpenAIChatCustomTools
           }
           disabledAPIKeys {
             key
@@ -1169,7 +1186,13 @@ export function useUpdateChannel() {
 
 export interface SaveChannelEndpointsInput {
   channelID: string;
-  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string; transport?: string }>;
+  endpoints: Array<{
+    apiFormat: string;
+    path?: string;
+    baseURL?: string;
+    transport?: string;
+    supportsOpenAIChatCustomTools?: boolean;
+  }>;
 }
 
 export function useSaveChannelEndpoints() {

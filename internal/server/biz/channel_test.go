@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestChannelService_ListModels(t *testing.T) {
@@ -527,6 +528,41 @@ func TestChannelService_UpdateChannelStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestChannelService_SaveChannelEndpoints_PersistsOpenAIChatCustomToolsCapability(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := ent.NewContext(context.Background(), client)
+	ctx = authz.WithTestBypass(ctx)
+
+	channel, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Custom Tool Capability").
+		SetBaseURL("https://api.example.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"grok-4.5"}).
+		SetDefaultTestModel("grok-4.5").
+		Save(ctx)
+	require.NoError(t, err)
+
+	updated, err := svc.SaveChannelEndpoints(ctx, SaveChannelEndpointsInput{
+		ChannelID: objects.GUID{ID: channel.ID},
+		Endpoints: []objects.ChannelEndpoint{{
+			APIFormat:                     llm.APIFormatOpenAIChatCompletion.String(),
+			SupportsOpenAIChatCustomTools: true,
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []objects.ChannelEndpoint{{
+		APIFormat:                     llm.APIFormatOpenAIChatCompletion.String(),
+		SupportsOpenAIChatCustomTools: true,
+	}}, updated.Endpoints)
+
+	persisted, err := client.Channel.Get(ctx, channel.ID)
+	require.NoError(t, err)
+	require.Equal(t, updated.Endpoints, persisted.Endpoints)
 }
 
 func TestChannelService_BulkImportChannels(t *testing.T) {

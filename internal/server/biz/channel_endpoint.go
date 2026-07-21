@@ -45,6 +45,10 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 			return fmt.Errorf("endpoint[%d]: unsupported api_format %q", i, ep.APIFormat)
 		}
 
+		if ep.SupportsOpenAIChatCustomTools && ep.APIFormat != llm.APIFormatOpenAIChatCompletion.String() {
+			return fmt.Errorf("endpoint[%d]: supports_openai_chat_custom_tools only applies to api_format %q", i, llm.APIFormatOpenAIChatCompletion.String())
+		}
+
 		if seen[ep.APIFormat] {
 			return fmt.Errorf("endpoint[%d]: duplicate api_format %q", i, ep.APIFormat)
 		}

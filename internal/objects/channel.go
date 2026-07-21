@@ -15,10 +15,11 @@ import (
 // Each endpoint specifies the upstream API format and an optional custom path override.
 // Within a single channel, api_format must be unique.
 type ChannelEndpoint struct {
-	APIFormat string `json:"api_format"`
-	Path      string `json:"path,omitempty"`
-	BaseURL   string `json:"base_url,omitempty"`
-	Transport string `json:"transport,omitempty"`
+	APIFormat                     string `json:"api_format"`
+	Path                          string `json:"path,omitempty"`
+	BaseURL                       string `json:"base_url,omitempty"`
+	Transport                     string `json:"transport,omitempty"`
+	SupportsOpenAIChatCustomTools bool   `json:"supports_openai_chat_custom_tools,omitempty"`
 }
 
 const (

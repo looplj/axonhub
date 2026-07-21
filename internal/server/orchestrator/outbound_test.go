@@ -422,6 +422,90 @@ func TestPersistentOutboundTransformer_TransformRequest_ResetsStreamCompletedFor
 	require.False(t, processor.state.StreamCompleted)
 }
 
+func TestPersistentOutboundTransformer_TransformRequest_RejectsIncompatibleCustomToolCandidate(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "unverified-chat",
+			Endpoints: []objects.ChannelEndpoint{{
+				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+			}},
+		},
+		Outbound: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: channel.Outbound,
+		state: &PersistenceState{
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{
+				Channel:   channel,
+				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+				Models: []biz.ChannelModelEntry{{
+					RequestModel: "grok-4.5",
+					ActualModel:  "grok-4.5",
+				}},
+			}},
+		},
+	}
+
+	_, err := processor.TransformRequest(t.Context(), &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Model:     "grok-4.5",
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeResponsesCustomTool,
+			ResponseCustomTool: &llm.ResponseCustomTool{
+				Name: "exec",
+			},
+		}},
+	})
+
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.ErrorContains(t, err, "custom tools")
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_RejectsIncompatibleCustomToolHistoryCandidate(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "unverified-chat",
+			Endpoints: []objects.ChannelEndpoint{{
+				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+			}},
+		},
+		Outbound: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: channel.Outbound,
+		state: &PersistenceState{
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{
+				Channel:   channel,
+				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+				Models: []biz.ChannelModelEntry{{
+					RequestModel: "grok-4.5",
+					ActualModel:  "grok-4.5",
+				}},
+			}},
+		},
+	}
+
+	_, err := processor.TransformRequest(t.Context(), &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Model:     "grok-4.5",
+		Messages: []llm.Message{{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{{
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+					CallID: "call_exec",
+					Name:   "exec",
+				},
+			}},
+		}},
+	})
+
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.ErrorContains(t, err, "custom tools")
+}
+
 func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 	channel := &biz.Channel{
 		Channel: &ent.Channel{

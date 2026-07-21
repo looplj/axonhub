@@ -339,10 +339,11 @@ type ComplexityRoot struct {
 	}
 
 	ChannelEndpoint struct {
-		APIFormat func(childComplexity int) int
-		BaseURL   func(childComplexity int) int
-		Path      func(childComplexity int) int
-		Transport func(childComplexity int) int
+		APIFormat                     func(childComplexity int) int
+		BaseURL                       func(childComplexity int) int
+		Path                          func(childComplexity int) int
+		SupportsOpenAIChatCustomTools func(childComplexity int) int
+		Transport                     func(childComplexity int) int
 	}
 
 	ChannelLimiterStats struct {
@@ -3319,6 +3320,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelEndpoint.Path(childComplexity), true
+	case "ChannelEndpoint.supportsOpenAIChatCustomTools":
+		if e.complexity.ChannelEndpoint.SupportsOpenAIChatCustomTools == nil {
+			break
+		}
+
+		return e.complexity.ChannelEndpoint.SupportsOpenAIChatCustomTools(childComplexity), true
 	case "ChannelEndpoint.transport":
 		if e.complexity.ChannelEndpoint.Transport == nil {
 			break
@@ -18548,6 +18555,8 @@ func (ec *executionContext) fieldContext_Channel_endpoints(_ context.Context, fi
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
 			case "transport":
 				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
+			case "supportsOpenAIChatCustomTools":
+				return ec.fieldContext_ChannelEndpoint_supportsOpenAIChatCustomTools(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -18883,6 +18892,8 @@ func (ec *executionContext) fieldContext_Channel_defaultEndpoints(_ context.Cont
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
 			case "transport":
 				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
+			case "supportsOpenAIChatCustomTools":
+				return ec.fieldContext_ChannelEndpoint_supportsOpenAIChatCustomTools(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -19516,6 +19527,35 @@ func (ec *executionContext) fieldContext_ChannelEndpoint_transport(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelEndpoint_supportsOpenAIChatCustomTools(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelEndpoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelEndpoint_supportsOpenAIChatCustomTools,
+		func(ctx context.Context) (any, error) {
+			return obj.SupportsOpenAIChatCustomTools, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelEndpoint_supportsOpenAIChatCustomTools(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelEndpoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61153,7 +61193,7 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport"}
+	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport", "supportsOpenAIChatCustomTools"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -61188,6 +61228,13 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 				return it, err
 			}
 			it.Transport = data
+		case "supportsOpenAIChatCustomTools":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsOpenAIChatCustomTools"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SupportsOpenAIChatCustomTools = data
 		}
 	}
 
@@ -87310,6 +87357,11 @@ func (ec *executionContext) _ChannelEndpoint(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelEndpoint_baseURL(ctx, field, obj)
 		case "transport":
 			out.Values[i] = ec._ChannelEndpoint_transport(ctx, field, obj)
+		case "supportsOpenAIChatCustomTools":
+			out.Values[i] = ec._ChannelEndpoint_supportsOpenAIChatCustomTools(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

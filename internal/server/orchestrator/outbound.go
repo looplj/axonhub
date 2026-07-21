@@ -374,6 +374,14 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	p.state.StreamCompleted = false
 
 	p.wrapped = selectOutboundForCandidate(candidate)
+	if hasOpenAICustomTools(llmRequest) && !candidateSupportsOpenAICustomTools(candidate) {
+		return nil, fmt.Errorf(
+			"%w: channel %q endpoint %q does not support OpenAI custom tools",
+			transformer.ErrInvalidRequest,
+			candidate.Channel.Name,
+			candidate.APIFormat,
+		)
+	}
 
 	log.Debug(ctx, "using candidate",
 		log.String("channel", candidate.Channel.Name),

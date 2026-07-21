@@ -99,6 +99,7 @@ type ChannelEndpoint {
   path: String
   baseURL: String
   transport: String
+  supportsOpenAIChatCustomTools: Boolean!
 }
 
 input ChannelEndpointInput {
@@ -106,6 +107,7 @@ input ChannelEndpointInput {
   path: String
   baseURL: String
   transport: String
+  supportsOpenAIChatCustomTools: Boolean
 }
 
 input SaveChannelEndpointsInput {
