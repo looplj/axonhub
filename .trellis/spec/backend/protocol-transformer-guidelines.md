@@ -243,20 +243,31 @@ The following decisions are durable until the protocol docs or code prove otherw
 - `stream_options` are request controls; stream events are runtime event shapes. Do not store or test them as the same thing.
 - Token-limit fields must remain split by protocol and current/deprecated name: Responses `max_output_tokens`, Chat `max_completion_tokens`, Chat deprecated `max_tokens`, Anthropic `max_tokens`.
 - Anthropic outbound default token insertion, currently observed as `8192`, must have explicit tests before final matrix completion claims.
-- Chat top-level `audio`, `prediction`, `moderation`, Chat `web_search_options`, Anthropic `container`, `inference_geo`, and Anthropic MCP connector fields are implementation candidates, not completed baseline support.
+
+### Same-protocol evidence status (updated 2026-07-22)
+
+These are **no longer "implementation candidates only"** for same-protocol preservation (evidence exists in `llm/` tests). Cross-protocol remains lossy/no-synth unless a tested bridge is listed elsewhere:
+
+| Area | Same-protocol | Cross-protocol |
+|---|---|---|
+| Chat raw preserve (`n`, `prompt_cache_retention`, `audio`, `prediction`, `moderation`, `web_search_options`, deprecated `functions`/`function_call`) | Evidence via `chat_n` / deprecated-function tests | Prefer LossyDowngrade / no-synth; not common carriers |
+| Chat custom tools (function + custom carriers) | Evidence via Chat custom fidelity / outbound convert | Partial bridge to Responses custom; Claude not equivalent |
+| Anthropic `container`, `inference_geo`, `mcp_servers`, `mcp_toolset` | Opaque/raw same-Anthropic evidence | No automatic OpenAI MCP/tool bridge |
+| Responses request native/raw sidecars + G13–G15 identities | Evidence via Responses request/native tests | Lossy/no-synth for hosted/MCP/state fields |
+| Responses response `RawOutputItems` (incl. encrypted reasoning pairing) | Evidence via encrypted-reasoning / RawOutputItems paths | Never invent ciphertext + synthetic id across protocols |
 
 ## Baseline Implementation Slice Order
 
-When converting the Round 5 baseline into code, prefer this slice order unless the active task explicitly says otherwise:
+When converting residual baseline work into code, prefer residuals from the strict matrix over re-opening completed same-protocol slices. Historical Round-5 ordering (for archaeology only):
 
-1. Chat `n` storage/preservation decision.
-2. OpenAI `prompt_cache_retention` / Chat coverage.
-3. Anthropic `container` and `inference_geo`.
-4. Chat top-level `audio`, `prediction`, `moderation`.
-5. Chat `web_search_options`.
-6. Deprecated Chat `functions` / request `function_call` / response `message.function_call`.
-7. Anthropic `mcp_servers` / `tools[].type="mcp_toolset"`.
-8. Responses reasoning object and stream events, split into request object, output item, and stream-event sub-slices.
+1. Chat `n` storage/preservation decision. *(same-protocol evidence exists)*
+2. OpenAI `prompt_cache_retention` / Chat coverage. *(same-protocol evidence exists)*
+3. Anthropic `container` and `inference_geo`. *(same-protocol evidence exists)*
+4. Chat top-level `audio`, `prediction`, `moderation`. *(same-protocol evidence exists)*
+5. Chat `web_search_options`. *(same-protocol evidence exists)*
+6. Deprecated Chat `functions` / request `function_call` / response `message.function_call`. *(same-protocol evidence exists)*
+7. Anthropic `mcp_servers` / `tools[].type="mcp_toolset"`. *(same-protocol evidence exists)*
+8. Responses reasoning object and stream events, split into request object, output item, and stream-event sub-slices. *(partial; continue residuals only)*
 
 Each slice must include targeted tests for one of:
 

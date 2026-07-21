@@ -1,5 +1,8 @@
 # Batch 7 Draft: Tools / MCP / Tool Calls Field Inventory
 
+> **Stale-risk note (2026-07-22):** Round-3/P2 implementation claims in this draft may lag current `llm/**` code (e.g. Chat custom tools, Anthropic MCP same-protocol preserve). For wire facts use `../openai-*-protocol.md` / `../anthropic-*.md`; for completion status use `../protocol-conversion-strict-verification-matrix.md`; for ownership rules use ADR 0001/0002 and `.trellis/spec/backend/protocol-transformer-guidelines.md`.
+
+
 - Agent: Agent 4 — Tools / MCP / Tool Calls
 - Round: 1
 - Scope: 字段/结构清单与官方含义；不判断转换策略；不查 AxonHub 代码归属；不更新主矩阵。

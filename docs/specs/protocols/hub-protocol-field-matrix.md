@@ -1,6 +1,7 @@
 # Hub Protocol Field Matrix
 
 - Generated: 2026-07-06
+- Implementation notes refreshed: 2026-07-22
 - Scope: request-side field matrix for AxonHub protocol conversion across:
   - OpenAI Responses
   - OpenAI Chat Completions
@@ -8,8 +9,7 @@
 - Source-of-truth for protocol fields: `docs/specs/vendor/protocol-canonical-2026-07-06/`
 - Source-of-truth for Hub handling: current `llm/` code as inspected by codebase-memory graph and targeted source reads.
 - Important: this matrix is a factual audit table, not a refactor design.
-
-## Legend
+- **Authority:** for wire facts prefer the three `*-protocol.md` baselines; for completion status prefer `protocol-conversion-strict-verification-matrix.md` Field IDs; for ownership rules prefer ADR 0001/0002 and `.trellis/spec/backend/protocol-transformer-guidelines.md`. This file is navigation + gap index and can lag code.
 
 | Mark | Meaning |
 |---|---|
@@ -123,7 +123,7 @@ Canonical source files:
 | `temperature` | Sampling. | Common/protocol structs. | Preserved. | Preserved. | Preserved. | Common. |
 | `tool_choice` | Tool selection. | `llm.Request.ToolChoice`; Chat native. | Preserved for supported forms. | Converts to Responses tool_choice. | Converts to Claude tool_choice. | Object forms differ. |
 | `tools` function | Function tools. | `llm.Tools`; Chat native `Tools`. | Preserved. | Converts to Responses function tool. | Converts to Claude client tool. | Common-ish. |
-| `tools` custom | Custom tool forms. | Canonical Chat supports it; current Chat outbound filters `llm.Tools` to function only. | Currently at risk / not fully supported. | Responses has custom tools. | Claude custom client tools differ. | Clear gap. |
+| `tools` custom | Custom tool forms. | Canonical Chat supports it; Hub common path supports Chat `custom` plus Responses-custom bridge carriers (`OpenAIChatCustomTool` / `ResponseCustomTool`). | Same-protocol Chat custom preserve + Responses custom bridge with tests (not function-only). | Responses has native `custom` tools. | Claude custom client tools differ; no automatic full equivalence. | Cross-protocol remains partial; do not treat as fully lossless to Claude. |
 | deprecated `function_call` | Old request tool choice. | Chat-native raw replay in `chat_n.go`. | Original deprecated wire field is restored for Chat→Chat. | Not automatically rewritten as Responses tool choice. | Not automatically rewritten as Claude tool choice. | Deprecated identity is preserved without claiming a semantic bridge. |
 | deprecated `functions` | Old tool list. | Chat-native raw replay in `chat_n.go`. | Original deprecated wire field is restored for Chat→Chat. | Not automatically rewritten as Responses tools. | Not automatically rewritten as Claude tools. | Kept separate from modern `tools`. |
 | deprecated response `message.function_call` | Old assistant function-call response/history/stream shape. | Parsed into the modern common tool-call lifecycle with origin metadata in the OpenAI adapter. | Re-emitted as deprecated `message.function_call`; targeted response, request-history, and stream tests cover it. | No claim of Responses wire-shape equivalence. | No claim of Claude wire-shape equivalence. | Modern `tool_calls` remain intact when deprecated origin metadata is absent. |
@@ -182,9 +182,9 @@ Canonical source files:
 | Responses → Responses | Uses `llm.Request` plus `ProviderExtensions.OpenAIResponses.Request` and raw merge to preserve some native fields. | Native protocol is split across common fields, metadata, provider extensions, raw fragments; `context_management`/`conversation` need first-class audit. |
 | Responses → Chat | Converts through common messages/tools; lossy diagnostics exist for some Responses-native fields. | `tool_search`, `additional_tools`, `namespace`, `mcp`, Responses typed items cannot be represented natively in Chat. |
 | Responses → Claude | Converts through common messages/tools. | OpenAI Responses `mcp`/tool_search/items/reasoning differ from Claude content blocks/MCP connector/thinking. |
-| Chat → Chat | Uses typed Chat conversion plus original `RawRequest` replay for the eight G1/G2/G4/G5 fields. Deprecated response `message.function_call` also uses bridge+origin metadata across response/history/stream. | Real residuals include Chat `custom` tool handling and typed/common semantics for raw-only fields; raw replay does not create cross-protocol support. |
-| Chat → Responses | Converts messages/tools into Responses request. | Chat `web_search_options` is not Responses web_search tool; custom tools need explicit support. |
-| Chat → Claude | Converts messages/tools into Claude request. | Chat custom tools / web_search_options / response_format semantics may be dropped or approximated. |
+| Chat → Chat | Uses typed Chat conversion plus original `RawRequest` replay for the eight G1/G2/G4/G5 fields. Deprecated response `message.function_call` also uses bridge+origin metadata across response/history/stream. Custom tools are no longer function-only on Chat outbound. | Real residuals include typed/common semantics for raw-only fields and full cross-protocol custom/tool ecosystems; raw replay does not create cross-protocol support. |
+| Chat → Responses | Converts messages/tools into Responses request; Chat custom can bridge to Responses custom where carriers exist. | Chat `web_search_options` is not Responses web_search tool; hosted/native Responses tools remain lossy outside Responses. |
+| Chat → Claude | Converts messages/tools into Claude request. | Chat custom tools / web_search_options / response_format semantics may be dropped or diagnosed; Claude tools are content-block based. |
 | Claude → Claude | Uses native `MessageRequest`, opaque metadata restoration for `container`/`inference_geo`/`mcp_servers`, and indexed adapter raw fragments for `mcp_toolset`. | Stream aggregation remains a complex hotspot; MCP connector fields still have no automatic OpenAI/Chat bridge. |
 | Claude → Responses | Converts through common abstraction. | Claude thinking/redacted_thinking/tool_use/tool_result/MCP connector do not map directly to Responses. |
 | Claude → Chat | Converts through common abstraction. | Claude content blocks and thinking/server tool results do not map directly to Chat messages. |
@@ -195,14 +195,13 @@ Canonical source files:
 
 | Gap | Why it matters | Where seen |
 |---|---|---|
-| Chat `custom` tools are canonical but current Chat outbound filters to function tools. | Tool calls can silently disappear or become impossible in Chat same-protocol/cross-protocol paths. | `transformer/openai/outbound_convert.go RequestFromLLM`. |
+| Chat custom tools: same-protocol/basic bridge exists; residual is cross-protocol completeness and unsupported native tool families. | Not a "function-only outbound" gap anymore; remaining risk is false-equivalence to Claude/hosted tools. | `transformer/openai/outbound_convert.go RequestFromLLM`; custom fidelity / cross-protocol tests. |
 | Responses native protocol is split across native struct + `llm.Request` + metadata + provider extensions. | Same-protocol fidelity is hard to reason about; adding fields is scattered. | `responses/outbound.go`, `responses/request_extensions.go`, `provider_extensions.go`. |
-| Responses `context_management` and `conversation` are canonical but not first-class in inspected Responses native struct. | These can only survive if raw top-level fallback catches them; code cannot reason about them cleanly. | `responses/model.go`; canonical docs. |
+| Responses `context_management` and `conversation` are canonical but not first-class in inspected Responses native request struct. | These can only survive if raw top-level fallback catches them; code cannot reason about them cleanly. | `responses/model.go`; canonical docs. |
+| Response `output[]` encrypted reasoning identity is carried primarily by `ProviderExtensions.OpenAIResponses.Response.RawOutputItems` (not only request `ResponseReasoningItemID`). | Session replay bugs reappear if structured path invents `rs_*` for ciphertext. | `provider_extensions.go`, `responses/inbound.go`, encrypted-reasoning tests. |
 | Chat raw-only G1/G2/G4/G5 fields lack public typed/common carriers. | Same-protocol replay is covered, but code cannot safely reason about or synthesize their semantics for another protocol. | `openai/chat_n.go`; targeted Chat tests. |
 | Anthropic MCP/native metadata fields are same-protocol-only carriers. | `container`/`inference_geo`/`mcp_servers` and indexed `mcp_toolset` now round-trip, but remain non-equivalent to Responses MCP and Chat tools. | `anthropic/model.go`, `inbound_convert.go`, `outbound_convert.go`; targeted MCP/container tests. |
-| Claude stream aggregation is a high-complexity hotspot. | Even if request fields are fixed, response/stream native fidelity is risky. | `anthropic/aggregator.go AggregateStreamChunks`, cognitive 254. |
-
-## Recommended next audit slice
+| Claude stream aggregation is a high-complexity hotspot. | Even if request fields are fixed, response/stream native fidelity is risky. | `anthropic/aggregator.go AggregateStreamChunks`. |
 
 G1–G7 and G13–G15 request-side same-protocol fixtures now cover the repaired seams. The next audit slice should target residuals rather than re-open completed same-protocol work:
 

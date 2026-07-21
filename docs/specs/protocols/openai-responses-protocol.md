@@ -106,6 +106,22 @@ Hard rules:
 
 Implementation rule: never flatten `input[]` into plain text before deciding whether the target protocol can carry each item.
 
+### 3.2 Response `output[]` reasoning identity (same-protocol)
+
+Scope: **response** `output[]` (and continuation that reuses those items). Distinct from request `input[]` carriers in §3.1.
+
+| Concern | Owner | Rules |
+|---|---|---|
+| Reasoning item `id` + `encrypted_content` pair | `ProviderExtensions.OpenAIResponses.Response.RawOutputItems` (preferred) | Preserve original provider id with ciphertext; do not invent a new `rs_*` for existing ciphertext. |
+| Structured fallback without native item provenance | Responses inbound builders | May emit summary/thinking text; **must not** attach ciphertext without Responses-native item id provenance (stream metadata / raw output item). |
+| Request continuation of prior reasoning | `Message.ResponseReasoningItemID` on **request** messages only | Still request-input ownership; does not replace response RawOutputItems. |
+| Cross-protocol signatures (e.g. Anthropic thinking signature) | Never as Responses `encrypted_content` | Cross-protocol no-synth; treat as lossy/unsupported for encrypted state. |
+
+Hard rules:
+
+- Ciphertext without matching original item id is invalid at the provider and must not be synthesized by Hub.
+- Channel switch / ActualModel issuer-boundary change / explicit invalid-encrypted rejection: strip opaque id+ciphertext once; keep visible summaries/tools (orchestrator recovery policy).
+
 ## 4. Tools and lazy loading
 
 Canonical sources confirm Responses has first-class tool families and lazy-loading features:
