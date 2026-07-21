@@ -713,12 +713,8 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	enabled := xmap.GetBoolPtr(req.TransformerMetadata, responsesReasoningEnabledTransformerMetadataKey)
 
 	contextMode := ""
-	if req.ProviderExtensions != nil && req.ProviderExtensions.OpenAIResponses != nil && req.ProviderExtensions.OpenAIResponses.Request != nil && req.ProviderExtensions.OpenAIResponses.Request.ReasoningContext != "" {
+	if req.ProviderExtensions != nil && req.ProviderExtensions.OpenAIResponses != nil && req.ProviderExtensions.OpenAIResponses.Request != nil {
 		contextMode = req.ProviderExtensions.OpenAIResponses.Request.ReasoningContext
-	} else if req.TransformerMetadata != nil {
-		if v, ok := req.TransformerMetadata[responsesReasoningContextTransformerMetadataKey].(string); ok {
-			contextMode = v
-		}
 	}
 
 	// Check if any reasoning-related fields are present

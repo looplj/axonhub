@@ -22,13 +22,19 @@ func TestResponsesReasoningContextSameProtocolRoundTrip(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// effort/summary stay on common fields; context is Responses-native.
+	// effort/summary stay on common fields; context is Responses-native PE.
 	require.Equal(t, "high", llmReq.ReasoningEffort)
 	require.NotNil(t, llmReq.ReasoningSummary)
 	require.Equal(t, "auto", *llmReq.ReasoningSummary)
-	ctxVal, ok := llmReq.TransformerMetadata[responsesReasoningContextTransformerMetadataKey].(string)
-	require.True(t, ok, "reasoning.context must be preserved outside common effort/summary fields")
-	require.Equal(t, "current_turn", ctxVal)
+	require.NotNil(t, llmReq.ProviderExtensions)
+	require.NotNil(t, llmReq.ProviderExtensions.OpenAIResponses)
+	require.NotNil(t, llmReq.ProviderExtensions.OpenAIResponses.Request)
+	require.Equal(t, "current_turn", llmReq.ProviderExtensions.OpenAIResponses.Request.ReasoningContext,
+		"reasoning.context must be preserved on OpenAIResponses request PE")
+	if llmReq.TransformerMetadata != nil {
+		_, hasCtx := llmReq.TransformerMetadata[responsesReasoningContextTransformerMetadataKey]
+		require.False(t, hasCtx, "reasoning.context must not dual-write into TransformerMetadata")
+	}
 
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)

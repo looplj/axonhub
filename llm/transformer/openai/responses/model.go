@@ -459,12 +459,15 @@ const responsesReasoningSummaryContentTransformerMetadataKey = "openai_responses
 const responsesReasoningPreferTextStreamTransformerMetadataKey = "openai_responses_reasoning_prefer_text_stream"
 const responsesNamespaceToolMapTransformerMetadataKey = "openai_responses_namespace_tool_map"
 
+// Request body fields (include / max_tool_calls / prompt_cache_retention /
+// truncation / top-level request background) are owned by
+// ProviderExtensions.OpenAIResponses.Request — not TransformerMetadata keys.
+//
+// Part-level image_generation_call "background" is staging on
+// MessageContentPart.TransformerMetadata (not the request body field).
 const responsesBackgroundTransformerMetadataKey = "background"
-const responsesTruncationTransformerMetadataKey = "truncation"
-const responsesPromptCacheRetentionTransformerMetadataKey = "prompt_cache_retention"
-const responsesMaxToolCallsTransformerMetadataKey = "max_tool_calls"
-const responsesImageOutputFormatTransformerMetadataKey = "image_output_format"
 
+const responsesImageOutputFormatTransformerMetadataKey = "image_output_format"
 const responsesImageGenOutputFormatTransformerMetadataKey = "output_format"
 const responsesImageGenQualityTransformerMetadataKey = "quality"
 const responsesImageGenSizeTransformerMetadataKey = "size"

@@ -266,12 +266,10 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 			chatReq.TransformerMetadata[responsesReasoningEnabledTransformerMetadataKey] = req.Reasoning.Enabled
 		}
 
-		// Preserve reasoning.context as Responses-native configuration. It is not
-		// a common effort/summary field and must not be stored as a protocol body
-		// field on llm.Request itself.
-		if req.Reasoning.Context != "" {
-			chatReq.TransformerMetadata[responsesReasoningContextTransformerMetadataKey] = req.Reasoning.Context
-		}
+		// reasoning.context is Responses-native configuration owned by
+		// ProviderExtensions.OpenAIResponses.Request.ReasoningContext
+		// (attachOpenAIResponsesRequestExtensions). Do not dual-write into
+		// TransformerMetadata.
 	}
 
 	// Preserve top-level cache_control (OpenRouter/Anthropic prompt-caching
