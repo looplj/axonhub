@@ -3,19 +3,30 @@ import { format } from 'date-fns';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
 import { ArrowLeft, Activity, RefreshCw, FileText, Eye, EyeOff } from 'lucide-react';
+import { IconArchive, IconPin, IconRotate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Badge } from '@/components/ui/badge';
 import type { Trace } from '@/features/traces/data/schema';
 import { useGeneralSettings } from '@/features/system/data/system';
-import { useThreadDetail } from '../data/threads';
+import { useThreadDetail, useArchiveThread, useUnarchiveThread, useRetainThread, useUnretainThread } from '../data/threads';
 import { TraceCard } from './trace-card';
 import { TraceDrawer } from './trace-drawer';
 
@@ -42,6 +53,12 @@ export default function ThreadDetailPage() {
   }>({ open: false, traceId: null });
 
   const [showArchivedTraces, setShowArchivedTraces] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+
+  const archiveMutation = useArchiveThread();
+  const unarchiveMutation = useUnarchiveThread();
+  const retainMutation = useRetainThread();
+  const unretainMutation = useUnretainThread();
 
   const { data: settings } = useGeneralSettings();
 
@@ -169,9 +186,58 @@ export default function ThreadDetailPage() {
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               <span className='hidden sm:inline ml-2'>{t('common.refresh')}</span>
             </Button>
+            {(() => {
+              const status = thread.status ?? 'active';
+              if (status === 'active') {
+                return (
+                  <>
+                    <Button variant='outline' size='sm' onClick={() => setShowArchiveDialog(true)} className='px-2 sm:px-3'>
+                      <IconArchive className='h-4 w-4' />
+                      <span className='hidden sm:inline ml-2'>{t('common.actions.archive')}</span>
+                    </Button>
+                    <Button variant='outline' size='sm' onClick={() => retainMutation.mutate(thread.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                      <IconPin className='h-4 w-4' />
+                      <span className='hidden sm:inline ml-2'>{t('common.actions.retain')}</span>
+                    </Button>
+                  </>
+                );
+              }
+              if (status === 'archived') {
+                return (
+                  <Button variant='outline' size='sm' onClick={() => unarchiveMutation.mutate(thread.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                    <IconRotate className='h-4 w-4' />
+                    <span className='hidden sm:inline ml-2'>{t('common.actions.unarchive')}</span>
+                  </Button>
+                );
+              }
+              if (status === 'retained') {
+                return (
+                  <Button variant='outline' size='sm' onClick={() => unretainMutation.mutate(thread.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                    <IconRotate className='h-4 w-4' />
+                    <span className='hidden sm:inline ml-2'>{t('common.actions.unretain')}</span>
+                  </Button>
+                );
+              }
+              return null;
+            })()}
           </div>
         </div>
       </Header>
+
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('threads.dialogs.archiveTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('threads.dialogs.archiveDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { archiveMutation.mutate(thread.id, { onSuccess: () => refetch() }); setShowArchiveDialog(false); }}>
+              {t('common.actions.archive')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Main className='flex-1 overflow-hidden flex flex-col p-0'>
         {/* Top: Usage Metadata */}
