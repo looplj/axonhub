@@ -70,7 +70,7 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
   );
 
   const stat = usageStats?.[0];
-  const totalTokens = stat ? stat.inputTokens + stat.outputTokens + stat.cachedTokens + stat.reasoningTokens : 0;
+  const totalTokens = stat ? stat.inputTokens + stat.outputTokens : 0;
   const hasTopModels = stat && stat.topModels && stat.topModels.length > 0;
 
   return (
@@ -124,17 +124,17 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell className="font-medium">{t('apikeys.columns.cachedTokens')}</TableCell>
+                        <TableCell className="font-medium">{t('apikeys.tokenUsageChart.cacheHitRate')}</TableCell>
                         <TableCell className="text-center tabular-nums">{formatNumber(stat.cachedTokens)}</TableCell>
                         <TableCell className="text-center tabular-nums">
-                          {pct(stat.cachedTokens, totalTokens)}%
+                          {pct(stat.cachedTokens, stat.inputTokens)}%
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell className="font-medium">{t('apikeys.columns.reasoningTokens')}</TableCell>
+                        <TableCell className="font-medium">{t('apikeys.tokenUsageChart.reasoningRatio')}</TableCell>
                         <TableCell className="text-center tabular-nums">{formatNumber(stat.reasoningTokens)}</TableCell>
                         <TableCell className="text-center tabular-nums">
-                          {pct(stat.reasoningTokens, totalTokens)}%
+                          {pct(stat.reasoningTokens, stat.outputTokens)}%
                         </TableCell>
                       </TableRow>
                       <TableRow className="bg-muted/50 font-semibold">
@@ -153,7 +153,7 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                   <h3 className="mb-3 text-sm font-medium">{t('apikeys.tokenUsageChart.topModels')}</h3>
                   <div className="space-y-4">
                     {stat.topModels.map((model, index) => {
-                      const modelTotal = model.inputTokens + model.outputTokens + model.cachedTokens + model.reasoningTokens;
+                      const modelTotal = model.inputTokens + model.outputTokens;
                       return (
                         <div key={model.modelId} className="rounded-lg border">
                           <div className="bg-muted/30 px-4 py-2">
@@ -184,17 +184,17 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                                   </TableCell>
                                 </TableRow>
                                 <TableRow>
-                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.columns.cachedTokens')}</TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.tokenUsageChart.cacheHitRate')}</TableCell>
                                   <TableCell className="text-center tabular-nums">{formatNumber(model.cachedTokens)}</TableCell>
                                   <TableCell className="text-center tabular-nums whitespace-nowrap">
-                                    {pct(model.cachedTokens, modelTotal)}%
+                                    {pct(model.cachedTokens, model.inputTokens)}%
                                   </TableCell>
                                 </TableRow>
                                 <TableRow>
-                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.columns.reasoningTokens')}</TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.tokenUsageChart.reasoningRatio')}</TableCell>
                                   <TableCell className="text-center tabular-nums">{formatNumber(model.reasoningTokens)}</TableCell>
                                   <TableCell className="text-center tabular-nums whitespace-nowrap">
-                                    {pct(model.reasoningTokens, modelTotal)}%
+                                    {pct(model.reasoningTokens, model.outputTokens)}%
                                   </TableCell>
                                 </TableRow>
                               </TableBody>

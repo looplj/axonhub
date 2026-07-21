@@ -136,6 +136,79 @@ func TestMergeOverrideHeaders(t *testing.T) {
 	}
 }
 
+func TestMergeOverrideOperations(t *testing.T) {
+	setOp := func(path, value string) objects.OverrideOperation {
+		return objects.OverrideOperation{Op: objects.OverrideOpSet, Path: path, Value: value}
+	}
+	setIfAbsentOp := func(path, value string) objects.OverrideOperation {
+		return objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: path, Value: value}
+	}
+	deleteOp := func(path string) objects.OverrideOperation {
+		return objects.OverrideOperation{Op: objects.OverrideOpDelete, Path: path}
+	}
+	renameOp := func(from, to string) objects.OverrideOperation {
+		return objects.OverrideOperation{Op: objects.OverrideOpRename, From: from, To: to}
+	}
+
+	tests := []struct {
+		name     string
+		existing []objects.OverrideOperation
+		template []objects.OverrideOperation
+		expected []objects.OverrideOperation
+	}{
+		{
+			name:     "set if absent replaces set at the same path",
+			existing: []objects.OverrideOperation{setOp("max_output_tokens", "8000"), setOp("temperature", "0.5")},
+			template: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000")},
+			expected: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000"), setOp("temperature", "0.5")},
+		},
+		{
+			name:     "set replaces set if absent at the same path",
+			existing: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000")},
+			template: []objects.OverrideOperation{setOp("max_output_tokens", "16000")},
+			expected: []objects.OverrideOperation{setOp("max_output_tokens", "16000")},
+		},
+		{
+			name:     "delete replaces set if absent at the same path",
+			existing: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000")},
+			template: []objects.OverrideOperation{deleteOp("max_output_tokens")},
+			expected: []objects.OverrideOperation{deleteOp("max_output_tokens")},
+		},
+		{
+			name:     "non-replacing operations remain ordered and are appended",
+			existing: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000")},
+			template: []objects.OverrideOperation{renameOp("max_tokens", "max_output_tokens")},
+			expected: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000"), renameOp("max_tokens", "max_output_tokens")},
+		},
+		{
+			name: "template removes duplicate scalar operations at the same path",
+			existing: []objects.OverrideOperation{
+				setOp("max_output_tokens", "8000"),
+				setOp("temperature", "0.5"),
+				setIfAbsentOp("max_output_tokens", "32000"),
+				deleteOp("max_output_tokens"),
+			},
+			template: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "16000")},
+			expected: []objects.OverrideOperation{
+				setIfAbsentOp("max_output_tokens", "16000"),
+				setOp("temperature", "0.5"),
+			},
+		},
+		{
+			name:     "last template scalar operation at the same path wins",
+			existing: []objects.OverrideOperation{setOp("temperature", "0.5")},
+			template: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000"), setOp("max_output_tokens", "16000")},
+			expected: []objects.OverrideOperation{setOp("temperature", "0.5"), setOp("max_output_tokens", "16000")},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, MergeOverrideOperations(tt.existing, tt.template))
+		})
+	}
+}
+
 func TestMergeOverrideParameters(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -287,6 +360,31 @@ func TestValidateBodyOverrideOperations(t *testing.T) {
 		expectError bool
 	}{
 		{
+			name:        "valid set if absent op",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "32000"}},
+			expectError: false,
+		},
+		{
+			name:        "set if absent requires path",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Value: "32000"}},
+			expectError: true,
+		},
+		{
+			name:        "set if absent requires value",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens"}},
+			expectError: true,
+		},
+		{
+			name:        "set if absent rejects whitespace value",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "   "}},
+			expectError: true,
+		},
+		{
+			name:        "set if absent cannot target stream",
+			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpSetIfAbsent, Path: "stream", Value: "true"}},
+			expectError: true,
+		},
+		{
 			name:        "valid array remove op",
 			ops:         []objects.OverrideOperation{{Op: objects.OverrideOpArrayRemove, Path: "tools", Match: &objects.OverrideMatch{Path: "function.name", Eq: "web_search"}}},
 			expectError: false,
@@ -360,6 +458,13 @@ func TestValidateOverrideHeaders(t *testing.T) {
 			name: "set with whitespace path",
 			ops: []objects.OverrideOperation{
 				{Op: objects.OverrideOpSet, Path: "   ", Value: "value"},
+			},
+			expectError: true,
+		},
+		{
+			name: "set if absent is rejected for headers",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpSetIfAbsent, Path: "X-Default", Value: "value"},
 			},
 			expectError: true,
 		},

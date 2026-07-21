@@ -12,6 +12,7 @@ type Config struct {
 	PublicURL   string        `conf:"public_url" yaml:"public_url" json:"public_url"`
 	Name        string        `conf:"name" yaml:"name" json:"name"`
 	BasePath    string        `conf:"base_path" yaml:"base_path" json:"base_path"`
+	PidFile     string        `conf:"pid_file" yaml:"pid_file" json:"pid_file"`
 	ReadTimeout time.Duration `conf:"read_timeout" yaml:"read_timeout" json:"read_timeout"`
 
 	// RequestTimeout is the maximum duration for processing a request.

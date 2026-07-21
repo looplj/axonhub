@@ -54,7 +54,7 @@ Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new cod
   <tbody>
     <tr>
       <td align="center" valign="middle">
-        <a href="https://bloome.im/" target="_blank">
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
           <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
           <br/>
           <strong>Bloome</strong>
@@ -62,7 +62,7 @@ Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new cod
       </td>
       <td valign="middle">
         Try AxonHub with zero local setup on Bloome:
-        <a href="https://bloome.im/agent/join/WchosTFN?ref=MjgMzmCY" target="_blank">Quick start</a>,
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">Quick start</a>,
         one click from your browser or phone, easy to share with your team.
       </td>
     </tr>

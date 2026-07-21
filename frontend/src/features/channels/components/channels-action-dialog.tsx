@@ -1195,7 +1195,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           };
 
       const shouldUseProtocolDefaultBaseURL =
-        (isCodexType && (!isEdit || authMode === 'official' || authMode === 'auth-json')) ||
+        (isCodexType && (authMode === 'official' || authMode === 'auth-json')) ||
         (isClaudeCodeType && authMode === 'official' && !isDuplicate);
       if (shouldUseProtocolDefaultBaseURL) {
         const currentType = selectedType || derivedChannelType;

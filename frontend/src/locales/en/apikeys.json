@@ -35,6 +35,8 @@
   "apikeys.tokenUsageChart.overallUsage": "Overall Usage",
   "apikeys.tokenUsageChart.topModels": "Top 3 Models Usage",
   "apikeys.tokenUsageChart.totalTokens": "Total Tokens",
+  "apikeys.tokenUsageChart.cacheHitRate": "Cache Hit Rate",
+  "apikeys.tokenUsageChart.reasoningRatio": "Reasoning Ratio",
   "apikeys.dialogs.create.title": "Create API Key",
   "apikeys.dialogs.create.description": "Create a new API Key for system access.",
   "apikeys.dialogs.edit.title": "Edit API Key",

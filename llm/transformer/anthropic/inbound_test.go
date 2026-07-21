@@ -2178,6 +2178,63 @@ func TestInboundTransformer_TransformResponse_EdgeCases(t *testing.T) {
 			},
 		},
 		{
+			name: "response with tool call and no finish reason",
+			chatResp: &llm.Response{
+				ID:      "msg_tool_without_finish_reason",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{{
+					Index: 0,
+					Message: &llm.Message{
+						Role: "assistant",
+						ToolCalls: []llm.ToolCall{{
+							ID:   "call_without_finish_reason",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "search",
+								Arguments: `{"query":"test"}`,
+							},
+						}},
+					},
+				}},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "tool_use", resp.Content[0].Type)
+				require.NotNil(t, resp.StopReason)
+				require.Equal(t, "tool_use", *resp.StopReason)
+			},
+		},
+		{
+			name: "response with text and no finish reason",
+			chatResp: &llm.Response{
+				ID:      "msg_text_without_finish_reason",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{{
+					Index: 0,
+					Message: &llm.Message{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Done"),
+						},
+					},
+				}},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.NotNil(t, resp.StopReason)
+				require.Equal(t, "end_turn", *resp.StopReason)
+			},
+		},
+		{
 			name: "response with empty thinking content",
 			chatResp: &llm.Response{
 				ID:      "msg_empty_thinking",

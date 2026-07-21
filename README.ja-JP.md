@@ -54,7 +54,7 @@ Atlas Cloud の <a href="https://lj.s.gy/jknt2V" target="_blank">新しいコー
   <tbody>
     <tr>
       <td align="center" valign="middle">
-        <a href="https://bloome.im/" target="_blank">
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
           <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
           <br/>
           <strong>Bloome</strong>
@@ -62,7 +62,7 @@ Atlas Cloud の <a href="https://lj.s.gy/jknt2V" target="_blank">新しいコー
       </td>
       <td valign="middle">
         AxonHub をローカルセットアップなしで試すなら、Bloome で：
-        <a href="https://bloome.im/agent/join/WchosTFN?ref=MjgMzmCY" target="_blank">Quick start</a>、
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">Quick start</a>、
         ブラウザやスマートフォンからワンクリックで起動でき、チームにも簡単に共有できます。
       </td>
     </tr>

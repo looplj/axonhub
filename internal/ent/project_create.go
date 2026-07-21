@@ -527,10 +527,10 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	}
 	if nodes := _c.mutation.PromptsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),

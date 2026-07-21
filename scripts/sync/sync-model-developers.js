@@ -305,6 +305,42 @@ function filterProviders(data, allowedIds) {
 		}
 	}
 
+	// Aggregate IBM Granite models from all providers
+	if (allowedIds.includes("ibm")) {
+		const graniteModels = [];
+		const seen = new Set();
+
+		for (const provider of Object.values(data.providers)) {
+			for (const model of provider.models || []) {
+				const id = model.id?.toLowerCase() || "";
+				if (seen.has(id)) continue;
+				if (!id.includes("granite") && !id.includes("ibm")) continue;
+
+				// Skip embedding models
+				if (id.includes("embedding")) continue;
+				// Skip guardian/guardrail models
+				if (id.includes("guardian")) continue;
+				// Skip Cloudflare-hosted duplicates (@cf/ or workers-ai/ prefixes)
+				if (id.startsWith("@cf/") || id.includes("workers-ai/")) continue;
+
+				seen.add(id);
+				graniteModels.push(model);
+			}
+		}
+
+		if (graniteModels.length > 0) {
+			filtered.ibm = {
+				id: "ibm",
+				name: "IBM",
+				display_name: "IBM",
+				models: graniteModels,
+			};
+			console.log(
+				`Aggregated ${graniteModels.length} Granite models to ibm developer`,
+			);
+		}
+	}
+
 	// Map doubao channel's doubao models to bytedance developer
 	if (allowedIds.includes("bytedance") && data.providers.doubao) {
 		const doubaoProvider = data.providers.doubao;
@@ -321,6 +357,62 @@ function filterProviders(data, allowedIds) {
 			};
 			console.log(
 				`Mapped ${doubaoModels.length} doubao models to bytedance developer`,
+			);
+		}
+	}
+
+	// Merge Tencent plan providers into the Tencent developer
+	if (allowedIds.includes("tencent")) {
+		const tencentProviderKeys = [
+			"tencent-token-plan",
+			"tencent-tokenhub",
+			"tencent-coding-plan",
+		];
+		const mergedModels = new Map();
+		const baseProvider = filtered.tencent || data.providers.tencent || null;
+
+		// Process the base provider first so its metadata takes precedence
+		if (baseProvider) {
+			for (const model of baseProvider.models || []) {
+				const id = model.id?.toLowerCase() || "";
+				const normalizedId = id.startsWith("tencent/")
+					? id.slice("tencent/".length)
+					: id;
+				if (normalizedId && !mergedModels.has(normalizedId)) {
+					mergedModels.set(normalizedId, deepClone(model));
+				}
+			}
+		}
+
+		for (const key of tencentProviderKeys) {
+			const provider = data.providers[key];
+			if (!provider) continue;
+
+			for (const model of provider.models || []) {
+				const id = model.id?.toLowerCase() || "";
+				const normalizedId = id.startsWith("tencent/")
+					? id.slice("tencent/".length)
+					: id;
+				const isTencentModel =
+					normalizedId === "hy3" ||
+					normalizedId.startsWith("hy3-") ||
+					normalizedId.startsWith("hunyuan-");
+
+				if (!isTencentModel || mergedModels.has(normalizedId)) continue;
+				mergedModels.set(normalizedId, deepClone(model));
+			}
+		}
+
+		if (mergedModels.size > 0) {
+			filtered.tencent = {
+				...(baseProvider || {}),
+				id: "tencent",
+				name: "Tencent",
+				display_name: "Tencent",
+				models: Array.from(mergedModels.values()),
+			};
+			console.log(
+				`Merged ${mergedModels.size} Hy3/Hunyuan models into Tencent developer`,
 			);
 		}
 	}

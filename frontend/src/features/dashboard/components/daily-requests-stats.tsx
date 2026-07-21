@@ -16,7 +16,6 @@ export function DailyRequestStats() {
   const isLoading = isStatsLoading || isSettingsLoading;
 
   const currencyCode = generalSettings?.currencyCode || 'USD';
-  const timezone = generalSettings?.timezone || 'UTC';
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
 
   const formatCurrency = useCallback(
@@ -62,14 +61,13 @@ export function DailyRequestStats() {
   // Transform data for the chart
   const chartData =
     dailyStats?.map((stat) => {
-      // Parse YYYY-MM-DD as local date to avoid UTC interpretation
       const [year, month, day] = stat.date.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
+      const date = new Date(Date.UTC(year, month - 1, day));
       return {
         name: date.toLocaleDateString(locale, {
           month: '2-digit',
           day: '2-digit',
-          timeZone: timezone,
+          timeZone: 'UTC',
         }),
         requests: stat.count,
         tokens: stat.tokens,

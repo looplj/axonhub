@@ -40,11 +40,13 @@ interface ThreadsTableProps {
   totalCount?: number;
   dateRange?: DateTimeRangeValue;
   threadIdFilter: string;
+  statusFilter?: string[];
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
   onThreadIdFilterChange: (threadId: string) => void;
+  onStatusFilterChange?: (statuses: string[]) => void;
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefresh?: boolean;
@@ -59,11 +61,13 @@ export function ThreadsTable({
   pageSize,
   dateRange,
   threadIdFilter,
+  statusFilter = [],
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onDateRangeChange,
   onThreadIdFilterChange,
+  onStatusFilterChange,
   onRefresh,
   showRefresh,
   autoRefresh = false,
@@ -110,6 +114,8 @@ export function ThreadsTable({
         onDateRangeChange={onDateRangeChange}
         threadIdFilter={threadIdFilter}
         onThreadIdFilterChange={onThreadIdFilterChange}
+        statusFilter={statusFilter}
+        onStatusFilterChange={onStatusFilterChange}
         onRefresh={onRefresh}
         showRefresh={showRefresh}
         autoRefresh={autoRefresh}

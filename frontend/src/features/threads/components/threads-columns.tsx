@@ -12,6 +12,70 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import type { Thread } from '../data/schema';
+import { useArchiveThread, useUnarchiveThread, useRetainThread, useUnretainThread } from '../data/threads';
+import { IconArchive, IconPin, IconRotate } from '@tabler/icons-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import React from 'react';
+
+function ThreadActionButtons({ thread }: { thread: Thread }) {
+  const { t } = useTranslation();
+  const [showArchiveDialog, setShowArchiveDialog] = React.useState(false);
+  const archiveMutation = useArchiveThread();
+  const unarchiveMutation = useUnarchiveThread();
+  const retainMutation = useRetainThread();
+  const unretainMutation = useUnretainThread();
+  const status = thread.status ?? 'active';
+
+  return (
+    <>
+      <div className='flex items-center gap-1'>
+        {status === 'active' && (
+          <>
+            <Button variant='ghost' size='sm' onClick={() => setShowArchiveDialog(true)} title={t('common.actions.archive')}>
+              <IconArchive className='h-4 w-4' />
+            </Button>
+            <Button variant='ghost' size='sm' onClick={() => retainMutation.mutate(thread.id)} title={t('common.actions.retain')}>
+              <IconPin className='h-4 w-4' />
+            </Button>
+          </>
+        )}
+        {status === 'archived' && (
+          <Button variant='ghost' size='sm' onClick={() => unarchiveMutation.mutate(thread.id)} title={t('common.actions.unarchive')}>
+            <IconRotate className='h-4 w-4' />
+          </Button>
+        )}
+        {status === 'retained' && (
+          <Button variant='ghost' size='sm' onClick={() => unretainMutation.mutate(thread.id)} title={t('common.actions.unretain')}>
+            <IconRotate className='h-4 w-4' />
+          </Button>
+        )}
+      </div>
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('threads.dialogs.archiveTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('threads.dialogs.archiveDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { archiveMutation.mutate(thread.id); setShowArchiveDialog(false); }}>
+              {t('common.actions.archive')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
 
 export function useThreadsColumns(): ColumnDef<Thread>[] {
   const { t, i18n } = useTranslation();
@@ -83,9 +147,10 @@ export function useThreadsColumns(): ColumnDef<Thread>[] {
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('threads.columns.traceCount')} />,
       cell: ({ row }) => {
         const count = row.original.tracesSummary?.totalCount ?? 0;
+        const archivedCount = row.original.archivedTracesCount ?? 0;
         return (
           <Badge variant='secondary' className='font-mono text-xs'>
-            {count}
+            {archivedCount > 0 ? `${count} (+${archivedCount})` : `${count}`}
           </Badge>
         );
       },
@@ -118,6 +183,13 @@ export function useThreadsColumns(): ColumnDef<Thread>[] {
           </Button>
         );
       },
+    },
+    {
+      id: 'actions',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.actions')} />,
+      enableHiding: false,
+      meta: { className: 'w-[100px]' },
+      cell: ({ row }) => <ThreadActionButtons thread={row.original} />,
     },
   ];
 

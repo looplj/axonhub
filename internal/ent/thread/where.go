@@ -240,6 +240,26 @@ func ThreadIDContainsFold(v string) predicate.Thread {
 	return predicate.Thread(sql.FieldContainsFold(FieldThreadID, v))
 }
 
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v Status) predicate.Thread {
+	return predicate.Thread(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v Status) predicate.Thread {
+	return predicate.Thread(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...Status) predicate.Thread {
+	return predicate.Thread(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...Status) predicate.Thread {
+	return predicate.Thread(sql.FieldNotIn(FieldStatus, vs...))
+}
+
 // HasProject applies the HasEdge predicate on the "project" edge.
 func HasProject() predicate.Thread {
 	return predicate.Thread(func(s *sql.Selector) {

@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
@@ -20,6 +21,7 @@ function buildTracesQuery() {
             id
             traceID
             firstUserQuery
+            status
             createdAt
             updatedAt
             thread {
@@ -52,6 +54,7 @@ function buildTraceDetailQuery() {
         ... on Trace {
           id
           traceID
+          status
           createdAt
           updatedAt
           usageMetadata {
@@ -86,6 +89,7 @@ function buildTraceWithRequestTracesQuery() {
         ... on Trace {
           id
           traceID
+          status
           createdAt
           updatedAt
           usageMetadata {
@@ -143,6 +147,8 @@ export function useTraces(variables?: {
           where: {
             ...variables?.where,
             ...(selectedProjectId && { projectID: selectedProjectId }),
+            // Default: exclude archived traces unless statusIn is explicitly set
+            ...(variables?.where?.statusIn ? {} : { statusNEQ: variables?.where?.statusNEQ ?? 'archived' }),
           },
         };
 
@@ -209,3 +215,80 @@ export function useTraceWithSegments(id: string) {
 
 // Backward compatibility alias
 export const useTraceWithRequestTraces = useTraceWithSegments;
+
+// Status mutation hooks
+export function useArchiveTrace() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await graphqlRequest<{ archiveTrace: boolean }>(
+        `mutation ArchiveTrace($id: ID!) { archiveTrace(id: $id) }`,
+        { id }
+      );
+      return data.archiveTrace;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['traces'] });
+      toast.success(t('traces.messages.archiveSuccess', 'Trace archived'));
+    },
+  });
+}
+
+export function useUnarchiveTrace() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await graphqlRequest<{ unarchiveTrace: boolean }>(
+        `mutation UnarchiveTrace($id: ID!) { unarchiveTrace(id: $id) }`,
+        { id }
+      );
+      return data.unarchiveTrace;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['traces'] });
+      toast.success(t('traces.messages.unarchiveSuccess', 'Trace restored'));
+    },
+  });
+}
+
+export function useRetainTrace() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await graphqlRequest<{ retainTrace: boolean }>(
+        `mutation RetainTrace($id: ID!) { retainTrace(id: $id) }`,
+        { id }
+      );
+      return data.retainTrace;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['traces'] });
+      toast.success(t('traces.messages.retainSuccess', 'Trace retained'));
+    },
+  });
+}
+
+export function useUnretainTrace() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await graphqlRequest<{ unretainTrace: boolean }>(
+        `mutation UnretainTrace($id: ID!) { unretainTrace(id: $id) }`,
+        { id }
+      );
+      return data.unretainTrace;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['traces'] });
+      toast.success(t('traces.messages.unretainSuccess', 'Trace no longer retained'));
+    },
+  });
+}

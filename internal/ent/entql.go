@@ -486,6 +486,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			thread.FieldUpdatedAt: {Type: field.TypeTime, Column: thread.FieldUpdatedAt},
 			thread.FieldProjectID: {Type: field.TypeInt, Column: thread.FieldProjectID},
 			thread.FieldThreadID:  {Type: field.TypeString, Column: thread.FieldThreadID},
+			thread.FieldStatus:    {Type: field.TypeEnum, Column: thread.FieldStatus},
 		},
 	}
 	graph.Nodes[19] = &sqlgraph.Node{
@@ -504,6 +505,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			trace.FieldProjectID: {Type: field.TypeInt, Column: trace.FieldProjectID},
 			trace.FieldTraceID:   {Type: field.TypeString, Column: trace.FieldTraceID},
 			trace.FieldThreadID:  {Type: field.TypeInt, Column: trace.FieldThreadID},
+			trace.FieldStatus:    {Type: field.TypeEnum, Column: trace.FieldStatus},
 		},
 	}
 	graph.Nodes[20] = &sqlgraph.Node{
@@ -907,10 +909,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 	graph.MustAddE(
 		"prompts",
 		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 		},
 		"Project",
@@ -941,12 +943,12 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"UserProject",
 	)
 	graph.MustAddE(
-		"projects",
+		"project",
 		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   prompt.ProjectsTable,
-			Columns: prompt.ProjectsPrimaryKey,
+			Table:   prompt.ProjectTable,
+			Columns: []string{prompt.ProjectColumn},
 			Bidi:    false,
 		},
 		"Prompt",
@@ -2834,14 +2836,14 @@ func (f *PromptFilter) WhereSettings(p entql.BytesP) {
 	f.Where(p.Field(prompt.FieldSettings))
 }
 
-// WhereHasProjects applies a predicate to check if query has an edge projects.
-func (f *PromptFilter) WhereHasProjects() {
-	f.Where(entql.HasEdge("projects"))
+// WhereHasProject applies a predicate to check if query has an edge project.
+func (f *PromptFilter) WhereHasProject() {
+	f.Where(entql.HasEdge("project"))
 }
 
-// WhereHasProjectsWith applies a predicate to check if query has an edge projects with a given conditions (other predicates).
-func (f *PromptFilter) WhereHasProjectsWith(preds ...predicate.Project) {
-	f.Where(entql.HasEdgeWith("projects", sqlgraph.WrapFunc(func(s *sql.Selector) {
+// WhereHasProjectWith applies a predicate to check if query has an edge project with a given conditions (other predicates).
+func (f *PromptFilter) WhereHasProjectWith(preds ...predicate.Project) {
+	f.Where(entql.HasEdgeWith("project", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -3734,6 +3736,11 @@ func (f *ThreadFilter) WhereThreadID(p entql.StringP) {
 	f.Where(p.Field(thread.FieldThreadID))
 }
 
+// WhereStatus applies the entql string predicate on the status field.
+func (f *ThreadFilter) WhereStatus(p entql.StringP) {
+	f.Where(p.Field(thread.FieldStatus))
+}
+
 // WhereHasProject applies a predicate to check if query has an edge project.
 func (f *ThreadFilter) WhereHasProject() {
 	f.Where(entql.HasEdge("project"))
@@ -3825,6 +3832,11 @@ func (f *TraceFilter) WhereTraceID(p entql.StringP) {
 // WhereThreadID applies the entql int predicate on the thread_id field.
 func (f *TraceFilter) WhereThreadID(p entql.IntP) {
 	f.Where(p.Field(trace.FieldThreadID))
+}
+
+// WhereStatus applies the entql string predicate on the status field.
+func (f *TraceFilter) WhereStatus(p entql.StringP) {
+	f.Where(p.Field(trace.FieldStatus))
 }
 
 // WhereHasProject applies a predicate to check if query has an edge project.

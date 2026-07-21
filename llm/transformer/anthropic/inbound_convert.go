@@ -902,6 +902,14 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 					resp.StopReason = choice.FinishReason
 				}
 			}
+		} else {
+			stopReason := "end_turn"
+			if lo.ContainsBy(resp.Content, func(block MessageContentBlock) bool {
+				return block.Type == "tool_use"
+			}) {
+				stopReason = "tool_use"
+			}
+			resp.StopReason = &stopReason
 		}
 	}
 

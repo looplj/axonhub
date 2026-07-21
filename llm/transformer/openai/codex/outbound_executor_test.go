@@ -517,6 +517,43 @@ func TestCodexOutbound_ForcesArrayInputsForSingleMessage(t *testing.T) {
 	assert.Equal(t, "user", first["role"])
 }
 
+func TestCodexOutbound_PreservesResponsesLiteRequirements(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set(responses.ResponsesLiteHeader, "true")
+	inboundRequest := &httpclient.Request{
+		Headers: headers,
+		Body: []byte(`{
+			"model": "gpt-5.6-sol",
+			"input": "Hello",
+			"stream": true,
+			"parallel_tool_calls": false,
+			"reasoning": {
+				"effort": "xhigh",
+				"context": "all_turns"
+			}
+		}`),
+	}
+
+	llmRequest, err := responses.NewInboundTransformer().TransformRequest(ctx, inboundRequest)
+	require.NoError(t, err)
+	llmRequest.RawRequest = inboundRequest
+
+	outboundRequest, err := outbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+	outboundRequest = httpclient.MergeInboundRequest(outboundRequest, inboundRequest)
+
+	assert.Equal(t, "true", outboundRequest.Headers.Get(responses.ResponsesLiteHeader))
+
+	body := decodeCodexRequestBody(t, outboundRequest)
+	assert.Equal(t, false, body["parallel_tool_calls"])
+	reasoning, ok := body["reasoning"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "all_turns", reasoning["context"])
+}
+
 func newTestCodexOutbound(t *testing.T) *OutboundTransformer {
 	t.Helper()
 

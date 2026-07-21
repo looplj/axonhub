@@ -386,7 +386,6 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "project_id", Type: field.TypeInt},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "role", Type: field.TypeString},
@@ -394,22 +393,31 @@ var (
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "disabled"},
 		{Name: "order", Type: field.TypeInt, Default: 0},
 		{Name: "settings", Type: field.TypeJSON},
+		{Name: "project_id", Type: field.TypeInt},
 	}
 	// PromptsTable holds the schema information for the "prompts" table.
 	PromptsTable = &schema.Table{
 		Name:       "prompts",
 		Columns:    PromptsColumns,
 		PrimaryKey: []*schema.Column{PromptsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "prompts_projects_prompts",
+				Columns:    []*schema.Column{PromptsColumns[11]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "prompts_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{PromptsColumns[4]},
+				Columns: []*schema.Column{PromptsColumns[11]},
 			},
 			{
 				Name:    "prompts_by_project_id_name",
 				Unique:  true,
-				Columns: []*schema.Column{PromptsColumns[4], PromptsColumns[5], PromptsColumns[3]},
+				Columns: []*schema.Column{PromptsColumns[11], PromptsColumns[4], PromptsColumns[3]},
 			},
 		},
 	}
@@ -444,7 +452,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex", "github_copilot", "nanogpt", "cline", "wafer", "synthetic", "neuralwatt", "apertis", "opencode_go"}},
+		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex", "github_copilot", "nanogpt", "cline", "wafer", "synthetic", "neuralwatt", "apertis", "opencode_go", "kimi_code", "minimax", "zhipu"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"available", "warning", "exhausted", "unknown"}},
 		{Name: "quota_data", Type: field.TypeJSON},
 		{Name: "next_reset_at", Type: field.TypeTime, Nullable: true},
@@ -651,7 +659,7 @@ var (
 		{Name: "name", Type: field.TypeString},
 		{Name: "level", Type: field.TypeEnum, Enums: []string{"system", "project"}, Default: "system"},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
-		{Name: "project_id", Type: field.TypeInt, Nullable: true},
+		{Name: "project_id", Type: field.TypeInt, Nullable: true, Default: 0},
 	}
 	// RolesTable holds the schema information for the "roles" table.
 	RolesTable = &schema.Table{
@@ -700,6 +708,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "thread_id", Type: field.TypeString, Unique: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived", "retained"}, Default: "active"},
 		{Name: "project_id", Type: field.TypeInt},
 	}
 	// ThreadsTable holds the schema information for the "threads" table.
@@ -710,7 +719,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "threads_projects_threads",
-				Columns:    []*schema.Column{ThreadsColumns[4]},
+				Columns:    []*schema.Column{ThreadsColumns[5]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -719,12 +728,17 @@ var (
 			{
 				Name:    "threads_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{ThreadsColumns[4]},
+				Columns: []*schema.Column{ThreadsColumns[5]},
 			},
 			{
 				Name:    "threads_by_thread_id",
 				Unique:  true,
 				Columns: []*schema.Column{ThreadsColumns[3]},
+			},
+			{
+				Name:    "threads_by_project_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{ThreadsColumns[5], ThreadsColumns[4]},
 			},
 		},
 	}
@@ -734,6 +748,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "trace_id", Type: field.TypeString, Unique: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived", "retained"}, Default: "active"},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "thread_id", Type: field.TypeInt, Nullable: true},
 	}
@@ -745,13 +760,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "traces_projects_traces",
-				Columns:    []*schema.Column{TracesColumns[4]},
+				Columns:    []*schema.Column{TracesColumns[5]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "traces_threads_traces",
-				Columns:    []*schema.Column{TracesColumns[5]},
+				Columns:    []*schema.Column{TracesColumns[6]},
 				RefColumns: []*schema.Column{ThreadsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -760,7 +775,7 @@ var (
 			{
 				Name:    "traces_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[4]},
+				Columns: []*schema.Column{TracesColumns[5]},
 			},
 			{
 				Name:    "traces_by_trace_id",
@@ -770,7 +785,12 @@ var (
 			{
 				Name:    "traces_by_thread_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[5]},
+				Columns: []*schema.Column{TracesColumns[6]},
+			},
+			{
+				Name:    "traces_by_project_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{TracesColumns[5], TracesColumns[4]},
 			},
 		},
 	}
@@ -971,31 +991,6 @@ var (
 			},
 		},
 	}
-	// ProjectPromptsColumns holds the columns for the "project_prompts" table.
-	ProjectPromptsColumns = []*schema.Column{
-		{Name: "project_id", Type: field.TypeInt},
-		{Name: "prompt_id", Type: field.TypeInt},
-	}
-	// ProjectPromptsTable holds the schema information for the "project_prompts" table.
-	ProjectPromptsTable = &schema.Table{
-		Name:       "project_prompts",
-		Columns:    ProjectPromptsColumns,
-		PrimaryKey: []*schema.Column{ProjectPromptsColumns[0], ProjectPromptsColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "project_prompts_project_id",
-				Columns:    []*schema.Column{ProjectPromptsColumns[0]},
-				RefColumns: []*schema.Column{ProjectsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "project_prompts_prompt_id",
-				Columns:    []*schema.Column{ProjectPromptsColumns[1]},
-				RefColumns: []*schema.Column{PromptsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
@@ -1022,7 +1017,6 @@ var (
 		UsersTable,
 		UserProjectsTable,
 		UserRolesTable,
-		ProjectPromptsTable,
 	}
 )
 
@@ -1035,6 +1029,7 @@ func init() {
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
 	OidcIdentitiesTable.ForeignKeys[0].RefTable = UsersTable
+	PromptsTable.ForeignKeys[0].RefTable = ProjectsTable
 	ProviderQuotaStatusTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
@@ -1055,6 +1050,4 @@ func init() {
 	UserProjectsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UserRolesTable.ForeignKeys[0].RefTable = UsersTable
 	UserRolesTable.ForeignKeys[1].RefTable = RolesTable
-	ProjectPromptsTable.ForeignKeys[0].RefTable = ProjectsTable
-	ProjectPromptsTable.ForeignKeys[1].RefTable = PromptsTable
 }
