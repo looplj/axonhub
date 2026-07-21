@@ -688,8 +688,14 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 
 	// Bridge Chat-native custom calls into the Responses custom carrier used by
 	// stream state. Preserve ResponseCustomToolCall when already present.
-	customCall := tc.ResponseCustomToolCall
-	if customCall == nil && tc.OpenAIChatCustomToolCall != nil {
+	var customCall *llm.ResponseCustomToolCall
+	if tc.ResponseCustomToolCall != nil {
+		customCall = &llm.ResponseCustomToolCall{
+			CallID:    tc.ResponseCustomToolCall.CallID,
+			Name:      tc.ResponseCustomToolCall.Name,
+			Namespace: tc.ResponseCustomToolCall.Namespace,
+		}
+	} else if tc.OpenAIChatCustomToolCall != nil {
 		customCall = &llm.ResponseCustomToolCall{
 			CallID: tc.ID,
 			Name:   tc.OpenAIChatCustomToolCall.Name,

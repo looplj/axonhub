@@ -11,8 +11,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
-// OpenAICustomToolsSelector excludes candidates that cannot carry an OpenAI
-// freeform custom-tool declaration and its complete call history.
+// OpenAICustomToolsSelector excludes candidates that can neither preserve an
+// OpenAI freeform custom-tool lifecycle nor carry AxonHub's function bridge.
 type OpenAICustomToolsSelector struct {
 	wrapped CandidateSelector
 }
@@ -34,10 +34,10 @@ func (s *OpenAICustomToolsSelector) Select(ctx context.Context, req *llm.Request
 	}
 
 	compatible := lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
-		return candidateSupportsOpenAICustomTools(candidate)
+		return candidateCanCarryOpenAICustomTools(candidate, req)
 	})
 	if len(compatible) == 0 && len(candidates) > 0 {
-		return nil, fmt.Errorf("%w: no candidate supports OpenAI custom tools", transformer.ErrInvalidRequest)
+		return nil, fmt.Errorf("%w: no candidate supports or can bridge OpenAI custom tools", transformer.ErrInvalidRequest)
 	}
 
 	if log.DebugEnabled(ctx) {

@@ -313,8 +313,9 @@ var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit bre
 
 // PersistentOutboundTransformer wraps an outbound transformer with shared persistence state.
 type PersistentOutboundTransformer struct {
-	wrapped transformer.Outbound
-	state   *PersistenceState
+	wrapped          transformer.Outbound
+	state            *PersistenceState
+	customToolBridge *freeformCustomToolBridge
 }
 
 func shouldForceStreamingForCandidate(candidate *ChannelModelsCandidate, req *llm.Request) bool {
@@ -372,15 +373,23 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	p.state.CurrentCandidate = candidate
 	p.state.StreamCompleted = false
+	p.customToolBridge = nil
 
 	p.wrapped = selectOutboundForCandidate(candidate)
 	if hasOpenAICustomTools(llmRequest) && !candidateSupportsOpenAICustomTools(candidate) {
-		return nil, fmt.Errorf(
-			"%w: channel %q endpoint %q does not support OpenAI custom tools",
-			transformer.ErrInvalidRequest,
-			candidate.Channel.Name,
-			candidate.APIFormat,
-		)
+		if !shouldBridgeOpenAICustomTools(candidate, llmRequest, p.wrapped.APIFormat()) {
+			return nil, fmt.Errorf(
+				"%w: channel %q endpoint %q cannot carry OpenAI custom tools",
+				transformer.ErrInvalidRequest,
+				candidate.Channel.Name,
+				candidate.APIFormat,
+			)
+		}
+		var err error
+		llmRequest, p.customToolBridge, err = bridgeOpenAICustomToolsToFunctions(llmRequest, p.wrapped.APIFormat())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	log.Debug(ctx, "using candidate",
@@ -485,7 +494,14 @@ func containsResponseCustomToolMessages(messages []llm.Message) bool {
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {
-	return p.wrapped.TransformResponse(ctx, response)
+	llmResponse, err := p.wrapped.TransformResponse(ctx, response)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.customToolBridge.rehydrateResponse(llmResponse); err != nil {
+		return nil, err
+	}
+	return llmResponse, nil
 }
 
 func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
@@ -501,7 +517,11 @@ func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, req
 		p.state,
 	)
 
-	return p.wrapped.TransformStream(ctx, req, persistentStream)
+	transformed, err := p.wrapped.TransformStream(ctx, req, persistentStream)
+	if err != nil {
+		return nil, err
+	}
+	return newFreeformCustomToolBridgeStream(transformed, p.customToolBridge), nil
 }
 
 func (p *PersistentOutboundTransformer) AggregateStreamChunks(

@@ -422,23 +422,23 @@ func TestPersistentOutboundTransformer_TransformRequest_ResetsStreamCompletedFor
 	require.False(t, processor.state.StreamCompleted)
 }
 
-func TestPersistentOutboundTransformer_TransformRequest_RejectsIncompatibleCustomToolCandidate(t *testing.T) {
+func TestPersistentOutboundTransformer_TransformRequest_RejectsUnsupportedCustomToolCandidate(t *testing.T) {
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
-			Name: "unverified-chat",
+			Name: "unsupported-gemini",
 			Endpoints: []objects.ChannelEndpoint{{
-				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+				APIFormat: llm.APIFormatGeminiContents.String(),
 			}},
 		},
-		Outbound: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+		Outbound: &mockTransformer{apiFormat: llm.APIFormatGeminiContents},
 	}
 	processor := &PersistentOutboundTransformer{
 		wrapped: channel.Outbound,
 		state: &PersistenceState{
 			ChannelModelsCandidates: []*ChannelModelsCandidate{{
 				Channel:   channel,
-				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+				APIFormat: llm.APIFormatGeminiContents.String(),
 				Models: []biz.ChannelModelEntry{{
 					RequestModel: "grok-4.5",
 					ActualModel:  "grok-4.5",
@@ -462,23 +462,23 @@ func TestPersistentOutboundTransformer_TransformRequest_RejectsIncompatibleCusto
 	require.ErrorContains(t, err, "custom tools")
 }
 
-func TestPersistentOutboundTransformer_TransformRequest_RejectsIncompatibleCustomToolHistoryCandidate(t *testing.T) {
+func TestPersistentOutboundTransformer_TransformRequest_RejectsUnsupportedCustomToolHistoryCandidate(t *testing.T) {
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
-			Name: "unverified-chat",
+			Name: "unsupported-gemini",
 			Endpoints: []objects.ChannelEndpoint{{
-				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+				APIFormat: llm.APIFormatGeminiContents.String(),
 			}},
 		},
-		Outbound: &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+		Outbound: &mockTransformer{apiFormat: llm.APIFormatGeminiContents},
 	}
 	processor := &PersistentOutboundTransformer{
 		wrapped: channel.Outbound,
 		state: &PersistenceState{
 			ChannelModelsCandidates: []*ChannelModelsCandidate{{
 				Channel:   channel,
-				APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+				APIFormat: llm.APIFormatGeminiContents.String(),
 				Models: []biz.ChannelModelEntry{{
 					RequestModel: "grok-4.5",
 					ActualModel:  "grok-4.5",

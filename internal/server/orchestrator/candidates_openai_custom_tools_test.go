@@ -52,18 +52,18 @@ func TestOpenAICustomToolsSelector_Select_OnlyKeepsCompatibleCandidates(t *testi
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"responses", "chat-verified"}, candidateNames(result))
+	require.Equal(t, []string{"responses", "chat-unverified", "chat-verified", "claude"}, candidateNames(result))
 }
 
-func TestOpenAICustomToolsSelector_Select_RejectsWhenNoCandidateCanCarryCustomTools(t *testing.T) {
+func TestOpenAICustomToolsSelector_Select_RejectsWhenNoCandidateCanCarryOrBridgeCustomTools(t *testing.T) {
 	selector := WithOpenAICustomToolsSelector(&mockSelector{candidates: []*ChannelModelsCandidate{
 		{
-			APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
-			Channel:   &biz.Channel{Channel: &ent.Channel{Name: "chat-unverified"}},
+			APIFormat: llm.APIFormatGeminiContents.String(),
+			Channel:   &biz.Channel{Channel: &ent.Channel{Name: "gemini"}},
 		},
 		{
-			APIFormat: llm.APIFormatAnthropicMessage.String(),
-			Channel:   &biz.Channel{Channel: &ent.Channel{Name: "claude"}},
+			APIFormat: llm.APIFormatOllamaChat.String(),
+			Channel:   &biz.Channel{Channel: &ent.Channel{Name: "ollama"}},
 		},
 	}})
 
@@ -79,7 +79,7 @@ func TestOpenAICustomToolsSelector_Select_RejectsWhenNoCandidateCanCarryCustomTo
 
 	require.Nil(t, result)
 	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
-	require.ErrorContains(t, err, "no candidate supports OpenAI custom tools")
+	require.ErrorContains(t, err, "no candidate supports or can bridge OpenAI custom tools")
 }
 
 func TestOpenAICustomToolsSelector_Select_OnlyKeepsVerifiedChatCandidatesForNativeChatCustomTools(t *testing.T) {
@@ -142,10 +142,10 @@ func TestOpenAICustomToolsSelector_Select_RejectsIncompatibleCandidatesForNative
 
 	require.Nil(t, result)
 	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
-	require.ErrorContains(t, err, "no candidate supports OpenAI custom tools")
+	require.ErrorContains(t, err, "no candidate supports or can bridge OpenAI custom tools")
 }
 
-func TestOpenAICustomToolsSelector_Select_RejectsIncompatibleCandidatesForCustomToolHistory(t *testing.T) {
+func TestOpenAICustomToolsSelector_Select_KeepsBridgeCandidatesForResponsesCustomToolHistory(t *testing.T) {
 	selector := WithOpenAICustomToolsSelector(&mockSelector{candidates: []*ChannelModelsCandidate{
 		{
 			APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
@@ -171,9 +171,8 @@ func TestOpenAICustomToolsSelector_Select_RejectsIncompatibleCandidatesForCustom
 		}},
 	})
 
-	require.Nil(t, result)
-	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
-	require.ErrorContains(t, err, "no candidate supports OpenAI custom tools")
+	require.NoError(t, err)
+	require.Equal(t, []string{"chat-unverified", "claude"}, candidateNames(result))
 }
 
 func candidateNames(candidates []*ChannelModelsCandidate) []string {
