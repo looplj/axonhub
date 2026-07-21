@@ -1,6 +1,9 @@
 package biz
 
 import (
+	"slices"
+	"time"
+
 	"github.com/shopspring/decimal"
 
 	"github.com/looplj/axonhub/internal/objects"
@@ -137,12 +140,25 @@ func getUpToOrZero(v *int64) int64 {
 }
 
 // ComputeUsageCost calculates total cost and cost items breakdown for the given usage and model price.
-func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.CostItem, decimal.Decimal) {
+// The now parameter is used for time-based schedule matching.
+func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time) ([]objects.CostItem, decimal.Decimal) {
+	effectiveItems := price.Items
+
+	if price.Schedule != nil {
+		if override := findMatchingOverride(now, price.Schedule); override != nil {
+			effectiveItems = override.Items
+		}
+	}
+
+	return computeUsageCostWithItems(usage, effectiveItems)
+}
+
+func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPriceItem) ([]objects.CostItem, decimal.Decimal) {
 	var items []objects.CostItem
 
 	total := decimal.Zero
 
-	for _, it := range price.Items {
+	for _, it := range priceItems {
 		var quantity int64
 
 		switch it.ItemCode {
@@ -210,4 +226,100 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 	}
 
 	return items, total
+}
+
+// findMatchingOverride finds the highest priority override that matches the current time.
+// Returns nil if no override matches.
+func findMatchingOverride(now time.Time, schedule *objects.PriceSchedule) *objects.PriceOverride {
+	if schedule == nil || len(schedule.Overrides) == 0 {
+		return nil
+	}
+
+	loc, err := time.LoadLocation(schedule.Timezone)
+	if err != nil {
+		loc = time.UTC
+	}
+
+	localNow := now.In(loc)
+
+	var matched *objects.PriceOverride
+
+	for i := range schedule.Overrides {
+		override := &schedule.Overrides[i]
+		if matchesOverride(localNow, &override.When) {
+			if matched == nil || override.Priority < matched.Priority {
+				matched = override
+			}
+		}
+	}
+
+	return matched
+}
+
+// matchesOverride checks if the given time matches all conditions in the override.
+func matchesOverride(now time.Time, when *objects.OverrideWhen) bool {
+	if when == nil {
+		return false
+	}
+
+	// Check daily time range if specified
+	if when.DailyTime != nil {
+		if !matchesDailyTime(now, when.DailyTime) {
+			return false
+		}
+	}
+
+	// Check weekdays if specified
+	if len(when.Weekdays) > 0 {
+		weekday := int(now.Weekday())
+		if weekday == 0 {
+			weekday = 7 // Sunday = 7
+		}
+
+		if !slices.Contains(when.Weekdays, weekday) {
+			return false
+		}
+	}
+
+	// Check date range if specified
+	if when.DateRange != nil {
+		today := now.Format("2006-01-02")
+		if today < when.DateRange.Start || today > when.DateRange.End {
+			return false
+		}
+	}
+
+	return true
+}
+
+// matchesDailyTime checks if the current time falls within a daily time range.
+// Supports cross-midnight ranges (e.g., "22:00"-"06:00").
+// Start and End are in "HH:mm" format.
+func matchesDailyTime(now time.Time, dt *objects.DailyTimeRange) bool {
+	if dt == nil {
+		return false
+	}
+
+	current := now.Hour()*60 + now.Minute()
+	start := parseHHMM(dt.Start)
+	end := parseHHMM(dt.End)
+
+	if start > end {
+		// Cross-midnight range: e.g., 22:00-06:00
+		return current >= start || current < end
+	}
+
+	return current >= start && current < end
+}
+
+// parseHHMM parses a "HH:mm" string into minutes since midnight.
+func parseHHMM(s string) int {
+	if len(s) != 5 || s[2] != ':' {
+		return 0
+	}
+
+	hour := int(s[0]-'0')*10 + int(s[1]-'0')
+	minute := int(s[3]-'0')*10 + int(s[4]-'0')
+
+	return hour*60 + minute
 }
