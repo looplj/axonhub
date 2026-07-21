@@ -19,6 +19,27 @@ type ProviderExtensions struct {
 // to upstream providers.
 type DiagnosticsProviderExtensions struct {
 	LossyDowngrades []LossyDowngrade `json:"-"`
+	// ResponsesLossy is a structured same-event summary for Responses-native
+	// losses (counts). Formal per-field rows still live in LossyDowngrades.
+	// Do not store this bag in TransformerMetadata.
+	ResponsesLossy *ResponsesLossySummary `json:"-"`
+}
+
+// ResponsesLossySummary counts Responses-native losses for one conversion.
+// Owned by ProviderExtensions.Diagnostics (not TransformerMetadata).
+type ResponsesLossySummary struct {
+	LossyDowngrade                       bool
+	UnknownTopLevelFieldCount            int
+	ClientMetadataCount                  int
+	NamespaceToolCount                   int
+	ToolSearchToolCount                  int
+	UnknownToolCount                     int
+	RawOnlyToolCount                     int
+	AdditionalToolsCount                 int
+	AdditionalToolsUnrepresentableCount  int
+	ToolSearchOutputUnrepresentableCount int
+	RawInputItemCount                    int
+	UnknownInputItemCount                int
 }
 
 type OpenAIResponsesProviderExtensions struct {
@@ -331,6 +352,10 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 	if src.Diagnostics != nil {
 		cloned.Diagnostics = &DiagnosticsProviderExtensions{
 			LossyDowngrades: append([]LossyDowngrade(nil), src.Diagnostics.LossyDowngrades...),
+		}
+		if src.Diagnostics.ResponsesLossy != nil {
+			summary := *src.Diagnostics.ResponsesLossy
+			cloned.Diagnostics.ResponsesLossy = &summary
 		}
 	}
 

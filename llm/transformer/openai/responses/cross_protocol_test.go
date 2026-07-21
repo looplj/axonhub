@@ -58,10 +58,15 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnostics(t *testing.T) 
 
 	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
-	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	_, err = chatOut.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
-	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	diagnosticsPtr := llm.ResponsesLossySummaryOf(llmReq)
+	ok := diagnosticsPtr != nil
+	var diagnostics shared.ResponsesLossyDowngradeDiagnostics
+	if ok {
+		diagnostics = *diagnosticsPtr
+	}
 	require.True(t, ok)
 	require.True(t, diagnostics.LossyDowngrade)
 	require.Equal(t, 1, diagnostics.NamespaceToolCount)
@@ -98,10 +103,15 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForUnknownTopLe
 
 	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
-	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	_, err = chatOut.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
-	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	diagnosticsPtr := llm.ResponsesLossySummaryOf(llmReq)
+	ok := diagnosticsPtr != nil
+	var diagnostics shared.ResponsesLossyDowngradeDiagnostics
+	if ok {
+		diagnostics = *diagnosticsPtr
+	}
 	require.True(t, ok)
 	require.True(t, diagnostics.LossyDowngrade)
 	require.Equal(t, 1, diagnostics.UnknownTopLevelFieldCount)
@@ -129,10 +139,15 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForKnownRawOnly
 
 	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
-	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	_, err = chatOut.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
-	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	diagnosticsPtr := llm.ResponsesLossySummaryOf(llmReq)
+	ok := diagnosticsPtr != nil
+	var diagnostics shared.ResponsesLossyDowngradeDiagnostics
+	if ok {
+		diagnostics = *diagnosticsPtr
+	}
 	require.True(t, ok)
 	require.True(t, diagnostics.LossyDowngrade)
 	require.Equal(t, 1, diagnostics.RawOnlyToolCount)
@@ -166,10 +181,15 @@ func TestCrossProtocol_ChatOutboundEmitsLossyDowngradeDiagnosticsForClientMetada
 
 	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
-	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	_, err = chatOut.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
-	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	diagnosticsPtr := llm.ResponsesLossySummaryOf(llmReq)
+	ok := diagnosticsPtr != nil
+	var diagnostics shared.ResponsesLossyDowngradeDiagnostics
+	if ok {
+		diagnostics = *diagnosticsPtr
+	}
 	require.True(t, ok)
 	require.True(t, diagnostics.LossyDowngrade)
 	require.Equal(t, 1, diagnostics.ClientMetadataCount)

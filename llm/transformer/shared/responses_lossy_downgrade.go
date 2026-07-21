@@ -6,41 +6,30 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+// ResponsesLossyDowngradeDiagnosticsKey is deprecated. Summary lives on
+// ProviderExtensions.Diagnostics.ResponsesLossy (see llm.ResponsesLossySummaryOf).
+// Kept only so old greps still find the former metadata home.
 const ResponsesLossyDowngradeDiagnosticsKey = "responses_lossy_downgrade_diagnostics"
 
-type ResponsesLossyDowngradeDiagnostics struct {
-	LossyDowngrade                       bool
-	UnknownTopLevelFieldCount            int
-	ClientMetadataCount                  int
-	NamespaceToolCount                   int
-	ToolSearchToolCount                  int
-	UnknownToolCount                     int
-	RawOnlyToolCount                     int
-	AdditionalToolsCount                 int
-	AdditionalToolsUnrepresentableCount  int
-	ToolSearchOutputUnrepresentableCount int
-	RawInputItemCount                    int
-	UnknownInputItemCount                int
-}
+// ResponsesLossyDowngradeDiagnostics is an alias of the PE-owned summary type
+// for existing call sites in this package and tests.
+type ResponsesLossyDowngradeDiagnostics = llm.ResponsesLossySummary
 
 func RecordResponsesLossyDowngradeDiagnostics(llmReq *llm.Request) {
 	RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq, "")
 }
 
-// RecordResponsesLossyDowngradeDiagnosticsForTarget records both the shared
-// Responses lossy summary and formal LossyDowngrade entries for known
-// Responses-native fields that the target protocol cannot express.
-// targetProtocol empty means summary-only metadata diagnostics.
+// RecordResponsesLossyDowngradeDiagnosticsForTarget records the structured
+// Responses lossy summary on ProviderExtensions.Diagnostics and formal
+// LossyDowngrade rows when targetProtocol is set.
+// targetProtocol empty means summary-only (no formal per-field rows).
 func RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq *llm.Request, targetProtocol llm.APIFormat) {
 	requestExt := llm.OpenAIResponsesRequestExtension(llmReq)
 	if requestExt == nil {
 		return
 	}
-	if llmReq.TransformerMetadata == nil {
-		llmReq.TransformerMetadata = map[string]any{}
-	}
 
-	diagnostics := ResponsesLossyDowngradeDiagnostics{
+	diagnostics := llm.ResponsesLossySummary{
 		UnknownTopLevelFieldCount:            len(requestExt.RawTopLevelFields),
 		ClientMetadataCount:                  len(requestExt.ClientMetadata),
 		AdditionalToolsCount:                 len(requestExt.AdditionalTools),
@@ -70,7 +59,12 @@ func RecordResponsesLossyDowngradeDiagnosticsForTarget(llmReq *llm.Request, targ
 		diagnostics.RawInputItemCount > 0
 
 	if diagnostics.LossyDowngrade {
-		llmReq.TransformerMetadata[ResponsesLossyDowngradeDiagnosticsKey] = diagnostics
+		diagExt := llm.EnsureDiagnosticsProviderExtensions(llmReq)
+		if diagExt != nil {
+			summary := diagnostics
+			diagExt.ResponsesLossy = &summary
+		}
+		// Do not write TransformerMetadata[ResponsesLossyDowngradeDiagnosticsKey].
 	}
 
 	if targetProtocol == "" || !diagnostics.LossyDowngrade {

@@ -2996,7 +2996,12 @@ func TestOutboundTransformer_TransformRequest_DiagnosesResponsesNativeToolLoss(t
 		require.True(t, found, "missing LossyDowngrade for %s in %#v", field, downgrades)
 	}
 
-	diagnostics, ok := result.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	diagnosticsPtr := llm.ResponsesLossySummaryOf(llmReq)
+	ok := diagnosticsPtr != nil
+	var diagnostics shared.ResponsesLossyDowngradeDiagnostics
+	if ok {
+		diagnostics = *diagnosticsPtr
+	}
 	require.True(t, ok)
 	require.True(t, diagnostics.LossyDowngrade)
 	require.Equal(t, 1, diagnostics.NamespaceToolCount)

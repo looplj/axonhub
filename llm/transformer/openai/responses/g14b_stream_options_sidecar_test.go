@@ -65,10 +65,15 @@ func TestG14b_KnownStreamOptionsDoNotTriggerFalseUnknownTopLevelLossyDowngrade(t
 
 	chatOut, err := chatoutbound.NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
-	httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
+	_, err = chatOut.TransformRequest(context.Background(), llmReq)
 	require.NoError(t, err)
 
-	diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+	diagnosticsPtr := llm.ResponsesLossySummaryOf(llmReq)
+	ok := diagnosticsPtr != nil
+	var diagnostics shared.ResponsesLossyDowngradeDiagnostics
+	if ok {
+		diagnostics = *diagnosticsPtr
+	}
 	if ok {
 		require.Equal(t, 0, diagnostics.UnknownTopLevelFieldCount,
 			"known stream_options must not count as unknown top-level")

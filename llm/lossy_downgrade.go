@@ -65,3 +65,12 @@ func LossyDowngrades(req *Request) []LossyDowngrade {
 
 	return req.ProviderExtensions.Diagnostics.LossyDowngrades
 }
+
+// ResponsesLossySummaryOf returns the Responses loss count summary stored on
+// ProviderExtensions.Diagnostics, if any.
+func ResponsesLossySummaryOf(req *Request) *ResponsesLossySummary {
+	if req == nil || req.ProviderExtensions == nil || req.ProviderExtensions.Diagnostics == nil {
+		return nil
+	}
+	return req.ProviderExtensions.Diagnostics.ResponsesLossy
+}

@@ -171,7 +171,12 @@ func TestResponsesHostedTools_SameProtocolRawPreserveAndChatLossy(t *testing.T) 
 		httpReq, err := chatOut.TransformRequest(context.Background(), llmReq)
 		require.NoError(t, err)
 
-		diagnostics, ok := httpReq.TransformerMetadata[shared.ResponsesLossyDowngradeDiagnosticsKey].(shared.ResponsesLossyDowngradeDiagnostics)
+		diagnosticsPtr := llm.ResponsesLossySummaryOf(llmReq)
+	ok := diagnosticsPtr != nil
+	var diagnostics shared.ResponsesLossyDowngradeDiagnostics
+	if ok {
+		diagnostics = *diagnosticsPtr
+	}
 		require.True(t, ok)
 		require.True(t, diagnostics.LossyDowngrade)
 		require.Equal(t, 1, diagnostics.RawOnlyToolCount)
