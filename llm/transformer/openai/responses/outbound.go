@@ -490,14 +490,26 @@ func includeForResponsesOutbound(llmReq *llm.Request) []string {
 }
 
 func chatPromptCacheRetentionForResponses(llmReq *llm.Request) (*string, bool) {
-	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion {
 		return nil, false
 	}
 	var source struct {
 		PromptCacheRetention *string `json:"prompt_cache_retention"`
 	}
-	if json.Unmarshal(llmReq.RawRequest.Body, &source) != nil || source.PromptCacheRetention == nil {
-		return nil, false
+	if reqExt := llm.OpenAIChatRequestExtension(llmReq); reqExt != nil {
+		if raw, ok := reqExt.RawTopLevelFields["prompt_cache_retention"]; ok && len(raw) > 0 {
+			if json.Unmarshal(raw, &source.PromptCacheRetention) != nil || source.PromptCacheRetention == nil {
+				return nil, false
+			}
+		}
+	}
+	if source.PromptCacheRetention == nil {
+		if llmReq.RawRequest == nil {
+			return nil, false
+		}
+		if json.Unmarshal(llmReq.RawRequest.Body, &source) != nil || source.PromptCacheRetention == nil {
+			return nil, false
+		}
 	}
 	switch *source.PromptCacheRetention {
 	case "in_memory", "24h":
@@ -511,12 +523,18 @@ func chatPromptCacheRetentionForResponses(llmReq *llm.Request) (*string, bool) {
 // the equivalent Responses web_search tool. It keeps unknown source members
 // separate so the target boundary can report only the residual loss.
 func chatWebSearchOptionsForResponses(llmReq *llm.Request) (*Tool, []string) {
-	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion {
 		return nil, nil
 	}
 
 	var source map[string]json.RawMessage
-	if json.Unmarshal(llmReq.RawRequest.Body, &source) != nil {
+	if reqExt := llm.OpenAIChatRequestExtension(llmReq); reqExt != nil && len(reqExt.RawTopLevelFields) > 0 {
+		source = reqExt.RawTopLevelFields
+	} else if llmReq.RawRequest != nil {
+		if json.Unmarshal(llmReq.RawRequest.Body, &source) != nil {
+			return nil, nil
+		}
+	} else {
 		return nil, nil
 	}
 	rawOptions, ok := source["web_search_options"]

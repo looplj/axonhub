@@ -10,6 +10,7 @@ import (
 // be serialized through the common llm request/response JSON model.
 type ProviderExtensions struct {
 	OpenAIResponses *OpenAIResponsesProviderExtensions `json:"-"`
+	OpenAIChat      *OpenAIChatProviderExtensions      `json:"-"`
 	Anthropic       *AnthropicProviderExtensions       `json:"-"`
 	Diagnostics     *DiagnosticsProviderExtensions     `json:"-"`
 }
@@ -69,6 +70,21 @@ type OpenAIResponsesRawStreamEvent struct {
 	Type string          `json:"-"`
 	Raw  json.RawMessage `json:"-"`
 }
+
+// OpenAIChatProviderExtensions carries Chat Completions request fragments that
+// are not modeled on the shared openai.Request / llm.Request surface.
+type OpenAIChatProviderExtensions struct {
+	Request *OpenAIChatRequestExtensions `json:"-"`
+}
+
+// OpenAIChatRequestExtensions holds same-protocol Chat-only top-level raw fields
+// (n, prompt_cache_retention, audio, prediction, moderation, web_search_options,
+// deprecated functions / function_call). Replayed only by Chat outbound merge.
+type OpenAIChatRequestExtensions struct {
+	// RawTopLevelFields maps wire field name → original JSON value.
+	RawTopLevelFields map[string]json.RawMessage `json:"-"`
+}
+
 
 // AnthropicProviderExtensions carries Anthropic-native request/response/stream
 // data that has no stable common llm representation.
@@ -269,6 +285,38 @@ func EnsureAnthropicResponseExtensions(resp *Response) *AnthropicResponseExtensi
 	return resp.ProviderExtensions.Anthropic.Response
 }
 
+
+func EnsureOpenAIChatProviderExtensions(req *Request) *OpenAIChatProviderExtensions {
+	if req == nil {
+		return nil
+	}
+	if req.ProviderExtensions == nil {
+		req.ProviderExtensions = &ProviderExtensions{}
+	}
+	if req.ProviderExtensions.OpenAIChat == nil {
+		req.ProviderExtensions.OpenAIChat = &OpenAIChatProviderExtensions{}
+	}
+	return req.ProviderExtensions.OpenAIChat
+}
+
+func EnsureOpenAIChatRequestExtensions(req *Request) *OpenAIChatRequestExtensions {
+	ext := EnsureOpenAIChatProviderExtensions(req)
+	if ext == nil {
+		return nil
+	}
+	if ext.Request == nil {
+		ext.Request = &OpenAIChatRequestExtensions{}
+	}
+	return ext.Request
+}
+
+func OpenAIChatRequestExtension(req *Request) *OpenAIChatRequestExtensions {
+	if req == nil || req.ProviderExtensions == nil || req.ProviderExtensions.OpenAIChat == nil {
+		return nil
+	}
+	return req.ProviderExtensions.OpenAIChat.Request
+}
+
 func EnsureDiagnosticsProviderExtensions(req *Request) *DiagnosticsProviderExtensions {
 	if req == nil {
 		return nil
@@ -326,6 +374,14 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 			}
 			if src.OpenAIResponses.Response.Status != nil {
 				cloned.OpenAIResponses.Response.Status = lo.ToPtr(*src.OpenAIResponses.Response.Status)
+			}
+		}
+	}
+	if src.OpenAIChat != nil {
+		cloned.OpenAIChat = &OpenAIChatProviderExtensions{}
+		if src.OpenAIChat.Request != nil {
+			cloned.OpenAIChat.Request = &OpenAIChatRequestExtensions{
+				RawTopLevelFields: cloneRawMessageMap(src.OpenAIChat.Request.RawTopLevelFields),
 			}
 		}
 	}

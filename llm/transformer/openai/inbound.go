@@ -68,6 +68,7 @@ func (t *InboundTransformer) TransformRequest(
 	chatReq.RawRequest = httpReq
 	chatReq.RequestType = llm.RequestTypeChat
 	chatReq.APIFormat = llm.APIFormatOpenAIChatCompletion
+	attachOpenAIChatRequestExtensions(chatReq, httpReq.Body)
 
 	return chatReq, nil
 }
