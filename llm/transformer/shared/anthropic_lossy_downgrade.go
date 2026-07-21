@@ -29,9 +29,13 @@ func RecordAnthropicNativeLossyDowngradesForTarget(llmReq *llm.Request, targetPr
 	}
 
 	meta := llmReq.TransformerMetadata
-	hasMCPServers := metadataRawPresent(meta, AnthropicMetadataKeyMCPServers)
-	hasContainer := metadataRawPresent(meta, AnthropicMetadataKeyContainer)
-	hasInferenceGeo := metadataRawPresent(meta, AnthropicMetadataKeyInferenceGeo)
+	var pe *llm.AnthropicRequestExtensions
+	if llmReq.ProviderExtensions != nil && llmReq.ProviderExtensions.Anthropic != nil {
+		pe = llmReq.ProviderExtensions.Anthropic.Request
+	}
+	hasMCPServers := (pe != nil && len(pe.MCPServers) > 0) || metadataRawPresent(meta, AnthropicMetadataKeyMCPServers)
+	hasContainer := (pe != nil && len(pe.Container) > 0) || metadataRawPresent(meta, AnthropicMetadataKeyContainer)
+	hasInferenceGeo := (pe != nil && len(pe.InferenceGeo) > 0) || metadataRawPresent(meta, AnthropicMetadataKeyInferenceGeo)
 	hasMCPToolset := anthropicRawToolsContainType(meta, "mcp_toolset")
 	hasDocument := requestHasContentPartType(llmReq, "document")
 

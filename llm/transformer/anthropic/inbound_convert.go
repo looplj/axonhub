@@ -134,16 +134,19 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		chatReq.TransformerMetadata[TransformerMetadataKeyContextManagement] = anthropicReq.ContextManagement
 	}
 
-	if len(anthropicReq.Container) > 0 {
-		chatReq.TransformerMetadata[TransformerMetadataKeyContainer] = anthropicReq.Container
-	}
-
-	if len(anthropicReq.InferenceGeo) > 0 {
-		chatReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo] = anthropicReq.InferenceGeo
-	}
-
-	if len(anthropicReq.MCPServers) > 0 {
-		chatReq.TransformerMetadata[TransformerMetadataKeyMCPServers] = anthropicReq.MCPServers
+	if len(anthropicReq.Container) > 0 || len(anthropicReq.InferenceGeo) > 0 || len(anthropicReq.MCPServers) > 0 {
+		reqExt := llm.EnsureAnthropicRequestExtensions(chatReq)
+		if reqExt != nil {
+			if len(anthropicReq.Container) > 0 {
+				reqExt.Container = append(json.RawMessage(nil), anthropicReq.Container...)
+			}
+			if len(anthropicReq.InferenceGeo) > 0 {
+				reqExt.InferenceGeo = append(json.RawMessage(nil), anthropicReq.InferenceGeo...)
+			}
+			if len(anthropicReq.MCPServers) > 0 {
+				reqExt.MCPServers = append(json.RawMessage(nil), anthropicReq.MCPServers...)
+			}
+		}
 	}
 
 	// Preserve top_k through TransformerMetadata; canonical llm.Request has no

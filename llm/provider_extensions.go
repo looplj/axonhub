@@ -94,9 +94,13 @@ type AnthropicProviderExtensions struct {
 }
 
 // AnthropicRequestExtensions carries Anthropic-native request fragments that
-// have no stable common llm.Request representation. Only ordered raw content
-// fragments are stored here; the full original request body is never retained.
+// have no stable common llm.Request representation.
 type AnthropicRequestExtensions struct {
+	// Container / InferenceGeo / MCPServers are same-protocol Anthropic body
+	// fields (opaque JSON). Primary owner is PE, not TransformerMetadata.
+	Container     json.RawMessage `json:"-"`
+	InferenceGeo  json.RawMessage `json:"-"`
+	MCPServers    json.RawMessage `json:"-"`
 	// RawContentFragments preserves unknown/future Anthropic request content
 	// blocks (including nested tool_result children) as ordered raw JSON
 	// fragments. They are replayed only by the Anthropic outbound adapter.

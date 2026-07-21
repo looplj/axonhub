@@ -268,18 +268,39 @@ func buildBaseRequest(chatReq *llm.Request, thinkingPlan thinkingRequestPlan) *M
 		}
 	}
 
-	// Restore Anthropic-native container / inference_geo as opaque JSON.
+	// Restore Anthropic-native container / inference_geo / mcp_servers from PE
+	// (primary) with TransformerMetadata legacy fallback.
+	var anthReq *llm.AnthropicRequestExtensions
+	if chatReq.ProviderExtensions != nil && chatReq.ProviderExtensions.Anthropic != nil {
+		anthReq = chatReq.ProviderExtensions.Anthropic.Request
+	}
+	if anthReq != nil {
+		if len(anthReq.Container) > 0 {
+			req.Container = append(json.RawMessage(nil), anthReq.Container...)
+		}
+		if len(anthReq.InferenceGeo) > 0 {
+			req.InferenceGeo = append(json.RawMessage(nil), anthReq.InferenceGeo...)
+		}
+		if len(anthReq.MCPServers) > 0 {
+			req.MCPServers = append(json.RawMessage(nil), anthReq.MCPServers...)
+		}
+	}
 	if chatReq.TransformerMetadata != nil {
-		if container := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyContainer]); len(container) > 0 {
-			req.Container = container
+		if len(req.Container) == 0 {
+			if container := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyContainer]); len(container) > 0 {
+				req.Container = container
+			}
 		}
-		if geo := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo]); len(geo) > 0 {
-			req.InferenceGeo = geo
+		if len(req.InferenceGeo) == 0 {
+			if geo := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyInferenceGeo]); len(geo) > 0 {
+				req.InferenceGeo = geo
+			}
 		}
-		if mcpServers := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyMCPServers]); len(mcpServers) > 0 {
-			req.MCPServers = mcpServers
+		if len(req.MCPServers) == 0 {
+			if mcpServers := asJSONRawMessage(chatReq.TransformerMetadata[TransformerMetadataKeyMCPServers]); len(mcpServers) > 0 {
+				req.MCPServers = mcpServers
+			}
 		}
-
 	}
 
 	// Restore top_k carried through TransformerMetadata (canonical llm.Request

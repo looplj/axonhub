@@ -25,8 +25,11 @@ func TestAnthropicMCPConnectorSameProtocolRoundTrip(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mcpServers, ok := llmReq.TransformerMetadata[TransformerMetadataKeyMCPServers].(json.RawMessage)
-	require.True(t, ok)
+	require.NotNil(t, llmReq.ProviderExtensions)
+	require.NotNil(t, llmReq.ProviderExtensions.Anthropic)
+	require.NotNil(t, llmReq.ProviderExtensions.Anthropic.Request)
+	mcpServers := llmReq.ProviderExtensions.Anthropic.Request.MCPServers
+	require.NotEmpty(t, mcpServers)
 	require.JSONEq(t, `[
 		{
 			"type": "url",
@@ -145,7 +148,6 @@ func TestAnthropicMCPConnectorNotSynthesizedForResponsesOrChat(t *testing.T) {
 	}
 }
 
-
 func TestAnthropicMCPToolsetOrderPreservedWhenFirst(t *testing.T) {
 	body := []byte(`{
 		"model": "claude-opus-4-8",
@@ -182,4 +184,65 @@ func TestAnthropicMCPToolsetOrderPreservedWhenFirst(t *testing.T) {
 	require.Len(t, tools, 2)
 	require.Equal(t, "mcp_toolset", tools[0]["type"])
 	require.Equal(t, "lookup", tools[1]["name"])
+}
+
+func TestAnthropicMCPConnectorDiagnosesLossyDowngradeToChatAndResponses(t *testing.T) {
+	body, err := os.ReadFile("testdata/anthropic-mcp-connector.request.json")
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+
+	requireHasLossy := func(t *testing.T, req *llm.Request, field string, target llm.APIFormat) {
+		t.Helper()
+		found := false
+		for _, d := range llm.LossyDowngrades(req) {
+			if d.SourceProtocol == llm.APIFormatAnthropicMessage &&
+				d.SourceField == field &&
+				d.TargetProtocol == target &&
+				d.Reason == llm.LossyDowngradeReasonNoEquivalentSemantics {
+				found = true
+				break
+			}
+		}
+		require.Truef(t, found, "missing LossyDowngrade for %s -> %s: %#v", field, target, llm.LossyDowngrades(req))
+	}
+
+	// Responses outbound: no fabricated MCP bridge, but explicit diagnostics.
+	respLLMReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+	respOutbound, err := responses.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	respReq, err := respOutbound.TransformRequest(t.Context(), respLLMReq)
+	require.NoError(t, err)
+	var respBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(respReq.Body, &respBody))
+	require.NotContains(t, respBody, "mcp_servers")
+	if rawTools, ok := respBody["tools"]; ok {
+		require.NotContains(t, string(rawTools), "mcp_toolset")
+		require.NotContains(t, string(rawTools), `"type":"mcp"`)
+	}
+	requireHasLossy(t, respLLMReq, "mcp_servers", llm.APIFormatOpenAIResponse)
+	requireHasLossy(t, respLLMReq, "tools[].type=mcp_toolset", llm.APIFormatOpenAIResponse)
+
+	// Chat outbound: same explicit loss, still no fabrication.
+	chatLLMReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+	chatOutbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	chatReq, err := chatOutbound.TransformRequest(t.Context(), chatLLMReq)
+	require.NoError(t, err)
+	var chatBody map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(chatReq.Body, &chatBody))
+	require.NotContains(t, chatBody, "mcp_servers")
+	if rawTools, ok := chatBody["tools"]; ok {
+		require.NotContains(t, string(rawTools), "mcp_toolset")
+	}
+	requireHasLossy(t, chatLLMReq, "mcp_servers", llm.APIFormatOpenAIChatCompletion)
+	requireHasLossy(t, chatLLMReq, "tools[].type=mcp_toolset", llm.APIFormatOpenAIChatCompletion)
 }
