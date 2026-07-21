@@ -16,6 +16,27 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+// OutboundBodyMode is the explicit same-attempt request-body emission mode.
+// Convert reuses the outbound transformer body; PassThrough replaces it with a
+// constrained patch of the inbound raw body (model only). PassThrough is a
+// mitigation adapter, not the architecture for native field ownership.
+type OutboundBodyMode int
+
+const (
+	OutboundBodyModeConvert OutboundBodyMode = iota
+	OutboundBodyModePassThrough
+)
+
+func (m OutboundBodyMode) String() string {
+	switch m {
+	case OutboundBodyModePassThrough:
+		return "pass_through"
+	default:
+		return "convert"
+	}
+}
+
+
 // isPassThroughEnabled returns true when the effective pass-through flag for the current
 // channel is enabled and both the inbound and outbound API formats are identical.
 //
@@ -65,6 +86,23 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context
 	return enabled
 }
 
+// resolveOutboundBodyMode decides Convert vs PassThrough for this attempt.
+// PassThrough requires: enabled flag, matching inbound/outbound API format,
+// stream alignment, and no opaque-reasoning strip in this attempt.
+func (p *PersistentOutboundTransformer) resolveOutboundBodyMode(ctx context.Context, systemService *biz.SystemService) OutboundBodyMode {
+	if p == nil || p.state == nil {
+		return OutboundBodyModeConvert
+	}
+	if p.state.OpaqueReasoningStateDropped {
+		return OutboundBodyModeConvert
+	}
+	if !p.isPassThroughEnabled(ctx, systemService) {
+		return OutboundBodyModeConvert
+	}
+	return OutboundBodyModePassThrough
+}
+
+
 func passThroughStreamAligned(originalStream, effectiveStream *bool) bool {
 	originalEnabled := originalStream != nil && *originalStream
 	effectiveEnabled := effectiveStream != nil && *effectiveStream
@@ -72,16 +110,16 @@ func passThroughStreamAligned(originalStream, effectiveStream *bool) bool {
 	return originalEnabled == effectiveEnabled
 }
 
-// applyPassThroughRequestBody creates a middleware that reuses the original inbound request body when
-// the channel enables pass-through and the inbound and outbound API formats are identical.
-// For formats that encode the selected model in the request body, the mapped llmReq.Model is
-// written back into the copied raw payload so pass-through does not bypass model mapping.
-// Save the actual outbound provider request so pass-through checks use the emitted API format.
+// applyPassThroughRequestBody creates a middleware that, when
+// resolveOutboundBodyMode returns PassThrough, reuses the original inbound
+// request body with constrained patches (mapped model). Convert mode keeps the
+// outbound transformer body (PE merge / Lossy paths remain authoritative).
 func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		outbound.state.RawProviderRequest = request
 
-		if outbound.state.OpaqueReasoningStateDropped || !outbound.isPassThroughEnabled(ctx, systemService) {
+		mode := outbound.resolveOutboundBodyMode(ctx, systemService)
+		if mode != OutboundBodyModePassThrough {
 			return request, nil
 		}
 
@@ -98,11 +136,12 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		log.Debug(ctx, "applying pass-through body",
 			log.String("channel", channel.Name),
 			log.String("api_format", request.APIFormat),
+			log.String("outbound_body_mode", mode.String()),
 		)
 
 		body, err := mergePassThroughRequestBody(llmReq.RawRequest.Body, llmReq.APIFormat, llmReq.Model)
 		if err != nil {
-			log.Warn(ctx, "failed to merge pass-through body, keeping outbound body",
+			log.Warn(ctx, "failed to merge pass-through body, keeping convert outbound body",
 				log.String("channel", channel.Name),
 				log.Int("channel_id", channel.ID),
 				log.Cause(err),
