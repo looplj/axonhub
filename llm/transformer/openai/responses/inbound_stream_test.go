@@ -236,6 +236,49 @@ func TestInboundTransformer_TransformStream_KeepsResponsesReasoningItemsSeparate
 	require.Equal(t, "gAAAA_done_2", lo.FromPtr(lastEvent.Response.Output[1].EncryptedContent))
 }
 
+func TestInboundTransformer_TransformStream_ReplacesItemScopedProvisionalSignature(t *testing.T) {
+	trans := NewInboundTransformer()
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object: "chat.completion.chunk",
+			TransformerMetadata: map[string]any{
+				responsesReasoningItemTransformerMetadataKey: responsesReasoningItemMetadata{ID: "rs_1"},
+			},
+			Choices: []llm.Choice{{Delta: &llm.Message{
+				ID:                 "rs_1",
+				ReasoningSignature: lo.ToPtr("gAAAA_PROVISIONAL_BLOB"),
+			}}},
+		},
+		{
+			Object: "chat.completion.chunk",
+			TransformerMetadata: map[string]any{
+				responsesReasoningItemTransformerMetadataKey: responsesReasoningItemMetadata{ID: "rs_1", Done: true},
+			},
+			Choices: []llm.Choice{{Delta: &llm.Message{
+				ID:                 "rs_1",
+				ReasoningSignature: lo.ToPtr("gAAAA_FINAL_BLOB"),
+			}}},
+		},
+		{Object: "chat.completion.chunk", Choices: []llm.Choice{{Delta: &llm.Message{}, FinishReason: lo.ToPtr("stop")}}},
+		{Object: "chat.completion.chunk", Usage: &llm.Usage{}},
+	}))
+	require.NoError(t, err)
+
+	var doneItems []Item
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		if event.Type == StreamEventTypeOutputItemDone && event.Item != nil && event.Item.Type == "reasoning" {
+			doneItems = append(doneItems, *event.Item)
+		}
+	}
+	require.NoError(t, stream.Err())
+	require.Len(t, doneItems, 1)
+	require.Equal(t, "rs_1", doneItems[0].ID)
+	require.Equal(t, "gAAAA_FINAL_BLOB", lo.FromPtr(doneItems[0].EncryptedContent))
+	require.NotEqual(t, "gAAAA_PROVISIONAL_BLOBgAAAA_FINAL_BLOB", lo.FromPtr(doneItems[0].EncryptedContent))
+}
+
 func TestInboundTransformer_TransformStream_UsesItemMetadataForSummaryDeltas(t *testing.T) {
 	trans := NewInboundTransformer()
 	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{

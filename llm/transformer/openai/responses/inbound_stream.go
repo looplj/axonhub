@@ -432,8 +432,9 @@ func (s *responsesInboundStream) emitReasoningContent(content *string, sourceID 
 
 func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, metadata map[string]any) error {
 	sourceID := delta.ID
-	if item, ok := getResponsesReasoningItemMetadata(metadata); ok {
-		sourceID = item.ID
+	itemMetadata, itemScoped := getResponsesReasoningItemMetadata(metadata)
+	if itemScoped {
+		sourceID = itemMetadata.ID
 	}
 	if sourceID != "" {
 		if contents, ok := s.pendingReasoning[sourceID]; ok {
@@ -451,9 +452,14 @@ func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, me
 		return err
 	}
 
+	if itemScoped {
+		// Responses encrypted_content is an opaque item-level value. Repeated
+		// values for the same item are provisional/final replacements, not deltas.
+		s.accumulatedReasoningSignature.Reset()
+	}
 	s.accumulatedReasoningSignature.WriteString(*delta.ReasoningSignature)
 
-	if item, ok := getResponsesReasoningItemMetadata(metadata); ok && item.Done {
+	if itemScoped && itemMetadata.Done {
 		return s.closeReasoningItem()
 	}
 
