@@ -1639,6 +1639,8 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 					{ID: "rs_first", Content: "first", Signature: "gAAAA_FIRST_BLOB"},
 					{ID: "rs_second", Content: "second", Signature: "gAAAA_SECOND_BLOB"},
 				}, result.ReasoningItems)
+				require.Equal(t, "firstsecond", lo.FromPtr(result.ReasoningContent))
+				require.Equal(t, "gAAAA_SECOND_BLOB", lo.FromPtr(result.ReasoningSignature))
 				require.Len(t, result.ToolCalls, 1)
 				require.Equal(t, "call_123", result.ToolCalls[0].ID)
 			},

@@ -411,15 +411,17 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		consumed++
 	}
 
-	// Preserve the legacy scalar fields only when there is exactly one item.
-	if len(msg.ReasoningItems) == 1 {
-		item := msg.ReasoningItems[0]
-		if item.Content != "" {
-			msg.ReasoningContent = lo.ToPtr(item.Content)
-		}
-		if item.Signature != "" {
-			msg.ReasoningSignature = lo.ToPtr(item.Signature)
-		}
+	// Keep scalar fallbacks for Chat-compatible upstreams, which do not consume
+	// ReasoningItems. The item slice remains authoritative for Responses replay.
+	var aggregateReasoning strings.Builder
+	for _, item := range msg.ReasoningItems {
+		aggregateReasoning.WriteString(item.Content)
+	}
+	if aggregateReasoning.Len() > 0 {
+		msg.ReasoningContent = lo.ToPtr(aggregateReasoning.String())
+	}
+	if signature := msg.ReasoningItems[len(msg.ReasoningItems)-1].Signature; signature != "" {
+		msg.ReasoningSignature = lo.ToPtr(signature)
 	}
 
 	// Look ahead for subsequent function_call items to merge
