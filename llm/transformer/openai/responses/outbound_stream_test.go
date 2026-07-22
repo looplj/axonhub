@@ -196,6 +196,37 @@ func TestOutboundTransformer_TransformStream_ResponseCancelledCompletes(t *testi
 	require.Equal(t, "cancelled", *responses[1].Choices[0].FinishReason)
 }
 
+func TestOutboundTransformer_TransformStream_EmitsArgumentsProvidedOnlyInDone(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_done_arguments","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_done_arguments","type":"function_call","call_id":"call_done_arguments","name":"collaboration.spawn_agent","arguments":""}}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_done_arguments","output_index":0,"name":"collaboration.spawn_agent","arguments":"{\"task\":\"delegate this task\"}"}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_done_arguments","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var arguments string
+	for _, response := range responses {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
+			continue
+		}
+
+		for _, toolCall := range response.Choices[0].Delta.ToolCalls {
+			arguments += toolCall.Function.Arguments
+		}
+	}
+
+	require.JSONEq(t, `{"task":"delegate this task"}`, arguments)
+}
+
 func TestOutboundTransformer_TransformStream_PreservesFinalItemAnnotations(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

@@ -332,20 +332,67 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeFunctionCallArgumentsDone:
-		// Function call completed - update state but don't emit an event
-		if streamEvent.CallID != "" {
-			if tc, ok := s.state.toolCalls[streamEvent.CallID]; ok {
-				if streamEvent.Name != "" {
-					tc.Function.Name = streamEvent.Name
-				}
-				if streamEvent.Namespace != "" {
-					tc.Function.Namespace = streamEvent.Namespace
-				}
-				tc.Function.Arguments = streamEvent.Arguments
+		callID := streamEvent.CallID
+		if callID == "" && streamEvent.ItemID != nil {
+			callID = s.state.itemToCallID[*streamEvent.ItemID]
+			if callID == "" {
+				// Fallback: item_id might be the call_id itself.
+				callID = *streamEvent.ItemID
 			}
 		}
 
-		return nil // Intentionally skip this event
+		tc, ok := s.state.toolCalls[callID]
+		if !ok {
+			return nil // Intentionally skip an unknown tool call.
+		}
+
+		if streamEvent.Name != "" {
+			tc.Function.Name = streamEvent.Name
+		}
+		if streamEvent.Namespace != "" {
+			tc.Function.Namespace = streamEvent.Namespace
+		}
+
+		// Some upstreams provide the complete JSON arguments only in the done event.
+		// Preserve arguments already emitted through delta events and forward only the
+		// missing suffix so downstream Responses streams receive the full value once.
+		finalArgs := streamEvent.Arguments
+		if finalArgs == "" {
+			return nil // An empty done event must not overwrite accumulated deltas.
+		}
+
+		forwardedArgs := tc.Function.Arguments
+		var missingArgs string
+		switch {
+		case forwardedArgs == "":
+			missingArgs = finalArgs
+		case strings.HasPrefix(finalArgs, forwardedArgs):
+			missingArgs = strings.TrimPrefix(finalArgs, forwardedArgs)
+		default:
+			return fmt.Errorf("function call arguments mismatch for call_id %q", callID)
+		}
+
+		tc.Function.Arguments = finalArgs
+		if missingArgs == "" {
+			return nil
+		}
+
+		toolCallIdx := s.state.toolCallIndex[callID]
+		resp.Choices = []llm.Choice{
+			{
+				Index: 0,
+				Delta: &llm.Message{
+					ToolCalls: []llm.ToolCall{
+						{
+							Index: toolCallIdx,
+							Function: llm.FunctionCall{
+								Arguments: missingArgs,
+							},
+						},
+					},
+				},
+			},
+		}
 
 	case StreamEventTypeCustomToolCallInputDelta:
 		// Custom tool call input delta - accumulate and emit as tool call delta
