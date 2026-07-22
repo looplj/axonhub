@@ -26,6 +26,7 @@ const defaultInvitationLifetime = 7 * 24 * time.Hour
 
 type InvitationServiceParams struct {
 	fx.In
+
 	Ent *ent.Client
 }
 
