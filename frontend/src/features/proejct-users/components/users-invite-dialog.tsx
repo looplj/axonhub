@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
@@ -90,9 +91,9 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
         {inviteLink ? (
           <div className='space-y-3'>
-            <FormLabel>{t('users.form.invitationLink')}</FormLabel>
+            <Label htmlFor='invitation-link'>{t('users.form.invitationLink')}</Label>
             <div className='flex gap-2'>
-              <Input value={inviteLink} readOnly />
+              <Input id='invitation-link' value={inviteLink} readOnly />
               <Button type='button' size='icon' variant='outline' onClick={copyInviteLink} title={t('users.buttons.copyInvitationLink')}>
                 {isCopied ? <IconCheck /> : <IconCopy />}
               </Button>
