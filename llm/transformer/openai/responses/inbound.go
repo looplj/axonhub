@@ -390,27 +390,40 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		return nil, 0, nil
 	}
 
-	reasoningItem := &items[startIdx]
-	msg := &llm.Message{
-		Role:               "assistant",
-		ReasoningSignature: reasoningItem.EncryptedContent,
+	msg := &llm.Message{Role: "assistant"}
+	consumed := 0
+
+	// Collect all consecutive reasoning items before looking for the assistant
+	// content or tool call they belong to. Each item keeps its own ID, summary,
+	// and opaque encrypted content.
+	for i := startIdx; i < len(items) && items[i].Type == "reasoning"; i++ {
+		reasoningItem := &items[i]
+		var reasoningText strings.Builder
+		for _, summary := range reasoningItem.Summary {
+			reasoningText.WriteString(summary.Text)
+		}
+
+		msg.ReasoningItems = append(msg.ReasoningItems, llm.ReasoningItem{
+			ID:        reasoningItem.ID,
+			Content:   reasoningText.String(),
+			Signature: lo.FromPtr(reasoningItem.EncryptedContent),
+		})
+		consumed++
 	}
 
-	// Extract reasoning content
-	var reasoningText strings.Builder
-
-	for _, summary := range reasoningItem.Summary {
-		reasoningText.WriteString(summary.Text)
+	// Preserve the legacy scalar fields only when there is exactly one item.
+	if len(msg.ReasoningItems) == 1 {
+		item := msg.ReasoningItems[0]
+		if item.Content != "" {
+			msg.ReasoningContent = lo.ToPtr(item.Content)
+		}
+		if item.Signature != "" {
+			msg.ReasoningSignature = lo.ToPtr(item.Signature)
+		}
 	}
-
-	if reasoningText.Len() > 0 {
-		msg.ReasoningContent = lo.ToPtr(reasoningText.String())
-	}
-
-	consumed := 1
 
 	// Look ahead for subsequent function_call items to merge
-	for i := startIdx + 1; i < len(items); i++ {
+	for i := startIdx + consumed; i < len(items); i++ {
 		nextItem := &items[i]
 
 		switch nextItem.Type {
@@ -1085,13 +1098,16 @@ func buildReasoningItems(msg llm.Message) []Item {
 			itemID = generateItemID()
 		}
 
-		items = append(items, Item{
-			ID:               itemID,
-			Type:             "reasoning",
-			Status:           lo.ToPtr("completed"),
-			Summary:          summary,
-			EncryptedContent: lo.ToPtr(reasoningItem.Signature),
-		})
+		item := Item{
+			ID:      itemID,
+			Type:    "reasoning",
+			Status:  lo.ToPtr("completed"),
+			Summary: summary,
+		}
+		if reasoningItem.Signature != "" {
+			item.EncryptedContent = lo.ToPtr(reasoningItem.Signature)
+		}
+		items = append(items, item)
 	}
 
 	return items

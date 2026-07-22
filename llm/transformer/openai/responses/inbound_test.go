@@ -1609,6 +1609,41 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 			},
 		},
 		{
+			name: "consecutive reasoning items merged with function_call",
+			items: []Item{
+				{
+					ID:               "rs_first",
+					Type:             "reasoning",
+					Summary:          []ReasoningSummary{{Type: "summary_text", Text: "first"}},
+					EncryptedContent: lo.ToPtr("gAAAA_FIRST_BLOB"),
+				},
+				{
+					ID:               "rs_second",
+					Type:             "reasoning",
+					Summary:          []ReasoningSummary{{Type: "summary_text", Text: "second"}},
+					EncryptedContent: lo.ToPtr("gAAAA_SECOND_BLOB"),
+				},
+				{
+					Type:      "function_call",
+					CallID:    "call_123",
+					Name:      "get_weather",
+					Arguments: `{}`,
+				},
+			},
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, 3, consumed)
+				require.Equal(t, []llm.ReasoningItem{
+					{ID: "rs_first", Content: "first", Signature: "gAAAA_FIRST_BLOB"},
+					{ID: "rs_second", Content: "second", Signature: "gAAAA_SECOND_BLOB"},
+				}, result.ReasoningItems)
+				require.Len(t, result.ToolCalls, 1)
+				require.Equal(t, "call_123", result.ToolCalls[0].ID)
+			},
+		},
+		{
 			name: "reasoning merged with assistant text message",
 			items: []Item{
 				{
@@ -1696,6 +1731,16 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 			tt.validate(t, result, consumed, err)
 		})
 	}
+}
+
+func TestBuildReasoningItems_OmitsEmptyEncryptedContent(t *testing.T) {
+	items := buildReasoningItems(llm.Message{
+		ReasoningItems: []llm.ReasoningItem{{ID: "rs_summary", Content: "summary only"}},
+	})
+
+	require.Len(t, items, 1)
+	require.Equal(t, "rs_summary", items[0].ID)
+	require.Nil(t, items[0].EncryptedContent)
 }
 
 func TestInboundTransformer_TransformRequest_WithReasoningInput(t *testing.T) {
