@@ -59,8 +59,8 @@ func TestConvertToLlmResponse_PreservesMultipleThinkingItems(t *testing.T) {
 		{Content: "first", Signature: "Z0FBQUFfRklSU1RfQkxPQg=="},
 		{Content: "second", Signature: "Z0FBQUFfU0VDT05EX0JMT0I="},
 	}, message.ReasoningItems)
-	require.Nil(t, message.ReasoningContent)
-	require.Nil(t, message.ReasoningSignature)
+	require.Equal(t, "firstsecond", lo.FromPtr(message.ReasoningContent))
+	require.Equal(t, "Z0FBQUFfU0VDT05EX0JMT0I=", lo.FromPtr(message.ReasoningSignature))
 	require.Len(t, message.ToolCalls, 1)
 }
 

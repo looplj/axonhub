@@ -506,6 +506,8 @@ func TestInboundTransformer_TransformRequest_PreservesMultipleThinkingSignatures
 		{Content: "first", Signature: "gAAAA_FIRST_BLOB"},
 		{Content: "second", Signature: "gAAAA_SECOND_BLOB"},
 	}, result.Messages[0].ReasoningItems)
+	require.Equal(t, "firstsecond", lo.FromPtr(result.Messages[0].ReasoningContent))
+	require.Equal(t, "gAAAA_SECOND_BLOB", lo.FromPtr(result.Messages[0].ReasoningSignature))
 	require.Len(t, result.Messages[0].ToolCalls, 1)
 }
 

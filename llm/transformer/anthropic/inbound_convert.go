@@ -267,13 +267,19 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 
 			if len(reasoningItems) > 0 {
 				chatMsg.ReasoningItems = reasoningItems
-				if len(reasoningItems) == 1 {
-					if reasoningItems[0].Content != "" {
-						chatMsg.ReasoningContent = lo.ToPtr(reasoningItems[0].Content)
-					}
-					if reasoningItems[0].Signature != "" {
-						chatMsg.ReasoningSignature = lo.ToPtr(reasoningItems[0].Signature)
-					}
+
+				// Keep a scalar fallback for non-Responses upstream converters, which
+				// do not consume ReasoningItems. The signature remains the last block's
+				// opaque value, matching the legacy representation.
+				var aggregateReasoning string
+				for _, item := range reasoningItems {
+					aggregateReasoning += item.Content
+				}
+				if aggregateReasoning != "" {
+					chatMsg.ReasoningContent = lo.ToPtr(aggregateReasoning)
+				}
+				if signature := reasoningItems[len(reasoningItems)-1].Signature; signature != "" {
+					chatMsg.ReasoningSignature = lo.ToPtr(signature)
 				}
 				hasContent = true
 			}

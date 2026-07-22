@@ -1131,6 +1131,20 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		message.ReasoningSignature = shared.EncodeAnthropicSignature(singleThinkingSig)
 	} else if len(reasoningItems) > 1 {
 		message.ReasoningItems = reasoningItems
+
+		// OpenAI Chat and other non-Responses clients consume scalar reasoning
+		// fields only. Preserve a readable aggregate while retaining each item's
+		// individual signature in ReasoningItems for Responses round-trips.
+		var aggregateReasoning string
+		for _, item := range reasoningItems {
+			aggregateReasoning += item.Content
+		}
+		if aggregateReasoning != "" {
+			message.ReasoningContent = lo.ToPtr(aggregateReasoning)
+		}
+		if signature := reasoningItems[len(reasoningItems)-1].Signature; signature != "" {
+			message.ReasoningSignature = lo.ToPtr(signature)
+		}
 	}
 
 	choice := llm.Choice{
