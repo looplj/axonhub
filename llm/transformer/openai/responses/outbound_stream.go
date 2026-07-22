@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"strings"
 
 	"github.com/samber/lo"
@@ -368,6 +369,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			missingArgs = finalArgs
 		case strings.HasPrefix(finalArgs, forwardedArgs):
 			missingArgs = strings.TrimPrefix(finalArgs, forwardedArgs)
+		case equalJSONValues(forwardedArgs, finalArgs):
+			// The final payload may be reformatted without changing its meaning.
+			// The complete arguments were already forwarded, so do not emit a duplicate.
+			missingArgs = ""
 		default:
 			return fmt.Errorf("function call arguments mismatch for call_id %q", callID)
 		}
@@ -679,6 +684,20 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	s.enqueue(resp)
 
 	return nil
+}
+
+func equalJSONValues(left, right string) bool {
+	var leftValue any
+	if err := json.Unmarshal([]byte(left), &leftValue); err != nil {
+		return false
+	}
+
+	var rightValue any
+	if err := json.Unmarshal([]byte(right), &rightValue); err != nil {
+		return false
+	}
+
+	return reflect.DeepEqual(leftValue, rightValue)
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {

@@ -228,6 +228,44 @@ func TestOutboundTransformer_TransformStream_EmitsArgumentsProvidedOnlyInDone(t 
 	require.JSONEq(t, `{"task":"delegate this task"}`, arguments)
 }
 
+func TestOutboundTransformer_TransformStream_AcceptsEquivalentFinalArguments(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	forwardedArguments := `{"task":"delegate this task","priority":1}`
+	finalArguments := `{
+  "priority": 1,
+  "task": "delegate this task"
+}`
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_equivalent_arguments","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_equivalent_arguments","type":"function_call","call_id":"call_equivalent_arguments","name":"spawn_agent","arguments":""}}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_equivalent_arguments","output_index":0,"delta":"{\"task\":\"delegate this task\",\"priority\":1}"}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_equivalent_arguments","output_index":0,"arguments":"{\n  \"priority\": 1,\n  \"task\": \"delegate this task\"\n}"}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_equivalent_arguments","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var arguments string
+	for _, response := range responses {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
+			continue
+		}
+
+		for _, toolCall := range response.Choices[0].Delta.ToolCalls {
+			arguments += toolCall.Function.Arguments
+		}
+	}
+
+	require.Equal(t, forwardedArguments, arguments)
+	require.JSONEq(t, finalArguments, arguments)
+}
+
 func TestResponsesStream_RoundTrip_PreservesToolIdentityProvidedOnlyInDone(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
