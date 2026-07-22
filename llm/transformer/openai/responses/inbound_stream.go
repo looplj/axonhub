@@ -676,10 +676,23 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 
 func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error {
 	toolCallIndex := tc.Index
-	s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
+	storedToolCall := s.toolCalls[toolCallIndex]
+	if tc.ID != "" {
+		storedToolCall.ID = tc.ID
+	}
+	if tc.Type != "" {
+		storedToolCall.Type = tc.Type
+	}
+	if tc.Function.Name != "" {
+		storedToolCall.Function.Name = tc.Function.Name
+	}
+	if tc.Function.Namespace != "" {
+		storedToolCall.Function.Namespace = tc.Function.Namespace
+	}
+	storedToolCall.Function.Arguments += tc.Function.Arguments
 
 	if tc.Function.Arguments != "" {
-		itemID := s.toolCalls[toolCallIndex].ID
+		itemID := storedToolCall.ID
 		if itemID == "" {
 			itemID = s.currentItemID
 		}
@@ -962,6 +975,9 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				Type:        StreamEventTypeFunctionCallArgumentsDone,
 				ItemID:      &itemID,
 				OutputIndex: s.toolCallOutputIndex[idx],
+				CallID:      tc.ID,
+				Name:        tc.Function.Name,
+				Namespace:   tc.Function.Namespace,
 				Arguments:   tc.Function.Arguments,
 			})
 			if err != nil {

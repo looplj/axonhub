@@ -384,8 +384,12 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				Delta: &llm.Message{
 					ToolCalls: []llm.ToolCall{
 						{
+							ID:    tc.ID,
+							Type:  tc.Type,
 							Index: toolCallIdx,
 							Function: llm.FunctionCall{
+								Name:      tc.Function.Name,
+								Namespace: tc.Function.Namespace,
 								Arguments: missingArgs,
 							},
 						},
