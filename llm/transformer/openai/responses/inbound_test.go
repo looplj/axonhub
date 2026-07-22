@@ -1834,6 +1834,47 @@ func TestConvertToResponsesAPIResponse_AttachesAnnotationsToFirstTextItem(t *tes
 	require.Equal(t, "https://example.com", resp.Output[0].Content.Items[0].Annotations[0].URLCitation.URL)
 }
 
+func TestConvertToResponsesAPIResponse_PreservesMultipleReasoningItems(t *testing.T) {
+	resp := convertToResponsesAPIResponse(&llm.Response{
+		ID:      "resp_reasoning_items",
+		Model:   "gpt-5",
+		Created: 1,
+		Choices: []llm.Choice{{
+			Message: &llm.Message{
+				Role: "assistant",
+				ReasoningItems: []llm.ReasoningItem{
+					{ID: "rs_first", Content: "first", Signature: "gAAAA_FIRST_BLOB"},
+					{ID: "rs_second", Content: "second", Signature: "gAAAA_SECOND_BLOB"},
+				},
+				ToolCalls: []llm.ToolCall{{
+					ID:   "call_tool",
+					Type: "function",
+					Function: llm.FunctionCall{
+						Name:      "lookup",
+						Arguments: "{}",
+					},
+				}},
+			},
+		}},
+	})
+
+	require.Len(t, resp.Output, 3)
+	require.Equal(t, "reasoning", resp.Output[0].Type)
+	require.Equal(t, "rs_first", resp.Output[0].ID)
+	require.Len(t, resp.Output[0].Summary, 1)
+	require.Equal(t, "first", resp.Output[0].Summary[0].Text)
+	require.NotNil(t, resp.Output[0].EncryptedContent)
+	require.Equal(t, "gAAAA_FIRST_BLOB", *resp.Output[0].EncryptedContent)
+
+	require.Equal(t, "reasoning", resp.Output[1].Type)
+	require.Equal(t, "rs_second", resp.Output[1].ID)
+	require.Len(t, resp.Output[1].Summary, 1)
+	require.Equal(t, "second", resp.Output[1].Summary[0].Text)
+	require.NotNil(t, resp.Output[1].EncryptedContent)
+	require.Equal(t, "gAAAA_SECOND_BLOB", *resp.Output[1].EncryptedContent)
+	require.Equal(t, "function_call", resp.Output[2].Type)
+}
+
 func TestInboundTransformer_TransformResponse_WithReasoningContent(t *testing.T) {
 	trans := NewInboundTransformer()
 

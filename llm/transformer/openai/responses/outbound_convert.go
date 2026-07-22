@@ -201,26 +201,30 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	// Handle reasoning content first.
 	// For Requests, reasoning is represented as an `input` item with type="reasoning".
 	// The Responses API uses the `summary` field to hold the reasoning summary text.
-	reasoningSignatures := msg.ReasoningSignatures
-	if len(reasoningSignatures) == 0 && msg.ReasoningSignature != nil {
-		reasoningSignatures = []string{*msg.ReasoningSignature}
+	reasoningItems := msg.ReasoningItems
+	if len(reasoningItems) == 0 && msg.ReasoningSignature != nil {
+		reasoningItems = []llm.ReasoningItem{{
+			Content:   lo.FromPtr(msg.ReasoningContent),
+			Signature: *msg.ReasoningSignature,
+		}}
 	}
 
-	for _, reasoningSignature := range reasoningSignatures {
-		encryptedContent := shared.DecodeOpenAIEncryptedContent(&reasoningSignature)
+	for _, reasoningItem := range reasoningItems {
+		encryptedContent := shared.DecodeOpenAIEncryptedContent(&reasoningItem.Signature)
 		if encryptedContent == nil {
 			continue
 		}
 
 		summary := []ReasoningSummary{}
-		if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+		if reasoningItem.Content != "" {
 			summary = append(summary, ReasoningSummary{
 				Type: "summary_text",
-				Text: *msg.ReasoningContent,
+				Text: reasoningItem.Content,
 			})
 		}
 
 		items = append(items, Item{
+			ID:               reasoningItem.ID,
 			Type:             "reasoning",
 			EncryptedContent: encryptedContent,
 			Summary:          summary,
@@ -622,6 +626,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		textContent          strings.Builder
 		reasoningContent     strings.Builder
 		reasoningSignature   *string
+		reasoningItems       []llm.ReasoningItem
 		messageID            string
 		toolCalls            []llm.ToolCall
 		annotations          []llm.Annotation
@@ -683,12 +688,23 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				},
 			})
 		case "reasoning":
+			var itemReasoning strings.Builder
 			for _, summary := range outputItem.Summary {
 				reasoningContent.WriteString(summary.Text)
+				itemReasoning.WriteString(summary.Text)
 			}
 
+			itemSignature := ""
 			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
 				reasoningSignature = shared.EncodeOpenAIEncryptedContent(outputItem.EncryptedContent)
+				itemSignature = lo.FromPtr(reasoningSignature)
+			}
+			if itemReasoning.Len() > 0 || itemSignature != "" {
+				reasoningItems = append(reasoningItems, llm.ReasoningItem{
+					ID:        outputItem.ID,
+					Content:   itemReasoning.String(),
+					Signature: itemSignature,
+				})
 			}
 		case "image_generation_call":
 			flushText()
@@ -762,6 +778,9 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 
 	if reasoningSignature != nil {
 		msg.ReasoningSignature = reasoningSignature
+	}
+	if len(reasoningItems) > 0 {
+		msg.ReasoningItems = reasoningItems
 	}
 
 	if len(contentParts) == 1 && contentParts[0].Type == "text" && len(toolCalls) == 0 {

@@ -502,7 +502,10 @@ func TestInboundTransformer_TransformRequest_PreservesMultipleThinkingSignatures
 	result, err := transformer.TransformRequest(t.Context(), httpReq)
 	require.NoError(t, err)
 	require.Len(t, result.Messages, 1)
-	require.Equal(t, []string{"gAAAA_FIRST_BLOB", "gAAAA_SECOND_BLOB"}, result.Messages[0].ReasoningSignatures)
+	require.Equal(t, []llm.ReasoningItem{
+		{Content: "first", Signature: "gAAAA_FIRST_BLOB"},
+		{Content: "second", Signature: "gAAAA_SECOND_BLOB"},
+	}, result.Messages[0].ReasoningItems)
 	require.Len(t, result.Messages[0].ToolCalls, 1)
 }
 

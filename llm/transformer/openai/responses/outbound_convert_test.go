@@ -1014,6 +1014,19 @@ func TestConvertOutputToMessage(t *testing.T) {
 			},
 		},
 		{
+			name: "multiple reasoning outputs preserve item summaries",
+			output: []Item{
+				{ID: "rs_first", Type: "reasoning", Summary: []ReasoningSummary{{Type: "summary_text", Text: "first"}}, EncryptedContent: lo.ToPtr("gAAAA_FIRST_BLOB")},
+				{ID: "rs_second", Type: "reasoning", Summary: []ReasoningSummary{{Type: "summary_text", Text: "second"}}, EncryptedContent: lo.ToPtr("gAAAA_SECOND_BLOB")},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Equal(t, []llm.ReasoningItem{
+					{ID: "rs_first", Content: "first", Signature: "gAAAA_FIRST_BLOB"},
+					{ID: "rs_second", Content: "second", Signature: "gAAAA_SECOND_BLOB"},
+				}, msg.ReasoningItems)
+			},
+		},
+		{
 			name: "image generation output with custom format",
 			output: []Item{
 				{
@@ -1426,8 +1439,11 @@ func TestConvertAssistantMessage_WithCompactContent(t *testing.T) {
 
 func TestConvertAssistantMessage_PreservesMultipleReasoningSignaturesBeforeToolCall(t *testing.T) {
 	items := convertAssistantMessage(llm.Message{
-		Role:                "assistant",
-		ReasoningSignatures: []string{"gAAAA_FIRST_BLOB", "gAAAA_SECOND_BLOB"},
+		Role: "assistant",
+		ReasoningItems: []llm.ReasoningItem{
+			{Content: "first", Signature: "gAAAA_FIRST_BLOB"},
+			{Content: "second", Signature: "gAAAA_SECOND_BLOB"},
+		},
 		ToolCalls: []llm.ToolCall{{
 			ID:   "call_task",
 			Type: "function",
@@ -1441,7 +1457,9 @@ func TestConvertAssistantMessage_PreservesMultipleReasoningSignaturesBeforeToolC
 	require.Len(t, items, 3)
 	require.Equal(t, "reasoning", items[0].Type)
 	require.Equal(t, "gAAAA_FIRST_BLOB", *items[0].EncryptedContent)
+	require.Equal(t, []ReasoningSummary{{Type: "summary_text", Text: "first"}}, items[0].Summary)
 	require.Equal(t, "reasoning", items[1].Type)
 	require.Equal(t, "gAAAA_SECOND_BLOB", *items[1].EncryptedContent)
+	require.Equal(t, []ReasoningSummary{{Type: "summary_text", Text: "second"}}, items[1].Summary)
 	require.Equal(t, "function_call", items[2].Type)
 }

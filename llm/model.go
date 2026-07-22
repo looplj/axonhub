@@ -381,10 +381,9 @@ type Message struct {
 	// 3. OpenAI Responses encrypted content： https://platform.openai.com/docs/api-reference/responses/object#responses-object-output-reasoning-encrypted_content
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
 
-	// ReasoningSignatures preserves multiple opaque reasoning items when an
-	// upstream protocol exposes more than one item in a single message. The
-	// slice order is the item order; values must not be concatenated.
-	ReasoningSignatures []string `json:"-"`
+	// ReasoningItems preserves item-scoped reasoning data when an upstream
+	// protocol exposes multiple reasoning items in one message.
+	ReasoningItems []ReasoningItem `json:"reasoning_items,omitempty"`
 
 	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
 	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
@@ -412,6 +411,14 @@ type Message struct {
 	// should emit them in place; others (OpenAI Chat Completions, plain text
 	// UIs) can safely drop the field.
 	InlineToolResults []InlineToolResult `json:"inline_tool_results,omitempty"`
+}
+
+// ReasoningItem is an ordered, provider-neutral reasoning item.
+// Signature is opaque provider data and must not be concatenated or modified.
+type ReasoningItem struct {
+	ID        string `json:"id,omitempty"`
+	Content   string `json:"content,omitempty"`
+	Signature string `json:"signature,omitempty"`
 }
 
 // InlineToolResult represents a tool result that is emitted inline within the

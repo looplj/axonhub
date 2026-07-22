@@ -912,10 +912,10 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			messageItemID = generateItemID()
 		}
 
-		// Handle reasoning content
-		if reasoningItem, ok := buildReasoningItem(*message); ok {
-			resp.Output = append(resp.Output, reasoningItem)
-		}
+		// Handle reasoning content. A message may carry multiple independently
+		// signed reasoning items, each of which must remain a separate Responses
+		// output item for a later tool-result request.
+		resp.Output = append(resp.Output, buildReasoningItems(*message)...)
 
 		// Handle tool calls (function calls and custom tool calls)
 		if len(message.ToolCalls) > 0 {
@@ -1054,29 +1054,45 @@ func generateItemID() string {
 	return fmt.Sprintf("item_%s", lo.RandomString(16, lo.AlphanumericCharset))
 }
 
-// buildReasoningItem creates a reasoning Item from a message's reasoning content and signature.
-// Returns the item and true if the message has reasoning data, otherwise returns zero value and false.
-func buildReasoningItem(msg llm.Message) (Item, bool) {
-	hasContent := msg.ReasoningContent != nil && *msg.ReasoningContent != ""
-	hasSignature := msg.ReasoningSignature != nil && *msg.ReasoningSignature != ""
-
-	if !hasContent && !hasSignature {
-		return Item{}, false
+// buildReasoningItems creates reasoning Items from a message. ReasoningItems
+// preserves the one-to-one association between a summary and its opaque
+// encrypted content; the scalar fields are retained as a legacy fallback.
+func buildReasoningItems(msg llm.Message) []Item {
+	reasoningItems := msg.ReasoningItems
+	if len(reasoningItems) == 0 {
+		reasoningItems = []llm.ReasoningItem{{
+			Content:   lo.FromPtr(msg.ReasoningContent),
+			Signature: lo.FromPtr(msg.ReasoningSignature),
+		}}
 	}
 
-	summary := []ReasoningSummary{}
-	if hasContent {
-		summary = append(summary, ReasoningSummary{
-			Type: "summary_text",
-			Text: *msg.ReasoningContent,
+	items := make([]Item, 0, len(reasoningItems))
+	for _, reasoningItem := range reasoningItems {
+		if reasoningItem.Content == "" && reasoningItem.Signature == "" {
+			continue
+		}
+
+		summary := []ReasoningSummary{}
+		if reasoningItem.Content != "" {
+			summary = append(summary, ReasoningSummary{
+				Type: "summary_text",
+				Text: reasoningItem.Content,
+			})
+		}
+
+		itemID := reasoningItem.ID
+		if itemID == "" {
+			itemID = generateItemID()
+		}
+
+		items = append(items, Item{
+			ID:               itemID,
+			Type:             "reasoning",
+			Status:           lo.ToPtr("completed"),
+			Summary:          summary,
+			EncryptedContent: lo.ToPtr(reasoningItem.Signature),
 		})
 	}
 
-	return Item{
-		ID:               generateItemID(),
-		Type:             "reasoning",
-		Status:           lo.ToPtr("completed"),
-		Summary:          summary,
-		EncryptedContent: msg.ReasoningSignature,
-	}, true
+	return items
 }

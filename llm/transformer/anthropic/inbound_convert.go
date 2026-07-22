@@ -126,27 +126,19 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		} else if len(msg.Content.MultipleContent) > 0 {
 			contentParts := make([]llm.MessageContentPart, 0, len(msg.Content.MultipleContent))
 
-			var (
-				reasoningContent         string
-				hasReasoningInContent    bool
-				redactedReasoningContent string
-			)
+			var redactedReasoningContent string
 
-			var reasoningSignature string
-			var reasoningSignatures []string
+			var reasoningItems []llm.ReasoningItem
 
 			for blockIdx, block := range msg.Content.MultipleContent {
 				switch block.Type {
 				case "thinking":
-					// Keep thinking content in MultipleContent to preserve order
-					if block.Thinking != nil && *block.Thinking != "" {
-						reasoningContent = *block.Thinking
-						hasReasoningInContent = true
+					item := llm.ReasoningItem{
+						Content:   lo.FromPtr(block.Thinking),
+						Signature: lo.FromPtr(block.Signature),
 					}
-
-					if block.Signature != nil && *block.Signature != "" {
-						reasoningSignature = *block.Signature
-						reasoningSignatures = append(reasoningSignatures, *block.Signature)
+					if item.Content != "" || item.Signature != "" {
+						reasoningItems = append(reasoningItems, item)
 					}
 				case "redacted_thinking":
 					// Handle redacted thinking content - store the encrypted data
@@ -273,17 +265,17 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				hasContent = true
 			}
 
-			// Assign reasoning content and signature if present
-			if reasoningContent != "" && hasReasoningInContent {
-				chatMsg.ReasoningContent = &reasoningContent
+			if len(reasoningItems) > 0 {
+				chatMsg.ReasoningItems = reasoningItems
+				if len(reasoningItems) == 1 {
+					if reasoningItems[0].Content != "" {
+						chatMsg.ReasoningContent = lo.ToPtr(reasoningItems[0].Content)
+					}
+					if reasoningItems[0].Signature != "" {
+						chatMsg.ReasoningSignature = lo.ToPtr(reasoningItems[0].Signature)
+					}
+				}
 				hasContent = true
-			}
-
-			if reasoningSignature != "" {
-				chatMsg.ReasoningSignature = &reasoningSignature
-			}
-			if len(reasoningSignatures) > 1 {
-				chatMsg.ReasoningSignatures = reasoningSignatures
 			}
 
 			if redactedReasoningContent != "" {

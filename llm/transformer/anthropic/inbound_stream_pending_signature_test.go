@@ -73,6 +73,35 @@ func withReasoningSignatureForItem(sig, itemID string) func(*llm.Response) {
 	}
 }
 
+func withProvisionalReasoningSignatureForItem(sig, itemID string) func(*llm.Response) {
+	return func(r *llm.Response) {
+		if r.Choices[0].Delta == nil {
+			r.Choices[0].Delta = &llm.Message{Role: "assistant"}
+		}
+
+		r.Choices[0].Delta.ID = itemID
+		r.Choices[0].Delta.ReasoningSignature = lo.ToPtr(sig)
+		r.TransformerMetadata = map[string]any{
+			"openai_responses_reasoning_item": map[string]any{"id": itemID},
+		}
+	}
+}
+
+func withReasoningContentForItem(content, itemID string) func(*llm.Response) {
+	return func(r *llm.Response) {
+		r.Choices[0].Delta = &llm.Message{
+			Role:             "assistant",
+			ID:               itemID,
+			ReasoningContent: lo.ToPtr(content),
+		}
+		r.TransformerMetadata = map[string]any{
+			"openai_responses_reasoning_item": map[string]any{
+				"id": itemID,
+			},
+		}
+	}
+}
+
 func withTextContent(text string) func(*llm.Response) {
 	return func(r *llm.Response) {
 		r.Choices[0].Delta = &llm.Message{
@@ -261,7 +290,7 @@ func TestPendingSignature_ProvisionalAndFinalForSameResponsesItemUseFinalOnce(t 
 	)
 
 	responses := []*llm.Response{
-		buildChunk(id, model, withReasoningSignatureForItem("gAAAA_PROVISIONAL", "rs_same")),
+		buildChunk(id, model, withProvisionalReasoningSignatureForItem("gAAAA_PROVISIONAL", "rs_same")),
 		buildChunk(id, model, withReasoningSignatureForItem("gAAAA_FINAL", "rs_same")),
 		buildChunk(id, model, withFinishReason("stop")),
 		buildChunk(id, model, withUsage(10, 10)),
@@ -277,6 +306,74 @@ func TestPendingSignature_ProvisionalAndFinalForSameResponsesItemUseFinalOnce(t 
 	}
 
 	require.Equal(t, []string{"gAAAA_FINAL"}, signatures)
+}
+
+func TestPendingSignature_ResponsesReasoningSummariesFollowItemBoundaries(t *testing.T) {
+	const (
+		id    = "msg_responses_reasoning_summary"
+		model = "gpt-5"
+	)
+
+	responses := []*llm.Response{
+		buildChunk(id, model, withUsage(10, 1)),
+		buildChunk(id, model, withReasoningContentForItem("first", "rs_first")),
+		buildChunk(id, model, withReasoningSignatureForItem("gAAAA_FIRST_BLOB", "rs_first")),
+		buildChunk(id, model, withReasoningContentForItem("second", "rs_second")),
+		buildChunk(id, model, withReasoningSignatureForItem("gAAAA_SECOND_BLOB", "rs_second")),
+		buildChunk(id, model, withToolCall(0, "call_task_output", "TaskOutput", `{"task_id":"task_1","block":true}`)),
+		buildChunk(id, model, withFinishReason("tool_calls")),
+		buildChunk(id, model, withUsage(10, 20)),
+	}
+
+	events := collectStreamEvents(t, responses)
+
+	var thinking []string
+	var signatures []string
+	for _, event := range events {
+		if event.Type != "content_block_delta" || event.Delta == nil || event.Delta.Type == nil {
+			continue
+		}
+		switch *event.Delta.Type {
+		case "thinking_delta":
+			thinking = append(thinking, lo.FromPtr(event.Delta.Thinking))
+		case "signature_delta":
+			signatures = append(signatures, lo.FromPtr(event.Delta.Signature))
+		}
+	}
+
+	require.Equal(t, []string{"first", "second"}, thinking)
+	require.Equal(t, []string{"gAAAA_FIRST_BLOB", "gAAAA_SECOND_BLOB"}, signatures)
+}
+
+func TestPendingSignature_InterleavedResponsesReasoningSummariesRemainPaired(t *testing.T) {
+	responses := []*llm.Response{
+		buildChunk("msg_interleaved", "gpt-5", withReasoningContentForItem("first", "rs_first")),
+		buildChunk("msg_interleaved", "gpt-5", withReasoningContentForItem("second", "rs_second")),
+		buildChunk("msg_interleaved", "gpt-5", withReasoningSignatureForItem("gAAAA_FIRST_BLOB", "rs_first")),
+		buildChunk("msg_interleaved", "gpt-5", withReasoningSignatureForItem("gAAAA_SECOND_BLOB", "rs_second")),
+		buildChunk("msg_interleaved", "gpt-5", withFinishReason("tool_calls")),
+	}
+
+	events := collectStreamEvents(t, responses)
+	var pairs []string
+	var pendingThinking string
+	for _, event := range events {
+		if event.Type != "content_block_delta" || event.Delta == nil || event.Delta.Type == nil {
+			continue
+		}
+		switch *event.Delta.Type {
+		case "thinking_delta":
+			pendingThinking += lo.FromPtr(event.Delta.Thinking)
+		case "signature_delta":
+			pairs = append(pairs, pendingThinking+":"+lo.FromPtr(event.Delta.Signature))
+			pendingThinking = ""
+		}
+	}
+
+	require.Equal(t, []string{
+		"first:gAAAA_FIRST_BLOB",
+		"second:gAAAA_SECOND_BLOB",
+	}, pairs)
 }
 
 func countContentBlocksOfType(events []StreamEvent, blockType string) int {
