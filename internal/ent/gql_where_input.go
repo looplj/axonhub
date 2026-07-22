@@ -5206,10 +5206,6 @@ type PromptWhereInput struct {
 	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
 	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
 	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
-	ProjectIDGT    *int  `json:"projectIDGT,omitempty"`
-	ProjectIDGTE   *int  `json:"projectIDGTE,omitempty"`
-	ProjectIDLT    *int  `json:"projectIDLT,omitempty"`
-	ProjectIDLTE   *int  `json:"projectIDLTE,omitempty"`
 
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
@@ -5287,9 +5283,9 @@ type PromptWhereInput struct {
 	OrderLT    *int  `json:"orderLT,omitempty"`
 	OrderLTE   *int  `json:"orderLTE,omitempty"`
 
-	// "projects" edge predicates.
-	HasProjects     *bool                `json:"hasProjects,omitempty"`
-	HasProjectsWith []*ProjectWhereInput `json:"hasProjectsWith,omitempty"`
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -5446,18 +5442,6 @@ func (i *PromptWhereInput) P() (predicate.Prompt, error) {
 	}
 	if len(i.ProjectIDNotIn) > 0 {
 		predicates = append(predicates, prompt.ProjectIDNotIn(i.ProjectIDNotIn...))
-	}
-	if i.ProjectIDGT != nil {
-		predicates = append(predicates, prompt.ProjectIDGT(*i.ProjectIDGT))
-	}
-	if i.ProjectIDGTE != nil {
-		predicates = append(predicates, prompt.ProjectIDGTE(*i.ProjectIDGTE))
-	}
-	if i.ProjectIDLT != nil {
-		predicates = append(predicates, prompt.ProjectIDLT(*i.ProjectIDLT))
-	}
-	if i.ProjectIDLTE != nil {
-		predicates = append(predicates, prompt.ProjectIDLTE(*i.ProjectIDLTE))
 	}
 	if i.Name != nil {
 		predicates = append(predicates, prompt.NameEQ(*i.Name))
@@ -5652,23 +5636,23 @@ func (i *PromptWhereInput) P() (predicate.Prompt, error) {
 		predicates = append(predicates, prompt.OrderLTE(*i.OrderLTE))
 	}
 
-	if i.HasProjects != nil {
-		p := prompt.HasProjects()
-		if !*i.HasProjects {
+	if i.HasProject != nil {
+		p := prompt.HasProject()
+		if !*i.HasProject {
 			p = prompt.Not(p)
 		}
 		predicates = append(predicates, p)
 	}
-	if len(i.HasProjectsWith) > 0 {
-		with := make([]predicate.Project, 0, len(i.HasProjectsWith))
-		for _, w := range i.HasProjectsWith {
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
 			p, err := w.P()
 			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasProjectsWith'", err)
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
 			}
 			with = append(with, p)
 		}
-		predicates = append(predicates, prompt.HasProjectsWith(with...))
+		predicates = append(predicates, prompt.HasProjectWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
