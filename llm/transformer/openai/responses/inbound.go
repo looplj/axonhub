@@ -320,6 +320,57 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 	return result
 }
 
+// FixMissingToolCallOutputs inserts synthetic tool messages for any tool call
+// that lacks a corresponding tool response. This prevents downstream providers
+// from rejecting requests due to incomplete tool call cycles.
+//
+// Each assistant message is checked independently against immediately-following
+// tool messages: when the same tool-call ID appears in multiple assistant turns,
+// an earlier output is not treated as the response for a later occurrence.
+func FixMissingToolCallOutputs(messages []llm.Message) []llm.Message {
+	fixed := make([]llm.Message, 0, len(messages))
+
+	for i := 0; i < len(messages); i++ {
+		msg := messages[i]
+		fixed = append(fixed, msg)
+
+		if msg.Role != "assistant" || len(msg.ToolCalls) == 0 {
+			continue
+		}
+
+		// Collect IDs from this assistant message that need responses
+		missing := make(map[string]bool, len(msg.ToolCalls))
+		for _, tc := range msg.ToolCalls {
+			if tc.ID != "" {
+				missing[tc.ID] = true
+			}
+		}
+
+		// Look ahead at immediately-following tool messages and remove
+		// covered IDs. Stop at the first non-tool message — tool responses
+		// for this turn must appear before the next user/assistant message.
+		for j := i + 1; j < len(messages) && messages[j].Role == "tool"; j++ {
+			if messages[j].ToolCallID != nil {
+				delete(missing, *messages[j].ToolCallID)
+			}
+		}
+
+		// Insert synthetic tool messages for any uncovered IDs
+		for id := range missing {
+			toolCallID := id
+			fixed = append(fixed, llm.Message{
+				Role:       "tool",
+				ToolCallID: &toolCallID,
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(""),
+				},
+			})
+		}
+	}
+
+	return fixed
+}
+
 // convertInputToMessages converts Responses API input to llm.Message slice.
 // It handles merging reasoning items with subsequent function_call items into a single assistant message.
 func convertInputToMessages(input *Input) ([]llm.Message, error) {
@@ -375,7 +426,7 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 		i++
 	}
 
-	return messages, nil
+return FixMissingToolCallOutputs(messages), nil
 }
 
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent

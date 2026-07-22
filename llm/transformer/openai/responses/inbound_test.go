@@ -1681,3 +1681,135 @@ func TestInboundTransformer_TransformResponse_WithReasoning(t *testing.T) {
 		})
 	}
 }
+
+func TestFixMissingToolCallOutputs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []llm.Message
+		validate func(t *testing.T, result []llm.Message)
+	}{
+		{
+			name:  "empty messages unchanged",
+			input: []llm.Message{},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Empty(t, result)
+			},
+		},
+		{
+			name: "all tool calls have responses — unchanged",
+			input: []llm.Message{
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "call_1", Type: "function", Function: llm.FunctionCall{Name: "get_weather", Arguments: `{}`}},
+				}},
+				{Role: "tool", ToolCallID: lo.ToPtr("call_1"), Content: llm.MessageContent{Content: lo.ToPtr("sunny")}},
+			},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Len(t, result, 2)
+			},
+		},
+		{
+			name: "missing tool response — inserts synthetic tool message",
+			input: []llm.Message{
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "exec_command:10", Type: "function", Function: llm.FunctionCall{Name: "exec_command", Arguments: `{}`}},
+				}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("next")}},
+			},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Len(t, result, 3)
+				require.Equal(t, "assistant", result[0].Role)
+				require.Equal(t, "tool", result[1].Role)
+				require.Equal(t, "exec_command:10", *result[1].ToolCallID)
+				require.Equal(t, "user", result[2].Role)
+			},
+		},
+		{
+			name: "multiple tool calls with partial responses — inserts only for missing",
+			input: []llm.Message{
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "exec_command:10", Type: "function", Function: llm.FunctionCall{Name: "exec_command", Arguments: `{}`}},
+					{ID: "call_abc", Type: "function", Function: llm.FunctionCall{Name: "read_file", Arguments: `{}`}},
+				}},
+				{Role: "tool", ToolCallID: lo.ToPtr("call_abc"), Content: llm.MessageContent{Content: lo.ToPtr("file content")}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("next")}},
+			},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Len(t, result, 4)
+				require.Equal(t, "assistant", result[0].Role)
+				require.Len(t, result[0].ToolCalls, 2)
+				require.Equal(t, "tool", result[1].Role)
+				require.Equal(t, "exec_command:10", *result[1].ToolCallID)
+				require.Equal(t, "tool", result[2].Role)
+				require.Equal(t, "call_abc", *result[2].ToolCallID)
+			},
+		},
+		{
+			name: "last message is assistant with tool_calls — inserts after it",
+			input: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "call_last", Type: "function", Function: llm.FunctionCall{Name: "search", Arguments: `{}`}},
+				}},
+			},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Len(t, result, 3)
+				require.Equal(t, "assistant", result[1].Role)
+				require.Equal(t, "tool", result[2].Role)
+				require.Equal(t, "call_last", *result[2].ToolCallID)
+			},
+		},
+		{
+			name: "same ID across two assistant turns — each checked independently",
+			input: []llm.Message{
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "call_x", Type: "function", Function: llm.FunctionCall{Name: "f", Arguments: `{}`}},
+				}},
+				{Role: "tool", ToolCallID: lo.ToPtr("call_x"), Content: llm.MessageContent{Content: lo.ToPtr("result 1")}},
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "call_x", Type: "function", Function: llm.FunctionCall{Name: "f", Arguments: `{}`}},
+				}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("next")}},
+			},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Len(t, result, 5)
+				require.Equal(t, "assistant", result[0].Role)
+				require.Equal(t, "tool", result[1].Role)
+				require.NotEmpty(t, *result[1].Content.Content) // real
+				require.Equal(t, "assistant", result[2].Role)
+				require.Equal(t, "tool", result[3].Role)
+				require.Empty(t, *result[3].Content.Content) // synthetic
+				require.Equal(t, "user", result[4].Role)
+			},
+		},
+		{
+			name: "tool call with empty ID skipped",
+			input: []llm.Message{
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "", Type: "function", Function: llm.FunctionCall{Name: "no_id", Arguments: `{}`}},
+				}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("next")}},
+			},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Len(t, result, 2)
+			},
+		},
+		{
+			name: "no change when no tool_calls",
+			input: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("how are you")}},
+			},
+			validate: func(t *testing.T, result []llm.Message) {
+				require.Len(t, result, 3)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FixMissingToolCallOutputs(tt.input)
+			tt.validate(t, result)
+		})
+	}
+}
