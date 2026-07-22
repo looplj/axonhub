@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { authApi } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/authStore';
+import { useProjectStore } from '@/stores/projectStore';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const { setUser, setAccessToken } = useAuthStore((state) => state.auth);
+  const { setSelectedProjectId } = useProjectStore();
   const invitationToken = new URLSearchParams(window.location.search).get('invite');
   const [projectName, setProjectName] = useState('');
   const [invitationError, setInvitationError] = useState(!invitationToken ? t('users.invitation.required') : '');
@@ -65,6 +67,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
       const response = await authApi.registerInvitation(invitationToken, values);
       setAccessToken(response.token);
       setUser(response.user);
+      setSelectedProjectId(response.user.projects[0]?.projectID ?? null);
       toast.success(t('users.messages.invitationRegistrationSuccess'));
       router.navigate({ to: '/project/playground' });
     } catch (error) {
