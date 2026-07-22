@@ -12,7 +12,7 @@ export function ChannelsPrimaryButtons() {
 
   return (
     <div className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
-      <PermissionGuard requiredScope='read_system'>
+      <PermissionGuard requiredSystemScope='read_settings'>
         {/* Load Balancing Strategy - navigate to system retry configuration */}
         <Button
           variant='outline'

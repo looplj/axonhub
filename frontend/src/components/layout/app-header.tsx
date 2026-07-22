@@ -88,7 +88,7 @@ export function AppHeader() {
           {/* Desktop-only controls - hidden on mobile */}
           {!isMobile && (
             <>
-              <PermissionGuard requiredSystemScope='read_system'>
+              <PermissionGuard requiredSystemScope='read_settings'>
                 <Link to='/system'>
                   <Button variant='ghost' size='icon' className='size-8'>
                     <IconSettings className='h-4 w-4' />
