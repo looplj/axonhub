@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"reflect"
 	"strings"
@@ -687,17 +688,36 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 }
 
 func equalJSONValues(left, right string) bool {
-	var leftValue any
-	if err := json.Unmarshal([]byte(left), &leftValue); err != nil {
+	leftValue, err := decodeJSONValue(left)
+	if err != nil {
 		return false
 	}
 
-	var rightValue any
-	if err := json.Unmarshal([]byte(right), &rightValue); err != nil {
+	rightValue, err := decodeJSONValue(right)
+	if err != nil {
 		return false
 	}
 
 	return reflect.DeepEqual(leftValue, rightValue)
+}
+
+// decodeJSONValue preserves numeric lexemes so semantic comparisons do not
+// lose precision for integers that cannot be represented exactly as float64.
+func decodeJSONValue(value string) (any, error) {
+	decoder := json.NewDecoder(strings.NewReader(value))
+	decoder.UseNumber()
+
+	var decoded any
+	if err := decoder.Decode(&decoded); err != nil {
+		return nil, err
+	}
+
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("unexpected trailing JSON value: %w", err)
+	}
+
+	return decoded, nil
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {

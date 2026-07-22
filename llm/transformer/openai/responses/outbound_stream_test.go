@@ -266,6 +266,24 @@ func TestOutboundTransformer_TransformStream_AcceptsEquivalentFinalArguments(t *
 	require.JSONEq(t, finalArguments, arguments)
 }
 
+func TestOutboundTransformer_TransformStream_RejectsDistinctLargeJSONNumbers(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_large_numbers","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_large_numbers","type":"function_call","call_id":"call_large_numbers","name":"spawn_agent","arguments":""}}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_large_numbers","output_index":0,"delta":"{\"value\":9007199254740992}"}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_large_numbers","output_index":0,"arguments":"{\"value\":9007199254740993}"}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	_, err = streams.All(stream)
+	require.ErrorContains(t, err, `function call arguments mismatch for call_id "call_large_numbers"`)
+}
+
 func TestResponsesStream_RoundTrip_PreservesToolIdentityProvidedOnlyInDone(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
