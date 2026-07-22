@@ -481,6 +481,31 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_TransformRequest_PreservesMultipleThinkingSignaturesForResponses(t *testing.T) {
+	transformer := NewInboundTransformer()
+	httpReq := &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body: []byte(`{
+			"model":"gpt-5",
+			"max_tokens":1024,
+			"messages":[{
+				"role":"assistant",
+				"content":[
+					{"type":"thinking","thinking":"first","signature":"gAAAA_FIRST_BLOB"},
+					{"type":"thinking","thinking":"second","signature":"gAAAA_SECOND_BLOB"},
+					{"type":"tool_use","id":"call_task","name":"TaskOutput","input":{"task_id":"task_1","block":true}}
+				]
+			}]
+		}`),
+	}
+
+	result, err := transformer.TransformRequest(t.Context(), httpReq)
+	require.NoError(t, err)
+	require.Len(t, result.Messages, 1)
+	require.Equal(t, []string{"gAAAA_FIRST_BLOB", "gAAAA_SECOND_BLOB"}, result.Messages[0].ReasoningSignatures)
+	require.Len(t, result.Messages[0].ToolCalls, 1)
+}
+
 func TestInboundTransformer_TransformResponse_RemovesEmptyReadPages(t *testing.T) {
 	transformer := NewInboundTransformer()
 	finishReason := "tool_calls"

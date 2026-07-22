@@ -56,7 +56,8 @@ type anthropicInboundStream struct {
 
 	// Buffered signature: when signature arrives before thinking starts,
 	// we hold it until thinking finishes.
-	pendingSignature *string
+	pendingSignature       *string
+	pendingReasoningItemID string
 
 	// Buffered citations for the currently open text block. These are emitted as
 	// citations_delta events immediately before the text block is closed.
@@ -195,6 +196,7 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 	if s.pendingSignature != nil && !s.hasThinkingContentStarted {
 		sig := s.pendingSignature
 		s.pendingSignature = nil
+		s.pendingReasoningItemID = ""
 
 		// Close any previously open content block before creating the synthetic thinking block.
 		if s.hasTextContentStarted {
@@ -285,9 +287,25 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 		}
 
 		s.contentIndex += 1
+		s.pendingReasoningItemID = ""
 	}
 
 	return nil
+}
+
+func getResponsesReasoningItemID(metadata map[string]any) string {
+	raw, ok := metadata["openai_responses_reasoning_item"]
+	if !ok || raw == nil {
+		return ""
+	}
+
+	if item, ok := raw.(map[string]any); ok {
+		if id, ok := item["id"].(string); ok {
+			return id
+		}
+	}
+
+	return ""
 }
 
 func (s *anthropicInboundStream) closeOpenContentBlocks() error {
@@ -541,17 +559,30 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 		}
 
-		// Buffer signature: always defer emission to closeThinkingBlock so that
-		// we emit exactly one signature_delta per thinking block (avoiding
-		// duplicates when a random placeholder would otherwise be generated).
-		// If multiple signature chunks arrive, concatenate them to match the
-		// aggregator's behavior.
+		// Buffer signature: defer emission to closeThinkingBlock so that each
+		// thinking block gets exactly one signature_delta. Responses encrypted
+		// content is item-scoped and opaque: when the upstream supplies an item
+		// ID, a new ID closes the previous block and a repeated ID replaces the
+		// provisional value with the latest value instead of concatenating blobs.
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
-			if s.pendingSignature == nil {
+			itemID := getResponsesReasoningItemID(chunk.TransformerMetadata)
+			if itemID != "" {
+				if s.pendingReasoningItemID != "" && s.pendingReasoningItemID != itemID {
+					if err := s.closeThinkingBlock(); err != nil {
+						s.err = fmt.Errorf("failed to close previous reasoning item: %w", err)
+						return false
+					}
+				}
+
+				s.pendingReasoningItemID = itemID
 				s.pendingSignature = choice.Delta.ReasoningSignature
 			} else {
-				combined := *s.pendingSignature + *choice.Delta.ReasoningSignature
-				s.pendingSignature = &combined
+				if s.pendingSignature == nil {
+					s.pendingSignature = choice.Delta.ReasoningSignature
+				} else {
+					combined := *s.pendingSignature + *choice.Delta.ReasoningSignature
+					s.pendingSignature = &combined
+				}
 			}
 		}
 

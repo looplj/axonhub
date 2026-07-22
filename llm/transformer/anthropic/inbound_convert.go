@@ -133,6 +133,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			)
 
 			var reasoningSignature string
+			var reasoningSignatures []string
 
 			for blockIdx, block := range msg.Content.MultipleContent {
 				switch block.Type {
@@ -145,6 +146,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 
 					if block.Signature != nil && *block.Signature != "" {
 						reasoningSignature = *block.Signature
+						reasoningSignatures = append(reasoningSignatures, *block.Signature)
 					}
 				case "redacted_thinking":
 					// Handle redacted thinking content - store the encrypted data
@@ -279,6 +281,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 
 			if reasoningSignature != "" {
 				chatMsg.ReasoningSignature = &reasoningSignature
+			}
+			if len(reasoningSignatures) > 1 {
+				chatMsg.ReasoningSignatures = reasoningSignatures
 			}
 
 			if redactedReasoningContent != "" {

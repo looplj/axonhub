@@ -381,6 +381,11 @@ type Message struct {
 	// 3. OpenAI Responses encrypted content： https://platform.openai.com/docs/api-reference/responses/object#responses-object-output-reasoning-encrypted_content
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
 
+	// ReasoningSignatures preserves multiple opaque reasoning items when an
+	// upstream protocol exposes more than one item in a single message. The
+	// slice order is the item order; values must not be concatenated.
+	ReasoningSignatures []string `json:"-"`
+
 	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
 	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 	// This field will be ignore when convert anthropic to other API format.

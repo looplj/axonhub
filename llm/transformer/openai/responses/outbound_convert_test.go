@@ -1423,3 +1423,25 @@ func TestConvertAssistantMessage_WithCompactContent(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertAssistantMessage_PreservesMultipleReasoningSignaturesBeforeToolCall(t *testing.T) {
+	items := convertAssistantMessage(llm.Message{
+		Role:                "assistant",
+		ReasoningSignatures: []string{"gAAAA_FIRST_BLOB", "gAAAA_SECOND_BLOB"},
+		ToolCalls: []llm.ToolCall{{
+			ID:   "call_task",
+			Type: "function",
+			Function: llm.FunctionCall{
+				Name:      "TaskOutput",
+				Arguments: `{"task_id":"task_1","block":true}`,
+			},
+		}},
+	})
+
+	require.Len(t, items, 3)
+	require.Equal(t, "reasoning", items[0].Type)
+	require.Equal(t, "gAAAA_FIRST_BLOB", *items[0].EncryptedContent)
+	require.Equal(t, "reasoning", items[1].Type)
+	require.Equal(t, "gAAAA_SECOND_BLOB", *items[1].EncryptedContent)
+	require.Equal(t, "function_call", items[2].Type)
+}
