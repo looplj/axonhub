@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"slices"
@@ -252,11 +253,11 @@ func invitationIsExpired(row *ent.Invitation, now time.Time) bool {
 }
 
 func generateInvitationToken() (string, error) {
-	bytes := make([]byte, 32)
+	bytes := make([]byte, 6)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("failed to generate invitation token: %w", err)
 	}
-	return hex.EncodeToString(bytes), nil
+	return base64.RawURLEncoding.EncodeToString(bytes), nil
 }
 
 func hashInvitationToken(token string) string {

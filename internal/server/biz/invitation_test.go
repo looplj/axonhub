@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -95,4 +96,14 @@ func TestInvitationService_ExpiredInvitation(t *testing.T) {
 	require.Error(t, err)
 	_, err = service.RegisterInvitation(ctx, created.Token, "member@example.com", "password", "Member", "User")
 	require.Error(t, err)
+}
+
+func TestGenerateInvitationToken(t *testing.T) {
+	token, err := generateInvitationToken()
+	require.NoError(t, err)
+	require.Len(t, token, 8)
+
+	bytes, err := base64.RawURLEncoding.DecodeString(token)
+	require.NoError(t, err)
+	require.Len(t, bytes, 6)
 }

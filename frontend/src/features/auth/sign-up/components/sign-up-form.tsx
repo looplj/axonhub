@@ -73,17 +73,19 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   };
 
   if (isLoadingInvitation) {
-    return <p className='text-sm text-muted-foreground'>{t('common.buttons.processing')}</p>;
+    return <p className='rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600'>{t('common.buttons.processing')}</p>;
   }
 
   if (invitationError) {
-    return <p className='text-sm text-destructive'>{invitationError}</p>;
+    return <p className='rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive'>{invitationError}</p>;
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className={cn('grid gap-3', className)} {...props}>
-        <p className='text-sm text-muted-foreground'>{t('users.invitation.joinProject', { projectName })}</p>
+      <form onSubmit={form.handleSubmit(onSubmit)} className={cn('grid gap-4', className)} {...props}>
+        <p className='rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600'>
+          {t('users.invitation.joinProject', { projectName })}
+        </p>
         <FormField
           control={form.control}
           name='email'
@@ -91,13 +93,13 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.email')}</FormLabel>
               <FormControl>
-                <Input type='email' placeholder='name@example.com' {...field} />
+                <Input type='email' placeholder='name@example.com' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className='grid grid-cols-2 gap-3'>
+        <div className='grid gap-4 sm:grid-cols-2'>
           <FormField
             control={form.control}
             name='firstName'
@@ -105,7 +107,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               <FormItem>
                 <FormLabel>{t('users.form.firstName')}</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -118,7 +120,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               <FormItem>
                 <FormLabel>{t('users.form.lastName')}</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -132,7 +134,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.password')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -145,13 +147,16 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={form.formState.isSubmitting}>
+        <Button
+          className='mt-2 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
+          disabled={form.formState.isSubmitting}
+        >
           {t('users.buttons.completeRegistration')}
         </Button>
       </form>
