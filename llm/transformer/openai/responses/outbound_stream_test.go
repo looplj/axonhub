@@ -304,6 +304,7 @@ func TestResponsesStream_RoundTrip_PreservesToolIdentityProvidedOnlyInDone(t *te
 	clientEvents, err := streams.All(clientStream)
 	require.NoError(t, err)
 
+	var addedItem *Item
 	var completedItem *Item
 	var completedArguments *StreamEvent
 	for _, clientEvent := range clientEvents {
@@ -313,6 +314,9 @@ func TestResponsesStream_RoundTrip_PreservesToolIdentityProvidedOnlyInDone(t *te
 
 		var event StreamEvent
 		require.NoError(t, json.Unmarshal(clientEvent.Data, &event))
+		if event.Type == StreamEventTypeOutputItemAdded && event.Item != nil && event.Item.Type == "function_call" {
+			addedItem = event.Item
+		}
 		if event.Type == StreamEventTypeOutputItemDone && event.Item != nil && event.Item.Type == "function_call" {
 			completedItem = event.Item
 		}
@@ -321,15 +325,63 @@ func TestResponsesStream_RoundTrip_PreservesToolIdentityProvidedOnlyInDone(t *te
 		}
 	}
 
+	require.NotNil(t, addedItem)
 	require.NotNil(t, completedItem)
 	require.NotNil(t, completedArguments)
 	require.Equal(t, "call_done_identity", completedArguments.CallID)
 	require.Equal(t, "spawn_agent", completedArguments.Name)
 	require.Equal(t, "collaboration", completedArguments.Namespace)
 	require.JSONEq(t, `{"task":"delegate this task"}`, completedArguments.Arguments)
+	require.Equal(t, "spawn_agent", addedItem.Name)
+	require.Equal(t, "collaboration", addedItem.Namespace)
 	require.Equal(t, "spawn_agent", completedItem.Name)
 	require.Equal(t, "collaboration", completedItem.Namespace)
 	require.JSONEq(t, `{"task":"delegate this task"}`, completedItem.Arguments)
+}
+
+func TestResponsesStream_RoundTrip_DefersFunctionCallUntilLateIdentityArrives(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	arguments := `{"task":"delegate this task"}`
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_late_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_late_identity","type":"function_call","call_id":"call_late_identity","arguments":""}}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_late_identity","output_index":0,"delta":"{\"task\":\"delegate this task\"}"}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_late_identity","output_index":0,"name":"spawn_agent","namespace":"collaboration","arguments":"{\"task\":\"delegate this task\"}"}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_late_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	unifiedStream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+
+	clientStream, err := NewInboundTransformer().TransformStream(t.Context(), unifiedStream)
+	require.NoError(t, err)
+
+	clientEvents, err := streams.All(clientStream)
+	require.NoError(t, err)
+
+	var addedItems []*Item
+	var receivedArguments string
+	for _, clientEvent := range clientEvents {
+		if string(clientEvent.Data) == "[DONE]" {
+			continue
+		}
+
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(clientEvent.Data, &event))
+		if event.Type == StreamEventTypeOutputItemAdded && event.Item != nil && event.Item.Type == "function_call" {
+			addedItems = append(addedItems, event.Item)
+		}
+		if event.Type == StreamEventTypeFunctionCallArgumentsDelta {
+			receivedArguments += event.Delta
+		}
+	}
+
+	require.Len(t, addedItems, 1)
+	require.Equal(t, "spawn_agent", addedItems[0].Name)
+	require.Equal(t, "collaboration", addedItems[0].Namespace)
+	require.JSONEq(t, arguments, receivedArguments)
 }
 
 func TestOutboundTransformer_TransformStream_PreservesFinalItemAnnotations(t *testing.T) {

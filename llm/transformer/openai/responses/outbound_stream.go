@@ -348,39 +348,44 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil // Intentionally skip an unknown tool call.
 		}
 
-		if streamEvent.Name != "" {
+		identityChanged := false
+		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
 			tc.Function.Name = streamEvent.Name
+			identityChanged = true
 		}
-		if streamEvent.Namespace != "" {
+		if streamEvent.Namespace != "" && streamEvent.Namespace != tc.Function.Namespace {
 			tc.Function.Namespace = streamEvent.Namespace
+			identityChanged = true
 		}
 
 		// Some upstreams provide the complete JSON arguments only in the done event.
 		// Preserve arguments already emitted through delta events and forward only the
 		// missing suffix so downstream Responses streams receive the full value once.
 		finalArgs := streamEvent.Arguments
+		missingArgs := ""
 		if finalArgs == "" {
-			return nil // An empty done event must not overwrite accumulated deltas.
-		}
+			if !identityChanged {
+				return nil // An empty done event must not overwrite accumulated deltas.
+			}
+		} else {
+			forwardedArgs := tc.Function.Arguments
+			switch {
+			case forwardedArgs == "":
+				missingArgs = finalArgs
+			case strings.HasPrefix(finalArgs, forwardedArgs):
+				missingArgs = strings.TrimPrefix(finalArgs, forwardedArgs)
+			case equalJSONValues(forwardedArgs, finalArgs):
+				// The final payload may be reformatted without changing its meaning.
+				// The complete arguments were already forwarded, so do not emit a duplicate.
+				missingArgs = ""
+			default:
+				return fmt.Errorf("function call arguments mismatch for call_id %q", callID)
+			}
 
-		forwardedArgs := tc.Function.Arguments
-		var missingArgs string
-		switch {
-		case forwardedArgs == "":
-			missingArgs = finalArgs
-		case strings.HasPrefix(finalArgs, forwardedArgs):
-			missingArgs = strings.TrimPrefix(finalArgs, forwardedArgs)
-		case equalJSONValues(forwardedArgs, finalArgs):
-			// The final payload may be reformatted without changing its meaning.
-			// The complete arguments were already forwarded, so do not emit a duplicate.
-			missingArgs = ""
-		default:
-			return fmt.Errorf("function call arguments mismatch for call_id %q", callID)
-		}
-
-		tc.Function.Arguments = finalArgs
-		if missingArgs == "" {
-			return nil
+			tc.Function.Arguments = finalArgs
+			if missingArgs == "" && !identityChanged {
+				return nil
+			}
 		}
 
 		toolCallIdx := s.state.toolCallIndex[callID]
