@@ -154,3 +154,38 @@ func TestOllamaChannel_NativeTransformerUnaffected(t *testing.T) {
 	require.True(t, ok, "TypeOllama should still create ollama.OutboundTransformer")
 	require.Equal(t, llm.APIFormatOllamaChat, built.Outbound.APIFormat())
 }
+
+// TestOllamaAnthropicChannel_APIKeyOverrideWithoutStoredKeys verifies that an
+// apiKeyOverride (used by the channel key test flow) is honored even when the
+// channel has no stored enabled keys. Without the override-aware guard this would
+// drop the override and send unauthenticated requests to the upstream.
+func TestOllamaAnthropicChannel_APIKeyOverrideWithoutStoredKeys(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	// Channel has no credentials, but the caller supplies an override key (test flow).
+	entChannel := client.Channel.Create().
+		SetName("Ollama Anthropic Override Channel").
+		SetType(channel.TypeOllamaAnthropic).
+		SetBaseURL("http://localhost:11434").
+		SetSupportedModels([]string{"llama3.2"}).
+		SetDefaultTestModel("llama3.2").
+		SaveX(ctx)
+
+	channelSvc := NewChannelServiceForTest(client)
+
+	built, err := channelSvc.buildChannelWithTransformer(entChannel, "override-test-key")
+	require.NoError(t, err)
+	require.NotNil(t, built)
+	require.NotNil(t, built.Outbound)
+
+	anthropicOutbound, ok := built.Outbound.(*anthropic.OutboundTransformer)
+	require.True(t, ok, "TypeOllamaAnthropic should create anthropic.OutboundTransformer")
+
+	// The override key must flow through to the transformer's API key provider.
+	cfg := anthropicOutbound.GetConfig()
+	require.NotNil(t, cfg.APIKeyProvider, "apiKeyOverride must produce a non-nil APIKeyProvider even without stored keys")
+	require.Equal(t, "override-test-key", cfg.APIKeyProvider.Get(ctx))
+}

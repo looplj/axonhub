@@ -1063,9 +1063,11 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeOllama:
-		// Ollama is often used locally without API key, but may also be configured with one
+		// Ollama is often used locally without API key, but may also be configured with one.
+		// The apiKeyOverride branch covers the channel key test flow, which supplies a key
+		// even when the channel has no stored enabled keys.
 		var apiKeyProvider auth.APIKeyProvider
-		if len(ch.cachedEnabledAPIKeys) > 0 {
+		if len(ch.cachedEnabledAPIKeys) > 0 || ch.apiKeyOverride != "" {
 			apiKeyProvider = getAPIKeyProvider(ch)
 		}
 
@@ -1081,10 +1083,11 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeOllamaAnthropic:
-		// Ollama with Anthropic Messages API format
-		// Uses Bearer token auth (same as LongCat Anthropic pattern)
+		// Ollama with Anthropic Messages API format, using Bearer token auth.
+		// Mirrors the TypeOllama key handling: optional for local no-auth deployments,
+		// but still honors apiKeyOverride (e.g. channel key test flow) when no keys are stored.
 		var apiKeyProvider auth.APIKeyProvider
-		if len(ch.cachedEnabledAPIKeys) > 0 {
+		if len(ch.cachedEnabledAPIKeys) > 0 || ch.apiKeyOverride != "" {
 			apiKeyProvider = getAPIKeyProvider(ch)
 		}
 
