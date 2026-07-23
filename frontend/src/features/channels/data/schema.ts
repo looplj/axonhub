@@ -173,6 +173,7 @@ export const proxyConfigSchema = z.object({
   url: z.string().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
+  disableConnectionReuse: z.boolean().optional(),
 });
 export type ProxyConfig = z.infer<typeof proxyConfigSchema>;
 
