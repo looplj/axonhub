@@ -140,8 +140,7 @@ type Request struct {
 	// Parameters for audio output. Required when audio output is requested with
 	// `modalities: ["audio"]`.
 	// [Learn more](https://platform.openai.com/docs/guides/audio).
-	// TODO
-	// Audio ChatCompletionAudioParam `json:"audio,omitzero"`
+	Audio *ChatCompletionAudioParam `json:"audio,omitzero"`
 
 	// Modify the likelihood of specified tokens appearing in the completion.
 	//
@@ -293,6 +292,15 @@ type StreamOptions struct {
 	// and the choices field will always be an empty array.
 	// All other chunks will also include a usage field, but with a null value.
 	IncludeUsage bool `json:"include_usage,omitempty"`
+}
+
+// ChatCompletionAudioParam specifies audio output parameters for chat completions.
+// Required when audio output is requested with modalities: ["audio"].
+type ChatCompletionAudioParam struct {
+	// Format specifies the output audio format (e.g. "mp3", "wav", "opus").
+	Format string `json:"format,omitempty"`
+	// Voice specifies the voice to use for audio generation (e.g. "alloy", "echo", "nova").
+	Voice string `json:"voice,omitempty"`
 }
 
 type Stop struct {

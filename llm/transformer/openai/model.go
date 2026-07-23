@@ -67,6 +67,9 @@ type Request struct {
 	// Modalities specifies output types (text, audio, image).
 	Modalities []string `json:"modalities,omitempty"`
 
+	// Audio specifies audio output parameters. Required when modalities includes "audio".
+	Audio *ChatCompletionAudioParam `json:"audio,omitempty"`
+
 	// ReasoningEffort controls effort on reasoning models.
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
@@ -109,6 +112,14 @@ type Thinking struct {
 // StreamOptions for streaming responses.
 type StreamOptions struct {
 	IncludeUsage bool `json:"include_usage,omitempty"`
+}
+
+// ChatCompletionAudioParam specifies audio output parameters for chat completions.
+type ChatCompletionAudioParam struct {
+	// Format specifies the output audio format (e.g. "mp3", "wav", "opus").
+	Format string `json:"format,omitempty"`
+	// Voice specifies the voice to use for audio generation (e.g. "alloy", "echo", "nova").
+	Voice string `json:"voice,omitempty"`
 }
 
 // Stop represents stop sequences.
