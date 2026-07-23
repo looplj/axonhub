@@ -18661,6 +18661,153 @@
           "family": "kat-coder"
         }
       ]
+    },
+    "poolside": {
+      "id": "poolside",
+      "api": "https://inference.poolside.ai/v1",
+      "name": "Poolside",
+      "doc": "https://docs.poolside.ai",
+      "display_name": "Poolside",
+      "models": [
+        {
+          "id": "poolside/laguna-s-2.1",
+          "name": "Laguna S 2.1",
+          "description": "Poolside's 118B MoE model with 1M context window, supporting reasoning on/off toggle",
+          "family": "laguna-s",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2025-07-22",
+          "last_updated": "2025-07-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0.29,
+            "output": 0.59,
+            "cache_read": 0.029
+          },
+          "display_name": "Laguna S 2.1",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
+        {
+          "id": "poolside/laguna-xs-2.1",
+          "name": "Laguna XS 2.1",
+          "description": "Poolside's 33B MoE model with 256K context window, supporting reasoning on/off toggle",
+          "family": "laguna-xs",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2025-07-22",
+          "last_updated": "2025-07-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 8192
+          },
+          "cost": {
+            "input": 0.085,
+            "output": 0.17,
+            "cache_read": 0.0085
+          },
+          "display_name": "Laguna XS 2.1",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
+        {
+          "id": "poolside/laguna-m.1",
+          "name": "Laguna M.1",
+          "description": "Poolside's 225B MoE model with 256K context window, supporting reasoning on/off toggle",
+          "family": "laguna-m",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2025-07-22",
+          "last_updated": "2025-07-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0.59,
+            "output": 1.18,
+            "cache_read": 0.059
+          },
+          "display_name": "Laguna M.1",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        }
+      ]
     }
   }
 }
