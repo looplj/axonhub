@@ -625,6 +625,38 @@ const GET_CHANNEL_MODEL_PRICES_QUERY = `
               }
             }
           }
+          schedule {
+            timezone
+            overrides {
+              name
+              priority
+              when {
+                dailyTime {
+                  start
+                  end
+                }
+                weekdays
+                dateRange {
+                  start
+                  end
+                }
+              }
+              items {
+                itemCode
+                pricing {
+                  mode
+                  flatFee
+                  usagePerUnit
+                  usageTiered {
+                    tiers {
+                      upTo
+                      pricePerUnit
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

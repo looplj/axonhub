@@ -631,6 +631,11 @@ type ComplexityRoot struct {
 		Tokens func(childComplexity int) int
 	}
 
+	DailyTimeRange struct {
+		End   func(childComplexity int) int
+		Start func(childComplexity int) int
+	}
+
 	DashboardOverview struct {
 		AverageResponseTime func(childComplexity int) int
 		FailedRequests      func(childComplexity int) int
@@ -669,6 +674,11 @@ type ComplexityRoot struct {
 		GCS       func(childComplexity int) int
 		S3        func(childComplexity int) int
 		WebDAV    func(childComplexity int) int
+	}
+
+	DateRange struct {
+		End   func(childComplexity int) int
+		Start func(childComplexity int) int
 	}
 
 	DeleteDisabledAPIKeysPayload struct {
@@ -884,7 +894,8 @@ type ComplexityRoot struct {
 	}
 
 	ModelPrice struct {
-		Items func(childComplexity int) int
+		Items    func(childComplexity int) int
+		Schedule func(childComplexity int) int
 	}
 
 	ModelPriceItem struct {
@@ -1099,6 +1110,12 @@ type ComplexityRoot struct {
 		Value     func(childComplexity int) int
 	}
 
+	OverrideWhen struct {
+		DailyTime func(childComplexity int) int
+		DateRange func(childComplexity int) int
+		Weekdays  func(childComplexity int) int
+	}
+
 	PageInfo struct {
 		EndCursor       func(childComplexity int) int
 		HasNextPage     func(childComplexity int) int
@@ -1108,6 +1125,18 @@ type ComplexityRoot struct {
 
 	PassThroughSettings struct {
 		Enabled func(childComplexity int) int
+	}
+
+	PriceOverride struct {
+		Items    func(childComplexity int) int
+		Name     func(childComplexity int) int
+		Priority func(childComplexity int) int
+		When     func(childComplexity int) int
+	}
+
+	PriceSchedule struct {
+		Overrides func(childComplexity int) int
+		Timezone  func(childComplexity int) int
 	}
 
 	PriceTier struct {
@@ -4438,6 +4467,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DailyRequestStats.Tokens(childComplexity), true
 
+	case "DailyTimeRange.end":
+		if e.complexity.DailyTimeRange.End == nil {
+			break
+		}
+
+		return e.complexity.DailyTimeRange.End(childComplexity), true
+	case "DailyTimeRange.start":
+		if e.complexity.DailyTimeRange.Start == nil {
+			break
+		}
+
+		return e.complexity.DailyTimeRange.Start(childComplexity), true
+
 	case "DashboardOverview.averageResponseTime":
 		if e.complexity.DashboardOverview.AverageResponseTime == nil {
 			break
@@ -4602,6 +4644,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DataStorageSettings.WebDAV(childComplexity), true
+
+	case "DateRange.end":
+		if e.complexity.DateRange.End == nil {
+			break
+		}
+
+		return e.complexity.DateRange.End(childComplexity), true
+	case "DateRange.start":
+		if e.complexity.DateRange.Start == nil {
+			break
+		}
+
+		return e.complexity.DateRange.Start(childComplexity), true
 
 	case "DeleteDisabledAPIKeysPayload.message":
 		if e.complexity.DeleteDisabledAPIKeysPayload.Message == nil {
@@ -5354,6 +5409,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelPrice.Items(childComplexity), true
+	case "ModelPrice.schedule":
+		if e.complexity.ModelPrice.Schedule == nil {
+			break
+		}
+
+		return e.complexity.ModelPrice.Schedule(childComplexity), true
 
 	case "ModelPriceItem.itemCode":
 		if e.complexity.ModelPriceItem.ItemCode == nil {
@@ -6996,6 +7057,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.OverrideOperation.Value(childComplexity), true
 
+	case "OverrideWhen.dailyTime":
+		if e.complexity.OverrideWhen.DailyTime == nil {
+			break
+		}
+
+		return e.complexity.OverrideWhen.DailyTime(childComplexity), true
+	case "OverrideWhen.dateRange":
+		if e.complexity.OverrideWhen.DateRange == nil {
+			break
+		}
+
+		return e.complexity.OverrideWhen.DateRange(childComplexity), true
+	case "OverrideWhen.weekdays":
+		if e.complexity.OverrideWhen.Weekdays == nil {
+			break
+		}
+
+		return e.complexity.OverrideWhen.Weekdays(childComplexity), true
+
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
 			break
@@ -7027,6 +7107,44 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PassThroughSettings.Enabled(childComplexity), true
+
+	case "PriceOverride.items":
+		if e.complexity.PriceOverride.Items == nil {
+			break
+		}
+
+		return e.complexity.PriceOverride.Items(childComplexity), true
+	case "PriceOverride.name":
+		if e.complexity.PriceOverride.Name == nil {
+			break
+		}
+
+		return e.complexity.PriceOverride.Name(childComplexity), true
+	case "PriceOverride.priority":
+		if e.complexity.PriceOverride.Priority == nil {
+			break
+		}
+
+		return e.complexity.PriceOverride.Priority(childComplexity), true
+	case "PriceOverride.when":
+		if e.complexity.PriceOverride.When == nil {
+			break
+		}
+
+		return e.complexity.PriceOverride.When(childComplexity), true
+
+	case "PriceSchedule.overrides":
+		if e.complexity.PriceSchedule.Overrides == nil {
+			break
+		}
+
+		return e.complexity.PriceSchedule.Overrides(childComplexity), true
+	case "PriceSchedule.timezone":
+		if e.complexity.PriceSchedule.Timezone == nil {
+			break
+		}
+
+		return e.complexity.PriceSchedule.Timezone(childComplexity), true
 
 	case "PriceTier.pricePerUnit":
 		if e.complexity.PriceTier.PricePerUnit == nil {
@@ -11189,9 +11307,11 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateTraceInput,
 		ec.unmarshalInputCreateUsageLogInput,
 		ec.unmarshalInputCreateUserInput,
+		ec.unmarshalInputDailyTimeRangeInput,
 		ec.unmarshalInputDataStorageOrder,
 		ec.unmarshalInputDataStorageSettingsInput,
 		ec.unmarshalInputDataStorageWhereInput,
+		ec.unmarshalInputDateRangeInput,
 		ec.unmarshalInputDeveloperModelSettingsInput,
 		ec.unmarshalInputExcludeAssociationInput,
 		ec.unmarshalInputFastestChannelsInput,
@@ -11224,6 +11344,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputOpenCodeGoQuotaSettingsInput,
 		ec.unmarshalInputOverrideMatchInput,
 		ec.unmarshalInputOverrideOperationInput,
+		ec.unmarshalInputOverrideWhenInput,
+		ec.unmarshalInputPriceOverrideInput,
+		ec.unmarshalInputPriceScheduleInput,
 		ec.unmarshalInputPriceTierInput,
 		ec.unmarshalInputPricingInput,
 		ec.unmarshalInputProjectOrder,
@@ -21147,6 +21270,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_price(_ context.Conte
 			switch field.Name {
 			case "items":
 				return ec.fieldContext_ModelPrice_items(ctx, field)
+			case "schedule":
+				return ec.fieldContext_ModelPrice_schedule(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelPrice", field.Name)
 		},
@@ -21710,6 +21835,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersion_price(_ contex
 			switch field.Name {
 			case "items":
 				return ec.fieldContext_ModelPrice_items(ctx, field)
+			case "schedule":
+				return ec.fieldContext_ModelPrice_schedule(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelPrice", field.Name)
 		},
@@ -25391,6 +25518,64 @@ func (ec *executionContext) fieldContext_DailyRequestStats_cost(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _DailyTimeRange_start(ctx context.Context, field graphql.CollectedField, obj *objects.DailyTimeRange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DailyTimeRange_start,
+		func(ctx context.Context) (any, error) {
+			return obj.Start, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DailyTimeRange_start(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DailyTimeRange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DailyTimeRange_end(ctx context.Context, field graphql.CollectedField, obj *objects.DailyTimeRange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DailyTimeRange_end,
+		func(ctx context.Context) (any, error) {
+			return obj.End, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DailyTimeRange_end(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DailyTimeRange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DashboardOverview_totalRequests(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -26239,6 +26424,64 @@ func (ec *executionContext) fieldContext_DataStorageSettings_webdav(_ context.Co
 				return ec.fieldContext_WebDAV_path(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WebDAV", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DateRange_start(ctx context.Context, field graphql.CollectedField, obj *objects.DateRange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DateRange_start,
+		func(ctx context.Context) (any, error) {
+			return obj.Start, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DateRange_start(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DateRange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DateRange_end(ctx context.Context, field graphql.CollectedField, obj *objects.DateRange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DateRange_end,
+		func(ctx context.Context) (any, error) {
+			return obj.End, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DateRange_end(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DateRange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30041,6 +30284,41 @@ func (ec *executionContext) fieldContext_ModelPrice_items(_ context.Context, fie
 				return ec.fieldContext_ModelPriceItem_promptWriteCacheVariants(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelPriceItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPrice_schedule(ctx context.Context, field graphql.CollectedField, obj *objects.ModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPrice_schedule,
+		func(ctx context.Context) (any, error) {
+			return obj.Schedule, nil
+		},
+		nil,
+		ec.marshalOPriceSchedule2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceSchedule,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPrice_schedule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "timezone":
+				return ec.fieldContext_PriceSchedule_timezone(ctx, field)
+			case "overrides":
+				return ec.fieldContext_PriceSchedule_overrides(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PriceSchedule", field.Name)
 		},
 	}
 	return fc, nil
@@ -38007,6 +38285,105 @@ func (ec *executionContext) fieldContext_OverrideOperation_splat(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _OverrideWhen_dailyTime(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideWhen) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideWhen_dailyTime,
+		func(ctx context.Context) (any, error) {
+			return obj.DailyTime, nil
+		},
+		nil,
+		ec.marshalODailyTimeRange2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDailyTimeRange,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideWhen_dailyTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideWhen",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "start":
+				return ec.fieldContext_DailyTimeRange_start(ctx, field)
+			case "end":
+				return ec.fieldContext_DailyTimeRange_end(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DailyTimeRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideWhen_weekdays(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideWhen) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideWhen_weekdays,
+		func(ctx context.Context) (any, error) {
+			return obj.Weekdays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚕintᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideWhen_weekdays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideWhen",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OverrideWhen_dateRange(ctx context.Context, field graphql.CollectedField, obj *objects.OverrideWhen) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OverrideWhen_dateRange,
+		func(ctx context.Context) (any, error) {
+			return obj.DateRange, nil
+		},
+		nil,
+		ec.marshalODateRange2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDateRange,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OverrideWhen_dateRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OverrideWhen",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "start":
+				return ec.fieldContext_DateRange_start(ctx, field)
+			case "end":
+				return ec.fieldContext_DateRange_end(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DateRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *entgql.PageInfo[int]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38147,6 +38524,206 @@ func (ec *executionContext) fieldContext_PassThroughSettings_enabled(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceOverride_name(ctx context.Context, field graphql.CollectedField, obj *objects.PriceOverride) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceOverride_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceOverride_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceOverride",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceOverride_priority(ctx context.Context, field graphql.CollectedField, obj *objects.PriceOverride) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceOverride_priority,
+		func(ctx context.Context) (any, error) {
+			return obj.Priority, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceOverride_priority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceOverride",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceOverride_when(ctx context.Context, field graphql.CollectedField, obj *objects.PriceOverride) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceOverride_when,
+		func(ctx context.Context) (any, error) {
+			return obj.When, nil
+		},
+		nil,
+		ec.marshalNOverrideWhen2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideWhen,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceOverride_when(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceOverride",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dailyTime":
+				return ec.fieldContext_OverrideWhen_dailyTime(ctx, field)
+			case "weekdays":
+				return ec.fieldContext_OverrideWhen_weekdays(ctx, field)
+			case "dateRange":
+				return ec.fieldContext_OverrideWhen_dateRange(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OverrideWhen", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceOverride_items(ctx context.Context, field graphql.CollectedField, obj *objects.PriceOverride) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceOverride_items,
+		func(ctx context.Context) (any, error) {
+			return obj.Items, nil
+		},
+		nil,
+		ec.marshalNModelPriceItem2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItemᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceOverride_items(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceOverride",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "itemCode":
+				return ec.fieldContext_ModelPriceItem_itemCode(ctx, field)
+			case "pricing":
+				return ec.fieldContext_ModelPriceItem_pricing(ctx, field)
+			case "promptWriteCacheVariants":
+				return ec.fieldContext_ModelPriceItem_promptWriteCacheVariants(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelPriceItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceSchedule_timezone(ctx context.Context, field graphql.CollectedField, obj *objects.PriceSchedule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceSchedule_timezone,
+		func(ctx context.Context) (any, error) {
+			return obj.Timezone, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceSchedule_timezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PriceSchedule_overrides(ctx context.Context, field graphql.CollectedField, obj *objects.PriceSchedule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PriceSchedule_overrides,
+		func(ctx context.Context) (any, error) {
+			return obj.Overrides, nil
+		},
+		nil,
+		ec.marshalNPriceOverride2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverrideᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PriceSchedule_overrides(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PriceSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_PriceOverride_name(ctx, field)
+			case "priority":
+				return ec.fieldContext_PriceOverride_priority(ctx, field)
+			case "when":
+				return ec.fieldContext_PriceOverride_when(ctx, field)
+			case "items":
+				return ec.fieldContext_PriceOverride_items(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PriceOverride", field.Name)
 		},
 	}
 	return fc, nil
@@ -68655,6 +69232,40 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDailyTimeRangeInput(ctx context.Context, obj any) (objects.DailyTimeRange, error) {
+	var it objects.DailyTimeRange
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"start", "end"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "start":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("start"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Start = data
+		case "end":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("end"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.End = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDataStorageOrder(ctx context.Context, obj any) (ent.DataStorageOrder, error) {
 	var it ent.DataStorageOrder
 	asMap := map[string]any{}
@@ -69263,6 +69874,40 @@ func (ec *executionContext) unmarshalInputDataStorageWhereInput(ctx context.Cont
 				return it, err
 			}
 			it.HasExecutionsWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDateRangeInput(ctx context.Context, obj any) (objects.DateRange, error) {
+	var it objects.DateRange
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"start", "end"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "start":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("start"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Start = data
+		case "end":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("end"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.End = data
 		}
 	}
 
@@ -70229,7 +70874,7 @@ func (ec *executionContext) unmarshalInputModelPriceInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"items"}
+	fieldsInOrder := [...]string{"items", "schedule"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70243,6 +70888,13 @@ func (ec *executionContext) unmarshalInputModelPriceInput(ctx context.Context, o
 				return it, err
 			}
 			it.Items = data
+		case "schedule":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("schedule"))
+			data, err := ec.unmarshalOPriceScheduleInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceSchedule(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Schedule = data
 		}
 	}
 
@@ -72187,6 +72839,129 @@ func (ec *executionContext) unmarshalInputOverrideOperationInput(ctx context.Con
 				return it, err
 			}
 			it.Splat = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOverrideWhenInput(ctx context.Context, obj any) (objects.OverrideWhen, error) {
+	var it objects.OverrideWhen
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dailyTime", "weekdays", "dateRange"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dailyTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dailyTime"))
+			data, err := ec.unmarshalODailyTimeRangeInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDailyTimeRange(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DailyTime = data
+		case "weekdays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weekdays"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Weekdays = data
+		case "dateRange":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dateRange"))
+			data, err := ec.unmarshalODateRangeInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDateRange(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DateRange = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPriceOverrideInput(ctx context.Context, obj any) (objects.PriceOverride, error) {
+	var it objects.PriceOverride
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "priority", "when", "items"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "priority":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("priority"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Priority = data
+		case "when":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("when"))
+			data, err := ec.unmarshalNOverrideWhenInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideWhen(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.When = data
+		case "items":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("items"))
+			data, err := ec.unmarshalNModelPriceItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPriceItemᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Items = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPriceScheduleInput(ctx context.Context, obj any) (objects.PriceSchedule, error) {
+	var it objects.PriceSchedule
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"timezone", "overrides"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "timezone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timezone"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Timezone = data
+		case "overrides":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrides"))
+			data, err := ec.unmarshalNPriceOverrideInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverrideᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Overrides = data
 		}
 	}
 
@@ -91959,6 +92734,50 @@ func (ec *executionContext) _DailyRequestStats(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var dailyTimeRangeImplementors = []string{"DailyTimeRange"}
+
+func (ec *executionContext) _DailyTimeRange(ctx context.Context, sel ast.SelectionSet, obj *objects.DailyTimeRange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dailyTimeRangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DailyTimeRange")
+		case "start":
+			out.Values[i] = ec._DailyTimeRange_start(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "end":
+			out.Values[i] = ec._DailyTimeRange_end(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var dashboardOverviewImplementors = []string{"DashboardOverview"}
 
 func (ec *executionContext) _DashboardOverview(ctx context.Context, sel ast.SelectionSet, obj *DashboardOverview) graphql.Marshaler {
@@ -92300,6 +93119,50 @@ func (ec *executionContext) _DataStorageSettings(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._DataStorageSettings_gcs(ctx, field, obj)
 		case "webdav":
 			out.Values[i] = ec._DataStorageSettings_webdav(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var dateRangeImplementors = []string{"DateRange"}
+
+func (ec *executionContext) _DateRange(ctx context.Context, sel ast.SelectionSet, obj *objects.DateRange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dateRangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DateRange")
+		case "start":
+			out.Values[i] = ec._DateRange_start(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "end":
+			out.Values[i] = ec._DateRange_end(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93957,6 +94820,8 @@ func (ec *executionContext) _ModelPrice(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "schedule":
+			out.Values[i] = ec._ModelPrice_schedule(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -95553,6 +96418,46 @@ func (ec *executionContext) _OverrideOperation(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var overrideWhenImplementors = []string{"OverrideWhen"}
+
+func (ec *executionContext) _OverrideWhen(ctx context.Context, sel ast.SelectionSet, obj *objects.OverrideWhen) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, overrideWhenImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OverrideWhen")
+		case "dailyTime":
+			out.Values[i] = ec._OverrideWhen_dailyTime(ctx, field, obj)
+		case "weekdays":
+			out.Values[i] = ec._OverrideWhen_weekdays(ctx, field, obj)
+		case "dateRange":
+			out.Values[i] = ec._OverrideWhen_dateRange(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var pageInfoImplementors = []string{"PageInfo"}
 
 func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *entgql.PageInfo[int]) graphql.Marshaler {
@@ -95614,6 +96519,104 @@ func (ec *executionContext) _PassThroughSettings(ctx context.Context, sel ast.Se
 			out.Values[i] = graphql.MarshalString("PassThroughSettings")
 		case "enabled":
 			out.Values[i] = ec._PassThroughSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var priceOverrideImplementors = []string{"PriceOverride"}
+
+func (ec *executionContext) _PriceOverride(ctx context.Context, sel ast.SelectionSet, obj *objects.PriceOverride) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, priceOverrideImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PriceOverride")
+		case "name":
+			out.Values[i] = ec._PriceOverride_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "priority":
+			out.Values[i] = ec._PriceOverride_priority(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "when":
+			out.Values[i] = ec._PriceOverride_when(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "items":
+			out.Values[i] = ec._PriceOverride_items(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var priceScheduleImplementors = []string{"PriceSchedule"}
+
+func (ec *executionContext) _PriceSchedule(ctx context.Context, sel ast.SelectionSet, obj *objects.PriceSchedule) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, priceScheduleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PriceSchedule")
+		case "timezone":
+			out.Values[i] = ec._PriceSchedule_timezone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "overrides":
+			out.Values[i] = ec._PriceSchedule_overrides(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -110066,6 +111069,15 @@ func (ec *executionContext) unmarshalNOverrideOperationInput2githubᚗcomᚋloop
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNOverrideWhen2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideWhen(ctx context.Context, sel ast.SelectionSet, v objects.OverrideWhen) graphql.Marshaler {
+	return ec._OverrideWhen(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNOverrideWhenInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideWhen(ctx context.Context, v any) (objects.OverrideWhen, error) {
+	res, err := ec.unmarshalInputOverrideWhenInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v entgql.PageInfo[int]) graphql.Marshaler {
 	return ec._PageInfo(ctx, sel, &v)
 }
@@ -110099,6 +111111,74 @@ func (ec *executionContext) marshalNPriceItemCode2githubᚗcomᚋloopljᚋaxonhu
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNPriceOverride2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverride(ctx context.Context, sel ast.SelectionSet, v objects.PriceOverride) graphql.Marshaler {
+	return ec._PriceOverride(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPriceOverride2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverrideᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.PriceOverride) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPriceOverride2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverride(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNPriceOverrideInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverride(ctx context.Context, v any) (objects.PriceOverride, error) {
+	res, err := ec.unmarshalInputPriceOverrideInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNPriceOverrideInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverrideᚄ(ctx context.Context, v any) ([]objects.PriceOverride, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.PriceOverride, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPriceOverrideInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceOverride(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalNPriceTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceTier(ctx context.Context, sel ast.SelectionSet, v objects.PriceTier) graphql.Marshaler {
@@ -114589,6 +115669,21 @@ func (ec *executionContext) marshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCu
 	return res
 }
 
+func (ec *executionContext) marshalODailyTimeRange2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDailyTimeRange(ctx context.Context, sel ast.SelectionSet, v *objects.DailyTimeRange) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DailyTimeRange(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalODailyTimeRangeInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDailyTimeRange(ctx context.Context, v any) (*objects.DailyTimeRange, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDailyTimeRangeInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalODataStorage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorage(ctx context.Context, sel ast.SelectionSet, v *ent.DataStorage) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -114845,6 +115940,21 @@ func (ec *executionContext) unmarshalODataStorageWhereInput2ᚖgithubᚗcomᚋlo
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputDataStorageWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODateRange2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDateRange(ctx context.Context, sel ast.SelectionSet, v *objects.DateRange) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DateRange(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalODateRangeInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDateRange(ctx context.Context, v any) (*objects.DateRange, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDateRangeInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -116176,6 +117286,21 @@ func (ec *executionContext) unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋl
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOPriceSchedule2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceSchedule(ctx context.Context, sel ast.SelectionSet, v *objects.PriceSchedule) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PriceSchedule(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPriceScheduleInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPriceSchedule(ctx context.Context, v any) (*objects.PriceSchedule, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPriceScheduleInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProject(ctx context.Context, sel ast.SelectionSet, v *ent.Project) graphql.Marshaler {
