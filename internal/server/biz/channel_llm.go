@@ -475,6 +475,10 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		// These channel types don't use API keys:
 		// - anthropic_gcp uses GCP credentials JSON
 		// - *_fake are test-only
+	case channel.TypeOllama, channel.TypeOllamaAnthropic:
+		// Ollama is often run locally without an API key. An apiKeyOverride
+		// (channel key test flow) may also supply a key when none are stored,
+		// so skip the stored-key check here.
 	default:
 		if len(enabledKeys) == 0 {
 			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
