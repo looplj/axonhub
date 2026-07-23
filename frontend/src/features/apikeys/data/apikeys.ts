@@ -172,6 +172,12 @@ const UPDATE_APIKEY_STATUS_MUTATION = `
   }
 `;
 
+const DELETE_APIKEY_MUTATION = `
+  mutation DeleteAPIKey($id: ID!) {
+    deleteAPIKey(id: $id)
+  }
+`;
+
 const UPDATE_APIKEY_PROFILES_MUTATION = `
   mutation UpdateAPIKeyProfiles($id: ID!, $input: UpdateAPIKeyProfilesInput!) {
     updateAPIKeyProfiles(id: $id, input: $input) {
@@ -574,6 +580,29 @@ export function useUpdateApiKey() {
     },
     onError: (error) => {
       handleError(error, { context: t('apikeys.dialogs.edit.title') });
+    },
+  });
+}
+
+export function useDeleteApiKey() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const data = await graphqlRequest<{ deleteAPIKey: boolean }>(DELETE_APIKEY_MUTATION, { id }, headers);
+      return data.deleteAPIKey;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
+      queryClient.removeQueries({ queryKey: ['apiKey', id] });
+      toast.success(t('apikeys.messages.deleteSuccess'));
+    },
+    onError: (error) => {
+      handleError(error, { context: t('apikeys.dialogs.delete.title') });
     },
   });
 }

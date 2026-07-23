@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -1364,5 +1365,109 @@ func TestAPIKeyService_RotateAPIKey(t *testing.T) {
 		_, err = apiKeyService.RotateAPIKey(anotherUserCtx, apiKeyInProjectA.ID)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to get API key")
+	})
+}
+
+func TestAPIKeyService_DeleteAPIKey(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
+	defer client.Close()
+
+	ctx := ent.NewContext(context.Background(), client)
+	ctx = authz.WithTestBypass(ctx)
+
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	creator, err := client.User.Create().
+		SetEmail(fmt.Sprintf("delete-creator-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Delete").
+		SetLastName("Creator").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	otherUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("delete-other-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Delete").
+		SetLastName("Other").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	testProject, err := client.Project.Create().
+		SetName(uuid.NewString()).
+		SetDescription("API key delete test").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	t.Run("soft deletes and invalidates cached key", func(t *testing.T) {
+		key, err := client.APIKey.Create().
+			SetName("Delete Me").
+			SetKey("ah-delete-soft").
+			SetUserID(creator.ID).
+			SetProjectID(testProject.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		_, err = apiKeyService.GetAPIKey(ctx, key.Key)
+		require.NoError(t, err)
+
+		err = apiKeyService.DeleteAPIKey(ctx, key.ID)
+		require.NoError(t, err)
+
+		_, err = client.APIKey.Get(ctx, key.ID)
+		require.True(t, ent.IsNotFound(err))
+
+		deleted, err := client.APIKey.Get(schematype.SkipSoftDelete(ctx), key.ID)
+		require.NoError(t, err)
+		require.NotZero(t, deleted.DeletedAt)
+
+		_, err = apiKeyService.GetAPIKey(ctx, key.Key)
+		require.Error(t, err)
+
+		replacement, err := apiKeyService.CreateAPIKey(contexts.WithUser(ctx, creator), ent.CreateAPIKeyInput{
+			Name:      key.Name,
+			ProjectID: testProject.ID,
+		})
+		require.NoError(t, err)
+		require.NotEqual(t, key.ID, replacement.ID)
+	})
+
+	t.Run("rejects deleting another creator personal key", func(t *testing.T) {
+		key, err := client.APIKey.Create().
+			SetName("Personal Key").
+			SetKey("ah-delete-personal").
+			SetUserID(creator.ID).
+			SetProjectID(testProject.ID).
+			SetType(apikey.TypePersonal).
+			Save(ctx)
+		require.NoError(t, err)
+
+		err = apiKeyService.DeleteAPIKey(contexts.WithUser(ctx, otherUser), key.ID)
+		require.ErrorContains(t, err, "personal API key can only be deleted by its creator")
+
+		_, err = client.APIKey.Get(ctx, key.ID)
+		require.NoError(t, err)
+	})
+
+	t.Run("rejects deleting noauth key", func(t *testing.T) {
+		key, err := client.APIKey.Create().
+			SetName("No Auth Key").
+			SetKey("ah-delete-noauth").
+			SetUserID(creator.ID).
+			SetProjectID(testProject.ID).
+			SetType(apikey.TypeNoauth).
+			Save(ctx)
+		require.NoError(t, err)
+
+		err = apiKeyService.DeleteAPIKey(ctx, key.ID)
+		require.ErrorContains(t, err, "noauth type API key cannot be deleted")
+
+		_, err = client.APIKey.Get(ctx, key.ID)
+		require.NoError(t, err)
 	})
 }

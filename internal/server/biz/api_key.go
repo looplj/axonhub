@@ -483,6 +483,40 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 	return result, nil
 }
 
+// DeleteAPIKey soft deletes an API key and invalidates its live cache entry.
+// The tombstone preserves historical request and usage attribution while the
+// soft-delete interceptor removes the key from normal queries and auth loads.
+func (s *APIKeyService) DeleteAPIKey(ctx context.Context, id int) error {
+	client := s.entFromContext(ctx)
+
+	apiKey, err := client.APIKey.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if apiKey.Type == apikey.TypeNoauth {
+		return fmt.Errorf("noauth type API key cannot be deleted")
+	}
+
+	if apiKey.Type == apikey.TypePersonal {
+		user, ok := contexts.GetUser(ctx)
+		if !ok {
+			return fmt.Errorf("user not found in context")
+		}
+		if apiKey.UserID != user.ID {
+			return fmt.Errorf("personal API key can only be deleted by its creator")
+		}
+	}
+
+	if err := client.APIKey.DeleteOneID(id).Exec(ctx); err != nil {
+		return fmt.Errorf("failed to delete API key: %w", err)
+	}
+
+	s.invalidateAPIKeyCaches(ctx, apiKey.Key)
+
+	return nil
+}
+
 // UpdateAPIKeyStatus updates the status of an API key.
 func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status apikey.Status) (*ent.APIKey, error) {
 	client := s.entFromContext(ctx)
@@ -773,6 +807,10 @@ func (s *APIKeyService) invalidateAPIKeyCaches(ctx context.Context, keys ...stri
 	}
 
 	cacheKeys := buildAPIKeyCacheKeys(keys)
+	for _, cacheKey := range cacheKeys {
+		s.APIKeyCache.Invalidate(cacheKey)
+	}
+
 	if err := s.apiKeyNotifier.Notify(ctx, live.NewInvalidateKeysEvent(cacheKeys...)); err != nil {
 		log.Warn(ctx, "api key cache watcher notify failed", log.Cause(err))
 	}

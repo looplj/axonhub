@@ -402,6 +402,15 @@ func (r *mutationResolver) UpdateAPIKey(ctx context.Context, id objects.GUID, in
 	return r.apiKeyService.UpdateAPIKey(ctx, id.ID, input)
 }
 
+// DeleteAPIKey is the resolver for the deleteAPIKey field.
+func (r *mutationResolver) DeleteAPIKey(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.apiKeyService.DeleteAPIKey(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // UpdateAPIKeyStatus is the resolver for the updateAPIKeyStatus field.
 func (r *mutationResolver) UpdateAPIKeyStatus(ctx context.Context, id objects.GUID, status apikey.Status) (*ent.APIKey, error) {
 	return r.apiKeyService.UpdateAPIKeyStatus(ctx, id.ID, status)

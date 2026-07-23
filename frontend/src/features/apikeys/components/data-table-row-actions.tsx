@@ -1,7 +1,16 @@
 import React from 'react';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive, IconCheck, IconRefresh } from '@tabler/icons-react';
+import {
+  IconArchive,
+  IconCheck,
+  IconEdit,
+  IconRefresh,
+  IconSettings,
+  IconTrash,
+  IconUserCheck,
+  IconUserOff,
+} from '@tabler/icons-react';
 import { BarChart3 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -62,6 +71,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     setTimeout(() => openDialog('rotate', apiKey), 0);
   };
 
+  const handleDelete = (apiKey: ApiKey) => {
+    setOpen(false);
+    setTimeout(() => openDialog('delete', apiKey), 0);
+  };
+
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -116,6 +130,15 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                 <IconRefresh className='mr-2 h-4 w-4' />
                 {t('apikeys.dialogs.rotate.title')}
               </DropdownMenuItem>
+              {apiKey.type !== 'noauth' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleDelete(apiKey)} className='text-destructive focus:text-destructive'>
+                    <IconTrash className='mr-2 h-4 w-4' />
+                    {t('common.buttons.delete')}
+                  </DropdownMenuItem>
+                </>
+              )}
             </>
           )}
         </DropdownMenuContent>

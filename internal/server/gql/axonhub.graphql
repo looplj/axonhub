@@ -848,6 +848,7 @@ type Mutation {
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!
+  deleteAPIKey(id: ID!): Boolean!
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
   updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
   rotateAPIKey(id: ID!): APIKey!
