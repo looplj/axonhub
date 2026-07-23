@@ -166,7 +166,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 		serverResponse  func(w http.ResponseWriter, r *http.Request)
 		wantErr         bool
 		wantErrContains string
-		validate        func(stream any) bool
+		validate        func(stream StreamDecoder) bool
 	}{
 		{
 			name: "successful streaming request",
@@ -189,6 +189,8 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 				w.Header().Set("Content-Type", "text/event-stream")
 				w.Header().Set("Cache-Control", "no-cache")
 				w.Header().Set("Connection", "keep-alive")
+				w.Header().Set(ReasoningIncludedHeader, "true")
+				w.Header().Set("Set-Cookie", "secret=1")
 				w.WriteHeader(http.StatusOK)
 
 				// Write SSE events
@@ -211,9 +213,9 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 				}
 			},
 			wantErr: false,
-			validate: func(stream any) bool {
-				// This is a basic validation - in a real test we'd iterate through the stream
-				return stream != nil
+			validate: func(stream StreamDecoder) bool {
+				headers := GetResponseHeaders(stream)
+				return headers.Get(ReasoningIncludedHeader) == "true" && headers.Get("Set-Cookie") == ""
 			},
 		},
 		{
@@ -230,7 +232,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 				w.Write([]byte(`{"error": "unauthorized"}`))
 			},
 			wantErr: true,
-			validate: func(stream any) bool {
+			validate: func(stream StreamDecoder) bool {
 				return stream == nil
 			},
 		},

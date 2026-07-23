@@ -362,7 +362,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 	stream := decoderFactory(ctx, rawResp.Body)
 
-	return stream, nil
+	return WithResponseHeaders(stream, MergeForwardResponseHeaders(nil, rawResp.Header)), nil
 }
 
 // BuildHttpRequest builds an HTTP request from Request.

@@ -135,6 +135,36 @@ func TestWriteSSEStream_Success(t *testing.T) {
 	assert.Contains(t, body, `[DONE]`)
 }
 
+func TestWriteForwardResponseHeaders(t *testing.T) {
+	headers := http.Header{
+		httpclient.ReasoningIncludedHeader: []string{"true"},
+		"Set-Cookie":                       []string{"secret=1"},
+	}
+	tests := map[string]orchestrator.ChatCompletionResult{
+		"non-streaming": {
+			ChatCompletion: &httpclient.Response{Headers: headers},
+		},
+		"streaming": {
+			ChatCompletionStream: httpclient.WithResponseHeaders(
+				streams.SliceStream([]*httpclient.StreamEvent{}),
+				headers,
+			),
+		},
+	}
+
+	for name, result := range tests {
+		t.Run(name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			writeForwardResponseHeaders(c, result)
+
+			require.Equal(t, "true", w.Header().Get(httpclient.ReasoningIncludedHeader))
+			require.Empty(t, w.Header().Get("Set-Cookie"))
+		})
+	}
+}
+
 func TestWriteSSEStream_ErrorFormatsAsJSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

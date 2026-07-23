@@ -376,9 +376,9 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 
 	return &httpclient.Response{
 		StatusCode: http.StatusOK,
-		Headers: http.Header{
+		Headers: httpclient.MergeForwardResponseHeaders(http.Header{
 			"Content-Type": []string{"application/json"},
-		},
+		}, httpclient.GetResponseHeaders(stream)),
 		Body:    body,
 		Request: request,
 	}, nil

@@ -321,12 +321,18 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 			{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"msg_test_456","type":"message","status":"completed","role":"assistant"}}`)},
 			{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":6,"response":{"id":"resp_test_123","object":"response","created_at":1700000000,"model":"gpt-5-codex","status":"completed","output":[]}}`)},
 		},
+		streamHeaders: http.Header{
+			httpclient.ReasoningIncludedHeader: []string{"true"},
+			"Set-Cookie":                       []string{"secret=1"},
+		},
 	})
 
 	response, err := executor.Do(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 	require.Equal(t, "application/json", response.Headers.Get("Content-Type"))
+	require.Equal(t, "true", response.Headers.Get(httpclient.ReasoningIncludedHeader))
+	require.Empty(t, response.Headers.Get("Set-Cookie"))
 
 	var body map[string]any
 	require.NoError(t, json.Unmarshal(response.Body, &body))
@@ -365,7 +371,8 @@ func TestCodexOutbound_DoReturnsWebSocketErrorEvents(t *testing.T) {
 var _ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
 
 type mockCodexExecutor struct {
-	streamEvents []*httpclient.StreamEvent
+	streamEvents  []*httpclient.StreamEvent
+	streamHeaders http.Header
 }
 
 func (m *mockCodexExecutor) Do(_ context.Context, _ *httpclient.Request) (*httpclient.Response, error) {
@@ -373,7 +380,7 @@ func (m *mockCodexExecutor) Do(_ context.Context, _ *httpclient.Request) (*httpc
 }
 
 func (m *mockCodexExecutor) DoStream(_ context.Context, _ *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
-	return streams.SliceStream(m.streamEvents), nil
+	return httpclient.WithResponseHeaders(streams.SliceStream(m.streamEvents), m.streamHeaders), nil
 }
 
 func TestCodexOutbound_DoesNotInjectCLIInstructions(t *testing.T) {
