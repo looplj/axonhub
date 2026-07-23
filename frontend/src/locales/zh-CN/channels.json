@@ -507,6 +507,8 @@
   "channels.dialogs.proxy.fields.username.placeholder": "输入代理用户名",
   "channels.dialogs.proxy.fields.password.label": "密码（可选）",
   "channels.dialogs.proxy.fields.password.placeholder": "输入代理密码",
+  "channels.dialogs.proxy.fields.disableConnectionReuse.label": "每次请求使用新的代理连接",
+  "channels.dialogs.proxy.fields.disableConnectionReuse.description": "适用于 Resin 等按连接切换节点的代理池。开启后每个请求都会重新建立代理连接，并增加 CONNECT 与 TLS 握手开销。",
   "channels.dialogs.proxy.types.disabled": "禁用 - 不使用代理",
   "channels.dialogs.proxy.types.environment": "环境变量 - 使用系统代理设置",
   "channels.dialogs.proxy.types.url": "自定义 URL - 使用指定代理",
