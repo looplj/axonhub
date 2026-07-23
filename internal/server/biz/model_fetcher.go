@@ -159,8 +159,9 @@ type FetchModelsInput struct {
 	ChannelType string
 	BaseURL     string
 	//nolint:gosec // G117: Field name contains "APIKey" but this is input data, not a hardcoded secret
-	APIKey    *string
-	ChannelID *int
+	APIKey             *string
+	ChannelID          *int
+	InsecureSkipVerify *bool
 }
 
 // FetchModelsResult represents the result of fetching models.
@@ -246,8 +247,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	var (
-		apiKey      string
-		proxyConfig *httpclient.ProxyConfig
+		apiKey             string
+		proxyConfig        *httpclient.ProxyConfig
+		insecureSkipVerify = lo.FromPtrOr(input.InsecureSkipVerify, false)
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {
@@ -287,6 +289,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
+			if input.InsecureSkipVerify == nil {
+				insecureSkipVerify = ch.Settings.InsecureSkipVerify
+			}
 		}
 	}
 
@@ -358,6 +363,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	httpClient := f.httpClient
 	if proxyConfig != nil {
 		httpClient = f.httpClient.WithProxy(proxyConfig)
+	}
+	if insecureSkipVerify {
+		httpClient = httpClient.WithInsecureSkipVerify(true)
 	}
 
 	if channelType.IsGemini() {

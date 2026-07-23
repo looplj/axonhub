@@ -281,6 +281,49 @@ func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(
 	require.True(t, tr.TLSClientConfig.InsecureSkipVerify)
 }
 
+func TestHttpClient_WithInsecureSkipVerify_Isolated(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	secureClient := NewHttpClient()
+	request := &Request{Method: http.MethodGet, URL: server.URL}
+
+	_, err := secureClient.Do(t.Context(), request)
+	require.Error(t, err)
+
+	insecureClient := secureClient.WithInsecureSkipVerify(true)
+	response, err := insecureClient.Do(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Nil(t, secureClient.GetNativeClient().Transport)
+
+	transport, ok := insecureClient.GetNativeClient().Transport.(*http.Transport)
+	require.True(t, ok)
+	require.True(t, transport.TLSClientConfig.InsecureSkipVerify)
+}
+
+func TestHttpClient_WithInsecureSkipVerify_PreservesProxyAndTransport(t *testing.T) {
+	proxyConfig := &ProxyConfig{Type: ProxyTypeURL, URL: "http://proxy.example:8080"}
+	original := NewHttpClientWithProxy(proxyConfig)
+	derived := original.WithInsecureSkipVerify(true)
+
+	originalTransport := original.GetNativeClient().Transport.(*http.Transport)
+	derivedTransport := derived.GetNativeClient().Transport.(*http.Transport)
+	require.NotSame(t, originalTransport, derivedTransport)
+	require.False(t, originalTransport.TLSClientConfig != nil && originalTransport.TLSClientConfig.InsecureSkipVerify)
+	require.True(t, derivedTransport.TLSClientConfig.InsecureSkipVerify)
+	require.Equal(t, originalTransport.MaxIdleConns, derivedTransport.MaxIdleConns)
+	require.Equal(t, originalTransport.IdleConnTimeout, derivedTransport.IdleConnTimeout)
+
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.example.com", nil)
+	require.NoError(t, err)
+	proxyURL, err := derivedTransport.Proxy(request)
+	require.NoError(t, err)
+	require.Equal(t, proxyConfig.URL, proxyURL.String())
+}
+
 func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 	client := &HttpClient{
 		client: &http.Client{Timeout: 5 * time.Second},

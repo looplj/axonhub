@@ -381,6 +381,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [proxyUrl, setProxyUrl] = useState(() => initialRow?.settings?.proxy?.url || '');
   const [proxyUsername, setProxyUsername] = useState(() => initialRow?.settings?.proxy?.username || '');
   const [proxyPassword, setProxyPassword] = useState(() => initialRow?.settings?.proxy?.password || '');
+  const [insecureSkipVerify, setInsecureSkipVerify] = useState(() => initialRow?.settings?.insecureSkipVerify ?? false);
   const [passThroughUserAgent, setPassThroughUserAgent] = useState<boolean | null>(() => {
     return initialRow?.settings?.passThroughUserAgent ?? null;
   });
@@ -1216,6 +1217,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       if (isEdit && currentRow) {
         const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
+          insecureSkipVerify,
           passThroughUserAgent,
           passThroughBody,
           retryableStatusCodes,
@@ -1260,6 +1262,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
         const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
           proxy: proxyConfig,
+          insecureSkipVerify,
           passThroughUserAgent,
           passThroughBody,
           retryableStatusCodes,
@@ -1422,6 +1425,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         baseURL,
         apiKey: firstApiKey || undefined,
         channelID: isEdit ? currentRow?.id : undefined,
+        insecureSkipVerify,
       });
 
       if (result.error) {
@@ -1444,7 +1448,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow]);
+  }, [fetchModels, form, insecureSkipVerify, isEdit, currentRow]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];
@@ -1691,6 +1695,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyUrl(initialRow?.settings?.proxy?.url || '');
             setProxyUsername(initialRow?.settings?.proxy?.username || '');
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
+            setInsecureSkipVerify(initialRow?.settings?.insecureSkipVerify ?? false);
             setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
@@ -2172,6 +2177,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
                         )}
                       />
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel htmlFor='channel-insecure-skip-verify' className='pt-2 font-medium md:col-span-2 md:text-right'>
+                          {t('channels.dialogs.fields.insecureSkipVerify.label')}
+                        </FormLabel>
+                        <div className='md:col-span-6'>
+                          <div className='flex items-start gap-3 rounded-md border p-3'>
+                            <Checkbox
+                              id='channel-insecure-skip-verify'
+                              checked={insecureSkipVerify}
+                              onCheckedChange={(checked) => setInsecureSkipVerify(checked === true)}
+                            />
+                            <p className='text-xs text-amber-600 dark:text-amber-400'>
+                              {t('channels.dialogs.fields.insecureSkipVerify.warning')}
+                            </p>
+                          </div>
+                        </div>
+                      </FormItem>
 
                       {(!(isCodexType || isClaudeCodeType || isCopilotType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&

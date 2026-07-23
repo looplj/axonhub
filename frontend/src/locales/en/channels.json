@@ -303,6 +303,8 @@
   "channels.dialogs.fields.baseURL.placeholder": "https://api.openai.com/v1",
   "channels.dialogs.fields.baseURL.errors.httpScheme": "HTTP transport requires an http:// or https:// Base URL",
   "channels.dialogs.fields.baseURL.errors.websocketScheme": "WebSocket transport requires a ws:// or wss:// Base URL",
+  "channels.dialogs.fields.insecureSkipVerify.label": "Ignore HTTPS Certificate",
+  "channels.dialogs.fields.insecureSkipVerify.warning": "Disables certificate verification for this channel. Use only with trusted self-signed endpoints; this makes man-in-the-middle attacks possible.",
   "channels.dialogs.fields.streamPolicy.label": "Stream Policy",
   "channels.dialogs.fields.streamPolicy.placeholder": "Select policy",
   "channels.dialogs.fields.streamPolicy.options.unlimited": "Unlimited (follow request)",
