@@ -1080,6 +1080,26 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		ch.Outbound = transformer
 
 		return ch, nil
+	case channel.TypeOllamaAnthropic:
+		// Ollama with Anthropic Messages API format
+		// Uses Bearer token auth (same as LongCat Anthropic pattern)
+		var apiKeyProvider auth.APIKeyProvider
+		if len(ch.cachedEnabledAPIKeys) > 0 {
+			apiKeyProvider = getAPIKeyProvider(ch)
+		}
+
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:           anthropic.PlatformOllama,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: apiKeyProvider,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ollama anthropic outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
 	default:
 		return nil, errors.New("unknown channel type")
 	}
