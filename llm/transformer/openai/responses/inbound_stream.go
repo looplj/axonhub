@@ -273,6 +273,12 @@ func (s *responsesInboundStream) Next() bool {
 				return false
 			}
 		}
+		if choice.Delta != nil && len(choice.Delta.Content.MultipleContent) > 0 {
+			if err := s.handleCompactionContent(choice.Delta.Content.MultipleContent); err != nil {
+				s.err = err
+				return false
+			}
+		}
 
 		// Handle tool calls
 		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
@@ -544,6 +550,37 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to enqueue output_text.delta event: %w", err)
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) handleCompactionContent(parts []llm.MessageContentPart) error {
+	for _, part := range parts {
+		if (part.Type != "compaction" && part.Type != "compaction_summary") || part.Compact == nil {
+			continue
+		}
+
+		if err := s.closeCurrentOutputItem(); err != nil {
+			return err
+		}
+
+		item := compactionItemFromPart(part, part.Type)
+		if item.ID == "" {
+			item.ID = generateItemID()
+		}
+
+		for _, eventType := range []StreamEventType{StreamEventTypeOutputItemAdded, StreamEventTypeOutputItemDone} {
+			if err := s.enqueueEvent(&StreamEvent{
+				Type:        eventType,
+				OutputIndex: s.outputIndex,
+				Item:        &item,
+			}); err != nil {
+				return fmt.Errorf("failed to enqueue compaction %s event: %w", eventType, err)
+			}
+		}
+
+		s.outputIndex++
 	}
 
 	return nil

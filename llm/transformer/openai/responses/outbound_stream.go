@@ -439,6 +439,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
 		}
+		if streamEvent.Item.Type == "compaction" || streamEvent.Item.Type == "compaction_summary" {
+			resp.Choices = []llm.Choice{{
+				Index: 0,
+				Delta: lo.ToPtr(convertOutputToMessage([]Item{*streamEvent.Item}, s.state.transformerMetadata)),
+			}}
+			break
+		}
 		if streamEvent.Item.Type == "web_search_call" {
 			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
 			return nil // Intentionally skip this event
