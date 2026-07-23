@@ -58,23 +58,46 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 		return err
 	}
 
-	// version
 	if b, err := json.Marshal(BackupVersion); err != nil {
 		return err
 	} else if err := o.rawField("version", b); err != nil {
 		return err
 	}
 
-	// timestamp
 	if b, err := json.Marshal(time.Now()); err != nil {
 		return err
 	} else if err := o.rawField("timestamp", b); err != nil {
 		return err
 	}
 
-	// projects
-	if err := streamArrayField(
-		o, "projects", opts.IncludeProjects, true,
+	if err := svc.streamProjects(ctx, o, opts); err != nil {
+		return err
+	}
+	if err := svc.streamChannels(ctx, o, opts); err != nil {
+		return err
+	}
+	if err := svc.streamModels(ctx, o, opts); err != nil {
+		return err
+	}
+	if err := svc.streamChannelModelPrices(ctx, o, opts); err != nil {
+		return err
+	}
+	if err := svc.streamAPIKeys(ctx, o, opts); err != nil {
+		return err
+	}
+	if err := svc.streamUsageRequests(ctx, o, opts); err != nil {
+		return err
+	}
+	if err := svc.streamUsageLogs(ctx, o, opts); err != nil {
+		return err
+	}
+
+	_, err := w.Write([]byte("}"))
+	return err
+}
+
+func (svc *BackupService) streamProjects(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "projects", opts.IncludeProjects, true,
 		func(lastID int) ([]*ent.Project, int, error) {
 			rows, err := svc.db.Project.Query().
 				Where(project.IDGT(lastID)).
@@ -94,13 +117,11 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 			b, err := json.Marshal(&BackupProject{Project: *p})
 			return b, true, err
 		},
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	// channels
-	if err := streamArrayField(
-		o, "channels", opts.IncludeChannels, false,
+func (svc *BackupService) streamChannels(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "channels", opts.IncludeChannels, false,
 		func(lastID int) ([]*ent.Channel, int, error) {
 			rows, err := svc.db.Channel.Query().
 				Where(channel.IDGT(lastID)).
@@ -123,13 +144,11 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 			})
 			return b, true, err
 		},
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	// models
-	if err := streamArrayField(
-		o, "models", opts.IncludeModels, false,
+func (svc *BackupService) streamModels(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "models", opts.IncludeModels, false,
 		func(lastID int) ([]*ent.Model, int, error) {
 			rows, err := svc.db.Model.Query().
 				Where(model.IDGT(lastID)).
@@ -149,13 +168,11 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 			b, err := json.Marshal(&BackupModel{Model: *m})
 			return b, true, err
 		},
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	// channel_model_prices
-	if err := streamArrayField(
-		o, "channel_model_prices", opts.IncludeModelPrices, true,
+func (svc *BackupService) streamChannelModelPrices(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "channel_model_prices", opts.IncludeModelPrices, true,
 		func(lastID int) ([]*ent.ChannelModelPrice, int, error) {
 			rows, err := svc.db.ChannelModelPrice.Query().
 				WithChannel().
@@ -184,13 +201,11 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 			})
 			return b, true, err
 		},
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	// api_keys
-	if err := streamArrayField(
-		o, "api_keys", opts.IncludeAPIKeys, true,
+func (svc *BackupService) streamAPIKeys(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "api_keys", opts.IncludeAPIKeys, true,
 		func(lastID int) ([]*ent.APIKey, int, error) {
 			rows, err := svc.db.APIKey.Query().
 				WithProject().
@@ -218,27 +233,11 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 			})
 			return b, true, err
 		},
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	// Pre-fetch API key map for usage logs if needed
-	apiKeyKeys := map[int]string{}
-	if opts.IncludeUsageStats && opts.IncludeAPIKeys {
-		apiKeys, err := svc.db.APIKey.Query().
-			Select(apikey.FieldID, apikey.FieldKey).
-			All(ctx)
-		if err != nil {
-			return err
-		}
-		for _, ak := range apiKeys {
-			apiKeyKeys[ak.ID] = ak.Key
-		}
-	}
-
-	// usage_requests
-	if err := streamArrayField(
-		o, "usage_requests", opts.IncludeRequestLogs, true,
+func (svc *BackupService) streamUsageRequests(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "usage_requests", opts.IncludeRequestLogs, true,
 		func(lastID int) ([]*ent.Request, int, error) {
 			query := svc.db.Request.Query().
 				Where(request.IDGT(lastID)).
@@ -263,13 +262,23 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 			b, err := json.Marshal(backupUsageRequest(req, opts.IncludeAPIKeys))
 			return b, true, err
 		},
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	// usage_logs
-	if err := streamArrayField(
-		o, "usage_logs", opts.IncludeUsageStats, true,
+func (svc *BackupService) streamUsageLogs(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	apiKeyKeys := map[int]string{}
+	if opts.IncludeUsageStats && opts.IncludeAPIKeys {
+		apiKeys, err := svc.db.APIKey.Query().
+			Select(apikey.FieldID, apikey.FieldKey).
+			All(ctx)
+		if err != nil {
+			return err
+		}
+		for _, ak := range apiKeys {
+			apiKeyKeys[ak.ID] = ak.Key
+		}
+	}
+	return streamArrayField(o, "usage_logs", opts.IncludeUsageStats, true,
 		func(lastID int) ([]*ent.UsageLog, int, error) {
 			rows, err := svc.db.UsageLog.Query().
 				Where(usagelog.IDGT(lastID)).
@@ -291,13 +300,7 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 			b, err := json.Marshal(backupUsageLog(ul, apiKeyKeys))
 			return b, true, err
 		},
-	); err != nil {
-		return err
-	}
-
-	// Close object
-	_, err := w.Write([]byte("}"))
-	return err
+	)
 }
 
 // objWriter writes a JSON object incrementally, tracking leading commas.
