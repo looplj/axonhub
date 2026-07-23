@@ -69,7 +69,7 @@ export const routeConfigs: RouteGroup[] = [
       },
       {
         path: '/system',
-        requiredScopes: ['read_system'],
+        requiredScopes: ['read_settings'],
         mode: 'hidden',
       },
       {

@@ -37,6 +37,7 @@ const (
 	PlatformZai        PlatformType = "zai"        // Zai with Anthropic format
 	PlatformLongCat    PlatformType = "longcat"    // LongCat with Anthropic format (Bearer auth)
 	PlatformClaudeCode PlatformType = "claudecode" // Claude Code CLI
+	PlatformOllama     PlatformType = "ollama"     // Ollama with Anthropic format (Bearer auth)
 )
 
 // Config holds all configuration for the Anthropic outbound transformer.
@@ -225,8 +226,8 @@ func (t *OutboundTransformer) TransformRequest(
 	var authConfig *httpclient.AuthConfig
 
 	if apiKey != "" {
-		// LongCat uses Bearer token authentication instead of X-API-Key
-		if t.config.Type == PlatformLongCat || t.config.Type == PlatformBedrock {
+		// LongCat and Ollama use Bearer token authentication instead of X-API-Key
+		if t.config.Type == PlatformLongCat || t.config.Type == PlatformOllama || t.config.Type == PlatformBedrock {
 			authConfig = &httpclient.AuthConfig{
 				Type:   httpclient.AuthTypeBearer,
 				APIKey: apiKey,

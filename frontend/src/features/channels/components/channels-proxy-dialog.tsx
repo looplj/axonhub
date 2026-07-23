@@ -10,15 +10,17 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import LongText from '@/components/long-text';
 import { useUpdateChannel, useTestChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { ErrorDisplay } from '../utils/error-formatter';
 import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Props {
   open: boolean;
@@ -40,6 +42,7 @@ const proxyConfigSchema = z
     url: z.string().optional(),
     username: z.string().optional(),
     password: z.string().optional(),
+    disableConnectionReuse: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -64,6 +67,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
   const [isTesting, setIsTesting] = useState(false);
   const { data: proxyPresets = [] } = useProxyPresets();
   const saveProxyPreset = useSaveProxyPreset();
+  const { hasSystemScope } = usePermissions();
   const [testResult, setTestResult] = useState<{ success: boolean; message?: string | null; latency?: number } | null>(null);
 
   const form = useForm<ProxyConfig>({
@@ -73,6 +77,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
       url: currentRow.settings?.proxy?.url || '',
       username: currentRow.settings?.proxy?.username || '',
       password: currentRow.settings?.proxy?.password || '',
+      disableConnectionReuse: currentRow.settings?.proxy?.disableConnectionReuse || false,
     },
   });
 
@@ -97,6 +102,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
           url: values.url,
           username: values.username || undefined,
           password: values.password || undefined,
+          disableConnectionReuse: values.disableConnectionReuse,
         }),
       };
 
@@ -112,7 +118,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
       });
       toast.success(t('channels.messages.updateSuccess'));
       // Auto-save to proxy presets (preserve existing name if available)
-      if (values.type === ProxyType.URL && values.url) {
+      if (hasSystemScope('write_settings') && values.type === ProxyType.URL && values.url) {
         const existingPreset = proxyPresets.find((p) => p.url === values.url);
         saveProxyPreset.mutate({
           name: existingPreset?.name,
@@ -142,6 +148,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
           url: values.url,
           username: values.username || undefined,
           password: values.password || undefined,
+          disableConnectionReuse: values.disableConnectionReuse,
         }),
       };
 
@@ -283,6 +290,22 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
                               <Input type='password' placeholder={t('channels.dialogs.proxy.fields.password.placeholder')} {...field} />
                             </FormControl>
                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='disableConnectionReuse'
+                        render={({ field }) => (
+                          <FormItem className='flex flex-row items-center justify-between gap-4 rounded-md border p-3'>
+                            <div className='space-y-0.5'>
+                              <FormLabel>{t('channels.dialogs.proxy.fields.disableConnectionReuse.label')}</FormLabel>
+                              <FormDescription>{t('channels.dialogs.proxy.fields.disableConnectionReuse.description')}</FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
                           </FormItem>
                         )}
                       />
