@@ -19,6 +19,7 @@ import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { ErrorDisplay } from '../utils/error-formatter';
 import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Props {
   open: boolean;
@@ -64,6 +65,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
   const [isTesting, setIsTesting] = useState(false);
   const { data: proxyPresets = [] } = useProxyPresets();
   const saveProxyPreset = useSaveProxyPreset();
+  const { hasSystemScope } = usePermissions();
   const [testResult, setTestResult] = useState<{ success: boolean; message?: string | null; latency?: number } | null>(null);
 
   const form = useForm<ProxyConfig>({
@@ -112,7 +114,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
       });
       toast.success(t('channels.messages.updateSuccess'));
       // Auto-save to proxy presets (preserve existing name if available)
-      if (values.type === ProxyType.URL && values.url) {
+      if (hasSystemScope('write_settings') && values.type === ProxyType.URL && values.url) {
         const existingPreset = proxyPresets.find((p) => p.url === values.url);
         saveProxyPreset.mutate({
           name: existingPreset?.name,
