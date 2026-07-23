@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -220,6 +221,35 @@ func TestStopChannelOutboundsStopsEachOutboundOnce(t *testing.T) {
 
 	require.Equal(t, 1, primary.stops)
 	require.Equal(t, 1, secondary.stops)
+}
+
+type closeIdleTrackingTransport struct {
+	closeIdleCalls int
+}
+
+func (*closeIdleTrackingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, nil
+}
+
+func (t *closeIdleTrackingTransport) CloseIdleConnections() {
+	t.closeIdleCalls++
+}
+
+func TestCleanupSwappedChannelsClosesOnlyOwnedHTTPClients(t *testing.T) {
+	sharedTransport := &closeIdleTrackingTransport{}
+	ownedTransport := &closeIdleTrackingTransport{}
+	sharedClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: sharedTransport})
+	ownedClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: ownedTransport})
+	svc := &ChannelService{httpClient: sharedClient}
+
+	svc.cleanupSwappedChannels([]*Channel{
+		{HTTPClient: sharedClient},
+		{HTTPClient: ownedClient},
+		{},
+	})
+
+	require.Zero(t, sharedTransport.closeIdleCalls)
+	require.Equal(t, 1, ownedTransport.closeIdleCalls)
 }
 
 func TestOnEnabledChannelsSwapDoesNotWaitForOldCleanup(t *testing.T) {

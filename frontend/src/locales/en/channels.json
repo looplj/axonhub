@@ -510,6 +510,8 @@
   "channels.dialogs.proxy.fields.username.placeholder": "Enter proxy username",
   "channels.dialogs.proxy.fields.password.label": "Password (Optional)",
   "channels.dialogs.proxy.fields.password.placeholder": "Enter proxy password",
+  "channels.dialogs.proxy.fields.disableConnectionReuse.label": "Use a new proxy connection for every request",
+  "channels.dialogs.proxy.fields.disableConnectionReuse.description": "Enable this for proxy pools such as Resin that rotate nodes per connection. Each request will create a new proxy connection, increasing CONNECT and TLS handshake overhead.",
   "channels.dialogs.proxy.types.disabled": "Disabled - No proxy",
   "channels.dialogs.proxy.types.environment": "Environment - Use system proxy settings",
   "channels.dialogs.proxy.types.url": "Custom URL - Use specified proxy",
