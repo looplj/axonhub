@@ -68,7 +68,8 @@ type responsesInboundStream struct {
 	toolCalls           map[int]*llm.ToolCall
 	currentToolCallIdx  int
 	toolCallItemStarted map[int]bool
-	toolCallOutputIndex map[int]int // Maps tool call index to output index
+	toolCallOutputIndex map[int]int    // Maps tool call index to output index
+	toolCallItemIDs     map[int]string // Maps tool call index to Responses item id
 
 	// Response accumulation using streamAggregator
 	usage               *llm.Usage
@@ -107,6 +108,9 @@ func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
 	}
 
 	s.aggregator.processEvent(ev)
+	if s.aggregator.err != nil {
+		return s.aggregator.err
+	}
 
 	return nil
 }
@@ -454,7 +458,7 @@ func (s *responsesInboundStream) ensureReasoningItemStarted(sourceID string) err
 
 	s.currentItemID = sourceID
 	if s.currentItemID == "" {
-		s.currentItemID = generateItemID()
+		s.currentItemID = generateItemID("rs")
 	}
 	item := &Item{
 		ID:      s.currentItemID,
@@ -487,7 +491,7 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 	if !s.hasMessageItemStarted {
 		s.hasMessageItemStarted = true
 
-		s.currentItemID = generateItemID()
+		s.currentItemID = generateItemID("msg")
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:        StreamEventTypeOutputItemAdded,
@@ -609,11 +613,19 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		return err
 	}
 
+	var customToolCall *llm.ResponseCustomToolCall
+	if tc.ResponseCustomToolCall != nil {
+		customToolCallCopy := *tc.ResponseCustomToolCall
+		customToolCallCopy.Input = ""
+		customToolCall = &customToolCallCopy
+	}
+
 	s.toolCalls[toolCallIndex] = &llm.ToolCall{
 		Index:                  toolCallIndex,
 		ID:                     tc.ID,
+		ResponseItemID:         tc.ResponseItemID,
 		Type:                   tc.Type,
-		ResponseCustomToolCall: tc.ResponseCustomToolCall,
+		ResponseCustomToolCall: customToolCall,
 		Function: llm.FunctionCall{
 			Name:      tc.Function.Name,
 			Namespace: tc.Function.Namespace,
@@ -621,20 +633,18 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		},
 	}
 
-	itemID := tc.ID
-	if itemID == "" {
-		itemID = generateItemID()
-	}
+	itemID := s.resolveToolCallItemID(toolCallIndex, tc)
 
 	switch {
 	case tc.ResponseCustomToolCall != nil:
 		item := &Item{
-			ID:     itemID,
-			Type:   "custom_tool_call",
-			Status: lo.ToPtr("in_progress"),
-			CallID: tc.ResponseCustomToolCall.CallID,
-			Name:   tc.ResponseCustomToolCall.Name,
-			Input:  lo.ToPtr(""),
+			ID:        itemID,
+			Type:      "custom_tool_call",
+			Status:    lo.ToPtr("in_progress"),
+			CallID:    tc.ResponseCustomToolCall.CallID,
+			Name:      tc.ResponseCustomToolCall.Name,
+			Namespace: tc.ResponseCustomToolCall.Namespace,
+			Input:     lo.ToPtr(""),
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -674,15 +684,48 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 	return nil
 }
 
+func (s *responsesInboundStream) resolveToolCallItemID(toolCallIndex int, tc llm.ToolCall) string {
+	if s.toolCallItemIDs == nil {
+		s.toolCallItemIDs = make(map[int]string)
+	}
+	if itemID := s.toolCallItemIDs[toolCallIndex]; itemID != "" {
+		return itemID
+	}
+
+	itemID := tc.ResponseItemID
+	if itemID == "" {
+		prefix := "fc"
+		if tc.ResponseCustomToolCall != nil {
+			prefix = "ctc"
+		}
+		itemID = generateItemID(prefix)
+	}
+	s.toolCallItemIDs[toolCallIndex] = itemID
+	return itemID
+}
+
+func (s *responsesInboundStream) toolCallItemID(toolCallIndex int, tc *llm.ToolCall) string {
+	if itemID := s.toolCallItemIDs[toolCallIndex]; itemID != "" {
+		return itemID
+	}
+	if tc != nil && tc.ResponseItemID != "" {
+		return tc.ResponseItemID
+	}
+	return s.currentItemID
+}
+
 func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error {
 	toolCallIndex := tc.Index
+	if tc.Function.Name != "" {
+		s.toolCalls[toolCallIndex].Function.Name = tc.Function.Name
+	}
+	if tc.Function.Namespace != "" {
+		s.toolCalls[toolCallIndex].Function.Namespace = tc.Function.Namespace
+	}
 	s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
 
 	if tc.Function.Arguments != "" {
-		itemID := s.toolCalls[toolCallIndex].ID
-		if itemID == "" {
-			itemID = s.currentItemID
-		}
+		itemID := s.toolCallItemID(toolCallIndex, s.toolCalls[toolCallIndex])
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeFunctionCallArgumentsDelta,
@@ -701,13 +744,16 @@ func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error 
 
 func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) error {
 	toolCallIndex := tc.Index
+	if tc.ResponseCustomToolCall.Name != "" {
+		s.toolCalls[toolCallIndex].ResponseCustomToolCall.Name = tc.ResponseCustomToolCall.Name
+	}
+	if tc.ResponseCustomToolCall.Namespace != "" {
+		s.toolCalls[toolCallIndex].ResponseCustomToolCall.Namespace = tc.ResponseCustomToolCall.Namespace
+	}
 	s.toolCalls[toolCallIndex].ResponseCustomToolCall.Input += tc.ResponseCustomToolCall.Input
 
 	if tc.ResponseCustomToolCall.Input != "" {
-		itemID := s.toolCalls[toolCallIndex].ID
-		if itemID == "" {
-			itemID = s.currentItemID
-		}
+		itemID := s.toolCallItemID(toolCallIndex, s.toolCalls[toolCallIndex])
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:        StreamEventTypeCustomToolCallInputDelta,
@@ -918,10 +964,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			continue
 		}
 
-		itemID := tc.ID
-		if itemID == "" {
-			itemID = s.currentItemID
-		}
+		itemID := s.toolCallItemID(idx, tc)
 
 		switch {
 		case tc.ResponseCustomToolCall != nil:
@@ -939,12 +982,13 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			}
 
 			item := Item{
-				ID:     itemID,
-				Type:   "custom_tool_call",
-				Status: lo.ToPtr("completed"),
-				CallID: tc.ResponseCustomToolCall.CallID,
-				Name:   tc.ResponseCustomToolCall.Name,
-				Input:  lo.ToPtr(fullInput),
+				ID:        itemID,
+				Type:      "custom_tool_call",
+				Status:    lo.ToPtr("completed"),
+				CallID:    tc.ResponseCustomToolCall.CallID,
+				Name:      tc.ResponseCustomToolCall.Name,
+				Namespace: tc.ResponseCustomToolCall.Namespace,
+				Input:     lo.ToPtr(fullInput),
 			}
 
 			err = s.enqueueEvent(&StreamEvent{

@@ -36,8 +36,9 @@ func (t *OutboundTransformer) TransformStream(
 
 // responsesOutboundStream wraps a stream and maintains state during processing.
 type responsesOutboundStream struct {
-	stream streams.Stream[*httpclient.StreamEvent]
-	state  *outboundStreamState
+	stream     streams.Stream[*httpclient.StreamEvent]
+	state      *outboundStreamState
+	aggregator *streamAggregator
 
 	// Event queue
 	eventQueue []*llm.Response
@@ -56,15 +57,6 @@ type outboundStreamState struct {
 	usage              *llm.Usage
 	created            int64
 
-	// Content accumulation
-	textContent      strings.Builder
-	reasoningContent strings.Builder
-
-	// Tool call tracking
-	toolCalls     map[string]*llm.ToolCall // callID -> tool call
-	itemToCallID  map[string]string        // item.id -> call_id mapping
-	toolCallIndex map[string]int           // callID -> index in the output
-
 	// Reasoning signature tracking
 	pendingReasoningEncryptedContent map[string]*string
 
@@ -75,11 +67,9 @@ type outboundStreamState struct {
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
 	return &responsesOutboundStream{
-		stream: stream,
+		stream:     stream,
+		aggregator: newStreamAggregator(),
 		state: &outboundStreamState{
-			toolCalls:                        make(map[string]*llm.ToolCall),
-			itemToCallID:                     make(map[string]string),
-			toolCallIndex:                    make(map[string]int),
 			pendingReasoningEncryptedContent: make(map[string]*string),
 			transformerMetadata:              make(map[string]any),
 		},
@@ -151,6 +141,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
 		slog.DebugContext(context.Background(), "received response stream event", slog.Any("event", streamEvent))
+	}
+	if s.responseCompleted {
+		return nil
+	}
+	s.aggregator.processEvent(&streamEvent)
+	if s.aggregator.err != nil {
+		return s.aggregator.err
 	}
 
 	// Build base response
@@ -225,175 +222,20 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			s.state.pendingReasoningEncryptedContent[item.ID] = shared.EncodeOpenAIEncryptedContent(item.EncryptedContent)
 			return nil
 
-		case "function_call":
-			// Initialize tool call tracking
-			toolCallIdx := len(s.state.toolCalls)
-			s.state.toolCalls[item.CallID] = &llm.ToolCall{
-				ID:   item.CallID,
-				Type: "function",
-				Function: llm.FunctionCall{
-					Name:      item.Name,
-					Namespace: item.Namespace,
-					Arguments: "",
-				},
-			}
-			// Map item.id to call_id for later lookup
-			s.state.itemToCallID[item.ID] = item.CallID
-			s.state.toolCallIndex[item.CallID] = toolCallIdx
-
-			resp.Choices = []llm.Choice{
-				{
-					Index: 0,
-					Delta: &llm.Message{
-						ToolCalls: []llm.ToolCall{
-							{
-								ID:    item.CallID,
-								Type:  "function",
-								Index: toolCallIdx,
-								Function: llm.FunctionCall{
-									Name:      item.Name,
-									Namespace: item.Namespace,
-								},
-							},
-						},
-					},
-				},
-			}
-
-		case "custom_tool_call":
-			// Custom tool call - initialize tracking, input will be streamed via delta events
-			toolCallIdx := len(s.state.toolCalls)
-			s.state.toolCalls[item.CallID] = &llm.ToolCall{
-				ID:   item.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
-				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: item.CallID,
-					Name:   item.Name,
-					Input:  "",
-				},
-			}
-			s.state.itemToCallID[item.ID] = item.CallID
-			s.state.toolCallIndex[item.CallID] = toolCallIdx
-
-			resp.Choices = []llm.Choice{
-				{
-					Index: 0,
-					Delta: &llm.Message{
-						ToolCalls: []llm.ToolCall{
-							{
-								ID:    item.CallID,
-								Type:  llm.ToolTypeResponsesCustomTool,
-								Index: toolCallIdx,
-								ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-									CallID: item.CallID,
-									Name:   item.Name,
-								},
-							},
-						},
-					},
-				},
-			}
+		case "function_call", "custom_tool_call":
+			return nil
 
 		default:
 			// For other item types (e.g., message), skip - no meaningful content to emit
 			return nil // Intentionally skip this event
 		}
 
-	case StreamEventTypeFunctionCallArgumentsDelta:
-		// Function call arguments delta
-		if streamEvent.ItemID != nil {
-			// Look up call_id from item_id mapping
-			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
-			if !ok {
-				// Fallback: item_id might be the call_id itself
-				callID = *streamEvent.ItemID
-			}
-
-			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.Function.Arguments += streamEvent.Delta
-				toolCallIdx := s.state.toolCallIndex[callID]
-
-				resp.Choices = []llm.Choice{
-					{
-						Index: 0,
-						Delta: &llm.Message{
-							ToolCalls: []llm.ToolCall{
-								{
-									Index: toolCallIdx,
-									Function: llm.FunctionCall{
-										Arguments: streamEvent.Delta,
-									},
-								},
-							},
-						},
-					},
-				}
-			}
-		}
-
-	case StreamEventTypeFunctionCallArgumentsDone:
-		// Function call completed - update state but don't emit an event
-		if streamEvent.CallID != "" {
-			if tc, ok := s.state.toolCalls[streamEvent.CallID]; ok {
-				if streamEvent.Name != "" {
-					tc.Function.Name = streamEvent.Name
-				}
-				if streamEvent.Namespace != "" {
-					tc.Function.Namespace = streamEvent.Namespace
-				}
-				tc.Function.Arguments = streamEvent.Arguments
-			}
-		}
-
-		return nil // Intentionally skip this event
-
-	case StreamEventTypeCustomToolCallInputDelta:
-		// Custom tool call input delta - accumulate and emit as tool call delta
-		if streamEvent.ItemID != nil {
-			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
-			if !ok {
-				callID = *streamEvent.ItemID
-			}
-
-			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.ResponseCustomToolCall.Input += streamEvent.Delta
-				toolCallIdx := s.state.toolCallIndex[callID]
-
-				resp.Choices = []llm.Choice{
-					{
-						Index: 0,
-						Delta: &llm.Message{
-							ToolCalls: []llm.ToolCall{
-								{
-									Index: toolCallIdx,
-									Type:  llm.ToolTypeResponsesCustomTool,
-									ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-										CallID: callID,
-										Name:   tc.ResponseCustomToolCall.Name,
-										Input:  streamEvent.Delta,
-									},
-								},
-							},
-						},
-					},
-				}
-			}
-		}
-
-	case StreamEventTypeCustomToolCallInputDone:
-		// Custom tool call input completed - update state but don't emit an event
-		if streamEvent.ItemID != nil {
-			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
-			if !ok {
-				callID = *streamEvent.ItemID
-			}
-
-			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.ResponseCustomToolCall.Input = streamEvent.Input
-			}
-		}
-
-		return nil // Intentionally skip this event
+	case StreamEventTypeFunctionCallArgumentsDelta,
+		StreamEventTypeFunctionCallArgumentsDone,
+		StreamEventTypeCustomToolCallInputDelta,
+		StreamEventTypeCustomToolCallInputDone:
+		// streamAggregator owns tool identity and terminal payload reconciliation.
+		return nil
 
 	case StreamEventTypeContentPartAdded:
 		// Content part added - skip, no meaningful content to emit
@@ -401,8 +243,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeOutputTextDelta:
 		// Text content delta
-		s.state.textContent.WriteString(streamEvent.Delta)
-
 		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
@@ -416,8 +256,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeReasoningSummaryTextDelta:
 		// Reasoning content delta
-		s.state.reasoningContent.WriteString(streamEvent.Delta)
-
 		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
@@ -438,6 +276,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	case StreamEventTypeOutputItemDone:
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "function_call" || streamEvent.Item.Type == "custom_tool_call" {
+			return nil
 		}
 		if streamEvent.Item.Type == "web_search_call" {
 			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
@@ -502,18 +343,21 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseCompleted:
 		// Response completed - emit two events: one with finish_reason, one with usage
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
 		}
+		toolCallCount := s.enqueueAggregatedToolCalls()
 		if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
 			resp.TransformerMetadata = s.state.transformerMetadata
 			s.state.transformerMetadataEmitted = true
 		}
 
 		finishReason := "stop"
-		if len(s.state.toolCalls) > 0 {
+		if toolCallCount > 0 {
 			finishReason = "tool_calls"
 		}
 
@@ -547,7 +391,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseFailed:
 		// Response failed
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		finishReason := "error"
 		resp.Choices = []llm.Choice{
 			{
@@ -558,7 +404,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseIncomplete:
 		// Response incomplete (e.g., max tokens)
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		finishReason := "length"
 		resp.Choices = []llm.Choice{
 			{
@@ -569,7 +417,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	case StreamEventTypeResponseCancelled:
 		// Response cancelled
-		s.responseCompleted = true
+		if !s.beginTerminalEvent() {
+			return nil
+		}
 		finishReason := "cancelled"
 		resp.Choices = []llm.Choice{
 			{
@@ -628,6 +478,100 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	s.enqueue(resp)
 
 	return nil
+}
+
+func (s *responsesOutboundStream) beginTerminalEvent() bool {
+	if s.responseCompleted {
+		return false
+	}
+	s.responseCompleted = true
+	return true
+}
+
+func (s *responsesOutboundStream) enqueueAggregatedToolCalls() int {
+	toolCalls := s.aggregator.completedToolCalls()
+	for index, aggregated := range toolCalls {
+		message := convertOutputToMessage([]Item{aggregated.Item}, nil)
+		if len(message.ToolCalls) != 1 {
+			continue
+		}
+
+		toolCall := message.ToolCalls[0]
+		toolCall.Index = index
+		finalPayload := toolCall.Function.Arguments
+		if toolCall.ResponseCustomToolCall != nil {
+			finalPayload = toolCall.ResponseCustomToolCall.Input
+		}
+
+		deltas := reconcileToolPayload(aggregated.Deltas, finalPayload)
+		identity := toolCall
+		if len(aggregated.Deltas) > 0 {
+			if identity.ResponseCustomToolCall != nil {
+				customCall := *identity.ResponseCustomToolCall
+				customCall.Input = ""
+				identity.ResponseCustomToolCall = &customCall
+			} else {
+				identity.Function.Arguments = ""
+			}
+		}
+		s.enqueueToolCallChunk(identity)
+
+		for _, delta := range deltas {
+			toolCallDelta := llm.ToolCall{Index: index}
+			if toolCall.ResponseCustomToolCall != nil {
+				toolCallDelta.Type = llm.ToolTypeResponsesCustomTool
+				toolCallDelta.ResponseCustomToolCall = &llm.ResponseCustomToolCall{
+					CallID:    toolCall.ID,
+					Name:      toolCall.ResponseCustomToolCall.Name,
+					Namespace: toolCall.ResponseCustomToolCall.Namespace,
+					Input:     delta,
+				}
+			} else {
+				toolCallDelta.Function.Arguments = delta
+			}
+			s.enqueueToolCallChunk(toolCallDelta)
+		}
+	}
+
+	return len(toolCalls)
+}
+
+func reconcileToolPayload(deltas []string, finalPayload string) []string {
+	if len(deltas) == 0 {
+		return nil
+	}
+
+	streamedPayload := strings.Join(deltas, "")
+	switch {
+	case finalPayload == streamedPayload:
+		return deltas
+	case strings.HasPrefix(finalPayload, streamedPayload):
+		if suffix := finalPayload[len(streamedPayload):]; suffix != "" {
+			return append(append([]string(nil), deltas...), suffix)
+		}
+		return deltas
+	default:
+		return []string{finalPayload}
+	}
+}
+
+func (s *responsesOutboundStream) enqueueToolCallChunk(toolCall llm.ToolCall) {
+	resp := s.newResponseChunk()
+	resp.Choices = []llm.Choice{{
+		Index: 0,
+		Delta: &llm.Message{ToolCalls: []llm.ToolCall{toolCall}},
+	}}
+	s.enqueue(resp)
+}
+
+func (s *responsesOutboundStream) newResponseChunk() *llm.Response {
+	return &llm.Response{
+		Object:             "chat.completion.chunk",
+		ID:                 s.state.responseID,
+		Model:              s.state.responseModel,
+		Created:            s.state.created,
+		PreviousResponseID: s.state.previousResponseID,
+	}
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {
