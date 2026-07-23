@@ -64,6 +64,7 @@ func TestOllamaAnthropicChannel_BuildsWithoutAPIKey(t *testing.T) {
 		SetType(channel.TypeOllamaAnthropic).
 		SetBaseURL("http://localhost:11434").
 		// No credentials — mirrors a local, unauthenticated Ollama instance.
+		SetCredentials(objects.ChannelCredentials{}).
 		SetSupportedModels([]string{"llama3.2"}).
 		SetDefaultTestModel("llama3.2").
 		SaveX(ctx)
@@ -170,6 +171,7 @@ func TestOllamaAnthropicChannel_APIKeyOverrideWithoutStoredKeys(t *testing.T) {
 		SetName("Ollama Anthropic Override Channel").
 		SetType(channel.TypeOllamaAnthropic).
 		SetBaseURL("http://localhost:11434").
+		SetCredentials(objects.ChannelCredentials{}).
 		SetSupportedModels([]string{"llama3.2"}).
 		SetDefaultTestModel("llama3.2").
 		SaveX(ctx)
