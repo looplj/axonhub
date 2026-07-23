@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
@@ -29,7 +30,8 @@ import (
 )
 
 const (
-	maxRetryResponseTimeoutSeconds = 600
+	maxRetryResponseTimeoutSeconds  = 600
+	maxChannelSettingUpdateAttempts = 5
 )
 
 const (
@@ -433,8 +435,19 @@ type DeveloperModelSettings struct {
 }
 
 type SystemChannelSettings struct {
-	Probe    ChannelProbeSetting         `json:"probe"`
-	AutoSync ChannelModelAutoSyncSetting `json:"auto_sync"`
+	Probe            ChannelProbeSetting         `json:"probe"`
+	AutoSync         ChannelModelAutoSyncSetting `json:"auto_sync"`
+	TestSystemPrompt string                      `json:"test_system_prompt"`
+	TestUserPrompt   string                      `json:"test_user_prompt"`
+}
+
+// UpdateSystemChannelSettings is a partial update for channel system settings.
+// Omitted or null fields are left unchanged; empty or whitespace-only prompt values restore defaults.
+type UpdateSystemChannelSettings struct {
+	Probe            *ChannelProbeSetting         `json:"probe"`
+	AutoSync         *ChannelModelAutoSyncSetting `json:"auto_sync"`
+	TestSystemPrompt *string                      `json:"test_system_prompt"`
+	TestUserPrompt   *string                      `json:"test_user_prompt"`
 }
 
 type ChannelModelAutoSyncSetting struct {
@@ -909,10 +922,7 @@ func (s *SystemService) setSystemValue(ctx context.Context, key, value string) e
 		return fmt.Errorf("failed to create system setting: %w", err)
 	}
 
-	// Invalidate cache for this key
-	if err := s.Cache.Delete(ctx, "system:"+key); err != nil {
-		log.Warn(ctx, "failed to invalidate cache", log.String("key", key), log.Cause(err))
-	}
+	s.invalidateSystemValueCache(ctx, key)
 
 	return nil
 }
@@ -1190,6 +1200,32 @@ func (s *SystemService) SetModelSettings(ctx context.Context, settings SystemMod
 	return s.setSystemValue(ctx, SystemKeyModelSettings, string(jsonBytes))
 }
 
+func normalizeSystemChannelSettings(setting *SystemChannelSettings) {
+	switch setting.AutoSync.Frequency {
+	case AutoSyncFrequencyOneHour, AutoSyncFrequencySixHours, AutoSyncFrequencyOneDay:
+	default:
+		setting.AutoSync.Frequency = defaultChannelSetting.AutoSync.Frequency
+	}
+
+	if strings.TrimSpace(setting.TestSystemPrompt) == "" {
+		setting.TestSystemPrompt = defaultChannelSetting.TestSystemPrompt
+	}
+	if strings.TrimSpace(setting.TestUserPrompt) == "" {
+		setting.TestUserPrompt = defaultChannelSetting.TestUserPrompt
+	}
+}
+
+func validateSystemChannelSettings(setting *SystemChannelSettings) error {
+	if utf8.RuneCountInString(setting.TestSystemPrompt) > maxChannelTestPromptRunes {
+		return fmt.Errorf("test system prompt must not exceed %d characters", maxChannelTestPromptRunes)
+	}
+	if utf8.RuneCountInString(setting.TestUserPrompt) > maxChannelTestPromptRunes {
+		return fmt.Errorf("test user prompt must not exceed %d characters", maxChannelTestPromptRunes)
+	}
+
+	return nil
+}
+
 // ChannelSetting retrieves the channel setting configuration.
 func (s *SystemService) ChannelSetting(ctx context.Context) (*SystemChannelSettings, error) {
 	value, err := s.getSystemValue(ctx, SystemKeyChannelSettings)
@@ -1206,17 +1242,23 @@ func (s *SystemService) ChannelSetting(ctx context.Context) (*SystemChannelSetti
 		return nil, fmt.Errorf("failed to unmarshal channel setting: %w", err)
 	}
 
-	if setting.AutoSync.Frequency == "" {
-		setting.AutoSync.Frequency = defaultChannelSetting.AutoSync.Frequency
-	}
-
-	switch setting.AutoSync.Frequency {
-	case AutoSyncFrequencyOneHour, AutoSyncFrequencySixHours, AutoSyncFrequencyOneDay:
-	default:
-		setting.AutoSync.Frequency = defaultChannelSetting.AutoSync.Frequency
-	}
+	normalizeSystemChannelSettings(&setting)
 
 	return &setting, nil
+}
+
+// ChannelTestPrompts retrieves the effective global prompts for channel tests.
+// Channel tests are authorized independently from system settings, so this read
+// uses the same restricted system bypass as other internal settings reads.
+func (s *SystemService) ChannelTestPrompts(ctx context.Context) (string, string, error) {
+	setting, err := authz.RunWithSystemBypass(ctx, "system-channel-test-prompts", func(bypassCtx context.Context) (*SystemChannelSettings, error) {
+		return s.ChannelSettingOrDefault(bypassCtx), nil
+	})
+	if err != nil {
+		return "", "", err
+	}
+
+	return setting.TestSystemPrompt, setting.TestUserPrompt, nil
 }
 
 // ChannelSettingOrDefault retrieves the channel setting or returns the default if not available.
@@ -1237,12 +1279,117 @@ func (s *SystemService) ChannelSettingOrDefault(ctx context.Context) *SystemChan
 
 // SetChannelSetting sets the channel setting configuration.
 func (s *SystemService) SetChannelSetting(ctx context.Context, setting SystemChannelSettings) error {
+	normalizeSystemChannelSettings(&setting)
+	if err := validateSystemChannelSettings(&setting); err != nil {
+		return err
+	}
+
 	jsonBytes, err := json.Marshal(setting)
 	if err != nil {
 		return fmt.Errorf("failed to marshal channel setting: %w", err)
 	}
 
 	return s.setSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
+}
+
+// UpdateChannelSetting applies a partial update without losing concurrent changes.
+func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSystemChannelSettings) error {
+	client := s.entFromContext(ctx)
+
+	for range maxChannelSettingUpdateAttempts {
+		current, err := client.System.Query().Where(system.KeyEQ(SystemKeyChannelSettings)).Only(ctx)
+		if ent.IsNotFound(err) {
+			setting := defaultChannelSetting
+			applySystemChannelSettingsPatch(&setting, input)
+			normalizeSystemChannelSettings(&setting)
+			if err := validateSystemChannelSettings(&setting); err != nil {
+				return err
+			}
+
+			jsonBytes, err := json.Marshal(setting)
+			if err != nil {
+				return fmt.Errorf("failed to marshal channel setting: %w", err)
+			}
+
+			err = client.System.Create().
+				SetKey(SystemKeyChannelSettings).
+				SetValue(string(jsonBytes)).
+				Exec(ctx)
+			if ent.IsConstraintError(err) {
+				continue
+			}
+			if err != nil {
+				return fmt.Errorf("failed to create channel setting: %w", err)
+			}
+
+			s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get channel setting: %w", err)
+		}
+
+		setting := SystemChannelSettings{}
+		if err := json.Unmarshal([]byte(current.Value), &setting); err != nil {
+			return fmt.Errorf("failed to unmarshal channel setting: %w", err)
+		}
+		normalizeSystemChannelSettings(&setting)
+		applySystemChannelSettingsPatch(&setting, input)
+		normalizeSystemChannelSettings(&setting)
+		if err := validateSystemChannelSettings(&setting); err != nil {
+			return err
+		}
+
+		jsonBytes, err := json.Marshal(setting)
+		if err != nil {
+			return fmt.Errorf("failed to marshal channel setting: %w", err)
+		}
+		if string(jsonBytes) == current.Value {
+			s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
+			return nil
+		}
+
+		affected, err := client.System.Update().
+			Where(
+				system.IDEQ(current.ID),
+				system.UpdatedAtEQ(current.UpdatedAt),
+				system.ValueEQ(current.Value),
+			).
+			SetValue(string(jsonBytes)).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to update channel setting: %w", err)
+		}
+		if affected == 0 {
+			continue
+		}
+
+		s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
+		return nil
+	}
+
+	return fmt.Errorf("failed to update channel setting after %d concurrent attempts", maxChannelSettingUpdateAttempts)
+}
+
+func applySystemChannelSettingsPatch(setting *SystemChannelSettings, input UpdateSystemChannelSettings) {
+	if input.Probe != nil {
+		setting.Probe = *input.Probe
+	}
+	if input.AutoSync != nil {
+		setting.AutoSync = *input.AutoSync
+	}
+	if input.TestSystemPrompt != nil {
+		setting.TestSystemPrompt = *input.TestSystemPrompt
+	}
+	if input.TestUserPrompt != nil {
+		setting.TestUserPrompt = *input.TestUserPrompt
+	}
+}
+
+func (s *SystemService) invalidateSystemValueCache(ctx context.Context, key string) {
+	if err := s.Cache.Delete(ctx, "system:"+key); err != nil {
+		log.Warn(ctx, "failed to invalidate cache", log.String("key", key), log.Cause(err))
+	}
 }
 
 func (s *SystemService) TimeLocation(ctx context.Context) *time.Location {

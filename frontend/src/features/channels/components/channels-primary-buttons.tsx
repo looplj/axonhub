@@ -23,13 +23,14 @@ export function ChannelsPrimaryButtons() {
         </Button>
       </PermissionGuard>
 
+      <PermissionGuard requiredSystemScope='read_settings'>
+        <Button variant='outline' className='shrink-0 space-x-1' onClick={() => setOpen('channelSettings')}>
+          <span>{t('channels.actions.settings')}</span> <IconSettings size={18} />
+        </Button>
+      </PermissionGuard>
+
       <PermissionGuard requiredScope='write_channels'>
         <>
-          {/* Settings - requires write_channels permission */}
-          <Button variant='outline' className='shrink-0 space-x-1' onClick={() => setOpen('channelSettings')}>
-            <span>{t('channels.actions.settings')}</span> <IconSettings size={18} />
-          </Button>
-
           {/* Bulk Import - requires write_channels permission */}
           <Button variant='outline' className='shrink-0 space-x-1' onClick={() => setOpen('bulkImport')}>
             <span>{t('channels.importChannels', '批量导入')}</span> <IconUpload size={18} />

@@ -889,6 +889,8 @@ const CHANNEL_SETTINGS_QUERY = `
       autoSync {
         frequency
       }
+      testSystemPrompt
+      testUserPrompt
     }
   }
 `;
@@ -1021,6 +1023,8 @@ export interface ChannelModelAutoSyncSetting {
 export interface ChannelSetting {
   probe: ChannelProbeSetting;
   autoSync: ChannelModelAutoSyncSetting;
+  testSystemPrompt: string;
+  testUserPrompt: string;
 }
 
 export interface UpdateChannelProbeSettingInput {
@@ -1035,13 +1039,16 @@ export interface UpdateChannelModelAutoSyncSettingInput {
 export interface UpdateSystemChannelSettingsInput {
   probe?: UpdateChannelProbeSettingInput;
   autoSync?: UpdateChannelModelAutoSyncSettingInput;
+  testSystemPrompt?: string;
+  testUserPrompt?: string;
 }
 
-export function useChannelSetting() {
+export function useChannelSetting(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
 
   return useQuery({
     queryKey: ['channelSetting'],
+    enabled: options?.enabled,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ systemChannelSettings: ChannelSetting }>(CHANNEL_SETTINGS_QUERY);
