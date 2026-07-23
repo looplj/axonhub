@@ -686,6 +686,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-slate-100 text-slate-800 border-slate-200',
     icon: Ollama,
   },
+  ollama_anthropic: {
+    channelType: 'ollama_anthropic',
+    baseURL: 'https://ollama.com',
+    defaultModels: ['llama3.2', 'llama3.1', 'llama3', 'mistral', 'codellama', 'gemma2', 'qwen2.5'],
+    apiFormat: ANTHROPIC_MESSAGES,
+    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    icon: Ollama,
+  },
   evolink: {
     channelType: 'evolink',
     baseURL: 'https://direct.evolink.ai/v1',

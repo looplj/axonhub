@@ -94,6 +94,7 @@
   "channels.types.nanogpt_responses": "NanoGPT (Responses)",
   "channels.types.fireworks": "Fireworks",
   "channels.types.ollama": "Ollama",
+  "channels.types.ollama_anthropic": "Ollama (Anthropic)",
   "channels.types.opencode_go": "OpenCode Go",
   "channels.types.opencode_go_anthropic": "OpenCode Go (Anthropic)",
   "channels.types.evolink": "EvoLink",

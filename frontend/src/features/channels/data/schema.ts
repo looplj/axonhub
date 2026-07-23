@@ -111,6 +111,7 @@ export const channelTypeSchema = z.enum([
   'opencode_go',
   'opencode_go_anthropic',
   'ollama',
+  'ollama_anthropic',
   'evolink',
   'evolink_anthropic',
 ]);
