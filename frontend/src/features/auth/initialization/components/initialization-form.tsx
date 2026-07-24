@@ -73,7 +73,7 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
             <FormItem>
               <FormLabel>{t('initialization.form.ownerFirstName')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.ownerFirstName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <Input placeholder={t('initialization.form.placeholders.ownerFirstName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -86,7 +86,7 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
             <FormItem>
               <FormLabel>{t('initialization.form.ownerLastName')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.ownerLastName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <Input placeholder={t('initialization.form.placeholders.ownerLastName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -99,7 +99,7 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
             <FormItem>
               <FormLabel>{t('initialization.form.ownerEmail')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.ownerEmail')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <Input placeholder={t('initialization.form.placeholders.ownerEmail')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -112,7 +112,7 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
             <FormItem>
               <FormLabel>{t('initialization.form.ownerPassword')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder={t('initialization.form.placeholders.ownerPassword')} className='border-slate-300 bg-white text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <PasswordInput placeholder={t('initialization.form.placeholders.ownerPassword')} className='border-slate-300 bg-white text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -125,7 +125,7 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
             <FormItem>
               <FormLabel>{t('initialization.form.brandName')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('initialization.form.placeholders.brandName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <Input placeholder={t('initialization.form.placeholders.brandName')} className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

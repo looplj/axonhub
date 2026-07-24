@@ -75,7 +75,7 @@ export default function Chats() {
                 </Button>
               </div>
 
-              <label className='border-input focus-within:ring-ring flex h-12 w-full items-center space-x-0 rounded-md border pl-2 focus-within:ring-1 focus-within:outline-hidden'>
+              <label className='border-input focus-within:border-ring focus-within:outline-foreground flex h-12 w-full items-center space-x-0 rounded-md border pl-2 focus-within:outline-2 focus-within:outline-offset-1'>
                 <IconSearch size={15} className='mr-2 stroke-slate-500' />
                 <span className='sr-only'>Search</span>
                 <input
@@ -205,7 +205,7 @@ export default function Chats() {
                   </div>
                 </div>
                 <form className='flex w-full flex-none gap-2'>
-                  <div className='border-input focus-within:ring-ring flex flex-1 items-center gap-2 rounded-md border px-2 py-1 focus-within:ring-1 focus-within:outline-hidden lg:gap-4'>
+                  <div className='border-input has-[input:focus-visible]:border-ring has-[input:focus-visible]:outline-foreground flex flex-1 items-center gap-2 rounded-md border px-2 py-1 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-1 lg:gap-4'>
                     <div className='space-x-1'>
                       <Button size='icon' type='button' variant='ghost' className='h-8 rounded-md'>
                         <IconPlus size={20} className='stroke-muted-foreground' />

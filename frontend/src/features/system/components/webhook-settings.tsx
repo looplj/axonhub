@@ -575,7 +575,7 @@ export function WebhookSettings() {
                         id={`webhook-body-${targetIndex}`}
                         value={target.body}
                         onChange={(e) => handleTargetChange(targetIndex, 'body', e.target.value)}
-                        className='border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring min-h-56 w-full rounded-md border px-3 py-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
+                        className='border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-foreground min-h-56 w-full rounded-md border px-3 py-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-1'
                       />
                       <div className='text-muted-foreground text-xs'>{t('system.webhook.templateHelp')}</div>
                     </div>

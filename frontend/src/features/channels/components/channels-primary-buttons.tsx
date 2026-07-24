@@ -3,15 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { PermissionGuard } from '@/components/permission-guard';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { useChannels } from '../context/channels-context';
 
 export function ChannelsPrimaryButtons() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { setOpen } = useChannels();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
 
   return (
-    <div className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
+    <div ref={scrollRef} className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
       <PermissionGuard requiredSystemScope='read_settings'>
         {/* Load Balancing Strategy - navigate to system retry configuration */}
         <Button

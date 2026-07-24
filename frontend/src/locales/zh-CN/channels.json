@@ -189,6 +189,7 @@
   "channels.filters.tags": "标签",
   "channels.filters.model": "模型",
   "channels.filters.filterByName": "按名称筛选",
+  "channels.filters.providerToggle": "供应商",
   "channels.dialogs.systemSettings.title": "渠道设置",
   "channels.dialogs.systemSettings.description": "配置系统级渠道设置",
   "channels.dialogs.systemSettings.channelProbe.label": "渠道健康监控",

@@ -154,6 +154,7 @@
   "channels.filters.tags": "Tags",
   "channels.filters.model": "Model",
   "channels.filters.filterByName": "Search by name",
+  "channels.filters.providerToggle": "Providers",
   "channels.messages.credentialsCopied": "Credentials copied to clipboard",
   "channels.messages.addAtLeastOneModel": "Please add at least one supported model",
   "channels.messages.syncModelsSuccess": "Models synced successfully",
