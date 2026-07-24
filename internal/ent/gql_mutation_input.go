@@ -23,10 +23,11 @@ import (
 
 // CreateAPIKeyInput represents a mutation input for creating apikeys.
 type CreateAPIKeyInput struct {
-	Name      string
-	Type      *apikey.Type
-	Scopes    []string
-	ProjectID int
+	Name       string
+	Type       *apikey.Type
+	Scopes     []string
+	AllowedIps []string
+	ProjectID  int
 }
 
 // Mutate applies the CreateAPIKeyInput on the APIKeyMutation builder.
@@ -37,6 +38,9 @@ func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	}
 	if v := i.Scopes; v != nil {
 		m.SetScopes(v)
+	}
+	if v := i.AllowedIps; v != nil {
+		m.SetAllowedIps(v)
 	}
 	m.SetProjectID(i.ProjectID)
 }
@@ -49,10 +53,13 @@ func (c *APIKeyCreate) SetInput(i CreateAPIKeyInput) *APIKeyCreate {
 
 // UpdateAPIKeyInput represents a mutation input for updating apikeys.
 type UpdateAPIKeyInput struct {
-	Name         *string
-	ClearScopes  bool
-	Scopes       []string
-	AppendScopes []string
+	Name             *string
+	ClearScopes      bool
+	Scopes           []string
+	AppendScopes     []string
+	ClearAllowedIps  bool
+	AllowedIps       []string
+	AppendAllowedIps []string
 }
 
 // Mutate applies the UpdateAPIKeyInput on the APIKeyMutation builder.
@@ -68,6 +75,15 @@ func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	}
 	if i.AppendScopes != nil {
 		m.AppendScopes(i.Scopes)
+	}
+	if i.ClearAllowedIps {
+		m.ClearAllowedIps()
+	}
+	if v := i.AllowedIps; v != nil {
+		m.SetAllowedIps(v)
+	}
+	if i.AppendAllowedIps != nil {
+		m.AppendAllowedIps(i.AllowedIps)
 	}
 }
 

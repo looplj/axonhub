@@ -293,6 +293,7 @@ AxonHub adopts a multi-level permission management architecture, supporting both
 - `name`: API Key name
 - `status`: Status (enabled/disabled/archived)
 - `scopes`: API Key-specific permission scopes (default: read_channels, write_requests)
+- `allowed_ips`: IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
 - `profiles`: API Key profiles (JSON)
 - `created_at`: Creation time
 - `updated_at`: Update time

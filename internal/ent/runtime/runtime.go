@@ -87,6 +87,10 @@ func init() {
 	apikeyDescProfiles := apikeyFields[7].Descriptor()
 	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
 	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
+	// apikeyDescAllowedIps is the schema descriptor for allowed_ips field.
+	apikeyDescAllowedIps := apikeyFields[8].Descriptor()
+	// apikey.DefaultAllowedIps holds the default value on creation for the allowed_ips field.
+	apikey.DefaultAllowedIps = apikeyDescAllowedIps.Default.([]string)
 	apikeyprofiletemplateMixin := schema.APIKeyProfileTemplate{}.Mixin()
 	apikeyprofiletemplate.Policy = privacy.NewPolicies(schema.APIKeyProfileTemplate{})
 	apikeyprofiletemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {

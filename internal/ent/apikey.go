@@ -43,6 +43,8 @@ type APIKey struct {
 	Scopes []string `json:"scopes,omitempty"`
 	// Profiles holds the value of the "profiles" field.
 	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
+	// IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
+	AllowedIps []string `json:"allowed_ips,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the APIKeyQuery when eager-loading is set.
 	Edges        APIKeyEdges `json:"edges"`
@@ -102,7 +104,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case apikey.FieldScopes, apikey.FieldProfiles:
+		case apikey.FieldScopes, apikey.FieldProfiles, apikey.FieldAllowedIps:
 			values[i] = new([]byte)
 		case apikey.FieldID, apikey.FieldDeletedAt, apikey.FieldUserID, apikey.FieldProjectID:
 			values[i] = new(sql.NullInt64)
@@ -201,6 +203,14 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field profiles: %w", err)
 				}
 			}
+		case apikey.FieldAllowedIps:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field allowed_ips", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.AllowedIps); err != nil {
+					return fmt.Errorf("unmarshal field allowed_ips: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -284,6 +294,9 @@ func (_m *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("profiles=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Profiles))
+	builder.WriteString(", ")
+	builder.WriteString("allowed_ips=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AllowedIps))
 	builder.WriteByte(')')
 	return builder.String()
 }

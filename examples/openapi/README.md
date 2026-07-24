@@ -28,7 +28,7 @@ AxonHub 提供了一个专用的 GraphQL 端点 `/openapi/v1/graphql` 用于程�
 
 | Query | 作用 |
 |---|---|
-| `apiKey(id, key, name)` | 查询某把 API Key 的详情（`id` / 明文 `key` / `name` / `scopes` / `profiles`）。三个参数三选一；手里只有名称时用它先解析出 id/key |
+| `apiKey(id, key, name)` | 查询某把 API Key 的详情（`id` / 明文 `key` / `name` / `scopes` / `allowedIps` / `profiles`）。三个参数三选一；手里只有名称时用它先解析出 id/key |
 | `apiKeyQuotaUsages(apiKeyId, key, name)` | 查询某把 API Key 中启用了额度（quota）的各 profile 的实时用量（`requestCount` / `totalTokens` / `totalCost` 及统计窗口）。`apiKeyId` / `key` / `name` 三选一 |
 
 > ⚠️ `apiKey` 与 `apiKeyQuotaUsages` 都需要 `read_api_keys` 权限，且只能查询调用方 service account **所属项目内**的 Key；跨项目或不存在的 Key 统一表现为查不到（不泄漏 Key 是否存在）。按 `name` 查询同理——名称只在本项目内解析。

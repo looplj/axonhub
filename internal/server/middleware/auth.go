@@ -51,6 +51,14 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 			return
 		}
 
+		if len(apiKey.AllowedIps) > 0 {
+			clientIPs := clientIPCandidates(c)
+			if !isAnyAllowedIP(clientIPs, apiKey.AllowedIps) {
+				AbortWithError(c, http.StatusForbidden, errors.New("IP address is not allowed for this API key"))
+				return
+			}
+		}
+
 		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
 
 		if apiKey.Edges.Project != nil {
@@ -142,6 +150,14 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		if len(apiKey.AllowedIps) > 0 {
+			clientIPs := clientIPCandidates(c)
+			if !isAnyAllowedIP(clientIPs, apiKey.AllowedIps) {
+				AbortWithError(c, http.StatusForbidden, errors.New("IP address is not allowed for this API key"))
+				return
+			}
+		}
+
 		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
 		if apiKey.Edges.Project != nil {
 			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
@@ -184,6 +200,14 @@ func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 			}
 
 			return
+		}
+
+		if len(apiKey.AllowedIps) > 0 {
+			clientIPs := clientIPCandidates(c)
+			if !isAnyAllowedIP(clientIPs, apiKey.AllowedIps) {
+				AbortWithError(c, http.StatusForbidden, errors.New("IP address is not allowed for this API key"))
+				return
+			}
 		}
 
 		// 将 API key entity 保存到 context 中
