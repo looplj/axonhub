@@ -804,6 +804,66 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		require.Equal(t, "resp_codex_like", dbExec.ExternalID)
 		require.True(t, state.StreamCompleted)
 	})
+
+	t.Run("canceled client after finish reason is still completed without done or usage", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		baseCtx := ent.NewContext(ctx, client)
+		project := createTestProject(t, baseCtx, client)
+		ch := createTestChannel(t, baseCtx, client)
+		_, requestService, _, usageLogService := setupTestServices(t, client)
+
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetStatus(request.StatusPending).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			Save(baseCtx)
+		require.NoError(t, err)
+
+		exec, err := client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetFormat("openai/chat_completions").
+			SetStatus(requestexecution.StatusPending).
+			SetStream(true).
+			Save(baseCtx)
+		require.NoError(t, err)
+
+		finalChunk := &httpclient.StreamEvent{
+			Data: []byte(`{"id":"chatcmpl_complete","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`),
+		}
+		stream := &sliceEventStream{events: []*httpclient.StreamEvent{finalChunk}}
+		aggregated := []byte(`{"id":"chatcmpl_complete","choices":[{"index":0,"message":{"role":"assistant","content":"done"},"finish_reason":"stop"}]}`)
+		transformer := &mockTransformer{
+			apiFormat:          llm.APIFormatOpenAIChatCompletion,
+			aggregatedResponse: aggregated,
+			aggregatedMeta:     llm.ResponseMeta{ID: "chatcmpl_complete"},
+		}
+		state := &PersistenceState{}
+
+		requestCtx, cancel := context.WithCancel(baseCtx)
+		persistentStream := NewOutboundPersistentStream(requestCtx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+		require.True(t, persistentStream.Next())
+		require.Equal(t, finalChunk, persistentStream.Current())
+		require.True(t, state.StreamCompleted)
+
+		// Simulate the agent closing its SSE request immediately after consuming
+		// the final semantic response, before a trailing [DONE] can be consumed.
+		cancel()
+		require.NoError(t, persistentStream.Close())
+
+		dbExec, err := client.RequestExecution.Get(baseCtx, exec.ID)
+		require.NoError(t, err)
+		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
+		require.Empty(t, dbExec.ErrorMessage)
+		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
+	})
 }
 
 func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t *testing.T) {
