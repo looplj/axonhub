@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
@@ -78,11 +80,15 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	return event
 }
 
-// isTerminalStreamEvent checks if the event represents the end of a successfully completed stream.
-// For Chat Completions API this is the raw [DONE] event; for Responses API this is response.completed.
+// isTerminalStreamEvent checks both SSE metadata and JSON data for a successful
+// protocol-level or semantic completion marker.
 func isTerminalStreamEvent(event *httpclient.StreamEvent) bool {
+	if event == nil {
+		return false
+	}
+
 	// For chat completions, check for [DONE] event
-	return bytes.Equal(event.Data, llm.DoneStreamEvent.Data) ||
+	if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) ||
 		// For Responses API, check for response.completed event
 		event.Type == "response.completed" ||
 		// For Anthropic Messages API, check for message_stop event
@@ -91,7 +97,35 @@ func isTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 		// rely on the terminal *.done event surfaced as StreamEvent.Type.
 		event.Type == "speech.audio.done" ||
 		event.Type == "transcript.text.done" ||
-		event.Type == httpclient.BinaryStreamDoneEventType
+		event.Type == httpclient.BinaryStreamDoneEventType {
+		return true
+	}
+
+	// Compatible SSE providers do not always populate the SSE `event` field and
+	// instead carry the event type only in the JSON data. Also recognize a chat
+	// completion's finish_reason as semantic completion: clients commonly close
+	// the connection immediately after consuming that final useful chunk, before
+	// the trailing [DONE] marker is read by the server.
+	eventType := gjson.GetBytes(event.Data, "type").String()
+	switch eventType {
+	case "response.completed", "message_stop", "speech.audio.done", "transcript.text.done":
+		return true
+	}
+
+	choices := gjson.GetBytes(event.Data, "choices")
+	if !choices.IsArray() {
+		return false
+	}
+
+	completed := false
+	choices.ForEach(func(_, choice gjson.Result) bool {
+		finishReason := choice.Get("finish_reason")
+		completed = finishReason.Type == gjson.String && finishReason.String() != ""
+
+		return !completed
+	})
+
+	return completed
 }
 
 func (ts *InboundPersistentStream) Err() error {
