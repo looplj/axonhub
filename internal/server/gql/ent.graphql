@@ -24,6 +24,10 @@ type APIKey implements Node {
   """
   scopes: [String!]
   profiles: APIKeyProfiles
+  """
+  IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
+  """
+  allowedIps: [String!]
   user: User @goField(forceResolver: true)
   project: Project!
   requests(
@@ -1535,6 +1539,10 @@ input CreateAPIKeyInput {
   API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.
   """
   scopes: [String!]
+  """
+  IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
+  """
+  allowedIps: [String!]
   projectID: ID!
 }
 """
@@ -5986,6 +5994,12 @@ input UpdateAPIKeyInput {
   scopes: [String!]
   appendScopes: [String!]
   clearScopes: Boolean
+  """
+  IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
+  """
+  allowedIps: [String!]
+  appendAllowedIps: [String!]
+  clearAllowedIps: Boolean
 }
 """
 UpdateAPIKeyProfileTemplateInput is used for update APIKeyProfileTemplate object.

@@ -145,6 +145,24 @@ func (_u *APIKeyUpdate) ClearProfiles() *APIKeyUpdate {
 	return _u
 }
 
+// SetAllowedIps sets the "allowed_ips" field.
+func (_u *APIKeyUpdate) SetAllowedIps(v []string) *APIKeyUpdate {
+	_u.mutation.SetAllowedIps(v)
+	return _u
+}
+
+// AppendAllowedIps appends value to the "allowed_ips" field.
+func (_u *APIKeyUpdate) AppendAllowedIps(v []string) *APIKeyUpdate {
+	_u.mutation.AppendAllowedIps(v)
+	return _u
+}
+
+// ClearAllowedIps clears the value of the "allowed_ips" field.
+func (_u *APIKeyUpdate) ClearAllowedIps() *APIKeyUpdate {
+	_u.mutation.ClearAllowedIps()
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *APIKeyUpdate) AddRequestIDs(ids ...int) *APIKeyUpdate {
 	_u.mutation.AddRequestIDs(ids...)
@@ -301,6 +319,17 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ProfilesCleared() {
 		_spec.ClearField(apikey.FieldProfiles, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AllowedIps(); ok {
+		_spec.SetField(apikey.FieldAllowedIps, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAllowedIps(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, apikey.FieldAllowedIps, value)
+		})
+	}
+	if _u.mutation.AllowedIpsCleared() {
+		_spec.ClearField(apikey.FieldAllowedIps, field.TypeJSON)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -479,6 +508,24 @@ func (_u *APIKeyUpdateOne) SetProfiles(v *objects.APIKeyProfiles) *APIKeyUpdateO
 // ClearProfiles clears the value of the "profiles" field.
 func (_u *APIKeyUpdateOne) ClearProfiles() *APIKeyUpdateOne {
 	_u.mutation.ClearProfiles()
+	return _u
+}
+
+// SetAllowedIps sets the "allowed_ips" field.
+func (_u *APIKeyUpdateOne) SetAllowedIps(v []string) *APIKeyUpdateOne {
+	_u.mutation.SetAllowedIps(v)
+	return _u
+}
+
+// AppendAllowedIps appends value to the "allowed_ips" field.
+func (_u *APIKeyUpdateOne) AppendAllowedIps(v []string) *APIKeyUpdateOne {
+	_u.mutation.AppendAllowedIps(v)
+	return _u
+}
+
+// ClearAllowedIps clears the value of the "allowed_ips" field.
+func (_u *APIKeyUpdateOne) ClearAllowedIps() *APIKeyUpdateOne {
+	_u.mutation.ClearAllowedIps()
 	return _u
 }
 
@@ -668,6 +715,17 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if _u.mutation.ProfilesCleared() {
 		_spec.ClearField(apikey.FieldProfiles, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AllowedIps(); ok {
+		_spec.SetField(apikey.FieldAllowedIps, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAllowedIps(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, apikey.FieldAllowedIps, value)
+		})
+	}
+	if _u.mutation.AllowedIpsCleared() {
+		_spec.ClearField(apikey.FieldAllowedIps, field.TypeJSON)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

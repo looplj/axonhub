@@ -1366,3 +1366,68 @@ func TestAPIKeyService_RotateAPIKey(t *testing.T) {
 		require.Contains(t, err.Error(), "failed to get API key")
 	})
 }
+
+func TestValidateAllowedIPs(t *testing.T) {
+	tests := []struct {
+		name    string
+		ips     []string
+		wantErr bool
+	}{
+		{
+			name:    "empty list valid",
+			ips:     []string{},
+			wantErr: false,
+		},
+		{
+			name:    "valid ipv4",
+			ips:     []string{"192.168.1.1"},
+			wantErr: false,
+		},
+		{
+			name:    "valid ipv4 cidr",
+			ips:     []string{"192.168.1.0/24"},
+			wantErr: false,
+		},
+		{
+			name:    "valid ipv6",
+			ips:     []string{"2001:db8::1"},
+			wantErr: false,
+		},
+		{
+			name:    "valid ipv6 cidr",
+			ips:     []string{"2001:db8::/32"},
+			wantErr: false,
+		},
+		{
+			name:    "valid mixed entries",
+			ips:     []string{"10.0.0.0/8", "192.168.1.1", "2001:db8::/32"},
+			wantErr: false,
+		},
+		{
+			name:    "invalid ip address",
+			ips:     []string{"not-an-ip"},
+			wantErr: true,
+		},
+		{
+			name:    "invalid cidr prefix",
+			ips:     []string{"192.168.1.0/33"},
+			wantErr: true,
+		},
+		{
+			name:    "valid and invalid mixed",
+			ips:     []string{"192.168.1.0/24", "bad-ip"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateAllowedIPs(tt.ips)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

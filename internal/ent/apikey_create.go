@@ -148,6 +148,12 @@ func (_c *APIKeyCreate) SetProfiles(v *objects.APIKeyProfiles) *APIKeyCreate {
 	return _c
 }
 
+// SetAllowedIps sets the "allowed_ips" field.
+func (_c *APIKeyCreate) SetAllowedIps(v []string) *APIKeyCreate {
+	_c.mutation.SetAllowedIps(v)
+	return _c
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_c *APIKeyCreate) SetUser(v *User) *APIKeyCreate {
 	return _c.SetUserID(v.ID)
@@ -248,6 +254,10 @@ func (_c *APIKeyCreate) defaults() error {
 		v := apikey.DefaultProfiles
 		_c.mutation.SetProfiles(v)
 	}
+	if _, ok := _c.mutation.AllowedIps(); !ok {
+		v := apikey.DefaultAllowedIps
+		_c.mutation.SetAllowedIps(v)
+	}
 	return nil
 }
 
@@ -346,6 +356,10 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Profiles(); ok {
 		_spec.SetField(apikey.FieldProfiles, field.TypeJSON, value)
 		_node.Profiles = value
+	}
+	if value, ok := _c.mutation.AllowedIps(); ok {
+		_spec.SetField(apikey.FieldAllowedIps, field.TypeJSON, value)
+		_node.AllowedIps = value
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -563,6 +577,24 @@ func (u *APIKeyUpsert) ClearProfiles() *APIKeyUpsert {
 	return u
 }
 
+// SetAllowedIps sets the "allowed_ips" field.
+func (u *APIKeyUpsert) SetAllowedIps(v []string) *APIKeyUpsert {
+	u.Set(apikey.FieldAllowedIps, v)
+	return u
+}
+
+// UpdateAllowedIps sets the "allowed_ips" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateAllowedIps() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldAllowedIps)
+	return u
+}
+
+// ClearAllowedIps clears the value of the "allowed_ips" field.
+func (u *APIKeyUpsert) ClearAllowedIps() *APIKeyUpsert {
+	u.SetNull(apikey.FieldAllowedIps)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -744,6 +776,27 @@ func (u *APIKeyUpsertOne) UpdateProfiles() *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) ClearProfiles() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearProfiles()
+	})
+}
+
+// SetAllowedIps sets the "allowed_ips" field.
+func (u *APIKeyUpsertOne) SetAllowedIps(v []string) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetAllowedIps(v)
+	})
+}
+
+// UpdateAllowedIps sets the "allowed_ips" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateAllowedIps() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateAllowedIps()
+	})
+}
+
+// ClearAllowedIps clears the value of the "allowed_ips" field.
+func (u *APIKeyUpsertOne) ClearAllowedIps() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearAllowedIps()
 	})
 }
 
@@ -1094,6 +1147,27 @@ func (u *APIKeyUpsertBulk) UpdateProfiles() *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) ClearProfiles() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearProfiles()
+	})
+}
+
+// SetAllowedIps sets the "allowed_ips" field.
+func (u *APIKeyUpsertBulk) SetAllowedIps(v []string) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetAllowedIps(v)
+	})
+}
+
+// UpdateAllowedIps sets the "allowed_ips" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateAllowedIps() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateAllowedIps()
+	})
+}
+
+// ClearAllowedIps clears the value of the "allowed_ips" field.
+func (u *APIKeyUpsertBulk) ClearAllowedIps() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearAllowedIps()
 	})
 }
 
