@@ -107,6 +107,7 @@ Properties by which APIKey connections can be ordered.
 enum APIKeyOrderField {
   CREATED_AT
   UPDATED_AT
+  NAME
 }
 type APIKeyProfileTemplate implements Node {
   id: ID!

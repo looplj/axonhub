@@ -358,6 +358,20 @@ var (
 			}
 		},
 	}
+	// APIKeyOrderFieldName orders APIKey by name.
+	APIKeyOrderFieldName = &APIKeyOrderField{
+		Value: func(_m *APIKey) (ent.Value, error) {
+			return _m.Name, nil
+		},
+		column: apikey.FieldName,
+		toTerm: apikey.ByName,
+		toCursor: func(_m *APIKey) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.Name,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -368,6 +382,8 @@ func (f APIKeyOrderField) String() string {
 		str = "CREATED_AT"
 	case APIKeyOrderFieldUpdatedAt.column:
 		str = "UPDATED_AT"
+	case APIKeyOrderFieldName.column:
+		str = "NAME"
 	}
 	return str
 }
@@ -388,6 +404,8 @@ func (f *APIKeyOrderField) UnmarshalGQL(v interface{}) error {
 		*f = *APIKeyOrderFieldCreatedAt
 	case "UPDATED_AT":
 		*f = *APIKeyOrderFieldUpdatedAt
+	case "NAME":
+		*f = *APIKeyOrderFieldName
 	default:
 		return fmt.Errorf("%s is not a valid APIKeyOrderField", str)
 	}

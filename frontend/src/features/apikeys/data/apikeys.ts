@@ -393,7 +393,7 @@ export function useApiKeys(
   variables?: {
     first?: number;
     after?: string;
-    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
+    orderBy?: { field: 'NAME' | 'CREATED_AT' | 'UPDATED_AT'; direction: 'ASC' | 'DESC' };
     where?: {
       nameContainsFold?: string;
       status?: string;
