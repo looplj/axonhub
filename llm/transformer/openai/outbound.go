@@ -340,6 +340,17 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		return nil, err
 	}
 
+	// Normalize empty finish_reason to nil. Some OpenAI-compatible providers
+	// (e.g. Sensenova) emit finish_reason:"" in every stream chunk. An empty
+	// string is semantically identical to "not finished" (null), so this
+	// normalization prevents downstream code from mistaking every chunk for
+	// a terminal event.
+	for i := range resp.Choices {
+		if resp.Choices[i].FinishReason != nil && *resp.Choices[i].FinishReason == "" {
+			resp.Choices[i].FinishReason = nil
+		}
+	}
+
 	// Skip non-standard events with explicit empty choices array and no usage
 	// (e.g. inference-cost, cost) that some providers emit alongside standard chat
 	// completion chunks. Keep the standard OpenAI include_usage terminal chunk,
