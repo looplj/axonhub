@@ -48,6 +48,7 @@ func (Role) Fields() []ent.Field {
 			// Immutable().
 			Optional().
 			Nillable().
+			Default(0).
 			Comment("Project ID for project-level roles, 0 for system roles, it is used to make the role unique in system level."),
 		field.Strings("scopes").
 			Comment("Available scopes for this role: write_channels, read_channels, add_users, read_users, etc.").

@@ -102,11 +102,13 @@ const (
 	TracesInverseTable = "traces"
 	// TracesColumn is the table column denoting the traces relation/edge.
 	TracesColumn = "project_id"
-	// PromptsTable is the table that holds the prompts relation/edge. The primary key declared below.
-	PromptsTable = "project_prompts"
+	// PromptsTable is the table that holds the prompts relation/edge.
+	PromptsTable = "prompts"
 	// PromptsInverseTable is the table name for the Prompt entity.
 	// It exists in this package in order to avoid circular dependency with the "prompt" package.
 	PromptsInverseTable = "prompts"
+	// PromptsColumn is the table column denoting the prompts relation/edge.
+	PromptsColumn = "project_id"
 	// APIKeyProfileTemplatesTable is the table that holds the api_key_profile_templates relation/edge.
 	APIKeyProfileTemplatesTable = "api_key_profile_templates"
 	// APIKeyProfileTemplatesInverseTable is the table name for the APIKeyProfileTemplate entity.
@@ -139,9 +141,6 @@ var (
 	// UsersPrimaryKey and UsersColumn2 are the table columns denoting the
 	// primary key for the users relation (M2M).
 	UsersPrimaryKey = []string{"project_id", "user_id"}
-	// PromptsPrimaryKey and PromptsColumn2 are the table columns denoting the
-	// primary key for the prompts relation (M2M).
-	PromptsPrimaryKey = []string{"project_id", "prompt_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -433,7 +432,7 @@ func newPromptsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PromptsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, PromptsTable, PromptsPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.O2M, false, PromptsTable, PromptsColumn),
 	)
 }
 func newAPIKeyProfileTemplatesStep() *sqlgraph.Step {

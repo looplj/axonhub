@@ -24,21 +24,40 @@
 
 <div align="center">
 
-<a href="https://lj.s.gy/oZl7Vd" target="_blank">
-  <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="32"/>
-</a>
-&nbsp;&nbsp;&nbsp;
-<a href="https://lj.s.gy/oZl7Vd" target="_blank">
-  <strong>Atlas Cloud</strong>
-</a>
-
-</div>
-
-<div align="center">
-
-<a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
-
-Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
+          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
+          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
+        </picture>
+        <br/>
+        <strong>Atlas Cloud</strong>
+      </a>
+      <p align="left">
+        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+      </p>
+      <p align="left">
+        Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
+      </p>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/jKk8uU" target="_blank">
+        <img src="https://raw.githubusercontent.com/Krill-ai-org/krill-ai-static/refs/heads/main/krill-logo/Eng/250x150.png" alt="Krill AI" height="50"/>
+        <br/>
+        <strong>Krill AI</strong>
+      </a>
+      <p align="left">
+        Thank you to Krill AI for sponsoring this project. Krill provides official, stable, high-speed API relay services for GPT, Claude, Gemini, and a wide range of Chinese models, with enterprise customization, invoicing support, and dedicated technical support 16 hours a day, 7 days a week. Its optimized WebSocket connection can deliver a faster time to first token.
+      </p>
+      <p align="left">
+        Register through <a href="https://lj.s.gy/jKk8uU" target="_blank">this link</a> and enter the <code>AxonHub</code> coupon code when topping up to receive 23% off your first Codex plan purchase.
+      </p>
+    </td>
+  </tr>
+</table>
 
 </div>
 
@@ -70,14 +89,6 @@ Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new cod
 </table>
 
 ---
-
-## 💖 Support Me
-
-| Provider | Plan | Description | Links |
-|----------|------|-------------|-------|
-| Zhipu AI | GLM CODING PLAN | You've been invited to join the GLM Coding Plan! Enjoy full support for Claude Code, Cline, and 10+ top coding tools — starting at just $3/month. Subscribe now and grab the limited-time deal! | [English](https://z.ai/subscribe?ic=OKAF5UFZOM) / [中文](https://www.bigmodel.cn/glm-coding?ic=WIDLV0OOTJ) |
-| Volcengine | CODING PLAN | Ark Coding Plan supports Doubao, GLM, DeepSeek, Kimi and other models. Compatible with unlimited tools. Subscribe now for an extra 10% off — as low as $1.2/month. The more you subscribe, the more you save! | [Link](https://volcengine.com/L/1Q-HZr5Uvk8/) / Code: LXKDZK3W |
-| Cursor | PRO PLAN | Get 50% off your first month of Cursor Pro, Pro+, or Ultra. | [Referral Link](https://cursor.com/referral?code=GV0YKBQ692X1) |
 
 ---
 

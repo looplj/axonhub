@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { ProxyConfig } from '@/features/channels/data/schema';
 import type { ModelAssociation } from '@/features/models/data/schema';
 
@@ -449,10 +450,11 @@ export interface ClearCachePayload {
 // Hooks
 export function useBrandSettings(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['brandSettings'],
-    enabled: options?.enabled,
+    enabled: options?.enabled !== false && hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ brandSettings: BrandSettings }>(BRAND_SETTINGS_QUERY);
@@ -467,9 +469,11 @@ export function useBrandSettings(options?: { enabled?: boolean }) {
 
 export function useStoragePolicy() {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['storagePolicy'],
+    enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ storagePolicy: StoragePolicy }>(STORAGE_POLICY_QUERY);
@@ -614,9 +618,11 @@ export function useUpdateWebhookNotifierConfig() {
 
 export function useDefaultDataStorageID() {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['defaultDataStorageID'],
+    enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ defaultDataStorageID: string | null }>(DEFAULT_DATA_STORAGE_QUERY);
@@ -889,6 +895,8 @@ const CHANNEL_SETTINGS_QUERY = `
       autoSync {
         frequency
       }
+      testSystemPrompt
+      testUserPrompt
     }
   }
 `;
@@ -971,9 +979,11 @@ export interface DeveloperModelSettings {
 
 export function useModelSettings() {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['modelSettings'],
+    enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ systemModelSettings: ModelSettings }>(MODEL_SETTINGS_QUERY);
@@ -1021,6 +1031,8 @@ export interface ChannelModelAutoSyncSetting {
 export interface ChannelSetting {
   probe: ChannelProbeSetting;
   autoSync: ChannelModelAutoSyncSetting;
+  testSystemPrompt: string;
+  testUserPrompt: string;
 }
 
 export interface UpdateChannelProbeSettingInput {
@@ -1035,13 +1047,17 @@ export interface UpdateChannelModelAutoSyncSettingInput {
 export interface UpdateSystemChannelSettingsInput {
   probe?: UpdateChannelProbeSettingInput;
   autoSync?: UpdateChannelModelAutoSyncSettingInput;
+  testSystemPrompt?: string;
+  testUserPrompt?: string;
 }
 
-export function useChannelSetting() {
+export function useChannelSetting(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['channelSetting'],
+    enabled: options?.enabled !== false && hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ systemChannelSettings: ChannelSetting }>(CHANNEL_SETTINGS_QUERY);
@@ -1075,9 +1091,11 @@ export function useUpdateChannelSetting() {
 
 export function useGeneralSettings() {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['generalSettings'],
+    enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ systemGeneralSettings: SystemGeneralSettings }>(SYSTEM_GENERAL_SETTINGS_QUERY);
@@ -1150,9 +1168,11 @@ export function useUpdateVideoStorageSettings() {
 
 export function useSecuritySettings() {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['securitySettings'],
+    enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ securitySettings: SecuritySettings }>(SECURITY_SETTINGS_QUERY);
@@ -1472,9 +1492,11 @@ export interface SaveProxyPresetInput {
 
 export function useProxyPresets() {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['proxyPresets'],
+    enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ proxyPresets: ProxyPreset[] }>(PROXY_PRESETS_QUERY);
@@ -1668,9 +1690,11 @@ export interface UpdateQuotaEnforcementSettingsInput {
 
 export function useQuotaEnforcementSettings() {
   const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
 
   return useQuery({
     queryKey: ['quotaEnforcementSettings'],
+    enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ quotaEnforcementSettings: QuotaEnforcementSettings }>(QUOTA_ENFORCEMENT_SETTINGS_QUERY);

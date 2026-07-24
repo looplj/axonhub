@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
 import { ArrowLeft, FileText, Activity, RefreshCw, List, GitBranch, Waypoints, Maximize2, X, Wrench, MessageSquare, ChevronDown } from 'lucide-react';
+import { IconArchive, IconPin, IconRotate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn, extractNumberID } from '@/lib/utils';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
@@ -13,10 +14,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { useGeneralSettings } from '@/features/system/data/system';
-import { useTraceWithSegments } from '../data';
+import { useTraceWithSegments, useArchiveTrace, useUnarchiveTrace, useRetainTrace, useUnretainTrace } from '../data';
 import { Segment, Span, parseRawRootSegment } from '../data/schema';
 import { SpanSection } from './span-section';
 import { TraceFlatTimeline } from './trace-flat-timeline';
@@ -34,7 +45,13 @@ export default function TraceDetailPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [viewMode, setViewMode] = useState<'flat' | 'flow' | 'tree'>('flat');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
+
+  const archiveMutation = useArchiveTrace();
+  const unarchiveMutation = useUnarchiveTrace();
+  const retainMutation = useRetainTrace();
+  const unretainMutation = useUnretainTrace();
 
   const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId);
   const { data: settings } = useGeneralSettings();
@@ -150,6 +167,7 @@ export default function TraceDetailPage() {
     <div className='flex h-screen flex-col'>
       {/* Normal Header - hidden in fullscreen */}
       {!isFullscreen && (
+        <>
         <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 w-full border-b backdrop-blur'>
           <div className='flex w-full items-center justify-between gap-2'>
             <div className='flex items-center gap-2 sm:gap-4 min-w-0 flex-1'>
@@ -185,9 +203,58 @@ export default function TraceDetailPage() {
                 <RefreshCw className={`h-4 w-4 ${isLoading || autoRefresh ? 'animate-spin' : ''}`} />
                 <span className='hidden sm:inline ml-2'>{t('common.refresh')}</span>
               </Button>
+              {(() => {
+                const status = trace.status ?? 'active';
+                if (status === 'active') {
+                  return (
+                    <>
+                      <Button variant='outline' size='sm' onClick={() => setShowArchiveDialog(true)} className='px-2 sm:px-3'>
+                        <IconArchive className='h-4 w-4' />
+                        <span className='hidden sm:inline ml-2'>{t('common.actions.archive')}</span>
+                      </Button>
+                      <Button variant='outline' size='sm' onClick={() => retainMutation.mutate(trace.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                        <IconPin className='h-4 w-4' />
+                        <span className='hidden sm:inline ml-2'>{t('common.actions.retain')}</span>
+                      </Button>
+                    </>
+                  );
+                }
+                if (status === 'archived') {
+                  return (
+                    <Button variant='outline' size='sm' onClick={() => unarchiveMutation.mutate(trace.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                      <IconRotate className='h-4 w-4' />
+                      <span className='hidden sm:inline ml-2'>{t('common.actions.unarchive')}</span>
+                    </Button>
+                  );
+                }
+                if (status === 'retained') {
+                  return (
+                    <Button variant='outline' size='sm' onClick={() => unretainMutation.mutate(trace.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                      <IconRotate className='h-4 w-4' />
+                      <span className='hidden sm:inline ml-2'>{t('common.actions.unretain')}</span>
+                    </Button>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </Header>
+        <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('traces.dialogs.archiveTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('traces.dialogs.archiveDescription')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.actions.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { archiveMutation.mutate(trace.id, { onSuccess: () => refetch() }); setShowArchiveDialog(false); }}>
+                {t('common.actions.archive')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        </>
       )}
 
       <Main className={cn('flex-1 overflow-hidden flex flex-col p-0', isFullscreen && 'fixed inset-0 z-50 bg-background')}>

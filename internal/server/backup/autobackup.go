@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/scheduler"
@@ -99,22 +100,47 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 		IncludeRequestLogs: settings.IncludeRequestLogs,
 	}
 
-	data, err := svc.BackupWithoutAuth(ctx, opts)
-	if err != nil {
-		return fmt.Errorf("failed to create backup: %w", err)
-	}
-
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	filename := fmt.Sprintf("axonhub-backup-%s.json", timestamp)
 
-	if err := svc.dataStorageService.SaveData(ctx, ds, filename, data); err != nil {
-		return fmt.Errorf("failed to write backup file: %w", err)
-	}
+	if ds.Type == datastorage.TypeDatabase {
+		data, err := svc.doBackup(ctx, opts)
+		if err != nil {
+			return fmt.Errorf("failed to create backup: %w", err)
+		}
+		if err := svc.dataStorageService.SaveData(ctx, ds, filename, data); err != nil {
+			return fmt.Errorf("failed to write backup file: %w", err)
+		}
+		log.Info(ctx, "Backup uploaded to storage",
+			log.String("path", filename),
+			log.Int("size", len(data)),
+		)
+	} else {
+		f, err := os.CreateTemp("", "axonhub-backup-*.json")
+		if err != nil {
+			return fmt.Errorf("failed to create temp backup file: %w", err)
+		}
+		tmpPath := f.Name()
+		defer os.Remove(tmpPath)
 
-	log.Info(ctx, "Backup uploaded to storage",
-		log.String("path", filename),
-		log.Int("size", len(data)),
-	)
+		if err := svc.doBackupToWriter(ctx, opts, f); err != nil {
+			f.Close()
+			return fmt.Errorf("failed to create backup: %w", err)
+		}
+		if _, err := f.Seek(0, 0); err != nil {
+			f.Close()
+			return fmt.Errorf("failed to seek backup file: %w", err)
+		}
+		key, n, err := svc.dataStorageService.SaveDataFromReader(ctx, ds, filename, f)
+		f.Close()
+		if err != nil {
+			return fmt.Errorf("failed to write backup file: %w", err)
+		}
+		log.Info(ctx, "Backup uploaded to storage",
+			log.String("path", key),
+			log.Int64("size", n),
+		)
+	}
 
 	if settings.RetentionDays > 0 {
 		if err := svc.cleanupOldBackups(ctx, ds, settings.RetentionDays); err != nil {

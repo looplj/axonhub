@@ -21,6 +21,7 @@ import {
   OpenCodeGoQuotaWindow,
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
+  ProviderZhipuQuotaData,
   ClineQuotaWindow,
   isClinePassPoolQuotaData,
   resetChannelQuotaNow,
@@ -157,6 +158,9 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       0,
       ...(qd?.rows ?? []).map((row) => Math.max(row.intervalPercent, row.weeklyPercent))
     );
+  } else if (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic') {
+    const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
+    percentage = Math.max(0, ...(qd?.rows ?? []).map((row) => row.usedPercent));
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
@@ -1140,6 +1144,45 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                               {formatTimeToReset(row.weeklyResetAt)}
                             </div>
                           )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {(channel.type === 'zhipu' || channel.type === 'zhipu_anthropic') && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
+            if (!qd) return null;
+
+            const rows = qd.rows ?? [];
+            const windowLabels: Record<string, string> = {
+              five_hour: t('quota.window.5h'),
+              weekly_limit: t('quota.window.weekly'),
+            };
+
+            return (
+              <>
+                {rows.map((row, index) => {
+                  const percentage = Math.min(100, row.usedPercent);
+                  return (
+                    <div key={`${row.window}-${index}`} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                      <div className='flex items-center justify-between text-xs'>
+                        <span className='text-muted-foreground font-medium'>
+                          {windowLabels[row.window] ?? row.window}
+                        </span>
+                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</span>
+                      </div>
+                      <ProgressBar percentage={percentage} />
+                      {row.resetAt && (
+                        <div className='text-muted-foreground text-right text-[11px]'>
+                          {formatTimeToReset(row.resetAt)}
                         </div>
                       )}
                     </div>

@@ -259,7 +259,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'ollama',
     icon: Ollama,
     color: 'bg-slate-100 text-slate-800 border-slate-200',
-    channelTypes: ['ollama'],
+    channelTypes: ['ollama', 'ollama_anthropic'],
   },
   evolink: {
     provider: 'evolink',

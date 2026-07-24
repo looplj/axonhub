@@ -30,13 +30,13 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const permissions = useRequestPermissions();
-  const { hasScope } = usePermissions();
+  const { hasSystemScope } = usePermissions();
   const { data: settings } = useGeneralSettings();
   const { data: securitySettings } = useSecuritySettings();
   const updateSecuritySettings = useUpdateSecuritySettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
   const [displayMode, setDisplayMode] = useDisplayMode();
-  const canManageSecuritySettings = hasScope('write_settings');
+  const canManageSecuritySettings = hasSystemScope('write_settings');
 
   const blockedIPs = securitySettings?.blockedIPs ?? [];
   const showIPBanIcon = securitySettings?.showRequestLogIPBanIcon === true;

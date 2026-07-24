@@ -1362,9 +1362,9 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	}
 	node.Edges[0] = &Edge{
 		Type: "Project",
-		Name: "projects",
+		Name: "project",
 	}
-	err = _m.QueryProjects().
+	err = _m.QueryProject().
 		Select(project.FieldID).
 		Scan(ctx, &node.Edges[0].IDs)
 	if err != nil {
