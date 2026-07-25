@@ -61,7 +61,7 @@ func TestLoadBalancedSelector_Select_MultipleChannels_LoadBalancing(t *testing.T
 	require.Contains(t, channelIDs, channels[2].ID, "Low weight channel should be included")
 }
 
-// TestDefaultChannelSelector_Select_WithTraceContext tests trace-aware load balancing.
+// TestDefaultChannelSelector_Select_WithTraceContext tests trace sticky routing.
 func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	ctx, client := setupTest(t)
 
@@ -80,8 +80,8 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create a successful request with channel 2 in this trace
-	_, err = client.Request.Create().
+	// Create a request with channel 2 in this trace.
+	stickyRequest, err := client.Request.Create().
 		SetProjectID(project.ID).
 		SetTraceID(trace.ID).
 		SetChannelID(channels[1].ID). // Medium weight channel
@@ -98,6 +98,7 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
+	require.NoError(t, requestService.UpdateRequestChannelID(ctx, stickyRequest.ID, channels[1].ID))
 
 	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 
@@ -109,7 +110,7 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result, 3)
 
-	// Channel 2 should be ranked first due to trace awareness (high boost score from TraceAwareStrategy)
+	// Channel 2 should be ranked first due to trace affinity.
 	require.Equal(t, channels[1].ID, result[0].Channel.ID, "Channel from trace should be ranked first")
 
 	// The other channels should follow in weight order (ch1 > ch3)
@@ -126,11 +127,6 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	require.Equal(t, "Medium Weight Channel", result[0].Channel.Name, "First channel should be the medium weight channel from trace")
 	require.Equal(t, 50, result[0].Channel.OrderingWeight, "First channel should have medium weight (50)")
 
-	// Log the ordering to verify trace awareness is working
-	t.Logf("Channel ordering with trace context: %s (weight=%d), %s (weight=%d), %s (weight=%d)",
-		result[0].Channel.Name, result[0].Channel.OrderingWeight,
-		result[1].Channel.Name, result[1].Channel.OrderingWeight,
-		result[2].Channel.Name, result[2].Channel.OrderingWeight)
 }
 
 // TestDefaultChannelSelector_Select_WithChannelFailures tests error-aware load balancing.
@@ -431,10 +427,8 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
-	requestService := newTestRequestServiceForChannels(client, systemService)
 
 	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(requestService),
 		NewErrorAwareStrategy(channelService),
 		NewWeightRoundRobinStrategy(channelService),
 		NewLatencyAwareStrategy(channelService),

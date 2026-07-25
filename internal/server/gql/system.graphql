@@ -125,6 +125,7 @@ type RetryPolicy {
   streamFirstEventTimeoutSeconds: Int!
   nonStreamResponseTimeoutSeconds: Int!
   loadBalancerStrategy: String!
+  traceStickyMode: TraceStickyMode!
   enabled: Boolean!
   autoDisableChannel: AutoDisableChannel!
   emptyResponseDetection: Boolean!
@@ -158,10 +159,16 @@ input UpdateRetryPolicyInput {
   streamFirstEventTimeoutSeconds: Int
   nonStreamResponseTimeoutSeconds: Int
   loadBalancerStrategy: String
+  traceStickyMode: TraceStickyMode
   enabled: Boolean
   autoDisableChannel: AutoDisableChannelInput
   emptyResponseDetection: Boolean
   upstreamErrorPolicy: UpstreamErrorPolicyInput
+}
+
+enum TraceStickyMode {
+  DISABLED
+  PREFER_PREVIOUS_CHANNEL
 }
 
 enum QuotaEnforcementMode {

@@ -491,6 +491,24 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
 	})
 
+	t.Run("sticky candidate should not trigger same-channel retry", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel:     channel,
+					TraceSticky: true,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+						{RequestModel: "gpt-4", ActualModel: "gpt-4-alternative"},
+					},
+				},
+			},
+		}
+
+		require.False(t, outbound.CanRetry(retryableErr))
+	})
+
 	t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
 		for _, retryErr := range []error{
 			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyResponse),
