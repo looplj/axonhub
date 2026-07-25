@@ -34,7 +34,7 @@ func TestRequestService_UpdateRequestCompletedWithAudio_ExternalStorage(t *testi
 		CacheConfig:   xcache.Config{Mode: xcache.ModeMemory},
 		Client:        client,
 	})
-	requestService := NewRequestService(client, systemService, usageLogService, dataStorageService, NewLiveStreamRegistry())
+	requestService := NewRequestService(client, systemService.CacheConfig, systemService, usageLogService, dataStorageService, NewLiveStreamRegistry())
 
 	// Non-primary fs data storage backed by a real temp dir.
 	dir := t.TempDir()

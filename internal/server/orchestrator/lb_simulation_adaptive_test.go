@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -158,18 +157,6 @@ func (f *fakeAdaptiveMetricsProvider) RecordFailure(channelID int) {
 	ch.lastFailureAtMs = &nowMs
 }
 
-type fakeTraceProvider struct {
-	lastSuccessful map[int]int
-}
-
-func newFakeTraceProvider() *fakeTraceProvider {
-	return &fakeTraceProvider{lastSuccessful: make(map[int]int)}
-}
-
-func (f *fakeTraceProvider) GetLastSuccessfulChannelID(_ context.Context, traceID int) (int, error) {
-	return f.lastSuccessful[traceID], nil
-}
-
 func buildSimulationCandidates(weights []int) []*ChannelModelsCandidate {
 	candidates := make([]*ChannelModelsCandidate, 0, len(weights))
 	for i, w := range weights {
@@ -189,7 +176,6 @@ func TestAdaptiveLoadBalancer_Simulation_Healthy_DistributionByWeight(t *testing
 	candidates := buildSimulationCandidates(weights)
 
 	metrics := newFakeAdaptiveMetricsProvider(600)
-	traceProvider := newFakeTraceProvider()
 
 	const totalRequests = 1000
 
@@ -198,7 +184,6 @@ func TestAdaptiveLoadBalancer_Simulation_Healthy_DistributionByWeight(t *testing
 	wrr.minScore = 0.0                         // Allow scores to drop below default floor for better distribution in simulation
 
 	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(traceProvider),
 		NewErrorAwareStrategy(metrics),
 		wrr,
 		NewLatencyAwareStrategy(metrics),
@@ -234,38 +219,6 @@ func TestAdaptiveLoadBalancer_Simulation_Healthy_DistributionByWeight(t *testing
 	}
 }
 
-func TestAdaptiveLoadBalancer_Simulation_TraceStickyOverridesWeight(t *testing.T) {
-	baseCtx := context.Background()
-	trace := &ent.Trace{ID: 1}
-	ctx := contexts.WithTrace(baseCtx, trace)
-
-	weights := []int{80, 50, 20, 10}
-	candidates := buildSimulationCandidates(weights)
-
-	metrics := newFakeAdaptiveMetricsProvider(600)
-	traceProvider := newFakeTraceProvider()
-	traceProvider.lastSuccessful[trace.ID] = candidates[2].Channel.ID
-
-	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(traceProvider),
-		NewErrorAwareStrategy(metrics),
-		NewWeightRoundRobinStrategy(metrics),
-		NewLatencyAwareStrategy(metrics),
-	}
-
-	lb := NewLoadBalancer(&mockSystemService{retryPolicy: &biz.RetryPolicy{Enabled: false}}, nil, strategies...)
-
-	const tickMs = int64(50)
-	for range 50 {
-		metrics.AdvanceMs(tickMs)
-
-		sorted := lb.Sort(ctx, candidates, "gpt-4", false)
-		require.Len(t, sorted, 1)
-		require.Equal(t, candidates[2].Channel.ID, sorted[0].Channel.ID)
-		metrics.RecordSuccess(sorted[0].Channel.ID)
-	}
-}
-
 func TestAdaptiveLoadBalancer_Simulation_HighLatencyCanOverrideWeight(t *testing.T) {
 	ctx := context.Background()
 	weights := []int{80, 50, 20, 10}
@@ -282,10 +235,8 @@ func TestAdaptiveLoadBalancer_Simulation_HighLatencyCanOverrideWeight(t *testing
 	}
 
 	metrics := newFakeAdaptiveMetricsProvider(600)
-	traceProvider := newFakeTraceProvider()
 
 	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(traceProvider),
 		NewErrorAwareStrategy(metrics),
 		NewWeightRoundRobinStrategy(metrics),
 		NewLatencyAwareStrategy(latencyProvider),
@@ -310,10 +261,8 @@ func TestAdaptiveLoadBalancer_Simulation_ErrorMigrationAndRecovery(t *testing.T)
 	candidates := buildSimulationCandidates(weights)
 
 	metrics := newFakeAdaptiveMetricsProvider(600)
-	traceProvider := newFakeTraceProvider()
 
 	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(traceProvider),
 		NewErrorAwareStrategy(metrics),
 		NewWeightRoundRobinStrategy(metrics),
 		NewLatencyAwareStrategy(metrics),
@@ -459,10 +408,8 @@ func TestAdaptiveLoadBalancer_Simulation_InactivityDecayAllowsComeback(t *testin
 	candidates := buildSimulationCandidates(weights)
 
 	metrics := newFakeAdaptiveMetricsProvider(600)
-	traceProvider := newFakeTraceProvider()
 
 	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(traceProvider),
 		NewErrorAwareStrategy(metrics),
 		NewWeightRoundRobinStrategy(metrics),
 		NewLatencyAwareStrategy(metrics),

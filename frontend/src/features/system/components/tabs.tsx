@@ -105,7 +105,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
     >
       <TabsList
         ref={setTabListRef}
-        className='shadow-soft border-border bg-background flex w-full justify-start overflow-x-auto rounded-2xl border [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0'
+        className='shadow-soft border-border bg-background flex w-full justify-start overflow-x-auto rounded-2xl border sm:overflow-x-visible [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0 sm:[&_[data-slot=tabs-trigger]]:flex-1 sm:[&_[data-slot=tabs-trigger]]:shrink'
       >
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}

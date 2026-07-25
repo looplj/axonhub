@@ -691,6 +691,9 @@ models:
   QuotaEnforcementMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
+  TraceStickyMode:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.TraceStickyMode
   TriggerGcCleanupInput:
     model:
       - github.com/looplj/axonhub/internal/server/gc.TriggerGcCleanupInput

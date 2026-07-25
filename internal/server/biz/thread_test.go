@@ -26,6 +26,7 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 		NewTraceService(TraceServiceParams{
 			RequestService: NewRequestService(
 				client,
+				systemService.CacheConfig,
 				systemService,
 				NewUsageLogService(client, systemService, NewChannelServiceForTest(client)),
 				NewDataStorageService(

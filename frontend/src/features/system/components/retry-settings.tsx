@@ -26,6 +26,7 @@ export function RetrySettings() {
     streamFirstEventTimeoutSeconds: 0,
     nonStreamResponseTimeoutSeconds: 0,
     loadBalancerStrategy: 'adaptive',
+    traceStickyMode: 'PREFER_PREVIOUS_CHANNEL',
     emptyResponseDetection: false,
     upstreamErrorPolicy: {
       mode: 'passthrough',
@@ -47,6 +48,7 @@ export function RetrySettings() {
         streamFirstEventTimeoutSeconds: retryPolicy.streamFirstEventTimeoutSeconds,
         nonStreamResponseTimeoutSeconds: retryPolicy.nonStreamResponseTimeoutSeconds,
         loadBalancerStrategy: retryPolicy.loadBalancerStrategy,
+        traceStickyMode: retryPolicy.traceStickyMode,
         emptyResponseDetection: retryPolicy.emptyResponseDetection,
         upstreamErrorPolicy: {
           mode: retryPolicy.upstreamErrorPolicy?.mode || 'passthrough',
@@ -192,27 +194,47 @@ export function RetrySettings() {
           {/* Retry Configuration - Only show when enabled */}
           {formData.enabled && (
             <div className='space-y-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='load-balancer-strategy'>{t('system.retry.loadBalancerStrategy.label')}</Label>
-                <div className='text-muted-foreground mb-2 text-sm'>{t('system.retry.loadBalancerStrategy.description')}</div>
-                <Select
-                  value={formData.loadBalancerStrategy || 'adaptive'}
-                  onValueChange={(value) => value && handleInputChange('loadBalancerStrategy', value)}
-                >
-                  <SelectTrigger id='load-balancer-strategy' className='w-56'>
-                    <SelectValue placeholder={t('system.retry.loadBalancerStrategy.placeholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
-                    <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
-                    <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
-                    <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className='bg-muted/20 space-y-4 rounded-lg border p-4'>
+                <div className='flex flex-wrap gap-x-8 gap-y-5'>
+                  <div className='min-w-56 flex-1 space-y-2'>
+                    <Label htmlFor='load-balancer-strategy'>{t('system.retry.loadBalancerStrategy.label')}</Label>
+                    <div className='text-muted-foreground text-sm'>{t('system.retry.loadBalancerStrategy.description')}</div>
+                    <Select
+                      value={formData.loadBalancerStrategy || 'adaptive'}
+                      onValueChange={(value) => value && handleInputChange('loadBalancerStrategy', value)}
+                    >
+                      <SelectTrigger id='load-balancer-strategy' className='w-56'>
+                        <SelectValue placeholder={t('system.retry.loadBalancerStrategy.placeholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
+                        <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
+                        <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
+                        <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Strategy Documentation */}
+                  <div className='min-w-56 flex-1 space-y-2'>
+                    <Label htmlFor='trace-sticky-mode'>{t('system.retry.traceStickyMode.label')}</Label>
+                    <div className='text-muted-foreground text-sm'>{t('system.retry.traceStickyMode.description')}</div>
+                    <Select
+                      value={formData.traceStickyMode || 'PREFER_PREVIOUS_CHANNEL'}
+                      onValueChange={(value) => value && handleInputChange('traceStickyMode', value)}
+                    >
+                      <SelectTrigger id='trace-sticky-mode' className='w-56'>
+                        <SelectValue placeholder={t('system.retry.traceStickyMode.placeholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='PREFER_PREVIOUS_CHANNEL'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                        <SelectItem value='DISABLED'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 {formData.loadBalancerStrategy && (
-                  <div className='bg-muted/50 mt-3 rounded-md border p-3'>
+                  <div className='bg-muted/50 rounded-md border p-3'>
                     <div className='text-muted-foreground text-xs leading-relaxed'>
                       {t(`system.retry.loadBalancerStrategy.documentation.${formData.loadBalancerStrategy}`)}
                     </div>

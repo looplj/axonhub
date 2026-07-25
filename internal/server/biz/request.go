@@ -30,29 +30,31 @@ import (
 type RequestService struct {
 	*AbstractService
 
-	SystemService      *SystemService
-	UsageLogService    *UsageLogService
-	DataStorageService *DataStorageService
-	LiveStreamRegistry *LiveStreamRegistry
-	channelCache       xcache.Cache[int]
+	SystemService        *SystemService
+	UsageLogService      *UsageLogService
+	DataStorageService   *DataStorageService
+	LiveStreamRegistry   *LiveStreamRegistry
+	previousChannelCache xcache.Cache[int]
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService, liveStreamRegistry *LiveStreamRegistry) *RequestService {
+func NewRequestService(
+	ent *ent.Client,
+	cacheConfig xcache.Config,
+	systemService *SystemService,
+	usageLogService *UsageLogService,
+	dataStorageService *DataStorageService,
+	liveStreamRegistry *LiveStreamRegistry,
+) *RequestService {
 	return &RequestService{
 		AbstractService: &AbstractService{
 			db: ent,
 		},
-		SystemService:      systemService,
-		UsageLogService:    usageLogService,
-		DataStorageService: dataStorageService,
-		LiveStreamRegistry: liveStreamRegistry,
-		channelCache: xcache.NewFromConfig[int](xcache.Config{
-			Mode: xcache.ModeMemory,
-			Memory: xcache.MemoryConfig{
-				Expiration: 30 * time.Minute,
-			},
-		}),
+		SystemService:        systemService,
+		UsageLogService:      usageLogService,
+		DataStorageService:   dataStorageService,
+		LiveStreamRegistry:   liveStreamRegistry,
+		previousChannelCache: xcache.NewFromConfig[int](cacheConfig),
 	}
 }
 
@@ -1125,17 +1127,14 @@ func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) erro
 func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID int, channelID int) error {
 	client := s.entFromContext(ctx)
 
-	request, err := client.Request.UpdateOneID(requestID).
+	req, err := client.Request.UpdateOneID(requestID).
 		SetChannelID(channelID).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request channel ID: %w", err)
 	}
 
-	// Reset channel cache for this trace when request completes
-	if request.TraceID != 0 {
-		s.setLastSuccessfulChannelID(ctx, request.TraceID, channelID)
-	}
+	s.cachePreviousChannelForRequest(ctx, req)
 
 	return nil
 }
@@ -1429,46 +1428,72 @@ func (s *RequestService) GetTraceFirstSegment(ctx context.Context, traceID int) 
 	return requestToSegment(ctx, request)
 }
 
-// GetLastSuccessfulChannelID retrieves the last successful channel ID from a trace.
-// Returns 0 if no successful channel is found.
-func (s *RequestService) GetLastSuccessfulChannelID(ctx context.Context, traceID int) (int, error) {
-	// Try cache first
-	cacheKey := buildLastChannelCacheKey(traceID)
-	if channelID, err := s.channelCache.Get(ctx, cacheKey); err == nil {
+// GetPreviousChannelID retrieves the most recently selected channel ID from a trace.
+// The cache is the source of truth; when it expires, trace affinity is reset.
+// Returns 0 if no selected channel is cached.
+func (s *RequestService) GetPreviousChannelID(ctx context.Context, traceID int) (int, error) {
+	cacheKey := buildPreviousTraceChannelCacheKey(traceID)
+	if channelID, err := s.previousChannelCache.Get(ctx, cacheKey); err == nil {
 		return channelID, nil
 	}
 
-	req, err := s.entFromContext(ctx).Request.Query().
-		Where(
-			request.TraceIDEQ(traceID),
-			// Only successful requests
-			request.StatusEQ(request.StatusCompleted),
-			// Must have a channel
-			request.ChannelIDNotNil(),
-		).
-		Order(ent.Desc(request.FieldCreatedAt)).
-		First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			// Cache the zero result
-			_ = s.channelCache.Set(ctx, cacheKey, 0, store.WithExpiration(5*time.Second))
-			return 0, nil
-		}
+	return 0, nil
+}
 
-		return 0, fmt.Errorf("failed to query last successful request: %w", err)
+// GetPreviousChannelIDByThread retrieves the most recently selected channel
+// from all traces associated with a thread. The cache is the source of truth;
+// when it expires, thread affinity is reset. Returns 0 if none is cached.
+func (s *RequestService) GetPreviousChannelIDByThread(ctx context.Context, threadID int) (int, error) {
+	cacheKey := buildPreviousThreadChannelCacheKey(threadID)
+	if channelID, err := s.previousChannelCache.Get(ctx, cacheKey); err == nil {
+		return channelID, nil
 	}
 
-	// Cache the result
-	s.setLastSuccessfulChannelID(ctx, traceID, req.ChannelID)
-
-	return req.ChannelID, nil
+	return 0, nil
 }
 
-func (s *RequestService) setLastSuccessfulChannelID(ctx context.Context, traceID, channelID int) {
-	cacheKey := buildLastChannelCacheKey(traceID)
-	_ = s.channelCache.Set(ctx, cacheKey, channelID, store.WithExpiration(1*time.Minute))
+func (s *RequestService) cachePreviousChannelForRequest(ctx context.Context, req *ent.Request) {
+	if req == nil || req.ChannelID == 0 || req.TraceID == 0 {
+		return
+	}
+
+	s.setPreviousTraceChannelID(ctx, req.TraceID, req.ChannelID)
+
+	threadID := 0
+	if currentTrace, ok := contexts.GetTrace(ctx); ok && currentTrace.ID == req.TraceID {
+		threadID = currentTrace.ThreadID
+	}
+
+	if threadID == 0 {
+		currentTrace, err := s.entFromContext(ctx).Trace.Get(ctx, req.TraceID)
+		if err != nil {
+			log.Warn(ctx, "failed to get trace for previous channel cache", log.Cause(err), log.Int("trace_id", req.TraceID))
+			return
+		}
+		threadID = currentTrace.ThreadID
+	}
+
+	if threadID != 0 {
+		s.setPreviousThreadChannelID(ctx, threadID, req.ChannelID)
+	}
 }
 
-func buildLastChannelCacheKey(traceID int) string {
-	return fmt.Sprintf("last_channel:%d", traceID)
+func (s *RequestService) setPreviousTraceChannelID(ctx context.Context, traceID, channelID int) {
+	s.setPreviousChannelCache(ctx, buildPreviousTraceChannelCacheKey(traceID), channelID, 30*time.Minute)
+}
+
+func (s *RequestService) setPreviousThreadChannelID(ctx context.Context, threadID, channelID int) {
+	s.setPreviousChannelCache(ctx, buildPreviousThreadChannelCacheKey(threadID), channelID, 30*time.Minute)
+}
+
+func (s *RequestService) setPreviousChannelCache(ctx context.Context, cacheKey string, channelID int, expiration time.Duration) {
+	_ = s.previousChannelCache.Set(ctx, cacheKey, channelID, store.WithExpiration(expiration))
+}
+
+func buildPreviousTraceChannelCacheKey(traceID int) string {
+	return fmt.Sprintf("axonhub:routing:previous-channel:v1:trace:%d", traceID)
+}
+
+func buildPreviousThreadChannelCacheKey(threadID int) string {
+	return fmt.Sprintf("axonhub:routing:previous-channel:v1:thread:%d", threadID)
 }
