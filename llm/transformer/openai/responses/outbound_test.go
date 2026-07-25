@@ -280,6 +280,54 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoi
 	require.Len(t, toolChoice["tools"], 1)
 }
 
+func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "List the projects.",
+			"tools": [
+				{
+					"type": "namespace",
+					"name": "mcp__codebase_memory_mcp",
+					"tools": [
+						{"type": "function", "name": "list_projects", "parameters": {"type": "object"}},
+						{"type": "function", "name": "get_project", "parameters": {"type": "object"}}
+					]
+				},
+				{"type": "function", "name": "get_weather", "parameters": {"type": "object"}}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	require.Len(t, llmReq.Tools, 3)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	tools, ok := payload["tools"].([]any)
+	require.True(t, ok)
+	require.Len(t, tools, 2)
+	namespaceTool, ok := tools[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "namespace", namespaceTool["type"])
+	require.Equal(t, "mcp__codebase_memory_mcp", namespaceTool["name"])
+	require.Len(t, namespaceTool["tools"], 2)
+
+	functionTool, ok := tools[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "get_weather", functionTool["name"])
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysProviderRawInputItems(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{

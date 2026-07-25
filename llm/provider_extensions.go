@@ -21,11 +21,13 @@ type OpenAIResponsesRequestExtensions struct {
 }
 
 type OpenAIResponsesRawFragment struct {
-	Type          string          `json:"-"`
-	Name          string          `json:"-"`
-	CallID        string          `json:"-"`
-	OriginalIndex int             `json:"-"`
-	Raw           json.RawMessage `json:"-"`
+	Type          string `json:"-"`
+	Name          string `json:"-"`
+	CallID        string `json:"-"`
+	OriginalIndex int    `json:"-"`
+	// RepresentedToolCount is the number of structured tools replaced when Raw is replayed.
+	RepresentedToolCount int             `json:"-"`
+	Raw                  json.RawMessage `json:"-"`
 }
 
 func EnsureOpenAIResponsesProviderExtensions(req *Request) *OpenAIResponsesProviderExtensions {
