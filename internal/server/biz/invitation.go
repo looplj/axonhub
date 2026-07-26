@@ -144,9 +144,19 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 				return fmt.Errorf("a user with this email already exists")
 			}
 
+			now := time.Now()
+			expiryPredicate := invitation.Or(
+				invitation.ExpiresAtIsNil(),
+				invitation.ExpiresAtGT(now),
+			)
+
 			if invitationRow.MaxUses > 0 {
 				updated, err := client.Invitation.Update().
-					Where(invitation.IDEQ(invitationRow.ID), invitation.UsedCountLT(invitationRow.MaxUses)).
+					Where(
+						invitation.IDEQ(invitationRow.ID),
+						invitation.UsedCountLT(invitationRow.MaxUses),
+						expiryPredicate,
+					).
 					AddUsedCount(1).
 					Save(ctx)
 				if err != nil {
@@ -155,8 +165,20 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 				if updated != 1 {
 					return fmt.Errorf("invitation is no longer valid")
 				}
-			} else if _, err := client.Invitation.UpdateOneID(invitationRow.ID).AddUsedCount(1).Save(ctx); err != nil {
-				return fmt.Errorf("failed to use invitation: %w", err)
+			} else {
+				updated, err := client.Invitation.Update().
+					Where(
+						invitation.IDEQ(invitationRow.ID),
+						expiryPredicate,
+					).
+					AddUsedCount(1).
+					Save(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to use invitation: %w", err)
+				}
+				if updated != 1 {
+					return fmt.Errorf("invitation is no longer valid")
+				}
 			}
 
 			hashedPassword, err := HashPassword(password)
@@ -230,6 +252,9 @@ func invitationExpiry(hours *int) (*time.Time, error) {
 	}
 	if *hours == 0 {
 		return nil, nil
+	}
+	if *hours > 100000 {
+		return nil, fmt.Errorf("expiration hours exceed maximum limit")
 	}
 	expiresAt := time.Now().Add(time.Duration(*hours) * time.Hour)
 	return &expiresAt, nil

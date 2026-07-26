@@ -68470,7 +68470,7 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "status", "userIDs", "invitationIDs"}
+	fieldsInOrder := [...]string{"name", "description", "status", "userIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68509,17 +68509,6 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.UserIDs = converted
-		case "invitationIDs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("invitationIDs"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrsToInts(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.InvitationIDs = converted
 		}
 	}
 
@@ -82852,7 +82841,7 @@ func (ec *executionContext) unmarshalInputUpdateProjectInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "status", "addUserIDs", "removeUserIDs", "clearUsers", "addInvitationIDs", "removeInvitationIDs", "clearInvitations"}
+	fieldsInOrder := [...]string{"name", "description", "status", "addUserIDs", "removeUserIDs", "clearUsers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82909,35 +82898,6 @@ func (ec *executionContext) unmarshalInputUpdateProjectInput(ctx context.Context
 				return it, err
 			}
 			it.ClearUsers = data
-		case "addInvitationIDs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addInvitationIDs"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrsToInts(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.AddInvitationIDs = converted
-		case "removeInvitationIDs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("removeInvitationIDs"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrsToInts(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.RemoveInvitationIDs = converted
-		case "clearInvitations":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearInvitations"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ClearInvitations = data
 		}
 	}
 

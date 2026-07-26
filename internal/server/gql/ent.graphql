@@ -1722,7 +1722,6 @@ input CreateProjectInput {
   """
   status: ProjectStatus
   userIDs: [ID!]
-  invitationIDs: [ID!]
 }
 """
 CreatePromptInput is used for create Prompt object.
@@ -6201,9 +6200,6 @@ input UpdateProjectInput {
   addUserIDs: [ID!]
   removeUserIDs: [ID!]
   clearUsers: Boolean
-  addInvitationIDs: [ID!]
-  removeInvitationIDs: [ID!]
-  clearInvitations: Boolean
 }
 """
 UpdatePromptInput is used for update Prompt object.
