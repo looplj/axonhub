@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/samber/lo"
 
@@ -50,7 +51,7 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 	}
 
 	if modelPrice, ok := ch.cachedModelPrices[modelID]; ok {
-		items, total := ComputeUsageCost(usage, modelPrice.Price)
+		items, total := ComputeUsageCost(usage, modelPrice.Price, time.Now())
 
 		totalCost := total.InexactFloat64()
 		if log.DebugEnabled(ctx) {

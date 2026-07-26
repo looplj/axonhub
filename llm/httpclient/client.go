@@ -17,12 +17,12 @@ import (
 
 	"github.com/looplj/axonhub/llm/streams"
 )
+
 // MaxErrorBodySize is the maximum number of bytes read from an upstream error
 // response body. Error bodies beyond this size are truncated to prevent OOM
 // from pathological upstream responses that echo large request payloads in
 // validation error messages, producing response bodies of 1+ GB.
 const MaxErrorBodySize = 1 << 20 // 1 MB
-
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
@@ -51,14 +51,18 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 	for _, opt := range opts {
 		opt(&options)
 	}
+	disableConnectionReuse := proxyConfig != nil &&
+		proxyConfig.Type == ProxyTypeURL &&
+		proxyConfig.DisableConnectionReuse
 
 	transport := &http.Transport{
-		Proxy: getProxyFunc(proxyConfig),
+		Proxy:             getProxyFunc(proxyConfig),
+		DisableKeepAlives: disableConnectionReuse,
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     !disableConnectionReuse,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -89,6 +93,11 @@ func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
 // GetNativeClient returns the underlying *http.Client for advanced use cases.
 func (hc *HttpClient) GetNativeClient() *http.Client {
 	return hc.client
+}
+
+// CloseIdleConnections closes idle connections held by the underlying HTTP transport.
+func (hc *HttpClient) CloseIdleConnections() {
+	hc.client.CloseIdleConnections()
 }
 
 func (hc *HttpClient) ProxyFunc() func(*http.Request) (*url.URL, error) {

@@ -439,6 +439,36 @@ models:
   PromptWriteCacheVariantInput:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptWriteCacheVariant
+  PriceSchedule:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceSchedule
+  PriceScheduleInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceSchedule
+  PriceOverride:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceOverride
+  PriceOverrideInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceOverride
+  OverrideWhen:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideWhen
+  OverrideWhenInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideWhen
+  DailyTimeRange:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DailyTimeRange
+  DailyTimeRangeInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DailyTimeRange
+  DateRange:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DateRange
+  DateRangeInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DateRange
   PricingMode:
     model:
       - github.com/looplj/axonhub/internal/objects.PricingMode
@@ -612,7 +642,7 @@ models:
       - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
   UpdateSystemChannelSettingsInput:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
+      - github.com/looplj/axonhub/internal/server/biz.UpdateSystemChannelSettings
   SystemGeneralSettings:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemGeneralSettings
@@ -661,6 +691,9 @@ models:
   QuotaEnforcementMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
+  TraceStickyMode:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.TraceStickyMode
   TriggerGcCleanupInput:
     model:
       - github.com/looplj/axonhub/internal/server/gc.TriggerGcCleanupInput

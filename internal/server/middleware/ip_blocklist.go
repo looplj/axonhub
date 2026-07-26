@@ -113,3 +113,19 @@ func isBlockedAddr(clientAddr netip.Addr, blockedIPs []string) bool {
 
 	return false
 }
+
+func isAnyAllowedIP(clientIPs []string, allowedIPs []string) bool {
+	for _, clientIP := range clientIPs {
+		clientAddr, err := netip.ParseAddr(clientIP)
+		if err != nil {
+			log.Warn(context.Background(), "failed to parse client IP", log.String("client_ip", clientIP), log.Cause(err))
+			continue
+		}
+
+		if isBlockedAddr(clientAddr, allowedIPs) {
+			return true
+		}
+	}
+
+	return false
+}

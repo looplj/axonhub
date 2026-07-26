@@ -92,6 +92,7 @@ type ProxyConfig {
   url: String
   username: String
   password: String
+  disableConnectionReuse: Boolean
 }
 
 type ChannelEndpoint {
@@ -118,6 +119,7 @@ input ProxyConfigInput {
   url: String
   username: String
   password: String
+  disableConnectionReuse: Boolean
 }
 
 type RetryableErrorPattern {

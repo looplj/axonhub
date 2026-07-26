@@ -135,6 +135,14 @@ func (s *ipAccessControlState) allows(clientAddr netip.Addr) bool {
 }
 
 func denyRequest(c *gin.Context, redirectURL string) {
+	log.Warn(
+		c.Request.Context(),
+		"IP access control denied request",
+		log.String("client_ip", c.ClientIP()),
+		log.String("path", c.Request.URL.Path),
+		log.String("method", c.Request.Method),
+	)
+
 	if redirectURL != "" {
 		c.Redirect(http.StatusFound, redirectURL)
 		c.Abort()

@@ -29,7 +29,7 @@ make test-advanced   # Advanced scenarios
 **What it tests**: Requests in the same trace use the same channel
 
 **Key behavior**:
-- TraceAwareStrategy gives 1000 point boost to last successful channel
+- Trace sticky selection uses the cached previous channel before score-based sorting
 - Ensures trace consistency across multiple requests
 - Different traces can use different channels independently
 
@@ -176,7 +176,7 @@ make test-advanced   # Advanced scenarios
 **Cause**: Different channels used within same trace
 
 **Fix**:
-1. Verify TraceAwareStrategy is enabled
+1. Verify trace sticky mode is enabled in the retry policy
 2. Check trace IDs are passed correctly in headers
 3. Ensure request service tracks successful channels
 4. Review server logs for load balancing decisions

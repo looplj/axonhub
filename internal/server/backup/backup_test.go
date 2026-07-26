@@ -403,3 +403,29 @@ func TestBackupService_Backup_WithRequestLogs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "sk-test-key-1", backupData.UsageRequests[0].APIKeyKey)
 }
+
+func TestBackupService_Backup_PaginationAcrossBatchBoundary(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	const n = backupBatchSize + 1
+	created := make([]*ent.Channel, n)
+	for i := range n {
+		created[i] = createBackupTestChannel(t, client, ctx, fmt.Sprintf("ch-%d", i), channel.TypeOpenai)
+	}
+	for i := range n {
+		createBackupTestModel(t, client, ctx, "openai", fmt.Sprintf("m-%d", i))
+	}
+
+	data, err := service.Backup(ctx, BackupOptions{IncludeChannels: true, IncludeModels: true})
+	require.NoError(t, err)
+
+	var bd BackupData
+	require.NoError(t, json.Unmarshal(data, &bd))
+	require.Len(t, bd.Channels, n)
+	require.Len(t, bd.Models, n)
+
+	for i, ch := range bd.Channels {
+		require.Equal(t, created[i].Name, ch.Name)
+	}
+}

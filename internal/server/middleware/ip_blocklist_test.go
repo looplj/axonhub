@@ -124,3 +124,75 @@ func TestClientIPCandidatesDeduplicates(t *testing.T) {
 		t.Fatalf("clientIPCandidates() = %#v, want %#v", got, want)
 	}
 }
+
+func TestIsAnyAllowedIP(t *testing.T) {
+	tests := []struct {
+		name       string
+		clientIPs  []string
+		allowedIPs []string
+		want       bool
+	}{
+		{
+			name:       "exact match allowed",
+			clientIPs:  []string{"203.0.113.10"},
+			allowedIPs: []string{"203.0.113.10"},
+			want:       true,
+		},
+		{
+			name:       "cidr match allowed",
+			clientIPs:  []string{"203.0.113.10"},
+			allowedIPs: []string{"203.0.113.0/24"},
+			want:       true,
+		},
+		{
+			name:       "ipv6 exact match allowed",
+			clientIPs:  []string{"2001:db8::10"},
+			allowedIPs: []string{"2001:db8::10"},
+			want:       true,
+		},
+		{
+			name:       "ipv6 cidr match allowed",
+			clientIPs:  []string{"2001:db8::10"},
+			allowedIPs: []string{"2001:db8::/64"},
+			want:       true,
+		},
+		{
+			name:       "multiple allowed entries one matches",
+			clientIPs:  []string{"203.0.113.10"},
+			allowedIPs: []string{"198.51.100.0/24", "203.0.113.0/24"},
+			want:       true,
+		},
+		{
+			name:       "multiple client candidates one matches",
+			clientIPs:  []string{"10.0.0.1", "203.0.113.10"},
+			allowedIPs: []string{"203.0.113.0/24"},
+			want:       true,
+		},
+		{
+			name:       "no match denied",
+			clientIPs:  []string{"203.0.113.10"},
+			allowedIPs: []string{"198.51.100.0/24", "192.0.2.1"},
+			want:       false,
+		},
+		{
+			name:       "invalid client candidates all skipped denied",
+			clientIPs:  []string{"bad-ip", "also-bad"},
+			allowedIPs: []string{"203.0.113.0/24"},
+			want:       false,
+		},
+		{
+			name:       "empty allowed list denied",
+			clientIPs:  []string{"203.0.113.10"},
+			allowedIPs: []string{},
+			want:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isAnyAllowedIP(tt.clientIPs, tt.allowedIPs); got != tt.want {
+				t.Fatalf("isAnyAllowedIP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

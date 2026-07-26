@@ -255,7 +255,7 @@ export function RequestBodyDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side='right'
-        className='flex w-[50vw] min-w-[500px] max-w-[800px] flex-col gap-0 p-0 sm:max-w-[800px]'
+        className='flex w-[min(100vw,clamp(500px,50vw,800px))] max-w-none flex-col gap-0 p-0 sm:max-w-none'
       >
         {/* Header */}
         <SheetHeader className='flex-shrink-0 border-b px-6 py-4'>

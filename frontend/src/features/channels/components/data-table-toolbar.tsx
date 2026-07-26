@@ -1,12 +1,15 @@
 import { useMemo, useEffect } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
+import { IconChevronsDown, IconChevronsUp, IconSearch } from '@tabler/icons-react';
 import { Table } from '@tanstack/react-table';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { useAllChannelTags } from '../data/channels';
+import { useChannels } from '../context/channels-context';
 import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { DataTableViewOptions } from './data-table-view-options';
 
@@ -28,6 +31,8 @@ export function DataTableToolbar<TData>({
   onExitErrorOnlyMode,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
+  const { showTypeTabs, setShowTypeTabs } = useChannels();
   const tableState = table.getState();
   const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0;
 
@@ -92,16 +97,24 @@ export function DataTableToolbar<TData>({
   );
 
   return (
-    <div className='flex items-center gap-4 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0'>
-      <div className='relative min-w-48 flex-1'>
-        <i className='ph ph-magnifying-glass text-muted-foreground absolute top-2.5 left-3'></i>
+    <div ref={scrollRef} className='flex items-center gap-4 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0'>
+      <div className='relative w-[150px] shrink-0 lg:flex-1 lg:w-auto'>
+        <IconSearch className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
         <Input
           placeholder={t('channels.filters.filterByName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className='bg-card border-border focus:ring-primary/20 placeholder-muted-foreground text-foreground w-full rounded-xl border py-2 pr-4 pl-10 text-sm shadow-sm transition-all focus:ring-2 focus:outline-none'
+          className='h-8 pl-8'
         />
       </div>
+      <Button variant='outline' size='sm' className='h-8' onClick={() => setShowTypeTabs(!showTypeTabs)}>
+        {showTypeTabs ? (
+          <IconChevronsDown className='mr-1 h-4 w-4' />
+        ) : (
+          <IconChevronsUp className='mr-1 h-4 w-4' />
+        )}
+        {t('channels.filters.providerToggle')}
+      </Button>
       {table.getColumn('status') && (
         <DataTableFacetedFilter column={table.getColumn('status')} title={t('channels.filters.status')} options={channelStatuses} />
       )}

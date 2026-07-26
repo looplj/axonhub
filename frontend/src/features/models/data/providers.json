@@ -18313,6 +18313,90 @@
         }
       ]
     },
+    "inclusionai": {
+      "id": "inclusionai",
+      "name": "Inclusion AI",
+      "doc": "https://huggingface.co/collections/inclusionAI/ling-26",
+      "display_name": "Inclusion AI",
+      "models": [
+        {
+          "id": "ling-3.0-flash",
+          "name": "Ling-3.0-Flash",
+          "description": "Inclusion AI flash MoE model — 124B total, 5.1B active params — for fast responses and high token efficiency",
+          "family": "ling",
+          "attachment": false,
+          "reasoning": { "supported": false },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-06-22",
+          "last_updated": "2026-06-22",
+          "modalities": { "input": ["text"], "output": ["text"] },
+          "open_weights": true,
+          "limit": { "context": 262144, "output": 32768 },
+          "cost": { "input": 0, "output": 0, "cache_read": 0 },
+          "display_name": "Ling-3.0-Flash",
+          "type": "chat"
+        },
+        {
+          "id": "ling-2.6-1t",
+          "name": "Ling-2.6-1T",
+          "description": "Inclusion AI trillion-param flagship — MoE with hybrid MLA + linear attention — for complex reasoning, coding, and agentic workflows",
+          "family": "ling",
+          "attachment": false,
+          "reasoning": { "supported": false },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-23",
+          "last_updated": "2026-04-23",
+          "modalities": { "input": ["text"], "output": ["text"] },
+          "open_weights": true,
+          "limit": { "context": 262144, "output": 32768 },
+          "cost": { "input": 0.075, "output": 0.625, "cache_read": 0 },
+          "display_name": "Ling-2.6-1T",
+          "type": "chat"
+        },
+        {
+          "id": "ling-2.6-flash",
+          "name": "Ling-2.6-Flash",
+          "description": "Inclusion AI flash MoE model — 104B total, 7.4B active params — for fast agent responses and token-efficient workflows",
+          "family": "ling",
+          "attachment": false,
+          "reasoning": { "supported": false },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-21",
+          "last_updated": "2026-04-21",
+          "modalities": { "input": ["text"], "output": ["text"] },
+          "open_weights": true,
+          "limit": { "context": 262144, "output": 32768 },
+          "cost": { "input": 0.01, "output": 0.03, "cache_read": 0 },
+          "display_name": "Ling-2.6-Flash",
+          "type": "chat"
+        },
+        {
+          "id": "ling-2.5-1t",
+          "name": "Ling-2.5-1T",
+          "description": "Inclusion AI trillion-param instant model — 63B active params — for long-context reasoning up to 1M tokens",
+          "family": "ling",
+          "attachment": false,
+          "reasoning": { "supported": false },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-02-11",
+          "last_updated": "2026-02-11",
+          "modalities": { "input": ["text"], "output": ["text"] },
+          "open_weights": true,
+          "limit": { "context": 1048576, "output": 32768 },
+          "cost": { "input": 0, "output": 0, "cache_read": 0 },
+          "display_name": "Ling-2.5-1T",
+          "type": "chat"
+        }
+      ]
+    },
     "kwaipilot": {
       "id": "kwaipilot",
       "name": "KwaiPilot",
@@ -18659,6 +18743,153 @@
           },
           "vision": false,
           "family": "kat-coder"
+        }
+      ]
+    },
+    "poolside": {
+      "id": "poolside",
+      "api": "https://inference.poolside.ai/v1",
+      "name": "Poolside",
+      "doc": "https://docs.poolside.ai",
+      "display_name": "Poolside",
+      "models": [
+        {
+          "id": "poolside/laguna-s-2.1",
+          "name": "Laguna S 2.1",
+          "description": "Poolside's 118B MoE model with 1M context window, supporting reasoning on/off toggle",
+          "family": "laguna-s",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2025-07-22",
+          "last_updated": "2025-07-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0.29,
+            "output": 0.59,
+            "cache_read": 0.029
+          },
+          "display_name": "Laguna S 2.1",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
+        {
+          "id": "poolside/laguna-xs-2.1",
+          "name": "Laguna XS 2.1",
+          "description": "Poolside's 33B MoE model with 256K context window, supporting reasoning on/off toggle",
+          "family": "laguna-xs",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2025-07-22",
+          "last_updated": "2025-07-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 8192
+          },
+          "cost": {
+            "input": 0.085,
+            "output": 0.17,
+            "cache_read": 0.0085
+          },
+          "display_name": "Laguna XS 2.1",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
+        {
+          "id": "poolside/laguna-m.1",
+          "name": "Laguna M.1",
+          "description": "Poolside's 225B MoE model with 256K context window, supporting reasoning on/off toggle",
+          "family": "laguna-m",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2025-07-22",
+          "last_updated": "2025-07-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0.59,
+            "output": 1.18,
+            "cache_read": 0.059
+          },
+          "display_name": "Laguna M.1",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
         }
       ]
     }

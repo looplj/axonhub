@@ -24,21 +24,40 @@
 
 <div align="center">
 
-<a href="https://lj.s.gy/oZl7Vd" target="_blank">
-  <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="32"/>
-</a>
-&nbsp;&nbsp;&nbsp;
-<a href="https://lj.s.gy/oZl7Vd" target="_blank">
-  <strong>Atlas Cloud</strong>
-</a>
-
-</div>
-
-<div align="center">
-
-<a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
-
-查看 Atlas Cloud 的 <a href="https://lj.s.gy/jknt2V" target="_blank">全新 Coding plan 促销</a>，获取更经济实惠的 API 访问方案。
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
+          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
+          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
+        </picture>
+        <br/>
+        <strong>Atlas Cloud</strong>
+      </a>
+      <p align="left">
+        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
+      </p>
+      <p align="left">
+        查看 Atlas Cloud 的 <a href="https://lj.s.gy/jknt2V" target="_blank">全新 Coding plan 促销</a>，获取更经济实惠的 API 访问方案。
+      </p>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/jKk8uU" target="_blank">
+        <img src="https://raw.githubusercontent.com/Krill-ai-org/krill-ai-static/refs/heads/main/krill-logo/Eng/250x150.png" alt="Krill AI" height="50"/>
+        <br/>
+        <strong>Krill AI</strong>
+      </a>
+      <p align="left">
+        感谢 Krill AI 赞助本项目。Krill 提供 GPT、Claude、Gemini 及多款国产模型的官方稳定极速 API 中转服务，支持企业级定制、报销开票和 7x16 小时专属技术支持。其独家适配的 WebSocket 连接方式可带来更快的首字速度。
+      </p>
+      <p align="left">
+        使用 <a href="https://lj.s.gy/jKk8uU" target="_blank">此链接</a> 注册，并在充值时填写 <code>AxonHub</code> 优惠码，首次购买 Codex 套餐可享 77 折优惠。
+      </p>
+    </td>
+  </tr>
+</table>
 
 </div>
 
@@ -70,14 +89,6 @@
 </table>
 
 ---
-
-## 💖 支持我
-
-| 供应商 | 方案 | 描述 | 链接 |
-|--------|------|------|------|
-| 智谱 AI | GLM 编程计划 | 您已被邀请加入 GLM 编程计划！全面支持 Claude Code、Cline 等 10+ 主流编程工具——低至 $3/月起。立即订阅，抢先享受限时优惠！ | [English](https://z.ai/subscribe?ic=OKAF5UFZOM) / [中文](https://www.bigmodel.cn/glm-coding?ic=WIDLV0OOTJ) |
-| 火山引擎 | 编程计划 | 火山引擎编程计划支持豆包、GLM、DeepSeek、Kimi 等模型，兼容所有工具。立即订阅额外享 9 折优惠——低至 $1.2/月，订阅越多越优惠！ | [链接](https://volcengine.com/L/1Q-HZr5Uvk8/) / 邀请码：LXKDZK3W |
-| Cursor | PRO 计划 | 首月订阅 Cursor Pro、Pro+ 或 Ultra 享 5 折优惠。 | [邀请链接](https://cursor.com/referral?code=GV0YKBQ692X1) |
 
 ---
 

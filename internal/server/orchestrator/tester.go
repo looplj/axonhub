@@ -70,6 +70,24 @@ type TestChannelRequest struct {
 	ModelID   *string
 }
 
+func buildChannelTestRequest(model string, useStream bool, systemPrompt string, userPrompt string) *llm.Request {
+	return &llm.Request{
+		Model: model,
+		Messages: []llm.Message{
+			{
+				Role:    "system",
+				Content: llm.MessageContent{Content: lo.ToPtr(systemPrompt)},
+			},
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)},
+			},
+		},
+		MaxCompletionTokens: lo.ToPtr(int64(256)),
+		Stream:              lo.ToPtr(useStream),
+	}
+}
+
 // TestChannelResult represents the result of a channel test.
 type TestChannelResult struct {
 	Latency float64
@@ -118,39 +136,15 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	if testModel == "" {
 		testModel = channel.DefaultTestModel
 	}
+	systemPrompt, userPrompt, err := processor.systemService.ChannelTestPrompts(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check if the channel requires streaming
 	useStream := channel != nil && channel.Policies.Stream == objects.CapabilityPolicyRequire
 
-	// Create a simple test request
-	llmRequest := &llm.Request{
-		Model: testModel,
-		Messages: []llm.Message{
-			{
-				Role: "system",
-				Content: llm.MessageContent{
-					Content: lo.ToPtr("You are a helpful assistant."),
-				},
-			},
-			{
-				Role: "user",
-				Content: llm.MessageContent{
-					MultipleContent: []llm.MessageContentPart{
-						{
-							Type: "text",
-							Text: lo.ToPtr("Hello world, I'm AxonHub."),
-						},
-						{
-							Type: "text",
-							Text: lo.ToPtr("Please tell me who you are?"),
-						},
-					},
-				},
-			},
-		},
-		MaxCompletionTokens: lo.ToPtr(int64(256)),
-		Stream:              lo.ToPtr(useStream),
-	}
+	llmRequest := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
 
 	body, err := json.Marshal(llmRequest)
 	if err != nil {
@@ -346,6 +340,10 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 	}
 
 	useStream := ch.Policies.Stream == objects.CapabilityPolicyRequire
+	systemPrompt, userPrompt, err := processor.systemService.ChannelTestPrompts(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	results := make([]*TestAPIKeyResult, len(allKeys))
 
@@ -377,7 +375,7 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 			default:
 			}
 
-			result := processor.testSingleKey(groupCtx, channelID, apiKey, testModel, useStream, proxy)
+			result := processor.testSingleKey(groupCtx, channelID, apiKey, testModel, useStream, proxy, systemPrompt, userPrompt)
 			_, isDisabled := disabledSet[apiKey]
 			result.Disabled = isDisabled
 			results[index] = result
@@ -437,13 +435,17 @@ func (processor *TestChannelOrchestrator) TestSingleAPIKey(
 	}
 
 	useStream := ch.Policies.Stream == objects.CapabilityPolicyRequire
+	systemPrompt, userPrompt, err := processor.systemService.ChannelTestPrompts(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	disabledSet := make(map[string]struct{}, len(ch.DisabledAPIKeys))
 	for _, dk := range ch.DisabledAPIKeys {
 		disabledSet[dk.Key] = struct{}{}
 	}
 
-	result := processor.testSingleKey(ctx, channelID, key, testModel, useStream, proxy)
+	result := processor.testSingleKey(ctx, channelID, key, testModel, useStream, proxy, systemPrompt, userPrompt)
 	_, isDisabled := disabledSet[key]
 	result.Disabled = isDisabled
 
@@ -458,6 +460,8 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	testModel string,
 	useStream bool,
 	proxy *httpclient.ProxyConfig,
+	systemPrompt string,
+	userPrompt string,
 ) *TestAPIKeyResult {
 	keyPrefix := maskAPIKey(key)
 
@@ -489,34 +493,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
-	llmRequest := &llm.Request{
-		Model: testModel,
-		Messages: []llm.Message{
-			{
-				Role: "system",
-				Content: llm.MessageContent{
-					Content: new("You are a helpful assistant."),
-				},
-			},
-			{
-				Role: "user",
-				Content: llm.MessageContent{
-					MultipleContent: []llm.MessageContentPart{
-						{
-							Type: "text",
-							Text: new("Hello world, I'm AxonHub."),
-						},
-						{
-							Type: "text",
-							Text: new("Please tell me who you are?"),
-						},
-					},
-				},
-			},
-		},
-		MaxCompletionTokens: new(int64(256)),
-		Stream:              new(useStream),
-	}
+	llmRequest := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
 
 	body, err := json.Marshal(llmRequest)
 	if err != nil {

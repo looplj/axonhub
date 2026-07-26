@@ -993,8 +993,8 @@ func existingUsageRequests(
 		byID:          map[int]*ent.Request{},
 		byFingerprint: map[string]*ent.Request{},
 	}
-	for start := 0; start < len(ids); start += usageBackupBatchSize {
-		end := min(start+usageBackupBatchSize, len(ids))
+	for start := 0; start < len(ids); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(ids))
 		requests, err := db.Request.Query().
 			Where(request.IDIn(ids[start:end]...)).
 			WithProject().
@@ -1010,8 +1010,8 @@ func existingUsageRequests(
 		}
 	}
 
-	for start := 0; start < len(createdAt); start += usageBackupBatchSize {
-		end := min(start+usageBackupBatchSize, len(createdAt))
+	for start := 0; start < len(createdAt); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(createdAt))
 		requests, err := db.Request.Query().
 			Where(request.CreatedAtIn(createdAt[start:end]...)).
 			WithProject().
@@ -1155,8 +1155,8 @@ func (svc *BackupService) restoreUsageLogs(
 	}
 
 	existingLogRequestIDs := map[int]struct{}{}
-	for start := 0; start < len(requestIDs); start += usageBackupBatchSize {
-		end := min(start+usageBackupBatchSize, len(requestIDs))
+	for start := 0; start < len(requestIDs); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(requestIDs))
 		logs, err := db.UsageLog.Query().
 			Where(usagelog.RequestIDIn(requestIDs[start:end]...)).
 			Select(usagelog.FieldRequestID).
@@ -1171,7 +1171,7 @@ func (svc *BackupService) restoreUsageLogs(
 	}
 
 	restoredLogRequestIDs := map[int]struct{}{}
-	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), usageBackupBatchSize))
+	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), backupBatchSize))
 	flush := func() error {
 		if len(builders) == 0 {
 			return nil
@@ -1268,7 +1268,7 @@ func (svc *BackupService) restoreUsageLogs(
 			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)))
 		restoredLogRequestIDs[requestID] = struct{}{}
 
-		if len(builders) >= usageBackupBatchSize {
+		if len(builders) >= backupBatchSize {
 			if err := flush(); err != nil {
 				return err
 			}

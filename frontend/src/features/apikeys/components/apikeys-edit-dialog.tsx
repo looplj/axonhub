@@ -5,8 +5,9 @@ import { IconEye, IconEyeOff } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useUpdateApiKey } from '../data/apikeys';
 import { UpdateApiKeyInput, updateApiKeyInputSchemaFactory } from '../data/schema';
@@ -19,20 +20,27 @@ export function ApiKeysEditDialog() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
+  const [ipRestrictionEnabled, setIPRestrictionEnabled] = useState(false);
+  const [ipInput, setIpInput] = useState('');
 
   const form = useForm<UpdateApiKeyInput>({
     resolver: zodResolver(updateApiKeyInputSchemaFactory(t)),
     defaultValues: {
       name: '',
       scopes: [],
+      allowedIps: [],
     },
   });
 
   useEffect(() => {
     if (selectedApiKey && isDialogOpen.edit) {
+      const allowedIps = selectedApiKey.allowedIps ?? [];
+      setIPRestrictionEnabled(allowedIps.length > 0);
+      setIpInput(allowedIps.join(', '));
       form.reset({
         name: selectedApiKey.name,
         scopes: selectedApiKey.scopes || [],
+        allowedIps,
       });
     }
   }, [selectedApiKey, isDialogOpen.edit, form]);
@@ -42,8 +50,16 @@ export function ApiKeysEditDialog() {
 
     setIsSubmitting(true);
     try {
+      const allowedIps = ipRestrictionEnabled
+        ? ipInput
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== '')
+        : [];
+
       const input: UpdateApiKeyInput = {
         name: data.name,
+        allowedIps,
       };
 
       if (selectedApiKey.type === 'service_account') {
@@ -101,11 +117,33 @@ export function ApiKeysEditDialog() {
                     <FormControl>
                       <ScopesSelect value={field.value || []} onChange={field.onChange} portalContainer={dialogContent} />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
             )}
+            <div className='space-y-3 rounded-lg border p-4'>
+              <div className='flex items-center justify-between'>
+                <div className='space-y-0.5'>
+                  <FormLabel>{t('apikeys.dialogs.fields.ipRestriction.label')}</FormLabel>
+                  <FormDescription>{t('apikeys.dialogs.fields.ipRestriction.description')}</FormDescription>
+                </div>
+                <Switch checked={ipRestrictionEnabled} onCheckedChange={setIPRestrictionEnabled} />
+              </div>
+              {ipRestrictionEnabled && (
+                <FormItem>
+                  <FormLabel>{t('apikeys.dialogs.fields.ipRestriction.cidrsLabel')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t('apikeys.dialogs.fields.ipRestriction.cidrsPlaceholder')}
+                      value={ipInput}
+                      onChange={(e) => setIpInput(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormDescription>{t('apikeys.dialogs.fields.ipRestriction.cidrsDescription')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            </div>
             <div className='space-y-4'>
               <div>
                 <div className='flex items-center justify-between'>

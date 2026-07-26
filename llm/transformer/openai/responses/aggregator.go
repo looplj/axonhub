@@ -695,6 +695,13 @@ func (a *streamAggregator) buildResponse() *Response {
 					Result: item.Result,
 				})
 
+			case "compaction", "compaction_summary":
+				output = append(output, Item{
+					ID:               item.ID,
+					Type:             item.Type,
+					EncryptedContent: item.EncryptedContent,
+				})
+
 			default:
 				// Generic item
 				output = append(output, Item{

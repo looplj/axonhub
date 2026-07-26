@@ -3,6 +3,7 @@ import { CheckIcon, Cross2Icon, PlusCircledIcon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
 import { RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ export function DataTableToolbar<TData>({
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange || !!traceIdFilter.trim() || statusFilter.length > 0;
 
@@ -56,8 +58,8 @@ export function DataTableToolbar<TData>({
   );
 
   return (
-    <div className='flex items-center justify-between'>
-      <div className='flex flex-1 items-center space-x-2'>
+    <div ref={scrollRef} className='flex items-center justify-between gap-2 overflow-x-auto'>
+      <div className='flex flex-1 items-center space-x-2 shrink-0'>
         <Input
           placeholder={t('traces.filters.filterTraceId')}
           value={traceIdFilter}
@@ -162,17 +164,17 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <div className='flex items-center space-x-2'>
+      <div className='flex items-center space-x-2 shrink-0'>
         {showRefresh && onAutoRefreshChange && (
-          <div className='flex items-center space-x-2'>
+          <div className='flex items-center space-x-2 shrink-0'>
             <Switch checked={autoRefresh} onCheckedChange={onAutoRefreshChange} id='auto-refresh-switch' />
-            <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm'>
+            <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm whitespace-nowrap'>
               {t('common.autoRefresh')}
             </label>
           </div>
         )}
         {showRefresh && onRefresh && (
-          <Button variant='outline' size='sm' onClick={onRefresh}>
+          <Button variant='outline' size='sm' onClick={onRefresh} className='shrink-0'>
             <RefreshCw className={`mr-2 h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
             {t('common.refresh')}
           </Button>

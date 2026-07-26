@@ -11,7 +11,7 @@ import { ChannelsErrorBanner } from './components/channels-error-banner';
 import { ChannelsPrimaryButtons } from './components/channels-primary-buttons';
 import { ChannelsTable } from './components/channels-table';
 import { ChannelsTypeTabs } from './components/channels-type-tabs';
-import ChannelsProvider from './context/channels-context';
+import ChannelsProvider, { useChannels } from './context/channels-context';
 import { useQueryChannels, useChannelTypes, useErrorChannelsCount, useChannelProbeData } from './data/channels';
 import { useProvidersData } from '@/features/models/data/providers';
 
@@ -21,6 +21,7 @@ function ChannelsContent() {
   const { t } = useTranslation();
   useProvidersData();
   const { channelPermissions } = usePermissions();
+  const { showTypeTabs } = useChannels();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'channels-table-page-size',
@@ -59,6 +60,13 @@ function ChannelsContent() {
   useEffect(() => {
     localStorage.setItem('channels-table-sorting', JSON.stringify(sorting));
   }, [sorting]);
+
+  useEffect(() => {
+    if (!showTypeTabs && selectedTypeTab !== 'all') {
+      setSelectedTypeTab('all');
+      resetCursor();
+    }
+  }, [showTypeTabs, selectedTypeTab, resetCursor]);
 
   // Fetch channel types for tabs
   const { data: channelTypeCounts = [] } = useChannelTypes(statusFilter.length > 0 ? statusFilter : ['enabled', 'disabled']);
@@ -254,7 +262,7 @@ function ChannelsContent() {
         showErrorOnly={showErrorOnly}
         onExitErrorOnlyMode={handleExitErrorOnlyMode}
       />
-      <ChannelsTypeTabs typeCounts={channelTypeCounts} selectedTab={selectedTypeTab} onTabChange={handleTabChange} />
+      <ChannelsTypeTabs typeCounts={channelTypeCounts} selectedTab={selectedTypeTab} onTabChange={handleTabChange} className={showTypeTabs ? '' : 'hidden'} />
       <ChannelsTable
         loading={isLoading}
         data={channelsWithProbeData}

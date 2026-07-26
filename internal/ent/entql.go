@@ -50,17 +50,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "APIKey",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			apikey.FieldCreatedAt: {Type: field.TypeTime, Column: apikey.FieldCreatedAt},
-			apikey.FieldUpdatedAt: {Type: field.TypeTime, Column: apikey.FieldUpdatedAt},
-			apikey.FieldDeletedAt: {Type: field.TypeInt, Column: apikey.FieldDeletedAt},
-			apikey.FieldUserID:    {Type: field.TypeInt, Column: apikey.FieldUserID},
-			apikey.FieldProjectID: {Type: field.TypeInt, Column: apikey.FieldProjectID},
-			apikey.FieldKey:       {Type: field.TypeString, Column: apikey.FieldKey},
-			apikey.FieldName:      {Type: field.TypeString, Column: apikey.FieldName},
-			apikey.FieldType:      {Type: field.TypeEnum, Column: apikey.FieldType},
-			apikey.FieldStatus:    {Type: field.TypeEnum, Column: apikey.FieldStatus},
-			apikey.FieldScopes:    {Type: field.TypeJSON, Column: apikey.FieldScopes},
-			apikey.FieldProfiles:  {Type: field.TypeJSON, Column: apikey.FieldProfiles},
+			apikey.FieldCreatedAt:  {Type: field.TypeTime, Column: apikey.FieldCreatedAt},
+			apikey.FieldUpdatedAt:  {Type: field.TypeTime, Column: apikey.FieldUpdatedAt},
+			apikey.FieldDeletedAt:  {Type: field.TypeInt, Column: apikey.FieldDeletedAt},
+			apikey.FieldUserID:     {Type: field.TypeInt, Column: apikey.FieldUserID},
+			apikey.FieldProjectID:  {Type: field.TypeInt, Column: apikey.FieldProjectID},
+			apikey.FieldKey:        {Type: field.TypeString, Column: apikey.FieldKey},
+			apikey.FieldName:       {Type: field.TypeString, Column: apikey.FieldName},
+			apikey.FieldType:       {Type: field.TypeEnum, Column: apikey.FieldType},
+			apikey.FieldStatus:     {Type: field.TypeEnum, Column: apikey.FieldStatus},
+			apikey.FieldScopes:     {Type: field.TypeJSON, Column: apikey.FieldScopes},
+			apikey.FieldProfiles:   {Type: field.TypeJSON, Column: apikey.FieldProfiles},
+			apikey.FieldAllowedIps: {Type: field.TypeJSON, Column: apikey.FieldAllowedIps},
 		},
 	}
 	graph.Nodes[1] = &sqlgraph.Node{
@@ -1498,6 +1499,11 @@ func (f *APIKeyFilter) WhereScopes(p entql.BytesP) {
 // WhereProfiles applies the entql json.RawMessage predicate on the profiles field.
 func (f *APIKeyFilter) WhereProfiles(p entql.BytesP) {
 	f.Where(p.Field(apikey.FieldProfiles))
+}
+
+// WhereAllowedIps applies the entql json.RawMessage predicate on the allowed_ips field.
+func (f *APIKeyFilter) WhereAllowedIps(p entql.BytesP) {
+	f.Where(p.Field(apikey.FieldAllowedIps))
 }
 
 // WhereHasUser applies a predicate to check if query has an edge user.

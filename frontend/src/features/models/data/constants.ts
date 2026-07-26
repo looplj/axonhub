@@ -18,6 +18,8 @@ export const DEVELOPER_IDS = [
   'stepfun',
   'meta',
   'ibm',
+  'poolside',
+  'inclusionai',
 ];
 
 export const DEVELOPER_ICONS: Record<string, string> = {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/hook"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
@@ -330,6 +332,234 @@ func TestSystemService_SetChannelSetting_PersistsModelAutoSyncFrequency(t *testi
 	retrievedSetting, err := service.ChannelSetting(ctx)
 	require.NoError(t, err)
 	require.Equal(t, AutoSyncFrequencySixHours, retrievedSetting.AutoSync.Frequency)
+}
+
+func TestSystemService_UpdateChannelSetting_CreatesMissingSetting(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	userPrompt := "custom user prompt"
+	require.NoError(t, service.UpdateChannelSetting(ctx, UpdateSystemChannelSettings{
+		TestUserPrompt: &userPrompt,
+	}))
+
+	setting, err := service.ChannelSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, defaultChannelTestSystemPrompt, setting.TestSystemPrompt)
+	require.Equal(t, userPrompt, setting.TestUserPrompt)
+}
+
+func runSystemSettingUpdate(t *testing.T, service *SystemService, ctx context.Context, input UpdateSystemChannelSettings) <-chan error {
+	t.Helper()
+	result := make(chan error, 1)
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err := fmt.Errorf("update channel setting panic: %v", recovered)
+				t.Error(err)
+				result <- err
+			}
+		}()
+		result <- service.UpdateChannelSetting(ctx, input)
+	}()
+	return result
+}
+
+func waitForSystemSettingEntry(t *testing.T, entered <-chan int32) int32 {
+	t.Helper()
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	select {
+	case update := <-entered:
+		return update
+	case <-timer.C:
+		t.Fatal("timed out waiting for system setting mutation")
+		return 0
+	}
+}
+
+func waitForSystemSettingResult(t *testing.T, result <-chan error) error {
+	t.Helper()
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	select {
+	case err := <-result:
+		return err
+	case <-timer.C:
+		t.Fatal("timed out waiting for system setting update")
+		return nil
+	}
+}
+
+func TestSystemService_UpdateChannelSetting_PreservesConcurrentChanges(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	require.NoError(t, service.SetChannelSetting(ctx, defaultChannelSetting))
+
+	entered := make(chan int32, 2)
+	releaseFirst := make(chan struct{}, 1)
+	releaseSecond := make(chan struct{}, 1)
+	t.Cleanup(func() {
+		select {
+		case releaseFirst <- struct{}{}:
+		default:
+		}
+		select {
+		case releaseSecond <- struct{}{}:
+		default:
+		}
+	})
+	var updates atomic.Int32
+	client.System.Use(func(next ent.Mutator) ent.Mutator {
+		return hook.SystemFunc(func(ctx context.Context, mutation *ent.SystemMutation) (ent.Value, error) {
+			if mutation.Op() == ent.OpUpdate {
+				switch update := updates.Add(1); update {
+				case 1:
+					entered <- update
+					<-releaseFirst
+				case 2:
+					entered <- update
+					<-releaseSecond
+				}
+			}
+
+			return next.Mutate(ctx, mutation)
+		})
+	})
+
+	systemPrompt := "concurrent system prompt"
+	first := runSystemSettingUpdate(t, service, ctx, UpdateSystemChannelSettings{TestSystemPrompt: &systemPrompt})
+	require.Equal(t, int32(1), waitForSystemSettingEntry(t, entered))
+
+	userPrompt := "concurrent user prompt"
+	second := runSystemSettingUpdate(t, service, ctx, UpdateSystemChannelSettings{TestUserPrompt: &userPrompt})
+	require.Equal(t, int32(2), waitForSystemSettingEntry(t, entered))
+
+	releaseFirst <- struct{}{}
+	require.NoError(t, waitForSystemSettingResult(t, first))
+	releaseSecond <- struct{}{}
+	require.NoError(t, waitForSystemSettingResult(t, second))
+
+	setting, err := service.ChannelSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, systemPrompt, setting.TestSystemPrompt)
+	require.Equal(t, userPrompt, setting.TestUserPrompt)
+}
+
+func TestSystemService_UpdateChannelSetting_PreservesConcurrentCreates(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	entered := make(chan int32, 2)
+	releaseFirst := make(chan struct{}, 1)
+	releaseSecond := make(chan struct{}, 1)
+	t.Cleanup(func() {
+		select {
+		case releaseFirst <- struct{}{}:
+		default:
+		}
+		select {
+		case releaseSecond <- struct{}{}:
+		default:
+		}
+	})
+	var creates atomic.Int32
+	client.System.Use(func(next ent.Mutator) ent.Mutator {
+		return hook.SystemFunc(func(ctx context.Context, mutation *ent.SystemMutation) (ent.Value, error) {
+			if mutation.Op() == ent.OpCreate {
+				if create := creates.Add(1); create <= 2 {
+					entered <- create
+					if create == 1 {
+						<-releaseFirst
+					} else {
+						<-releaseSecond
+					}
+				}
+			}
+
+			return next.Mutate(ctx, mutation)
+		})
+	})
+
+	systemPrompt := "concurrent create system prompt"
+	first := runSystemSettingUpdate(t, service, ctx, UpdateSystemChannelSettings{TestSystemPrompt: &systemPrompt})
+	require.Equal(t, int32(1), waitForSystemSettingEntry(t, entered))
+
+	userPrompt := "concurrent create user prompt"
+	second := runSystemSettingUpdate(t, service, ctx, UpdateSystemChannelSettings{TestUserPrompt: &userPrompt})
+	require.Equal(t, int32(2), waitForSystemSettingEntry(t, entered))
+
+	releaseFirst <- struct{}{}
+	require.NoError(t, waitForSystemSettingResult(t, first))
+	releaseSecond <- struct{}{}
+	require.NoError(t, waitForSystemSettingResult(t, second))
+
+	setting, err := service.ChannelSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, systemPrompt, setting.TestSystemPrompt)
+	require.Equal(t, userPrompt, setting.TestUserPrompt)
+}
+
+func TestSystemService_ChannelTestPrompts_FallsBackToDefaults(t *testing.T) {
+	t.Run("uses settings through system bypass", func(t *testing.T) {
+		service, client := setupTestSystemService(t, xcache.Config{})
+		defer client.Close()
+
+		writeCtx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+		require.NoError(t, service.SetChannelSetting(writeCtx, SystemChannelSettings{
+			TestSystemPrompt: "configured system",
+			TestUserPrompt:   "configured user",
+		}))
+
+		readCtx := ent.NewContext(t.Context(), client)
+		systemPrompt, userPrompt, err := service.ChannelTestPrompts(readCtx)
+		require.NoError(t, err)
+		require.Equal(t, "configured system", systemPrompt)
+		require.Equal(t, "configured user", userPrompt)
+	})
+
+	t.Run("missing setting", func(t *testing.T) {
+		service, client := setupTestSystemService(t, xcache.Config{})
+		defer client.Close()
+
+		ctx := ent.NewContext(t.Context(), client)
+		systemPrompt, userPrompt, err := service.ChannelTestPrompts(ctx)
+		require.NoError(t, err)
+		require.Equal(t, defaultChannelTestSystemPrompt, systemPrompt)
+		require.Equal(t, defaultChannelTestUserPrompt, userPrompt)
+	})
+
+	t.Run("malformed setting", func(t *testing.T) {
+		service, client := setupTestSystemService(t, xcache.Config{})
+		defer client.Close()
+
+		ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+		_, err := client.System.Create().
+			SetKey(SystemKeyChannelSettings).
+			SetValue("invalid-json").
+			Save(ctx)
+		require.NoError(t, err)
+
+		systemPrompt, userPrompt, err := service.ChannelTestPrompts(ctx)
+		require.NoError(t, err)
+		require.Equal(t, defaultChannelTestSystemPrompt, systemPrompt)
+		require.Equal(t, defaultChannelTestUserPrompt, userPrompt)
+	})
+
+	t.Run("database unavailable", func(t *testing.T) {
+		service, client := setupTestSystemService(t, xcache.Config{})
+		require.NoError(t, client.Close())
+
+		ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+		systemPrompt, userPrompt, err := service.ChannelTestPrompts(ctx)
+		require.NoError(t, err)
+		require.Equal(t, defaultChannelTestSystemPrompt, systemPrompt)
+		require.Equal(t, defaultChannelTestUserPrompt, userPrompt)
+	})
 }
 
 func TestSystemService_ChannelSetting_BackfillsLegacyModelAutoSyncFrequency(t *testing.T) {

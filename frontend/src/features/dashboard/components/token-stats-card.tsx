@@ -39,12 +39,12 @@ function LastUpdatedInfo({ lastUpdated, locale, t }: LastUpdatedInfoProps) {
 
   return (
     <>
-      <div className='hidden sm:block w-6 h-6'>
+      <div className='hidden h-5 w-5 sm:block'>
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className='text-muted-foreground hover:text-foreground transition-colors w-6 h-6 flex items-center justify-center'>
-                <IconInfoCircle className='h-4 w-4' />
+              <button type='button' className='text-muted-foreground hover:text-foreground flex h-5 w-5 items-center justify-center rounded-full transition-colors'>
+                <IconInfoCircle className='h-3.5 w-3.5' />
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -53,11 +53,11 @@ function LastUpdatedInfo({ lastUpdated, locale, t }: LastUpdatedInfoProps) {
           </Tooltip>
         </TooltipProvider>
       </div>
-      <div className='sm:hidden w-11 h-11'>
+      <div className='-my-2.5 h-11 w-11 sm:hidden'>
         <Popover>
           <PopoverTrigger asChild>
-            <button className='text-muted-foreground hover:text-foreground transition-colors w-11 h-11 flex items-center justify-center'>
-              <IconInfoCircle className='h-5 w-5' />
+            <button type='button' className='text-muted-foreground hover:text-foreground flex h-11 w-11 items-center justify-center rounded-full transition-colors'>
+              <IconInfoCircle className='h-4 w-4' />
             </button>
           </PopoverTrigger>
           <PopoverContent className='w-fit'>
@@ -159,31 +159,15 @@ export function TokenStatsCard() {
 
   return (
     <Card className='hover-card min-w-0'>
-      <CardHeader className='flex flex-wrap items-start sm:items-center justify-between gap-2 pb-2'>
-        <div className='flex items-center gap-2'>
+      <CardHeader className='flex flex-row items-start justify-between gap-2 pb-2 sm:items-center'>
+        <div className='flex min-w-0 items-center gap-2'>
           <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5 shrink-0'>
             <BarChart4 className='h-4 w-4' />
           </div>
-          <CardTitle className='text-sm font-medium whitespace-normal leading-tight'>{t('dashboard.cards.tokenStats')}</CardTitle>
+          <CardTitle className='truncate text-sm leading-tight font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
         </div>
-        <div className='flex items-center gap-2 shrink-0'>
+        <div className='flex shrink-0 items-center gap-1 whitespace-nowrap'>
           {/* <span className='text-xs text-muted-foreground'>{t('dashboard.stats.this')}</span> */}
-          <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
-            <TabsList className='h-6 p-0.5'>
-              <TabsTrigger value='allTime' className='h-5 px-2 text-[10px]'>
-                {t('dashboard.stats.all')}
-              </TabsTrigger>
-              <TabsTrigger value='thisMonth' className='h-5 px-2 text-[10px]'>
-                {t('dashboard.stats.month')}
-              </TabsTrigger>
-              <TabsTrigger value='thisWeek' className='h-5 px-2 text-[10px]'>
-                {t('dashboard.stats.week')}
-              </TabsTrigger>
-              <TabsTrigger value='thisDay' className='h-5 px-2 text-[10px]'>
-                {t('dashboard.stats.day')}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
           {timeRange === 'allTime' && (
             <LastUpdatedInfo
               lastUpdated={stats?.lastUpdated ?? null}
@@ -191,6 +175,22 @@ export function TokenStatsCard() {
               t={t}
             />
           )}
+          <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
+            <TabsList className='h-6 p-0.5'>
+              <TabsTrigger value='allTime' className='h-5 px-1.5 text-[10px]'>
+                {t('dashboard.stats.all')}
+              </TabsTrigger>
+              <TabsTrigger value='thisMonth' className='h-5 px-1.5 text-[10px]'>
+                {t('dashboard.stats.month')}
+              </TabsTrigger>
+              <TabsTrigger value='thisWeek' className='h-5 px-1.5 text-[10px]'>
+                {t('dashboard.stats.week')}
+              </TabsTrigger>
+              <TabsTrigger value='thisDay' className='h-5 px-1.5 text-[10px]'>
+                {t('dashboard.stats.day')}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </CardHeader>
       <CardContent>

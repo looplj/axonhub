@@ -24,6 +24,10 @@ type APIKey implements Node {
   """
   scopes: [String!]
   profiles: APIKeyProfiles
+  """
+  IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
+  """
+  allowedIps: [String!]
   user: User @goField(forceResolver: true)
   project: Project!
   requests(
@@ -107,6 +111,7 @@ Properties by which APIKey connections can be ordered.
 enum APIKeyOrderField {
   CREATED_AT
   UPDATED_AT
+  NAME
 }
 type APIKeyProfileTemplate implements Node {
   id: ID!
@@ -1311,6 +1316,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   opencode_go
   opencode_go_anthropic
   ollama
+  ollama_anthropic
   evolink
   evolink_anthropic
 }
@@ -1534,6 +1540,10 @@ input CreateAPIKeyInput {
   API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.
   """
   scopes: [String!]
+  """
+  IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
+  """
+  allowedIps: [String!]
   projectID: ID!
 }
 """
@@ -5986,6 +5996,12 @@ input UpdateAPIKeyInput {
   scopes: [String!]
   appendScopes: [String!]
   clearScopes: Boolean
+  """
+  IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.
+  """
+  allowedIps: [String!]
+  appendAllowedIps: [String!]
+  clearAllowedIps: Boolean
 }
 """
 UpdateAPIKeyProfileTemplateInput is used for update APIKeyProfileTemplate object.

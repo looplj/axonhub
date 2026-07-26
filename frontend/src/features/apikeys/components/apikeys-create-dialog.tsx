@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useCreateApiKey } from '../data/apikeys';
 import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema';
@@ -17,6 +18,8 @@ export function ApiKeysCreateDialog() {
   const { isDialogOpen, closeDialog, openDialog, setSelectedApiKey } = useApiKeysContext();
   const createApiKey = useCreateApiKey();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ipRestrictionEnabled, setIPRestrictionEnabled] = useState(false);
+  const [ipInput, setIpInput] = useState('');
 
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
@@ -26,6 +29,7 @@ export function ApiKeysCreateDialog() {
       name: '',
       type: 'user',
       scopes: undefined,
+      allowedIps: [],
     },
   });
 
@@ -34,15 +38,25 @@ export function ApiKeysCreateDialog() {
   const onSubmit = async (data: CreateApiKeyInput) => {
     setIsSubmitting(true);
     try {
-      const submitData = data.type === 'user' || data.type === 'personal' ? { ...data, scopes: undefined } : data;
+      const allowedIps = ipRestrictionEnabled
+        ? ipInput
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== '')
+        : [];
+      const submitData = {
+        ...data,
+        scopes: data.type === 'user' || data.type === 'personal' ? undefined : data.scopes,
+        allowedIps,
+      };
       const result = await createApiKey.mutateAsync(submitData);
       form.reset();
+      setIPRestrictionEnabled(false);
+      setIpInput('');
       closeDialog('create');
-      // Open view dialog with the created API key
       setSelectedApiKey(result.createAPIKey);
       openDialog('view', result.createAPIKey);
     } catch (error) {
-      // Error is handled by the mutation
     } finally {
       setIsSubmitting(false);
     }
@@ -50,6 +64,8 @@ export function ApiKeysCreateDialog() {
 
   const handleClose = () => {
     form.reset();
+    setIPRestrictionEnabled(false);
+    setIpInput('');
     closeDialog('create');
   };
 
@@ -130,6 +146,30 @@ export function ApiKeysCreateDialog() {
                 )}
               />
             )}
+
+            <div className='space-y-3 rounded-lg border p-4'>
+              <div className='flex items-center justify-between'>
+                <div className='space-y-0.5'>
+                  <FormLabel>{t('apikeys.dialogs.fields.ipRestriction.label')}</FormLabel>
+                  <FormDescription>{t('apikeys.dialogs.fields.ipRestriction.description')}</FormDescription>
+                </div>
+                <Switch checked={ipRestrictionEnabled} onCheckedChange={setIPRestrictionEnabled} />
+              </div>
+              {ipRestrictionEnabled && (
+                <FormItem>
+                  <FormLabel>{t('apikeys.dialogs.fields.ipRestriction.cidrsLabel')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t('apikeys.dialogs.fields.ipRestriction.cidrsPlaceholder')}
+                      value={ipInput}
+                      onChange={(e) => setIpInput(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormDescription>{t('apikeys.dialogs.fields.ipRestriction.cidrsDescription')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            </div>
 
             <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
               <div className='flex w-full gap-2 sm:w-auto'>

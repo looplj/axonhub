@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { AboutSettings } from './about-settings';
 import { BrandSettings } from './brand-settings';
 import { DiagnosticsSettings } from './diagnostics-settings';
@@ -18,21 +19,51 @@ import { usePermissions } from '@/hooks/usePermissions';
 
 type SystemTabKey = 'general' | 'security' | 'brand' | 'storage' | 'retry' | 'webhook' | 'proxy' | 'quota' | 'backup' | 'diagnostics' | 'about';
 
+const systemTabKeys = new Set<SystemTabKey>([
+  'general',
+  'security',
+  'brand',
+  'storage',
+  'retry',
+  'webhook',
+  'proxy',
+  'quota',
+  'backup',
+  'diagnostics',
+  'about',
+]);
+
+function isSystemTabKey(value: string | undefined): value is SystemTabKey {
+  return value !== undefined && systemTabKeys.has(value as SystemTabKey);
+}
+
 interface SystemSettingsTabsProps {
-  initialTab?: SystemTabKey;
+  initialTab?: string;
 }
 
 export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
   const { t } = useTranslation();
   const { isOwner } = usePermissions();
   const [activeTab, setActiveTab] = useState<SystemTabKey>('general');
+  const tabListRef = useRef<HTMLDivElement>(null);
+  const horizontalScrollRef = useHorizontalScroll<HTMLDivElement>();
+  const setTabListRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      tabListRef.current = node;
+      horizontalScrollRef(node);
+    },
+    [horizontalScrollRef]
+  );
 
   useEffect(() => {
     if (!initialTab) {
       return;
     }
 
-    if (!isOwner && (initialTab === 'backup' || initialTab === 'diagnostics')) {
+    if (
+      !isSystemTabKey(initialTab) ||
+      (!isOwner && (initialTab === 'backup' || initialTab === 'diagnostics'))
+    ) {
       setActiveTab('general');
       return;
     }
@@ -40,11 +71,30 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
     setActiveTab(initialTab);
   }, [initialTab, isOwner]);
 
+  useEffect(() => {
+    const tabList = tabListRef.current;
+    if (!tabList) return;
+
+    const activeTrigger = Array.from(tabList.querySelectorAll<HTMLElement>('[data-value]')).find(
+      (trigger) => trigger.dataset.value === activeTab
+    );
+    if (!activeTrigger) return;
+
+    const listRect = tabList.getBoundingClientRect();
+    const triggerRect = activeTrigger.getBoundingClientRect();
+    if (triggerRect.left < listRect.left) {
+      tabList.scrollLeft -= listRect.left - triggerRect.left;
+    } else if (triggerRect.right > listRect.right) {
+      tabList.scrollLeft += triggerRect.right - listRect.right;
+    }
+  }, [activeTab]);
+
   return (
     <Tabs
       value={activeTab}
       onValueChange={(value) => {
-        const nextTab = value as SystemTabKey;
+        if (!isSystemTabKey(value)) return;
+        const nextTab = value;
         if (!isOwner && (nextTab === 'backup' || nextTab === 'diagnostics')) {
           setActiveTab('general');
           return;
@@ -53,7 +103,10 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
       }}
       className='w-full'
     >
-      <TabsList className='shadow-soft border-border bg-background flex w-full rounded-2xl border overflow-x-auto scrollbar-hide'>
+      <TabsList
+        ref={setTabListRef}
+        className='shadow-soft border-border bg-background flex w-full justify-start overflow-x-auto rounded-2xl border sm:overflow-x-visible [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0 sm:[&_[data-slot=tabs-trigger]]:flex-1 sm:[&_[data-slot=tabs-trigger]]:shrink'
+      >
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}
         </TabsTrigger>
