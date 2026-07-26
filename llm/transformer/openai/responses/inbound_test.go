@@ -154,6 +154,67 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with namespace tools",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-4o",
+					"input": "List the projects.",
+					"tools": [
+						{
+							"type": "namespace",
+							"name": "mcp__codebase_memory_mcp",
+							"tools": [
+								{
+									"type": "function",
+									"name": "list_projects",
+									"description": "List stored projects",
+									"parameters": {
+										"type": "object",
+										"properties": {}
+									},
+									"strict": true
+								},
+								{
+									"type": "function",
+									"name": "get_project",
+									"description": "Get a stored project",
+									"parameters": {
+										"type": "object",
+										"properties": {"id": {"type": "string"}},
+										"required": ["id"]
+									}
+								},
+								{
+									"type": "web_search",
+									"name": "unsupported_nested_tool"
+								}
+							]
+						},
+						{
+							"type": "function",
+							"name": "get_weather",
+							"parameters": {"type": "object", "properties": {}}
+						}
+					]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Len(t, result.Tools, 3)
+
+				namespaceTool := result.Tools[0]
+				require.Equal(t, "function", namespaceTool.Type)
+				require.Equal(t, "mcp__codebase_memory_mcp__list_projects", namespaceTool.Function.Name)
+				require.Equal(t, "List stored projects", namespaceTool.Function.Description)
+				require.JSONEq(t, `{"type":"object","properties":{}}`, string(namespaceTool.Function.Parameters))
+				require.NotNil(t, namespaceTool.Function.Strict)
+				require.True(t, *namespaceTool.Function.Strict)
+
+				require.Equal(t, "mcp__codebase_memory_mcp__get_project", result.Tools[1].Function.Name)
+				require.Equal(t, "get_weather", result.Tools[2].Function.Name)
+			},
+		},
+		{
 			name: "captures responses provider raw tools and tool choice",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{
