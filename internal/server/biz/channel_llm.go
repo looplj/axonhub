@@ -395,6 +395,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			Transport:      transport,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
+		llm.APIFormatOpenAIModeration.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),
 		llm.APIFormatOpenAIImageEdit.String(),
 		llm.APIFormatOpenAIImageVariation.String(),

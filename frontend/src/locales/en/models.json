@@ -142,6 +142,7 @@
     "models.dialogs.association.conditions.formatOptions.openai/image_variation": "OpenAI (Image Variation)",
     "models.dialogs.association.conditions.formatOptions.openai/embeddings": "OpenAI (Embeddings)",
     "models.dialogs.association.conditions.formatOptions.openai/video": "OpenAI (Video)",
+    "models.dialogs.association.conditions.formatOptions.openai/moderations": "OpenAI (Moderations)",
     "models.dialogs.association.conditions.formatOptions.openai/audio_speech": "OpenAI (Audio Speech)",
     "models.dialogs.association.conditions.formatOptions.openai/audio_transcriptions": "OpenAI (Audio Transcriptions)",
     "models.dialogs.association.conditions.formatOptions.openai/audio_translations": "OpenAI (Audio Translations)",

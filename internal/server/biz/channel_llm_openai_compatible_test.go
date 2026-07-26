@@ -43,7 +43,7 @@ func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, built)
 	require.NotNil(t, built.Outbound)
-	require.Len(t, built.Outbounds, 6)
+	require.Len(t, built.Outbounds, 7)
 
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion, built.Outbound.APIFormat())
 
@@ -51,6 +51,12 @@ func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, embeddingOutbound)
 	_, ok := embeddingOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+
+	moderationOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIModeration.String())
+	require.NoError(t, err)
+	require.NotNil(t, moderationOutbound)
+	_, ok = moderationOutbound.(*openai.OutboundTransformer)
 	require.True(t, ok)
 
 	imageOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIImageGeneration.String())
@@ -87,7 +93,7 @@ func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, built)
 	require.NotNil(t, built.Outbound)
-	require.Len(t, built.Outbounds, 6)
+	require.Len(t, built.Outbounds, 7)
 
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion, built.Outbound.APIFormat())
 
@@ -95,6 +101,12 @@ func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, embeddingOutbound)
 	_, ok := embeddingOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+
+	moderationOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIModeration.String())
+	require.NoError(t, err)
+	require.NotNil(t, moderationOutbound)
+	_, ok = moderationOutbound.(*openai.OutboundTransformer)
 	require.True(t, ok)
 }
 

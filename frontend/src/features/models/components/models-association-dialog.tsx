@@ -40,6 +40,7 @@ const requestFormatConditionOptions = [
   'openai/image_variation',
   'openai/embeddings',
   'openai/video',
+  'openai/moderations',
   'openai/audio_speech',
   'openai/audio_transcriptions',
   'openai/audio_translations',

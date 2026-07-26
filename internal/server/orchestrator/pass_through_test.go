@@ -1401,6 +1401,15 @@ func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
 	require.Equal(t, string(rawBody), string(merged))
 }
 
+func TestMergePassThroughBodyPatchesModerationModel(t *testing.T) {
+	rawBody := []byte(`{"model":"omni-moderation-latest","input":"hello"}`)
+
+	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatOpenAIModeration, "provider-moderation-v1")
+	require.NoError(t, err)
+	require.Equal(t, "provider-moderation-v1", gjson.GetBytes(merged, "model").String())
+	require.Equal(t, "hello", gjson.GetBytes(merged, "input").String())
+}
+
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
 func TestApplyUserAgentPassThrough(t *testing.T) {
 	tests := []struct {

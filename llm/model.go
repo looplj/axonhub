@@ -255,6 +255,9 @@ type Request struct {
 	// Translation is the speech-to-text (STT) translation request, will be set if the request is a translation request.
 	Translation *TranslationRequest `json:"translation,omitempty"`
 
+	// Moderation is the standalone /v1/moderations request payload.
+	Moderation *ModerationRequest `json:"moderation_request,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -695,6 +698,9 @@ type Response struct {
 
 	// TranscriptionStreamEvent carries one SSE event of a streaming STT response (stream=true).
 	TranscriptionStreamEvent *TranscriptionStreamEvent `json:"transcription_stream_event,omitempty"`
+
+	// Moderation is the standalone /v1/moderations response payload.
+	Moderation *ModerationResponse `json:"moderation,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.
