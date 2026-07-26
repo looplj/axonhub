@@ -307,7 +307,7 @@
   "channels.dialogs.fields.apiFormat.formats.openai/image_generation": "OpenAI (图像生成)",
   "channels.dialogs.fields.apiFormat.formats.openai/image_edit": "OpenAI (图像编辑)",
   "channels.dialogs.fields.apiFormat.formats.openai/image_variation": "OpenAI (图像变体)",
-  "channels.dialogs.fields.apiFormat.formats.openai/video": "OpenAI (Video)",
+  "channels.dialogs.fields.apiFormat.formats.openai/video": "OpenAI (视频)",
   "channels.dialogs.fields.apiFormat.formats.openai/audio_speech": "OpenAI (语音合成)",
   "channels.dialogs.fields.apiFormat.formats.openai/audio_transcriptions": "OpenAI (语音转录)",
   "channels.dialogs.fields.apiFormat.formats.openai/audio_translations": "OpenAI (语音翻译)",
