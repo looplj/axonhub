@@ -117,7 +117,7 @@ func TestNanogptChannel_BuildChannelWithOutbounds(t *testing.T) {
 	_, ok := built.Outbound.(*nanogpt.OutboundTransformer)
 	require.True(t, ok, "primary outbound should remain nanogpt transformer")
 
-	require.Len(t, built.Outbounds, 9)
+	require.Len(t, built.Outbounds, 10)
 
 	chatOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIChatCompletion.String())
 	require.NoError(t, err)
@@ -126,6 +126,10 @@ func TestNanogptChannel_BuildChannelWithOutbounds(t *testing.T) {
 	embeddingOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIEmbedding.String())
 	require.NoError(t, err)
 	require.Same(t, built.Outbound, embeddingOutbound)
+
+	moderationOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIModeration.String())
+	require.NoError(t, err)
+	require.Same(t, built.Outbound, moderationOutbound)
 
 	imageOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIImageGeneration.String())
 	require.NoError(t, err)

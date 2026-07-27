@@ -186,6 +186,49 @@ fmt.Println(responseText)
 // AxonHub automatically translates OpenAI format → Gemini format
 ```
 
+## Moderations API
+
+AxonHub supports OpenAI-compatible content moderation through a standalone endpoint.
+
+**Endpoints:**
+- `POST /v1/moderations` - Classify text and/or image inputs with models such as `omni-moderation-latest`
+
+**Request parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `input` | string \| string[] \| multimodal object[] | ✅ | Content to classify. Multimodal items use `{ "type": "text", "text": "..." }` or `{ "type": "image_url", "image_url": { "url": "..." } }`. |
+| `model` | string | ❌ | Moderation model. If omitted, AxonHub defaults to `omni-moderation-latest`. The model must be available on a channel that exposes the `openai/moderations` endpoint. |
+
+**Standalone request example:**
+
+```json
+{
+  "model": "omni-moderation-latest",
+  "input": "...text to classify goes here..."
+}
+```
+
+Multimodal input (text + image) is also supported:
+
+```json
+{
+  "model": "omni-moderation-latest",
+  "input": [
+    { "type": "text", "text": "...text to classify goes here..." },
+    {
+      "type": "image_url",
+      "image_url": { "url": "https://example.com/image.png" }
+    }
+  ]
+}
+```
+
+**Notes:**
+- Chat Completions / Responses do not model the optional inline `moderation` request field. Use this standalone endpoint instead.
+- OpenAI and several OpenAI-compatible channel types include `openai/moderations` in their default endpoint set. Channels that do not support upstream `/moderations` may return provider errors; remove or override the endpoint if needed.
+- When body pass-through is enabled and inbound/outbound formats match, model mapping still patches the top-level `model` field for moderations requests.
+
 ## Embedding API
 
 AxonHub provides comprehensive support for text and multimodal embedding generation through OpenAI-compatible API.

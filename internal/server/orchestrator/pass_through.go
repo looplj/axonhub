@@ -155,6 +155,7 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 		llm.APIFormatOpenAIResponse,
 		llm.APIFormatOpenAIResponseCompact,
 		llm.APIFormatOpenAIEmbedding,
+		llm.APIFormatOpenAIModeration,
 		llm.APIFormatJinaEmbedding,
 		llm.APIFormatJinaRerank,
 		llm.APIFormatAnthropicMessage,
