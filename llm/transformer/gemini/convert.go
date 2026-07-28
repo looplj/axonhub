@@ -136,8 +136,12 @@ func convertLLMFinishReasonToGemini(reason *string) string {
 	}
 }
 
-func convertImageURLToGeminiPart(url string) *Part {
-	if parsed := xurl.ParseDataURL(url); parsed != nil {
+func convertImageURLToGeminiPart(image *llm.ImageURL) *Part {
+	if image == nil || image.URL == "" {
+		return nil
+	}
+
+	if parsed := xurl.ParseDataURL(image.URL); parsed != nil {
 		return &Part{
 			InlineData: &Blob{
 				MIMEType: parsed.MediaType,
@@ -146,14 +150,12 @@ func convertImageURLToGeminiPart(url string) *Part {
 		}
 	}
 
-	// Regular URL - use FileData with MIME type detection
-	part := &Part{
+	return &Part{
 		FileData: &FileData{
-			FileURI: url,
+			FileURI:  image.URL,
+			MIMEType: image.MIMEType,
 		},
 	}
-
-	return part
 }
 
 func convertVideoURLToGeminiPart(video *llm.VideoURL) *Part {

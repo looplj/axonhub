@@ -555,6 +555,9 @@ type ImageURL struct {
 	// URL is the URL of the image.
 	URL string `json:"url"`
 
+	// MIMEType is the MIME type of the image when provided by the source protocol.
+	MIMEType string `json:"mime_type,omitempty"`
+
 	// Specifies the detail level of the image. Learn more in the
 	// [Vision guide](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
 	//

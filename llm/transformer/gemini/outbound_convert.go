@@ -356,7 +356,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 			case "image_url":
 				// Handle image_url type
 				if part.ImageURL != nil && part.ImageURL.URL != "" {
-					geminiPart := convertImageURLToGeminiPart(part.ImageURL.URL)
+					geminiPart := convertImageURLToGeminiPart(part.ImageURL)
 					if geminiPart != nil {
 						parts = append(parts, geminiPart)
 						lastPart = geminiPart
