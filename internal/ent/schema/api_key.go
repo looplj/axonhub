@@ -53,7 +53,8 @@ func (APIKey) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
-		field.String("name"),
+		field.String("name").
+			Annotations(entgql.OrderField("NAME")),
 		field.Enum("type").
 			Values("user", "service_account", "noauth", "personal").
 			Default("user").
@@ -73,6 +74,10 @@ func (APIKey) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
+		field.Strings("allowed_ips").
+			Comment("IP CIDR allowlist for this API key. If non-empty, only requests from matching source IPs are accepted.").
+			Default([]string{}).
+			Optional(),
 	}
 }
 

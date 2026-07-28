@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import useDialogState from '@/hooks/use-dialog-state';
 import { Channel } from '../data/schema';
 
@@ -43,6 +43,8 @@ interface ChannelsContextType {
   setSelectedChannels: React.Dispatch<React.SetStateAction<Channel[]>>;
   resetRowSelection: () => void;
   setResetRowSelection: (fn: () => void) => void;
+  showTypeTabs: boolean;
+  setShowTypeTabs: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const ChannelsContext = React.createContext<ChannelsContextType | null>(null);
@@ -55,6 +57,26 @@ export default function ChannelsProvider({ children }: Props) {
   const [open, setOpen] = useDialogState<ChannelsDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Channel | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<Channel[]>([]);
+  const [showTypeTabs, setShowTypeTabs] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('channels-show-type-tabs');
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        return typeof parsed === 'boolean' ? parsed : true;
+      }
+    } catch {
+      return true;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('channels-show-type-tabs', JSON.stringify(showTypeTabs));
+    } catch {
+      // Ignore storage failures; the in-memory preference still works.
+    }
+  }, [showTypeTabs]);
   const resetRowSelectionRef = useRef<() => void>(() => {});
 
   return (
@@ -70,6 +92,8 @@ export default function ChannelsProvider({ children }: Props) {
         setResetRowSelection: (fn: () => void) => {
           resetRowSelectionRef.current = fn;
         },
+        showTypeTabs,
+        setShowTypeTabs,
       }}
     >
       {children}

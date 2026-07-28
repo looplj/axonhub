@@ -47,7 +47,6 @@ This architecture provides:
 - **`lb_strategy_rr.go`** - Round-robin strategy with inactivity decay and request count capping
 - **`lb_strategy_bp.go`** - Error-aware strategy that penalizes channels with recent failures
 - **`lb_strategy_composite.go`** - Composite strategy combining multiple approaches with weights
-- **`lb_strategy_trace.go`** - Trace-aware strategy for prioritizing last successful channel
 - **`lb_strategy_weight.go`** - Weight-based strategy using channel ordering weight
 - **`lb_strategy_model_aware_circuit_breaker.go`** - Strategy that considers model health on specific channels
 - **`lb_strategy_random.go`** - Simple random strategy for tie-breaking
@@ -76,17 +75,22 @@ This architecture provides:
 - **`load-balancing.md`** - Detailed load balancing documentation
 - **`README.md`** - This file
 
+## Candidate Selection Stage
+
+Before any score-based load balancing runs, an optional sticky stage can pin a candidate:
+
+- **Trace Sticky Candidate Selection** - Implemented by `LoadBalancedSelector` (a `CandidateSelector` decorator), **not** a `LoadBalanceStrategy`. When enabled via `TraceStickyMode`, it places the cached previous trace or thread channel at the front of the candidate list before score-based sorting. Because it does not implement `Score()`, it is not one of the combinable strategies below and cannot be passed to `NewLoadBalancer`.
+
 ## Load Balancing Strategies
 
-The orchestrator supports multiple load balancing strategies that can be combined:
+After the candidate selection stage, the orchestrator supports multiple score-based load balancing strategies that can be combined:
 
-1. **Trace Aware** - Prioritizes the last successful channel from trace context (highest priority)
-2. **Error Aware** - Penalizes channels with recent failures, consecutive errors, and low success rates
-3. **Round Robin** - Distributes requests evenly across channels using historical request count with inactivity decay
-4. **Connection Aware** - Considers active connection count per channel
-5. **Weight** - Uses channel ordering weight for prioritization
-6. **Model Aware Circuit Breaker** - Dynamically penalizes channels where the requested model is currently failing
-7. **Random** - Adds a small random factor to break ties between channels with identical scores
+1. **Error Aware** - Penalizes channels with recent failures, consecutive errors, and low success rates
+2. **Round Robin** - Distributes requests evenly across channels using historical request count with inactivity decay
+3. **Connection Aware** - Considers active connection count per channel
+4. **Weight** - Uses channel ordering weight for prioritization
+5. **Model Aware Circuit Breaker** - Dynamically penalizes channels where the requested model is currently failing
+6. **Random** - Adds a small random factor to break ties between channels with identical scores
 
 The load balancer uses partial sorting for efficient top-k candidate selection based on retry policy configuration.
 
@@ -95,7 +99,7 @@ The load balancer uses partial sorting for efficient top-k candidate selection b
 - **`LoadBalanceStrategy`** - Interface for load balancing strategies with `Score()` and `ScoreWithDebug()` methods
 - **`ChannelMetricsProvider`** - Provides channel performance metrics (AggregatedMetrics)
 - **`RetryPolicyProvider`** - Supplies retry policy configuration
-- **`ChannelTraceProvider`** - Provides trace-related channel information
+- **`PreviousChannelProvider`** - Provides the cached previous channel for trace and thread sticky selection
 - **`CandidateSelector`** - Interface for selecting channel model candidates
 - **`ConnectionTracker`** - Interface for tracking active connections per channel
 - **`PromptProvider`** - Supplies enabled prompts for injection

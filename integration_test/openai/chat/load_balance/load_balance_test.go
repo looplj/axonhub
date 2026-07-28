@@ -9,9 +9,9 @@ import (
 	"github.com/openai/openai-go/v3"
 )
 
-// TestTraceBasedLoadBalancing verifies that trace-aware load balancing works correctly.
+// TestTraceBasedLoadBalancing verifies that trace sticky routing works correctly.
 // When a trace has a successful request on a specific channel, subsequent requests
-// in the same trace should prefer that channel (TraceAwareStrategy gives 1000 boost).
+// in the same trace should prefer that channel while its routing-cache entry is valid.
 func TestTraceBasedLoadBalancing(t *testing.T) {
 	helper := testutil.NewTestHelper(t, "TestTraceBasedLoadBalancing")
 	helper.PrintHeaders(t)
@@ -38,7 +38,7 @@ func TestTraceBasedLoadBalancing(t *testing.T) {
 
 	t.Log("=== Test 2: Second request in same trace (should prefer same channel) ===")
 
-	// Second request in same trace - should prefer the same channel due to TraceAwareStrategy
+	// Second request in same trace - should prefer the cached previous channel.
 	secondResponse, err := helper.CreateChatCompletionWithHeaders(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage("What is 3+3?"),
@@ -68,7 +68,7 @@ func TestTraceBasedLoadBalancing(t *testing.T) {
 
 	t.Log("=== Trace-based load balancing test completed successfully ===")
 	t.Log("All requests in the same trace should have been routed to the same channel")
-	t.Log("due to TraceAwareStrategy giving 1000 point boost to the last successful channel")
+	t.Log("due to trace sticky routing using the cached previous channel")
 }
 
 // TestTraceBasedLoadBalancing_MultipleTraces verifies that different traces
@@ -253,15 +253,14 @@ func TestLoadBalancingWithRetry(t *testing.T) {
 	t.Log("and automatically retry with alternative channels based on load balancing scores")
 }
 
-// TestTraceAwareStrategyPriority verifies that TraceAwareStrategy has the highest
-// priority and overrides other strategies when a trace context exists.
-func TestTraceAwareStrategyPriority(t *testing.T) {
-	helper := testutil.NewTestHelper(t, "TestTraceAwareStrategyPriority")
+// TestTraceStickyRouting verifies that trace sticky routing precedes normal
+// load-balancer scoring when a previous channel is cached.
+func TestTraceStickyRouting(t *testing.T) {
+	helper := testutil.NewTestHelper(t, "TestTraceStickyRouting")
 	ctx := helper.CreateTestContext()
 
-	t.Log("=== Testing TraceAwareStrategy priority ===")
-	t.Log("TraceAwareStrategy should give 1000 point boost to the last successful channel")
-	t.Log("This should override other strategies like WeightStrategy, ErrorAwareStrategy, etc.")
+	t.Log("=== Testing trace sticky routing ===")
+	t.Log("The previous successful channel should be selected before normal scoring")
 
 	// First request establishes the channel
 	t.Log("\n--- First request: Establishing channel preference ---")
@@ -293,15 +292,9 @@ func TestTraceAwareStrategyPriority(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	t.Log("\n=== TraceAwareStrategy priority test completed ===")
+	t.Log("\n=== Trace sticky routing test completed ===")
 	t.Log("All requests in the same trace should have been routed to the same channel")
-	t.Log("Strategy scoring breakdown:")
-	t.Log("- TraceAwareStrategy: 1000 points (for last successful channel)")
-	t.Log("- ErrorAwareStrategy: 0-200 points (based on health)")
-	t.Log("- WeightRoundRobinStrategy: 10-150 points (based on weight and load)")
-	t.Log("- LatencyAwareStrategy: 0-80 points (based on EWMA latency)")
-	t.Log("- RateLimitAwareStrategy: -10000 to 100 points (based on RPM/TPM/concurrency and cooldown)")
-	t.Log("Total: TraceAware dominates with 1000 point boost")
+	t.Log("The affinity comes from the routing cache, not a load-balancer score")
 }
 
 // TestLoadBalancingDebugMode verifies that debug mode provides detailed
@@ -339,13 +332,12 @@ func TestLoadBalancingDebugMode(t *testing.T) {
 // work together correctly to produce the final channel ranking.
 func TestLoadBalancingStrategyComposition(t *testing.T) {
 	t.Log("=== Testing load balancing strategy composition ===")
-	t.Log("The default orchestrator uses these strategies in order:")
-	t.Log("1. TraceAwareStrategy (0 or 1000 points)")
-	t.Log("2. ErrorAwareStrategy (0-200 points)")
-	t.Log("3. WeightRoundRobinStrategy (10-150 points)")
-	t.Log("4. LatencyAwareStrategy (0-80 points)")
-	t.Log("5. RateLimitAwareStrategy (-10000 to 100 points)")
-	t.Log("Total score determines channel priority")
+	t.Log("Trace sticky routing runs before the default load-balancer strategies:")
+	t.Log("1. ErrorAwareStrategy (0-200 points)")
+	t.Log("2. WeightRoundRobinStrategy (10-150 points)")
+	t.Log("3. LatencyAwareStrategy (0-80 points)")
+	t.Log("4. RateLimitAwareStrategy (-10000 to 100 points)")
+	t.Log("Total score determines the fallback-channel priority")
 
 	// Test scenario 1: No trace context (weight-based selection)
 	t.Log("\n--- Scenario 1: No trace context ---")

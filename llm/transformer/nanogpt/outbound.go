@@ -93,6 +93,7 @@ func (t *OutboundTransformer) TransformResponse(
 	if httpResp.Request != nil {
 		switch httpResp.Request.APIFormat {
 		case string(llm.APIFormatOpenAIEmbedding),
+			string(llm.APIFormatOpenAIModeration),
 			string(llm.APIFormatOpenAIImageGeneration),
 			string(llm.APIFormatOpenAIImageEdit),
 			string(llm.APIFormatOpenAIImageVariation),

@@ -7,6 +7,9 @@ import (
 type Usage struct {
 	InputTokens       int64 `json:"input_tokens"`
 	InputTokenDetails struct {
+		// CacheWriteTokens is the number of input tokens written to the prompt cache.
+		CacheWriteTokens int64 `json:"cache_write_tokens"`
+		// CachedTokens is the number of input tokens retrieved from the prompt cache.
 		CachedTokens int64 `json:"cached_tokens"`
 	} `json:"input_tokens_details"`
 	OutputTokens       int64 `json:"output_tokens"`
@@ -22,7 +25,8 @@ func (u *Usage) ToUsage() *llm.Usage {
 		CompletionTokens: u.OutputTokens,
 		TotalTokens:      u.TotalTokens,
 		PromptTokensDetails: &llm.PromptTokensDetails{
-			CachedTokens: u.InputTokenDetails.CachedTokens,
+			CachedTokens:      u.InputTokenDetails.CachedTokens,
+			WriteCachedTokens: u.InputTokenDetails.CacheWriteTokens,
 		},
 		CompletionTokensDetails: &llm.CompletionTokensDetails{
 			ReasoningTokens: u.OutputTokenDetails.ReasoningTokens,
@@ -44,6 +48,7 @@ func ConvertLLMUsageToResponsesUsage(usage *llm.Usage) *Usage {
 
 	if usage.PromptTokensDetails != nil {
 		result.InputTokenDetails.CachedTokens = usage.PromptTokensDetails.CachedTokens
+		result.InputTokenDetails.CacheWriteTokens = usage.PromptTokensDetails.WriteCachedTokens
 	}
 
 	if usage.CompletionTokensDetails != nil {

@@ -280,6 +280,54 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoi
 	require.Len(t, toolChoice["tools"], 1)
 }
 
+func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "List the projects.",
+			"tools": [
+				{
+					"type": "namespace",
+					"name": "mcp__codebase_memory_mcp",
+					"tools": [
+						{"type": "function", "name": "list_projects", "parameters": {"type": "object"}},
+						{"type": "function", "name": "get_project", "parameters": {"type": "object"}}
+					]
+				},
+				{"type": "function", "name": "get_weather", "parameters": {"type": "object"}}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	require.Len(t, llmReq.Tools, 3)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	tools, ok := payload["tools"].([]any)
+	require.True(t, ok)
+	require.Len(t, tools, 2)
+	namespaceTool, ok := tools[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "namespace", namespaceTool["type"])
+	require.Equal(t, "mcp__codebase_memory_mcp", namespaceTool["name"])
+	require.Len(t, namespaceTool["tools"], 2)
+
+	functionTool, ok := tools[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "get_weather", functionTool["name"])
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysProviderRawInputItems(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{
@@ -1249,6 +1297,57 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformImageEditResponse(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:       "gpt-image-1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageEdit,
+		Image: &llm.ImageRequest{
+			Prompt:       "edit this image",
+			Images:       [][]byte{[]byte("source-image")},
+			OutputFormat: "webp",
+			Quality:      "high",
+			Size:         "1024x1024",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, llm.RequestTypeImage.String(), httpReq.RequestType)
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), httpReq.APIFormat)
+
+	result, err := transformer.TransformResponse(t.Context(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Request:    httpReq,
+		Body: []byte(`{
+			"id": "resp_image_123",
+			"object": "response",
+			"created_at": 1759161016,
+			"status": "completed",
+			"model": "gpt-image-1",
+			"output": [
+				{
+					"id": "img_123",
+					"type": "image_generation_call",
+					"status": "completed",
+					"result": "data:image/webp;base64,aW1hZ2UtZGF0YQ=="
+				}
+			]
+		}`),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "image.generation", result.Object)
+	require.Equal(t, llm.RequestTypeImage, result.RequestType)
+	require.Equal(t, "gpt-image-1", result.Model)
+	require.NotNil(t, result.Image)
+	require.Equal(t, "webp", result.Image.OutputFormat)
+	require.Equal(t, "high", result.Image.Quality)
+	require.Equal(t, "1024x1024", result.Image.Size)
+	require.Len(t, result.Image.Data, 1)
+	require.Equal(t, "aW1hZ2UtZGF0YQ==", result.Image.Data[0].B64JSON)
 }
 
 func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {

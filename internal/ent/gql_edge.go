@@ -452,25 +452,12 @@ func (_m *Project) ProjectUsers(
 	return _m.QueryProjectUsers().Paginate(ctx, after, first, before, last, opts...)
 }
 
-func (_m *Prompt) Projects(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *ProjectOrder, where *ProjectWhereInput,
-) (*ProjectConnection, error) {
-	opts := []ProjectPaginateOption{
-		WithProjectOrder(orderBy),
-		WithProjectFilter(where.Filter),
+func (_m *Prompt) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
 	}
-	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[0][alias]
-	if nodes, err := _m.NamedProjects(alias); err == nil || hasTotalCount {
-		pager, err := newProjectPager(opts, last != nil)
-		if err != nil {
-			return nil, err
-		}
-		conn := &ProjectConnection{Edges: []*ProjectEdge{}, TotalCount: totalCount}
-		conn.build(nodes, pager, after, first, before, last)
-		return conn, nil
-	}
-	return _m.QueryProjects().Paginate(ctx, after, first, before, last, opts...)
+	return result, err
 }
 
 func (_m *ProviderQuotaStatus) Channel(ctx context.Context) (*Channel, error) {

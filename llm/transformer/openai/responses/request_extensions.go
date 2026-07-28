@@ -12,14 +12,19 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	}
 
 	raw := parseRawRequestFragments(rawBody)
+	reasoningContext := ""
+	if req.Reasoning != nil {
+		reasoningContext = req.Reasoning.Context
+	}
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
-		RawTools:       buildRawOnlyToolFragments(req.Tools, raw.Tools),
-		ToolSignatures: buildRepresentedToolSignatures(req.Tools),
-		RawToolChoice:  rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
-		RawInputItems:  buildRawOnlyInputFragments(req.Input, raw.InputItems),
+		ReasoningContext: reasoningContext,
+		RawTools:         buildRawOnlyToolFragments(req.Tools, raw.Tools),
+		ToolSignatures:   buildRepresentedToolSignatures(req.Tools),
+		RawToolChoice:    rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
+		RawInputItems:    buildRawOnlyInputFragments(req.Input, raw.InputItems),
 	}
 
-	if len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
+	if requestExt.ReasoningContext == "" && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
 		return
 	}
 
@@ -69,6 +74,17 @@ func buildRepresentedToolSignatures(tools []Tool) []string {
 
 	signatures := make([]string, 0, len(tools))
 	for _, tool := range tools {
+		if tool.Type == "namespace" {
+			for _, subTool := range tool.Tools {
+				if subTool.Type == "function" {
+					signatures = append(signatures, responseToolSignature(Tool{
+						Type: "function",
+						Name: namespaceFunctionName(tool.Name, subTool.Name),
+					}))
+				}
+			}
+			continue
+		}
 		if !isStructurallyRepresentedToolType(tool.Type) {
 			continue
 		}
@@ -90,14 +106,30 @@ func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.O
 		}
 
 		fragments = append(fragments, llm.OpenAIResponsesRawFragment{
-			Type:          tools[i].Type,
-			Name:          tools[i].Name,
-			OriginalIndex: i,
-			Raw:           cloneRaw(rawTools[i]),
+			Type:                 tools[i].Type,
+			Name:                 tools[i].Name,
+			OriginalIndex:        i,
+			RepresentedToolCount: representedNamespaceToolCount(tools[i]),
+			Raw:                  cloneRaw(rawTools[i]),
 		})
 	}
 
 	return fragments
+}
+
+func representedNamespaceToolCount(tool Tool) int {
+	if tool.Type != "namespace" {
+		return 0
+	}
+
+	count := 0
+	for _, subTool := range tool.Tools {
+		if subTool.Type == "function" {
+			count++
+		}
+	}
+
+	return count
 }
 
 func isStructurallyRepresentedToolType(toolType string) bool {
@@ -269,20 +301,35 @@ func mergeRawOnlyTools(structuredRaw json.RawMessage, requestExt *llm.OpenAIResp
 		return nil, false
 	}
 
-	total := len(structuredTools) + len(requestExt.RawTools)
+	representedCount := 0
+	for _, fragment := range requestExt.RawTools {
+		if fragment.RepresentedToolCount < 0 {
+			return nil, false
+		}
+		representedCount += fragment.RepresentedToolCount
+	}
+	if representedCount > len(structuredTools) {
+		return nil, false
+	}
+
+	total := len(structuredTools) - representedCount + len(requestExt.RawTools)
 	tools := make([]json.RawMessage, 0, total)
 	structuredIndex := 0
-	rawByIndex := make(map[int]json.RawMessage, len(requestExt.RawTools))
+	rawByIndex := make(map[int]llm.OpenAIResponsesRawFragment, len(requestExt.RawTools))
 	for _, fragment := range requestExt.RawTools {
 		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
 			return nil, false
 		}
-		rawByIndex[fragment.OriginalIndex] = cloneRaw(fragment.Raw)
+		rawByIndex[fragment.OriginalIndex] = fragment
 	}
 
 	for i := 0; i < total; i++ {
-		if raw, ok := rawByIndex[i]; ok {
-			tools = append(tools, raw)
+		if fragment, ok := rawByIndex[i]; ok {
+			tools = append(tools, cloneRaw(fragment.Raw))
+			structuredIndex += fragment.RepresentedToolCount
+			if structuredIndex > len(structuredTools) {
+				return nil, false
+			}
 			continue
 		}
 		if structuredIndex >= len(structuredTools) {

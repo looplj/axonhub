@@ -8,6 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { SelectDropdown } from '@/components/select-dropdown';
 import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
+import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
   useCreateChannel,
@@ -332,6 +334,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
   const { data: proxyPresets = [] } = useProxyPresets();
   const saveProxyPreset = useSaveProxyPreset();
+  const { hasSystemScope } = usePermissions();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -340,6 +343,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [useFetchedModels, setUseFetchedModels] = useState(false);
   const providerRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const providerListRef = useRef<HTMLDivElement | null>(null);
+  const providerHorizontalScrollRef = useHorizontalScroll<HTMLDivElement>();
 
   // Expandable panel states
   const [showFetchedModelsPanel, setShowFetchedModelsPanel] = useState(false);
@@ -549,19 +553,30 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const target = providerRefs.current[selectedProvider];
       const container = providerListRef.current;
       if (target && container) {
-        const containerHeight = container.clientHeight;
-        const targetOffsetTop = target.offsetTop;
-        const targetHeight = target.clientHeight;
-
-        const targetCenter = targetOffsetTop + targetHeight / 2;
-        const scrollTop = targetCenter - containerHeight / 2;
-
-        container.scrollTop = Math.max(0, scrollTop);
+        const isHorizontal =
+          (window.getComputedStyle(container).overflowX === 'auto' ||
+            window.getComputedStyle(container).overflowX === 'scroll') &&
+          container.scrollWidth > container.clientWidth;
+        if (isHorizontal) {
+          const targetCenter = target.offsetLeft + target.clientWidth / 2;
+          container.scrollLeft = Math.max(0, targetCenter - container.clientWidth / 2);
+        } else {
+          const targetCenter = target.offsetTop + target.clientHeight / 2;
+          container.scrollTop = Math.max(0, targetCenter - container.clientHeight / 2);
+        }
       }
     }, 100);
 
     return () => clearTimeout(timer);
   }, [open, isEdit, selectedProvider]);
+
+  const setProviderListRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      providerListRef.current = el;
+      providerHorizontalScrollRef(el);
+    },
+    [providerHorizontalScrollRef]
+  );
 
   // Auto-open supported models panel when showModelsPanel is true
   useEffect(() => {
@@ -1220,7 +1235,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           };
 
       const shouldUseProtocolDefaultBaseURL =
-        (isCodexType && (!isEdit || authMode === 'official' || authMode === 'auth-json')) ||
+        (isCodexType && (authMode === 'official' || authMode === 'auth-json')) ||
         (isClaudeCodeType && authMode === 'official' && !isDuplicate);
       if (shouldUseProtocolDefaultBaseURL) {
         const currentType = selectedType || derivedChannelType;
@@ -1308,7 +1323,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
 
         // Auto-save proxy preset (preserve existing name if available)
-        if (proxyType === ProxyType.URL && proxyUrl) {
+        if (hasSystemScope('write_settings') && proxyType === ProxyType.URL && proxyUrl) {
           const existingPreset = proxyPresets.find((p) => p.url === proxyUrl);
           saveProxyPreset.mutate({
             name: existingPreset?.name,
@@ -1767,14 +1782,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       <FormItem className='flex min-h-0 flex-1 flex-col space-y-2'>
                         <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
                         <div
-                          ref={providerListRef}
-                          className={`flex-1 overflow-y-auto pr-2 ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : ''}`}
+                          ref={setProviderListRef}
+                          className={`flex-1 overflow-x-auto overflow-y-hidden pb-2 md:overflow-x-hidden md:overflow-y-auto md:pb-0 md:pr-2 ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : ''}`}
                         >
                           <RadioGroup
                             value={selectedProvider}
                             onValueChange={handleProviderChange}
                             disabled={!!isOAuthChannel}
-                            className='space-y-2'
+                            className='flex flex-row gap-2 md:flex-col md:space-y-2'
                           >
                             {availableProviders.map((provider) => {
                               const Icon = provider.icon;
@@ -1787,7 +1802,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   ref={(el) => {
                                     providerRefs.current[provider.key] = el;
                                   }}
-                                  className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors ${
+                                  className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors shrink-0 md:w-full ${
                                     isProviderDisabled
                                       ? isSelected
                                         ? 'border-primary bg-muted/80 cursor-not-allowed shadow-sm'
@@ -1802,7 +1817,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     data-testid={`provider-${provider.key}`}
                                   />
                                   {Icon && <Icon size={20} className='flex-shrink-0' />}
-                                  <FormLabel htmlFor={`provider-${provider.key}`} className='flex-1 cursor-pointer font-normal'>
+                                  <FormLabel htmlFor={`provider-${provider.key}`} className='flex-1 cursor-pointer whitespace-nowrap font-normal'>
                                     {provider.label}
                                   </FormLabel>
                                 </div>

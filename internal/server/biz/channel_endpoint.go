@@ -24,6 +24,7 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAISpeech.String():          {},
 	llm.APIFormatOpenAITranscription.String():   {},
 	llm.APIFormatOpenAITranslation.String():     {},
+	llm.APIFormatOpenAIModeration.String():      {},
 	llm.APIFormatAnthropicMessage.String():      {},
 	llm.APIFormatGeminiContents.String():        {},
 	llm.APIFormatGeminiEmbedding.String():       {},
@@ -84,6 +85,7 @@ var openAICompatibleDefaultEndpoints = []objects.ChannelEndpoint{
 	{APIFormat: llm.APIFormatOpenAIImageEdit.String()},
 	{APIFormat: llm.APIFormatOpenAIImageVariation.String()},
 	{APIFormat: llm.APIFormatOpenAIVideo.String()},
+	{APIFormat: llm.APIFormatOpenAIModeration.String()},
 }
 
 // openAIFullDefaultEndpoints includes the audio endpoints on top of the compatible set.
@@ -190,6 +192,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeNanogptResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeOpencodeGo:       openAIChatOnlyDefaultEndpoints,
 	channel.TypeOllama:           {{APIFormat: llm.APIFormatOllamaChat.String()}},
+	channel.TypeOllamaAnthropic:  {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeEvolink:          openAICompatibleDefaultEndpoints,
 	channel.TypeEvolinkAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 }

@@ -4,6 +4,7 @@ import { IconPlus, IconSettings, IconAlertCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
@@ -128,8 +129,9 @@ function DetectUnassociatedButton() {
 }
 
 function ActionButtons() {
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
   return (
-    <div className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
+    <div ref={scrollRef} className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
       <PermissionGuard requiredScope='write_channels'>
         <>
           <DetectUnassociatedButton />

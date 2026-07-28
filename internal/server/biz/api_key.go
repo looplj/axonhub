@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -376,6 +377,13 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 			}
 		}
 
+		if len(input.AllowedIps) > 0 {
+			if err := validateAllowedIPs(input.AllowedIps); err != nil {
+				return err
+			}
+			create.SetAllowedIps(input.AllowedIps)
+		}
+
 		created, err := create.Save(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to create API key: %w", err)
@@ -463,6 +471,24 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 			if input.ClearScopes {
 				update.ClearScopes()
 			}
+		}
+
+		if input.ClearAllowedIps {
+			update.ClearAllowedIps()
+		}
+
+		if len(input.AllowedIps) > 0 {
+			if err := validateAllowedIPs(input.AllowedIps); err != nil {
+				return err
+			}
+			update.SetAllowedIps(input.AllowedIps)
+		}
+
+		if len(input.AppendAllowedIps) > 0 {
+			if err := validateAllowedIPs(input.AppendAllowedIps); err != nil {
+				return err
+			}
+			update.AppendAllowedIps(input.AppendAllowedIps)
 		}
 
 		updated, err := update.Save(ctx)
@@ -666,6 +692,27 @@ func validateProfileQuota(profiles []objects.APIKeyProfile) error {
 			}
 		default:
 			return fmt.Errorf("profile '%s' quota.period.type is invalid", profile.Name)
+		}
+	}
+
+	return nil
+}
+
+func validateAllowedIPs(ips []string) error {
+	for _, ip := range ips {
+		ip = strings.TrimSpace(ip)
+		if ip == "" {
+			continue
+		}
+
+		if strings.Contains(ip, "/") {
+			if _, err := netip.ParsePrefix(ip); err != nil {
+				return fmt.Errorf("invalid CIDR %q: %w", ip, err)
+			}
+		} else {
+			if _, err := netip.ParseAddr(ip); err != nil {
+				return fmt.Errorf("invalid IP %q: %w", ip, err)
+			}
 		}
 	}
 

@@ -55,6 +55,7 @@ type OpenAIHandlers struct {
 	ResponseCompletionHandlers *ChatCompletionHandlers
 	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
+	ModerationHandlers         *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
 	ImageEditHandlers          *ChatCompletionHandlers
 	ImageVariationHandlers     *ChatCompletionHandlers
@@ -151,6 +152,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				openai.NewEmbeddingInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		ModerationHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewModerationInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -308,6 +326,11 @@ func (handlers *OpenAIHandlers) CompactResponse(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 	handlers.EmbeddingHandlers.ChatCompletion(c)
+}
+
+// CreateModeration handles POST /v1/moderations.
+func (handlers *OpenAIHandlers) CreateModeration(c *gin.Context) {
+	handlers.ModerationHandlers.ChatCompletion(c)
 }
 
 // CreateSpeech handles POST /v1/audio/speech (text-to-speech). The response is binary audio.

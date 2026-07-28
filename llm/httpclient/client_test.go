@@ -1,13 +1,17 @@
 package httpclient
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -279,6 +283,97 @@ func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(
 	require.NotNil(t, tr.Proxy)
 	require.NotNil(t, tr.TLSClientConfig)
 	require.True(t, tr.TLSClientConfig.InsecureSkipVerify)
+}
+
+type proxyConnectionIDContextKey struct{}
+
+func TestNewHttpClientWithProxy_ConnectionReuse(t *testing.T) {
+	tests := []struct {
+		name                    string
+		disableConnectionReuse  bool
+		wantDistinctConnections int
+	}{
+		{
+			name:                    "reuses proxy connection by default",
+			wantDistinctConnections: 1,
+		},
+		{
+			name:                    "uses a new proxy connection for every request when disabled",
+			disableConnectionReuse:  true,
+			wantDistinctConnections: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var nextConnectionID atomic.Int64
+			var connectionIDsMu sync.Mutex
+			connectionIDs := make([]int64, 0, 2)
+
+			proxy := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				connectionID, ok := r.Context().Value(proxyConnectionIDContextKey{}).(int64)
+				require.True(t, ok)
+
+				connectionIDsMu.Lock()
+				connectionIDs = append(connectionIDs, connectionID)
+				connectionIDsMu.Unlock()
+
+				w.Header().Set("Content-Type", "application/json")
+				_, err := w.Write([]byte(`{"ok":true}`))
+				require.NoError(t, err)
+			}))
+			proxy.Config.ConnContext = func(ctx context.Context, _ net.Conn) context.Context {
+				return context.WithValue(ctx, proxyConnectionIDContextKey{}, nextConnectionID.Add(1))
+			}
+			proxy.Start()
+			defer proxy.Close()
+
+			client := NewHttpClientWithProxy(&ProxyConfig{
+				Type:                   ProxyTypeURL,
+				URL:                    proxy.URL,
+				DisableConnectionReuse: tt.disableConnectionReuse,
+			})
+			defer client.GetNativeClient().CloseIdleConnections()
+			transport, ok := client.GetNativeClient().Transport.(*http.Transport)
+			require.True(t, ok)
+			require.Equal(t, tt.disableConnectionReuse, transport.DisableKeepAlives)
+			require.Equal(t, !tt.disableConnectionReuse, transport.ForceAttemptHTTP2)
+
+			for range 2 {
+				_, err := client.Do(t.Context(), &Request{
+					Method: http.MethodGet,
+					URL:    "http://upstream.example/test",
+				})
+				require.NoError(t, err)
+			}
+
+			connectionIDsMu.Lock()
+			defer connectionIDsMu.Unlock()
+
+			require.Len(t, connectionIDs, 2)
+			require.Len(t, map[int64]struct{}{
+				connectionIDs[0]: {},
+				connectionIDs[1]: {},
+			}, tt.wantDistinctConnections)
+		})
+	}
+}
+
+func TestNewHttpClientWithProxy_DisableConnectionReuseOnlyAppliesToURLProxy(t *testing.T) {
+	for _, proxyType := range []ProxyType{ProxyTypeDisabled, ProxyTypeEnvironment} {
+		t.Run(string(proxyType), func(t *testing.T) {
+			client := NewHttpClientWithProxy(&ProxyConfig{
+				Type:                   proxyType,
+				DisableConnectionReuse: true,
+			})
+			defer client.CloseIdleConnections()
+
+			transport, ok := client.GetNativeClient().Transport.(*http.Transport)
+			require.True(t, ok)
+			require.False(t, transport.DisableKeepAlives)
+			require.True(t, transport.ForceAttemptHTTP2)
+		})
+	}
 }
 
 func TestHttpClientImpl_buildHttpRequest(t *testing.T) {

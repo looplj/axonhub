@@ -17,6 +17,7 @@ export function TraceCard({ trace, onViewTrace, index }: TraceCardProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const createdAtLabel = format(trace.createdAt, 'yyyy-MM-dd HH:mm:ss', { locale });
+  const isArchived = trace.status === 'archived';
 
   return (
     <Card className='group relative overflow-hidden border border-border/50 bg-gradient-to-br from-card to-card/95 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-border hover:-translate-y-0.5'>
@@ -41,6 +42,11 @@ export function TraceCard({ trace, onViewTrace, index }: TraceCardProps) {
                   {trace.traceID}
                 </span>
               </div>
+              {isArchived && (
+                <Badge variant='outline' className='text-xs text-muted-foreground'>
+                  {t('common.status.archived', 'Archived')}
+                </Badge>
+              )}
             </div>
             <div className='flex items-center gap-1.5 text-xs text-muted-foreground/80'>
               <Clock className='h-3 w-3' />

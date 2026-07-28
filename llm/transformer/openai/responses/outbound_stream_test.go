@@ -2,9 +2,11 @@ package responses
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -170,6 +172,66 @@ func TestOutboundTransformer_TransformStream_UsesFinalEncryptedContentPerReasoni
 
 	require.Equal(t, []string{"gAAAA_done_1", "gAAAA_done_2"}, signatures)
 	require.Equal(t, []string{"rs_1", "rs_2"}, sourceIDs)
+}
+
+func TestResponsesTransformer_StreamRoundTrip_PreservesCompactionSummary(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_compact_1","object":"response.compaction","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"msg_1","type":"message","status":"completed","content":[{"type":"input_text","text":"Preserve this fact."}],"role":"user"}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":1,"item":{"id":"cmp_1","type":"compaction_summary","encrypted_content":"encrypted-summary"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_compact_1","object":"response.compaction","created_at":1700000000,"model":"gpt-5","status":"completed","output":[{"id":"msg_1","type":"message","status":"completed","content":[{"type":"input_text","text":"Preserve this fact."}],"role":"user"},{"id":"cmp_1","type":"compaction_summary","encrypted_content":"encrypted-summary"}],"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}}`)},
+	}
+
+	llmStream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+
+	llmResponses, err := streams.All(llmStream)
+	require.NoError(t, err)
+
+	var compactPart *llm.MessageContentPart
+	for _, resp := range llmResponses {
+		if resp == llm.DoneResponse || len(resp.Choices) == 0 || resp.Choices[0].Delta == nil {
+			continue
+		}
+		for i := range resp.Choices[0].Delta.Content.MultipleContent {
+			part := &resp.Choices[0].Delta.Content.MultipleContent[i]
+			if part.Type == "compaction_summary" {
+				compactPart = part
+			}
+		}
+	}
+	require.NotNil(t, compactPart)
+	require.NotNil(t, compactPart.Compact)
+	require.Equal(t, "cmp_1", compactPart.Compact.ID)
+	require.Equal(t, "encrypted-summary", compactPart.Compact.EncryptedContent)
+
+	inboundStream, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream(llmResponses))
+	require.NoError(t, err)
+
+	var compactDone *Item
+	var completed *Response
+	for inboundStream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(inboundStream.Current().Data, &event))
+		if event.Type == StreamEventTypeOutputItemDone && event.Item != nil && event.Item.Type == "compaction_summary" {
+			compactDone = event.Item
+		}
+		if event.Type == StreamEventTypeResponseCompleted {
+			completed = event.Response
+		}
+	}
+	require.NoError(t, inboundStream.Err())
+	require.NotNil(t, compactDone)
+	require.Equal(t, "cmp_1", compactDone.ID)
+	require.Equal(t, "encrypted-summary", lo.FromPtr(compactDone.EncryptedContent))
+	require.NotNil(t, completed)
+	require.Equal(t, "resp_compact_1", completed.ID)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, "compaction_summary", completed.Output[0].Type)
+	require.Equal(t, "encrypted-summary", lo.FromPtr(completed.Output[0].EncryptedContent))
 }
 
 func TestOutboundTransformer_TransformStream_ResponseCancelledCompletes(t *testing.T) {

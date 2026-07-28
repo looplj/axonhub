@@ -201,6 +201,31 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			},
 		},
 		{
+			name: "moderation request routes to embedded OpenAI transformer",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id": "modr-1",
+					"model": "omni-moderation-latest",
+					"results": [{
+						"flagged": false,
+						"categories": {"violence": false},
+						"category_scores": {"violence": 0.01}
+					}]
+				}`),
+				Request: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIModeration),
+				},
+			},
+			expectedErr: false,
+			validateResp: func(t *testing.T, resp *llm.Response) {
+				require.NotNil(t, resp)
+				require.NotNil(t, resp.Moderation)
+				require.Len(t, resp.Moderation.Results, 1)
+				require.False(t, resp.Moderation.Results[0].Flagged)
+			},
+		},
+		{
 			name: "chat request uses NanoGPT-specific parsing",
 			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,

@@ -17,6 +17,8 @@ const (
 	RequestTypeTranscription RequestType = "transcription"
 	// RequestTypeTranslation is the speech-to-text translation request type, maps to /v1/audio/translations.
 	RequestTypeTranslation RequestType = "translation"
+	// RequestTypeModeration is the content moderation request type, maps to /v1/moderations.
+	RequestTypeModeration RequestType = "moderation"
 )
 
 func (r RequestType) String() string {
@@ -39,6 +41,7 @@ const (
 	APIFormatOpenAISpeech        APIFormat = "openai/audio_speech"
 	APIFormatOpenAITranscription APIFormat = "openai/audio_transcriptions"
 	APIFormatOpenAITranslation   APIFormat = "openai/audio_translations"
+	APIFormatOpenAIModeration    APIFormat = "openai/moderations"
 	APIFormatGeminiContents      APIFormat = "gemini/contents"
 	APIFormatAnthropicMessage    APIFormat = "anthropic/messages"
 	APIFormatAiSDKText           APIFormat = "aisdk/text"

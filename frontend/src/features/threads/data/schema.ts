@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
-import { traceConnectionSchema, usageMetadataSchema } from '@/features/traces/data/schema';
+import { traceConnectionSchema, traceStatusSchema, usageMetadataSchema } from '@/features/traces/data/schema';
 
 const projectSchema = z
   .object({
@@ -26,6 +26,8 @@ export const threadSchema = z.object({
   tracesSummary: threadTracesSummarySchema,
   firstUserQuery: z.string().nullable().optional(),
   usageMetadata: usageMetadataSchema,
+  status: traceStatusSchema.optional().default('active'),
+  archivedTracesCount: z.number().optional().default(0),
 });
 
 export type Thread = z.infer<typeof threadSchema>;

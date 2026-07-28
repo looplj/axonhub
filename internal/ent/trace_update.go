@@ -50,6 +50,20 @@ func (_u *TraceUpdate) SetNillableTraceID(v *string) *TraceUpdate {
 	return _u
 }
 
+// SetStatus sets the "status" field.
+func (_u *TraceUpdate) SetStatus(v trace.Status) *TraceUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *TraceUpdate) SetNillableStatus(v *trace.Status) *TraceUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *TraceUpdate) AddRequestIDs(ids ...int) *TraceUpdate {
 	_u.mutation.AddRequestIDs(ids...)
@@ -135,6 +149,11 @@ func (_u *TraceUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *TraceUpdate) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := trace.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Trace.status": %w`, err)}
+		}
+	}
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Trace.project"`)
 	}
@@ -164,6 +183,9 @@ func (_u *TraceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.TraceID(); ok {
 		_spec.SetField(trace.FieldTraceID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(trace.FieldStatus, field.TypeEnum, value)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -248,6 +270,20 @@ func (_u *TraceUpdateOne) SetTraceID(v string) *TraceUpdateOne {
 func (_u *TraceUpdateOne) SetNillableTraceID(v *string) *TraceUpdateOne {
 	if v != nil {
 		_u.SetTraceID(*v)
+	}
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *TraceUpdateOne) SetStatus(v trace.Status) *TraceUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *TraceUpdateOne) SetNillableStatus(v *trace.Status) *TraceUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
 	return _u
 }
@@ -350,6 +386,11 @@ func (_u *TraceUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *TraceUpdateOne) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := trace.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Trace.status": %w`, err)}
+		}
+	}
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Trace.project"`)
 	}
@@ -396,6 +437,9 @@ func (_u *TraceUpdateOne) sqlSave(ctx context.Context) (_node *Trace, err error)
 	}
 	if value, ok := _u.mutation.TraceID(); ok {
 		_spec.SetField(trace.FieldTraceID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(trace.FieldStatus, field.TypeEnum, value)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

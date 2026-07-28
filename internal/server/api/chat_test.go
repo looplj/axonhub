@@ -135,6 +135,28 @@ func TestWriteSSEStream_Success(t *testing.T) {
 	assert.Contains(t, body, `[DONE]`)
 }
 
+func TestWriteSSEStream_CanceledContextStillDrainsBufferedEvents(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	c.Request = httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "", Data: []byte(`{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)},
+		{Type: "", Data: []byte(`[DONE]`)},
+	}
+	stream := streams.SliceStream(events)
+
+	WriteSSEStream(c, stream)
+
+	body := w.Body.String()
+	assert.Contains(t, body, `{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)
+	assert.Contains(t, body, `[DONE]`)
+	assert.NotContains(t, body, `"error"`)
+}
+
 func TestWriteSSEStream_ErrorFormatsAsJSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

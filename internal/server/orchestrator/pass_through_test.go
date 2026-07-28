@@ -880,6 +880,49 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 	}
 }
 
+func TestPassThroughChannelStream_DrainsBufferedEventsAfterCancel(t *testing.T) {
+	// Reproduce the production race: client disconnect cancels the request context
+	// while the terminal event is already buffered for the pipeline drain path.
+	// Next() must prefer draining the buffer so InboundPersistentStream can see [DONE]
+	// and mark the request completed instead of canceled.
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan *httpclient.StreamEvent, 2)
+	ch <- &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	ch <- &httpclient.StreamEvent{Data: []byte("[DONE]")}
+	close(ch)
+	cancel()
+
+	stream := &passThroughChannelStream{ctx: ctx, ch: ch}
+
+	var events []*httpclient.StreamEvent
+	for stream.Next() {
+		events = append(events, stream.Current())
+	}
+
+	require.Len(t, events, 2)
+	assert.Equal(t, []byte("[DONE]"), events[1].Data)
+	assert.True(t, isTerminalStreamEvent(events[1]))
+}
+
+func TestPassThroughChannelStream_StopsAtEmptyBufferAfterCancel(t *testing.T) {
+	// After cancellation Next() must never block waiting for the producer: it drains
+	// buffered events, then ends the stream (canceling upstream via Close) at the
+	// first empty-buffer moment even though the channel is still open.
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan *httpclient.StreamEvent, 2)
+	ch <- &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	cancel()
+
+	upstreamCanceled := false
+	stream := &passThroughChannelStream{ctx: ctx, ch: ch, cancel: func() { upstreamCanceled = true }}
+
+	require.True(t, stream.Next())
+	assert.Equal(t, []byte(`{"id":"chunk"}`), stream.Current().Data)
+
+	require.False(t, stream.Next())
+	assert.True(t, upstreamCanceled)
+}
+
 type doneStream struct {
 	stream streams.Stream[*httpclient.StreamEvent]
 	done   chan struct{}
@@ -1356,6 +1399,15 @@ func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
 	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatGeminiContents, "gemini-2.5-pro")
 	require.NoError(t, err)
 	require.Equal(t, string(rawBody), string(merged))
+}
+
+func TestMergePassThroughBodyPatchesModerationModel(t *testing.T) {
+	rawBody := []byte(`{"model":"omni-moderation-latest","input":"hello"}`)
+
+	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatOpenAIModeration, "provider-moderation-v1")
+	require.NoError(t, err)
+	require.Equal(t, "provider-moderation-v1", gjson.GetBytes(merged, "model").String())
+	require.Equal(t, "hello", gjson.GetBytes(merged, "input").String())
 }
 
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.

@@ -23,7 +23,7 @@ type ImageGeneration struct {
 }
 
 type Tool struct {
-	// Any of "function", "image_generation", "custom", "web_search".
+	// Any of "function", "image_generation", "custom", "web_search", "namespace".
 	Type        string `json:"type,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
@@ -32,6 +32,9 @@ type Tool struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 	// This field is from variant [FunctionTool].
 	Strict *bool `json:"strict,omitempty"`
+
+	// Tools holds sub-tools when Type is "namespace".
+	Tools []Tool `json:"tools,omitempty"`
 
 	// This field is for custom tool format definition.
 	Format *CustomToolFormat `json:"format,omitempty"`
@@ -164,6 +167,8 @@ type Prompt struct {
 
 // Reasoning represents configuration options for reasoning models.
 type Reasoning struct {
+	// The reasoning context scope requested by internal Responses features.
+	Context string `json:"context,omitempty"`
 	// The effort level for reasoning. Any of "low", "medium", "high".
 	Effort string `json:"effort,omitempty"`
 	// Whether to generate a summary of the reasoning. Any of "auto", "concise", "detailed".

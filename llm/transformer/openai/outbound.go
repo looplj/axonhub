@@ -161,6 +161,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	switch llmReq.RequestType {
 	case llm.RequestTypeEmbedding:
 		return t.transformEmbeddingRequest(ctx, llmReq)
+	case llm.RequestTypeModeration:
+		return t.transformModerationRequest(ctx, llmReq)
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeVideo:
@@ -268,6 +270,8 @@ func (t *OutboundTransformer) TransformResponse(
 			return transformImageGenerationResponse(httpResp)
 		case string(llm.APIFormatOpenAIEmbedding):
 			return t.transformEmbeddingResponse(ctx, httpResp)
+		case string(llm.APIFormatOpenAIModeration):
+			return t.transformModerationResponse(ctx, httpResp)
 		case string(llm.APIFormatOpenAIVideo):
 			return transformVideoResponse(httpResp)
 		case string(llm.APIFormatOpenAISpeech):
@@ -338,6 +342,17 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	resp, err := t.TransformResponse(ctx, httpResp)
 	if err != nil {
 		return nil, err
+	}
+
+	// Normalize empty finish_reason to nil. Some OpenAI-compatible providers
+	// (e.g. Sensenova) emit finish_reason:"" in every stream chunk. An empty
+	// string is semantically identical to "not finished" (null), so this
+	// normalization prevents downstream code from mistaking every chunk for
+	// a terminal event.
+	for i := range resp.Choices {
+		if resp.Choices[i].FinishReason != nil && *resp.Choices[i].FinishReason == "" {
+			resp.Choices[i].FinishReason = nil
+		}
 	}
 
 	// Skip non-standard events with explicit empty choices array and no usage

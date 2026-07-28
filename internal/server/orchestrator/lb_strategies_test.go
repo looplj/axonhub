@@ -68,24 +68,6 @@ func (m *mockSelectionTracker) IncrementChannelSelection(channelID int) {
 	m.selections[channelID]++
 }
 
-// mockTraceProvider is a mock implementation of ChannelTraceProvider for testing.
-type mockTraceProvider struct {
-	lastSuccessChannel map[int]int // traceID -> channelID
-	err                error
-}
-
-func (m *mockTraceProvider) GetLastSuccessfulChannelID(ctx context.Context, traceID int) (int, error) {
-	if m.err != nil {
-		return 0, m.err
-	}
-
-	if channelID, ok := m.lastSuccessChannel[traceID]; ok {
-		return channelID, nil
-	}
-
-	return 0, nil
-}
-
 // newTestChannelService creates a minimal channel service for testing.
 // It bypasses the normal initialization to avoid requiring a ScheduledExecutor.
 func newTestChannelService(client *ent.Client) *biz.ChannelService {
@@ -114,5 +96,5 @@ func newTestRequestService(client *ent.Client) *biz.RequestService {
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
-	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService, biz.NewLiveStreamRegistry())
+	return biz.NewRequestService(client, systemService.CacheConfig, systemService, usageLogService, dataStorageService, biz.NewLiveStreamRegistry())
 }

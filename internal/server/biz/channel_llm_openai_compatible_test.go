@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -42,7 +43,7 @@ func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, built)
 	require.NotNil(t, built.Outbound)
-	require.Len(t, built.Outbounds, 6)
+	require.Len(t, built.Outbounds, 7)
 
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion, built.Outbound.APIFormat())
 
@@ -50,6 +51,12 @@ func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, embeddingOutbound)
 	_, ok := embeddingOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+
+	moderationOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIModeration.String())
+	require.NoError(t, err)
+	require.NotNil(t, moderationOutbound)
+	_, ok = moderationOutbound.(*openai.OutboundTransformer)
 	require.True(t, ok)
 
 	imageOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIImageGeneration.String())
@@ -86,7 +93,7 @@ func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, built)
 	require.NotNil(t, built.Outbound)
-	require.Len(t, built.Outbounds, 6)
+	require.Len(t, built.Outbounds, 7)
 
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion, built.Outbound.APIFormat())
 
@@ -94,6 +101,12 @@ func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, embeddingOutbound)
 	_, ok := embeddingOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+
+	moderationOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIModeration.String())
+	require.NoError(t, err)
+	require.NotNil(t, moderationOutbound)
+	_, ok = moderationOutbound.(*openai.OutboundTransformer)
 	require.True(t, ok)
 }
 
@@ -220,6 +233,35 @@ func TestStopChannelOutboundsStopsEachOutboundOnce(t *testing.T) {
 
 	require.Equal(t, 1, primary.stops)
 	require.Equal(t, 1, secondary.stops)
+}
+
+type closeIdleTrackingTransport struct {
+	closeIdleCalls int
+}
+
+func (*closeIdleTrackingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, nil
+}
+
+func (t *closeIdleTrackingTransport) CloseIdleConnections() {
+	t.closeIdleCalls++
+}
+
+func TestCleanupSwappedChannelsClosesOnlyOwnedHTTPClients(t *testing.T) {
+	sharedTransport := &closeIdleTrackingTransport{}
+	ownedTransport := &closeIdleTrackingTransport{}
+	sharedClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: sharedTransport})
+	ownedClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: ownedTransport})
+	svc := &ChannelService{httpClient: sharedClient}
+
+	svc.cleanupSwappedChannels([]*Channel{
+		{HTTPClient: sharedClient},
+		{HTTPClient: ownedClient},
+		{},
+	})
+
+	require.Zero(t, sharedTransport.closeIdleCalls)
+	require.Equal(t, 1, ownedTransport.closeIdleCalls)
 }
 
 func TestOnEnabledChannelsSwapDoesNotWaitForOldCleanup(t *testing.T) {

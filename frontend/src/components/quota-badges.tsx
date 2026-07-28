@@ -20,6 +20,8 @@ import {
   ProviderOpenCodeGoQuotaData,
   OpenCodeGoQuotaWindow,
   ProviderKimiCodeQuotaData,
+  ProviderMinimaxQuotaData,
+  ProviderZhipuQuotaData,
   ClineQuotaWindow,
   isClinePassPoolQuotaData,
   resetChannelQuotaNow,
@@ -74,6 +76,10 @@ function isOpenaiType(t: string): t is 'openai' | 'openai_responses' {
 
 function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropic' {
   return t === 'opencode_go' || t === 'opencode_go_anthropic';
+}
+
+function isMinimaxType(t: string): t is 'minimax' | 'minimax_anthropic' {
+  return t === 'minimax' || t === 'minimax_anthropic';
 }
 
 // Dedup key for OpenCode Go channels: the quota is per workspace, so channels
@@ -146,6 +152,15 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (channel.type === 'moonshot_coding') {
     const qd = channel.quotaStatus.quotaData as ProviderKimiCodeQuotaData | undefined;
     percentage = Math.max(0, ...(qd?.rows ?? []).map((row) => (row.limit > 0 ? (row.used / row.limit) * 100 : 0)));
+  } else if (channel.type === 'minimax' || channel.type === 'minimax_anthropic') {
+    const qd = channel.quotaStatus.quotaData as ProviderMinimaxQuotaData | undefined;
+    percentage = Math.max(
+      0,
+      ...(qd?.rows ?? []).map((row) => Math.max(row.intervalPercent, row.weeklyPercent))
+    );
+  } else if (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic') {
+    const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
+    percentage = Math.max(0, ...(qd?.rows ?? []).map((row) => row.usedPercent));
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
     const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
     percentage = qd?.current_period_used_percent ?? 0;
@@ -1060,6 +1075,119 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                     )}
                   </div>
                 )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {isMinimaxType(channel.type) && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderMinimaxQuotaData | undefined;
+            if (!qd) return null;
+
+            const rows = qd.rows ?? [];
+
+            return (
+              <>
+                {rows.map((row, index) => {
+                  const intervalUsed = Math.round(row.intervalUsedPercent);
+                  const intervalTotal = Math.round(row.intervalTotalPercent);
+                  const showIntervalTotal = intervalTotal !== 100;
+
+                  const hasWeekly = row.weeklyStatus && row.weeklyStatus !== '';
+                  const weeklyUsed = Math.round(row.weeklyUsedPercent);
+                  const weeklyTotal = Math.round(row.weeklyTotalPercent);
+                  const showWeeklyTotal = weeklyTotal !== 100;
+
+                  return (
+                    <div key={`${row.modelName}-${index}`} className={index > 0 ? 'border-border/60 space-y-3 border-t border-dashed pt-3' : 'space-y-3'}>
+                      {rows.length > 1 && (
+                        <div className='text-muted-foreground text-[11px] font-medium tracking-wide uppercase'>
+                          {row.modelName}
+                        </div>
+                      )}
+                      <div className='space-y-1.5'>
+                        <div className='flex items-center justify-between text-xs'>
+                          <span className='text-muted-foreground font-medium'>
+                            {t('quota.window.5h')}
+                          </span>
+                          <span className='text-foreground font-medium'>
+                            {showIntervalTotal
+                              ? `${intervalUsed}% / ${intervalTotal}%`
+                              : t('quota.label.percent_used', { percent: intervalUsed })}
+                          </span>
+                        </div>
+                        <ProgressBar percentage={row.intervalPercent} />
+                        {row.intervalResetAt && (
+                          <div className='text-muted-foreground text-right text-[11px]'>
+                            {formatTimeToReset(row.intervalResetAt)}
+                          </div>
+                        )}
+                      </div>
+                      {hasWeekly && (
+                        <div className='border-border/60 space-y-1.5 border-t border-dashed pt-3'>
+                          <div className='flex items-center justify-between text-xs'>
+                            <span className='text-muted-foreground font-medium'>
+                              {t('quota.window.weekly')}
+                            </span>
+                            <span className='text-foreground font-medium'>
+                              {showWeeklyTotal
+                                ? `${weeklyUsed}% / ${weeklyTotal}%`
+                                : t('quota.label.percent_used', { percent: weeklyUsed })}
+                            </span>
+                          </div>
+                          <ProgressBar percentage={row.weeklyPercent} />
+                          {row.weeklyResetAt && (
+                            <div className='text-muted-foreground text-right text-[11px]'>
+                              {formatTimeToReset(row.weeklyResetAt)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {(channel.type === 'zhipu' || channel.type === 'zhipu_anthropic') && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
+            if (!qd) return null;
+
+            const rows = qd.rows ?? [];
+            const windowLabels: Record<string, string> = {
+              five_hour: t('quota.window.5h'),
+              weekly_limit: t('quota.window.weekly'),
+            };
+
+            return (
+              <>
+                {rows.map((row, index) => {
+                  const percentage = Math.min(100, row.usedPercent);
+                  return (
+                    <div key={`${row.window}-${index}`} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                      <div className='flex items-center justify-between text-xs'>
+                        <span className='text-muted-foreground font-medium'>
+                          {windowLabels[row.window] ?? row.window}
+                        </span>
+                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</span>
+                      </div>
+                      <ProgressBar percentage={percentage} />
+                      {row.resetAt && (
+                        <div className='text-muted-foreground text-right text-[11px]'>
+                          {formatTimeToReset(row.resetAt)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </>
             );
           })()}

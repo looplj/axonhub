@@ -526,7 +526,7 @@ func HasPrompts() predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, PromptsTable, PromptsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, PromptsTable, PromptsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

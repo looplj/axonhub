@@ -19,6 +19,7 @@ const API_FORMAT_PATHS: Record<ApiFormat, string> = {
   'openai/image_edit': '/v1/images/edits',
   'openai/image_variation': '/v1/images/variations',
   'openai/embeddings': '/v1/embeddings',
+  'openai/moderations': '/v1/moderations',
   'openai/video': '/v1/videos',
   'openai/audio_speech': '/v1/audio/speech',
   'openai/audio_transcriptions': '/v1/audio/transcriptions',

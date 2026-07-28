@@ -87,6 +87,10 @@ func init() {
 	apikeyDescProfiles := apikeyFields[7].Descriptor()
 	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
 	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
+	// apikeyDescAllowedIps is the schema descriptor for allowed_ips field.
+	apikeyDescAllowedIps := apikeyFields[8].Descriptor()
+	// apikey.DefaultAllowedIps holds the default value on creation for the allowed_ips field.
+	apikey.DefaultAllowedIps = apikeyDescAllowedIps.Default.([]string)
 	apikeyprofiletemplateMixin := schema.APIKeyProfileTemplate{}.Mixin()
 	apikeyprofiletemplate.Policy = privacy.NewPolicies(schema.APIKeyProfileTemplate{})
 	apikeyprofiletemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -696,6 +700,10 @@ func init() {
 	roleDescDeletedAt := roleMixinFields1[0].Descriptor()
 	// role.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	role.DefaultDeletedAt = roleDescDeletedAt.Default.(int)
+	// roleDescProjectID is the schema descriptor for project_id field.
+	roleDescProjectID := roleFields[2].Descriptor()
+	// role.DefaultProjectID holds the default value on creation for the project_id field.
+	role.DefaultProjectID = roleDescProjectID.Default.(int)
 	// roleDescScopes is the schema descriptor for scopes field.
 	roleDescScopes := roleFields[3].Descriptor()
 	// role.DefaultScopes holds the default value on creation for the scopes field.
