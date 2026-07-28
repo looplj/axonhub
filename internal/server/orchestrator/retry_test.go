@@ -2,6 +2,8 @@ package orchestrator
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
@@ -231,6 +233,16 @@ func TestIsRetryableError(t *testing.T) {
 			err:      errors.New("generic error"),
 			expected: false,
 		},
+		{
+			name:     "wrapped upstream EOF is retryable",
+			err:      fmt.Errorf("HTTP stream request failed: %w", io.EOF),
+			expected: true,
+		},
+		{
+			name:     "unexpected EOF is retryable",
+			err:      io.ErrUnexpectedEOF,
+			expected: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -271,6 +283,12 @@ func TestIsRetryableErrorForChannel(t *testing.T) {
 			err: &httpclient.Error{
 				StatusCode: http.StatusInternalServerError,
 			},
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "wrapped upstream EOF is retryable without channel settings",
+			err:      fmt.Errorf("failed to stream request: %w", io.EOF),
 			channel:  nil,
 			expected: true,
 		},
