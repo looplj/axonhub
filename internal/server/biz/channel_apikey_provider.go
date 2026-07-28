@@ -18,7 +18,7 @@ const traceStickyLRUSize = 1024
 // TraceStickyKeyProvider selects an API key deterministically per traceID (if present),
 // using cached enabled keys from the channel snapshot.
 //
-// An LRU cache remembers previous traceID→key selections so that, as long as
+// An LRU cache remembers previous traceID-to-key selections so that, as long as
 // the previously chosen key is still enabled, the same key is returned even when
 // the enabled-key set changes (e.g. a new key is added). This improves sticky
 // stability compared to pure rendezvous hashing alone.
@@ -39,10 +39,18 @@ func NewTraceStickyKeyProvider(channel *Channel) *TraceStickyKeyProvider {
 }
 
 func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
+	hadEnabledKeys := len(p.channel.cachedEnabledAPIKeys) > 0
 	enabled := availableAPIKeysForRequest(ctx, p.channel)
 	if len(enabled) == 0 {
+		// Do not resurrect a key that was excluded during this request. An empty
+		// enabled snapshot is the legacy no-enabled-key case and may still use
+		// the historical credentials fallback.
+		if hadEnabledKeys {
+			return ""
+		}
+
 		for _, key := range p.channel.Credentials.GetAllAPIKeys() {
-			if contexts.IsChannelAPIKeyExcluded(ctx, p.channel.ID, key) {
+			if p.channel.IsAPIKeyDisabled(key) || contexts.IsChannelAPIKeyExcluded(ctx, p.channel.ID, key) {
 				continue
 			}
 			return key

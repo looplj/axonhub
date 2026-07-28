@@ -1196,13 +1196,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         return;
       }
 
-      const apiKeyFailoverStatusCodes = parseRetryableStatusCodesInput(apiKeyFailoverStatusCodesText);
+      const apiKeyFailoverStatusCodes = apiKeyFailoverEnabled
+        ? parseRetryableStatusCodesInput(apiKeyFailoverStatusCodesText)
+        : [];
       if (apiKeyFailoverStatusCodes === null) {
         toast.error(t('channels.dialogs.apiKeyFailover.statusCodes.validation'));
         return;
       }
 
-      const apiKeyFailoverErrorPatterns = parseRetryableErrorPatternsInput(apiKeyFailoverErrorPatternsText);
+      const apiKeyFailoverErrorPatterns = apiKeyFailoverEnabled
+        ? parseRetryableErrorPatternsInput(apiKeyFailoverErrorPatternsText)
+        : [];
       if (apiKeyFailoverErrorPatterns === null) {
         toast.error(t('channels.dialogs.apiKeyFailover.errorPatterns.validation'));
         return;

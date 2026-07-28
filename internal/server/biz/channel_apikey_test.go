@@ -326,7 +326,7 @@ func TestTraceStickyKeyProvider_EnableKey_AfterDisable(t *testing.T) {
 	require.Contains(t, allKeys, keyAfterEnable)
 }
 
-func TestTraceStickyKeyProvider_AllKeysDisabled_FallbackToFirst(t *testing.T) {
+func TestTraceStickyKeyProvider_AllKeysDisabled_ReturnsEmpty(t *testing.T) {
 	ch := &Channel{
 		Channel: &ent.Channel{
 			Credentials: objects.ChannelCredentials{
@@ -334,13 +334,16 @@ func TestTraceStickyKeyProvider_AllKeysDisabled_FallbackToFirst(t *testing.T) {
 			},
 		},
 		cachedEnabledAPIKeys: []string{},
+		cachedDisabledKeySet: map[string]struct{}{
+			"key-1": {},
+			"key-2": {},
+		},
 	}
 
 	provider := NewTraceStickyKeyProvider(ch)
 	ctx := context.Background()
 
-	key := provider.Get(ctx)
-	require.Equal(t, "key-1", key, "should preserve the legacy fallback when the enabled-key cache is empty")
+	require.Empty(t, provider.Get(ctx))
 }
 
 func TestTraceStickyKeyProvider_ExcludesFailedKeyForCurrentRequest(t *testing.T) {
@@ -380,6 +383,20 @@ func TestTraceStickyKeyProvider_DoesNotFallbackToExcludedKeys(t *testing.T) {
 	for _, key := range keys[1:] {
 		contexts.ExcludeChannelAPIKey(ctx, ch.ID, key)
 	}
+
+	require.Empty(t, NewTraceStickyKeyProvider(ch).Get(ctx))
+}
+
+func TestTraceStickyKeyProvider_DoesNotResurrectExcludedEnabledKey(t *testing.T) {
+	keys := []string{"disabled-key", "enabled-key"}
+	ch := &Channel{
+		Channel: &ent.Channel{
+			ID:          42,
+			Credentials: objects.ChannelCredentials{APIKeys: keys},
+		},
+		cachedEnabledAPIKeys: []string{"disabled-key"},
+	}
+	ctx := contexts.ExcludeChannelAPIKey(context.Background(), ch.ID, keys[0])
 
 	require.Empty(t, NewTraceStickyKeyProvider(ch).Get(ctx))
 }
