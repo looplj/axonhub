@@ -35,6 +35,7 @@ func NewInvitationHandlers(params InvitationHandlersParams) *InvitationHandlers 
 type CreateInvitationRequest struct {
 	ExpiresInHours *int `json:"expiresInHours"`
 	MaxUses        int  `json:"maxUses"`
+	RoleID         int  `json:"roleID" binding:"required"`
 }
 
 type InvitationResponse struct {
@@ -71,7 +72,7 @@ func (h *InvitationHandlers) Create(c *gin.Context) {
 		return
 	}
 
-	created, err := h.InvitationService.CreateInvitation(c.Request.Context(), projectID, req.ExpiresInHours, req.MaxUses)
+	created, err := h.InvitationService.CreateInvitation(c.Request.Context(), projectID, req.RoleID, req.ExpiresInHours, req.MaxUses)
 	if err != nil {
 		JSONError(c, http.StatusForbidden, err)
 		return

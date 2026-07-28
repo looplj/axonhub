@@ -15,7 +15,7 @@ export function getUserScopes(user: AuthUser | null, projectId?: string | null):
   if (projectId) {
     const project = user.projects.find((p) => p.projectID === projectId);
     if (project) {
-      project.scopes.forEach((scope) => scopes.add(scope));
+      (project.effectiveScopes || project.scopes).forEach((scope) => scopes.add(scope));
     }
   }
 

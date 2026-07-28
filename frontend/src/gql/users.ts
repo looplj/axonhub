@@ -24,6 +24,7 @@ export const ME_QUERY = `
         projectID
         isOwner
         scopes
+        effectiveScopes
         roles {
           name
         }

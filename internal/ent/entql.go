@@ -241,6 +241,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			invitation.FieldDeletedAt: {Type: field.TypeInt, Column: invitation.FieldDeletedAt},
 			invitation.FieldTokenHash: {Type: field.TypeString, Column: invitation.FieldTokenHash},
 			invitation.FieldProjectID: {Type: field.TypeInt, Column: invitation.FieldProjectID},
+			invitation.FieldRoleID:    {Type: field.TypeInt, Column: invitation.FieldRoleID},
 			invitation.FieldExpiresAt: {Type: field.TypeTime, Column: invitation.FieldExpiresAt},
 			invitation.FieldMaxUses:   {Type: field.TypeInt, Column: invitation.FieldMaxUses},
 			invitation.FieldUsedCount: {Type: field.TypeInt, Column: invitation.FieldUsedCount},
@@ -2437,6 +2438,11 @@ func (f *InvitationFilter) WhereTokenHash(p entql.StringP) {
 // WhereProjectID applies the entql int predicate on the project_id field.
 func (f *InvitationFilter) WhereProjectID(p entql.IntP) {
 	f.Where(p.Field(invitation.FieldProjectID))
+}
+
+// WhereRoleID applies the entql int predicate on the role_id field.
+func (f *InvitationFilter) WhereRoleID(p entql.IntP) {
+	f.Where(p.Field(invitation.FieldRoleID))
 }
 
 // WhereExpiresAt applies the entql time.Time predicate on the expires_at field.

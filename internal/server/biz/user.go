@@ -319,19 +319,27 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 	for _, up := range u.Edges.ProjectUsers {
 		// Convert project roles to objects.RoleInfo
 		roles := projectRoles[up.ProjectID]
+		effectiveScopeSet := make(map[string]bool, len(up.Scopes))
+		for _, scope := range up.Scopes {
+			effectiveScopeSet[scope] = true
+		}
 
 		projectRoleInfos := make([]objects.RoleInfo, 0, len(roles))
 		for _, r := range roles {
 			projectRoleInfos = append(projectRoleInfos, objects.RoleInfo{
 				Name: r.Name,
 			})
+			for _, scope := range r.Scopes {
+				effectiveScopeSet[scope] = true
+			}
 		}
 
 		userProjects = append(userProjects, objects.UserProjectInfo{
-			ProjectID: objects.GUID{Type: ent.TypeProject, ID: up.ProjectID},
-			IsOwner:   up.IsOwner,
-			Scopes:    up.Scopes,
-			Roles:     projectRoleInfos,
+			ProjectID:       objects.GUID{Type: ent.TypeProject, ID: up.ProjectID},
+			IsOwner:         up.IsOwner,
+			Scopes:          up.Scopes,
+			EffectiveScopes: lo.Keys(effectiveScopeSet),
+			Roles:           projectRoleInfos,
 		})
 	}
 
@@ -365,6 +373,26 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 
 // AddUserToProject adds a user to a project with optional owner status, scopes, and roles.
 func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, roleIDs []int) (*ent.UserProject, error) {
+	principal, hasPrincipal := authz.GetPrincipal(ctx)
+	if !hasPrincipal || !principal.IsTest() {
+		if scopes != nil {
+			if err := s.permissionValidator.CanGrantScopes(ctx, scopes, &projectID); err != nil {
+				return nil, fmt.Errorf("permission denied: %w", err)
+			}
+		}
+		for _, roleID := range roleIDs {
+			projectRole, err := authz.RunWithSystemBypass(ctx, "project-role-assignment", func(ctx context.Context) (*ent.Role, error) {
+				return s.entFromContext(ctx).Role.Query().Where(role.IDEQ(roleID), role.ProjectIDEQ(projectID)).Only(ctx)
+			})
+			if err != nil {
+				return nil, fmt.Errorf("project role %d not found", roleID)
+			}
+			if err := s.permissionValidator.CanGrantRole(ctx, projectRole.Scopes, &projectID); err != nil {
+				return nil, fmt.Errorf("permission denied: %w", err)
+			}
+		}
+	}
+
 	client := s.entFromContext(ctx)
 
 	// Create the project user relationship

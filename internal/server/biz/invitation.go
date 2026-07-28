@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/scopes"
 )
@@ -32,10 +33,15 @@ type InvitationServiceParams struct {
 
 type InvitationService struct {
 	*AbstractService
+
+	permissionValidator *PermissionValidator
 }
 
 func NewInvitationService(params InvitationServiceParams) *InvitationService {
-	return &InvitationService{AbstractService: &AbstractService{db: params.Ent}}
+	return &InvitationService{
+		AbstractService:     &AbstractService{db: params.Ent},
+		permissionValidator: NewPermissionValidator(),
+	}
 }
 
 type InvitationInfo struct {
@@ -51,9 +57,12 @@ type CreatedInvitation struct {
 	Info  InvitationInfo
 }
 
-func (s *InvitationService) CreateInvitation(ctx context.Context, projectID int, expiresInHours *int, maxUses int) (*CreatedInvitation, error) {
+func (s *InvitationService) CreateInvitation(ctx context.Context, projectID, roleID int, expiresInHours *int, maxUses int) (*CreatedInvitation, error) {
 	if err := s.canInvite(ctx, projectID); err != nil {
 		return nil, err
+	}
+	if roleID == 0 {
+		return nil, fmt.Errorf("project role is required")
 	}
 
 	if maxUses != 0 && maxUses != 1 {
@@ -77,10 +86,23 @@ func (s *InvitationService) CreateInvitation(ctx context.Context, projectID int,
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
 
+	projectRole, err := authz.RunWithSystemBypass(ctx, "invitation-role-lookup", func(ctx context.Context) (*ent.Role, error) {
+		return s.entFromContext(ctx).Role.Query().
+			Where(role.IDEQ(roleID), role.ProjectIDEQ(projectID)).
+			Only(ctx)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("project role not found")
+	}
+	if err := s.permissionValidator.CanGrantRole(ctx, projectRole.Scopes, &projectID); err != nil {
+		return nil, fmt.Errorf("permission denied: %w", err)
+	}
+
 	created, err := authz.RunWithSystemBypass(ctx, "invitation-create", func(ctx context.Context) (*ent.Invitation, error) {
 		return s.entFromContext(ctx).Invitation.Create().
 			SetTokenHash(hashInvitationToken(token)).
 			SetProjectID(projectID).
+			SetRoleID(roleID).
 			SetNillableExpiresAt(expiresAt).
 			SetMaxUses(maxUses).
 			Save(ctx)
@@ -135,6 +157,15 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 			}
 			if invitationIsExpired(invitationRow, time.Now()) || (invitationRow.MaxUses > 0 && invitationRow.UsedCount >= invitationRow.MaxUses) {
 				return fmt.Errorf("invitation is no longer valid")
+			}
+			if invitationRow.RoleID == nil {
+				return fmt.Errorf("invitation has no assigned project role")
+			}
+			if _, err := client.Role.Query().Where(
+				role.IDEQ(*invitationRow.RoleID),
+				role.ProjectIDEQ(invitationRow.ProjectID),
+			).Only(ctx); err != nil {
+				return fmt.Errorf("invitation role is no longer available")
 			}
 			exists, err := client.User.Query().Where(user.EmailEQ(email)).Exist(ctx)
 			if err != nil {
@@ -197,6 +228,9 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 
 			if _, err := client.UserProject.Create().SetUserID(createdUser.ID).SetProjectID(invitationRow.ProjectID).Save(ctx); err != nil {
 				return fmt.Errorf("failed to add user to project: %w", err)
+			}
+			if err := client.User.UpdateOneID(createdUser.ID).AddRoleIDs(*invitationRow.RoleID).Exec(ctx); err != nil {
+				return fmt.Errorf("failed to assign invitation role: %w", err)
 			}
 
 			return nil

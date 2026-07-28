@@ -24,10 +24,11 @@ type OIDCIdentityInfo struct {
 }
 
 type UserProjectInfo struct {
-	ProjectID GUID       `json:"projectID"`
-	IsOwner   bool       `json:"isOwner"`
-	Scopes    []string   `json:"scopes"`
-	Roles     []RoleInfo `json:"roles"`
+	ProjectID       GUID       `json:"projectID"`
+	IsOwner         bool       `json:"isOwner"`
+	Scopes          []string   `json:"scopes"`
+	EffectiveScopes []string   `json:"effectiveScopes"`
+	Roles           []RoleInfo `json:"roles"`
 }
 
 type RoleInfo struct {

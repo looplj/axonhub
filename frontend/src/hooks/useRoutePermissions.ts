@@ -21,7 +21,7 @@ export function useRoutePermissions() {
       return [];
     }
     const project = user.projects.find((p) => p.projectID === selectedProjectId);
-    return project?.scopes || [];
+    return project?.effectiveScopes || project?.scopes || [];
   }, [selectedProjectId, user?.projects]);
 
   const isProjectOwner = useMemo(() => {
