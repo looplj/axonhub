@@ -1,39 +1,43 @@
 import { Link } from '@tanstack/react-router';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
 import AuthLayout from '../auth-layout';
+import TwoColumnAuth from '../components/two-column-auth';
+import AnimatedLineBackground from '../sign-in/components/animated-line-background';
 import { SignUpForm } from './components/sign-up-form';
 
 export default function SignUp() {
+  const { t } = useTranslation();
+
   return (
     <AuthLayout>
-      <Card className='gap-4'>
-        <CardHeader>
-          <CardTitle className='text-lg tracking-tight'>Create an account</CardTitle>
-          <CardDescription>
-            Enter your email and password to create an account. <br />
-            Already have an account?{' '}
-            <Link to='/sign-in' className='hover:text-primary underline underline-offset-4'>
-              Sign In
+      <AnimatedLineBackground key='invitation-registration' />
+      <TwoColumnAuth
+        title={t('users.invitation.registrationTitle')}
+        description={
+          <>
+            {t('users.invitation.registrationDescription')}{' '}
+            <Link to='/sign-in' className='font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950'>
+              {t('users.invitation.signIn')}
             </Link>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SignUpForm />
-        </CardContent>
-        <CardFooter>
-          <p className='text-muted-foreground px-8 text-center text-sm'>
-            By creating an account, you agree to our{' '}
-            <a href='/terms' className='hover:text-primary underline underline-offset-4'>
-              Terms of Service
+          </>
+        }
+        rightFooter={
+          <p className='text-sm leading-relaxed text-slate-500'>
+            {t('users.invitation.termsPrefix')}{' '}
+            <a href='/terms' className='font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950'>
+              {t('users.invitation.terms')}
             </a>{' '}
-            and{' '}
-            <a href='/privacy' className='hover:text-primary underline underline-offset-4'>
-              Privacy Policy
+            {t('users.invitation.termsAnd')}{' '}
+            <a href='/privacy' className='font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950'>
+              {t('users.invitation.privacy')}
             </a>
             .
           </p>
-        </CardFooter>
-      </Card>
+        }
+        rightMaxWidthClassName='max-w-xl'
+      >
+        <SignUpForm />
+      </TwoColumnAuth>
     </AuthLayout>
   );
 }

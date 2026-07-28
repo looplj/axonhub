@@ -1,5 +1,6 @@
 import { useUsers } from '../context/users-context';
 import { ProjectUserActionDialog } from './project-user-action-dialog';
+import { UsersInviteDialog } from './users-invite-dialog';
 import { UsersDeleteDialog } from './users-delete-dialog';
 
 export function UsersDialogs() {
@@ -7,6 +8,8 @@ export function UsersDialogs() {
   return (
     <>
       <ProjectUserActionDialog key='user-add' open={open === 'add'} onOpenChange={() => setOpen('add')} />
+
+      <UsersInviteDialog key='user-invite' open={open === 'invite'} onOpenChange={(nextOpen) => setOpen(nextOpen ? 'invite' : null)} />
 
       {currentRow && (
         <>

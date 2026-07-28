@@ -35,6 +35,8 @@ const (
 	FieldProfiles = "profiles"
 	// EdgeUsers holds the string denoting the users edge name in mutations.
 	EdgeUsers = "users"
+	// EdgeInvitations holds the string denoting the invitations edge name in mutations.
+	EdgeInvitations = "invitations"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
 	EdgeRoles = "roles"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
@@ -60,6 +62,13 @@ const (
 	// UsersInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	UsersInverseTable = "users"
+	// InvitationsTable is the table that holds the invitations relation/edge.
+	InvitationsTable = "invitations"
+	// InvitationsInverseTable is the table name for the Invitation entity.
+	// It exists in this package in order to avoid circular dependency with the "invitation" package.
+	InvitationsInverseTable = "invitations"
+	// InvitationsColumn is the table column denoting the invitations relation/edge.
+	InvitationsColumn = "project_id"
 	// RolesTable is the table that holds the roles relation/edge.
 	RolesTable = "roles"
 	// RolesInverseTable is the table name for the Role entity.
@@ -254,6 +263,20 @@ func ByUsers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByInvitationsCount orders the results by invitations count.
+func ByInvitationsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInvitationsStep(), opts...)
+	}
+}
+
+// ByInvitations orders the results by invitations terms.
+func ByInvitations(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInvitationsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByRolesCount orders the results by roles count.
 func ByRolesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -384,6 +407,13 @@ func newUsersStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsersInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, UsersTable, UsersPrimaryKey...),
+	)
+}
+func newInvitationsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InvitationsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, InvitationsTable, InvitationsColumn),
 	)
 }
 func newRolesStep() *sqlgraph.Step {

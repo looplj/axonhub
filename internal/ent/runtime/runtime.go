@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -358,6 +359,49 @@ func init() {
 	datastorageDescPrimary := datastorageFields[2].Descriptor()
 	// datastorage.DefaultPrimary holds the default value on creation for the primary field.
 	datastorage.DefaultPrimary = datastorageDescPrimary.Default.(bool)
+	invitationMixin := schema.Invitation{}.Mixin()
+	invitation.Policy = privacy.NewPolicies(schema.Invitation{})
+	invitation.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := invitation.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	invitationMixinHooks1 := invitationMixin[1].Hooks()
+
+	invitation.Hooks[1] = invitationMixinHooks1[0]
+	invitationMixinInters1 := invitationMixin[1].Interceptors()
+	invitation.Interceptors[0] = invitationMixinInters1[0]
+	invitationMixinFields0 := invitationMixin[0].Fields()
+	_ = invitationMixinFields0
+	invitationMixinFields1 := invitationMixin[1].Fields()
+	_ = invitationMixinFields1
+	invitationFields := schema.Invitation{}.Fields()
+	_ = invitationFields
+	// invitationDescCreatedAt is the schema descriptor for created_at field.
+	invitationDescCreatedAt := invitationMixinFields0[0].Descriptor()
+	// invitation.DefaultCreatedAt holds the default value on creation for the created_at field.
+	invitation.DefaultCreatedAt = invitationDescCreatedAt.Default.(func() time.Time)
+	// invitationDescUpdatedAt is the schema descriptor for updated_at field.
+	invitationDescUpdatedAt := invitationMixinFields0[1].Descriptor()
+	// invitation.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	invitation.DefaultUpdatedAt = invitationDescUpdatedAt.Default.(func() time.Time)
+	// invitation.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	invitation.UpdateDefaultUpdatedAt = invitationDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// invitationDescDeletedAt is the schema descriptor for deleted_at field.
+	invitationDescDeletedAt := invitationMixinFields1[0].Descriptor()
+	// invitation.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	invitation.DefaultDeletedAt = invitationDescDeletedAt.Default.(int)
+	// invitationDescMaxUses is the schema descriptor for max_uses field.
+	invitationDescMaxUses := invitationFields[3].Descriptor()
+	// invitation.DefaultMaxUses holds the default value on creation for the max_uses field.
+	invitation.DefaultMaxUses = invitationDescMaxUses.Default.(int)
+	// invitationDescUsedCount is the schema descriptor for used_count field.
+	invitationDescUsedCount := invitationFields[4].Descriptor()
+	// invitation.DefaultUsedCount holds the default value on creation for the used_count field.
+	invitation.DefaultUsedCount = invitationDescUsedCount.Default.(int)
 	modelMixin := schema.Model{}.Mixin()
 	model.Policy = privacy.NewPolicies(schema.Model{})
 	model.Hooks[0] = func(next ent.Mutator) ent.Mutator {
