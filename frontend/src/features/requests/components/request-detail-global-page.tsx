@@ -17,7 +17,7 @@ export default function RequestDetailGlobalPage() {
   const { data: request } = useRequest(requestId, { projectId: null });
 
   return (
-    <div className='flex h-screen flex-col'>
+    <div className='flex h-full flex-col'>
       <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
         <div className='flex items-center space-x-4'>
           <Button variant='ghost' size='sm' onClick={() => router.history.back()} className='hover:bg-accent'>

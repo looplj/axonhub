@@ -117,7 +117,7 @@ export default function ThreadDetailPage() {
 
   if (isLoading) {
     return (
-      <div className='flex h-screen flex-col'>
+      <div className='flex h-full flex-col'>
         <Header className='border-b'></Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
@@ -133,7 +133,7 @@ export default function ThreadDetailPage() {
 
   if (!thread) {
     return (
-      <div className='flex h-screen flex-col'>
+      <div className='flex h-full flex-col'>
         <Header className='border-b'></Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
@@ -156,7 +156,7 @@ export default function ThreadDetailPage() {
   const createdAtLabel = format(thread.createdAt, 'yyyy-MM-dd HH:mm:ss', { locale });
 
   return (
-    <div className='flex h-screen flex-col'>
+    <div className='flex h-full flex-col'>
       <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 w-full border-b backdrop-blur'>
         <div className='flex w-full items-center justify-between gap-2'>
           <div className='flex items-center gap-2 sm:gap-4 min-w-0 flex-1'>
