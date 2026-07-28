@@ -711,6 +711,11 @@ func NormalizeAPIKeyFailover(settings *objects.ChannelSettings) error {
 	}
 	config.ErrorPatterns = patterns
 
+	// Preserve nil/omitted configuration when the feature is effectively unused.
+	if !config.Enabled && len(config.StatusCodes) == 0 && len(config.ErrorPatterns) == 0 {
+		settings.APIKeyFailover = nil
+	}
+
 	return nil
 }
 
