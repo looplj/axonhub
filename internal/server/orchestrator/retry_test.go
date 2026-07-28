@@ -2,6 +2,8 @@ package orchestrator
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
@@ -14,6 +16,28 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+// testNetError implements net.Error so the retry predicates can be exercised
+// against Timeout()/Temporary() transport failures in unit tests. The
+// Temporary method is retained to mirror the net.Error interface the
+// production predicate examines.
+type testNetError struct {
+	timeout   bool
+	temporary bool
+	message   string
+}
+
+func (e *testNetError) Error() string {
+	return e.message
+}
+
+func (e *testNetError) Timeout() bool {
+	return e.timeout
+}
+
+func (e *testNetError) Temporary() bool {
+	return e.temporary
+}
 
 func TestDeriveLoadBalancerStrategy(t *testing.T) {
 	defaultStrategy := "adaptive"
@@ -231,6 +255,31 @@ func TestIsRetryableError(t *testing.T) {
 			err:      errors.New("generic error"),
 			expected: false,
 		},
+		{
+			name:     "wrapped upstream EOF is retryable",
+			err:      fmt.Errorf("HTTP stream request failed: %w", io.EOF),
+			expected: true,
+		},
+		{
+			name:     "unexpected EOF is retryable",
+			err:      io.ErrUnexpectedEOF,
+			expected: true,
+		},
+		{
+			name:     "net.Error with Timeout is retryable",
+			err:      &testNetError{timeout: true, message: "i/o timeout"},
+			expected: true,
+		},
+		{
+			name:     "net.Error with Temporary is retryable",
+			err:      &testNetError{temporary: true, message: "connection temporarily refused"},
+			expected: true,
+		},
+		{
+			name:     "net.Error without Timeout or Temporary is not retryable",
+			err:      &testNetError{message: "non-timeout net error"},
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -273,6 +322,30 @@ func TestIsRetryableErrorForChannel(t *testing.T) {
 			},
 			channel:  nil,
 			expected: true,
+		},
+		{
+			name:     "wrapped upstream EOF is retryable without channel settings",
+			err:      fmt.Errorf("failed to stream request: %w", io.EOF),
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "net.Error with Timeout is retryable without channel settings",
+			err:      &testNetError{timeout: true, message: "i/o timeout"},
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "net.Error with Temporary is retryable without channel settings",
+			err:      &testNetError{temporary: true, message: "connection temporarily refused"},
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "net.Error without Timeout or Temporary is not retryable without channel settings",
+			err:      &testNetError{message: "non-timeout net error"},
+			channel:  nil,
+			expected: false,
 		},
 		{
 			name: "configured 400 status is retryable",
