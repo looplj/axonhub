@@ -20,10 +20,12 @@ func (t *InboundTransformer) TransformStream(
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Create a custom stream that handles the stateful transformation
 	return &anthropicInboundStream{
-		source:               stream,
-		ctx:                  ctx,
-		toolCalls:            make(map[int]*llm.ToolCall),
-		pendingTextCitations: nil,
+		source:                     stream,
+		ctx:                        ctx,
+		toolCalls:                  make(map[int]*llm.ToolCall),
+		pendingTextCitations:       nil,
+		pendingReasoningContent:    make(map[string][]string),
+		pendingReasoningSignatures: make(map[string]*string),
 	}, nil
 }
 
@@ -56,7 +58,14 @@ type anthropicInboundStream struct {
 
 	// Buffered signature: when signature arrives before thinking starts,
 	// we hold it until thinking finishes.
-	pendingSignature *string
+	pendingSignature       *string
+	pendingReasoningItemID string
+	// Responses may interleave summary deltas from different reasoning items.
+	// Keep those item-scoped buffers separate until their final signature arrives.
+	pendingReasoningContent    map[string][]string
+	pendingReasoningSignatures map[string]*string
+	pendingReasoningItemOrder  []string
+	flushingReasoningItems     bool
 
 	// Buffered citations for the currently open text block. These are emitted as
 	// citations_delta events immediately before the text block is closed.
@@ -192,9 +201,19 @@ func (s *anthropicInboundStream) closeToolBlock() error {
 // If no signature is available when closing a thinking block, a random
 // base64-encoded UUID is generated as a placeholder signature.
 func (s *anthropicInboundStream) closeThinkingBlock() error {
+	if !s.flushingReasoningItems && len(s.pendingReasoningItemOrder) > 0 {
+		s.flushingReasoningItems = true
+		err := s.flushBufferedReasoningItems()
+		s.flushingReasoningItems = false
+		if err != nil {
+			return err
+		}
+	}
+
 	if s.pendingSignature != nil && !s.hasThinkingContentStarted {
 		sig := s.pendingSignature
 		s.pendingSignature = nil
+		s.pendingReasoningItemID = ""
 
 		// Close any previously open content block before creating the synthetic thinking block.
 		if s.hasTextContentStarted {
@@ -285,8 +304,122 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 		}
 
 		s.contentIndex += 1
+		s.pendingReasoningItemID = ""
 	}
 
+	return nil
+}
+
+func getResponsesReasoningItemID(metadata map[string]any) string {
+	raw, ok := metadata["openai_responses_reasoning_item"]
+	if !ok || raw == nil {
+		return ""
+	}
+
+	if item, ok := raw.(map[string]any); ok {
+		if id, ok := item["id"].(string); ok {
+			return id
+		}
+	}
+
+	return ""
+}
+
+func responsesReasoningItemDone(metadata map[string]any) bool {
+	raw, ok := metadata["openai_responses_reasoning_item"].(map[string]any)
+	if !ok {
+		return false
+	}
+
+	done, _ := raw["done"].(bool)
+	return done
+}
+
+func (s *anthropicInboundStream) rememberReasoningItem(itemID string) {
+	if _, exists := s.pendingReasoningContent[itemID]; exists {
+		return
+	}
+	if _, exists := s.pendingReasoningSignatures[itemID]; exists {
+		return
+	}
+
+	s.pendingReasoningItemOrder = append(s.pendingReasoningItemOrder, itemID)
+}
+
+func (s *anthropicInboundStream) emitBufferedReasoningItem(itemID string) error {
+	content, hasContent := s.pendingReasoningContent[itemID]
+	signature, hasSignature := s.pendingReasoningSignatures[itemID]
+	if !hasContent && !hasSignature {
+		return nil
+	}
+
+	wasFlushing := s.flushingReasoningItems
+	s.flushingReasoningItems = true
+	err := s.closeThinkingBlock()
+	s.flushingReasoningItems = wasFlushing
+	if err != nil {
+		return err
+	}
+	if s.hasTextContentStarted {
+		if err := s.flushPendingTextCitations(); err != nil {
+			return err
+		}
+		s.hasTextContentStarted = false
+		if err := s.enqueEvent(&StreamEvent{Type: "content_block_stop", Index: &s.contentIndex}); err != nil {
+			return err
+		}
+		s.contentIndex++
+	}
+	if s.hasToolContentStarted {
+		if err := s.closeToolBlock(); err != nil {
+			return err
+		}
+	}
+
+	if err := s.enqueEvent(&StreamEvent{
+		Type:         "content_block_start",
+		Index:        &s.contentIndex,
+		ContentBlock: &MessageContentBlock{Type: "thinking", Thinking: lo.ToPtr("")},
+	}); err != nil {
+		return err
+	}
+	for _, delta := range content {
+		delta := delta
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_delta",
+			Index: &s.contentIndex,
+			Delta: &StreamDelta{Type: lo.ToPtr("thinking_delta"), Thinking: &delta},
+		}); err != nil {
+			return err
+		}
+	}
+	if signature == nil {
+		generated := generateSignature()
+		signature = &generated
+	}
+	if err := s.enqueEvent(&StreamEvent{
+		Type:  "content_block_delta",
+		Index: &s.contentIndex,
+		Delta: &StreamDelta{Type: lo.ToPtr("signature_delta"), Signature: signature},
+	}); err != nil {
+		return err
+	}
+	if err := s.enqueEvent(&StreamEvent{Type: "content_block_stop", Index: &s.contentIndex}); err != nil {
+		return err
+	}
+	s.contentIndex++
+	delete(s.pendingReasoningContent, itemID)
+	delete(s.pendingReasoningSignatures, itemID)
+	return nil
+}
+
+func (s *anthropicInboundStream) flushBufferedReasoningItems() error {
+	for _, itemID := range s.pendingReasoningItemOrder {
+		if err := s.emitBufferedReasoningItem(itemID); err != nil {
+			return err
+		}
+	}
+	s.pendingReasoningItemOrder = nil
 	return nil
 }
 
@@ -476,82 +609,101 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Handle reasoning content (thinking) delta
 		if choice.Delta != nil && choice.Delta.ReasoningContent != nil && *choice.Delta.ReasoningContent != "" {
-			// If the text content has started before the thinking content, we need to stop it
-			if s.hasTextContentStarted {
-				if err := s.flushPendingTextCitations(); err != nil {
-					s.err = fmt.Errorf("failed to flush text citations before thinking: %w", err)
-					return false
+			itemID := getResponsesReasoningItemID(chunk.TransformerMetadata)
+			if itemID != "" {
+				s.rememberReasoningItem(itemID)
+				s.pendingReasoningContent[itemID] = append(s.pendingReasoningContent[itemID], *choice.Delta.ReasoningContent)
+			} else {
+
+				// If the text content has started before the thinking content, we need to stop it
+				if s.hasTextContentStarted {
+					if err := s.flushPendingTextCitations(); err != nil {
+						s.err = fmt.Errorf("failed to flush text citations before thinking: %w", err)
+						return false
+					}
+
+					s.hasTextContentStarted = false
+
+					if err := s.enqueEvent(&StreamEvent{
+						Type:  "content_block_stop",
+						Index: &s.contentIndex,
+					}); err != nil {
+						s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+						return false
+					}
+
+					s.contentIndex += 1
 				}
 
-				s.hasTextContentStarted = false
-
-				if err := s.enqueEvent(&StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}); err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
-					return false
+				// If the tool content has started before the thinking content, we need to stop it
+				if s.hasToolContentStarted {
+					if err := s.closeToolBlock(); err != nil {
+						s.err = fmt.Errorf("failed to close tool block before thinking: %w", err)
+						return false
+					}
 				}
 
-				s.contentIndex += 1
-			}
+				// Generate content_block_start if this is the first thinking content
+				if !s.hasThinkingContentStarted {
+					s.hasThinkingContentStarted = true
 
-			// If the tool content has started before the thinking content, we need to stop it
-			if s.hasToolContentStarted {
-				if err := s.closeToolBlock(); err != nil {
-					s.err = fmt.Errorf("failed to close tool block before thinking: %w", err)
-					return false
+					streamEvent := StreamEvent{
+						Type:  "content_block_start",
+						Index: &s.contentIndex,
+						ContentBlock: &MessageContentBlock{
+							Type:     "thinking",
+							Thinking: lo.ToPtr(""),
+						},
+					}
+
+					err := s.enqueEvent(&streamEvent)
+					if err != nil {
+						s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
+						return false
+					}
 				}
-			}
 
-			// Generate content_block_start if this is the first thinking content
-			if !s.hasThinkingContentStarted {
-				s.hasThinkingContentStarted = true
-
+				// Generate content_block_delta for thinking
 				streamEvent := StreamEvent{
-					Type:  "content_block_start",
+					Type:  "content_block_delta",
 					Index: &s.contentIndex,
-					ContentBlock: &MessageContentBlock{
-						Type:     "thinking",
-						Thinking: lo.ToPtr(""),
+					Delta: &StreamDelta{
+						Type:     lo.ToPtr("thinking_delta"),
+						Thinking: choice.Delta.ReasoningContent,
 					},
 				}
 
 				err := s.enqueEvent(&streamEvent)
 				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
+					s.err = fmt.Errorf("failed to enqueue content_block_delta event: %w", err)
 					return false
 				}
 			}
-
-			// Generate content_block_delta for thinking
-			streamEvent := StreamEvent{
-				Type:  "content_block_delta",
-				Index: &s.contentIndex,
-				Delta: &StreamDelta{
-					Type:     lo.ToPtr("thinking_delta"),
-					Thinking: choice.Delta.ReasoningContent,
-				},
-			}
-
-			err := s.enqueEvent(&streamEvent)
-			if err != nil {
-				s.err = fmt.Errorf("failed to enqueue content_block_delta event: %w", err)
-				return false
-			}
 		}
 
-		// Buffer signature: always defer emission to closeThinkingBlock so that
-		// we emit exactly one signature_delta per thinking block (avoiding
-		// duplicates when a random placeholder would otherwise be generated).
-		// If multiple signature chunks arrive, concatenate them to match the
-		// aggregator's behavior.
+		// Buffer signature: defer emission to closeThinkingBlock so that each
+		// thinking block gets exactly one signature_delta. Responses encrypted
+		// content is item-scoped and opaque: when the upstream supplies an item
+		// ID, a new ID closes the previous block and a repeated ID replaces the
+		// provisional value with the latest value instead of concatenating blobs.
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
-			if s.pendingSignature == nil {
-				s.pendingSignature = choice.Delta.ReasoningSignature
+			itemID := getResponsesReasoningItemID(chunk.TransformerMetadata)
+			if itemID != "" {
+				s.rememberReasoningItem(itemID)
+				s.pendingReasoningSignatures[itemID] = choice.Delta.ReasoningSignature
+				if responsesReasoningItemDone(chunk.TransformerMetadata) {
+					if err := s.emitBufferedReasoningItem(itemID); err != nil {
+						s.err = fmt.Errorf("failed to emit completed reasoning item: %w", err)
+						return false
+					}
+				}
 			} else {
-				combined := *s.pendingSignature + *choice.Delta.ReasoningSignature
-				s.pendingSignature = &combined
+				if s.pendingSignature == nil {
+					s.pendingSignature = choice.Delta.ReasoningSignature
+				} else {
+					combined := *s.pendingSignature + *choice.Delta.ReasoningSignature
+					s.pendingSignature = &combined
+				}
 			}
 		}
 

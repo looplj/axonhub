@@ -174,6 +174,43 @@ func TestOutboundTransformer_TransformStream_UsesFinalEncryptedContentPerReasoni
 	require.Equal(t, []string{"rs_1", "rs_2"}, sourceIDs)
 }
 
+func TestOutboundTransformer_TransformStream_AssociatesReasoningSummaryWithItem(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_reasoning_summary","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"rs_first","type":"reasoning","summary":[]}}`)},
+		{Type: "response.reasoning_summary_text.delta", Data: []byte(`{"type":"response.reasoning_summary_text.delta","item_id":"rs_first","output_index":0,"summary_index":0,"delta":"first"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"rs_first","type":"reasoning","summary":[],"encrypted_content":"gAAAA_FIRST_BLOB"}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":1,"item":{"id":"rs_second","type":"reasoning","summary":[]}}`)},
+		{Type: "response.reasoning_summary_text.delta", Data: []byte(`{"type":"response.reasoning_summary_text.delta","item_id":"rs_second","output_index":1,"summary_index":0,"delta":"second"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":1,"item":{"id":"rs_second","type":"reasoning","summary":[],"encrypted_content":"gAAAA_SECOND_BLOB"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_reasoning_summary","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var summaries []string
+	var summaryItemIDs []string
+	for _, response := range responses {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil || response.Choices[0].Delta.ReasoningContent == nil {
+			continue
+		}
+		summaries = append(summaries, *response.Choices[0].Delta.ReasoningContent)
+		metadata, ok := getResponsesReasoningItemMetadata(response.TransformerMetadata)
+		require.True(t, ok)
+		summaryItemIDs = append(summaryItemIDs, metadata.ID)
+	}
+
+	require.Equal(t, []string{"first", "second"}, summaries)
+	require.Equal(t, []string{"rs_first", "rs_second"}, summaryItemIDs)
+}
+
 func TestResponsesTransformer_StreamRoundTrip_PreservesCompactionSummary(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

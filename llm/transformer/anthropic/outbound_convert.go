@@ -563,15 +563,7 @@ func convertAssistantWithToolCalls(msg llm.Message, config *Config) ([]MessagePa
 func buildPreBlocks(msg llm.Message, config *Config) []MessageContentBlock {
 	var blocks []MessageContentBlock
 
-	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
-		msg.ReasoningContent,
-		msg.ReasoningSignature,
-		config,
-	)
-
-	if block := buildThinkingBlock(reasoningContent, reasoningSignature); block != nil {
-		blocks = append(blocks, *block)
-	}
+	blocks = append(blocks, buildThinkingBlocks(msg, config)...)
 
 	if block := buildRedactedThinkingBlock(msg.RedactedReasoningContent); block != nil {
 		blocks = append(blocks, *block)
@@ -611,15 +603,7 @@ func buildMessageContent(msg llm.Message, config *Config) (MessageContent, bool)
 	var blocks []MessageContentBlock
 
 	if hasThinkingContent(msg) {
-		reasoningContent, reasoningSignature := prepareAnthropicReasoning(
-			msg.ReasoningContent,
-			msg.ReasoningSignature,
-			config,
-		)
-
-		if block := buildThinkingBlock(reasoningContent, reasoningSignature); block != nil {
-			blocks = append(blocks, *block)
-		}
+		blocks = append(blocks, buildThinkingBlocks(msg, config)...)
 
 		if block := buildRedactedThinkingBlock(msg.RedactedReasoningContent); block != nil {
 			blocks = append(blocks, *block)
@@ -641,7 +625,9 @@ func buildMessageContent(msg llm.Message, config *Config) (MessageContent, bool)
 
 // hasThinkingContent checks if message has reasoning content.
 func hasThinkingContent(msg llm.Message) bool {
-	return (msg.ReasoningContent != nil && *msg.ReasoningContent != "") ||
+	return len(msg.ReasoningItems) > 0 ||
+		(msg.ReasoningContent != nil && *msg.ReasoningContent != "") ||
+		(msg.ReasoningSignature != nil && *msg.ReasoningSignature != "") ||
 		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "")
 }
 
@@ -649,15 +635,7 @@ func hasThinkingContent(msg llm.Message) bool {
 func buildMultipleContentWithThinking(msg llm.Message, config *Config) MessageContent {
 	blocks := make([]MessageContentBlock, 0, 3)
 
-	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
-		msg.ReasoningContent,
-		msg.ReasoningSignature,
-		config,
-	)
-
-	if block := buildThinkingBlock(reasoningContent, reasoningSignature); block != nil {
-		blocks = append(blocks, *block)
-	}
+	blocks = append(blocks, buildThinkingBlocks(msg, config)...)
 
 	if block := buildRedactedThinkingBlock(msg.RedactedReasoningContent); block != nil {
 		blocks = append(blocks, *block)
@@ -672,10 +650,42 @@ func buildMultipleContentWithThinking(msg llm.Message, config *Config) MessageCo
 	return MessageContent{MultipleContent: blocks}
 }
 
+// buildThinkingBlocks keeps every reasoning item in its own Anthropic thinking
+// block. The scalar reasoning fields are only a compatibility fallback for
+// messages created before ReasoningItems was introduced.
+func buildThinkingBlocks(msg llm.Message, config *Config) []MessageContentBlock {
+	reasoningItems := msg.ReasoningItems
+	if len(reasoningItems) == 0 {
+		reasoningItems = []llm.ReasoningItem{{
+			Content:   lo.FromPtr(msg.ReasoningContent),
+			Signature: lo.FromPtr(msg.ReasoningSignature),
+		}}
+	}
+
+	blocks := make([]MessageContentBlock, 0, len(reasoningItems))
+	for _, reasoningItem := range reasoningItems {
+		reasoningContent := lo.ToPtr(reasoningItem.Content)
+		var reasoningSignature *string
+		if reasoningItem.Signature != "" {
+			reasoningSignature = lo.ToPtr(reasoningItem.Signature)
+		}
+
+		reasoningContent, reasoningSignature = prepareAnthropicReasoning(reasoningContent, reasoningSignature, config)
+		if block := buildThinkingBlock(reasoningContent, reasoningSignature); block != nil {
+			blocks = append(blocks, *block)
+		}
+	}
+
+	return blocks
+}
+
 // buildThinkingBlock creates a thinking block from reasoning content.
 func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageContentBlock {
-	if reasoningContent == nil || *reasoningContent == "" {
+	if (reasoningContent == nil || *reasoningContent == "") && (reasoningSignature == nil || *reasoningSignature == "") {
 		return nil
+	}
+	if reasoningContent == nil {
+		reasoningContent = lo.ToPtr("")
 	}
 
 	block := &MessageContentBlock{
@@ -975,8 +985,9 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 	// Convert content to message
 	var (
 		content              llm.MessageContent
-		thinkingText         *string
-		thinkingSignature    *string
+		reasoningItems       []llm.ReasoningItem
+		singleThinkingText   *string
+		singleThinkingSig    *string
 		redactedThinkingData *string
 		toolCalls            []llm.ToolCall
 		annotations          []llm.Annotation
@@ -1020,11 +1031,15 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 				toolCalls = append(toolCalls, tc)
 			}
 		case "thinking":
-			if block.Thinking != nil {
-				thinkingText = block.Thinking
+			singleThinkingText = block.Thinking
+			singleThinkingSig = block.Signature
+			item := llm.ReasoningItem{
+				Content:   lo.FromPtr(block.Thinking),
+				Signature: lo.FromPtr(shared.EncodeAnthropicSignature(block.Signature)),
 			}
-
-			thinkingSignature = block.Signature
+			if item.Content != "" || item.Signature != "" {
+				reasoningItems = append(reasoningItems, item)
+			}
 		case "redacted_thinking":
 			if block.Data != "" {
 				redactedThinkingData = &block.Data
@@ -1105,11 +1120,31 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		Role:                     anthropicResp.Role,
 		Content:                  content,
 		ToolCalls:                toolCalls,
-		ReasoningContent:         thinkingText,
-		ReasoningSignature:       shared.EncodeAnthropicSignature(thinkingSignature),
 		RedactedReasoningContent: redactedThinkingData,
 		Annotations:              annotations,
 		InlineToolResults:        inlineToolResults,
+	}
+	if len(reasoningItems) == 1 {
+		// Preserve the legacy single-item representation exactly; downstream
+		// converters still accept it as the compatibility fallback.
+		message.ReasoningContent = singleThinkingText
+		message.ReasoningSignature = shared.EncodeAnthropicSignature(singleThinkingSig)
+	} else if len(reasoningItems) > 1 {
+		message.ReasoningItems = reasoningItems
+
+		// OpenAI Chat and other non-Responses clients consume scalar reasoning
+		// fields only. Preserve a readable aggregate while retaining each item's
+		// individual signature in ReasoningItems for Responses round-trips.
+		var aggregateReasoning string
+		for _, item := range reasoningItems {
+			aggregateReasoning += item.Content
+		}
+		if aggregateReasoning != "" {
+			message.ReasoningContent = lo.ToPtr(aggregateReasoning)
+		}
+		if signature := reasoningItems[len(reasoningItems)-1].Signature; signature != "" {
+			message.ReasoningSignature = lo.ToPtr(signature)
+		}
 	}
 
 	choice := llm.Choice{
