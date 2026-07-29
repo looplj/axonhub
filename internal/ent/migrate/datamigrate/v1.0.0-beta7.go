@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // V1_0_0_Beta7 implements DataMigrator for version 1.0.0-beta7 migration.
@@ -23,7 +24,7 @@ func (v *V1_0_0_Beta7) Version() string {
 	return "v1.0.0-beta7"
 }
 
-// Migrate binds legacy invitations to the project's existing Viewer role.
+// Migrate binds legacy invitations to the project's default Developer role.
 func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err error) {
 	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 	ctx, tx, err := client.OpenTx(ctx)
@@ -44,16 +45,30 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 	}
 
 	for _, legacyInvitation := range legacyInvitations {
-		viewerRole, err := txClient.Role.Query().Where(
+		developerRole, err := txClient.Role.Query().Where(
 			role.LevelEQ(role.LevelProject),
 			role.ProjectIDEQ(legacyInvitation.ProjectID),
-			role.NameEQ("Viewer"),
+			role.NameEQ("Developer"),
 		).Only(ctx)
-		if err != nil {
-			return fmt.Errorf("find Viewer role for legacy invitation %d: %w", legacyInvitation.ID, err)
+		if ent.IsNotFound(err) {
+			developerRole, err = txClient.Role.Create().
+				SetName("Developer").
+				SetLevel(role.LevelProject).
+				SetProjectID(legacyInvitation.ProjectID).
+				SetScopes([]string{
+					string(scopes.ScopeReadAPIKeys),
+					string(scopes.ScopeWriteAPIKeys),
+					string(scopes.ScopeReadPrompts),
+					string(scopes.ScopeWritePrompts),
+					string(scopes.ScopeWriteRequests),
+				}).
+				Save(ctx)
 		}
-		if err := txClient.Invitation.UpdateOneID(legacyInvitation.ID).SetRoleID(viewerRole.ID).Exec(ctx); err != nil {
-			return fmt.Errorf("assign Viewer role to legacy invitation %d: %w", legacyInvitation.ID, err)
+		if err != nil {
+			return fmt.Errorf("find Developer role for legacy invitation %d: %w", legacyInvitation.ID, err)
+		}
+		if err := txClient.Invitation.UpdateOneID(legacyInvitation.ID).SetRoleID(developerRole.ID).Exec(ctx); err != nil {
+			return fmt.Errorf("assign Developer role to legacy invitation %d: %w", legacyInvitation.ID, err)
 		}
 	}
 
