@@ -385,7 +385,10 @@ func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID in
 				return s.entFromContext(ctx).Role.Query().Where(role.IDEQ(roleID), role.ProjectIDEQ(projectID)).Only(ctx)
 			})
 			if err != nil {
-				return nil, fmt.Errorf("project role %d not found", roleID)
+				if ent.IsNotFound(err) {
+					return nil, fmt.Errorf("project role %d not found", roleID)
+				}
+				return nil, fmt.Errorf("failed to load project role %d: %w", roleID, err)
 			}
 			if err := s.permissionValidator.CanGrantRole(ctx, projectRole.Scopes, &projectID); err != nil {
 				return nil, fmt.Errorf("permission denied: %w", err)
@@ -393,37 +396,42 @@ func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID in
 		}
 	}
 
-	client := s.entFromContext(ctx)
+	var userProject *ent.UserProject
+	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+		mut := client.UserProject.Create().
+			SetUserID(userID).
+			SetProjectID(projectID)
 
-	// Create the project user relationship
-	mut := client.UserProject.Create().
-		SetUserID(userID).
-		SetProjectID(projectID)
+		if isOwner != nil {
+			mut.SetIsOwner(*isOwner)
+		}
 
-	if isOwner != nil {
-		mut.SetIsOwner(*isOwner)
-	}
+		if scopes != nil {
+			mut.SetScopes(scopes)
+		}
 
-	if scopes != nil {
-		mut.SetScopes(scopes)
-	}
+		created, err := mut.Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to add user to project: %w", err)
+		}
+		userProject = created
 
-	userProject, err := mut.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add user to project: %w", err)
-	}
-
-	// Add roles if provided
-	if len(roleIDs) > 0 {
+		if len(roleIDs) == 0 {
+			return nil
+		}
 		user, err := client.User.Get(ctx, userID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get user: %w", err)
+			return fmt.Errorf("failed to get user: %w", err)
+		}
+		if err := user.Update().AddRoleIDs(roleIDs...).Exec(ctx); err != nil {
+			return fmt.Errorf("failed to add roles to user: %w", err)
 		}
 
-		err = user.Update().AddRoleIDs(roleIDs...).Exec(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add roles to user: %w", err)
-		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Invalidate user cache

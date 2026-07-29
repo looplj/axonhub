@@ -754,6 +754,9 @@ func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived 
 	projectID, ok := contexts.GetProjectID(ctx)
 	canReadChannels := authz.HasScope(ctx, scopes.ScopeReadChannels)
 	if !ok || projectID == 0 {
+		if !canReadChannels {
+			return nil, authz.RequireScope(ctx, scopes.ScopeReadChannels)
+		}
 		channels, err := r.client.Channel.Query().
 			Where(channel.StatusIn(statusFilter...)).
 			Order(ent.Desc(channel.FieldOrderingWeight)).

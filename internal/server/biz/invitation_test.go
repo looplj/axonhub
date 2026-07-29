@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 )
 
@@ -102,13 +103,12 @@ func TestInvitationService_UnlimitedInvitation(t *testing.T) {
 	require.NotEqual(t, first.ID, second.ID)
 }
 
-func TestInvitationService_LegacyInvitationUsesDeveloperRole(t *testing.T) {
+func TestInvitationService_LegacyInvitationPreservesRolelessMembership(t *testing.T) {
 	service, client, ctx := setupInvitationService(t)
 	defer client.Close()
 
 	project, err := client.Project.Create().SetName("legacy-project").Save(ctx)
 	require.NoError(t, err)
-	projectRole := createInvitationRole(t, client, ctx, project.ID)
 	token := "legacy-token"
 	_, err = client.Invitation.Create().
 		SetTokenHash(hashInvitationToken(token)).
@@ -118,13 +118,48 @@ func TestInvitationService_LegacyInvitationUsesDeveloperRole(t *testing.T) {
 
 	registered, err := service.RegisterInvitation(ctx, token, "legacy@example.com", "password", "Legacy", "Member")
 	require.NoError(t, err)
-	hasRole, err := registered.QueryRoles().Where(role.IDEQ(projectRole.ID)).Exist(ctx)
+	roleCount, err := registered.QueryRoles().Count(ctx)
 	require.NoError(t, err)
-	require.True(t, hasRole)
+	require.Zero(t, roleCount)
 
 	registeredInvitation, err := client.Invitation.Query().Only(ctx)
 	require.NoError(t, err)
-	require.Equal(t, &projectRole.ID, registeredInvitation.RoleID)
+	require.Nil(t, registeredInvitation.RoleID)
+}
+
+func TestInvitationService_RejectsRoleTheInviterCannotGrant(t *testing.T) {
+	service, client, ctx := setupInvitationService(t)
+	defer client.Close()
+
+	project, err := client.Project.Create().SetName("restricted-project").Save(ctx)
+	require.NoError(t, err)
+	projectRole := createInvitationRole(t, client, ctx, project.ID)
+	inviter, err := client.User.Create().SetEmail("inviter@example.com").SetPassword("password").Save(ctx)
+	require.NoError(t, err)
+	_, err = client.UserProject.Create().SetUserID(inviter.ID).SetProjectID(project.ID).SetScopes([]string{"write_users"}).Save(ctx)
+	require.NoError(t, err)
+	inviter, err = client.User.Query().Where(user.IDEQ(inviter.ID)).WithProjectUsers().WithRoles().Only(ctx)
+	require.NoError(t, err)
+
+	_, err = service.CreateInvitation(contexts.WithUser(ctx, inviter), project.ID, projectRole.ID, nil, 1)
+	require.ErrorContains(t, err, "permission denied")
+}
+
+func TestInvitationService_RejectsDeletedInvitationRole(t *testing.T) {
+	service, client, ctx := setupInvitationService(t)
+	defer client.Close()
+
+	owner, err := client.User.Create().SetEmail("owner@example.com").SetPassword("password").SetIsOwner(true).Save(ctx)
+	require.NoError(t, err)
+	project, err := client.Project.Create().SetName("deleted-role-project").Save(ctx)
+	require.NoError(t, err)
+	projectRole := createInvitationRole(t, client, ctx, project.ID)
+	created, err := service.CreateInvitation(contexts.WithUser(ctx, owner), project.ID, projectRole.ID, nil, 1)
+	require.NoError(t, err)
+	require.NoError(t, client.Role.DeleteOneID(projectRole.ID).Exec(ctx))
+
+	_, err = service.RegisterInvitation(ctx, created.Token, "member@example.com", "password", "Member", "User")
+	require.ErrorContains(t, err, "invitation role is no longer available")
 }
 
 func TestInvitationService_ExpiredInvitation(t *testing.T) {
