@@ -355,6 +355,7 @@ func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
 	assert.Contains(t, viewerRole.Scopes, "read_requests")
 	assert.NotContains(t, viewerRole.Scopes, "write_users")
 	assert.NotContains(t, viewerRole.Scopes, "write_api_keys")
+	assert.NotContains(t, viewerRole.Scopes, "write_prompts")
 }
 
 func TestV0_3_0_AssignUsersToDefaultProject(t *testing.T) {
