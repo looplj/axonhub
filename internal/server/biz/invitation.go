@@ -23,7 +23,10 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
-const defaultInvitationLifetime = 7 * 24 * time.Hour
+const (
+	defaultInvitationLifetime = 7 * 24 * time.Hour
+	legacyInvitationRoleName  = "Developer"
+)
 
 type InvitationServiceParams struct {
 	fx.In
@@ -158,11 +161,22 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 			if invitationIsExpired(invitationRow, time.Now()) || (invitationRow.MaxUses > 0 && invitationRow.UsedCount >= invitationRow.MaxUses) {
 				return fmt.Errorf("invitation is no longer valid")
 			}
-			if invitationRow.RoleID == nil {
-				return fmt.Errorf("invitation has no assigned project role")
+			roleID := invitationRow.RoleID
+			if roleID == nil {
+				legacyRole, err := client.Role.Query().Where(
+					role.NameEQ(legacyInvitationRoleName),
+					role.ProjectIDEQ(invitationRow.ProjectID),
+				).Only(ctx)
+				if err != nil {
+					return fmt.Errorf("legacy invitation default role is no longer available")
+				}
+				if err := client.Invitation.UpdateOneID(invitationRow.ID).SetRoleID(legacyRole.ID).Exec(ctx); err != nil {
+					return fmt.Errorf("failed to assign legacy invitation role: %w", err)
+				}
+				roleID = &legacyRole.ID
 			}
 			if _, err := client.Role.Query().Where(
-				role.IDEQ(*invitationRow.RoleID),
+				role.IDEQ(*roleID),
 				role.ProjectIDEQ(invitationRow.ProjectID),
 			).Only(ctx); err != nil {
 				return fmt.Errorf("invitation role is no longer available")
@@ -229,7 +243,7 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 			if _, err := client.UserProject.Create().SetUserID(createdUser.ID).SetProjectID(invitationRow.ProjectID).Save(ctx); err != nil {
 				return fmt.Errorf("failed to add user to project: %w", err)
 			}
-			if err := client.User.UpdateOneID(createdUser.ID).AddRoleIDs(*invitationRow.RoleID).Exec(ctx); err != nil {
+			if err := client.User.UpdateOneID(createdUser.ID).AddRoleIDs(*roleID).Exec(ctx); err != nil {
 				return fmt.Errorf("failed to assign invitation role: %w", err)
 			}
 

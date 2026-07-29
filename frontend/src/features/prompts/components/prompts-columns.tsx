@@ -18,13 +18,13 @@ function StatusSwitchCell({ row, canWrite }: { row: Row<Prompt>; canWrite: boole
 
   const isEnabled = prompt.status === 'enabled';
 
-  if (!canWrite) {
-    return <Badge variant='outline'>{prompt.status}</Badge>;
-  }
-
   const handleSwitchClick = useCallback(() => {
     setDialogOpen(true);
   }, []);
+
+  if (!canWrite) {
+    return <Badge variant='outline'>{prompt.status}</Badge>;
+  }
 
   return (
     <>

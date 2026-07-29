@@ -26,15 +26,15 @@ function StatusSwitchCell({ row }: { row: Row<Model> }) {
   const isEnabled = model.status === 'enabled';
   const isArchived = model.status === 'archived';
 
-  if (!channelPermissions.canWrite) {
-    return <Badge variant='outline'>{model.status}</Badge>;
-  }
-
   const handleSwitchClick = useCallback(() => {
     if (!isArchived) {
       setDialogOpen(true);
     }
   }, [isArchived]);
+
+  if (!channelPermissions.canWrite) {
+    return <Badge variant='outline'>{model.status}</Badge>;
+  }
 
   return (
     <>

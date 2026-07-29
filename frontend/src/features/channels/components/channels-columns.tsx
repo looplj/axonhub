@@ -65,15 +65,15 @@ const StatusSwitchCell = memo(({ row }: { row: Row<Channel> }) => {
   const isEnabled = channel.status === 'enabled';
   const isArchived = channel.status === 'archived';
 
-  if (!channelPermissions.canWrite) {
-    return <Badge variant='outline'>{channel.status}</Badge>;
-  }
-
   const handleSwitchClick = useCallback(() => {
     if (!isArchived) {
       setDialogOpen(true);
     }
   }, [isArchived]);
+
+  if (!channelPermissions.canWrite) {
+    return <Badge variant='outline'>{channel.status}</Badge>;
+  }
 
   return (
     <div className='flex justify-center'>

@@ -102,6 +102,31 @@ func TestInvitationService_UnlimitedInvitation(t *testing.T) {
 	require.NotEqual(t, first.ID, second.ID)
 }
 
+func TestInvitationService_LegacyInvitationUsesDeveloperRole(t *testing.T) {
+	service, client, ctx := setupInvitationService(t)
+	defer client.Close()
+
+	project, err := client.Project.Create().SetName("legacy-project").Save(ctx)
+	require.NoError(t, err)
+	projectRole := createInvitationRole(t, client, ctx, project.ID)
+	token := "legacy-token"
+	_, err = client.Invitation.Create().
+		SetTokenHash(hashInvitationToken(token)).
+		SetProjectID(project.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	registered, err := service.RegisterInvitation(ctx, token, "legacy@example.com", "password", "Legacy", "Member")
+	require.NoError(t, err)
+	hasRole, err := registered.QueryRoles().Where(role.IDEQ(projectRole.ID)).Exist(ctx)
+	require.NoError(t, err)
+	require.True(t, hasRole)
+
+	registeredInvitation, err := client.Invitation.Query().Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, &projectRole.ID, registeredInvitation.RoleID)
+}
+
 func TestInvitationService_ExpiredInvitation(t *testing.T) {
 	service, client, ctx := setupInvitationService(t)
 	defer client.Close()
