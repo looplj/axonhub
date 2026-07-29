@@ -167,3 +167,4 @@ config.schema.json
 .omc/
 .playwright-mcp/
 .ace-tool/
+.omx/
