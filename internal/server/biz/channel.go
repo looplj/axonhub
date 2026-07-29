@@ -676,19 +676,6 @@ func NormalizeRetryableErrorPatterns(settings *objects.ChannelSettings) error {
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
 
-	providerIdentityChanged := false
-	if input.Type != nil || input.BaseURL != nil {
-		existing, err := svc.entFromContext(ctx).Channel.Query().
-			Where(channel.IDEQ(id)).
-			Select(channel.FieldType, channel.FieldBaseURL).
-			Only(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load channel provider identity: %w", err)
-		}
-		providerIdentityChanged = (input.Type != nil && *input.Type != existing.Type) ||
-			(input.BaseURL != nil && *input.BaseURL != existing.BaseURL)
-	}
-
 	// Check if name is being updated and if it conflicts with existing channels
 	if input.Name != nil {
 		existing, err := svc.entFromContext(ctx).Channel.Query().
@@ -740,8 +727,22 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	var updated *ent.Channel
+	providerIdentityChanged := false
 	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
+
+		var existingIdentity *ent.Channel
+		if input.Type != nil || input.BaseURL != nil {
+			var err error
+			existingIdentity, err = db.Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldType, channel.FieldBaseURL, channel.FieldUpdatedAt).
+				Only(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to load channel provider identity: %w", err)
+			}
+		}
+
 		mut := db.Channel.UpdateOneID(id).
 			SetNillableType(input.Type).
 			SetNillableBaseURL(input.BaseURL).
@@ -749,6 +750,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			SetNillableDefaultTestModel(input.DefaultTestModel).
 			SetNillableOrderingWeight(input.OrderingWeight).
 			SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
+		if existingIdentity != nil {
+			// Reject a stale provider edit if any concurrent channel update changed
+			// the row after the identity snapshot was read.
+			mut.Where(channel.UpdatedAtEQ(existingIdentity.UpdatedAt))
+		}
 
 		if input.SupportedModels != nil {
 			mut.SetSupportedModels(input.SupportedModels)
@@ -798,7 +804,14 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		channel, err := mut.Save(ctx)
 		if err != nil {
+			if existingIdentity != nil && ent.IsNotFound(err) {
+				return fmt.Errorf("channel was updated concurrently; retry the operation")
+			}
 			return fmt.Errorf("failed to update channel: %w", err)
+		}
+		if existingIdentity != nil {
+			providerIdentityChanged = channel.Type != existingIdentity.Type ||
+				channel.BaseURL != existingIdentity.BaseURL
 		}
 
 		if input.SupportedModels != nil {
@@ -818,7 +831,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		updated.Unwrap()
 	}
 	if providerIdentityChanged {
-		svc.invalidateProviderQuota(ctx, id)
+		runAfterCommit(ctx, func(ctx context.Context) {
+			svc.invalidateProviderQuota(ctx, id)
+		})
 	}
 
 	// Intentionally NO forgetLimiter call: ChannelLimiterManager.GetOrCreate
@@ -861,23 +876,8 @@ func (svc *ChannelService) asyncReloadChannels() {
 // reloadChannelsAfterCommit waits for a caller-owned Ent transaction, including
 // the GraphQL Transactioner, before publishing the channel cache refresh.
 func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context) {
-	tx := ent.TxFromContext(ctx)
-	if tx == nil {
+	runAfterCommit(ctx, func(context.Context) {
 		svc.asyncReloadChannels()
-
-		return
-	}
-
-	tx.OnCommit(func(next ent.Committer) ent.Committer {
-		return ent.CommitFunc(func(ctx context.Context, tx *ent.Tx) error {
-			if err := next.Commit(ctx, tx); err != nil {
-				return err
-			}
-
-			svc.asyncReloadChannels()
-
-			return nil
-		})
 	})
 }
 

@@ -135,15 +135,17 @@ func (s *SystemService) UpdateProviderQuotaCollectionSettings(
 		return err
 	}
 
-	// Write through the exact value just committed to the primary. A read replica
-	// can lag immediately after cache invalidation and otherwise repopulate this
-	// cache with stale settings or a missing-record default.
-	if err := s.Cache.Set(ctx, "system:"+SystemKeyProviderQuotaCollectionSettings, ent.System{
-		Key:   SystemKeyProviderQuotaCollectionSettings,
-		Value: string(jsonBytes),
-	}); err != nil {
-		log.Warn(ctx, "failed to cache provider quota collection settings", log.Cause(err))
-	}
+	// Publish the exact primary value only after the surrounding transaction
+	// commits. This avoids exposing rolled-back settings while still preventing
+	// a lagging read replica from repopulating the cache with an older value.
+	runAfterCommit(ctx, func(ctx context.Context) {
+		if err := s.Cache.Set(ctx, "system:"+SystemKeyProviderQuotaCollectionSettings, ent.System{
+			Key:   SystemKeyProviderQuotaCollectionSettings,
+			Value: string(jsonBytes),
+		}); err != nil {
+			log.Warn(ctx, "failed to cache provider quota collection settings", log.Cause(err))
+		}
+	})
 
 	return nil
 }
