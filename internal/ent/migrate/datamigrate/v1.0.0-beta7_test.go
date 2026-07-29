@@ -12,6 +12,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 )
 
 func TestV1_0_0_Beta7_BackfillsLegacyInvitationRoles(t *testing.T) {
@@ -76,4 +78,86 @@ func TestV1_0_0_Beta7_SkipsRevokedLegacyInvitations(t *testing.T) {
 
 	revokedInvitation := client.Invitation.Query().Where(invitation.IDEQ(revoked.ID)).OnlyX(schematype.SkipSoftDelete(ctx))
 	require.Nil(t, revokedInvitation.RoleID)
+}
+
+func TestV1_0_0_Beta7_CleansSoftDeletedDeveloperAndRecreates(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:soft-deleted-developer-cleanup?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	project := client.Project.Create().SetName("soft-deleted-developer-project").SaveX(ctx)
+
+	// Create a Developer role with users.
+	oldDeveloperRole, err := client.Role.Create().
+		SetName("Developer").
+		SetLevel(role.LevelProject).
+		SetProjectID(project.ID).
+		SetScopes([]string{"old_scope"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a user and assign the role.
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UserRole.Create().
+		SetUserID(testUser.ID).
+		SetRoleID(oldDeveloperRole.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Soft-delete the Developer role.
+	require.NoError(t, client.Role.DeleteOneID(oldDeveloperRole.ID).Exec(ctx))
+
+	// Verify UserRole relationship still exists (soft delete doesn't cascade).
+	count, err := client.UserRole.Query().Where(userrole.RoleID(oldDeveloperRole.ID)).Count(schematype.SkipSoftDelete(ctx))
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+
+	// Create a legacy invitation.
+	legacyInvitation, err := client.Invitation.Create().
+		SetTokenHash("soft-deleted-cleanup-token").
+		SetProjectID(project.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Run migration.
+	require.NoError(t, datamigrate.NewV1_0_0_Beta7().Migrate(ctx, client))
+
+	// Verify old soft-deleted role is permanently deleted.
+	exists, err := client.Role.Query().Where(role.IDEQ(oldDeveloperRole.ID)).Exist(schematype.SkipSoftDelete(ctx))
+	require.NoError(t, err)
+	require.False(t, exists)
+
+	// Verify stale UserRole relationship is cleaned up.
+	count, err = client.UserRole.Query().Where(userrole.RoleID(oldDeveloperRole.ID)).Count(schematype.SkipSoftDelete(ctx))
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+
+	// Verify new Developer role is created with default scopes.
+	newDeveloperRole, err := client.Role.Query().Where(
+		role.LevelEQ(role.LevelProject),
+		role.ProjectIDEQ(project.ID),
+		role.NameEQ("Developer"),
+	).Only(ctx)
+	require.NoError(t, err)
+	require.NotEqual(t, oldDeveloperRole.ID, newDeveloperRole.ID)
+	require.ElementsMatch(t, []string{
+		"read_api_keys", "write_api_keys",
+		"read_prompts", "write_prompts", "write_requests",
+	}, newDeveloperRole.Scopes)
+
+	// Verify the user is NOT assigned to the new role.
+	count, err = client.UserRole.Query().Where(userrole.RoleID(newDeveloperRole.ID)).Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+
+	// Verify legacy invitation is assigned to the new role.
+	legacyInvitation = client.Invitation.GetX(ctx, legacyInvitation.ID)
+	require.NotNil(t, legacyInvitation.RoleID)
+	require.Equal(t, newDeveloperRole.ID, *legacyInvitation.RoleID)
 }

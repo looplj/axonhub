@@ -8,6 +8,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -39,6 +41,31 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 	}()
 
 	txClient := ent.FromContext(ctx)
+
+	// Clean up any soft-deleted Developer roles and their stale UserRole relationships.
+	softDeletedDevelopers, err := txClient.Role.Query().Where(
+		role.LevelEQ(role.LevelProject),
+		role.NameEQ("Developer"),
+	).All(schematype.SkipSoftDelete(ctx))
+	if err != nil {
+		return fmt.Errorf("query soft-deleted Developer roles: %w", err)
+	}
+
+	for _, dr := range softDeletedDevelopers {
+		if dr.DeletedAt != 0 {
+			// Delete stale UserRole relationships.
+			if _, err := txClient.UserRole.Delete().
+				Where(userrole.RoleID(dr.ID)).
+				Exec(ctx); err != nil {
+				return fmt.Errorf("clear stale UserRole rows for Developer role %d: %w", dr.ID, err)
+			}
+			// Permanently delete the soft-deleted role.
+			if err := txClient.Role.DeleteOneID(dr.ID).Exec(schematype.SkipSoftDelete(ctx)); err != nil {
+				return fmt.Errorf("permanently delete soft-deleted Developer role %d: %w", dr.ID, err)
+			}
+		}
+	}
+
 	legacyInvitations, err := txClient.Invitation.Query().Where(
 		invitation.RoleIDIsNil(),
 		invitation.DeletedAtEQ(0),
