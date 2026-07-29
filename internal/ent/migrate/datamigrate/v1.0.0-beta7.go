@@ -39,7 +39,10 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 	}()
 
 	txClient := ent.FromContext(ctx)
-	legacyInvitations, err := txClient.Invitation.Query().Where(invitation.RoleIDIsNil()).All(ctx)
+	legacyInvitations, err := txClient.Invitation.Query().Where(
+		invitation.RoleIDIsNil(),
+		invitation.DeletedAtEQ(0),
+	).All(ctx)
 	if err != nil {
 		return err
 	}
