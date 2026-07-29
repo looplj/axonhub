@@ -180,15 +180,16 @@ func (s *RoleService) DeleteRole(ctx context.Context, id int) error {
 	client := s.entFromContext(ctx)
 
 	// First, check if the role exists
-	exists, err := client.Role.Query().
+	roleEntity, err := client.Role.Query().
 		Where(role.IDEQ(id)).
-		Exist(ctx)
+		Only(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to check role existence: %w", err)
 	}
 
-	if !exists {
-		return fmt.Errorf("role not found")
+	// Prevent deleting the default Developer role
+	if roleEntity.Name == "Developer" {
+		return fmt.Errorf("cannot delete the default Developer role")
 	}
 
 	// Delete all UserRole relationships for this role
@@ -218,16 +219,23 @@ func (s *RoleService) BulkDeleteRoles(ctx context.Context, ids []int) error {
 		return nil
 	}
 
-	// Verify all roles exist
-	count, err := client.Role.Query().
+	// Verify all roles exist and check for Developer role
+	roles, err := client.Role.Query().
 		Where(role.IDIn(ids...)).
-		Count(ctx)
+		All(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to query roles: %w", err)
 	}
 
-	if count != len(ids) {
-		return fmt.Errorf("expected to find %d roles, but found %d", len(ids), count)
+	if len(roles) != len(ids) {
+		return fmt.Errorf("expected to find %d roles, but found %d", len(ids), len(roles))
+	}
+
+	// Prevent deleting the default Developer role
+	for _, r := range roles {
+		if r.Name == "Developer" {
+			return fmt.Errorf("cannot delete the default Developer role")
+		}
 	}
 
 	// Delete all UserRole relationships for these roles

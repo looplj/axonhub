@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -70,6 +71,12 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 				Save(ctx)
 		} else if err == nil && developerRole.DeletedAt != 0 {
 			// Restore soft-deleted Developer role.
+			// First, delete any surviving UserRole relationships to prevent reactivating revoked permissions.
+			if _, err := txClient.UserRole.Delete().
+				Where(userrole.RoleID(developerRole.ID)).
+				Exec(ctx); err != nil {
+				return fmt.Errorf("clear stale UserRole rows for Developer role %d: %w", developerRole.ID, err)
+			}
 			err = txClient.Role.UpdateOneID(developerRole.ID).
 				SetDeletedAt(0).
 				SetScopes([]string{
