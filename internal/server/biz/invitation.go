@@ -159,13 +159,14 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 				return fmt.Errorf("invitation is no longer valid")
 			}
 			roleID := invitationRow.RoleID
-			if roleID != nil {
-				if _, err := client.Role.Query().Where(
-					role.IDEQ(*roleID),
-					role.ProjectIDEQ(invitationRow.ProjectID),
-				).Only(ctx); err != nil {
-					return fmt.Errorf("invitation role is no longer available")
-				}
+			if roleID == nil {
+				return fmt.Errorf("invitation role is required")
+			}
+			if _, err := client.Role.Query().Where(
+				role.IDEQ(*roleID),
+				role.ProjectIDEQ(invitationRow.ProjectID),
+			).Only(ctx); err != nil {
+				return fmt.Errorf("invitation role is no longer available")
 			}
 			exists, err := client.User.Query().Where(user.EmailEQ(email)).Exist(ctx)
 			if err != nil {
@@ -226,17 +227,11 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 				return fmt.Errorf("failed to create user: %w", err)
 			}
 
-			membership := client.UserProject.Create().SetUserID(createdUser.ID).SetProjectID(invitationRow.ProjectID)
-			if roleID == nil {
-				membership.SetScopes([]string{string(scopes.ScopeReadPrompts), string(scopes.ScopeReadRequests)})
-			}
-			if _, err := membership.Save(ctx); err != nil {
+			if _, err := client.UserProject.Create().SetUserID(createdUser.ID).SetProjectID(invitationRow.ProjectID).Save(ctx); err != nil {
 				return fmt.Errorf("failed to add user to project: %w", err)
 			}
-			if roleID != nil {
-				if err := client.User.UpdateOneID(createdUser.ID).AddRoleIDs(*roleID).Exec(ctx); err != nil {
-					return fmt.Errorf("failed to assign invitation role: %w", err)
-				}
+			if err := client.User.UpdateOneID(createdUser.ID).AddRoleIDs(*roleID).Exec(ctx); err != nil {
+				return fmt.Errorf("failed to assign invitation role: %w", err)
 			}
 
 			return nil

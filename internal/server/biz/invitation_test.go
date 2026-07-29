@@ -103,7 +103,7 @@ func TestInvitationService_UnlimitedInvitation(t *testing.T) {
 	require.NotEqual(t, first.ID, second.ID)
 }
 
-func TestInvitationService_LegacyInvitationPreservesRolelessMembership(t *testing.T) {
+func TestInvitationService_RejectsUnmigratedLegacyInvitation(t *testing.T) {
 	service, client, ctx := setupInvitationService(t)
 	defer client.Close()
 
@@ -116,26 +116,8 @@ func TestInvitationService_LegacyInvitationPreservesRolelessMembership(t *testin
 		Save(ctx)
 	require.NoError(t, err)
 
-	registered, err := service.RegisterInvitation(ctx, token, "legacy@example.com", "password", "Legacy", "Member")
-	require.NoError(t, err)
-	roleCount, err := registered.QueryRoles().Count(ctx)
-	require.NoError(t, err)
-	require.Zero(t, roleCount)
-	membership, err := client.UserProject.Query().Where(
-		userproject.UserIDEQ(registered.ID),
-		userproject.ProjectIDEQ(project.ID),
-	).Only(ctx)
-	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"read_prompts", "read_requests"}, membership.Scopes)
-	userInfo := ConvertUserToUserInfo(ctx, registered)
-	require.Contains(t, userInfo.Projects[0].EffectiveScopes, "read_prompts")
-	require.Contains(t, userInfo.Projects[0].EffectiveScopes, "read_requests")
-	require.NotContains(t, userInfo.Projects[0].EffectiveScopes, "write_prompts")
-	require.NotContains(t, userInfo.Projects[0].EffectiveScopes, "write_requests")
-
-	registeredInvitation, err := client.Invitation.Query().Only(ctx)
-	require.NoError(t, err)
-	require.Nil(t, registeredInvitation.RoleID)
+	_, err = service.RegisterInvitation(ctx, token, "legacy@example.com", "password", "Legacy", "Member")
+	require.ErrorContains(t, err, "invitation role is required")
 }
 
 func TestInvitationService_RejectsRoleTheInviterCannotGrant(t *testing.T) {
