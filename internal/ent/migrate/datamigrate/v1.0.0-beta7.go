@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -48,11 +49,12 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 	}
 
 	for _, legacyInvitation := range legacyInvitations {
+		// Query including soft-deleted roles to avoid unique index violation.
 		developerRole, err := txClient.Role.Query().Where(
 			role.LevelEQ(role.LevelProject),
 			role.ProjectIDEQ(legacyInvitation.ProjectID),
 			role.NameEQ("Developer"),
-		).Only(ctx)
+		).Only(schematype.SkipSoftDelete(ctx))
 		if ent.IsNotFound(err) {
 			developerRole, err = txClient.Role.Create().
 				SetName("Developer").
@@ -66,6 +68,18 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 					string(scopes.ScopeWriteRequests),
 				}).
 				Save(ctx)
+		} else if err == nil && developerRole.DeletedAt != 0 {
+			// Restore soft-deleted Developer role.
+			err = txClient.Role.UpdateOneID(developerRole.ID).
+				SetDeletedAt(0).
+				SetScopes([]string{
+					string(scopes.ScopeReadAPIKeys),
+					string(scopes.ScopeWriteAPIKeys),
+					string(scopes.ScopeReadPrompts),
+					string(scopes.ScopeWritePrompts),
+					string(scopes.ScopeWriteRequests),
+				}).
+				Exec(ctx)
 		}
 		if err != nil {
 			return fmt.Errorf("find Developer role for legacy invitation %d: %w", legacyInvitation.ID, err)

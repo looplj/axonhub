@@ -77,3 +77,47 @@ func TestV1_0_0_Beta7_SkipsRevokedLegacyInvitations(t *testing.T) {
 	revokedInvitation := client.Invitation.Query().Where(invitation.IDEQ(revoked.ID)).OnlyX(schematype.SkipSoftDelete(ctx))
 	require.Nil(t, revokedInvitation.RoleID)
 }
+
+func TestV1_0_0_Beta7_RestoresSoftDeletedDeveloperRole(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:soft-deleted-developer-role?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	project := client.Project.Create().SetName("soft-deleted-developer-project").SaveX(ctx)
+
+	// Create and soft-delete a Developer role.
+	softDeletedRole := client.Role.Create().
+		SetName("Developer").
+		SetLevel(role.LevelProject).
+		SetProjectID(project.ID).
+		SetScopes([]string{"old_scope"}).
+		SaveX(ctx)
+	require.NoError(t, client.Role.DeleteOneID(softDeletedRole.ID).Exec(ctx))
+
+	// Create a legacy invitation.
+	legacyInvitation := client.Invitation.Create().
+		SetTokenHash("soft-deleted-role-token").
+		SetProjectID(project.ID).
+		SaveX(ctx)
+
+	// Run migration - should restore the soft-deleted role, not create a new one.
+	require.NoError(t, datamigrate.NewV1_0_0_Beta7().Migrate(ctx, client))
+
+	// Verify the role was restored.
+	restoredRole := client.Role.Query().Where(
+		role.LevelEQ(role.LevelProject),
+		role.ProjectIDEQ(project.ID),
+		role.NameEQ("Developer"),
+	).OnlyX(schematype.SkipSoftDelete(ctx))
+	require.Equal(t, softDeletedRole.ID, restoredRole.ID)
+	require.Equal(t, 0, restoredRole.DeletedAt)
+	require.Equal(t, []string{
+		"read_api_keys", "write_api_keys",
+		"read_prompts", "write_prompts", "write_requests",
+	}, restoredRole.Scopes)
+
+	// Verify the invitation was assigned to the restored role.
+	legacyInvitation = client.Invitation.GetX(ctx, legacyInvitation.ID)
+	require.NotNil(t, legacyInvitation.RoleID)
+	require.Equal(t, softDeletedRole.ID, *legacyInvitation.RoleID)
+}
