@@ -6,6 +6,7 @@ import { IconCheck, IconCopy, IconMailPlus } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api-client';
+import { extractNumberIDAsNumber } from '@/lib/utils';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useRoles } from '@/features/project-roles/data/roles';
 import { Button } from '@/components/ui/button';
@@ -70,7 +71,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
         body: {
           expiresInHours: Number(values.expiresInHours),
           maxUses: Number(values.maxUses),
-          roleID: Number(values.roleID),
+          roleID: extractNumberIDAsNumber(values.roleID),
         },
       });
       const url = new URL('/sign-up', window.location.origin);
