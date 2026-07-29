@@ -131,7 +131,21 @@ func (s *SystemService) UpdateProviderQuotaCollectionSettings(
 	if err != nil {
 		return fmt.Errorf("failed to marshal provider quota collection settings: %w", err)
 	}
-	return s.setSystemValue(ctx, SystemKeyProviderQuotaCollectionSettings, string(jsonBytes))
+	if err := s.setSystemValue(ctx, SystemKeyProviderQuotaCollectionSettings, string(jsonBytes)); err != nil {
+		return err
+	}
+
+	// Write through the exact value just committed to the primary. A read replica
+	// can lag immediately after cache invalidation and otherwise repopulate this
+	// cache with stale settings or a missing-record default.
+	if err := s.Cache.Set(ctx, "system:"+SystemKeyProviderQuotaCollectionSettings, ent.System{
+		Key:   SystemKeyProviderQuotaCollectionSettings,
+		Value: string(jsonBytes),
+	}); err != nil {
+		log.Warn(ctx, "failed to cache provider quota collection settings", log.Cause(err))
+	}
+
+	return nil
 }
 
 func (s *SystemService) IsProviderQuotaCollectionEnabled(ctx context.Context, providerType string) (bool, error) {

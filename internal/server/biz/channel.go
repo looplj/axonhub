@@ -163,6 +163,10 @@ type ChannelService struct {
 	// Optional: when nil, mutations skip the call (used in tests / before wiring).
 	limiterForgetter ChannelLimiterForgetter
 
+	// providerQuotaInvalidator discards stale quota state after a channel changes
+	// its provider identity. Optional for direct service construction in tests.
+	providerQuotaInvalidator ChannelProviderQuotaInvalidator
+
 	// perfWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
 	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
 	perfWindowSeconds int64
@@ -672,6 +676,19 @@ func NormalizeRetryableErrorPatterns(settings *objects.ChannelSettings) error {
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
 
+	providerIdentityChanged := false
+	if input.Type != nil || input.BaseURL != nil {
+		existing, err := svc.entFromContext(ctx).Channel.Query().
+			Where(channel.IDEQ(id)).
+			Select(channel.FieldType, channel.FieldBaseURL).
+			Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load channel provider identity: %w", err)
+		}
+		providerIdentityChanged = (input.Type != nil && *input.Type != existing.Type) ||
+			(input.BaseURL != nil && *input.BaseURL != existing.BaseURL)
+	}
+
 	// Check if name is being updated and if it conflicts with existing channels
 	if input.Name != nil {
 		existing, err := svc.entFromContext(ctx).Channel.Query().
@@ -799,6 +816,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 	if ent.TxFromContext(ctx) == nil {
 		updated.Unwrap()
+	}
+	if providerIdentityChanged {
+		svc.invalidateProviderQuota(ctx, id)
 	}
 
 	// Intentionally NO forgetLimiter call: ChannelLimiterManager.GetOrCreate

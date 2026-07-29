@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/internal/server/scheduler"
@@ -535,6 +536,25 @@ func (svc *ProviderQuotaService) updateQuotaCache(channelID int, providerType st
 	})
 }
 
+// InvalidateChannelQuota removes a channel's persisted and cached quota state.
+// Channel provider identity changes invalidate the previous provider's quota
+// result, so serialize this with quota checks before removing the record.
+func (svc *ProviderQuotaService) InvalidateChannelQuota(ctx context.Context, channelID int) error {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	defer svc.quotaCache.Delete(channelID)
+
+	_, err := svc.db.ProviderQuotaStatus.Delete().
+		Where(providerquotastatus.ChannelIDEQ(channelID)).
+		Exec(schematype.SkipSoftDelete(ctx))
+	if err != nil {
+		return fmt.Errorf("failed to invalidate provider quota status: %w", err)
+	}
+
+	return nil
+}
+
 // ManualCheck forces an immediate quota check for all relevant channels.
 func (svc *ProviderQuotaService) ManualCheck(ctx context.Context) {
 	svc.runQuotaCheckForce(ctx)
@@ -594,7 +614,8 @@ func (svc *ProviderQuotaService) runQuotaCheckForce(ctx context.Context) {
 
 func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) {
 	ctx = ent.NewContext(ctx, svc.db)
-	if !svc.SystemService.ProviderQuotaCollectionSettingsOrDefault(ctx).Enabled {
+	settings := svc.SystemService.ProviderQuotaCollectionSettingsOrDefault(ctx)
+	if !settings.Enabled {
 		return
 	}
 
@@ -629,6 +650,10 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 		log.Error(ctx, "Failed to query channels for quota check", log.Cause(err))
 		return
 	}
+	channelsToCheck = lo.Filter(channelsToCheck, func(ch *ent.Channel, _ int) bool {
+		providerType := svc.getProviderType(ch)
+		return providerType != "" && settings.Providers[providerType]
+	})
 
 	if len(channelsToCheck) == 0 {
 		log.Debug(ctx, "No channels need quota check at this time")
@@ -729,12 +754,16 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	// Set ready based on status
 	create.SetReady(quotaData.Ready)
 
-	err := create.
+	upsert := create.
 		OnConflict(
 			sql.ConflictColumns("channel_id"),
 		).
-		UpdateNewValues().
-		Exec(ctx)
+		UpdateNewValues()
+	if quotaData.NextResetAt == nil {
+		upsert.ClearNextResetAt()
+	}
+
+	err := upsert.Exec(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to save quota status",
 			log.Int("channel_id", channelID),
