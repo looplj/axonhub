@@ -76,6 +76,7 @@ export function useRoles(
   const selectedProjectId = useSelectedProjectId();
 
   const queryVariables = {
+    first: 20,
     ...variables,
     orderBy: variables.orderBy || { field: 'CREATED_AT', direction: 'DESC' },
   };
