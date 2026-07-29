@@ -32,6 +32,22 @@ func TestSystemService_ProviderQuotaCollectionSettings_DefaultsToEnabled(t *test
 	require.True(t, settings.Providers["zhipu"])
 }
 
+func TestSystemService_ProviderQuotaCollectionSettings_CachesDefaults(t *testing.T) {
+	service, client := setupProviderQuotaSettingsTest(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	_, err := service.ProviderQuotaCollectionSettings(ctx)
+	require.NoError(t, err)
+
+	cached, err := service.Cache.Get(ctx, "system:"+SystemKeyProviderQuotaCollectionSettings)
+	require.NoError(t, err)
+
+	var settings ProviderQuotaCollectionSettings
+	require.NoError(t, json.Unmarshal([]byte(cached.Value), &settings))
+	require.Equal(t, defaultProviderQuotaCollectionSettings(), &settings)
+}
+
 func TestSystemService_ProviderQuotaCollectionSettings_DefaultsMissingProvidersToEnabled(t *testing.T) {
 	service, client := setupProviderQuotaSettingsTest(t)
 	defer client.Close()

@@ -68,7 +68,19 @@ func (s *SystemService) ProviderQuotaCollectionSettings(ctx context.Context) (*P
 	value, err := s.getSystemValue(ctx, SystemKeyProviderQuotaCollectionSettings)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return defaultProviderQuotaCollectionSettings(), nil
+			settings := defaultProviderQuotaCollectionSettings()
+			jsonBytes, marshalErr := json.Marshal(settings)
+			if marshalErr != nil {
+				return nil, fmt.Errorf("failed to marshal default provider quota collection settings: %w", marshalErr)
+			}
+
+			// 缓存规范化默认值，避免未保存设置时在渠道循环中重复查询数据库。
+			_ = s.Cache.Set(ctx, "system:"+SystemKeyProviderQuotaCollectionSettings, ent.System{
+				Key:   SystemKeyProviderQuotaCollectionSettings,
+				Value: string(jsonBytes),
+			})
+
+			return settings, nil
 		}
 		return nil, fmt.Errorf("failed to get provider quota collection settings: %w", err)
 	}
