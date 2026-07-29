@@ -344,7 +344,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 
 	svc.registerProviderQuotaSupport()
 
-	go svc.loadQuotaCache(context.Background())
+	svc.loadQuotaCache(context.Background())
 
 	return svc
 }
@@ -756,6 +756,34 @@ func (svc *ProviderQuotaService) saveQuotaError(
 
 	if ch.Edges.ProviderQuotaStatus != nil {
 		existing := ch.Edges.ProviderQuotaStatus
+		if existing.ProviderType != pt {
+			nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), 1))
+			quotaData := map[string]any{
+				"error":       quotaErr.Error(),
+				"error_count": 1,
+			}
+
+			// 提供商变化后旧状态和限额不再有效，按新提供商的首次失败重置记录。
+			err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
+				SetProviderType(pt).
+				SetStatus(providerquotastatus.StatusUnknown).
+				SetReady(false).
+				SetQuotaData(quotaData).
+				ClearNextResetAt().
+				SetNextCheckAt(nextCheck).
+				Exec(ctx)
+			if err != nil {
+				log.Error(ctx, "Failed to reset quota status for changed provider",
+					log.Int("channel_id", ch.ID),
+					log.String("previous_provider", existing.ProviderType.String()),
+					log.String("provider", providerType),
+					log.Cause(err))
+				return
+			}
+
+			svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, nil)
+			return
+		}
 
 		existingData := existing.QuotaData
 		if existingData == nil {
