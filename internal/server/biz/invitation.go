@@ -226,7 +226,11 @@ func (s *InvitationService) RegisterInvitation(ctx context.Context, token, email
 				return fmt.Errorf("failed to create user: %w", err)
 			}
 
-			if _, err := client.UserProject.Create().SetUserID(createdUser.ID).SetProjectID(invitationRow.ProjectID).Save(ctx); err != nil {
+			membership := client.UserProject.Create().SetUserID(createdUser.ID).SetProjectID(invitationRow.ProjectID)
+			if roleID == nil {
+				membership.SetScopes([]string{string(scopes.ScopeReadPrompts), string(scopes.ScopeReadRequests)})
+			}
+			if _, err := membership.Save(ctx); err != nil {
 				return fmt.Errorf("failed to add user to project: %w", err)
 			}
 			if roleID != nil {

@@ -121,6 +121,17 @@ func TestInvitationService_LegacyInvitationPreservesRolelessMembership(t *testin
 	roleCount, err := registered.QueryRoles().Count(ctx)
 	require.NoError(t, err)
 	require.Zero(t, roleCount)
+	membership, err := client.UserProject.Query().Where(
+		userproject.UserIDEQ(registered.ID),
+		userproject.ProjectIDEQ(project.ID),
+	).Only(ctx)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"read_prompts", "read_requests"}, membership.Scopes)
+	userInfo := ConvertUserToUserInfo(ctx, registered)
+	require.Contains(t, userInfo.Projects[0].EffectiveScopes, "read_prompts")
+	require.Contains(t, userInfo.Projects[0].EffectiveScopes, "read_requests")
+	require.NotContains(t, userInfo.Projects[0].EffectiveScopes, "write_prompts")
+	require.NotContains(t, userInfo.Projects[0].EffectiveScopes, "write_requests")
 
 	registeredInvitation, err := client.Invitation.Query().Only(ctx)
 	require.NoError(t, err)
