@@ -392,6 +392,11 @@ type PromptProtectionRulePreviewResult struct {
 	HasMatch bool   `json:"hasMatch"`
 }
 
+type ProviderQuotaCollectionProviderInput struct {
+	Provider string `json:"provider"`
+	Enabled  bool   `json:"enabled"`
+}
+
 type QueryModelsInput struct {
 	StatusIn                []channel.Status `json:"statusIn,omitempty"`
 	IncludeMapping          *bool            `json:"includeMapping,omitempty"`
@@ -600,6 +605,11 @@ type UpdateProjectUserInput struct {
 	Scopes        []string        `json:"scopes,omitempty"`
 	AddRoleIDs    []*objects.GUID `json:"addRoleIDs,omitempty"`
 	RemoveRoleIDs []*objects.GUID `json:"removeRoleIDs,omitempty"`
+}
+
+type UpdateProviderQuotaCollectionSettingsInput struct {
+	Enabled   *bool                                   `json:"enabled,omitempty"`
+	Providers []*ProviderQuotaCollectionProviderInput `json:"providers,omitempty"`
 }
 
 type UpdateQuotaEnforcementSettingsInput struct {

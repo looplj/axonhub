@@ -82,9 +82,10 @@ func nextQuotaErrorCount(prev int) int {
 }
 
 type QuotaChannelStatus struct {
-	Status providerquotastatus.Status
-	Ready  bool
-	Limits []provider_quota.QuotaLimitStatus
+	ProviderType string
+	Status       providerquotastatus.Status
+	Ready        bool
+	Limits       []provider_quota.QuotaLimitStatus
 }
 
 // EffectiveStatus returns the effective quota status for the given limit type.
@@ -179,12 +180,15 @@ func quotaStatusRank(s providerquotastatus.Status) int {
 //    In internal/ent/schema/provider_quota_status.go:
 //      - Add new value to the provider_type enum (e.g., "myprovider")
 //
-// 3. Register the provider in ProviderQuotaService
+// 3. Register the provider in ProviderQuotaService and collection settings
 //
 //    a. Create a registration function (e.g., registerMyProviderSupport())
-//    b. Add it to NewProviderQuotaService()
-//    c. Update getProviderType() to map channel.TypeMyprovider -> "myprovider"
-//    d. Update runQuotaCheck() to include channel.TypeMyprovider in TypeIn filter
+//    b. Add it to registerProviderQuotaSupport()
+//    c. Add the provider key to supportedProviderQuotaTypes in provider_quota_settings.go
+//    d. Add the provider name to both frontend system locale files under
+//       system.quota.collection.providers
+//    e. Update getProviderType() to map channel.TypeMyprovider -> "myprovider"
+//    f. Update runQuotaCheck() to include channel.TypeMyprovider in TypeIn filter
 //
 //    Example:
 //
@@ -214,12 +218,15 @@ func quotaStatusRank(s providerquotastatus.Status) int {
 //    a. Add the URL pattern to urlProviderMap (e.g., "wafer.ai": "wafer")
 //    b. The DetectProviderFromURL() function handles the mapping
 //
-// 4. Register the provider in ProviderQuotaService
+// 4. Register the provider in ProviderQuotaService and collection settings
 //
 //    a. Create a registration function (e.g., registerWaferSupport())
-//    b. Add it to NewProviderQuotaService()
-//    c. getProviderType() already handles URL-based detection for TypeOpenai
-//    d. hasCredentialsForProvider() already handles API-key-only auth for URL-detected providers
+//    b. Add it to registerProviderQuotaSupport()
+//    c. Add the provider key to supportedProviderQuotaTypes in provider_quota_settings.go
+//    d. Add the provider name to both frontend system locale files under
+//       system.quota.collection.providers
+//    e. getProviderType() already handles URL-based detection for TypeOpenai
+//    f. hasCredentialsForProvider() already handles API-key-only auth for URL-detected providers
 //
 //    Example:
 //
@@ -335,6 +342,14 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 		httpClient:                params.HttpClient,
 	}
 
+	svc.registerProviderQuotaSupport()
+
+	go svc.loadQuotaCache(context.Background())
+
+	return svc
+}
+
+func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
 	svc.registerGithubCopilotSupport()
@@ -348,10 +363,6 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 	svc.registerKimiCodeSupport()
 	svc.registerMinimaxSupport()
 	svc.registerZhipuSupport()
-
-	go svc.loadQuotaCache(context.Background())
-
-	return svc
 }
 
 func (svc *ProviderQuotaService) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
@@ -485,16 +496,17 @@ func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {
 
 	for _, r := range records {
 		svc.quotaCache.Store(r.ChannelID, &QuotaChannelStatus{
-			Status: r.Status,
-			Ready:  r.Ready,
-			Limits: extractLimitsFromQuotaData(r.QuotaData),
+			ProviderType: r.ProviderType.String(),
+			Status:       r.Status,
+			Ready:        r.Ready,
+			Limits:       extractLimitsFromQuotaData(r.QuotaData),
 		})
 	}
 
 	log.Debug(ctx, "Loaded quota cache from DB", log.Int("records", len(records)))
 }
 
-func (svc *ProviderQuotaService) GetQuotaStatus(channelID int) *QuotaChannelStatus {
+func (svc *ProviderQuotaService) GetQuotaStatus(ctx context.Context, channelID int) *QuotaChannelStatus {
 	val, ok := svc.quotaCache.Load(channelID)
 	if !ok {
 		return nil
@@ -504,15 +516,22 @@ func (svc *ProviderQuotaService) GetQuotaStatus(channelID int) *QuotaChannelStat
 	if !ok {
 		return nil
 	}
+	if status.ProviderType != "" {
+		settings := svc.SystemService.ProviderQuotaCollectionSettingsOrDefault(ctx)
+		if !settings.Enabled || !settings.Providers[status.ProviderType] {
+			return nil
+		}
+	}
 
 	return status
 }
 
-func (svc *ProviderQuotaService) updateQuotaCache(channelID int, status providerquotastatus.Status, ready bool, limits []provider_quota.QuotaLimitStatus) {
+func (svc *ProviderQuotaService) updateQuotaCache(channelID int, providerType string, status providerquotastatus.Status, ready bool, limits []provider_quota.QuotaLimitStatus) {
 	svc.quotaCache.Store(channelID, &QuotaChannelStatus{
-		Status: status,
-		Ready:  ready,
-		Limits: limits,
+		ProviderType: providerType,
+		Status:       status,
+		Ready:        ready,
+		Limits:       limits,
 	})
 }
 
@@ -530,6 +549,11 @@ func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, chann
 
 	if ch.Type != channel.TypeCodex {
 		return fmt.Errorf("reset is only supported for codex channels")
+	}
+	if enabled, err := svc.SystemService.IsProviderQuotaCollectionEnabled(ctx, "codex"); err != nil {
+		return fmt.Errorf("failed to read provider quota collection settings: %w", err)
+	} else if !enabled {
+		return fmt.Errorf("provider quota collection is disabled for codex")
 	}
 
 	if !hasCredentialsForProvider(ch) {
@@ -570,6 +594,9 @@ func (svc *ProviderQuotaService) runQuotaCheckForce(ctx context.Context) {
 
 func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) {
 	ctx = ent.NewContext(ctx, svc.db)
+	if !svc.SystemService.ProviderQuotaCollectionSettingsOrDefault(ctx).Enabled {
+		return
+	}
 
 	now := time.Now()
 	log.Debug(ctx, "Checking for channels to poll",
@@ -630,6 +657,13 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.Channel, now time.Time) {
 	providerType := svc.getProviderType(ch)
 	if providerType == "" {
+		return
+	}
+	if enabled, err := svc.SystemService.IsProviderQuotaCollectionEnabled(ctx, providerType); err != nil {
+		log.Warn(ctx, "failed to read provider quota collection settings",
+			log.String("provider", providerType),
+			log.Cause(err))
+	} else if !enabled {
 		return
 	}
 
@@ -708,7 +742,7 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 		return
 	}
 
-	svc.updateQuotaCache(channelID, providerquotastatus.Status(quotaData.Status), quotaData.Ready, quotaData.Limits)
+	svc.updateQuotaCache(channelID, providerType, providerquotastatus.Status(quotaData.Status), quotaData.Ready, quotaData.Limits)
 }
 
 func (svc *ProviderQuotaService) saveQuotaError(
@@ -748,7 +782,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		}
 
 		existingLimits := extractLimitsFromQuotaData(existing.QuotaData)
-		svc.updateQuotaCache(ch.ID, existing.Status, existing.Ready, existingLimits)
+		svc.updateQuotaCache(ch.ID, providerType, existing.Status, existing.Ready, existingLimits)
 
 		return
 	}
@@ -773,7 +807,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		return
 	}
 
-	svc.updateQuotaCache(ch.ID, providerquotastatus.StatusUnknown, false, nil)
+	svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, nil)
 }
 
 func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {

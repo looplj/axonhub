@@ -60,6 +60,49 @@ func TestMutationResolver_UpdateSystemChannelSettings_MergesAutoSyncWithoutOverw
 	require.Equal(t, biz.AutoSyncFrequencySixHours, setting.AutoSync.Frequency)
 }
 
+func TestMutationResolver_UpdateProviderQuotaCollectionSettings_MergesProviders(t *testing.T) {
+	resolver, ctx, client := setupTestSystemMutationResolver(t)
+	defer client.Close()
+
+	require.NoError(t, resolver.systemService.UpdateProviderQuotaCollectionSettings(ctx, nil, []biz.ProviderQuotaCollectionProvider{
+		{Provider: "codex", Enabled: false},
+	}))
+
+	ok, err := resolver.UpdateProviderQuotaCollectionSettings(ctx, UpdateProviderQuotaCollectionSettingsInput{
+		Providers: []*ProviderQuotaCollectionProviderInput{
+			{Provider: "minimax", Enabled: false},
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	settings, err := resolver.systemService.ProviderQuotaCollectionSettings(ctx)
+	require.NoError(t, err)
+	require.False(t, settings.Providers["codex"])
+	require.False(t, settings.Providers["minimax"])
+	require.True(t, settings.Providers["zhipu"])
+}
+
+func TestMutationResolver_UpdateProviderQuotaCollectionSettings_RejectsInvalidProviders(t *testing.T) {
+	resolver, ctx, client := setupTestSystemMutationResolver(t)
+	defer client.Close()
+
+	_, err := resolver.UpdateProviderQuotaCollectionSettings(ctx, UpdateProviderQuotaCollectionSettingsInput{
+		Providers: []*ProviderQuotaCollectionProviderInput{
+			{Provider: "unsupported", Enabled: false},
+		},
+	})
+	require.ErrorContains(t, err, "unsupported provider quota type")
+
+	_, err = resolver.UpdateProviderQuotaCollectionSettings(ctx, UpdateProviderQuotaCollectionSettingsInput{
+		Providers: []*ProviderQuotaCollectionProviderInput{
+			{Provider: "minimax", Enabled: false},
+			{Provider: "minimax", Enabled: true},
+		},
+	})
+	require.ErrorContains(t, err, "duplicate provider quota type")
+}
+
 func TestMutationResolver_UpdateSystemChannelSettings_MergesProbeWithoutOverwritingAutoSync(t *testing.T) {
 	resolver, ctx, client := setupTestSystemMutationResolver(t)
 	defer client.Close()

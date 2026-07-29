@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,17 +20,17 @@ func TestProviderQuotaService_GetQuotaStatus_ReturnsCorrectData(t *testing.T) {
 	svc.quotaCache.Store(2, &QuotaChannelStatus{Status: providerquotastatus.StatusExhausted, Ready: false})
 	svc.quotaCache.Store(3, &QuotaChannelStatus{Status: providerquotastatus.StatusWarning, Ready: true})
 
-	status1 := svc.GetQuotaStatus(1)
+	status1 := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status1)
 	assert.Equal(t, providerquotastatus.StatusAvailable, status1.Status)
 	assert.True(t, status1.Ready)
 
-	status2 := svc.GetQuotaStatus(2)
+	status2 := svc.GetQuotaStatus(t.Context(), 2)
 	assert.NotNil(t, status2)
 	assert.Equal(t, providerquotastatus.StatusExhausted, status2.Status)
 	assert.False(t, status2.Ready)
 
-	status3 := svc.GetQuotaStatus(3)
+	status3 := svc.GetQuotaStatus(t.Context(), 3)
 	assert.NotNil(t, status3)
 	assert.Equal(t, providerquotastatus.StatusWarning, status3.Status)
 	assert.True(t, status3.Ready)
@@ -41,7 +41,7 @@ func TestProviderQuotaService_GetQuotaStatus_UnknownChannel(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	status := svc.GetQuotaStatus(999)
+	status := svc.GetQuotaStatus(t.Context(), 999)
 	assert.Nil(t, status)
 }
 
@@ -50,15 +50,15 @@ func TestProviderQuotaService_UpdateQuotaCache(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true, nil)
-	svc.updateQuotaCache(2, providerquotastatus.StatusExhausted, false, nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, nil)
+	svc.updateQuotaCache(2, "", providerquotastatus.StatusExhausted, false, nil)
 
-	status1 := svc.GetQuotaStatus(1)
+	status1 := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status1)
 	assert.Equal(t, providerquotastatus.StatusAvailable, status1.Status)
 	assert.True(t, status1.Ready)
 
-	status2 := svc.GetQuotaStatus(2)
+	status2 := svc.GetQuotaStatus(t.Context(), 2)
 	assert.NotNil(t, status2)
 	assert.Equal(t, providerquotastatus.StatusExhausted, status2.Status)
 	assert.False(t, status2.Ready)
@@ -69,10 +69,10 @@ func TestProviderQuotaService_UpdateQuotaCache_Overwrite(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true, nil)
-	svc.updateQuotaCache(1, providerquotastatus.StatusExhausted, false, nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusExhausted, false, nil)
 
-	status := svc.GetQuotaStatus(1)
+	status := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status)
 	assert.Equal(t, providerquotastatus.StatusExhausted, status.Status)
 	assert.False(t, status.Ready)
@@ -90,7 +90,7 @@ func TestProviderQuotaService_ConcurrentAccess(t *testing.T) {
 	for i := range goroutines {
 		go func(id int) {
 			defer wg.Done()
-			svc.updateQuotaCache(id, providerquotastatus.StatusAvailable, true, nil)
+			svc.updateQuotaCache(id, "", providerquotastatus.StatusAvailable, true, nil)
 		}(i)
 	}
 
@@ -98,14 +98,14 @@ func TestProviderQuotaService_ConcurrentAccess(t *testing.T) {
 	for i := range goroutines {
 		go func(id int) {
 			defer wg.Done()
-			_ = svc.GetQuotaStatus(id)
+			_ = svc.GetQuotaStatus(t.Context(), id)
 		}(i)
 	}
 
 	wg.Wait()
 
 	for i := range goroutines {
-		status := svc.GetQuotaStatus(i)
+		status := svc.GetQuotaStatus(t.Context(), i)
 		assert.NotNil(t, status, "channel %d should have quota status", i)
 		assert.Equal(t, providerquotastatus.StatusAvailable, status.Status)
 		assert.True(t, status.Ready)
@@ -117,7 +117,7 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, providerquotastatus.StatusAvailable, true, nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, nil)
 
 	var wg sync.WaitGroup
 	const iterations = 100
@@ -126,7 +126,7 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 	for range iterations {
 		go func() {
 			defer wg.Done()
-			svc.updateQuotaCache(1, providerquotastatus.StatusExhausted, false, nil)
+			svc.updateQuotaCache(1, "", providerquotastatus.StatusExhausted, false, nil)
 		}()
 	}
 
@@ -134,13 +134,13 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 	for range iterations {
 		go func() {
 			defer wg.Done()
-			_ = svc.GetQuotaStatus(1)
+			_ = svc.GetQuotaStatus(t.Context(), 1)
 		}()
 	}
 
 	wg.Wait()
 
-	status := svc.GetQuotaStatus(1)
+	status := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status)
 	assert.Equal(t, providerquotastatus.StatusExhausted, status.Status)
 	assert.False(t, status.Ready)
@@ -156,9 +156,9 @@ func TestProviderQuotaService_UpdateQuotaCache_WithLimits(t *testing.T) {
 		{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
 	}
 
-	svc.updateQuotaCache(1, providerquotastatus.StatusWarning, true, limits)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusWarning, true, limits)
 
-	status := svc.GetQuotaStatus(1)
+	status := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status)
 	assert.Equal(t, providerquotastatus.StatusWarning, status.Status)
 	assert.True(t, status.Ready)

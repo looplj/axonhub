@@ -115,7 +115,7 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 			// In DePrioritize mode the quota selector doesn't filter candidates,
 			// so we must check quota status again here to determine if all
 			// remaining channels are exhausted.
-			if areAllChannelsExhausted(candidates, quotaProvider, llmRequest) {
+			if areAllChannelsExhausted(ctx, candidates, quotaProvider, llmRequest) {
 				return nil, NewQuotaExhaustedError(llmRequest.Model)
 			}
 		}
@@ -127,7 +127,7 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 	})
 }
 
-func areAllChannelsExhausted(candidates []*ChannelModelsCandidate, quotaProvider ProviderQuotaStatusProvider, llmRequest *llm.Request) bool {
+func areAllChannelsExhausted(ctx context.Context, candidates []*ChannelModelsCandidate, quotaProvider ProviderQuotaStatusProvider, llmRequest *llm.Request) bool {
 	if len(candidates) == 0 || quotaProvider == nil {
 		return false
 	}
@@ -135,7 +135,7 @@ func areAllChannelsExhausted(candidates []*ChannelModelsCandidate, quotaProvider
 	limitType := provider_quota.RequestModality(llmRequest.Image != nil)
 
 	for _, c := range candidates {
-		quotaStatus := quotaProvider.GetQuotaStatus(c.Channel.ID)
+		quotaStatus := quotaProvider.GetQuotaStatus(ctx, c.Channel.ID)
 		if quotaStatus == nil {
 			return false
 		}
