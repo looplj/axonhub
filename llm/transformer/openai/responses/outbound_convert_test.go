@@ -142,6 +142,7 @@ func TestConvertToolMessage(t *testing.T) {
 					{
 						Type:     "input_image",
 						ImageURL: lo.ToPtr("https://example.com/image.jpg"),
+						Detail:   lo.ToPtr("auto"),
 					},
 					{
 						Type: "input_text",
@@ -210,6 +211,7 @@ func TestConvertToolMessage(t *testing.T) {
 						{
 							Type:     "input_image",
 							ImageURL: lo.ToPtr("https://example.com/image.jpg"),
+							Detail:   lo.ToPtr("auto"),
 						},
 					},
 				},
@@ -281,16 +283,52 @@ func TestConvertToolMessage(t *testing.T) {
 						{
 							Type:     "input_image",
 							ImageURL: lo.ToPtr("https://example.com/shot.png"),
+							Detail:   lo.ToPtr("auto"),
 						},
 					},
 				},
 			},
 		},
 		{
-			// A tool result whose parts cannot be expressed here must not look like
-			// an empty-but-successful result, otherwise the model cannot tell that
-			// data was lost.
-			name: "tool message with only unsupported parts reports what was dropped",
+			// custom_tool_call_output shares the FunctionAndCustomToolCallOutput
+			// content union with function_call_output, so images are allowed here too.
+			name: "custom tool output keeps images",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_custom_img"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "image_url",
+							ImageURL: &llm.ImageURL{
+								URL: "data:image/png;base64,iVBORw0KGgo=",
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "custom_tool_call_output",
+				CallID: "call_custom_img",
+				Output: &Input{
+					Items: []Item{
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("data:image/png;base64,iVBORw0KGgo="),
+							Detail:   lo.ToPtr("auto"),
+						},
+					},
+				},
+			},
+		},
+		{
+			// Known gap, unchanged by this fix: part kinds the current AxonHub
+			// Responses Item model cannot express in a tool result are still dropped
+			// silently, and an all-dropped result is still indistinguishable from a
+			// genuinely empty one. Surfacing that needs structured logging (no logger
+			// reaches this pure converter), so it is left for a separate change rather
+			// than papered over with synthetic output text.
+			name: "tool message with only unsupported parts still degrades to empty string",
 			msg: llm.Message{
 				Role:       "tool",
 				ToolCallID: lo.ToPtr("call_audio_only"),
@@ -310,7 +348,7 @@ func TestConvertToolMessage(t *testing.T) {
 				Type:   "function_call_output",
 				CallID: "call_audio_only",
 				Output: &Input{
-					Text: lo.ToPtr("[axonhub] tool output omitted: unsupported content types: input_audio"),
+					Text: lo.ToPtr(""),
 				},
 			},
 		},
@@ -342,6 +380,86 @@ func TestConvertToolMessage(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+// The wire shape matters as much as the struct: a tool result carrying an image
+// has to serialise as an output array of content parts, not as a string.
+func TestConvertToolMessageImageSerializesAsOutputArray(t *testing.T) {
+	item := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_wire"),
+		Content: llm.MessageContent{
+			MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr("look")},
+				{
+					Type: "image_url",
+					ImageURL: &llm.ImageURL{
+						URL:    "data:image/png;base64,iVBORw0KGgo=",
+						Detail: lo.ToPtr("high"),
+					},
+				},
+			},
+		},
+	}, "function_call_output")
+
+	raw, err := json.Marshal(item)
+	require.NoError(t, err)
+
+	var decoded struct {
+		Type   string `json:"type"`
+		CallID string `json:"call_id"`
+		Output []struct {
+			Type     string  `json:"type"`
+			Text     *string `json:"text"`
+			ImageURL *string `json:"image_url"`
+			Detail   *string `json:"detail"`
+		} `json:"output"`
+	}
+
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	require.Equal(t, "function_call_output", decoded.Type)
+	require.Equal(t, "call_wire", decoded.CallID)
+	require.Len(t, decoded.Output, 2)
+	require.Equal(t, "input_text", decoded.Output[0].Type)
+	require.Equal(t, "look", lo.FromPtr(decoded.Output[0].Text))
+	require.Equal(t, "input_image", decoded.Output[1].Type)
+	require.Equal(t, "data:image/png;base64,iVBORw0KGgo=", lo.FromPtr(decoded.Output[1].ImageURL))
+	require.Equal(t, "high", lo.FromPtr(decoded.Output[1].Detail))
+}
+
+// custom_tool_call_output resolves to InputImageContent, which requires
+// `detail`; assert it reaches the wire even when the source part omits it.
+func TestConvertToolMessageCustomOutputImageCarriesDetail(t *testing.T) {
+	item := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_custom_wire"),
+		Content: llm.MessageContent{
+			MultipleContent: []llm.MessageContentPart{
+				{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/shot.png"}},
+			},
+		},
+	}, "custom_tool_call_output")
+
+	raw, err := json.Marshal(item)
+	require.NoError(t, err)
+
+	var decoded struct {
+		Type   string `json:"type"`
+		CallID string `json:"call_id"`
+		Output []struct {
+			Type     string  `json:"type"`
+			ImageURL *string `json:"image_url"`
+			Detail   *string `json:"detail"`
+		} `json:"output"`
+	}
+
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	require.Equal(t, "custom_tool_call_output", decoded.Type)
+	require.Equal(t, "call_custom_wire", decoded.CallID)
+	require.Len(t, decoded.Output, 1)
+	require.Equal(t, "input_image", decoded.Output[0].Type)
+	require.Equal(t, "https://example.com/shot.png", lo.FromPtr(decoded.Output[0].ImageURL))
+	require.Equal(t, "auto", lo.FromPtr(decoded.Output[0].Detail))
 }
 
 func TestConvertWebSearchToTool(t *testing.T) {

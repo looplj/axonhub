@@ -320,30 +320,23 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 				}
 			case "image_url":
 				// Tool results can carry images (Codex's view_image, MCP screenshot
-				// tools, ...). Skipping them here leaves output empty, which the
-				// fallback below turns into "" — the model then sees a successful
-				// but blank tool result and has no way to tell that it lost data.
+				// tools, ...); the Responses schema allows text/image/file content in
+				// function_call_output and custom_tool_call_output. Skipping them left
+				// output empty, which the fallback below turned into "" — a blank but
+				// successful tool result the model cannot distinguish from a real one.
 				if p.ImageURL != nil {
+					// `detail` is required by InputImageContent, which is what a
+					// custom_tool_call_output's content array resolves to; the
+					// function_call_output param schema makes it optional. Both
+					// document "auto" as the default, so always send one.
 					output.Items = append(output.Items, Item{
 						Type:     "input_image",
 						ImageURL: &p.ImageURL.URL,
-						Detail:   p.ImageURL.Detail,
+						Detail:   lo.ToPtr(lo.FromPtrOr(p.ImageURL.Detail, "auto")),
 					})
 				}
 			}
 		}
-	}
-
-	// Content was present but nothing survived the conversion (audio/video/document
-	// parts, which a tool result in this API cannot express). Name what was dropped
-	// rather than falling through to "": a blank-but-successful tool result is
-	// indistinguishable from a genuinely empty one, so the model reads lost data as
-	// "the tool returned nothing" and answers anyway.
-	if output.Text == nil && len(output.Items) == 0 && len(msg.Content.MultipleContent) > 0 {
-		dropped := lo.Uniq(lo.Map(msg.Content.MultipleContent, func(p llm.MessageContentPart, _ int) string {
-			return p.Type
-		}))
-		output.Text = lo.ToPtr("[axonhub] tool output omitted: unsupported content types: " + strings.Join(dropped, ", "))
 	}
 
 	// Some times the tool result is empty, so we need to add an empty string.
