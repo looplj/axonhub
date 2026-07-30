@@ -80,6 +80,33 @@ func TestV1_0_0_Beta7_SkipsRevokedLegacyInvitations(t *testing.T) {
 	require.Nil(t, revokedInvitation.RoleID)
 }
 
+func TestV1_0_0_Beta7_PreservesUnrelatedSoftDeletedDeveloper(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:unrelated-soft-deleted-developer?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	project := client.Project.Create().SetName("unrelated-soft-deleted-developer-project").SaveX(ctx)
+	developerRole := client.Role.Create().
+		SetName("Developer").
+		SetLevel(role.LevelProject).
+		SetProjectID(project.ID).
+		SetScopes([]string{"old_scope"}).
+		SaveX(ctx)
+	testUser := client.User.Create().
+		SetEmail("unrelated-role-user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		SaveX(ctx)
+	client.UserRole.Create().SetUserID(testUser.ID).SetRoleID(developerRole.ID).SaveX(ctx)
+	client.Role.DeleteOneID(developerRole.ID).ExecX(ctx)
+
+	require.NoError(t, datamigrate.NewV1_0_0_Beta7().Migrate(ctx, client))
+
+	preservedRole := client.Role.Query().Where(role.IDEQ(developerRole.ID)).OnlyX(schematype.SkipSoftDelete(ctx))
+	require.NotEqual(t, 0, preservedRole.DeletedAt)
+	require.Equal(t, 1, client.UserRole.Query().Where(userrole.RoleID(developerRole.ID)).CountX(schematype.SkipSoftDelete(ctx)))
+}
+
 func TestV1_0_0_Beta7_CleansSoftDeletedDeveloperAndRecreates(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:soft-deleted-developer-cleanup?mode=memory&_fk=1")
 	defer client.Close()

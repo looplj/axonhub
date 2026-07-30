@@ -42,30 +42,6 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 
 	txClient := ent.FromContext(ctx)
 
-	// Clean up any soft-deleted Developer roles and their stale UserRole relationships.
-	softDeletedDevelopers, err := txClient.Role.Query().Where(
-		role.LevelEQ(role.LevelProject),
-		role.NameEQ("Developer"),
-	).All(schematype.SkipSoftDelete(ctx))
-	if err != nil {
-		return fmt.Errorf("query soft-deleted Developer roles: %w", err)
-	}
-
-	for _, dr := range softDeletedDevelopers {
-		if dr.DeletedAt != 0 {
-			// Delete stale UserRole relationships.
-			if _, err := txClient.UserRole.Delete().
-				Where(userrole.RoleID(dr.ID)).
-				Exec(ctx); err != nil {
-				return fmt.Errorf("clear stale UserRole rows for Developer role %d: %w", dr.ID, err)
-			}
-			// Permanently delete the soft-deleted role.
-			if err := txClient.Role.DeleteOneID(dr.ID).Exec(schematype.SkipSoftDelete(ctx)); err != nil {
-				return fmt.Errorf("permanently delete soft-deleted Developer role %d: %w", dr.ID, err)
-			}
-		}
-	}
-
 	legacyInvitations, err := txClient.Invitation.Query().Where(
 		invitation.RoleIDIsNil(),
 		invitation.DeletedAtEQ(0),
@@ -75,6 +51,27 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 	}
 
 	for _, legacyInvitation := range legacyInvitations {
+		// Remove a stale project role only when this project needs invitation backfill.
+		softDeletedDevelopers, err := txClient.Role.Query().Where(
+			role.LevelEQ(role.LevelProject),
+			role.ProjectIDEQ(legacyInvitation.ProjectID),
+			role.NameEQ("Developer"),
+		).All(schematype.SkipSoftDelete(ctx))
+		if err != nil {
+			return fmt.Errorf("query soft-deleted Developer roles for project %d: %w", legacyInvitation.ProjectID, err)
+		}
+		for _, dr := range softDeletedDevelopers {
+			if dr.DeletedAt == 0 {
+				continue
+			}
+			if _, err := txClient.UserRole.Delete().Where(userrole.RoleID(dr.ID)).Exec(ctx); err != nil {
+				return fmt.Errorf("clear stale UserRole rows for Developer role %d: %w", dr.ID, err)
+			}
+			if err := txClient.Role.DeleteOneID(dr.ID).Exec(schematype.SkipSoftDelete(ctx)); err != nil {
+				return fmt.Errorf("permanently delete soft-deleted Developer role %d: %w", dr.ID, err)
+			}
+		}
+
 		developerRole, err := txClient.Role.Query().Where(
 			role.LevelEQ(role.LevelProject),
 			role.ProjectIDEQ(legacyInvitation.ProjectID),
