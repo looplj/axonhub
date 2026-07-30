@@ -53,10 +53,15 @@ server:
     trace_header: "AH-Trace-Id"
     extra_trace_headers:
       - "Sentry-Trace"
+    response_trace_headers:
+      - "AH-Trace-Id"
+      - "X-Oneapi-Request-Id"
 ```
 
 - 通过 `extra_trace_headers` 复用已有的埋点请求头。
-- 如不配置，将采用上述默认值。
+- `response_trace_headers` 会在响应开始前回写本次最终采用的 Trace ID；为空时不回写。它与入站解析配置独立，可为上游网关配置多个兼容头。
+- 浏览器客户端如需读取这些头，还应将相应名称加入 `server.cors.exposed_headers`。
+- 未配置 `thread_header` 或 `trace_header` 时，将采用上面的默认头名。
 
 ### 在 OpenAI 兼容客户端中使用追踪
 ```bash
