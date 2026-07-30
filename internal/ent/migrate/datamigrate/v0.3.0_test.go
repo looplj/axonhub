@@ -342,9 +342,10 @@ func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, developerRole.Scopes, "read_api_keys")
 	assert.Contains(t, developerRole.Scopes, "write_api_keys")
-	assert.Contains(t, developerRole.Scopes, "read_prompts")
-	assert.Contains(t, developerRole.Scopes, "write_prompts")
+	assert.Contains(t, developerRole.Scopes, "read_requests")
 	assert.Contains(t, developerRole.Scopes, "write_requests")
+	assert.NotContains(t, developerRole.Scopes, "read_prompts")
+	assert.NotContains(t, developerRole.Scopes, "write_prompts")
 	assert.NotContains(t, developerRole.Scopes, "write_users")
 	assert.NotContains(t, developerRole.Scopes, "write_roles")
 

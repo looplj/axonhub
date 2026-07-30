@@ -112,8 +112,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 	developerScopes := []string{
 		string(scopes.ScopeReadAPIKeys),
 		string(scopes.ScopeWriteAPIKeys),
-		string(scopes.ScopeReadPrompts),
-		string(scopes.ScopeWritePrompts),
+		string(scopes.ScopeReadRequests),
 		string(scopes.ScopeWriteRequests),
 	}
 

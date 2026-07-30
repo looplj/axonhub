@@ -85,8 +85,7 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 				SetScopes([]string{
 					string(scopes.ScopeReadAPIKeys),
 					string(scopes.ScopeWriteAPIKeys),
-					string(scopes.ScopeReadPrompts),
-					string(scopes.ScopeWritePrompts),
+					string(scopes.ScopeReadRequests),
 					string(scopes.ScopeWriteRequests),
 				}).
 				Save(ctx)

@@ -777,8 +777,8 @@ func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived 
 			Order(ent.Desc(channel.FieldOrderingWeight)).
 			All(ctx)
 	} else {
-		if err := authz.RequireScope(ctx, scopes.ScopeWriteRequests); err != nil {
-			return nil, err
+		if !authz.HasScope(ctx, scopes.ScopeWriteRequests) && !authz.HasScope(ctx, scopes.ScopeWriteAPIKeys) {
+			return nil, authz.RequireScope(ctx, scopes.ScopeWriteRequests)
 		}
 		channels, err = authz.RunWithSystemBypass(ctx, "project-available-channels", func(ctx context.Context) ([]*ent.Channel, error) {
 			return r.client.Channel.Query().

@@ -59,7 +59,7 @@ func TestV1_0_0_Beta7_CreatesMissingDefaultDeveloperRole(t *testing.T) {
 	require.NoError(t, datamigrate.NewV1_0_0_Beta7().Migrate(ctx, client))
 
 	developerRole := client.Role.Query().Where(role.LevelEQ(role.LevelProject), role.ProjectIDEQ(project.ID), role.NameEQ("Developer")).OnlyX(ctx)
-	require.ElementsMatch(t, []string{"read_api_keys", "write_api_keys", "read_prompts", "write_prompts", "write_requests"}, developerRole.Scopes)
+	require.ElementsMatch(t, []string{"read_api_keys", "write_api_keys", "read_requests", "write_requests"}, developerRole.Scopes)
 	legacyInvitation = client.Invitation.GetX(ctx, legacyInvitation.ID)
 	require.NotNil(t, legacyInvitation.RoleID)
 	require.Equal(t, developerRole.ID, *legacyInvitation.RoleID)
@@ -175,7 +175,7 @@ func TestV1_0_0_Beta7_CleansSoftDeletedDeveloperAndRecreates(t *testing.T) {
 	require.NotEqual(t, oldDeveloperRole.ID, newDeveloperRole.ID)
 	require.ElementsMatch(t, []string{
 		"read_api_keys", "write_api_keys",
-		"read_prompts", "write_prompts", "write_requests",
+		"read_requests", "write_requests",
 	}, newDeveloperRole.Scopes)
 
 	// Verify the user is NOT assigned to the new role.
