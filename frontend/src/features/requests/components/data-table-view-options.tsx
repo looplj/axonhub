@@ -21,7 +21,7 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant='outline' size='sm' className='ml-auto hidden h-8 lg:flex'>
+        <Button variant='outline' size='sm' className='h-8'>
           <MixerHorizontalIcon className='mr-2 h-4 w-4' />
           {t('common.view')}
         </Button>

@@ -378,7 +378,7 @@ export default function RequestsManagement() {
         </div>
       </Header>
 
-      <Main fixed>
+      <Main fixed className='py-2 sm:py-6'>
         <RequestsContent />
       </Main>
     </RequestsProvider>

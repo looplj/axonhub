@@ -178,13 +178,13 @@ export function DataTableToolbar<TData>({
   ];
 
   return (
-    <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+    <div className='flex flex-wrap items-center justify-between gap-2'>
       <div className='flex min-w-0 flex-1 flex-wrap items-center gap-2'>
         <Input
           placeholder={t('requests.filters.filterModelId')}
           value={(table.getColumn('modelID')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('modelID')?.setFilterValue(event.target.value)}
-          className='h-8 w-full sm:w-[150px] lg:w-[250px]'
+          className='h-8 min-w-0 flex-1 sm:w-[150px] lg:w-[250px]'
         />
 
         {/* Mobile: Filters button opens bottom sheet */}
@@ -357,7 +357,7 @@ export function DataTableToolbar<TData>({
           )}
         </div>
       </div>
-      <div className='flex shrink-0 flex-wrap items-center justify-end gap-2'>
+      <div className='flex shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end'>
         {showRefresh && onAutoRefreshChange && (
           <div className='flex shrink-0 items-center gap-2'>
             <Switch
