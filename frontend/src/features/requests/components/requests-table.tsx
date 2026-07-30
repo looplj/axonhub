@@ -22,7 +22,7 @@ import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { RequestBodyDrawer } from './request-body-drawer';
-import { useRequestsColumns } from './requests-columns';
+import { DEFAULT_MOBILE_HIDDEN_COLUMN_IDS, useRequestsColumns } from './requests-columns';
 
 const MotionTableRow = motion.create(TableRow);
 
@@ -126,6 +126,11 @@ export function RequestsTable({
         return {};
       }
     }
+
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return Object.fromEntries(DEFAULT_MOBILE_HIDDEN_COLUMN_IDS.map((id) => [id, false]));
+    }
+
     return {};
   });
 
