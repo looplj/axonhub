@@ -258,6 +258,7 @@
   "system.diagnostics.cache.clearFailed": "Failed to clear cache",
   "system.about.updateCheck.title": "Check for Updates",
   "system.about.updateCheck.description": "Check if a newer version is available",
+  "system.about.updateCheck.includeBeta": "Include Beta versions",
   "system.about.updateCheck.button": "Check Now",
   "system.about.updateCheck.newVersionAvailable": "A new version is available!",
   "system.about.updateCheck.currentVersion": "Current",

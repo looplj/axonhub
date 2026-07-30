@@ -467,7 +467,7 @@ extend type Query {
   defaultDataStorageID: ID
   onboardingInfo: OnboardingInfo
   systemVersion: SystemVersion!
-  checkForUpdate: VersionCheck!
+  checkForUpdate(includeBeta: Boolean! = false): VersionCheck!
   systemChannelSettings: SystemChannelSettings!
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!

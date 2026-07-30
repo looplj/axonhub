@@ -258,6 +258,7 @@
   "system.diagnostics.cache.clearFailed": "缓存清理失败",
   "system.about.updateCheck.title": "检查更新",
   "system.about.updateCheck.description": "检查是否有新版本可用",
+  "system.about.updateCheck.includeBeta": "包含 Beta 版本",
   "system.about.updateCheck.button": "立即检查",
   "system.about.updateCheck.newVersionAvailable": "发现新版本！",
   "system.about.updateCheck.currentVersion": "当前版本",
