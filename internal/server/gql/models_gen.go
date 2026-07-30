@@ -560,16 +560,17 @@ type UpdateAPIKeyScopesInput struct {
 }
 
 type UpdateAutoBackupSettingsInput struct {
-	Enabled            *bool                `json:"enabled,omitempty"`
-	Frequency          *biz.BackupFrequency `json:"frequency,omitempty"`
-	DataStorageID      *int                 `json:"dataStorageID,omitempty"`
-	IncludeChannels    *bool                `json:"includeChannels,omitempty"`
-	IncludeModels      *bool                `json:"includeModels,omitempty"`
-	IncludeAPIKeys     *bool                `json:"includeAPIKeys,omitempty"`
-	IncludeModelPrices *bool                `json:"includeModelPrices,omitempty"`
-	IncludeUsageStats  *bool                `json:"includeUsageStats,omitempty"`
-	IncludeRequestLogs *bool                `json:"includeRequestLogs,omitempty"`
-	RetentionDays      *int                 `json:"retentionDays,omitempty"`
+	IncludeSystemConfigs *bool                `json:"includeSystemConfigs,omitempty"`
+	Enabled              *bool                `json:"enabled,omitempty"`
+	Frequency            *biz.BackupFrequency `json:"frequency,omitempty"`
+	DataStorageID        *int                 `json:"dataStorageID,omitempty"`
+	IncludeChannels      *bool                `json:"includeChannels,omitempty"`
+	IncludeModels        *bool                `json:"includeModels,omitempty"`
+	IncludeAPIKeys       *bool                `json:"includeAPIKeys,omitempty"`
+	IncludeModelPrices   *bool                `json:"includeModelPrices,omitempty"`
+	IncludeUsageStats    *bool                `json:"includeUsageStats,omitempty"`
+	IncludeRequestLogs   *bool                `json:"includeRequestLogs,omitempty"`
+	RetentionDays        *int                 `json:"retentionDays,omitempty"`
 }
 
 type UpdateBrandSettingsInput struct {

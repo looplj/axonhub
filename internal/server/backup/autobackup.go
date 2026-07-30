@@ -92,12 +92,13 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 	}
 
 	opts := BackupOptions{
-		IncludeChannels:    settings.IncludeChannels,
-		IncludeModels:      settings.IncludeModels,
-		IncludeAPIKeys:     settings.IncludeAPIKeys,
-		IncludeModelPrices: settings.IncludeModelPrices,
-		IncludeUsageStats:  settings.IncludeUsageStats,
-		IncludeRequestLogs: settings.IncludeRequestLogs,
+		IncludeSystemConfigs: settings.IncludeSystemConfigs,
+		IncludeChannels:      settings.IncludeChannels,
+		IncludeModels:        settings.IncludeModels,
+		IncludeAPIKeys:       settings.IncludeAPIKeys,
+		IncludeModelPrices:   settings.IncludeModelPrices,
+		IncludeUsageStats:    settings.IncludeUsageStats,
+		IncludeRequestLogs:   settings.IncludeRequestLogs,
 	}
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")

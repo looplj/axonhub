@@ -18,13 +18,15 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 func setupBackupTest(t *testing.T) (*ent.Client, *BackupService, context.Context) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	service := NewBackupService(BackupServiceParams{
-		Ent: client,
+		Ent:           client,
+		SystemService: biz.NewSystemService(biz.SystemServiceParams{Ent: client}),
 	})
 
 	ctx := context.Background()
@@ -317,6 +319,35 @@ func TestBackupService_Backup_Empty(t *testing.T) {
 	require.Equal(t, BackupVersion, backupData.Version)
 	require.Len(t, backupData.Channels, 0)
 	require.Len(t, backupData.Models, 0)
+}
+
+func TestBackupService_Backup_SystemConfigs(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	for key, value := range map[string]string{
+		biz.SystemKeyRetryPolicy:        `{"max_retries":4}`,
+		biz.SystemKeyChannelSettings:    `{"probe":{"enabled":true}}`,
+		biz.SystemKeySecretKey:          "must-not-be-backed-up",
+		biz.SystemKeyDefaultDataStorage: "42",
+		biz.SystemKeyAutoBackupSettings: `{"data_storage_id":42}`,
+	} {
+		_, err := client.System.Create().SetKey(key).SetValue(value).Save(ctx)
+		require.NoError(t, err)
+	}
+
+	data, err := service.Backup(ctx, BackupOptions{IncludeSystemConfigs: true})
+	require.NoError(t, err)
+	require.NotContains(t, string(data), "must-not-be-backed-up")
+	require.NotContains(t, string(data), `"default_data_storage_id"`)
+	require.NotContains(t, string(data), `"system_auto_backup_settings"`)
+
+	var backupData BackupData
+	require.NoError(t, json.Unmarshal(data, &backupData))
+	require.ElementsMatch(t, []*BackupSystemConfig{
+		{Key: biz.SystemKeyRetryPolicy, Value: `{"max_retries":4}`},
+		{Key: biz.SystemKeyChannelSettings, Value: `{"probe":{"enabled":true}}`},
+	}, backupData.SystemConfigs)
 }
 
 func TestBackupService_Backup_WithUsageStats(t *testing.T) {
