@@ -241,12 +241,13 @@ type AutoBackupSettings struct {
 	// DataStorageID is the ID of the data storage to backup to
 	DataStorageID int `json:"data_storage_id"`
 	// BackupOptions defines what to include in the backup
-	IncludeChannels    bool `json:"include_channels"`
-	IncludeModels      bool `json:"include_models"`
-	IncludeAPIKeys     bool `json:"include_api_keys"`
-	IncludeModelPrices bool `json:"include_model_prices"`
-	IncludeUsageStats  bool `json:"include_usage_stats"`
-	IncludeRequestLogs bool `json:"include_request_logs"`
+	IncludeSystemConfigs bool `json:"include_system_configs"`
+	IncludeChannels      bool `json:"include_channels"`
+	IncludeModels        bool `json:"include_models"`
+	IncludeAPIKeys       bool `json:"include_api_keys"`
+	IncludeModelPrices   bool `json:"include_model_prices"`
+	IncludeUsageStats    bool `json:"include_usage_stats"`
+	IncludeRequestLogs   bool `json:"include_request_logs"`
 	// RetentionDays defines how many days to keep backups (0 = keep all)
 	RetentionDays int `json:"retention_days"`
 	// LastBackupAt is the timestamp of the last successful backup
@@ -256,18 +257,19 @@ type AutoBackupSettings struct {
 }
 
 type autoBackupSettingsJSON struct {
-	Enabled            bool            `json:"enabled"`
-	Frequency          BackupFrequency `json:"frequency"`
-	DataStorageID      int             `json:"data_storage_id"`
-	IncludeChannels    bool            `json:"include_channels"`
-	IncludeModels      bool            `json:"include_models"`
-	IncludeAPIKeys     bool            `json:"include_api_keys"`
-	IncludeModelPrices bool            `json:"include_model_prices"`
-	IncludeUsageStats  *bool           `json:"include_usage_stats"`
-	IncludeRequestLogs *bool           `json:"include_request_logs"`
-	RetentionDays      int             `json:"retention_days"`
-	LastBackupAt       *time.Time      `json:"last_backup_at,omitempty"`
-	LastBackupError    string          `json:"last_backup_error,omitempty"`
+	Enabled              bool            `json:"enabled"`
+	Frequency            BackupFrequency `json:"frequency"`
+	DataStorageID        int             `json:"data_storage_id"`
+	IncludeSystemConfigs *bool           `json:"include_system_configs"`
+	IncludeChannels      bool            `json:"include_channels"`
+	IncludeModels        bool            `json:"include_models"`
+	IncludeAPIKeys       bool            `json:"include_api_keys"`
+	IncludeModelPrices   bool            `json:"include_model_prices"`
+	IncludeUsageStats    *bool           `json:"include_usage_stats"`
+	IncludeRequestLogs   *bool           `json:"include_request_logs"`
+	RetentionDays        int             `json:"retention_days"`
+	LastBackupAt         *time.Time      `json:"last_backup_at,omitempty"`
+	LastBackupError      string          `json:"last_backup_error,omitempty"`
 }
 
 // StoragePolicy represents the storage policy configuration.
@@ -1461,6 +1463,20 @@ func (s *SystemService) invalidateSystemValueCache(ctx context.Context, key stri
 	}
 }
 
+// InvalidateSystemValueCaches clears cached system configuration values after
+// they have been restored outside SystemService's usual write path.
+func (s *SystemService) InvalidateSystemValueCaches(ctx context.Context, keys ...string) {
+	for _, key := range keys {
+		s.invalidateSystemValueCache(ctx, key)
+	}
+
+	if lo.Contains(keys, SystemKeyGeneralSettings) {
+		s.mu.Lock()
+		s.timeLocation = nil
+		s.mu.Unlock()
+	}
+}
+
 func (s *SystemService) TimeLocation(ctx context.Context) *time.Location {
 	s.mu.RLock()
 
@@ -1601,20 +1617,25 @@ func (s *SystemService) AutoBackupSettings(ctx context.Context) (*AutoBackupSett
 	if stored.IncludeRequestLogs != nil {
 		includeRequestLogs = *stored.IncludeRequestLogs
 	}
+	includeSystemConfigs := defaultAutoBackupSettings.IncludeSystemConfigs
+	if stored.IncludeSystemConfigs != nil {
+		includeSystemConfigs = *stored.IncludeSystemConfigs
+	}
 
 	settings := AutoBackupSettings{
-		Enabled:            stored.Enabled,
-		Frequency:          stored.Frequency,
-		DataStorageID:      stored.DataStorageID,
-		IncludeChannels:    stored.IncludeChannels,
-		IncludeModels:      stored.IncludeModels,
-		IncludeAPIKeys:     stored.IncludeAPIKeys,
-		IncludeModelPrices: stored.IncludeModelPrices,
-		IncludeUsageStats:  includeUsageStats,
-		IncludeRequestLogs: includeRequestLogs,
-		RetentionDays:      stored.RetentionDays,
-		LastBackupAt:       stored.LastBackupAt,
-		LastBackupError:    stored.LastBackupError,
+		Enabled:              stored.Enabled,
+		Frequency:            stored.Frequency,
+		DataStorageID:        stored.DataStorageID,
+		IncludeSystemConfigs: includeSystemConfigs,
+		IncludeChannels:      stored.IncludeChannels,
+		IncludeModels:        stored.IncludeModels,
+		IncludeAPIKeys:       stored.IncludeAPIKeys,
+		IncludeModelPrices:   stored.IncludeModelPrices,
+		IncludeUsageStats:    includeUsageStats,
+		IncludeRequestLogs:   includeRequestLogs,
+		RetentionDays:        stored.RetentionDays,
+		LastBackupAt:         stored.LastBackupAt,
+		LastBackupError:      stored.LastBackupError,
 	}
 
 	return &settings, nil

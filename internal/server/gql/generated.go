@@ -261,18 +261,19 @@ type ComplexityRoot struct {
 	}
 
 	AutoBackupSettings struct {
-		DataStorageID      func(childComplexity int) int
-		Enabled            func(childComplexity int) int
-		Frequency          func(childComplexity int) int
-		IncludeAPIKeys     func(childComplexity int) int
-		IncludeChannels    func(childComplexity int) int
-		IncludeModelPrices func(childComplexity int) int
-		IncludeModels      func(childComplexity int) int
-		IncludeRequestLogs func(childComplexity int) int
-		IncludeUsageStats  func(childComplexity int) int
-		LastBackupAt       func(childComplexity int) int
-		LastBackupError    func(childComplexity int) int
-		RetentionDays      func(childComplexity int) int
+		DataStorageID        func(childComplexity int) int
+		Enabled              func(childComplexity int) int
+		Frequency            func(childComplexity int) int
+		IncludeAPIKeys       func(childComplexity int) int
+		IncludeChannels      func(childComplexity int) int
+		IncludeModelPrices   func(childComplexity int) int
+		IncludeModels        func(childComplexity int) int
+		IncludeRequestLogs   func(childComplexity int) int
+		IncludeSystemConfigs func(childComplexity int) int
+		IncludeUsageStats    func(childComplexity int) int
+		LastBackupAt         func(childComplexity int) int
+		LastBackupError      func(childComplexity int) int
+		RetentionDays        func(childComplexity int) int
 	}
 
 	AutoDisableAPIKey struct {
@@ -3126,6 +3127,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AutoBackupSettings.IncludeRequestLogs(childComplexity), true
+	case "AutoBackupSettings.includeSystemConfigs":
+		if e.complexity.AutoBackupSettings.IncludeSystemConfigs == nil {
+			break
+		}
+
+		return e.complexity.AutoBackupSettings.IncludeSystemConfigs(childComplexity), true
 	case "AutoBackupSettings.includeUsageStats":
 		if e.complexity.AutoBackupSettings.IncludeUsageStats == nil {
 			break
@@ -18104,6 +18111,35 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AutoBackupSettings_includeSystemConfigs(ctx context.Context, field graphql.CollectedField, obj *biz.AutoBackupSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AutoBackupSettings_includeSystemConfigs,
+		func(ctx context.Context) (any, error) {
+			return obj.IncludeSystemConfigs, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AutoBackupSettings_includeSystemConfigs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AutoBackupSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -45525,6 +45561,8 @@ func (ec *executionContext) fieldContext_Query_autoBackupSettings(_ context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "includeSystemConfigs":
+				return ec.fieldContext_AutoBackupSettings_includeSystemConfigs(ctx, field)
 			case "enabled":
 				return ec.fieldContext_AutoBackupSettings_enabled(ctx, field)
 			case "frequency":
@@ -63460,6 +63498,9 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 		asMap[k] = v
 	}
 
+	if _, present := asMap["includeSystemConfigs"]; !present {
+		asMap["includeSystemConfigs"] = false
+	}
 	if _, present := asMap["includeModelPrices"]; !present {
 		asMap["includeModelPrices"] = true
 	}
@@ -63470,13 +63511,20 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 		asMap["includeRequestLogs"] = false
 	}
 
-	fieldsInOrder := [...]string{"includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "includeUsageStats", "includeRequestLogs"}
+	fieldsInOrder := [...]string{"includeSystemConfigs", "includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "includeUsageStats", "includeRequestLogs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "includeSystemConfigs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeSystemConfigs"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeSystemConfigs = data
 		case "includeChannels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeChannels"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -79307,6 +79355,9 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 		asMap[k] = v
 	}
 
+	if _, present := asMap["includeSystemConfigs"]; !present {
+		asMap["includeSystemConfigs"] = false
+	}
 	if _, present := asMap["includeModelPrices"]; !present {
 		asMap["includeModelPrices"] = true
 	}
@@ -79317,13 +79368,20 @@ func (ec *executionContext) unmarshalInputRestoreOptionsInput(ctx context.Contex
 		asMap["includeRequestLogs"] = false
 	}
 
-	fieldsInOrder := [...]string{"includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "includeUsageStats", "includeRequestLogs", "channelConflictStrategy", "modelConflictStrategy", "modelPriceConflictStrategy", "apiKeyConflictStrategy"}
+	fieldsInOrder := [...]string{"includeSystemConfigs", "includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "includeUsageStats", "includeRequestLogs", "channelConflictStrategy", "modelConflictStrategy", "modelPriceConflictStrategy", "apiKeyConflictStrategy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "includeSystemConfigs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeSystemConfigs"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeSystemConfigs = data
 		case "includeChannels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeChannels"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -81979,13 +82037,20 @@ func (ec *executionContext) unmarshalInputUpdateAutoBackupSettingsInput(ctx cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "frequency", "dataStorageID", "includeChannels", "includeModels", "includeAPIKeys", "includeModelPrices", "includeUsageStats", "includeRequestLogs", "retentionDays"}
+	fieldsInOrder := [...]string{"includeSystemConfigs", "enabled", "frequency", "dataStorageID", "includeChannels", "includeModels", "includeAPIKeys", "includeModelPrices", "includeUsageStats", "includeRequestLogs", "retentionDays"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "includeSystemConfigs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeSystemConfigs"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeSystemConfigs = data
 		case "enabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -89323,6 +89388,11 @@ func (ec *executionContext) _AutoBackupSettings(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("AutoBackupSettings")
+		case "includeSystemConfigs":
+			out.Values[i] = ec._AutoBackupSettings_includeSystemConfigs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "enabled":
 			out.Values[i] = ec._AutoBackupSettings_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

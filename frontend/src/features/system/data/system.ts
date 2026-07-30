@@ -1229,6 +1229,7 @@ const RESTORE_MUTATION = `
 `;
 
 export interface BackupOptionsInput {
+  includeSystemConfigs: boolean;
   includeChannels: boolean;
   includeModelPrices: boolean;
   includeModels: boolean;
@@ -1244,6 +1245,7 @@ export interface BackupPayload {
 }
 
 export interface RestoreOptionsInput {
+  includeSystemConfigs: boolean;
   includeChannels: boolean;
   includeModelPrices: boolean;
   includeModels: boolean;
@@ -1339,6 +1341,7 @@ export function useRestore() {
 const AUTO_BACKUP_SETTINGS_QUERY = `
   query AutoBackupSettings {
     autoBackupSettings {
+      includeSystemConfigs
       enabled
       frequency
       dataStorageID
@@ -1373,6 +1376,7 @@ const TRIGGER_AUTO_BACKUP_MUTATION = `
 export type BackupFrequency = 'daily' | 'weekly' | 'monthly';
 
 export interface AutoBackupSettings {
+  includeSystemConfigs: boolean;
   enabled: boolean;
   frequency: BackupFrequency;
   dataStorageID: number;
@@ -1388,6 +1392,7 @@ export interface AutoBackupSettings {
 }
 
 export interface UpdateAutoBackupSettingsInput {
+  includeSystemConfigs?: boolean;
   enabled?: boolean;
   frequency?: BackupFrequency;
   dataStorageID?: number;

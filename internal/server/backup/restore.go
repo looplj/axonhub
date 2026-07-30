@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -18,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -38,7 +40,7 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 		return err
 	}
 
-	if !lo.Contains([]string{BackupVersion, BackupVersionV3, BackupVersionV2, BackupVersionV1}, backupData.Version) {
+	if !lo.Contains([]string{BackupVersion, BackupVersionV4, BackupVersionV3, BackupVersionV2, BackupVersionV1}, backupData.Version) {
 		log.Warn(ctx, "backup version mismatch",
 			log.String("expected", BackupVersion),
 			log.String("got", backupData.Version))
@@ -71,10 +73,20 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 
 	committed = true
 
+	if opts.IncludeSystemConfigs {
+		svc.systemService.InvalidateSystemValueCaches(ctx, systemConfigBackupKeys...)
+	}
+
 	return nil
 }
 
 func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupData BackupData, opts RestoreOptions) error {
+	if opts.IncludeSystemConfigs {
+		if err := svc.restoreSystemConfigs(ctx, db, backupData.SystemConfigs); err != nil {
+			return err
+		}
+	}
+
 	if opts.IncludeChannels {
 		if err := svc.restoreChannels(ctx, db, backupData.Channels, opts); err != nil {
 			return err
@@ -121,6 +133,25 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 	if opts.IncludeUsageStats || opts.IncludeRequestLogs {
 		if err := svc.restoreUsageData(ctx, db, backupData.UsageRequests, backupData.UsageLogs, opts); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (svc *BackupService) restoreSystemConfigs(ctx context.Context, db *ent.Client, configs []*BackupSystemConfig) error {
+	for _, config := range configs {
+		if config == nil || !lo.Contains(systemConfigBackupKeys, config.Key) {
+			continue
+		}
+
+		if err := db.System.Create().
+			SetKey(config.Key).
+			SetValue(config.Value).
+			OnConflict(sql.ConflictColumns(system.FieldKey)).
+			UpdateNewValues().
+			Exec(ctx); err != nil {
+			return fmt.Errorf("failed to restore system configuration %q: %w", config.Key, err)
 		}
 	}
 

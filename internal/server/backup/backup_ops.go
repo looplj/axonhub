@@ -16,7 +16,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 const backupBatchSize = 500
@@ -70,6 +72,9 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 		return err
 	}
 
+	if err := svc.streamSystemConfigs(ctx, o, opts); err != nil {
+		return err
+	}
 	if err := svc.streamProjects(ctx, o, opts); err != nil {
 		return err
 	}
@@ -94,6 +99,51 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 
 	_, err := w.Write([]byte("}"))
 	return err
+}
+
+// systemConfigBackupKeys contains settings that are portable across deployments.
+// Deployment-specific values are excluded because their references or secrets are
+// valid only for the source instance.
+var systemConfigBackupKeys = []string{
+	biz.SystemKeyBrandName,
+	biz.SystemKeyBrandLogo,
+	biz.SystemKeyTitle,
+	biz.SystemKeyStoreChunks,
+	biz.SystemKeyStoragePolicy,
+	biz.SystemKeyRetryPolicy,
+	biz.SystemKeyWebhookNotifierConfig,
+	biz.SystemKeyModelSettings,
+	biz.SystemKeyChannelSettings,
+	biz.SystemKeyGeneralSettings,
+	biz.SystemKeyUserAgentPassThrough,
+	biz.SystemKeyPassThrough,
+	biz.SystemKeyQuotaEnforcementSettings,
+	biz.SystemKeySecuritySettings,
+	biz.SystemKeyProxyPresets,
+}
+
+func (svc *BackupService) streamSystemConfigs(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "system_configs", opts.IncludeSystemConfigs, true,
+		func(lastID int) ([]*ent.System, int, error) {
+			rows, err := svc.db.System.Query().
+				Where(system.IDGT(lastID), system.KeyIn(systemConfigBackupKeys...)).
+				Order(ent.Asc(system.FieldID)).
+				Limit(backupBatchSize).
+				All(ctx)
+			if err != nil {
+				return nil, 0, err
+			}
+			nextID := 0
+			if len(rows) > 0 {
+				nextID = rows[len(rows)-1].ID
+			}
+			return rows, nextID, nil
+		},
+		func(config *ent.System) ([]byte, bool, error) {
+			data, err := json.Marshal(&BackupSystemConfig{Key: config.Key, Value: config.Value})
+			return data, true, err
+		},
+	)
 }
 
 func (svc *BackupService) streamProjects(ctx context.Context, o *objWriter, opts BackupOptions) error {

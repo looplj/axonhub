@@ -64,15 +64,16 @@ var defaultGeneralSettings = SystemGeneralSettings{
 }
 
 var defaultAutoBackupSettings = AutoBackupSettings{
-	Enabled:            false,
-	Frequency:          BackupFrequencyDaily,
-	IncludeChannels:    true,
-	IncludeModels:      true,
-	IncludeAPIKeys:     false,
-	IncludeModelPrices: true,
-	IncludeUsageStats:  false,
-	IncludeRequestLogs: false,
-	RetentionDays:      30,
+	Enabled:              false,
+	Frequency:            BackupFrequencyDaily,
+	IncludeSystemConfigs: false,
+	IncludeChannels:      true,
+	IncludeModels:        true,
+	IncludeAPIKeys:       false,
+	IncludeModelPrices:   true,
+	IncludeUsageStats:    false,
+	IncludeRequestLogs:   false,
+	RetentionDays:        30,
 }
 
 var defaultVideoStorageSettings = VideoStorageSettings{
