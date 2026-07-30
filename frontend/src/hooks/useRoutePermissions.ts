@@ -46,13 +46,13 @@ export function useRoutePermissions() {
       return true;
     }
 
-    // Owner 拥有所有权限
-    if (isOwner) {
-      return true;
-    }
-
     // 确定要检查的权限级别（路由配置优先，否则使用组配置，默认为 'any'）
     const scopeLevel = routeConfig.scopeLevel || groupScopeLevel || 'any';
+
+    // Owner 拥有所有权限
+    if (isProjectOwner && scopeLevel !== 'system') {
+      return true;
+    }
 
     // 根据 scopeLevel 决定检查哪些 scopes
     let scopesToCheck: string[] = [];

@@ -154,7 +154,8 @@ export function useCreateRole() {
           level: 'project',
           projectID: input.projectID || selectedProjectId,
         };
-        const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input: inputWithProjectId });
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input: inputWithProjectId }, headers);
         return roleSchema.parse(data.createRole);
       } catch (error) {
         handleError(error, { context: t('roles.dialogs.create.title') });
@@ -172,11 +173,13 @@ export function useUpdateRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
+  const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateRoleInput }) => {
       try {
-        const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input });
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input }, headers);
         return roleSchema.parse(data.updateRole);
       } catch (error) {
         handleError(error, { context: t('roles.dialogs.edit.title') });
@@ -194,11 +197,13 @@ export function useUpdateRole() {
 export function useDeleteRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
     mutationFn: async (id: string) => {
       try {
-        await graphqlRequest(DELETE_ROLE_MUTATION, { id });
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        await graphqlRequest(DELETE_ROLE_MUTATION, { id }, headers);
       } catch (error) {
         handleError(error, i18n.t('common.errors.internalServerError'));
         throw error;

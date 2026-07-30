@@ -59,8 +59,8 @@ export function usePermissions() {
   // Check if user has a specific scope at project level only
   const hasProjectScope = useCallback(
     (requiredScope: string): boolean => {
-      // Owner has all permissions
-      if (isOwner) {
+      // Owners have all permissions in the selected project.
+      if (isProjectOwner) {
         return true;
       }
 
@@ -76,7 +76,7 @@ export function usePermissions() {
 
       return false;
     },
-    [user, isOwner, projectScopes]
+    [user, isProjectOwner, projectScopes]
   );
 
   // Check if user has a specific scope (system-level or project-level)

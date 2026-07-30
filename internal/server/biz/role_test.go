@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -28,6 +29,7 @@ func setupTestRoleService(t *testing.T) (*RoleService, *UserService, *ent.Client
 	}
 
 	roleService := &RoleService{
+		AbstractService:     &AbstractService{db: client},
 		userService:         userService,
 		permissionValidator: NewPermissionValidator(),
 	}
@@ -299,6 +301,29 @@ func TestDeleteRole(t *testing.T) {
 			Exist(ctx)
 		require.NoError(t, err)
 		require.True(t, exists)
+	})
+
+	t.Run("revokes invitations bound to the deleted role", func(t *testing.T) {
+		project, err := client.Project.Create().SetName("invitation-role-project").Save(ctx)
+		require.NoError(t, err)
+		projectRole, err := client.Role.Create().
+			SetName("Invitation Role").
+			SetLevel(role.LevelProject).
+			SetProjectID(project.ID).
+			SetScopes([]string{"read_prompts"}).
+			Save(ctx)
+		require.NoError(t, err)
+		createdInvitation, err := client.Invitation.Create().
+			SetTokenHash("invitation-role-token").
+			SetProjectID(project.ID).
+			SetRoleID(projectRole.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		require.NoError(t, roleService.DeleteRole(ctx, projectRole.ID))
+		exists, err := client.Invitation.Query().Where(invitation.IDEQ(createdInvitation.ID)).Exist(ctx)
+		require.NoError(t, err)
+		require.False(t, exists)
 	})
 }
 
