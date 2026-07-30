@@ -253,7 +253,7 @@ export function DataTableToolbar<TData>({
               aria-label={t('common.autoRefresh')}
             />
             <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm whitespace-nowrap'>
-              <span className='sr-only sm:not-sr-only sm:inline'>{t('common.autoRefresh')}</span>
+              {t('common.autoRefresh')}
             </label>
           </div>
         )}
