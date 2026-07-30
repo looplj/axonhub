@@ -3,6 +3,7 @@ package datamigrate
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -49,6 +50,18 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 	if err != nil {
 		return err
 	}
+	activeInvitations := legacyInvitations[:0]
+	now := time.Now()
+	for _, legacyInvitation := range legacyInvitations {
+		if legacyInvitation.ExpiresAt != nil && !legacyInvitation.ExpiresAt.After(now) {
+			continue
+		}
+		if legacyInvitation.MaxUses > 0 && legacyInvitation.UsedCount >= legacyInvitation.MaxUses {
+			continue
+		}
+		activeInvitations = append(activeInvitations, legacyInvitation)
+	}
+	legacyInvitations = activeInvitations
 
 	for _, legacyInvitation := range legacyInvitations {
 		// Remove a stale project role only when this project needs invitation backfill.

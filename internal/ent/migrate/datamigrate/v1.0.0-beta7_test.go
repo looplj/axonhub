@@ -3,6 +3,7 @@ package datamigrate_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -187,4 +188,46 @@ func TestV1_0_0_Beta7_CleansSoftDeletedDeveloperAndRecreates(t *testing.T) {
 	legacyInvitation = client.Invitation.GetX(ctx, legacyInvitation.ID)
 	require.NotNil(t, legacyInvitation.RoleID)
 	require.Equal(t, newDeveloperRole.ID, *legacyInvitation.RoleID)
+}
+
+func TestV1_0_0_Beta7_SkipsExpiredAndExhaustedInvitations(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:invalid-legacy-invitations?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	project := client.Project.Create().SetName("invalid-legacy-invitations-project").SaveX(ctx)
+	developerRole := client.Role.Create().
+		SetName("Developer").
+		SetLevel(role.LevelProject).
+		SetProjectID(project.ID).
+		SetScopes([]string{"old_scope"}).
+		SaveX(ctx)
+	testUser := client.User.Create().
+		SetEmail("invalid-invitation-user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		SaveX(ctx)
+	client.UserRole.Create().SetUserID(testUser.ID).SetRoleID(developerRole.ID).SaveX(ctx)
+	client.Role.DeleteOneID(developerRole.ID).ExecX(ctx)
+	expired := client.Invitation.Create().
+		SetTokenHash("expired-legacy-token").
+		SetProjectID(project.ID).
+		SetExpiresAt(time.Now().Add(-time.Hour)).
+		SaveX(ctx)
+	exhausted := client.Invitation.Create().
+		SetTokenHash("exhausted-legacy-token").
+		SetProjectID(project.ID).
+		SetMaxUses(1).
+		SetUsedCount(1).
+		SaveX(ctx)
+
+	require.NoError(t, datamigrate.NewV1_0_0_Beta7().Migrate(ctx, client))
+
+	expired = client.Invitation.GetX(ctx, expired.ID)
+	exhausted = client.Invitation.GetX(ctx, exhausted.ID)
+	require.Nil(t, expired.RoleID)
+	require.Nil(t, exhausted.RoleID)
+	preservedRole := client.Role.Query().Where(role.IDEQ(developerRole.ID)).OnlyX(schematype.SkipSoftDelete(ctx))
+	require.NotEqual(t, 0, preservedRole.DeletedAt)
+	require.Equal(t, 1, client.UserRole.Query().Where(userrole.RoleID(developerRole.ID)).CountX(schematype.SkipSoftDelete(ctx)))
 }
