@@ -313,7 +313,6 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
               }
             }
           }
-          project { id name }
         }
       }
       totalCount
