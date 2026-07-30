@@ -1275,3 +1275,154 @@ func TestMatchAssociations_ChannelTagsRegex(t *testing.T) {
 		}
 	})
 }
+
+// TestMatchAssociations_HideOriginalModels_KeepsUnmappedModels verifies the
+// regression fix for the bug where enabling a channel's "hide original models"
+// setting (HideOriginalModels) made the channel's models invisible to ALL
+// model association matchers (global/channel/channel-tags exact match and
+// regex). After the fix, HideOriginalModels only hides an original model when
+// it has an alias (prefix/auto_trim/mapping); a model with no alias stays
+// matchable by its original name.
+func TestMatchAssociations_HideOriginalModels_KeepsUnmappedModels(t *testing.T) {
+	// Enable HideOriginalModels but give the model NO transformation: with the
+	// old unconditional deletion the matcher would find nothing.
+	channels := []*Channel{
+		{
+			Channel: &ent.Channel{
+				ID:              1,
+				Name:            "plain",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4o"},
+				Settings: &objects.ChannelSettings{
+					HideOriginalModels: true,
+				},
+			},
+		},
+		// Channel 2 has an alias for the same model name: the original entry is
+		// hidden (only the alias "gpt-4o-mini" stays). A global exact match for
+		// "gpt-4o" must NOT match channel 2 (original hidden), only channel 1.
+		{
+			Channel: &ent.Channel{
+				ID:              2,
+				Name:            "aliased",
+				Type:            channel.TypeOpenai,
+				SupportedModels: []string{"gpt-4o"},
+				Settings: &objects.ChannelSettings{
+					HideOriginalModels: true,
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4o-mini", To: "gpt-4o"},
+					},
+				},
+				Tags: []string{"aliased"},
+			},
+		},
+	}
+
+	t.Run("global exact match finds channel with plain hidden original", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID:  &objects.ModelIDAssociation{ModelID: "gpt-4o"},
+			},
+		}
+
+		result := MatchConnections(associations, channels)
+
+		// Only channel 1 (no alias) is matchable by the original name; the
+		// aliased channel 2's original "gpt-4o" is hidden.
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Equal(t, "gpt-4o", result[0].Models[0].RequestModel)
+		require.Equal(t, "gpt-4o", result[0].Models[0].ActualModel)
+	})
+
+	t.Run("global exact match finds aliased channel by its alias name", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "model",
+				Priority: 1,
+				ModelID:  &objects.ModelIDAssociation{ModelID: "gpt-4o-mini"},
+			},
+		}
+
+		result := MatchConnections(associations, channels)
+
+		require.Len(t, result, 1)
+		require.Equal(t, 2, result[0].Channel.ID)
+		require.Equal(t, "gpt-4o-mini", result[0].Models[0].RequestModel)
+		require.Equal(t, "gpt-4o", result[0].Models[0].ActualModel)
+	})
+
+	t.Run("channel exact match finds channel with plain hidden original", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_model",
+				Priority: 1,
+				ChannelModel: &objects.ChannelModelAssociation{
+					ChannelID: 1,
+					ModelID:   "gpt-4o",
+				},
+			},
+		}
+
+		result := MatchConnections(associations, channels)
+
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Equal(t, "gpt-4o", result[0].Models[0].ActualModel)
+	})
+
+	t.Run("channel-tags exact match finds channel with plain hidden original", func(t *testing.T) {
+		// Re-create channel 1 with a tag so channel-tags matching applies.
+		taggedChannels := []*Channel{
+			{
+				Channel: &ent.Channel{
+					ID:              1,
+					Name:            "plain",
+					Type:            channel.TypeOpenai,
+					SupportedModels: []string{"gpt-4o"},
+					Tags:            []string{"plain"},
+					Settings: &objects.ChannelSettings{
+						HideOriginalModels: true,
+					},
+				},
+			},
+		}
+
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "channel_tags_model",
+				Priority: 1,
+				ChannelTagsModel: &objects.ChannelTagsModelAssociation{
+					ChannelTags: []string{"plain"},
+					ModelID:     "gpt-4o",
+				},
+			},
+		}
+
+		result := MatchConnections(associations, taggedChannels)
+
+		require.Len(t, result, 1)
+		require.Equal(t, "gpt-4o", result[0].Models[0].ActualModel)
+	})
+
+	t.Run("regex match finds channel with plain hidden original", func(t *testing.T) {
+		associations := []*objects.ModelAssociation{
+			{
+				Type:     "regex",
+				Priority: 1,
+				Regex:    &objects.RegexAssociation{Pattern: "^gpt-4o$"},
+			},
+		}
+
+		result := MatchConnections(associations, channels)
+
+		// Channel 1's original "gpt-4o" is kept (no alias); channel 2's
+		// original is hidden but its alias "gpt-4o-mini" does not match the
+		// anchored pattern, so only channel 1 is matched.
+		require.Len(t, result, 1)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.Equal(t, "gpt-4o", result[0].Models[0].RequestModel)
+	})
+}

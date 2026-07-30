@@ -1256,11 +1256,24 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 	}
 
 	// 5. Hide original models if configured
-	// When hideOriginalModels is enabled, remove direct models from the entries
-	// This allows only transformed models (prefix, auto_trim, mapping) to be exposed
+	// When hideOriginalModels is enabled, remove a channel's original
+	// (direct, upstream-named) model ONLY when an alternative access path to
+	// that same underlying model already exists (a prefix, auto_trim, or
+	// mapping entry resolving to the same ActualModel). An original model
+	// that has no such alias is kept, otherwise it would become unreachable
+	// (and unmatchable by model associations) for no benefit. This preserves
+	// the intent of "hide original models" — defer to the alias when one
+	// exists — while only hiding originals that genuinely have an alias.
 	if ch.Settings.HideOriginalModels {
+		hasAlternative := make(map[string]bool)
+		for _, entry := range entries {
+			if entry.Source != "direct" {
+				hasAlternative[entry.ActualModel] = true
+			}
+		}
+
 		for key, entry := range entries {
-			if entry.Source == "direct" {
+			if entry.Source == "direct" && hasAlternative[entry.ActualModel] {
 				delete(entries, key)
 			}
 		}

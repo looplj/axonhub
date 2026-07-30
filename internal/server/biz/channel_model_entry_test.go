@@ -518,3 +518,38 @@ func TestChannel_GetUnifiedModels_LowercaseModelID(t *testing.T) {
 		})
 	}
 }
+
+// TestChannel_GetModelEntries_HideOriginalModels_KeepsUnmappedDirect covers the
+// regression where enabling HideOriginalModels on a channel whose models have
+// NO transformation (no prefix, auto-trim, or mapping alias) used to remove
+// every direct entry, leaving the channel's models unreachable and unmatchable
+// by model associations. With the fix, an original model that has no alias is
+// kept, while an original model that does have an alias is still hidden.
+func TestChannel_GetModelEntries_HideOriginalModels_KeepsUnmappedDirect(t *testing.T) {
+	ch := &Channel{
+		Channel: &ent.Channel{
+			SupportedModels: []string{"plain-model", "aliased-model"},
+			Settings: &objects.ChannelSettings{
+				HideOriginalModels: true,
+				ModelMappings: []objects.ModelMapping{
+					{From: "alias", To: "aliased-model"},
+				},
+			},
+		},
+	}
+
+	entries := ch.GetModelEntries()
+
+	// plain-model has no alternative access path -> the original must stay.
+	require.Contains(t, entries, "plain-model",
+		"an original model with no alias must not be hidden by HideOriginalModels")
+	require.Equal(t, "plain-model", entries["plain-model"].ActualModel)
+	require.Equal(t, "direct", entries["plain-model"].Source)
+
+	// aliased-model has a mapping alias -> its direct form is hidden, the
+	// alias remains the exposed access path.
+	require.NotContains(t, entries, "aliased-model",
+		"an original model that has an alias must still be hidden")
+	require.Contains(t, entries, "alias")
+	require.Equal(t, "aliased-model", entries["alias"].ActualModel)
+}
