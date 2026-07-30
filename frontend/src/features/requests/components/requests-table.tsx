@@ -209,7 +209,7 @@ export function RequestsTable({
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
       />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-2 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)] sm:mt-4'>
         <div className='min-w-max'>
           <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
             <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
@@ -273,7 +273,7 @@ export function RequestsTable({
           </Table>
         </div>
       </div>
-      <div className='mt-4 flex-shrink-0'>
+      <div className='mt-2 flex-shrink-0 sm:mt-4'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}

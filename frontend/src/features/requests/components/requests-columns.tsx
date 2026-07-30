@@ -10,12 +10,12 @@ import { toast } from 'sonner';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
-import { usePermissions } from '@/hooks/usePermissions';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
@@ -41,14 +41,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
   const blockedIPs = securitySettings?.blockedIPs ?? [];
   const showIPBanIcon = securitySettings?.showRequestLogIPBanIcon === true;
 
-  const normalizeBlockedIPs = (ips: string[]) =>
-    Array.from(
-      new Set(
-        ips
-          .map((ip) => ip.trim())
-          .filter((ip) => ip.length > 0)
-      )
-    );
+  const normalizeBlockedIPs = (ips: string[]) => Array.from(new Set(ips.map((ip) => ip.trim()).filter((ip) => ip.length > 0)));
 
   const handleBlockIP = async (clientIP: string) => {
     const normalizedIP = clientIP.trim();
@@ -135,6 +128,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'apiFormat',
       accessorFn: (row) => row.format,
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiFormat')} />,
       enableSorting: false,
       enableHiding: true,
@@ -154,6 +148,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'passThrough',
       accessorFn: (row) => row.executions?.edges?.some((edge) => edge.node?.passThroughApplied) ?? false,
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.passThrough')} />,
       enableSorting: false,
       enableHiding: true,
@@ -174,6 +169,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     },
     {
       accessorKey: 'reasoningEffort',
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.reasoningEffort')} />,
       enableSorting: false,
       enableHiding: true,
@@ -195,6 +191,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'stream',
       accessorKey: 'stream',
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.stream')} />,
       enableSorting: false,
       cell: ({ row }) => {
@@ -219,6 +216,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'source',
       accessorKey: 'source',
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.source')} />,
       enableSorting: false,
       cell: ({ row }) => {
@@ -245,6 +243,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'clientIP',
       accessorKey: 'clientIP',
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.clientIP')} />,
       enableSorting: false,
       cell: ({ row }) => {
@@ -313,6 +312,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           {
             id: 'channel',
             accessorFn: (row) => row.channel?.id || '',
+            meta: { className: 'hidden md:table-cell' },
             header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
             enableSorting: false,
             cell: ({ row }) => {
@@ -400,6 +400,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       ? ([
           {
             accessorKey: 'apiKey',
+            meta: { className: 'hidden md:table-cell' },
             header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />,
             enableSorting: false,
             cell: ({ row }) => {
@@ -428,6 +429,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const usageLog = row.usageLogs?.edges?.[0]?.node;
         return (usageLog?.promptTokens || 0) + (usageLog?.completionTokens || 0);
       },
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.tokens')} />,
       cell: ({ row }) => {
         const request = row.original;
@@ -475,6 +477,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'readCache',
       accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0,
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.readCache')} />,
       cell: ({ row }) => {
         const request = row.original;
@@ -497,7 +500,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         return (
           <div className='text-xs'>
             <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
-            <div className={isLowHitRate ? 'text-red-600 font-medium dark:text-red-400' : 'text-muted-foreground'}>
+            <div className={isLowHitRate ? 'font-medium text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
               {t('requests.columns.cacheHitRate', {
                 rate: hitRate.toFixed(1),
               })}
@@ -516,6 +519,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'writeCache',
       accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0,
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.writeCache')} />,
       cell: ({ row }) => {
         const request = row.original;
@@ -557,6 +561,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const usageLog = row.usageLogs?.edges?.[0]?.node;
         return usageLog?.totalCost ?? null;
       },
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.cost')} />,
       enableSorting: false,
       enableHiding: true,
@@ -580,6 +585,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     {
       id: 'latency',
       accessorFn: (row) => row.metricsLatencyMs ?? null,
+      meta: { className: 'hidden md:table-cell' },
       header: ({ column }) => (
         <div className='flex items-center gap-1'>
           {displayMode === 'latency' ? (
@@ -637,6 +643,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     },
     {
       id: 'details',
+      meta: { className: 'hidden sm:table-cell' },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,
       cell: ({ row }) => (
         <Button
