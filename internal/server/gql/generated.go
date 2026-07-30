@@ -82,6 +82,7 @@ type ResolverRoot interface {
 	Project() ProjectResolver
 	Prompt() PromptResolver
 	PromptProtectionRule() PromptProtectionRuleResolver
+	ProviderQuotaCollectionSettings() ProviderQuotaCollectionSettingsResolver
 	ProviderQuotaStatus() ProviderQuotaStatusResolver
 	Query() QueryResolver
 	Request() RequestResolver
@@ -919,126 +920,127 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddUserToProject                     func(childComplexity int, input AddUserToProjectInput) int
-		ApplyChannelOverrideTemplate         func(childComplexity int, input ApplyChannelOverrideTemplateInput) int
-		ArchiveThread                        func(childComplexity int, id objects.GUID) int
-		ArchiveTrace                         func(childComplexity int, id objects.GUID) int
-		Backup                               func(childComplexity int, input backup.BackupOptions) int
-		BulkArchiveAPIKeys                   func(childComplexity int, ids []*objects.GUID) int
-		BulkArchiveChannels                  func(childComplexity int, ids []*objects.GUID) int
-		BulkArchiveModels                    func(childComplexity int, ids []*objects.GUID) int
-		BulkCreateChannels                   func(childComplexity int, input biz.BulkCreateChannelsInput) int
-		BulkCreateModels                     func(childComplexity int, inputs []*ent.CreateModelInput) int
-		BulkDeleteChannels                   func(childComplexity int, ids []*objects.GUID) int
-		BulkDeleteModels                     func(childComplexity int, ids []*objects.GUID) int
-		BulkDeletePromptProtectionRules      func(childComplexity int, ids []*objects.GUID) int
-		BulkDeletePrompts                    func(childComplexity int, ids []*objects.GUID) int
-		BulkDeleteRoles                      func(childComplexity int, ids []*objects.GUID) int
-		BulkDisableAPIKeys                   func(childComplexity int, ids []*objects.GUID) int
-		BulkDisableChannels                  func(childComplexity int, ids []*objects.GUID) int
-		BulkDisableModels                    func(childComplexity int, ids []*objects.GUID) int
-		BulkDisablePromptProtectionRules     func(childComplexity int, ids []*objects.GUID) int
-		BulkDisablePrompts                   func(childComplexity int, ids []*objects.GUID) int
-		BulkEnableAPIKeys                    func(childComplexity int, ids []*objects.GUID) int
-		BulkEnableChannels                   func(childComplexity int, ids []*objects.GUID) int
-		BulkEnableModels                     func(childComplexity int, ids []*objects.GUID) int
-		BulkEnablePromptProtectionRules      func(childComplexity int, ids []*objects.GUID) int
-		BulkEnablePrompts                    func(childComplexity int, ids []*objects.GUID) int
-		BulkImportChannels                   func(childComplexity int, input BulkImportChannelsInput) int
-		BulkRecoverChannels                  func(childComplexity int, ids []*objects.GUID) int
-		BulkUpdateChannelOrdering            func(childComplexity int, input BulkUpdateChannelOrderingInput) int
-		CheckProviderQuotas                  func(childComplexity int) int
-		ClearCache                           func(childComplexity int, input ClearCacheInput) int
-		ClearChannelOverrideTemplates        func(childComplexity int, input ClearChannelOverrideTemplatesInput) int
-		CompleteAutoDisableChannelOnboarding func(childComplexity int, input CompleteAutoDisableChannelOnboardingInput) int
-		CompleteOnboarding                   func(childComplexity int, input CompleteOnboardingInput) int
-		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
-		CreateAPIKey                         func(childComplexity int, input ent.CreateAPIKeyInput) int
-		CreateAPIKeyProfileTemplate          func(childComplexity int, input ent.CreateAPIKeyProfileTemplateInput, profile objects.APIKeyProfile) int
-		CreateChannel                        func(childComplexity int, input ent.CreateChannelInput) int
-		CreateChannelOverrideTemplate        func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
-		CreateDataStorage                    func(childComplexity int, input ent.CreateDataStorageInput) int
-		CreateModel                          func(childComplexity int, input ent.CreateModelInput) int
-		CreateProject                        func(childComplexity int, input ent.CreateProjectInput) int
-		CreatePrompt                         func(childComplexity int, input ent.CreatePromptInput) int
-		CreatePromptProtectionRule           func(childComplexity int, input ent.CreatePromptProtectionRuleInput) int
-		CreateRole                           func(childComplexity int, input ent.CreateRoleInput) int
-		CreateUser                           func(childComplexity int, input ent.CreateUserInput) int
-		DeleteAPIKeyProfileTemplate          func(childComplexity int, id objects.GUID) int
-		DeleteChannel                        func(childComplexity int, id objects.GUID) int
-		DeleteChannelOverrideTemplate        func(childComplexity int, id objects.GUID) int
-		DeleteDisabledChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
-		DeleteModel                          func(childComplexity int, id objects.GUID) int
-		DeleteProject                        func(childComplexity int, id objects.GUID) int
-		DeletePrompt                         func(childComplexity int, id objects.GUID) int
-		DeletePromptProtectionRule           func(childComplexity int, id objects.GUID) int
-		DeleteProxyPreset                    func(childComplexity int, url string) int
-		DeleteRole                           func(childComplexity int, id objects.GUID) int
-		DeleteUser                           func(childComplexity int, id objects.GUID) int
-		DisableChannelAPIKey                 func(childComplexity int, channelID objects.GUID, key string) int
-		DuplicateChannel                     func(childComplexity int, sourceID objects.GUID, input ent.CreateChannelInput) int
-		EnableAllChannelAPIKeys              func(childComplexity int, channelID objects.GUID) int
-		EnableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
-		EnableSelectedChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
-		LoadAPIKeyProfileTemplate            func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
-		PreviewPromptProtectionRule          func(childComplexity int, input PromptProtectionRulePreviewInput) int
-		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
-		ResetChannelQuotaNow                 func(childComplexity int, channelID objects.GUID) int
-		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
-		RetainThread                         func(childComplexity int, id objects.GUID) int
-		RetainTrace                          func(childComplexity int, id objects.GUID) int
-		RotateAPIKey                         func(childComplexity int, id objects.GUID) int
-		SaveChannelEndpoints                 func(childComplexity int, input biz.SaveChannelEndpointsInput) int
-		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
-		SaveProxyPreset                      func(childComplexity int, input biz.ProxyPreset) int
-		SyncChannelModels                    func(childComplexity int, channelID objects.GUID, pattern *string) int
-		TestChannel                          func(childComplexity int, input TestChannelInput) int
-		TestChannelAPIKey                    func(childComplexity int, channelID objects.GUID, key string, modelID *string) int
-		TestChannelAPIKeys                   func(childComplexity int, channelID objects.GUID, modelID *string) int
-		TriggerAutoBackup                    func(childComplexity int) int
-		TriggerGcCleanup                     func(childComplexity int, input gc.TriggerGcCleanupInput) int
-		UnarchiveThread                      func(childComplexity int, id objects.GUID) int
-		UnarchiveTrace                       func(childComplexity int, id objects.GUID) int
-		UnlinkOIDCIdentity                   func(childComplexity int, id objects.GUID) int
-		UnretainThread                       func(childComplexity int, id objects.GUID) int
-		UnretainTrace                        func(childComplexity int, id objects.GUID) int
-		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
-		UpdateAPIKeyProfileTemplate          func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) int
-		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
-		UpdateAPIKeyStatus                   func(childComplexity int, id objects.GUID, status apikey.Status) int
-		UpdateAutoBackupSettings             func(childComplexity int, input UpdateAutoBackupSettingsInput) int
-		UpdateBrandSettings                  func(childComplexity int, input UpdateBrandSettingsInput) int
-		UpdateChannel                        func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
-		UpdateChannelOverrideTemplate        func(childComplexity int, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) int
-		UpdateChannelStatus                  func(childComplexity int, id objects.GUID, status channel.Status) int
-		UpdateDataStorage                    func(childComplexity int, id objects.GUID, input ent.UpdateDataStorageInput) int
-		UpdateDefaultDataStorage             func(childComplexity int, input UpdateDefaultDataStorageInput) int
-		UpdateMe                             func(childComplexity int, input UpdateMeInput) int
-		UpdateModel                          func(childComplexity int, id objects.GUID, input ent.UpdateModelInput) int
-		UpdateModelStatus                    func(childComplexity int, id objects.GUID, status model.Status) int
-		UpdateMyPassword                     func(childComplexity int, input UpdateMyPasswordInput) int
-		UpdatePassThroughSettings            func(childComplexity int, input UpdatePassThroughSettingsInput) int
-		UpdateProject                        func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
-		UpdateProjectProfiles                func(childComplexity int, id objects.GUID, input objects.ProjectProfiles) int
-		UpdateProjectStatus                  func(childComplexity int, id objects.GUID, status project.Status) int
-		UpdateProjectUser                    func(childComplexity int, input UpdateProjectUserInput) int
-		UpdatePrompt                         func(childComplexity int, id objects.GUID, input ent.UpdatePromptInput) int
-		UpdatePromptProtectionRule           func(childComplexity int, id objects.GUID, input ent.UpdatePromptProtectionRuleInput) int
-		UpdatePromptProtectionRuleStatus     func(childComplexity int, id objects.GUID, status promptprotectionrule.Status) int
-		UpdatePromptStatus                   func(childComplexity int, id objects.GUID, status prompt.Status) int
-		UpdateQuotaEnforcementSettings       func(childComplexity int, input UpdateQuotaEnforcementSettingsInput) int
-		UpdateRetryPolicy                    func(childComplexity int, input biz.RetryPolicy) int
-		UpdateRole                           func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
-		UpdateSecuritySettings               func(childComplexity int, input UpdateSecuritySettingsInput) int
-		UpdateStoragePolicy                  func(childComplexity int, input biz.StoragePolicy) int
-		UpdateSystemChannelSettings          func(childComplexity int, input biz.UpdateSystemChannelSettings) int
-		UpdateSystemGeneralSettings          func(childComplexity int, input biz.SystemGeneralSettings) int
-		UpdateSystemModelSettings            func(childComplexity int, input biz.SystemModelSettings) int
-		UpdateUser                           func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
-		UpdateUserAgentPassThroughSettings   func(childComplexity int, input UpdateUserAgentPassThroughSettingsInput) int
-		UpdateUserStatus                     func(childComplexity int, id objects.GUID, status user.Status) int
-		UpdateVideoStorageSettings           func(childComplexity int, input biz.VideoStorageSettings) int
-		UpdateWebhookNotifierConfig          func(childComplexity int, input biz.WebhookNotifierConfig) int
+		AddUserToProject                      func(childComplexity int, input AddUserToProjectInput) int
+		ApplyChannelOverrideTemplate          func(childComplexity int, input ApplyChannelOverrideTemplateInput) int
+		ArchiveThread                         func(childComplexity int, id objects.GUID) int
+		ArchiveTrace                          func(childComplexity int, id objects.GUID) int
+		Backup                                func(childComplexity int, input backup.BackupOptions) int
+		BulkArchiveAPIKeys                    func(childComplexity int, ids []*objects.GUID) int
+		BulkArchiveChannels                   func(childComplexity int, ids []*objects.GUID) int
+		BulkArchiveModels                     func(childComplexity int, ids []*objects.GUID) int
+		BulkCreateChannels                    func(childComplexity int, input biz.BulkCreateChannelsInput) int
+		BulkCreateModels                      func(childComplexity int, inputs []*ent.CreateModelInput) int
+		BulkDeleteChannels                    func(childComplexity int, ids []*objects.GUID) int
+		BulkDeleteModels                      func(childComplexity int, ids []*objects.GUID) int
+		BulkDeletePromptProtectionRules       func(childComplexity int, ids []*objects.GUID) int
+		BulkDeletePrompts                     func(childComplexity int, ids []*objects.GUID) int
+		BulkDeleteRoles                       func(childComplexity int, ids []*objects.GUID) int
+		BulkDisableAPIKeys                    func(childComplexity int, ids []*objects.GUID) int
+		BulkDisableChannels                   func(childComplexity int, ids []*objects.GUID) int
+		BulkDisableModels                     func(childComplexity int, ids []*objects.GUID) int
+		BulkDisablePromptProtectionRules      func(childComplexity int, ids []*objects.GUID) int
+		BulkDisablePrompts                    func(childComplexity int, ids []*objects.GUID) int
+		BulkEnableAPIKeys                     func(childComplexity int, ids []*objects.GUID) int
+		BulkEnableChannels                    func(childComplexity int, ids []*objects.GUID) int
+		BulkEnableModels                      func(childComplexity int, ids []*objects.GUID) int
+		BulkEnablePromptProtectionRules       func(childComplexity int, ids []*objects.GUID) int
+		BulkEnablePrompts                     func(childComplexity int, ids []*objects.GUID) int
+		BulkImportChannels                    func(childComplexity int, input BulkImportChannelsInput) int
+		BulkRecoverChannels                   func(childComplexity int, ids []*objects.GUID) int
+		BulkUpdateChannelOrdering             func(childComplexity int, input BulkUpdateChannelOrderingInput) int
+		CheckProviderQuotas                   func(childComplexity int) int
+		ClearCache                            func(childComplexity int, input ClearCacheInput) int
+		ClearChannelOverrideTemplates         func(childComplexity int, input ClearChannelOverrideTemplatesInput) int
+		CompleteAutoDisableChannelOnboarding  func(childComplexity int, input CompleteAutoDisableChannelOnboardingInput) int
+		CompleteOnboarding                    func(childComplexity int, input CompleteOnboardingInput) int
+		CompleteSystemModelSettingOnboarding  func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
+		CreateAPIKey                          func(childComplexity int, input ent.CreateAPIKeyInput) int
+		CreateAPIKeyProfileTemplate           func(childComplexity int, input ent.CreateAPIKeyProfileTemplateInput, profile objects.APIKeyProfile) int
+		CreateChannel                         func(childComplexity int, input ent.CreateChannelInput) int
+		CreateChannelOverrideTemplate         func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
+		CreateDataStorage                     func(childComplexity int, input ent.CreateDataStorageInput) int
+		CreateModel                           func(childComplexity int, input ent.CreateModelInput) int
+		CreateProject                         func(childComplexity int, input ent.CreateProjectInput) int
+		CreatePrompt                          func(childComplexity int, input ent.CreatePromptInput) int
+		CreatePromptProtectionRule            func(childComplexity int, input ent.CreatePromptProtectionRuleInput) int
+		CreateRole                            func(childComplexity int, input ent.CreateRoleInput) int
+		CreateUser                            func(childComplexity int, input ent.CreateUserInput) int
+		DeleteAPIKeyProfileTemplate           func(childComplexity int, id objects.GUID) int
+		DeleteChannel                         func(childComplexity int, id objects.GUID) int
+		DeleteChannelOverrideTemplate         func(childComplexity int, id objects.GUID) int
+		DeleteDisabledChannelAPIKeys          func(childComplexity int, channelID objects.GUID, keys []string) int
+		DeleteModel                           func(childComplexity int, id objects.GUID) int
+		DeleteProject                         func(childComplexity int, id objects.GUID) int
+		DeletePrompt                          func(childComplexity int, id objects.GUID) int
+		DeletePromptProtectionRule            func(childComplexity int, id objects.GUID) int
+		DeleteProxyPreset                     func(childComplexity int, url string) int
+		DeleteRole                            func(childComplexity int, id objects.GUID) int
+		DeleteUser                            func(childComplexity int, id objects.GUID) int
+		DisableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
+		DuplicateChannel                      func(childComplexity int, sourceID objects.GUID, input ent.CreateChannelInput) int
+		EnableAllChannelAPIKeys               func(childComplexity int, channelID objects.GUID) int
+		EnableChannelAPIKey                   func(childComplexity int, channelID objects.GUID, key string) int
+		EnableSelectedChannelAPIKeys          func(childComplexity int, channelID objects.GUID, keys []string) int
+		LoadAPIKeyProfileTemplate             func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
+		PreviewPromptProtectionRule           func(childComplexity int, input PromptProtectionRulePreviewInput) int
+		RemoveUserFromProject                 func(childComplexity int, input RemoveUserFromProjectInput) int
+		ResetChannelQuotaNow                  func(childComplexity int, channelID objects.GUID) int
+		Restore                               func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
+		RetainThread                          func(childComplexity int, id objects.GUID) int
+		RetainTrace                           func(childComplexity int, id objects.GUID) int
+		RotateAPIKey                          func(childComplexity int, id objects.GUID) int
+		SaveChannelEndpoints                  func(childComplexity int, input biz.SaveChannelEndpointsInput) int
+		SaveChannelModelPrices                func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
+		SaveProxyPreset                       func(childComplexity int, input biz.ProxyPreset) int
+		SyncChannelModels                     func(childComplexity int, channelID objects.GUID, pattern *string) int
+		TestChannel                           func(childComplexity int, input TestChannelInput) int
+		TestChannelAPIKey                     func(childComplexity int, channelID objects.GUID, key string, modelID *string) int
+		TestChannelAPIKeys                    func(childComplexity int, channelID objects.GUID, modelID *string) int
+		TriggerAutoBackup                     func(childComplexity int) int
+		TriggerGcCleanup                      func(childComplexity int, input gc.TriggerGcCleanupInput) int
+		UnarchiveThread                       func(childComplexity int, id objects.GUID) int
+		UnarchiveTrace                        func(childComplexity int, id objects.GUID) int
+		UnlinkOIDCIdentity                    func(childComplexity int, id objects.GUID) int
+		UnretainThread                        func(childComplexity int, id objects.GUID) int
+		UnretainTrace                         func(childComplexity int, id objects.GUID) int
+		UpdateAPIKey                          func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
+		UpdateAPIKeyProfileTemplate           func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyProfileTemplateInput, profile *objects.APIKeyProfile) int
+		UpdateAPIKeyProfiles                  func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
+		UpdateAPIKeyStatus                    func(childComplexity int, id objects.GUID, status apikey.Status) int
+		UpdateAutoBackupSettings              func(childComplexity int, input UpdateAutoBackupSettingsInput) int
+		UpdateBrandSettings                   func(childComplexity int, input UpdateBrandSettingsInput) int
+		UpdateChannel                         func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
+		UpdateChannelOverrideTemplate         func(childComplexity int, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) int
+		UpdateChannelStatus                   func(childComplexity int, id objects.GUID, status channel.Status) int
+		UpdateDataStorage                     func(childComplexity int, id objects.GUID, input ent.UpdateDataStorageInput) int
+		UpdateDefaultDataStorage              func(childComplexity int, input UpdateDefaultDataStorageInput) int
+		UpdateMe                              func(childComplexity int, input UpdateMeInput) int
+		UpdateModel                           func(childComplexity int, id objects.GUID, input ent.UpdateModelInput) int
+		UpdateModelStatus                     func(childComplexity int, id objects.GUID, status model.Status) int
+		UpdateMyPassword                      func(childComplexity int, input UpdateMyPasswordInput) int
+		UpdatePassThroughSettings             func(childComplexity int, input UpdatePassThroughSettingsInput) int
+		UpdateProject                         func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
+		UpdateProjectProfiles                 func(childComplexity int, id objects.GUID, input objects.ProjectProfiles) int
+		UpdateProjectStatus                   func(childComplexity int, id objects.GUID, status project.Status) int
+		UpdateProjectUser                     func(childComplexity int, input UpdateProjectUserInput) int
+		UpdatePrompt                          func(childComplexity int, id objects.GUID, input ent.UpdatePromptInput) int
+		UpdatePromptProtectionRule            func(childComplexity int, id objects.GUID, input ent.UpdatePromptProtectionRuleInput) int
+		UpdatePromptProtectionRuleStatus      func(childComplexity int, id objects.GUID, status promptprotectionrule.Status) int
+		UpdatePromptStatus                    func(childComplexity int, id objects.GUID, status prompt.Status) int
+		UpdateProviderQuotaCollectionSettings func(childComplexity int, input UpdateProviderQuotaCollectionSettingsInput) int
+		UpdateQuotaEnforcementSettings        func(childComplexity int, input UpdateQuotaEnforcementSettingsInput) int
+		UpdateRetryPolicy                     func(childComplexity int, input biz.RetryPolicy) int
+		UpdateRole                            func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
+		UpdateSecuritySettings                func(childComplexity int, input UpdateSecuritySettingsInput) int
+		UpdateStoragePolicy                   func(childComplexity int, input biz.StoragePolicy) int
+		UpdateSystemChannelSettings           func(childComplexity int, input biz.UpdateSystemChannelSettings) int
+		UpdateSystemGeneralSettings           func(childComplexity int, input biz.SystemGeneralSettings) int
+		UpdateSystemModelSettings             func(childComplexity int, input biz.SystemModelSettings) int
+		UpdateUser                            func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
+		UpdateUserAgentPassThroughSettings    func(childComplexity int, input UpdateUserAgentPassThroughSettingsInput) int
+		UpdateUserStatus                      func(childComplexity int, id objects.GUID, status user.Status) int
+		UpdateVideoStorageSettings            func(childComplexity int, input biz.VideoStorageSettings) int
+		UpdateWebhookNotifierConfig           func(childComplexity int, input biz.WebhookNotifierConfig) int
 	}
 
 	OAuthCredentials struct {
@@ -1279,6 +1281,16 @@ type ComplexityRoot struct {
 		VariantCode func(childComplexity int) int
 	}
 
+	ProviderQuotaCollectionProvider struct {
+		Enabled  func(childComplexity int) int
+		Provider func(childComplexity int) int
+	}
+
+	ProviderQuotaCollectionSettings struct {
+		Enabled   func(childComplexity int) int
+		Providers func(childComplexity int) int
+	}
+
 	ProviderQuotaStatus struct {
 		Channel      func(childComplexity int) int
 		ChannelID    func(childComplexity int) int
@@ -1309,84 +1321,85 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		APIKeyProfileTemplates       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyProfileTemplateOrder, where *ent.APIKeyProfileTemplateWhereInput) int
-		APIKeyQuotaUsages            func(childComplexity int, apiKeyID objects.GUID) int
-		APIKeyTokenUsageStats        func(childComplexity int, input *APIKeyTokenUsageStatsInput) int
-		APIKeys                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
-		AllChannelSummarys           func(childComplexity int, includeArchived *bool) int
-		AllChannelTags               func(childComplexity int) int
-		AllScopes                    func(childComplexity int, level *string) int
-		AnalyticsDailyStats          func(childComplexity int, filter *AnalyticsFilter) int
-		AnalyticsDimensionStats      func(childComplexity int, filter *AnalyticsFilter, dimension string) int
-		AnalyticsMetadata            func(childComplexity int) int
-		AnalyticsOverview            func(childComplexity int, filter *AnalyticsFilter) int
-		AutoBackupSettings           func(childComplexity int) int
-		BrandSettings                func(childComplexity int) int
-		ChannelOverrideTemplates     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
-		ChannelPerformanceStats      func(childComplexity int) int
-		ChannelProbeData             func(childComplexity int, input biz.GetChannelProbeDataInput) int
-		ChannelSuccessRates          func(childComplexity int, timeWindow *string, limit *int) int
-		Channels                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
-		CheckForUpdate               func(childComplexity int) int
-		CostStatsByAPIKey            func(childComplexity int, timeWindow *string) int
-		CostStatsByChannel           func(childComplexity int, timeWindow *string) int
-		CostStatsByModel             func(childComplexity int, timeWindow *string) int
-		CountChannelsByType          func(childComplexity int, input CountChannelsByTypeInput) int
-		DailyRequestStats            func(childComplexity int) int
-		DashboardOverview            func(childComplexity int) int
-		DataStorages                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
-		DefaultDataStorageID         func(childComplexity int) int
-		FastestChannels              func(childComplexity int, input FastestChannelsInput) int
-		FastestModels                func(childComplexity int, input FastestChannelsInput) int
-		FetchModels                  func(childComplexity int, input biz.FetchModelsInput) int
-		GetCacheDiagnostics          func(childComplexity int, input *GetCacheDiagnosticsInput) int
-		Me                           func(childComplexity int) int
-		ModelPerformanceStats        func(childComplexity int) int
-		Models                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
-		MyProjects                   func(childComplexity int) int
-		Node                         func(childComplexity int, id objects.GUID) int
-		Nodes                        func(childComplexity int, ids []*objects.GUID) int
-		OidcIdentities               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.OIDCIdentityOrder, where *ent.OIDCIdentityWhereInput) int
-		OnboardingInfo               func(childComplexity int) int
-		PassThroughSettings          func(childComplexity int) int
-		PreviewGcCleanup             func(childComplexity int, input gc.TriggerGcCleanupInput) int
-		Projects                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
-		PromptProtectionRules        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) int
-		Prompts                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
-		ProxyPresets                 func(childComplexity int) int
-		QueryChannels                func(childComplexity int, input biz.QueryChannelsInput) int
-		QueryModelChannelConnections func(childComplexity int, associations []*objects.ModelAssociation) int
-		QueryModels                  func(childComplexity int, input QueryModelsInput) int
-		QueryUnassociatedChannels    func(childComplexity int) int
-		QuotaEnforcementSettings     func(childComplexity int) int
-		RequestStats                 func(childComplexity int) int
-		RequestStatsByAPIKey         func(childComplexity int, timeWindow *string) int
-		RequestStatsByChannel        func(childComplexity int, timeWindow *string) int
-		RequestStatsByModel          func(childComplexity int, timeWindow *string) int
-		Requests                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
-		RetryPolicy                  func(childComplexity int) int
-		Roles                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
-		SecuritySettings             func(childComplexity int) int
-		StoragePolicy                func(childComplexity int) int
-		SystemChannelSettings        func(childComplexity int) int
-		SystemGeneralSettings        func(childComplexity int) int
-		SystemModelSettings          func(childComplexity int) int
-		SystemStatus                 func(childComplexity int) int
-		SystemVersion                func(childComplexity int) int
-		Systems                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
-		Threads                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) int
-		TokenStats                   func(childComplexity int) int
-		TokenStatsByAPIKey           func(childComplexity int, timeWindow *string) int
-		TokenStatsByChannel          func(childComplexity int, timeWindow *string) int
-		TokenStatsByModel            func(childComplexity int, timeWindow *string) int
-		TopRequestsProjects          func(childComplexity int) int
-		Traces                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
-		UsageLogs                    func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
-		UsageStatsByUser             func(childComplexity int, timeWindow *string) int
-		UserAgentPassThroughSettings func(childComplexity int) int
-		Users                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) int
-		VideoStorageSettings         func(childComplexity int) int
-		WebhookNotifierConfig        func(childComplexity int) int
+		APIKeyProfileTemplates          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyProfileTemplateOrder, where *ent.APIKeyProfileTemplateWhereInput) int
+		APIKeyQuotaUsages               func(childComplexity int, apiKeyID objects.GUID) int
+		APIKeyTokenUsageStats           func(childComplexity int, input *APIKeyTokenUsageStatsInput) int
+		APIKeys                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
+		AllChannelSummarys              func(childComplexity int, includeArchived *bool) int
+		AllChannelTags                  func(childComplexity int) int
+		AllScopes                       func(childComplexity int, level *string) int
+		AnalyticsDailyStats             func(childComplexity int, filter *AnalyticsFilter) int
+		AnalyticsDimensionStats         func(childComplexity int, filter *AnalyticsFilter, dimension string) int
+		AnalyticsMetadata               func(childComplexity int) int
+		AnalyticsOverview               func(childComplexity int, filter *AnalyticsFilter) int
+		AutoBackupSettings              func(childComplexity int) int
+		BrandSettings                   func(childComplexity int) int
+		ChannelOverrideTemplates        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
+		ChannelPerformanceStats         func(childComplexity int) int
+		ChannelProbeData                func(childComplexity int, input biz.GetChannelProbeDataInput) int
+		ChannelSuccessRates             func(childComplexity int, timeWindow *string, limit *int) int
+		Channels                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
+		CheckForUpdate                  func(childComplexity int) int
+		CostStatsByAPIKey               func(childComplexity int, timeWindow *string) int
+		CostStatsByChannel              func(childComplexity int, timeWindow *string) int
+		CostStatsByModel                func(childComplexity int, timeWindow *string) int
+		CountChannelsByType             func(childComplexity int, input CountChannelsByTypeInput) int
+		DailyRequestStats               func(childComplexity int) int
+		DashboardOverview               func(childComplexity int) int
+		DataStorages                    func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
+		DefaultDataStorageID            func(childComplexity int) int
+		FastestChannels                 func(childComplexity int, input FastestChannelsInput) int
+		FastestModels                   func(childComplexity int, input FastestChannelsInput) int
+		FetchModels                     func(childComplexity int, input biz.FetchModelsInput) int
+		GetCacheDiagnostics             func(childComplexity int, input *GetCacheDiagnosticsInput) int
+		Me                              func(childComplexity int) int
+		ModelPerformanceStats           func(childComplexity int) int
+		Models                          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
+		MyProjects                      func(childComplexity int) int
+		Node                            func(childComplexity int, id objects.GUID) int
+		Nodes                           func(childComplexity int, ids []*objects.GUID) int
+		OidcIdentities                  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.OIDCIdentityOrder, where *ent.OIDCIdentityWhereInput) int
+		OnboardingInfo                  func(childComplexity int) int
+		PassThroughSettings             func(childComplexity int) int
+		PreviewGcCleanup                func(childComplexity int, input gc.TriggerGcCleanupInput) int
+		Projects                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
+		PromptProtectionRules           func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) int
+		Prompts                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
+		ProviderQuotaCollectionSettings func(childComplexity int) int
+		ProxyPresets                    func(childComplexity int) int
+		QueryChannels                   func(childComplexity int, input biz.QueryChannelsInput) int
+		QueryModelChannelConnections    func(childComplexity int, associations []*objects.ModelAssociation) int
+		QueryModels                     func(childComplexity int, input QueryModelsInput) int
+		QueryUnassociatedChannels       func(childComplexity int) int
+		QuotaEnforcementSettings        func(childComplexity int) int
+		RequestStats                    func(childComplexity int) int
+		RequestStatsByAPIKey            func(childComplexity int, timeWindow *string) int
+		RequestStatsByChannel           func(childComplexity int, timeWindow *string) int
+		RequestStatsByModel             func(childComplexity int, timeWindow *string) int
+		Requests                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
+		RetryPolicy                     func(childComplexity int) int
+		Roles                           func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
+		SecuritySettings                func(childComplexity int) int
+		StoragePolicy                   func(childComplexity int) int
+		SystemChannelSettings           func(childComplexity int) int
+		SystemGeneralSettings           func(childComplexity int) int
+		SystemModelSettings             func(childComplexity int) int
+		SystemStatus                    func(childComplexity int) int
+		SystemVersion                   func(childComplexity int) int
+		Systems                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
+		Threads                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) int
+		TokenStats                      func(childComplexity int) int
+		TokenStatsByAPIKey              func(childComplexity int, timeWindow *string) int
+		TokenStatsByChannel             func(childComplexity int, timeWindow *string) int
+		TokenStatsByModel               func(childComplexity int, timeWindow *string) int
+		TopRequestsProjects             func(childComplexity int) int
+		Traces                          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
+		UsageLogs                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
+		UsageStatsByUser                func(childComplexity int, timeWindow *string) int
+		UserAgentPassThroughSettings    func(childComplexity int) int
+		Users                           func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) int
+		VideoStorageSettings            func(childComplexity int) int
+		WebhookNotifierConfig           func(childComplexity int) int
 	}
 
 	QuotaEnforcementSettings struct {
@@ -2226,6 +2239,7 @@ type MutationResolver interface {
 	UpdateSystemGeneralSettings(ctx context.Context, input biz.SystemGeneralSettings) (bool, error)
 	UpdateVideoStorageSettings(ctx context.Context, input biz.VideoStorageSettings) (bool, error)
 	UpdateQuotaEnforcementSettings(ctx context.Context, input UpdateQuotaEnforcementSettingsInput) (bool, error)
+	UpdateProviderQuotaCollectionSettings(ctx context.Context, input UpdateProviderQuotaCollectionSettingsInput) (bool, error)
 	UpdateSecuritySettings(ctx context.Context, input UpdateSecuritySettingsInput) (bool, error)
 	CheckProviderQuotas(ctx context.Context) (bool, error)
 	ResetChannelQuotaNow(ctx context.Context, channelID objects.GUID) (bool, error)
@@ -2282,6 +2296,9 @@ type PromptResolver interface {
 }
 type PromptProtectionRuleResolver interface {
 	ID(ctx context.Context, obj *ent.PromptProtectionRule) (*objects.GUID, error)
+}
+type ProviderQuotaCollectionSettingsResolver interface {
+	Providers(ctx context.Context, obj *biz.ProviderQuotaCollectionSettings) ([]*biz.ProviderQuotaCollectionProvider, error)
 }
 type ProviderQuotaStatusResolver interface {
 	ID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error)
@@ -2352,6 +2369,7 @@ type QueryResolver interface {
 	SystemGeneralSettings(ctx context.Context) (*biz.SystemGeneralSettings, error)
 	VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error)
 	QuotaEnforcementSettings(ctx context.Context) (*biz.QuotaEnforcementSettings, error)
+	ProviderQuotaCollectionSettings(ctx context.Context) (*biz.ProviderQuotaCollectionSettings, error)
 	SecuritySettings(ctx context.Context) (*biz.SecuritySettings, error)
 	ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, error)
 	UserAgentPassThroughSettings(ctx context.Context) (*UserAgentPassThroughSettings, error)
@@ -6654,6 +6672,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdatePromptStatus(childComplexity, args["id"].(objects.GUID), args["status"].(prompt.Status)), true
+	case "Mutation.updateProviderQuotaCollectionSettings":
+		if e.complexity.Mutation.UpdateProviderQuotaCollectionSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateProviderQuotaCollectionSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateProviderQuotaCollectionSettings(childComplexity, args["input"].(UpdateProviderQuotaCollectionSettingsInput)), true
 	case "Mutation.updateQuotaEnforcementSettings":
 		if e.complexity.Mutation.UpdateQuotaEnforcementSettings == nil {
 			break
@@ -7693,6 +7722,32 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PromptWriteCacheVariant.VariantCode(childComplexity), true
 
+	case "ProviderQuotaCollectionProvider.enabled":
+		if e.complexity.ProviderQuotaCollectionProvider.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ProviderQuotaCollectionProvider.Enabled(childComplexity), true
+	case "ProviderQuotaCollectionProvider.provider":
+		if e.complexity.ProviderQuotaCollectionProvider.Provider == nil {
+			break
+		}
+
+		return e.complexity.ProviderQuotaCollectionProvider.Provider(childComplexity), true
+
+	case "ProviderQuotaCollectionSettings.enabled":
+		if e.complexity.ProviderQuotaCollectionSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ProviderQuotaCollectionSettings.Enabled(childComplexity), true
+	case "ProviderQuotaCollectionSettings.providers":
+		if e.complexity.ProviderQuotaCollectionSettings.Providers == nil {
+			break
+		}
+
+		return e.complexity.ProviderQuotaCollectionSettings.Providers(childComplexity), true
+
 	case "ProviderQuotaStatus.channel":
 		if e.complexity.ProviderQuotaStatus.Channel == nil {
 			break
@@ -8230,6 +8285,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Prompts(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.PromptOrder), args["where"].(*ent.PromptWhereInput)), true
+	case "Query.providerQuotaCollectionSettings":
+		if e.complexity.Query.ProviderQuotaCollectionSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.ProviderQuotaCollectionSettings(childComplexity), true
 	case "Query.proxyPresets":
 		if e.complexity.Query.ProxyPresets == nil {
 			break
@@ -11377,6 +11438,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPromptSettingsInput,
 		ec.unmarshalInputPromptWhereInput,
 		ec.unmarshalInputPromptWriteCacheVariantInput,
+		ec.unmarshalInputProviderQuotaCollectionProviderInput,
 		ec.unmarshalInputProviderQuotaStatusOrder,
 		ec.unmarshalInputProviderQuotaStatusWhereInput,
 		ec.unmarshalInputProxyConfigInput,
@@ -11431,6 +11493,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateProjectUserInput,
 		ec.unmarshalInputUpdatePromptInput,
 		ec.unmarshalInputUpdatePromptProtectionRuleInput,
+		ec.unmarshalInputUpdateProviderQuotaCollectionSettingsInput,
 		ec.unmarshalInputUpdateQuotaEnforcementSettingsInput,
 		ec.unmarshalInputUpdateRequestInput,
 		ec.unmarshalInputUpdateRetryPolicyInput,
@@ -13108,6 +13171,17 @@ func (ec *executionContext) field_Mutation_updatePrompt_args(ctx context.Context
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateProviderQuotaCollectionSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateProviderQuotaCollectionSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateProviderQuotaCollectionSettingsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -35235,6 +35309,47 @@ func (ec *executionContext) fieldContext_Mutation_updateQuotaEnforcementSettings
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateProviderQuotaCollectionSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateProviderQuotaCollectionSettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateProviderQuotaCollectionSettings(ctx, fc.Args["input"].(UpdateProviderQuotaCollectionSettingsInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateProviderQuotaCollectionSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateProviderQuotaCollectionSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateSecuritySettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -41503,6 +41618,128 @@ func (ec *executionContext) fieldContext_PromptWriteCacheVariant_pricing(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ProviderQuotaCollectionProvider_provider(ctx context.Context, field graphql.CollectedField, obj *biz.ProviderQuotaCollectionProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderQuotaCollectionProvider_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderQuotaCollectionProvider_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderQuotaCollectionProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProviderQuotaCollectionProvider_enabled(ctx context.Context, field graphql.CollectedField, obj *biz.ProviderQuotaCollectionProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderQuotaCollectionProvider_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderQuotaCollectionProvider_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderQuotaCollectionProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProviderQuotaCollectionSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *biz.ProviderQuotaCollectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderQuotaCollectionSettings_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderQuotaCollectionSettings_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderQuotaCollectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProviderQuotaCollectionSettings_providers(ctx context.Context, field graphql.CollectedField, obj *biz.ProviderQuotaCollectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderQuotaCollectionSettings_providers,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ProviderQuotaCollectionSettings().Providers(ctx, obj)
+		},
+		nil,
+		ec.marshalNProviderQuotaCollectionProvider2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProviderQuotaCollectionProviderᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderQuotaCollectionSettings_providers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderQuotaCollectionSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "provider":
+				return ec.fieldContext_ProviderQuotaCollectionProvider_provider(ctx, field)
+			case "enabled":
+				return ec.fieldContext_ProviderQuotaCollectionProvider_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProviderQuotaCollectionProvider", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProviderQuotaStatus_id(ctx context.Context, field graphql.CollectedField, obj *ent.ProviderQuotaStatus) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45129,6 +45366,41 @@ func (ec *executionContext) fieldContext_Query_quotaEnforcementSettings(_ contex
 				return ec.fieldContext_QuotaEnforcementSettings_mode(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type QuotaEnforcementSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_providerQuotaCollectionSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_providerQuotaCollectionSettings,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().ProviderQuotaCollectionSettings(ctx)
+		},
+		nil,
+		ec.marshalNProviderQuotaCollectionSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProviderQuotaCollectionSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_providerQuotaCollectionSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_ProviderQuotaCollectionSettings_enabled(ctx, field)
+			case "providers":
+				return ec.fieldContext_ProviderQuotaCollectionSettings_providers(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProviderQuotaCollectionSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -75441,6 +75713,40 @@ func (ec *executionContext) unmarshalInputPromptWriteCacheVariantInput(ctx conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputProviderQuotaCollectionProviderInput(ctx context.Context, obj any) (ProviderQuotaCollectionProviderInput, error) {
+	var it ProviderQuotaCollectionProviderInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"provider", "enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "provider":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Provider = data
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputProviderQuotaStatusOrder(ctx context.Context, obj any) (ent.ProviderQuotaStatusOrder, error) {
 	var it ent.ProviderQuotaStatusOrder
 	asMap := map[string]any{}
@@ -83118,6 +83424,40 @@ func (ec *executionContext) unmarshalInputUpdatePromptProtectionRuleInput(ctx co
 				return it, err
 			}
 			it.Settings = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateProviderQuotaCollectionSettingsInput(ctx context.Context, obj any) (UpdateProviderQuotaCollectionSettingsInput, error) {
+	var it UpdateProviderQuotaCollectionSettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "providers"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "providers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providers"))
+			data, err := ec.unmarshalOProviderQuotaCollectionProviderInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐProviderQuotaCollectionProviderInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Providers = data
 		}
 	}
 
@@ -95714,6 +96054,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateProviderQuotaCollectionSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateProviderQuotaCollectionSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateSecuritySettings":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateSecuritySettings(ctx, field)
@@ -98244,6 +98591,125 @@ func (ec *executionContext) _PromptWriteCacheVariant(ctx context.Context, sel as
 	return out
 }
 
+var providerQuotaCollectionProviderImplementors = []string{"ProviderQuotaCollectionProvider"}
+
+func (ec *executionContext) _ProviderQuotaCollectionProvider(ctx context.Context, sel ast.SelectionSet, obj *biz.ProviderQuotaCollectionProvider) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, providerQuotaCollectionProviderImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProviderQuotaCollectionProvider")
+		case "provider":
+			out.Values[i] = ec._ProviderQuotaCollectionProvider_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._ProviderQuotaCollectionProvider_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var providerQuotaCollectionSettingsImplementors = []string{"ProviderQuotaCollectionSettings"}
+
+func (ec *executionContext) _ProviderQuotaCollectionSettings(ctx context.Context, sel ast.SelectionSet, obj *biz.ProviderQuotaCollectionSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, providerQuotaCollectionSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProviderQuotaCollectionSettings")
+		case "enabled":
+			out.Values[i] = ec._ProviderQuotaCollectionSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "providers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProviderQuotaCollectionSettings_providers(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var providerQuotaStatusImplementors = []string{"ProviderQuotaStatus", "Node"}
 
 func (ec *executionContext) _ProviderQuotaStatus(ctx context.Context, sel ast.SelectionSet, obj *ent.ProviderQuotaStatus) graphql.Marshaler {
@@ -99899,6 +100365,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_quotaEnforcementSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "providerQuotaCollectionSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_providerQuotaCollectionSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -111870,6 +112358,79 @@ func (ec *executionContext) unmarshalNPromptWriteCacheVariantInput2githubᚗcom�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNProviderQuotaCollectionProvider2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProviderQuotaCollectionProviderᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.ProviderQuotaCollectionProvider) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNProviderQuotaCollectionProvider2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProviderQuotaCollectionProvider(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNProviderQuotaCollectionProvider2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProviderQuotaCollectionProvider(ctx context.Context, sel ast.SelectionSet, v *biz.ProviderQuotaCollectionProvider) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProviderQuotaCollectionProvider(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNProviderQuotaCollectionProviderInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐProviderQuotaCollectionProviderInput(ctx context.Context, v any) (*ProviderQuotaCollectionProviderInput, error) {
+	res, err := ec.unmarshalInputProviderQuotaCollectionProviderInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProviderQuotaCollectionSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProviderQuotaCollectionSettings(ctx context.Context, sel ast.SelectionSet, v biz.ProviderQuotaCollectionSettings) graphql.Marshaler {
+	return ec._ProviderQuotaCollectionSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProviderQuotaCollectionSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐProviderQuotaCollectionSettings(ctx context.Context, sel ast.SelectionSet, v *biz.ProviderQuotaCollectionSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProviderQuotaCollectionSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNProviderQuotaStatusOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProviderQuotaStatusOrderField(ctx context.Context, v any) (*ent.ProviderQuotaStatusOrderField, error) {
 	var res = new(ent.ProviderQuotaStatusOrderField)
 	err := res.UnmarshalGQL(v)
@@ -113358,6 +113919,11 @@ func (ec *executionContext) unmarshalNUpdatePromptInput2githubᚗcomᚋloopljᚋ
 
 func (ec *executionContext) unmarshalNUpdatePromptProtectionRuleInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdatePromptProtectionRuleInput(ctx context.Context, v any) (ent.UpdatePromptProtectionRuleInput, error) {
 	res, err := ec.unmarshalInputUpdatePromptProtectionRuleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateProviderQuotaCollectionSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateProviderQuotaCollectionSettingsInput(ctx context.Context, v any) (UpdateProviderQuotaCollectionSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateProviderQuotaCollectionSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -118296,6 +118862,24 @@ func (ec *executionContext) unmarshalOPromptWriteCacheVariantInput2ᚕgithubᚗc
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
 		res[i], err = ec.unmarshalNPromptWriteCacheVariantInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPromptWriteCacheVariant(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOProviderQuotaCollectionProviderInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐProviderQuotaCollectionProviderInputᚄ(ctx context.Context, v any) ([]*ProviderQuotaCollectionProviderInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ProviderQuotaCollectionProviderInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNProviderQuotaCollectionProviderInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐProviderQuotaCollectionProviderInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}

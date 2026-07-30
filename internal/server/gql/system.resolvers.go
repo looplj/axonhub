@@ -198,6 +198,23 @@ func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, i
 	return true, nil
 }
 
+// UpdateProviderQuotaCollectionSettings is the resolver for the updateProviderQuotaCollectionSettings field.
+func (r *mutationResolver) UpdateProviderQuotaCollectionSettings(ctx context.Context, input UpdateProviderQuotaCollectionSettingsInput) (bool, error) {
+	providers := make([]biz.ProviderQuotaCollectionProvider, 0, len(input.Providers))
+	for _, provider := range input.Providers {
+		providers = append(providers, biz.ProviderQuotaCollectionProvider{
+			Provider: provider.Provider,
+			Enabled:  provider.Enabled,
+		})
+	}
+
+	if err := r.systemService.UpdateProviderQuotaCollectionSettings(ctx, input.Enabled, providers); err != nil {
+		return false, fmt.Errorf("failed to update provider quota collection settings: %w", err)
+	}
+
+	return true, nil
+}
+
 // UpdateSecuritySettings is the resolver for the updateSecuritySettings field.
 func (r *mutationResolver) UpdateSecuritySettings(ctx context.Context, input UpdateSecuritySettingsInput) (bool, error) {
 	current, err := r.systemService.SecuritySettings(ctx)
@@ -340,6 +357,19 @@ func (r *mutationResolver) ClearCache(ctx context.Context, input ClearCacheInput
 		Message: "cache cleared successfully",
 		Targets: targets,
 	}, nil
+}
+
+// Providers is the resolver for the providers field.
+func (r *providerQuotaCollectionSettingsResolver) Providers(ctx context.Context, obj *biz.ProviderQuotaCollectionSettings) ([]*biz.ProviderQuotaCollectionProvider, error) {
+	providers := make([]*biz.ProviderQuotaCollectionProvider, 0, len(obj.Providers))
+	for _, providerType := range biz.SupportedProviderQuotaTypes() {
+		providers = append(providers, &biz.ProviderQuotaCollectionProvider{
+			Provider: providerType,
+			Enabled:  obj.Providers[providerType],
+		})
+	}
+
+	return providers, nil
 }
 
 // PreviewGcCleanup is the resolver for the previewGcCleanup field.
@@ -516,6 +546,11 @@ func (r *queryResolver) QuotaEnforcementSettings(ctx context.Context) (*biz.Quot
 	return r.systemService.QuotaEnforcementSettings(ctx)
 }
 
+// ProviderQuotaCollectionSettings is the resolver for the providerQuotaCollectionSettings field.
+func (r *queryResolver) ProviderQuotaCollectionSettings(ctx context.Context) (*biz.ProviderQuotaCollectionSettings, error) {
+	return r.systemService.ProviderQuotaCollectionSettings(ctx)
+}
+
 // SecuritySettings is the resolver for the securitySettings field.
 func (r *queryResolver) SecuritySettings(ctx context.Context) (*biz.SecuritySettings, error) {
 	return r.systemService.SecuritySettings(ctx)
@@ -592,3 +627,10 @@ func (r *queryResolver) GetCacheDiagnostics(ctx context.Context, input *GetCache
 		Targets:  normalizeDiagnosticsTargets(targets),
 	}, nil
 }
+
+// ProviderQuotaCollectionSettings returns ProviderQuotaCollectionSettingsResolver implementation.
+func (r *Resolver) ProviderQuotaCollectionSettings() ProviderQuotaCollectionSettingsResolver {
+	return &providerQuotaCollectionSettingsResolver{r}
+}
+
+type providerQuotaCollectionSettingsResolver struct{ *Resolver }
