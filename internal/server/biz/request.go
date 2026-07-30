@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
@@ -36,6 +38,47 @@ type RequestService struct {
 	DataStorageService   *DataStorageService
 	LiveStreamRegistry   *LiveStreamRegistry
 	previousChannelCache xcache.Cache[int]
+}
+
+// StoredResponseExchange contains one persisted client request and its completed response.
+type StoredResponseExchange struct {
+	RequestBody  objects.JSONRawMessage
+	ResponseBody objects.JSONRawMessage
+}
+
+// loadStoredResponseExchangeBody loads one JSON body without hiding external
+// storage failures. A missing object represents unavailable retained content;
+// other storage errors remain server errors so callers can retry them.
+func (s *RequestService) loadStoredResponseExchangeBody(
+	ctx context.Context,
+	stored *ent.Request,
+	databaseBody objects.JSONRawMessage,
+	externalKey string,
+	bodyName string,
+) (objects.JSONRawMessage, error) {
+	dataStorage, err := s.getDataStorage(ctx, stored.DataStorageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve %s storage: %w", bodyName, err)
+	}
+	if !s.shouldUseExternalStorage(ctx, dataStorage) {
+		if databaseBody == nil {
+			return xjson.EmptyJSONRawMessage, nil
+		}
+		return databaseBody, nil
+	}
+
+	data, err := s.DataStorageService.LoadData(ctx, dataStorage, externalKey)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return xjson.EmptyJSONRawMessage, nil
+		}
+		return nil, fmt.Errorf("failed to load %s from external storage: %w", bodyName, err)
+	}
+	if !json.Valid(data) {
+		return nil, fmt.Errorf("stored %s contains invalid JSON", bodyName)
+	}
+
+	return objects.JSONRawMessage(data), nil
 }
 
 // NewRequestService creates a new RequestService.
@@ -1241,6 +1284,66 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 	}
 
 	return xjson.EmptyJSONRawMessage, nil
+}
+
+// LoadCompletedResponseExchange finds one Responses request by response ID within
+// the caller's project and API-key scope, then loads both persisted bodies.
+func (s *RequestService) LoadCompletedResponseExchange(
+	ctx context.Context,
+	externalID string,
+	projectID int,
+	apiKeyID *int,
+) (*StoredResponseExchange, error) {
+	if strings.TrimSpace(externalID) == "" {
+		return nil, nil
+	}
+
+	predicates := []predicate.Request{
+		request.ProjectIDEQ(projectID),
+		request.ExternalIDEQ(externalID),
+		request.FormatEQ(llm.APIFormatOpenAIResponse.String()),
+		request.StatusEQ(request.StatusCompleted),
+	}
+	if apiKeyID != nil {
+		predicates = append(predicates, request.APIKeyIDEQ(*apiKeyID))
+	} else {
+		predicates = append(predicates, request.APIKeyIDIsNil())
+	}
+
+	stored, err := s.entFromContext(ctx).Request.Query().
+		Where(predicates...).
+		Order(ent.Desc(request.FieldCreatedAt)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to find previous response %q: %w", externalID, err)
+	}
+
+	requestBody, err := s.loadStoredResponseExchangeBody(
+		ctx,
+		stored,
+		stored.RequestBody,
+		GenerateRequestBodyKey(stored.ProjectID, stored.ID),
+		"previous response request body",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load previous response request %q: %w", externalID, err)
+	}
+	responseBody, err := s.loadStoredResponseExchangeBody(
+		ctx,
+		stored,
+		stored.ResponseBody,
+		GenerateResponseBodyKey(stored.ProjectID, stored.ID),
+		"previous response body",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load previous response body %q: %w", externalID, err)
+	}
+
+	return &StoredResponseExchange{RequestBody: requestBody, ResponseBody: responseBody}, nil
 }
 
 // LoadResponseChunks returns the request response chunks, loading from external storage when necessary.

@@ -35,9 +35,11 @@ type mockTransformer struct {
 	apiFormat          llm.APIFormat
 	requestAPIFormat   llm.APIFormat
 	includeEffort      bool
+	capturedRequest    *llm.Request
 }
 
 func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
+	m.capturedRequest = req
 	payload := map[string]any{
 		"model":       req.Model,
 		"messages":    req.Messages,
@@ -1132,8 +1134,13 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 		},
 	}
 
-	t.Run("filters when inbound is responses and outbound is not", func(t *testing.T) {
+	t.Run("preserves when outbound Chat adapter supports custom lifecycle", func(t *testing.T) {
 		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion)
+		require.Same(t, baseRequest, got)
+	})
+
+	t.Run("filters when outbound has no custom lifecycle adapter", func(t *testing.T) {
+		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatAnthropicMessage)
 		require.NotSame(t, baseRequest, got)
 		require.Len(t, got.Messages, 2)
 		require.Len(t, got.Messages[0].ToolCalls, 1)

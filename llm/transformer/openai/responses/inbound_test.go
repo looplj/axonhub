@@ -20,6 +20,134 @@ func TestNewInboundTransformer(t *testing.T) {
 	require.NotNil(t, transformer)
 }
 
+func TestInboundTransformer_PromotesAdditionalAndToolSearchTools(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[
+			{"type":"additional_tools","role":"developer","tools":[
+				{"type":"custom","name":"exec","description":"Run code"},
+				{"type":"namespace","name":"collaboration","tools":[
+					{"type":"function","name":"spawn_agent","parameters":{"type":"object","properties":{}}}
+				]}
+			]},
+			{"type":"tool_search_call","execution":"client","call_id":"call_search","arguments":{"query":"agents"}},
+			{"type":"tool_search_output","execution":"client","call_id":"call_search","tools":[
+				{"type":"function","name":"send_message","parameters":{"type":"object","properties":{}}}
+			]},
+			{"role":"user","type":"message","content":[{"type":"input_text","text":"continue"}]}
+		],
+		"tools":[{"type":"tool_search","execution":"client","description":"Find tools","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}}]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, request.Tools, 4)
+	require.Equal(t, llm.ToolTypeResponsesToolSearch, request.Tools[0].Type)
+	require.Equal(t, llm.ToolTypeResponsesCustomTool, request.Tools[1].Type)
+	require.Equal(t, "collaboration", request.Tools[2].Function.Namespace)
+	require.Equal(t, "collaboration__spawn_agent", request.Tools[2].Function.Name)
+	require.Equal(t, "additional_tools", request.Tools[2].ResponsesOrigin)
+	require.Equal(t, "send_message", request.Tools[3].Function.Name)
+	require.Equal(t, "tool_search_output", request.Tools[3].ResponsesOrigin)
+
+	require.Len(t, request.Messages, 3)
+	require.NotNil(t, request.Messages[0].ToolCalls[0].ResponseToolSearchCall)
+	require.Equal(t, "call_search", lo.FromPtr(request.Messages[1].ToolCallID))
+	require.JSONEq(t, `[{"type":"function","name":"send_message","parameters":{"type":"object","properties":{}}}]`, *request.Messages[1].Content.Content)
+}
+
+func TestInboundTransformer_EncodesEmptyToolSearchOutputAsArray(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[
+			{"type":"tool_search_call","execution":"client","call_id":"call_search","arguments":{"query":"agents"}},
+			{"type":"tool_search_output","execution":"client","call_id":"call_search"}
+		]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, request.Messages, 2)
+	require.Equal(t, "[]", lo.FromPtr(request.Messages[1].Content.Content))
+}
+
+func TestInboundTransformer_PromotesFutureClientFunctionLikeTools(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[{"type":"additional_tools","role":"developer","tools":[{
+			"type":"future_client_tool","name":"later_lookup","description":"Lookup later",
+			"execution":"client","parameters":{"type":"object","properties":{"id":{"type":"string"}}}
+		}]}],
+		"tools":[{
+			"type":"future_client_tool","name":"lookup","description":"Lookup",
+			"execution":"client","parameters":{"type":"object","properties":{"query":{"type":"string"}}}
+		}]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, request.Tools, 2)
+	require.Equal(t, llm.ToolTypeFunction, request.Tools[0].Type)
+	require.Equal(t, "lookup", request.Tools[0].Function.Name)
+	require.Equal(t, "raw_tool", request.Tools[0].ResponsesOrigin)
+	require.JSONEq(t, `{"type":"object","properties":{"query":{"type":"string"}}}`, string(request.Tools[0].Function.Parameters))
+	require.Equal(t, llm.ToolTypeFunction, request.Tools[1].Type)
+	require.Equal(t, "later_lookup", request.Tools[1].Function.Name)
+	require.Equal(t, "additional_tools", request.Tools[1].ResponsesOrigin)
+}
+
+func TestInboundTransformer_PreservesUnsupportedFutureToolForExplicitRejection(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5","input":"hello","tools":[
+			{"type":"future_server_tool","name":"hosted","execution":"server"},
+			{"type":"future_unknown_tool","name":"unknown","parameters":{"type":"object"}}
+		]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, request.Tools, 2)
+	require.Equal(t, llm.ToolTypeResponsesOpaqueTool, request.Tools[0].Type)
+	require.Equal(t, "future_server_tool", request.Tools[0].ResponseOpaqueTool.SourceType)
+	require.Equal(t, llm.ToolTypeResponsesOpaqueTool, request.Tools[1].Type)
+	require.Equal(t, "future_unknown_tool", request.Tools[1].ResponseOpaqueTool.SourceType)
+}
+
+func TestInboundTransformer_DoesNotInferUnknownNamespaceExecutionOwner(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5","input":"hello","tools":[{
+			"type":"namespace","name":"hosted","tools":[
+				{"type":"future_hosted_tool","name":"implicit","parameters":{"type":"object"}},
+				{"type":"future_client_tool","name":"explicit","execution":"client","parameters":{"type":"object"}}
+			]
+		}]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, request.Tools, 2)
+	require.Equal(t, llm.ToolTypeResponsesOpaqueTool, request.Tools[0].Type)
+	require.Equal(t, "future_hosted_tool", request.Tools[0].ResponseOpaqueTool.SourceType)
+	require.Equal(t, llm.ToolTypeFunction, request.Tools[1].Type)
+	require.Equal(t, "hosted", request.Tools[1].Function.Namespace)
+	require.Equal(t, "hosted__explicit", request.Tools[1].Function.Name)
+}
+
+func TestInboundTransformer_EmitsResponsesSpecialToolCalls(t *testing.T) {
+	transformer := NewInboundTransformer()
+	result, err := transformer.TransformResponse(context.Background(), &llm.Response{
+		ID: "resp_1", Model: "glm-5.2",
+		Choices: []llm.Choice{{Message: &llm.Message{Role: "assistant", ToolCalls: []llm.ToolCall{
+			{ID: "call_custom", ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "apply_patch", Input: "*** Begin Patch"}},
+			{ID: "call_search", ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "call_search", Execution: "client", Arguments: `{"query":"agents"}`}},
+		}}}},
+	})
+	require.NoError(t, err)
+	var response Response
+	require.NoError(t, json.Unmarshal(result.Body, &response))
+	require.Len(t, response.Output, 2)
+	require.Equal(t, "custom_tool_call", response.Output[0].Type)
+	require.Equal(t, "*** Begin Patch", *response.Output[0].Input)
+	require.Equal(t, "tool_search_call", response.Output[1].Type)
+	require.Equal(t, "client", response.Output[1].Execution)
+	require.JSONEq(t, `{"query":"agents"}`, response.Output[1].Arguments)
+}
+
 func TestInboundTransformer_TransformRequest(t *testing.T) {
 	trans := NewInboundTransformer()
 
@@ -200,7 +328,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 			expectError: false,
 			validate: func(t *testing.T, result *llm.Request) {
-				require.Len(t, result.Tools, 3)
+				require.Len(t, result.Tools, 4)
 
 				namespaceTool := result.Tools[0]
 				require.Equal(t, "function", namespaceTool.Type)
@@ -211,7 +339,9 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				require.True(t, *namespaceTool.Function.Strict)
 
 				require.Equal(t, "mcp__codebase_memory_mcp__get_project", result.Tools[1].Function.Name)
-				require.Equal(t, "get_weather", result.Tools[2].Function.Name)
+				require.Equal(t, llm.ToolTypeResponsesOpaqueTool, result.Tools[2].Type)
+				require.Equal(t, "web_search", result.Tools[2].ResponseOpaqueTool.SourceType)
+				require.Equal(t, "get_weather", result.Tools[3].Function.Name)
 			},
 		},
 		{
@@ -242,7 +372,9 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 			expectError: false,
 			validate: func(t *testing.T, result *llm.Request) {
-				require.Len(t, result.Tools, 1)
+				require.Len(t, result.Tools, 2)
+				require.Equal(t, llm.ToolTypeResponsesToolSearch, result.Tools[0].Type)
+				require.Equal(t, llm.ToolTypeFunction, result.Tools[1].Type)
 				require.NotNil(t, result.ProviderExtensions)
 				require.NotNil(t, result.ProviderExtensions.OpenAIResponses)
 				require.NotNil(t, result.ProviderExtensions.OpenAIResponses.Request)
@@ -920,6 +1052,40 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, resp.Status)
 				require.Equal(t, "incomplete", *resp.Status)
+				require.NotNil(t, resp.IncompleteDetails)
+				require.Equal(t, "max_output_tokens", resp.IncompleteDetails.Reason)
+			},
+		},
+		{
+			name: "response with content filter finish reason",
+			chatResp: &llm.Response{
+				ID:      "chatcmpl-content-filter",
+				Object:  "chat.completion",
+				Created: 1677652288,
+				Model:   "gpt-4o",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Filtered response..."),
+							},
+						},
+						FinishReason: lo.ToPtr("content_filter"),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Response) {
+				var resp Response
+
+				err := json.Unmarshal(result.Body, &resp)
+				require.NoError(t, err)
+				require.NotNil(t, resp.Status)
+				require.Equal(t, "incomplete", *resp.Status)
+				require.NotNil(t, resp.IncompleteDetails)
+				require.Equal(t, "content_filter", resp.IncompleteDetails.Reason)
 			},
 		},
 		{

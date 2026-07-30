@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -188,6 +189,34 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_ReportsUnsupportedResponsesToolChoiceAsInvalidRequest(t *testing.T) {
+	out, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	assert.NoError(t, err)
+
+	_, err = out.TransformRequest(t.Context(), &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("use hosted search")},
+		}},
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeResponsesToolSearch,
+			ResponseToolSearch: &llm.ResponseToolSearch{
+				Execution: "server",
+			},
+		}},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: "tool_search",
+			Function: llm.ToolFunction{
+				Name: "tool_search",
+			},
+		}},
+	})
+
+	assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	assert.ErrorContains(t, err, "unsupported_tool_choice")
 }
 
 func TestOutboundTransformer_TransformRequest_StripsUnsupportedToolCallExtraContentForOpenAI(t *testing.T) {

@@ -1,8 +1,10 @@
 package responses
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -88,6 +90,9 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 
 			require.NoError(t, transformedStream.Err())
+			if tt.inputStreamFile == "llm-tool-2.stream.jsonl" {
+				assertParallelFunctionCallLifecycle(t, actualEvents)
+			}
 
 			// Verify event count
 			require.Equal(t, len(expectedEvents), len(actualEvents), "Event count should match expected")
@@ -139,6 +144,60 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func assertParallelFunctionCallLifecycle(t *testing.T, events []StreamEvent) {
+	t.Helper()
+
+	type lifecycle struct {
+		addedCount     int
+		deltaArguments string
+		lastDeltaIndex int
+		argumentsDone  int
+		outputDone     int
+		arguments      string
+		argumentsIndex int
+		outputIndex    int
+	}
+	calls := map[int]*lifecycle{2: {}, 3: {}}
+
+	for i := range events {
+		event := events[i]
+		call, tracked := calls[event.OutputIndex]
+		if !tracked {
+			continue
+		}
+		switch event.Type {
+		case StreamEventTypeOutputItemAdded:
+			if event.Item != nil && event.Item.Type == "function_call" {
+				call.addedCount++
+			}
+		case StreamEventTypeFunctionCallArgumentsDelta:
+			call.deltaArguments += event.Delta
+			call.lastDeltaIndex = i
+		case StreamEventTypeFunctionCallArgumentsDone:
+			call.argumentsDone++
+			call.arguments = event.Arguments
+			call.argumentsIndex = i
+		case StreamEventTypeOutputItemDone:
+			if event.Item != nil && event.Item.Type == "function_call" {
+				call.outputDone++
+				call.outputIndex = i
+				require.Equal(t, event.Item.Arguments, call.arguments)
+			}
+		}
+	}
+
+	wantArguments := map[int]string{2: `{"expression":"25 * 4"}`, 3: `{"location":"Tokyo"}`}
+	for outputIndex, call := range calls {
+		require.Equal(t, 1, call.addedCount, "output index %d added count", outputIndex)
+		require.Equal(t, wantArguments[outputIndex], call.deltaArguments, "output index %d delta arguments", outputIndex)
+		require.Equal(t, 1, call.argumentsDone, "output index %d arguments.done count", outputIndex)
+		require.Equal(t, 1, call.outputDone, "output index %d output_item.done count", outputIndex)
+		require.Equal(t, wantArguments[outputIndex], call.arguments, "output index %d completed arguments", outputIndex)
+		require.Greater(t, call.argumentsIndex, call.lastDeltaIndex, "output index %d arguments.done ordering", outputIndex)
+		require.Greater(t, call.outputIndex, call.argumentsIndex, "output index %d output_item.done ordering", outputIndex)
 	}
 }
 
@@ -234,6 +293,146 @@ func TestInboundTransformer_TransformStream_KeepsResponsesReasoningItemsSeparate
 	require.Equal(t, "gAAAA_done_1", lo.FromPtr(lastEvent.Response.Output[0].EncryptedContent))
 	require.Equal(t, "rs_2", lastEvent.Response.Output[1].ID)
 	require.Equal(t, "gAAAA_done_2", lo.FromPtr(lastEvent.Response.Output[1].EncryptedContent))
+}
+
+func TestInboundTransformer_TransformStream_EmitsAdaptedSpecialToolCalls(t *testing.T) {
+	wrappedMetadata := map[string]any{"openai_responses_chat_wrapped_custom": true}
+	source := streams.SliceStream([]*llm.Response{
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant"}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
+			{ID: "call_custom", Index: 0, ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "apply_patch", Input: `{"input":"*** Begin`}, TransformerMetadata: wrappedMetadata},
+			{ID: "call_search", Index: 1, ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "call_search", Execution: "client", Arguments: `{"query":"agents"}`}},
+		}}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
+			{Index: 0, ResponseCustomToolCall: &llm.ResponseCustomToolCall{Input: ` Patch"}`}},
+		}}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{}, FinishReason: lo.ToPtr("tool_calls")}}},
+		llm.DoneResponse,
+	})
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+	require.NoError(t, err)
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+	require.NoError(t, stream.Err())
+
+	var customDone, searchDone *Item
+	for i := range events {
+		event := events[i]
+		if event.Type == StreamEventTypeCustomToolCallInputDelta {
+			require.NotContains(t, event.Delta, `{"input"`)
+		}
+		if event.Type != StreamEventTypeOutputItemDone || event.Item == nil {
+			continue
+		}
+		switch event.Item.Type {
+		case "custom_tool_call":
+			customDone = event.Item
+		case "tool_search_call":
+			searchDone = event.Item
+		}
+	}
+	require.NotNil(t, customDone)
+	require.Equal(t, "*** Begin Patch", lo.FromPtr(customDone.Input))
+	require.NotNil(t, searchDone)
+	require.Equal(t, "client", searchDone.Execution)
+	require.JSONEq(t, `{"query":"agents"}`, searchDone.Arguments)
+}
+
+func TestInboundTransformer_TransformStream_RejectsToolCallTypeChanges(t *testing.T) {
+	plain := llm.ToolCall{ID: "call_1", Index: 0, Type: "function", Function: llm.FunctionCall{Name: "lookup"}}
+	custom := llm.ToolCall{ID: "call_1", Index: 0, ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_1", Name: "apply_patch"}}
+	toolSearch := llm.ToolCall{ID: "call_1", Index: 0, ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "call_1", Execution: "client"}}
+	tests := []struct {
+		name   string
+		first  llm.ToolCall
+		second llm.ToolCall
+		want   string
+	}{
+		{name: "function to custom", first: plain, second: custom, want: "from function to custom"},
+		{name: "function to tool search", first: plain, second: toolSearch, want: "from function to tool_search"},
+		{name: "custom to function", first: custom, second: plain, want: "from custom to function"},
+		{name: "tool search to function", first: toolSearch, second: plain, want: "from tool_search to function"},
+		{name: "custom to tool search", first: custom, second: toolSearch, want: "from custom to tool_search"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := streams.SliceStream([]*llm.Response{
+				{ID: "resp_changed_type", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{tt.first}}}}},
+				{ID: "resp_changed_type", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{tt.second}}}}},
+				llm.DoneResponse,
+			})
+			stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+			require.NoError(t, err)
+			for stream.Next() {
+				_ = stream.Current()
+			}
+			require.ErrorContains(t, stream.Err(), "tool call index 0 changed type "+tt.want)
+		})
+	}
+}
+
+func TestInboundTransformer_TransformStream_DegradesMalformedWrappedCustomInput(t *testing.T) {
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	wrappedMetadata := map[string]any{"openai_responses_chat_wrapped_custom": true}
+	source := streams.SliceStream([]*llm.Response{
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+			ID: "call_custom", Index: 0,
+			ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "apply_patch", Input: `{"input":"patch"`},
+			TransformerMetadata:    wrappedMetadata,
+		}}}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{}, FinishReason: lo.ToPtr("tool_calls")}}},
+		llm.DoneResponse,
+	})
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+	require.NoError(t, err)
+	var encodedEvents []string
+	for stream.Next() {
+		encodedEvents = append(encodedEvents, string(stream.Current().Data))
+	}
+	require.NoError(t, stream.Err())
+	require.Contains(t, logs.String(), "failed to unwrap Chat custom tool input")
+	require.Contains(t, logs.String(), "call_custom")
+	for _, event := range encodedEvents {
+		require.NotContains(t, event, `{"input":"patch"`)
+	}
+}
+
+func TestInboundTransformer_TransformStream_WarnsOnMissingWrappedCustomInput(t *testing.T) {
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	wrappedMetadata := map[string]any{"openai_responses_chat_wrapped_custom": true}
+	source := streams.SliceStream([]*llm.Response{
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+			ID: "call_custom", Index: 0,
+			ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "apply_patch", Input: `{}`},
+			TransformerMetadata:    wrappedMetadata,
+		}}}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{}, FinishReason: lo.ToPtr("tool_calls")}}},
+		llm.DoneResponse,
+	})
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+	require.NoError(t, err)
+	for stream.Next() {
+		_ = stream.Current()
+	}
+	require.NoError(t, stream.Err())
+	require.Contains(t, logs.String(), "failed to unwrap Chat custom tool input")
+	require.Contains(t, logs.String(), "missing input field")
 }
 
 func TestInboundTransformer_TransformStream_ReplacesItemScopedProvisionalSignature(t *testing.T) {

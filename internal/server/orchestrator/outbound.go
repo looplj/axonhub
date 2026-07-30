@@ -386,6 +386,16 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	llmRequest.Model = entry.ActualModel
 
+	if isResponsesFormat(llmRequest.APIFormat) &&
+		p.wrapped.APIFormat() == llm.APIFormatOpenAIChatCompletion &&
+		llmRequest.PreviousResponseID != nil {
+		hydrated, err := hydratePreviousResponsesForChat(ctx, llmRequest, p.state)
+		if err != nil {
+			return nil, err
+		}
+		llmRequest = hydrated
+	}
+
 	outboundFormat := p.wrapped.APIFormat()
 	if candidate.APIFormat != "" {
 		outboundFormat = llm.APIFormat(candidate.APIFormat)
@@ -446,7 +456,10 @@ func filterResponseCustomToolMessagesForNonResponsesOutbound(
 		return nil
 	}
 
-	if !isResponsesFormat(llmRequest.APIFormat) || isResponsesFormat(outboundFormat) || !containsResponseCustomToolMessages(llmRequest.Messages) {
+	if !isResponsesFormat(llmRequest.APIFormat) ||
+		isResponsesFormat(outboundFormat) ||
+		outboundFormat == llm.APIFormatOpenAIChatCompletion ||
+		!containsResponseCustomToolMessages(llmRequest.Messages) {
 		return llmRequest
 	}
 

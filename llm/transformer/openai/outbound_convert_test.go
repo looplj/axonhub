@@ -76,7 +76,7 @@ func TestRequestFromLLM(t *testing.T) {
 	}
 }
 
-func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
+func TestRequestFromLLM_FiltersResponsesOnlyToolsWithoutLifecycleMetadata(t *testing.T) {
 	req := RequestFromLLM(&llm.Request{
 		Model:    "gpt-4o",
 		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
@@ -94,12 +94,336 @@ func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
 					Parameters: []byte(`{"type":"object"}`),
 				},
 			},
+			{
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearch: &llm.ResponseToolSearch{
+					Execution: "client", Description: "Find deferred tools",
+					Parameters: []byte(`{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}`),
+				},
+			},
 		},
 	}, ReasoningFieldNone)
 
 	require.NotNil(t, req)
 	require.Len(t, req.Tools, 1)
-	require.Equal(t, llm.ToolTypeFunction, req.Tools[0].Type)
+	for _, tool := range req.Tools {
+		require.Equal(t, llm.ToolTypeFunction, tool.Type)
+	}
+	require.Equal(t, "get_weather", req.Tools[0].Function.Name)
+}
+
+func TestResponsesChatToolAdapter_ConvertsHistoryAndRestoresCalls(t *testing.T) {
+	request := &llm.Request{
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeResponsesCustomTool, ResponseCustomTool: &llm.ResponseCustomTool{Name: "apply_patch"}},
+			{Type: llm.ToolTypeResponsesToolSearch, ResponseToolSearch: &llm.ResponseToolSearch{Execution: "client"}},
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "collaboration__spawn_agent", Namespace: "collaboration"}},
+		},
+		Messages: []llm.Message{{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{
+				{ID: "call_custom", ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "apply_patch", Input: "*** Begin Patch"}},
+				{ID: "call_search", ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "call_search", Execution: "client", Arguments: `{"query":"agents"}`}},
+				{ID: "call_ns", Function: llm.FunctionCall{Name: "spawn_agent", Namespace: "collaboration", Arguments: `{}`}},
+			},
+		}},
+	}
+
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Len(t, chatRequest.Messages[0].ToolCalls, 3)
+	require.Equal(t, llm.ToolTypeFunction, chatRequest.Messages[0].ToolCalls[0].Type)
+	require.JSONEq(t, `{"input":"*** Begin Patch"}`, chatRequest.Messages[0].ToolCalls[0].Function.Arguments)
+	require.Equal(t, "tool_search", chatRequest.Messages[0].ToolCalls[1].Function.Name)
+	require.Equal(t, "collaboration__spawn_agent", chatRequest.Messages[0].ToolCalls[2].Function.Name)
+
+	response := &llm.Response{Choices: []llm.Choice{{Message: &llm.Message{ToolCalls: []llm.ToolCall{
+		{ID: "call_custom", Function: llm.FunctionCall{Name: "apply_patch", Arguments: `{"input":"*** Begin Patch"}`}},
+		{ID: "call_search", Function: llm.FunctionCall{Name: "tool_search", Arguments: `{"query":"agents"}`}},
+		{ID: "call_ns", Function: llm.FunctionCall{Name: "collaboration__spawn_agent", Arguments: `{}`}},
+	}}}}}
+	restoreResponsesChatToolCalls(response, adapter.mappings())
+	calls := response.Choices[0].Message.ToolCalls
+	require.Equal(t, "*** Begin Patch", calls[0].ResponseCustomToolCall.Input)
+	require.Equal(t, `{"query":"agents"}`, calls[1].ResponseToolSearchCall.Arguments)
+	require.Equal(t, "collaboration", calls[2].Function.Namespace)
+	require.Equal(t, "spawn_agent", calls[2].Function.Name)
+}
+
+func TestResponsesChatToolStreamRestorer_UsesToolCallIndexForLaterChunks(t *testing.T) {
+	mappings := map[string]responsesChatToolMapping{
+		"apply_patch": {Kind: responsesChatToolCustom, ChatName: "apply_patch", Name: "apply_patch"},
+	}
+	restorer := newResponsesChatToolStreamRestorer(mappings)
+	first := &llm.Response{Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+		ID: "call_1", Index: 0, Function: llm.FunctionCall{Name: "apply_patch", Arguments: `{"input":"*** Begin`},
+	}}}}}}
+	second := &llm.Response{Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+		Index: 0, Function: llm.FunctionCall{Arguments: ` Patch"}`},
+	}}}}}}
+
+	restorer.restore(first)
+	restorer.restore(second)
+	require.NotNil(t, first.Choices[0].Delta.ToolCalls[0].ResponseCustomToolCall)
+	require.NotNil(t, second.Choices[0].Delta.ToolCalls[0].ResponseCustomToolCall)
+	require.Equal(t, ` Patch"}`, second.Choices[0].Delta.ToolCalls[0].ResponseCustomToolCall.Input)
+}
+
+func TestResponsesChatToolStreamRestorer_DoesNotRestoreHistoryOnlyMapping(t *testing.T) {
+	mappings := map[string]responsesChatToolMapping{
+		"apply_patch": {
+			Kind: responsesChatToolCustom, ChatName: "apply_patch", Name: "apply_patch", HistoryOnly: true,
+		},
+	}
+	restorer := newResponsesChatToolStreamRestorer(mappings)
+	first := &llm.Response{Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+		ID: "call_1", Index: 0, Type: llm.ToolTypeFunction,
+		Function: llm.FunctionCall{Name: "apply_patch", Arguments: `{"input":"*** Begin`},
+	}}}}}}
+	second := &llm.Response{Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+		Index: 0, Type: llm.ToolTypeFunction, Function: llm.FunctionCall{Arguments: ` Patch"}`},
+	}}}}}}
+
+	restorer.restore(first)
+	restorer.restore(second)
+	require.Nil(t, first.Choices[0].Delta.ToolCalls[0].ResponseCustomToolCall)
+	require.Nil(t, second.Choices[0].Delta.ToolCalls[0].ResponseCustomToolCall)
+	require.Empty(t, second.Choices[0].Delta.ToolCalls[0].Function.Name)
+}
+
+func TestResponsesChatToolAdapter_AvoidsFunctionNameCollisions(t *testing.T) {
+	request := &llm.Request{Tools: []llm.Tool{
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "apply_patch"}},
+		{Type: llm.ToolTypeResponsesCustomTool, ResponseCustomTool: &llm.ResponseCustomTool{Name: "apply_patch"}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "collaboration__spawn_agent"}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "collaboration__spawn_agent", Namespace: "collaboration"}},
+	}}
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Len(t, chatRequest.Tools, 4)
+	require.Equal(t, "apply_patch", chatRequest.Tools[0].Function.Name)
+	require.Equal(t, "axonhub_custom_tool_1", chatRequest.Tools[1].Function.Name)
+	require.Equal(t, "collaboration__spawn_agent", chatRequest.Tools[2].Function.Name)
+	require.Equal(t, "axonhub_namespace_tool_1", chatRequest.Tools[3].Function.Name)
+
+	response := &llm.Response{Choices: []llm.Choice{{Message: &llm.Message{ToolCalls: []llm.ToolCall{
+		{ID: "custom", Function: llm.FunctionCall{Name: "axonhub_custom_tool_1", Arguments: `{"input":"patch"}`}},
+		{ID: "namespace", Function: llm.FunctionCall{Name: "axonhub_namespace_tool_1", Arguments: `{}`}},
+	}}}}}
+	restoreResponsesChatToolCalls(response, adapter.mappings())
+	require.Equal(t, "patch", response.Choices[0].Message.ToolCalls[0].ResponseCustomToolCall.Input)
+	require.Equal(t, "collaboration", response.Choices[0].Message.ToolCalls[1].Function.Namespace)
+	require.Equal(t, "spawn_agent", response.Choices[0].Message.ToolCalls[1].Function.Name)
+}
+
+func TestResponsesChatToolAdapter_DeduplicatesEquivalentFunctions(t *testing.T) {
+	request := &llm.Request{Tools: []llm.Tool{
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup", Description: "Lookup", Parameters: []byte(`{"type":"object","properties":{"query":{"type":"string"}}}`)}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup", Description: "Lookup", Parameters: []byte(`{"properties":{"query":{"type":"string"}},"type":"object"}`)}, ResponsesOrigin: "additional_tools"},
+	}}
+	chatRequest, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Len(t, chatRequest.Tools, 1)
+	require.Equal(t, "lookup", chatRequest.Tools[0].Function.Name)
+}
+
+func TestResponsesChatToolAdapter_KeepsFirstConflictingFunctionSchema(t *testing.T) {
+	request := &llm.Request{Tools: []llm.Tool{
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup", Parameters: []byte(`{"type":"object","properties":{"query":{"type":"string"}}}`)}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup", Parameters: []byte(`{"type":"object","properties":{"id":{"type":"integer"}}}`)}, ResponsesOrigin: "additional_tools"},
+	}}
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Len(t, chatRequest.Tools, 1)
+	require.JSONEq(t, `{"type":"object","properties":{"query":{"type":"string"}}}`, string(chatRequest.Tools[0].Function.Parameters))
+	require.Contains(t, adapter.warnings, `tool_name_conflict: kept first definition of function "lookup"`)
+}
+
+func TestResponsesChatToolAdapter_DropsInvalidFunctionSchemaWithWarning(t *testing.T) {
+	request := &llm.Request{Tools: []llm.Tool{
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "valid", Parameters: []byte(`{"type":"object"}`)}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "invalid", Parameters: []byte(`{"type":`)}},
+	}}
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Len(t, chatRequest.Tools, 1)
+	require.Equal(t, "valid", chatRequest.Tools[0].Function.Name)
+	require.Contains(t, adapter.warnings[0], `invalid function tool "invalid" was dropped`)
+}
+
+func TestResponsesChatToolAdapter_RejectsUnsupportedNamedToolChoice(t *testing.T) {
+	request := &llm.Request{
+		Tools: []llm.Tool{{
+			Type:               llm.ToolTypeResponsesToolSearch,
+			ResponseToolSearch: &llm.ResponseToolSearch{Execution: "server"},
+		}},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: "tool_search", Function: llm.ToolFunction{Name: "tool_search"},
+		}},
+	}
+	_, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.ErrorContains(t, err, "unsupported_tool_choice")
+
+}
+
+func TestResponsesChatToolAdapter_DoesNotRedirectDroppedNamedToolToPlainFunction(t *testing.T) {
+	request := &llm.Request{
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup", Parameters: []byte(`{"type":"object"}`)}},
+			{
+				Type: llm.ToolTypeResponsesOpaqueTool,
+				ResponseOpaqueTool: &llm.ResponseOpaqueTool{
+					SourceType: "future_server_tool", Name: "lookup", Execution: "server",
+				},
+			},
+		},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: "future_server_tool", Function: llm.ToolFunction{Name: "lookup"},
+		}},
+	}
+	_, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.ErrorContains(t, err, "unsupported_tool_choice")
+}
+
+func TestResponsesChatToolAdapter_RejectsRequiredChoiceWithoutCallableTools(t *testing.T) {
+	required := "required"
+	request := &llm.Request{
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeResponsesOpaqueTool,
+			ResponseOpaqueTool: &llm.ResponseOpaqueTool{
+				SourceType: "future_server_tool", Name: "hosted", Execution: "server",
+			},
+		}},
+		ToolChoice: &llm.ToolChoice{ToolChoice: &required},
+	}
+	_, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.ErrorContains(t, err, "required tool choice has no callable tools")
+
+	request.Tools = append(request.Tools, llm.Tool{
+		Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup", Parameters: []byte(`{"type":"object"}`)},
+	})
+	chatRequest, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Equal(t, "required", lo.FromPtr(chatRequest.ToolChoice.ToolChoice))
+}
+
+func TestResponsesChatToolAdapter_MapsNamedCustomToolChoiceAfterCollision(t *testing.T) {
+	request := &llm.Request{
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "apply_patch", Parameters: []byte(`{"type":"object"}`)}},
+			{Type: llm.ToolTypeResponsesCustomTool, ResponseCustomTool: &llm.ResponseCustomTool{Name: "apply_patch"}},
+		},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: "custom", Function: llm.ToolFunction{Name: "apply_patch"},
+		}},
+	}
+	chatRequest, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.NotNil(t, chatRequest.ToolChoice)
+	require.Equal(t, "axonhub_custom_tool_1", chatRequest.ToolChoice.NamedToolChoice.Function.Name)
+}
+
+func TestResponsesChatToolAdapter_MapsFunctionChoiceToNamespaceTool(t *testing.T) {
+	request := &llm.Request{
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeFunction,
+			Function: llm.Function{
+				Name: "collaboration__spawn_agent", Namespace: "collaboration",
+				Parameters: []byte(`{"type":"object"}`),
+			},
+		}},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: llm.ToolTypeFunction, Function: llm.ToolFunction{Name: "spawn_agent"},
+		}},
+	}
+
+	chatRequest, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.NotNil(t, chatRequest.ToolChoice)
+	require.Equal(t, "collaboration__spawn_agent", chatRequest.ToolChoice.NamedToolChoice.Function.Name)
+}
+
+func TestResponsesChatToolAdapter_RejectsAmbiguousPlainAndNamespaceFunctionChoice(t *testing.T) {
+	request := &llm.Request{
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "spawn_agent", Parameters: []byte(`{"type":"object"}`)}},
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name: "collaboration__spawn_agent", Namespace: "collaboration",
+					Parameters: []byte(`{"type":"object"}`),
+				},
+			},
+		},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: llm.ToolTypeFunction, Function: llm.ToolFunction{Name: "spawn_agent"},
+		}},
+	}
+
+	_, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.ErrorContains(t, err, "ambiguous between plain and namespace tools")
+}
+
+func TestResponsesChatToolAdapter_SilentlyFiltersEstablishedNonChatTools(t *testing.T) {
+	request := &llm.Request{Tools: []llm.Tool{
+		{Type: llm.ToolTypeImageGeneration},
+		{Type: llm.ToolTypeWebSearch},
+		{Type: llm.ToolTypeGoogleSearch},
+		{Type: llm.ToolTypeGoogleCodeExecution},
+		{Type: llm.ToolTypeGoogleUrlContext},
+	}}
+
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Empty(t, chatRequest.Tools)
+	require.Empty(t, adapter.warnings)
+}
+
+func TestResponsesChatToolAdapter_ValidatesSpecialCallIDs(t *testing.T) {
+	base := []llm.Tool{{
+		Type:               llm.ToolTypeResponsesCustomTool,
+		ResponseCustomTool: &llm.ResponseCustomTool{Name: "apply_patch"},
+	}}
+
+	request := &llm.Request{Tools: base, Messages: []llm.Message{{
+		Role: "assistant", ToolCalls: []llm.ToolCall{{
+			ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_inner", Name: "apply_patch", Input: "patch"},
+		}},
+	}}}
+	chatRequest, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Equal(t, "call_inner", chatRequest.Messages[0].ToolCalls[0].ID)
+
+	request.Messages[0].ToolCalls[0].ID = "call_outer"
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Equal(t, "call_inner", chatRequest.Messages[0].ToolCalls[0].ID)
+	require.Contains(t, adapter.warnings, `tool_call_id_conflict: used specialized call ID "call_inner" instead of outer call ID "call_outer"`)
+}
+
+func TestResponsesChatToolAdapter_PreservesUndeclaredSpecialHistory(t *testing.T) {
+	request := &llm.Request{Messages: []llm.Message{{
+		Role: "assistant",
+		ToolCalls: []llm.ToolCall{
+			{ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "apply_patch", Input: "patch"}},
+			{ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "call_search", Execution: "client", Arguments: `{}`}},
+		},
+	}}}
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Empty(t, chatRequest.Tools)
+	require.Len(t, chatRequest.Messages[0].ToolCalls, 2)
+	require.Equal(t, "apply_patch", chatRequest.Messages[0].ToolCalls[0].Function.Name)
+	require.Equal(t, "tool_search", chatRequest.Messages[0].ToolCalls[1].Function.Name)
+	require.Len(t, adapter.mappings(), 2)
+
+	response := &llm.Response{Choices: []llm.Choice{{Message: &llm.Message{ToolCalls: []llm.ToolCall{{
+		ID: "call_new", Type: llm.ToolTypeFunction,
+		Function: llm.FunctionCall{Name: "apply_patch", Arguments: `{"input":"new patch"}`},
+	}}}}}}
+	restoreResponsesChatToolCalls(response, adapter.mappings())
+	require.Nil(t, response.Choices[0].Message.ToolCalls[0].ResponseCustomToolCall)
+	require.Equal(t, llm.ToolTypeFunction, response.Choices[0].Message.ToolCalls[0].Type)
 }
 
 func TestMessageContentPartAudioRoundTrip(t *testing.T) {

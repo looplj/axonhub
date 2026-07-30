@@ -270,6 +270,24 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		chatReq.Tools = tools
 	}
 
+	// additional_tools and client tool_search_output are position-sensitive in
+	// Responses. Promote their definitions for non-Responses downstreams while
+	// retaining their origin so Responses replay does not duplicate them at top level.
+	for _, item := range req.Input.Items {
+		if item.Type != "additional_tools" && item.Type != "tool_search_output" {
+			continue
+		}
+
+		tools, err := convertToolsToLLM(item.Tools)
+		if err != nil {
+			return nil, err
+		}
+		for i := range tools {
+			tools[i].ResponsesOrigin = item.Type
+		}
+		chatReq.Tools = append(chatReq.Tools, tools...)
+	}
+
 	// Convert text format to response format
 	if req.Text != nil && req.Text.Format != nil && req.Text.Format.Type != "" {
 		chatReq.ResponseFormat = &llm.ResponseFormat{
@@ -484,6 +502,18 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			})
 			consumed++
 
+		case "tool_search_call":
+			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
+				ID:   nextItem.CallID,
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+					CallID:    nextItem.CallID,
+					Execution: nextItem.Execution,
+					Arguments: nextItem.Arguments,
+				},
+			})
+			consumed++
+
 		case "message", "input_text", "":
 			// If we encounter a text message with assistant role, merge its content
 			if nextItem.Role == "assistant" {
@@ -594,6 +624,20 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			},
 		}, nil
 
+	case "tool_search_call":
+		return &llm.Message{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{{
+				ID:   item.CallID,
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+					CallID:    item.CallID,
+					Execution: item.Execution,
+					Arguments: item.Arguments,
+				},
+			}},
+		}, nil
+
 	case "function_call_output":
 		if item.Output == nil {
 			return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, "function_call_output item must have non-nil Output")
@@ -625,6 +669,21 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 
 		return msg, nil
+
+	case "tool_search_output":
+		tools := item.Tools
+		if tools == nil {
+			tools = []Tool{}
+		}
+		content, err := json.Marshal(tools)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal tool_search_output tools: %w", err)
+		}
+		return &llm.Message{
+			Role:       "tool",
+			ToolCallID: lo.ToPtr(item.CallID),
+			Content:    llm.MessageContent{Content: lo.ToPtr(string(content))},
+		}, nil
 
 	case "reasoning":
 		// Reasoning is handled by convertReasoningWithFollowing in convertInputToMessages
@@ -823,9 +882,24 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				ResponseCustomTool: customTool,
 			})
 
+		case "tool_search":
+			params, err := json.Marshal(tool.Parameters)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal tool search parameters: %w", err)
+			}
+			result = append(result, llm.Tool{
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearch: &llm.ResponseToolSearch{
+					Execution:   tool.Execution,
+					Description: tool.Description,
+					Parameters:  params,
+				},
+			})
+
 		case "namespace":
 			for _, subTool := range tool.Tools {
-				if subTool.Type != "function" {
+				if subTool.Type != "function" && !isGenericClientFunctionLike(subTool) {
+					result = append(result, opaqueResponsesTool(subTool, "raw_tool"))
 					continue
 				}
 
@@ -834,24 +908,65 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 					return nil, fmt.Errorf("failed to marshal namespace tool parameters: %w", err)
 				}
 
-				result = append(result, llm.Tool{
+				converted := llm.Tool{
 					Type: "function",
 					Function: llm.Function{
 						Name:        namespaceFunctionName(tool.Name, subTool.Name),
+						Namespace:   tool.Name,
 						Description: subTool.Description,
 						Parameters:  params,
 						Strict:      subTool.Strict,
 					},
-				})
+				}
+				if subTool.Type != "function" {
+					converted.ResponsesOrigin = "raw_tool"
+				}
+				result = append(result, converted)
 			}
 
 		default:
-			// Skip unsupported tool types
-			continue
+			if isGenericClientFunctionLike(tool) {
+				params, err := json.Marshal(tool.Parameters)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal %s tool parameters: %w", tool.Type, err)
+				}
+				result = append(result, llm.Tool{
+					Type: "function",
+					Function: llm.Function{
+						Name: tool.Name, Description: tool.Description,
+						Parameters: params, Strict: tool.Strict,
+					},
+					ResponsesOrigin: "raw_tool",
+				})
+				continue
+			}
+			result = append(result, opaqueResponsesTool(tool, "raw_tool"))
 		}
 	}
 
 	return result, nil
+}
+
+// isGenericClientFunctionLike reports whether an unknown client tool can use function semantics.
+func isGenericClientFunctionLike(tool Tool) bool {
+	return isFunctionLike(tool) && tool.Execution == "client"
+}
+
+// isFunctionLike reports whether a Responses declaration has a function schema.
+func isFunctionLike(tool Tool) bool {
+	return tool.Name != "" && tool.Parameters != nil
+}
+
+// opaqueResponsesTool preserves an unsupported declaration for same-protocol replay.
+func opaqueResponsesTool(tool Tool, origin string) llm.Tool {
+	return llm.Tool{
+		Type: llm.ToolTypeResponsesOpaqueTool,
+		ResponseOpaqueTool: &llm.ResponseOpaqueTool{
+			SourceType: tool.Type, Name: tool.Name, Execution: tool.Execution,
+			Description: tool.Description,
+		},
+		ResponsesOrigin: origin,
+	}
 }
 
 func namespaceFunctionName(namespaceName, functionName string) string {
@@ -985,7 +1100,15 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		// Handle tool calls (function calls and custom tool calls)
 		if len(message.ToolCalls) > 0 {
 			for _, toolCall := range message.ToolCalls {
-				if toolCall.ResponseCustomToolCall != nil {
+				if toolCall.ResponseToolSearchCall != nil {
+					resp.Output = append(resp.Output, Item{
+						ID: toolCall.ID, Type: "tool_search_call",
+						CallID:    toolCall.ResponseToolSearchCall.CallID,
+						Execution: toolCall.ResponseToolSearchCall.Execution,
+						Arguments: toolCall.ResponseToolSearchCall.Arguments,
+						Status:    lo.ToPtr("completed"),
+					})
+				} else if toolCall.ResponseCustomToolCall != nil {
 					resp.Output = append(resp.Output, Item{
 						ID:     toolCall.ID,
 						Type:   "custom_tool_call",
@@ -1079,12 +1202,19 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			switch *choice.FinishReason {
 			case "stop":
 				resp.Status = lo.ToPtr("completed")
+				resp.IncompleteDetails = nil
 			case "length":
 				resp.Status = lo.ToPtr("incomplete")
+				resp.IncompleteDetails = &ResponseIncompleteDetails{Reason: "max_output_tokens"}
+			case "content_filter":
+				resp.Status = lo.ToPtr("incomplete")
+				resp.IncompleteDetails = &ResponseIncompleteDetails{Reason: "content_filter"}
 			case "tool_calls":
 				resp.Status = lo.ToPtr("completed")
+				resp.IncompleteDetails = nil
 			case "error":
 				resp.Status = lo.ToPtr("failed")
+				resp.IncompleteDetails = nil
 			}
 		}
 	}
