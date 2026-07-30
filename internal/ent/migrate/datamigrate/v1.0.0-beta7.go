@@ -3,13 +3,13 @@ package datamigrate
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -42,6 +42,7 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 
 	txClient := ent.FromContext(ctx)
 
+	now := time.Now()
 	legacyInvitations, err := txClient.Invitation.Query().Where(
 		invitation.RoleIDIsNil(),
 		invitation.DeletedAtEQ(0),
@@ -49,54 +50,88 @@ func (v *V1_0_0_Beta7) Migrate(ctx context.Context, client *ent.Client) (err err
 	if err != nil {
 		return err
 	}
-
+	activeInvitations := legacyInvitations[:0]
 	for _, legacyInvitation := range legacyInvitations {
-		// Remove a stale project role only when this project needs invitation backfill.
+		if legacyInvitation.ExpiresAt != nil && !legacyInvitation.ExpiresAt.After(now) {
+			continue
+		}
+		if legacyInvitation.MaxUses > 0 && legacyInvitation.UsedCount >= legacyInvitation.MaxUses {
+			continue
+		}
+		activeInvitations = append(activeInvitations, legacyInvitation)
+	}
+	legacyInvitations = activeInvitations
+
+	projects := make(map[int]struct{}, len(legacyInvitations))
+	for _, legacyInvitation := range legacyInvitations {
+		projects[legacyInvitation.ProjectID] = struct{}{}
+	}
+
+	for projectID := range projects {
 		softDeletedDevelopers, err := txClient.Role.Query().Where(
 			role.LevelEQ(role.LevelProject),
-			role.ProjectIDEQ(legacyInvitation.ProjectID),
+			role.ProjectIDEQ(projectID),
 			role.NameEQ("Developer"),
 		).All(schematype.SkipSoftDelete(ctx))
 		if err != nil {
-			return fmt.Errorf("query soft-deleted Developer roles for project %d: %w", legacyInvitation.ProjectID, err)
-		}
-		for _, dr := range softDeletedDevelopers {
-			if dr.DeletedAt == 0 {
-				continue
-			}
-			if _, err := txClient.UserRole.Delete().Where(userrole.RoleID(dr.ID)).Exec(ctx); err != nil {
-				return fmt.Errorf("clear stale UserRole rows for Developer role %d: %w", dr.ID, err)
-			}
-			if err := txClient.Role.DeleteOneID(dr.ID).Exec(schematype.SkipSoftDelete(ctx)); err != nil {
-				return fmt.Errorf("permanently delete soft-deleted Developer role %d: %w", dr.ID, err)
-			}
+			return fmt.Errorf("query Developer roles for project %d: %w", projectID, err)
 		}
 
 		developerRole, err := txClient.Role.Query().Where(
 			role.LevelEQ(role.LevelProject),
-			role.ProjectIDEQ(legacyInvitation.ProjectID),
+			role.ProjectIDEQ(projectID),
 			role.NameEQ("Developer"),
 		).Only(ctx)
-		if ent.IsNotFound(err) {
+		if err == nil && sameScopes(developerRole.Scopes, defaultDeveloperScopes()) {
+			// Use the existing standard Developer role.
+		} else if err != nil && !ent.IsNotFound(err) {
+			return fmt.Errorf("find Developer role for project %d: %w", projectID, err)
+		} else {
+			if err == nil {
+				if err := txClient.Role.UpdateOneID(developerRole.ID).
+					SetName(fmt.Sprintf("Developer (custom %d)", developerRole.ID)).
+					Exec(ctx); err != nil {
+					return fmt.Errorf("preserve customized Developer role %d: %w", developerRole.ID, err)
+				}
+			}
+			for _, deletedRole := range softDeletedDevelopers {
+				if deletedRole.DeletedAt == 0 {
+					continue
+				}
+				if err := txClient.Role.UpdateOneID(deletedRole.ID).
+					SetName(fmt.Sprintf("Developer (deleted %d)", deletedRole.ID)).
+					Exec(schematype.SkipSoftDelete(ctx)); err != nil {
+					return fmt.Errorf("preserve deleted Developer role %d: %w", deletedRole.ID, err)
+				}
+			}
 			developerRole, err = txClient.Role.Create().
 				SetName("Developer").
 				SetLevel(role.LevelProject).
-				SetProjectID(legacyInvitation.ProjectID).
-				SetScopes([]string{
-					string(scopes.ScopeReadAPIKeys),
-					string(scopes.ScopeWriteAPIKeys),
-					string(scopes.ScopeReadRequests),
-					string(scopes.ScopeWriteRequests),
-				}).
+				SetProjectID(projectID).
+				SetScopes(defaultDeveloperScopes()).
 				Save(ctx)
+			if err != nil {
+				return fmt.Errorf("create Developer role for project %d: %w", projectID, err)
+			}
 		}
-		if err != nil {
-			return fmt.Errorf("find Developer role for legacy invitation %d: %w", legacyInvitation.ID, err)
-		}
-		if err := txClient.Invitation.UpdateOneID(legacyInvitation.ID).SetRoleID(developerRole.ID).Exec(ctx); err != nil {
-			return fmt.Errorf("assign Developer role to legacy invitation %d: %w", legacyInvitation.ID, err)
+		for _, legacyInvitation := range legacyInvitations {
+			if legacyInvitation.ProjectID != projectID {
+				continue
+			}
+			if err := txClient.Invitation.UpdateOneID(legacyInvitation.ID).SetRoleID(developerRole.ID).Exec(ctx); err != nil {
+				return fmt.Errorf("assign Developer role to legacy invitation %d: %w", legacyInvitation.ID, err)
+			}
 		}
 	}
 
 	return tx.Commit()
+}
+
+func defaultDeveloperScopes() []string {
+	return []string{
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+		string(scopes.ScopeReadRequests),
+		string(scopes.ScopeWriteRequests),
+	}
 }
