@@ -310,13 +310,40 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 		output.Text = msg.Content.Content
 	} else if len(msg.Content.MultipleContent) > 0 {
 		for _, p := range msg.Content.MultipleContent {
-			if p.Type == "text" && p.Text != nil {
-				output.Items = append(output.Items, Item{
-					Type: "input_text",
-					Text: p.Text,
-				})
+			switch p.Type {
+			case "text":
+				if p.Text != nil {
+					output.Items = append(output.Items, Item{
+						Type: "input_text",
+						Text: p.Text,
+					})
+				}
+			case "image_url":
+				// Tool results can carry images (Codex's view_image, MCP screenshot
+				// tools, ...). Skipping them here leaves output empty, which the
+				// fallback below turns into "" — the model then sees a successful
+				// but blank tool result and has no way to tell that it lost data.
+				if p.ImageURL != nil {
+					output.Items = append(output.Items, Item{
+						Type:     "input_image",
+						ImageURL: &p.ImageURL.URL,
+						Detail:   p.ImageURL.Detail,
+					})
+				}
 			}
 		}
+	}
+
+	// Content was present but nothing survived the conversion (audio/video/document
+	// parts, which a tool result in this API cannot express). Name what was dropped
+	// rather than falling through to "": a blank-but-successful tool result is
+	// indistinguishable from a genuinely empty one, so the model reads lost data as
+	// "the tool returned nothing" and answers anyway.
+	if output.Text == nil && len(output.Items) == 0 && len(msg.Content.MultipleContent) > 0 {
+		dropped := lo.Uniq(lo.Map(msg.Content.MultipleContent, func(p llm.MessageContentPart, _ int) string {
+			return p.Type
+		}))
+		output.Text = lo.ToPtr("[axonhub] tool output omitted: unsupported content types: " + strings.Join(dropped, ", "))
 	}
 
 	// Some times the tool result is empty, so we need to add an empty string.

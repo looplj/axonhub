@@ -108,7 +108,7 @@ func TestConvertToolMessage(t *testing.T) {
 			},
 		},
 		{
-			name: "tool message with multiple content - mixed types (only text extracted)",
+			name: "tool message with multiple content - text and image preserved in order",
 			msg: llm.Message{
 				Role:       "tool",
 				ToolCallID: lo.ToPtr("call_789"),
@@ -138,6 +138,10 @@ func TestConvertToolMessage(t *testing.T) {
 					{
 						Type: "input_text",
 						Text: lo.ToPtr("Text result"),
+					},
+					{
+						Type:     "input_image",
+						ImageURL: lo.ToPtr("https://example.com/image.jpg"),
 					},
 					{
 						Type: "input_text",
@@ -176,7 +180,7 @@ func TestConvertToolMessage(t *testing.T) {
 			},
 		},
 		{
-			name: "tool message with multiple content but no text parts",
+			name: "tool message with image and unsupported parts keeps the image",
 			msg: llm.Message{
 				Role:       "tool",
 				ToolCallID: lo.ToPtr("call_no_text"),
@@ -201,6 +205,125 @@ func TestConvertToolMessage(t *testing.T) {
 			expected: Item{
 				Type:   "function_call_output",
 				CallID: "call_no_text",
+				Output: &Input{
+					Items: []Item{
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("https://example.com/image.jpg"),
+						},
+					},
+				},
+			},
+		},
+		{
+			// Shape produced by Codex's view_image tool: the result is a single
+			// base64 image with no text at all. Dropping it made the model see an
+			// empty-but-successful tool result and silently hallucinate instead.
+			name: "image-only tool result is preserved as input_image",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_view_image"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "image_url",
+							ImageURL: &llm.ImageURL{
+								URL:    "data:image/png;base64,iVBORw0KGgo=",
+								Detail: lo.ToPtr("high"),
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_view_image",
+				Output: &Input{
+					Items: []Item{
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("data:image/png;base64,iVBORw0KGgo="),
+							Detail:   lo.ToPtr("high"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "tool result with text and image keeps both in order",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_mixed"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "text",
+							Text: lo.ToPtr("screenshot attached"),
+						},
+						{
+							Type: "image_url",
+							ImageURL: &llm.ImageURL{
+								URL: "https://example.com/shot.png",
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_mixed",
+				Output: &Input{
+					Items: []Item{
+						{
+							Type: "input_text",
+							Text: lo.ToPtr("screenshot attached"),
+						},
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("https://example.com/shot.png"),
+						},
+					},
+				},
+			},
+		},
+		{
+			// A tool result whose parts cannot be expressed here must not look like
+			// an empty-but-successful result, otherwise the model cannot tell that
+			// data was lost.
+			name: "tool message with only unsupported parts reports what was dropped",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_audio_only"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "input_audio",
+							InputAudio: &llm.InputAudio{
+								Data:   "audio-data",
+								Format: "wav",
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_audio_only",
+				Output: &Input{
+					Text: lo.ToPtr("[axonhub] tool output omitted: unsupported content types: input_audio"),
+				},
+			},
+		},
+		{
+			name: "tool message with no content at all still uses the empty string",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_truly_empty"),
+				Content:    llm.MessageContent{MultipleContent: []llm.MessageContentPart{}},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_truly_empty",
 				Output: &Input{
 					Text: lo.ToPtr(""),
 				},
