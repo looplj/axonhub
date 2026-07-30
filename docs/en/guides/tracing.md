@@ -53,10 +53,15 @@ server:
     trace_header: "AH-Trace-Id"
     extra_trace_headers:
       - "Sentry-Trace"
+    response_trace_headers:
+      - "AH-Trace-Id"
+      - "X-Oneapi-Request-Id"
 ```
 
 - Set `extra_trace_headers` to reuse existing instrumentation headers.
-- Leave headers empty to fall back to the defaults shown above.
+- `response_trace_headers` writes the final resolved trace ID before the response starts; an empty list disables it. It is independent from inbound extraction and can include multiple gateway-compatible headers.
+- Browser clients must also include these names in `server.cors.exposed_headers` to read them.
+- Leave `thread_header` or `trace_header` empty to use the default header names above.
 
 ### Using Tracing with OpenAI-Compatible Clients
 ```bash
