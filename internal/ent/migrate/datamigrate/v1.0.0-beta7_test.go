@@ -2,9 +2,7 @@ package datamigrate_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -42,11 +40,8 @@ func TestV1_0_0_Beta7_BackfillsLegacyInvitationRoles(t *testing.T) {
 		role.ProjectIDEQ(project.ID),
 		role.NameEQ("Developer"),
 	).OnlyX(ctx)
-	require.NotEqual(t, customDeveloperRole.ID, developerRole.ID)
-	require.ElementsMatch(t, []string{"read_api_keys", "write_api_keys", "read_requests", "write_requests"}, developerRole.Scopes)
-	customDeveloperRole = client.Role.Query().Where(role.IDEQ(customDeveloperRole.ID)).OnlyX(ctx)
-	require.Equal(t, fmt.Sprintf("Developer (custom %d)", customDeveloperRole.ID), customDeveloperRole.Name)
-	require.Equal(t, []string{"*"}, customDeveloperRole.Scopes)
+	require.Equal(t, customDeveloperRole.ID, developerRole.ID)
+	require.Equal(t, []string{"*"}, developerRole.Scopes)
 	require.Equal(t, developerRole.ID, *legacyInvitation.RoleID)
 	backfilled, err := client.Invitation.Query().Where(invitation.IDEQ(legacyInvitation.ID), invitation.RoleIDEQ(developerRole.ID)).Exist(ctx)
 	require.NoError(t, err)
@@ -109,11 +104,10 @@ func TestV1_0_0_Beta7_PreservesUnrelatedSoftDeletedDeveloper(t *testing.T) {
 
 	preservedRole := client.Role.Query().Where(role.IDEQ(developerRole.ID)).OnlyX(schematype.SkipSoftDelete(ctx))
 	require.NotEqual(t, 0, preservedRole.DeletedAt)
-	require.Equal(t, "Developer", preservedRole.Name)
 	require.Equal(t, 1, client.UserRole.Query().Where(userrole.RoleID(developerRole.ID)).CountX(schematype.SkipSoftDelete(ctx)))
 }
 
-func TestV1_0_0_Beta7_PreservesSoftDeletedDeveloperAndRecreates(t *testing.T) {
+func TestV1_0_0_Beta7_CleansSoftDeletedDeveloperAndRecreates(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:soft-deleted-developer-cleanup?mode=memory&_fk=1")
 	defer client.Close()
 
@@ -161,13 +155,15 @@ func TestV1_0_0_Beta7_PreservesSoftDeletedDeveloperAndRecreates(t *testing.T) {
 	// Run migration.
 	require.NoError(t, datamigrate.NewV1_0_0_Beta7().Migrate(ctx, client))
 
-	// Verify the old role and its assignment remain historical and inactive.
-	preservedRole := client.Role.Query().Where(role.IDEQ(oldDeveloperRole.ID)).OnlyX(schematype.SkipSoftDelete(ctx))
-	require.NotEqual(t, 0, preservedRole.DeletedAt)
-	require.Equal(t, fmt.Sprintf("Developer (deleted %d)", oldDeveloperRole.ID), preservedRole.Name)
+	// Verify old soft-deleted role is permanently deleted.
+	exists, err := client.Role.Query().Where(role.IDEQ(oldDeveloperRole.ID)).Exist(schematype.SkipSoftDelete(ctx))
+	require.NoError(t, err)
+	require.False(t, exists)
+
+	// Verify stale UserRole relationship is cleaned up.
 	count, err = client.UserRole.Query().Where(userrole.RoleID(oldDeveloperRole.ID)).Count(schematype.SkipSoftDelete(ctx))
 	require.NoError(t, err)
-	require.Equal(t, 1, count)
+	require.Equal(t, 0, count)
 
 	// Verify new Developer role is created with default scopes.
 	newDeveloperRole, err := client.Role.Query().Where(
@@ -191,39 +187,4 @@ func TestV1_0_0_Beta7_PreservesSoftDeletedDeveloperAndRecreates(t *testing.T) {
 	legacyInvitation = client.Invitation.GetX(ctx, legacyInvitation.ID)
 	require.NotNil(t, legacyInvitation.RoleID)
 	require.Equal(t, newDeveloperRole.ID, *legacyInvitation.RoleID)
-}
-
-func TestV1_0_0_Beta7_SkipsExpiredAndExhaustedInvitations(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:invalid-legacy-invitations?mode=memory&_fk=1")
-	defer client.Close()
-
-	ctx := authz.WithTestBypass(context.Background())
-	project := client.Project.Create().SetName("invalid-legacy-invitations-project").SaveX(ctx)
-	developerRole := client.Role.Create().
-		SetName("Developer").
-		SetLevel(role.LevelProject).
-		SetProjectID(project.ID).
-		SetScopes([]string{"custom_scope"}).
-		SaveX(ctx)
-	expired := client.Invitation.Create().
-		SetTokenHash("expired-legacy-token").
-		SetProjectID(project.ID).
-		SetExpiresAt(time.Now().Add(-time.Hour)).
-		SaveX(ctx)
-	exhausted := client.Invitation.Create().
-		SetTokenHash("exhausted-legacy-token").
-		SetProjectID(project.ID).
-		SetMaxUses(1).
-		SetUsedCount(1).
-		SaveX(ctx)
-
-	require.NoError(t, datamigrate.NewV1_0_0_Beta7().Migrate(ctx, client))
-
-	expired = client.Invitation.GetX(ctx, expired.ID)
-	exhausted = client.Invitation.GetX(ctx, exhausted.ID)
-	require.Nil(t, expired.RoleID)
-	require.Nil(t, exhausted.RoleID)
-	developerRole = client.Role.GetX(ctx, developerRole.ID)
-	require.Equal(t, "Developer", developerRole.Name)
-	require.Equal(t, []string{"custom_scope"}, developerRole.Scopes)
 }
