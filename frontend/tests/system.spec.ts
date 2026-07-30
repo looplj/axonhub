@@ -59,4 +59,47 @@ test.describe('Admin System Management', () => {
       await expect(storageTab).toHaveAttribute('aria-selected', 'true')
     }
   })
+
+  test('can control provider quota collection with existing system settings UI', async ({ page }) => {
+    const quotaTab = page.getByRole('tab', { name: /Quota|配额/i })
+    await quotaTab.click()
+    await expect(quotaTab).toHaveAttribute('aria-selected', 'true')
+
+    const title = page.getByText(/^(Provider Quota Collection|提供商配额采集)$/i)
+    await expect(title).toBeVisible()
+
+    const collectionCard = title.locator('xpath=ancestor::*[@data-slot="card"]')
+    const globalSwitch = collectionCard.getByRole('switch', { name: /Enable Provider Quota Collection|启用提供商配额采集/i })
+    const minimaxSwitch = collectionCard.getByRole('switch', { name: /MiniMax/i })
+    const saveButton = collectionCard.getByRole('button', { name: /Save|保存/i })
+    const originalGlobal = await globalSwitch.isChecked()
+    const originalMinimax = await minimaxSwitch.isChecked()
+
+    try {
+      if (!originalGlobal) await globalSwitch.click()
+      await expect(minimaxSwitch).toBeEnabled()
+
+      await globalSwitch.click()
+      await expect(minimaxSwitch).toBeDisabled()
+      await globalSwitch.click()
+
+      await minimaxSwitch.click()
+      await Promise.all([
+        waitForGraphQLOperation(page, 'UpdateProviderQuotaCollectionSettings'),
+        saveButton.click()
+      ])
+    } finally {
+      if (!(await globalSwitch.isChecked())) await globalSwitch.click()
+      if ((await minimaxSwitch.isChecked()) !== originalMinimax) await minimaxSwitch.click()
+      if ((await globalSwitch.isChecked()) !== originalGlobal) await globalSwitch.click()
+
+      await Promise.all([
+        waitForGraphQLOperation(page, 'UpdateProviderQuotaCollectionSettings'),
+        saveButton.click()
+      ])
+
+      await expect(globalSwitch).toBeChecked({ checked: originalGlobal })
+      await expect(minimaxSwitch).toBeChecked({ checked: originalMinimax })
+    }
+  })
 })

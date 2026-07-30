@@ -2642,7 +2642,7 @@ func TestConvertImageURLToGeminiPart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertImageURLToGeminiPart(tt.url)
+			result := convertImageURLToGeminiPart(&llm.ImageURL{URL: tt.url})
 			tt.validate(t, result)
 		})
 	}

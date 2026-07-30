@@ -13,8 +13,46 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
+
+func TestBackupService_Restore_SystemConfigs(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	_, err := client.System.Create().
+		SetKey(biz.SystemKeyRetryPolicy).
+		SetValue(`{"max_retries":1}`).
+		Save(ctx)
+	require.NoError(t, err)
+	_, err = client.System.Create().
+		SetKey(biz.SystemKeySecretKey).
+		SetValue("target-secret").
+		Save(ctx)
+	require.NoError(t, err)
+
+	data, err := json.Marshal(BackupData{
+		Version: BackupVersion,
+		SystemConfigs: []*BackupSystemConfig{
+			{Key: biz.SystemKeyRetryPolicy, Value: `{"max_retries":4}`},
+			{Key: biz.SystemKeySecretKey, Value: "source-secret"},
+		},
+	})
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{IncludeSystemConfigs: true})
+	require.NoError(t, err)
+
+	retryPolicy, err := client.System.Query().Where(system.KeyEQ(biz.SystemKeyRetryPolicy)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, `{"max_retries":4}`, retryPolicy.Value)
+
+	secretKey, err := client.System.Query().Where(system.KeyEQ(biz.SystemKeySecretKey)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "target-secret", secretKey.Value)
+}
 
 func TestBackupService_Restore(t *testing.T) {
 	client, service, ctx := setupBackupTest(t)

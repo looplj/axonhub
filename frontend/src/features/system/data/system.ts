@@ -1229,6 +1229,7 @@ const RESTORE_MUTATION = `
 `;
 
 export interface BackupOptionsInput {
+  includeSystemConfigs: boolean;
   includeChannels: boolean;
   includeModelPrices: boolean;
   includeModels: boolean;
@@ -1244,6 +1245,7 @@ export interface BackupPayload {
 }
 
 export interface RestoreOptionsInput {
+  includeSystemConfigs: boolean;
   includeChannels: boolean;
   includeModelPrices: boolean;
   includeModels: boolean;
@@ -1339,6 +1341,7 @@ export function useRestore() {
 const AUTO_BACKUP_SETTINGS_QUERY = `
   query AutoBackupSettings {
     autoBackupSettings {
+      includeSystemConfigs
       enabled
       frequency
       dataStorageID
@@ -1373,6 +1376,7 @@ const TRIGGER_AUTO_BACKUP_MUTATION = `
 export type BackupFrequency = 'daily' | 'weekly' | 'monthly';
 
 export interface AutoBackupSettings {
+  includeSystemConfigs: boolean;
   enabled: boolean;
   frequency: BackupFrequency;
   dataStorageID: number;
@@ -1388,6 +1392,7 @@ export interface AutoBackupSettings {
 }
 
 export interface UpdateAutoBackupSettingsInput {
+  includeSystemConfigs?: boolean;
   enabled?: boolean;
   frequency?: BackupFrequency;
   dataStorageID?: number;
@@ -1722,6 +1727,82 @@ export function useUpdateQuotaEnforcementSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotaEnforcementSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+const PROVIDER_QUOTA_COLLECTION_SETTINGS_QUERY = `
+  query ProviderQuotaCollectionSettings {
+    providerQuotaCollectionSettings {
+      enabled
+      providers {
+        provider
+        enabled
+      }
+    }
+  }
+`;
+
+const UPDATE_PROVIDER_QUOTA_COLLECTION_SETTINGS_MUTATION = `
+  mutation UpdateProviderQuotaCollectionSettings($input: UpdateProviderQuotaCollectionSettingsInput!) {
+    updateProviderQuotaCollectionSettings(input: $input)
+  }
+`;
+
+export interface ProviderQuotaCollectionProvider {
+  provider: string;
+  enabled: boolean;
+}
+
+export interface ProviderQuotaCollectionSettings {
+  enabled: boolean;
+  providers: ProviderQuotaCollectionProvider[];
+}
+
+export interface UpdateProviderQuotaCollectionSettingsInput {
+  enabled?: boolean;
+  providers?: ProviderQuotaCollectionProvider[];
+}
+
+export function useProviderQuotaCollectionSettings() {
+  const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
+
+  return useQuery({
+    queryKey: ['providerQuotaCollectionSettings'],
+    enabled: hasSystemScope('read_settings'),
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ providerQuotaCollectionSettings: ProviderQuotaCollectionSettings }>(
+          PROVIDER_QUOTA_COLLECTION_SETTINGS_QUERY
+        );
+        return data.providerQuotaCollectionSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateProviderQuotaCollectionSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateProviderQuotaCollectionSettingsInput) => {
+      const data = await graphqlRequest<{ updateProviderQuotaCollectionSettings: boolean }>(
+        UPDATE_PROVIDER_QUOTA_COLLECTION_SETTINGS_MUTATION,
+        { input }
+      );
+      return data.updateProviderQuotaCollectionSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['providerQuotaCollectionSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

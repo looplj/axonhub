@@ -68,6 +68,10 @@ func hasResponseContent(resp *llm.Response) bool {
 		return false
 	}
 
+	if resp.Moderation != nil && len(resp.Moderation.Results) > 0 {
+		return true
+	}
+
 	if resp.Embedding != nil && len(resp.Embedding.Data) > 0 {
 		return true
 	}

@@ -392,6 +392,11 @@ type PromptProtectionRulePreviewResult struct {
 	HasMatch bool   `json:"hasMatch"`
 }
 
+type ProviderQuotaCollectionProviderInput struct {
+	Provider string `json:"provider"`
+	Enabled  bool   `json:"enabled"`
+}
+
 type QueryModelsInput struct {
 	StatusIn                []channel.Status `json:"statusIn,omitempty"`
 	IncludeMapping          *bool            `json:"includeMapping,omitempty"`
@@ -555,16 +560,17 @@ type UpdateAPIKeyScopesInput struct {
 }
 
 type UpdateAutoBackupSettingsInput struct {
-	Enabled            *bool                `json:"enabled,omitempty"`
-	Frequency          *biz.BackupFrequency `json:"frequency,omitempty"`
-	DataStorageID      *int                 `json:"dataStorageID,omitempty"`
-	IncludeChannels    *bool                `json:"includeChannels,omitempty"`
-	IncludeModels      *bool                `json:"includeModels,omitempty"`
-	IncludeAPIKeys     *bool                `json:"includeAPIKeys,omitempty"`
-	IncludeModelPrices *bool                `json:"includeModelPrices,omitempty"`
-	IncludeUsageStats  *bool                `json:"includeUsageStats,omitempty"`
-	IncludeRequestLogs *bool                `json:"includeRequestLogs,omitempty"`
-	RetentionDays      *int                 `json:"retentionDays,omitempty"`
+	IncludeSystemConfigs *bool                `json:"includeSystemConfigs,omitempty"`
+	Enabled              *bool                `json:"enabled,omitempty"`
+	Frequency            *biz.BackupFrequency `json:"frequency,omitempty"`
+	DataStorageID        *int                 `json:"dataStorageID,omitempty"`
+	IncludeChannels      *bool                `json:"includeChannels,omitempty"`
+	IncludeModels        *bool                `json:"includeModels,omitempty"`
+	IncludeAPIKeys       *bool                `json:"includeAPIKeys,omitempty"`
+	IncludeModelPrices   *bool                `json:"includeModelPrices,omitempty"`
+	IncludeUsageStats    *bool                `json:"includeUsageStats,omitempty"`
+	IncludeRequestLogs   *bool                `json:"includeRequestLogs,omitempty"`
+	RetentionDays        *int                 `json:"retentionDays,omitempty"`
 }
 
 type UpdateBrandSettingsInput struct {
@@ -600,6 +606,11 @@ type UpdateProjectUserInput struct {
 	Scopes        []string        `json:"scopes,omitempty"`
 	AddRoleIDs    []*objects.GUID `json:"addRoleIDs,omitempty"`
 	RemoveRoleIDs []*objects.GUID `json:"removeRoleIDs,omitempty"`
+}
+
+type UpdateProviderQuotaCollectionSettingsInput struct {
+	Enabled   *bool                                   `json:"enabled,omitempty"`
+	Providers []*ProviderQuotaCollectionProviderInput `json:"providers,omitempty"`
 }
 
 type UpdateQuotaEnforcementSettingsInput struct {

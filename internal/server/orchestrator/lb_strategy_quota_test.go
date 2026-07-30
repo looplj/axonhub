@@ -16,7 +16,7 @@ type mockQuotaStatusProvider struct {
 	statuses map[int]*biz.QuotaChannelStatus
 }
 
-func (m *mockQuotaStatusProvider) GetQuotaStatus(channelID int) *biz.QuotaChannelStatus {
+func (m *mockQuotaStatusProvider) GetQuotaStatus(_ context.Context, channelID int) *biz.QuotaChannelStatus {
 	if m.statuses == nil {
 		return nil
 	}

@@ -28,6 +28,11 @@ type Config struct {
 	// Default to nil.
 	ExtraTraceHeaders []string `conf:"extra_trace_headers" yaml:"extra_trace_headers" json:"extra_trace_headers"`
 
+	// ResponseTraceHeaders is the response header names to write the resolved trace ID to.
+	// An empty list disables trace ID response headers.
+	// Default to nil.
+	ResponseTraceHeaders []string `conf:"response_trace_headers" yaml:"response_trace_headers" json:"response_trace_headers"`
+
 	// ExtraTraceBodyFields is the extra body fields names for trace ID.
 	// It will use if primary trace header is not found in request body.
 	// Default to nil.

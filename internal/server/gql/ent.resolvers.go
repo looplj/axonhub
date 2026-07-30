@@ -87,8 +87,22 @@ func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Chan
 	if ent.IsNotFound(err) {
 		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	if pqs == nil {
+		return nil, nil
+	}
 
-	return pqs, err
+	enabled, err := r.systemService.IsProviderQuotaCollectionEnabled(ctx, pqs.ProviderType.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read provider quota collection settings: %w", err)
+	}
+	if !enabled {
+		return nil, nil
+	}
+
+	return pqs, nil
 }
 
 // ID is the resolver for the id field.

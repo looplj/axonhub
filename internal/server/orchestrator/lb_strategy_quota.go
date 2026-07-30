@@ -99,7 +99,7 @@ func (s *QuotaAwareStrategy) score(ctx context.Context, channel *biz.Channel, de
 		details["mode"] = settings.Mode
 	}
 
-	quotaStatus := s.provider.GetQuotaStatus(channel.ID)
+	quotaStatus := s.provider.GetQuotaStatus(ctx, channel.ID)
 
 	if quotaStatus == nil {
 		if details != nil {

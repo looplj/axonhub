@@ -7,6 +7,7 @@ enum BackupConflictStrategy {
 }
 
 input BackupOptionsInput {
+  includeSystemConfigs: Boolean! = false
   includeChannels: Boolean!
   includeModelPrices: Boolean! = true
   includeModels: Boolean!
@@ -16,6 +17,7 @@ input BackupOptionsInput {
 }
 
 input RestoreOptionsInput {
+  includeSystemConfigs: Boolean! = false
   includeChannels: Boolean!
   includeModelPrices: Boolean! = true
   includeModels: Boolean!
@@ -51,6 +53,7 @@ enum BackupFrequency {
 }
 
 type AutoBackupSettings {
+  includeSystemConfigs: Boolean!
   enabled: Boolean!
   frequency: BackupFrequency!
   dataStorageID: Int!
@@ -66,6 +69,7 @@ type AutoBackupSettings {
 }
 
 input UpdateAutoBackupSettingsInput {
+  includeSystemConfigs: Boolean
   enabled: Boolean
   frequency: BackupFrequency
   dataStorageID: Int

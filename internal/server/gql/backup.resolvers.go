@@ -75,6 +75,10 @@ func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input U
 		settings.DataStorageID = *input.DataStorageID
 	}
 
+	if input.IncludeSystemConfigs != nil {
+		settings.IncludeSystemConfigs = *input.IncludeSystemConfigs
+	}
+
 	if input.IncludeChannels != nil {
 		settings.IncludeChannels = *input.IncludeChannels
 	}
