@@ -3,6 +3,8 @@ package responses
 import (
 	"encoding/json"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -101,7 +103,7 @@ func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.O
 
 	fragments := make([]llm.OpenAIResponsesRawFragment, 0, len(tools))
 	for i := range tools {
-		if i >= len(rawTools) || len(rawTools[i]) == 0 || isStructurallyRepresentedToolType(tools[i].Type) {
+		if i >= len(rawTools) || len(rawTools[i]) == 0 || (isStructurallyRepresentedToolType(tools[i].Type) && tools[i].Type != "tool_search") {
 			continue
 		}
 
@@ -109,7 +111,7 @@ func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.O
 			Type:                 tools[i].Type,
 			Name:                 tools[i].Name,
 			OriginalIndex:        i,
-			RepresentedToolCount: representedNamespaceToolCount(tools[i]),
+			RepresentedToolCount: representedRawToolCount(tools[i]),
 			Raw:                  cloneRaw(rawTools[i]),
 		})
 	}
@@ -117,7 +119,10 @@ func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.O
 	return fragments
 }
 
-func representedNamespaceToolCount(tool Tool) int {
+func representedRawToolCount(tool Tool) int {
+	if tool.Type == "tool_search" {
+		return 1
+	}
 	if tool.Type != "namespace" {
 		return 0
 	}
@@ -134,7 +139,7 @@ func representedNamespaceToolCount(tool Tool) int {
 
 func isStructurallyRepresentedToolType(toolType string) bool {
 	switch toolType {
-	case "function", "image_generation", "web_search", "custom":
+	case "function", "image_generation", "web_search", "custom", "tool_search":
 		return true
 	default:
 		return false
@@ -170,16 +175,18 @@ func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.O
 	fragments := make([]llm.OpenAIResponsesRawFragment, 0)
 	for i := range input.Items {
 		item := input.Items[i]
-		if i >= len(rawItems) || len(rawItems[i]) == 0 || isStructurallyRepresentedInputItem(item.Type) {
+		preserveRepresented := item.Type == "tool_search_call" || item.Type == "tool_search_output"
+		if i >= len(rawItems) || len(rawItems[i]) == 0 || (isStructurallyRepresentedInputItem(item.Type) && !preserveRepresented) {
 			continue
 		}
 
 		fragments = append(fragments, llm.OpenAIResponsesRawFragment{
-			Type:          item.Type,
-			Name:          item.Name,
-			CallID:        item.CallID,
-			OriginalIndex: i,
-			Raw:           cloneRaw(rawItems[i]),
+			Type:                 item.Type,
+			Name:                 item.Name,
+			CallID:               item.CallID,
+			OriginalIndex:        i,
+			RepresentedToolCount: lo.Ternary(preserveRepresented, 1, 0),
+			Raw:                  cloneRaw(rawItems[i]),
 		})
 	}
 
@@ -189,7 +196,8 @@ func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.O
 func isStructurallyRepresentedInputItem(itemType string) bool {
 	switch itemType {
 	case "", "message", "input_text", "input_image", "function_call", "function_call_output",
-		"custom_tool_call", "custom_tool_call_output", "reasoning", "compaction", "compaction_summary":
+		"custom_tool_call", "custom_tool_call_output", "tool_search_call", "tool_search_output",
+		"reasoning", "compaction", "compaction_summary":
 		return true
 	default:
 		return false
@@ -256,20 +264,28 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		}
 	}
 
-	total := len(structuredItems) + len(requestExt.RawInputItems)
+	representedCount := 0
+	for _, fragment := range requestExt.RawInputItems {
+		representedCount += fragment.RepresentedToolCount
+	}
+	if representedCount > len(structuredItems) {
+		return nil, false
+	}
+	total := len(structuredItems) - representedCount + len(requestExt.RawInputItems)
 	items := make([]json.RawMessage, 0, total)
 	structuredIndex := 0
-	rawByIndex := make(map[int]json.RawMessage, len(requestExt.RawInputItems))
+	rawByIndex := make(map[int]llm.OpenAIResponsesRawFragment, len(requestExt.RawInputItems))
 	for _, fragment := range requestExt.RawInputItems {
 		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
 			return nil, false
 		}
-		rawByIndex[fragment.OriginalIndex] = cloneRaw(fragment.Raw)
+		rawByIndex[fragment.OriginalIndex] = fragment
 	}
 
 	for i := 0; i < total; i++ {
-		if raw, ok := rawByIndex[i]; ok {
-			items = append(items, raw)
+		if fragment, ok := rawByIndex[i]; ok {
+			items = append(items, cloneRaw(fragment.Raw))
+			structuredIndex += fragment.RepresentedToolCount
 			continue
 		}
 		if structuredIndex >= len(structuredItems) {

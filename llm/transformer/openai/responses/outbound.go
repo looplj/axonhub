@@ -224,6 +224,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	var tools []Tool
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
+		if item.ResponsesOrigin != "" {
+			continue
+		}
 		switch item.Type {
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
@@ -239,6 +242,20 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		case llm.ToolTypeResponsesCustomTool:
 			tool := convertCustomToTool(item)
 			tools = append(tools, tool)
+		case llm.ToolTypeResponsesToolSearch:
+			if item.ResponseToolSearch == nil {
+				continue
+			}
+			parameters := map[string]any{}
+			if len(item.ResponseToolSearch.Parameters) > 0 {
+				if err := json.Unmarshal(item.ResponseToolSearch.Parameters, &parameters); err != nil {
+					return nil, fmt.Errorf("failed to decode tool search parameters: %w", err)
+				}
+			}
+			tools = append(tools, Tool{
+				Type: "tool_search", Execution: item.ResponseToolSearch.Execution,
+				Description: item.ResponseToolSearch.Description, Parameters: parameters,
+			})
 		case "function":
 			tool := convertFunctionToTool(item)
 			tools = append(tools, tool)

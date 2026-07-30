@@ -280,6 +280,34 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoi
 	require.Len(t, toolChoice["tools"], 1)
 }
 
+func TestOutboundTransformer_TransformRequest_ReplaysFutureFunctionLikeTool(t *testing.T) {
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-4o","input":"lookup","tools":[{
+			"type":"future_client_tool","name":"lookup","execution":"client",
+			"future_option":{"mode":"fast"},
+			"parameters":{"type":"object","properties":{"query":{"type":"string"}}}
+		}]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, llmReq.Tools, 1)
+	require.Equal(t, llm.ToolTypeFunction, llmReq.Tools[0].Type)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	tools := payload["tools"].([]any)
+	require.Len(t, tools, 1)
+	tool := tools[0].(map[string]any)
+	require.Equal(t, "future_client_tool", tool["type"])
+	require.Equal(t, "lookup", tool["name"])
+	require.Equal(t, "fast", tool["future_option"].(map[string]any)["mode"])
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{

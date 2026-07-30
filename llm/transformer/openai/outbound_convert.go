@@ -1,6 +1,8 @@
 package openai
 
 import (
+	"fmt"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -11,7 +13,31 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 	if r == nil {
 		return nil
 	}
+	req := requestFromLLMBase(r)
+	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
+		return MessageFromLLMWithConfig(m, reasoningField)
+	})
+	req.Tools = lo.FilterMap(r.Tools, func(tool llm.Tool, _ int) (Tool, bool) {
+		return ToolFromLLM(tool), tool.Type == llm.ToolTypeFunction
+	})
+	if r.ToolChoice != nil {
+		req.ToolChoice = &ToolChoice{ToolChoice: r.ToolChoice.ToolChoice}
+		if r.ToolChoice.NamedToolChoice != nil {
+			req.ToolChoice.NamedToolChoice = &NamedToolChoice{
+				Type: r.ToolChoice.NamedToolChoice.Type,
+				Function: ToolFunction{
+					Name: r.ToolChoice.NamedToolChoice.Function.Name,
+				},
+			}
+		}
+	}
+	if len(req.Tools) == 0 {
+		req.ParallelToolCalls = nil
+	}
+	return req
+}
 
+func requestFromLLMBase(r *llm.Request) *Request {
 	req := &Request{
 		Model:               r.Model,
 		FrequencyPenalty:    r.FrequencyPenalty,
@@ -36,62 +62,56 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		ParallelToolCalls:   r.ParallelToolCalls,
 		Verbosity:           r.Verbosity,
 	}
+	if r.Stop != nil {
+		req.Stop = &Stop{Stop: r.Stop.Stop, MultipleStop: r.Stop.MultipleStop}
+	}
+	if r.StreamOptions != nil {
+		req.StreamOptions = &StreamOptions{IncludeUsage: r.StreamOptions.IncludeUsage}
+	}
+	if r.ResponseFormat != nil {
+		req.ResponseFormat = &ResponseFormat{
+			Type: r.ResponseFormat.Type, JSONSchema: r.ResponseFormat.JSONSchema,
+		}
+	}
+	return req
+}
+
+func requestFromLLMWithResponsesToolAdapter(r *llm.Request, reasoningField ReasoningField) (*Request, *responsesChatToolAdapter, error) {
+	if r == nil {
+		return nil, nil, nil
+	}
+	toolAdapter := newResponsesChatToolAdapter(r.Tools)
+
+	req := requestFromLLMBase(r)
+
+	// Build the callable catalog before converting history so specialized calls
+	// resolve through the same stable names as the current tool declarations.
+	req.Tools = toolAdapter.convertTools(r.Tools)
 
 	// Convert messages
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
-		return MessageFromLLMWithConfig(m, reasoningField)
-	})
-
-	// Convert Stop
-	if r.Stop != nil {
-		req.Stop = &Stop{
-			Stop:         r.Stop.Stop,
-			MultipleStop: r.Stop.MultipleStop,
-		}
-	}
-
-	// Convert StreamOptions
-	if r.StreamOptions != nil {
-		req.StreamOptions = &StreamOptions{
-			IncludeUsage: r.StreamOptions.IncludeUsage,
-		}
-	}
-
-	// Convert Tools – only include function tools; other types
-	// (image_generation, responses_custom_tool, etc.) are not supported
-	// by the Chat Completions API and must be filtered out.
-	req.Tools = lo.FilterMap(r.Tools, func(t llm.Tool, _ int) (Tool, bool) {
-		return ToolFromLLM(t), t.Type == llm.ToolTypeFunction
+		return toolAdapter.convertMessage(m, reasoningField)
 	})
 
 	// Convert ToolChoice
-	if r.ToolChoice != nil {
-		req.ToolChoice = &ToolChoice{
-			ToolChoice: r.ToolChoice.ToolChoice,
-		}
-		if r.ToolChoice.NamedToolChoice != nil {
-			req.ToolChoice.NamedToolChoice = &NamedToolChoice{
-				Type: r.ToolChoice.NamedToolChoice.Type,
-				Function: ToolFunction{
-					Name: r.ToolChoice.NamedToolChoice.Function.Name,
-				},
+	req.ToolChoice = toolAdapter.convertToolChoice(r.ToolChoice)
+
+	if len(req.Tools) == 0 {
+		req.ParallelToolCalls = nil
+		if req.ToolChoice != nil && req.ToolChoice.ToolChoice != nil {
+			switch *req.ToolChoice.ToolChoice {
+			case "auto", "none":
+				req.ToolChoice = nil
+			case "required":
+				toolAdapter.setError(fmt.Errorf("unsupported_tool_choice: required tool choice has no callable tools after Responses-to-Chat conversion"))
 			}
 		}
 	}
 
-	// Convert ResponseFormat
-	if r.ResponseFormat != nil {
-		req.ResponseFormat = &ResponseFormat{
-			Type:       r.ResponseFormat.Type,
-			JSONSchema: r.ResponseFormat.JSONSchema,
-		}
+	if toolAdapter.err != nil {
+		return nil, toolAdapter, toolAdapter.err
 	}
-
-	if len(req.Tools) == 0 {
-		req.ParallelToolCalls = nil
-	}
-
-	return req
+	return req, toolAdapter, nil
 }
 
 // applyReasoningEffortMapping replaces reasoning_effort according to a per-channel mapping.

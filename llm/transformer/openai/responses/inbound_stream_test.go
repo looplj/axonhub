@@ -236,6 +236,54 @@ func TestInboundTransformer_TransformStream_KeepsResponsesReasoningItemsSeparate
 	require.Equal(t, "gAAAA_done_2", lo.FromPtr(lastEvent.Response.Output[1].EncryptedContent))
 }
 
+func TestInboundTransformer_TransformStream_EmitsAdaptedSpecialToolCalls(t *testing.T) {
+	wrappedMetadata := map[string]any{"openai_responses_chat_wrapped_custom": true}
+	source := streams.SliceStream([]*llm.Response{
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant"}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
+			{ID: "call_custom", Index: 0, ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "apply_patch", Input: `{"input":"*** Begin`}, TransformerMetadata: wrappedMetadata},
+			{ID: "call_search", Index: 1, ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "call_search", Execution: "client", Arguments: `{"query":"agents"}`}},
+		}}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
+			{Index: 0, ResponseCustomToolCall: &llm.ResponseCustomToolCall{Input: ` Patch"}`}, TransformerMetadata: wrappedMetadata},
+		}}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{}, FinishReason: lo.ToPtr("tool_calls")}}},
+		llm.DoneResponse,
+	})
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+	require.NoError(t, err)
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+	require.NoError(t, stream.Err())
+
+	var customDone, searchDone *Item
+	for i := range events {
+		event := events[i]
+		if event.Type == StreamEventTypeCustomToolCallInputDelta {
+			require.NotContains(t, event.Delta, `{"input"`)
+		}
+		if event.Type != StreamEventTypeOutputItemDone || event.Item == nil {
+			continue
+		}
+		switch event.Item.Type {
+		case "custom_tool_call":
+			customDone = event.Item
+		case "tool_search_call":
+			searchDone = event.Item
+		}
+	}
+	require.NotNil(t, customDone)
+	require.Equal(t, "*** Begin Patch", lo.FromPtr(customDone.Input))
+	require.NotNil(t, searchDone)
+	require.Equal(t, "client", searchDone.Execution)
+	require.JSONEq(t, `{"query":"agents"}`, searchDone.Arguments)
+}
+
 func TestInboundTransformer_TransformStream_ReplacesItemScopedProvisionalSignature(t *testing.T) {
 	trans := NewInboundTransformer()
 	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{

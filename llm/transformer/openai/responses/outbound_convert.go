@@ -106,7 +106,6 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 	var items []Item
 
 	// Track tool call types so tool result messages can be encoded correctly.
-	// callID -> item type (function_call_output or custom_tool_call_output)
 	toolResultItemTypeByCallID := map[string]string{}
 
 	for _, msg := range msgs {
@@ -127,6 +126,10 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 				case "custom_tool_call":
 					if it.CallID != "" {
 						toolResultItemTypeByCallID[it.CallID] = "custom_tool_call_output"
+					}
+				case "tool_search_call":
+					if it.CallID != "" {
+						toolResultItemTypeByCallID[it.CallID] = "tool_search_output"
 					}
 				}
 			}
@@ -233,7 +236,13 @@ func convertAssistantMessage(msg llm.Message) []Item {
 
 	// Handle tool calls
 	for _, tc := range msg.ToolCalls {
-		if tc.ResponseCustomToolCall != nil {
+		if tc.ResponseToolSearchCall != nil {
+			toolCallItems = append(toolCallItems, Item{
+				Type: "tool_search_call", CallID: tc.ResponseToolSearchCall.CallID,
+				Execution: tc.ResponseToolSearchCall.Execution,
+				Arguments: tc.ResponseToolSearchCall.Arguments,
+			})
+		} else if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
 				Type:   "custom_tool_call",
 				CallID: tc.ResponseCustomToolCall.CallID,
@@ -303,6 +312,17 @@ func convertAssistantMessage(msg llm.Message) []Item {
 }
 
 func convertToolMessageWithType(msg llm.Message, itemType string) Item {
+	if itemType == "tool_search_output" {
+		var tools []Tool
+		if msg.Content.Content != nil {
+			_ = json.Unmarshal([]byte(*msg.Content.Content), &tools)
+		}
+		return Item{
+			Type: "tool_search_output", CallID: lo.FromPtr(msg.ToolCallID),
+			Execution: "client", Status: lo.ToPtr("completed"), Tools: tools,
+		}
+	}
+
 	var output Input
 
 	// Handle simple content first

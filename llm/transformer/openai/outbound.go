@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -196,7 +198,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Convert to OpenAI Request format (this strips helper fields)
-	oaiReq := RequestFromLLM(llmReq, reasoningField)
+	oaiReq, toolAdapter, err := requestFromLLMWithResponsesToolAdapter(llmReq, reasoningField)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert Responses tools to Chat Completions: %w", err)
+	}
 	// Apply per-channel reasoning_effort mapping for non-standard OpenAI-compatible providers.
 	// Entries in the map replace the effort value; values not in the map pass through unchanged.
 	// e.g. ollama channel with {"xhigh": "max"} converts Anthropic's internal "xhigh" back to "max".
@@ -231,14 +236,29 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to build platform URL: %w", err)
 	}
 
+	transformerMetadata := maps.Clone(llmReq.TransformerMetadata)
+	if transformerMetadata == nil {
+		transformerMetadata = map[string]any{}
+	}
+	if mappings := toolAdapter.mappings(); len(mappings) > 0 {
+		transformerMetadata[responsesChatToolMappingsMetadataKey] = mappings
+	}
+	if len(toolAdapter.warnings) > 0 {
+		transformerMetadata[responsesChatToolWarningsMetadataKey] = append([]string(nil), toolAdapter.warnings...)
+		slog.WarnContext(ctx, "Responses tools degraded during Chat Completions conversion",
+			slog.String("model", llmReq.Model),
+			slog.Any("warnings", toolAdapter.warnings))
+	}
+
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      authConfig,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-		Metadata:  nil,
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                authConfig,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		Metadata:            nil,
+		TransformerMetadata: transformerMetadata,
 	}, nil
 }
 
@@ -291,8 +311,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 
-	// Convert to unified llm.Response
-	return oaiResp.ToLLMResponse(), nil
+	// Convert to unified llm.Response and restore Responses-only calls that were
+	// represented as Chat function calls for this request.
+	llmResp := oaiResp.ToLLMResponse()
+	restoreResponsesChatToolCalls(llmResp, responsesChatToolMappings(httpResp.Request))
+	return llmResp, nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
@@ -314,9 +337,22 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	//
 	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
 	// in the raw JSON. Events without a choices key (nil slice) are passed through.
+	restorer := newResponsesChatToolStreamRestorer(responsesChatToolMappings(req))
 	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
-		return t.TransformStreamChunk(ctx, event)
+		response, err := t.TransformStreamChunk(ctx, event)
+		if err == nil {
+			restorer.restore(response)
+		}
+		return response, err
 	})), nil
+}
+
+func responsesChatToolMappings(req *httpclient.Request) map[string]responsesChatToolMapping {
+	if req == nil || req.TransformerMetadata == nil {
+		return nil
+	}
+	mappings, _ := req.TransformerMetadata[responsesChatToolMappingsMetadataKey].(map[string]responsesChatToolMapping)
+	return mappings
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(

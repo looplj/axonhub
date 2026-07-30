@@ -699,9 +699,26 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 				return err
 			}
 		}
+		state := s.toolCalls[toolCallIndex]
+		if state.ID == "" && tc.ID != "" {
+			state.ID = tc.ID
+			if state.ResponseCustomToolCall != nil {
+				state.ResponseCustomToolCall.CallID = tc.ID
+			}
+			if state.ResponseToolSearchCall != nil {
+				state.ResponseToolSearchCall.CallID = tc.ID
+			}
+		}
+		if state.ResponseCustomToolCall != nil && state.ResponseCustomToolCall.Name == "" && tc.ResponseCustomToolCall != nil {
+			state.ResponseCustomToolCall.Name = tc.ResponseCustomToolCall.Name
+		}
 
 		// Process delta based on tool type
 		switch {
+		case tc.ResponseToolSearchCall != nil:
+			if err := s.handleToolSearchCallDelta(tc); err != nil {
+				return err
+			}
 		case tc.ResponseCustomToolCall != nil:
 			if err := s.handleCustomToolCallDelta(tc); err != nil {
 				return err
@@ -723,15 +740,39 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		return err
 	}
 
-	if err := s.closeCurrentOutputItem(); err != nil {
+	if s.hasAdaptedSpecialToolCallInProgress() {
+		// Wrapped arguments may span chunks after another parallel call starts.
+		// Close only non-tool output items; special calls close at response boundary.
+		if s.hasMessageItemStarted {
+			if err := s.closeMessageItem(); err != nil {
+				return err
+			}
+		}
+		if s.hasReasoningItemStarted {
+			if err := s.closeReasoningItem(); err != nil {
+				return err
+			}
+		}
+	} else if err := s.closeCurrentOutputItem(); err != nil {
 		return err
+	}
+
+	var customCall *llm.ResponseCustomToolCall
+	if tc.ResponseCustomToolCall != nil {
+		customCall = &llm.ResponseCustomToolCall{CallID: tc.ResponseCustomToolCall.CallID, Name: tc.ResponseCustomToolCall.Name}
+	}
+	var toolSearchCall *llm.ResponseToolSearchCall
+	if tc.ResponseToolSearchCall != nil {
+		toolSearchCall = &llm.ResponseToolSearchCall{CallID: tc.ResponseToolSearchCall.CallID, Execution: tc.ResponseToolSearchCall.Execution}
 	}
 
 	s.toolCalls[toolCallIndex] = &llm.ToolCall{
 		Index:                  toolCallIndex,
 		ID:                     tc.ID,
 		Type:                   tc.Type,
-		ResponseCustomToolCall: tc.ResponseCustomToolCall,
+		ResponseCustomToolCall: customCall,
+		ResponseToolSearchCall: toolSearchCall,
+		TransformerMetadata:    tc.TransformerMetadata,
 		Function: llm.FunctionCall{
 			Name:      tc.Function.Name,
 			Namespace: tc.Function.Namespace,
@@ -745,6 +786,14 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 	}
 
 	switch {
+	case tc.ResponseToolSearchCall != nil:
+		item := &Item{
+			ID: itemID, Type: "tool_search_call", Status: lo.ToPtr("in_progress"),
+			CallID: tc.ResponseToolSearchCall.CallID, Execution: tc.ResponseToolSearchCall.Execution,
+		}
+		if err := s.enqueueEvent(&StreamEvent{Type: StreamEventTypeOutputItemAdded, OutputIndex: s.outputIndex, Item: item}); err != nil {
+			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
+		}
 	case tc.ResponseCustomToolCall != nil:
 		item := &Item{
 			ID:     itemID,
@@ -792,6 +841,24 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 	return nil
 }
 
+func (s *responsesInboundStream) hasAdaptedSpecialToolCallInProgress() bool {
+	for index, call := range s.toolCalls {
+		if !s.toolCallItemStarted[index] || call == nil {
+			continue
+		}
+		if call.ResponseToolSearchCall != nil {
+			return true
+		}
+		if call.ResponseCustomToolCall != nil {
+			wrapped, _ := call.TransformerMetadata["openai_responses_chat_wrapped_custom"].(bool)
+			if wrapped {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error {
 	toolCallIndex := tc.Index
 	s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
@@ -820,6 +887,9 @@ func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error 
 func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) error {
 	toolCallIndex := tc.Index
 	s.toolCalls[toolCallIndex].ResponseCustomToolCall.Input += tc.ResponseCustomToolCall.Input
+	if wrapped, _ := tc.TransformerMetadata["openai_responses_chat_wrapped_custom"].(bool); wrapped {
+		return nil
+	}
 
 	if tc.ResponseCustomToolCall.Input != "" {
 		itemID := s.toolCalls[toolCallIndex].ID
@@ -838,6 +908,27 @@ func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) erro
 		}
 	}
 
+	return nil
+}
+
+func (s *responsesInboundStream) handleToolSearchCallDelta(tc llm.ToolCall) error {
+	toolCallIndex := tc.Index
+	state := s.toolCalls[toolCallIndex].ResponseToolSearchCall
+	state.Arguments += tc.ResponseToolSearchCall.Arguments
+	if tc.ResponseToolSearchCall.Arguments == "" {
+		return nil
+	}
+	itemID := s.toolCalls[toolCallIndex].ID
+	if itemID == "" {
+		itemID = s.currentItemID
+	}
+	if err := s.enqueueEvent(&StreamEvent{
+		Type: StreamEventTypeFunctionCallArgumentsDelta, ItemID: &itemID,
+		OutputIndex: s.toolCallOutputIndex[toolCallIndex], ContentIndex: lo.ToPtr(0),
+		Delta: tc.ResponseToolSearchCall.Arguments,
+	}); err != nil {
+		return fmt.Errorf("failed to enqueue tool_search_call arguments delta: %w", err)
+	}
 	return nil
 }
 
@@ -1042,9 +1133,41 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 		}
 
 		switch {
+		case tc.ResponseToolSearchCall != nil:
+			arguments := tc.ResponseToolSearchCall.Arguments
+			if err := s.enqueueEvent(&StreamEvent{
+				Type: StreamEventTypeFunctionCallArgumentsDone, ItemID: &itemID,
+				OutputIndex: s.toolCallOutputIndex[idx], Arguments: arguments,
+			}); err != nil {
+				return fmt.Errorf("failed to enqueue tool_search_call arguments done: %w", err)
+			}
+			item := Item{
+				ID: itemID, Type: "tool_search_call", Status: lo.ToPtr("completed"),
+				CallID: tc.ResponseToolSearchCall.CallID, Execution: tc.ResponseToolSearchCall.Execution,
+				Arguments: arguments,
+			}
+			if err := s.enqueueEvent(&StreamEvent{Type: StreamEventTypeOutputItemDone, OutputIndex: s.toolCallOutputIndex[idx], Item: &item}); err != nil {
+				return fmt.Errorf("failed to enqueue output_item.done event: %w", err)
+			}
 		case tc.ResponseCustomToolCall != nil:
 			// Custom tool call - emit custom_tool_call_input.done then output_item.done
 			fullInput := tc.ResponseCustomToolCall.Input
+			if wrapped, _ := tc.TransformerMetadata["openai_responses_chat_wrapped_custom"].(bool); wrapped {
+				var input struct {
+					Input string `json:"input"`
+				}
+				if json.Unmarshal([]byte(fullInput), &input) == nil {
+					fullInput = input.Input
+				}
+				if fullInput != "" {
+					if err := s.enqueueEvent(&StreamEvent{
+						Type: StreamEventTypeCustomToolCallInputDelta, ItemID: &itemID,
+						OutputIndex: s.toolCallOutputIndex[idx], Delta: fullInput,
+					}); err != nil {
+						return fmt.Errorf("failed to enqueue custom_tool_call_input.delta event: %w", err)
+					}
+				}
+			}
 
 			err := s.enqueueEvent(&StreamEvent{
 				Type:        StreamEventTypeCustomToolCallInputDone,
